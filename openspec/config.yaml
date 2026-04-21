@@ -1,20 +1,29 @@
 schema: spec-driven
 
-# Project context (optional)
-# This is shown to AI when creating artifacts.
-# Add your tech stack, conventions, style guides, domain knowledge, etc.
-# Example:
-#   context: |
-#     Tech stack: TypeScript, React, Node.js
-#     We use conventional commits
-#     Domain: e-commerce platform
+# Project context
+context: |
+  # Tech Stack
+  - Backend: .NET 10 (Minimal API), Aspire (Orchestration), PostgreSQL.
+  - Frontend: Vue.js (SPA + PWA), Pinia, Vitest, Vite, pnpm.
+  - Architecture: Clean Architecture (Api, Core, Infrastructure, ServiceDefaults, AppHost).
+  - UI Library: TBD.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always include a "Non-goals" section
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
+  # Environment & Build
+  - DEV: Aspire orchestrates API and Frontend (Vite proxy).
+  - PROD: Frontend build output to `src/Api/wwwroot`.
+  - Service Communication: Aspire service discovery.
+
+  # Standards & Workflow
+  - Code: C#, TypeScript. CPM for .NET, Security Analyzers, Warnings as Errors.
+  - Testing: xUnit (Backend), Vitest (Frontend). Integration tests for Api, Unit for Core.
+  - Error Handling: Result pattern for domain services (no exceptions for control flow).
+  - Git: Conventional Commits. Branch per task (`feature/`, `fix/`, `docs/`).
+  - Git: Commit per sub-task. Final squash merge with full history in description.
+
+# Per-artifact rules
+rules:
+  tasks:
+    - Do NOT include separate tasks for individual commits; committing after each sub-task is an ambient rule.
+    - Include one final task for the squash merge (including sub-task history in description) and branch cleanup.
+    - Implementation: Always write a reproduction test before fixing a bug.
+    - Implementation: "Small Batches" (testable tasks), "Self-Documenting" (XML docs for public surface), "Defensive" (boundary validation).
