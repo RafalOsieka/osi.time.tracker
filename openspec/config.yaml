@@ -5,7 +5,7 @@ context: |
   # Tech Stack
   - Backend: .NET 10 (Minimal API), Aspire (Orchestration), PostgreSQL.
   - Frontend: Vue.js (SPA + PWA), Pinia, Vitest, Vite, pnpm.
-  - UI Library: PrimeVue 4 (Styled mode with Aura preset and Tailwind CSS 4), PrimeIcons, MCP.
+  - UI Library: PrimeVue 4 (Styled mode with Aura preset and Tailwind CSS 4; integrated with PriveVue MCP), PrimeIcons.
   - Architecture: Clean Architecture (Api, Core, Infrastructure, ServiceDefaults, AppHost).
 
   # Environment & Build
