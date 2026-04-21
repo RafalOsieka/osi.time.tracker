@@ -1,0 +1,15 @@
+{
+    "mcpServers": {
+        "primevue": {
+            "command": "pnpm",
+            "args": [
+                "dlx",
+                "-package",
+                "@modelcontextprotocol/sdk@1.25.2",
+                "-package",
+                "@primevue/mcp",
+                "primevue-mcp"
+            ]
+        }
+    }
+}

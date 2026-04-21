@@ -5,8 +5,8 @@ context: |
   # Tech Stack
   - Backend: .NET 10 (Minimal API), Aspire (Orchestration), PostgreSQL.
   - Frontend: Vue.js (SPA + PWA), Pinia, Vitest, Vite, pnpm.
+  - UI Library: PrimeVue 4 (Styled mode with Aura preset), PrimeIcons, MCP.
   - Architecture: Clean Architecture (Api, Core, Infrastructure, ServiceDefaults, AppHost).
-  - UI Library: TBD.
 
   # Environment & Build
   - DEV: Aspire orchestrates API and Frontend (Vite proxy).
@@ -26,4 +26,4 @@ rules:
     - Do NOT include separate tasks for individual commits; committing after each sub-task is an ambient rule.
     - Include one final task for the squash merge (including sub-task history in description) and branch cleanup.
     - Implementation: Always write a reproduction test before fixing a bug.
-    - Implementation: "Small Batches" (testable tasks), "Self-Documenting" (XML docs for public surface), "Defensive" (boundary validation).
+    - Implementation: Small Batches (testable tasks), Self-Documenting (XML docs for public surface), Defensive (boundary validation).
