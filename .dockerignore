@@ -1,0 +1,41 @@
+# Ignore everything by default
+**
+
+# Allow .slnx and solution files
+!*.slnx
+!*.sln
+
+# Allow src directory but ignore build artifacts
+!src/
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/.vs/
+**/.idea/
+**/.git/
+
+# Allow specific project files
+!src/Api/Api.csproj
+!src/Web/Web.esproj
+!src/Core/Core.csproj
+!src/Infrastructure/Infrastructure.csproj
+!src/ServiceDefaults/ServiceDefaults.csproj
+
+# Allow package manager files
+!src/Web/package.json
+!src/Web/pnpm-lock.yaml
+
+# Allow source code
+!src/**/*.cs
+!src/**/*.ts
+!src/**/*.vue
+!src/**/*.json
+!src/**/*.html
+!src/**/*.svg
+!src/**/*.css
+!src/**/*.png
+!src/**/*.jpg
+!src/**/*.jpeg
+!src/**/*.config
+!src/**/*.sh
