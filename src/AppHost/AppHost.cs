@@ -10,9 +10,9 @@ var api = builder.AddProject<Api>("api")
     .WithReference(postgres)
     .WaitFor(postgres);
 
-builder.AddNpmApp("frontend", "../Web")
+builder.AddNpmApp("frontend", "../Web", "dev")
     .WithReference(api)
-    .WithHttpEndpoint(port: 5173, targetPort: 5173)
+    .WithHttpsEndpoint(targetPort: 5173)
     .WithExternalHttpEndpoints();
 
 builder.Build().Run();
