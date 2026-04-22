@@ -1,20 +1,20 @@
 <Project Sdk="Aspire.AppHost.Sdk/13.2.2">
 
-  <ItemGroup>
-    <ProjectReference Include="..\Api\Api.csproj" />
-  </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\Api\Api.csproj"/>
+    </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.2.2" />
-  </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.2.2"/>
+    </ItemGroup>
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-    <UserSecretsId>78a8be16-752c-4b26-a25c-d5b732666b91</UserSecretsId>
-    <RootNamespace>osi.time.tracker.AppHost</RootNamespace>
-  </PropertyGroup>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <UserSecretsId>78a8be16-752c-4b26-a25c-d5b732666b91</UserSecretsId>
+        <RootNamespace>osi.time.tracker.AppHost</RootNamespace>
+    </PropertyGroup>
 
 </Project>

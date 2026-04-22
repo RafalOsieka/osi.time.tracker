@@ -8,7 +8,7 @@ public static class InfrastructureExtensions
     public static IHostApplicationBuilder AddInfrastructure(this IHostApplicationBuilder builder)
     {
         builder.AddNpgsqlDbContext<ApplicationDbContext>("trackerdb");
-        
+
         return builder;
     }
 }

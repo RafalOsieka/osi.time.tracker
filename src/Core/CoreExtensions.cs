@@ -10,7 +10,7 @@ public static class CoreExtensions
     {
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddScoped<SampleService>();
-        
+
         return builder;
     }
 }

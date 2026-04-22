@@ -31,7 +31,7 @@ export default defineConfig({
     })
   ],
   build: {
-    outDir: '../osi.time.tracker.Api/wwwroot',
+    outDir: '../Api/wwwroot',
     emptyOutDir: true,
   },
   test: {
