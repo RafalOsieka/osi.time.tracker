@@ -3,3 +3,6 @@ dist
 public
 pnpm-lock.yaml
 .eslintcache
+obj
+bin
+dev-dist

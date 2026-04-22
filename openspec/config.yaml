@@ -25,3 +25,8 @@ rules:
     - Include one final task to commit the changes after approval.
     - Implementation: Always write a reproduction test before fixing a bug.
     - Implementation: Small Batches (testable tasks), Self-Documenting (XML docs for public surface), Defensive (boundary validation).
+  implementation:
+    - Web: Always run `pnpm lint` and `pnpm format` before completing a task to ensure code quality.
+    - Backend: Always verify that the project builds (e.g., `dotnet build src/AppHost/AppHost.csproj`).
+    - Security: Security errors and warnings must be resolved; disabling checks or ignoring security warnings is not allowed.
+    - Reliability: Treat warnings as errors in both C# and TypeScript/Vue stacks.

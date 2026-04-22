@@ -8,5 +8,6 @@
         <AnalysisMode>All</AnalysisMode>
         <AnalysisLevel>latest-Recommended</AnalysisLevel>
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     </PropertyGroup>
 </Project>

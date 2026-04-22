@@ -4,9 +4,7 @@ public class Result
 {
     protected Result(bool isSuccess, string error)
     {
-        if (isSuccess && error != string.Empty)
-            throw new InvalidOperationException();
-        if (!isSuccess && error == string.Empty)
+        if ((isSuccess && error != string.Empty) || (!isSuccess && error == string.Empty))
             throw new InvalidOperationException();
 
         IsSuccess = isSuccess;
@@ -30,16 +28,14 @@ public class Result
 
 public class Result<T> : Result
 {
-    private readonly T? _value;
-
-    protected internal Result(T? value, bool isSuccess, string error)
+    private Result(T? value, bool isSuccess, string error)
         : base(isSuccess, error)
     {
-        _value = value;
+        Value = value;
     }
 
     public T Value => IsSuccess
-        ? _value!
+        ? field!
         : throw new InvalidOperationException("The value of a failure result can not be accessed.");
 
     public static Result<T> Success(T value)
