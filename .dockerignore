@@ -4,6 +4,8 @@
 # Allow .slnx and solution files
 !*.slnx
 !*.sln
+!*.props
+!.editorconfig
 
 # Allow src directory but ignore build artifacts
 !src/
@@ -17,7 +19,6 @@
 
 # Allow specific project files
 !src/Api/Api.csproj
-!src/Web/Web.esproj
 !src/Core/Core.csproj
 !src/Infrastructure/Infrastructure.csproj
 !src/ServiceDefaults/ServiceDefaults.csproj

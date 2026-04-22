@@ -18,6 +18,9 @@ WORKDIR /src
 
 # Copy solution and project files for restoration
 COPY osi.time.tracker.slnx ./
+COPY Directory.Build.props ./
+COPY Directory.Packages.props ./
+COPY .editorconfig ./
 COPY src/Api/Api.csproj src/Api/
 COPY src/Core/Core.csproj src/Core/
 COPY src/Infrastructure/Infrastructure.csproj src/Infrastructure/
@@ -33,7 +36,7 @@ COPY src/Infrastructure/ src/Infrastructure/
 COPY src/ServiceDefaults/ src/ServiceDefaults/
 
 # Build and Publish the API
-RUN dotnet publish src/Api/Api.csproj -c Release -o /app/publish --no-restore
+RUN dotnet publish src/Api/Api.csproj -c Release -o /app/publish
 
 # Stage 3: Final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS final
