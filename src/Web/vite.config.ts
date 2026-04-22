@@ -1,10 +1,10 @@
 /// <reference types="vitest/config" />
-import { defineConfig } from 'vite'
-import vue from '@vitejs/plugin-vue'
-import mkcert from 'vite-plugin-mkcert'
-import tailwindcss from '@tailwindcss/vite'
-import { VitePWA } from 'vite-plugin-pwa'
-import { env } from 'process'
+import tailwindcss from '@tailwindcss/vite';
+import vue from '@vitejs/plugin-vue';
+import { env } from 'process';
+import { defineConfig } from 'vite';
+import mkcert from 'vite-plugin-mkcert';
+import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -13,10 +13,10 @@ export default defineConfig({
       '/api': {
         target: env['services__api__https__0'] || env['services__api__http__0'] || 'https://localhost:5001',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, ''),
-        secure: false
-      }
-    }
+        rewrite: path => path.replace(/^\/api/, ''),
+        secure: false,
+      },
+    },
   },
   plugins: [
     mkcert(),
@@ -34,14 +34,14 @@ export default defineConfig({
           {
             src: 'favicon.svg',
             sizes: 'any',
-            type: 'image/svg+xml'
-          }
-        ]
+            type: 'image/svg+xml',
+          },
+        ],
       },
       devOptions: {
-        enabled: true
-      }
-    })
+        enabled: true,
+      },
+    }),
   ],
   test: {
     environment: 'jsdom',
@@ -52,4 +52,4 @@ export default defineConfig({
       },
     },
   },
-})
+});
