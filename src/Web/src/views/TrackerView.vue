@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import EntriesList from '../components/EntriesList.vue';
+import PublishPanel from '../components/PublishPanel.vue';
 import TimerBar from '../components/TimerBar.vue';
 </script>
 
@@ -17,7 +18,14 @@ import TimerBar from '../components/TimerBar.vue';
       </header>
 
       <TimerBar />
-      <EntriesList />
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div class="lg:col-span-2">
+          <EntriesList />
+        </div>
+        <div>
+          <PublishPanel />
+        </div>
+      </div>
     </div>
   </div>
 </template>

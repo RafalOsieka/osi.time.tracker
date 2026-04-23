@@ -23,12 +23,12 @@
 - [x] 3.3 State management for active entry and optimistic updates.
 
 ## Milestone 4: Publish Panel (Client-only)
-- [ ] 4.1 Config inputs: Target (Redmine/OpenProject), Base URL, Token; Remember token (localStorage).
-- [ ] 4.2 Group preview by (issue, date) with rounded totals; show raw vs rounded.
-- [ ] 4.3 Activity selection and mapping confirmation.
-- [ ] 4.4 Implement RedminePublisher & OpenProjectPublisher; send payloads via fetch.
-- [ ] 4.5 Handle responses, mark local entries published with remote IDs.
-- [ ] 4.6 Error handling and retry per group; CORS error surfacing.
+- [x] 4.1 Config inputs: Target (Redmine/OpenProject), Base URL, Token; Remember token (localStorage).
+- [x] 4.2 Group preview by (issue, date) with rounded totals; show raw vs rounded.
+- [x] 4.3 Activity selection and mapping confirmation.
+- [x] 4.4 Implement RedminePublisher & OpenProjectPublisher; send payloads via fetch.
+- [x] 4.5 Handle responses, mark local entries published with remote IDs.
+- [x] 4.6 Error handling and retry per group; CORS error surfacing.
 
 ## Milestone 5: Polish & Reports
 - [ ] 5.1 Small reports UI: daily totals, by item/project; CSV export.
