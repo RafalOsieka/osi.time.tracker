@@ -18,9 +18,9 @@
 - [x] 2.4 Reports: daily totals and by-item (raw totals), server-calculated for convenience.
 
 ## Milestone 3: Web UI - Basics
-- [ ] 3.1 TimerBar: item picker, title/note inputs, start/stop.
-- [ ] 3.2 EntriesList: list today/this week, inline edits, split/merge.
-- [ ] 3.3 State management for active entry and optimistic updates.
+- [x] 3.1 TimerBar: item picker, title/note inputs, start/stop.
+- [x] 3.2 EntriesList: list today/this week, inline edits, split/merge.
+- [x] 3.3 State management for active entry and optimistic updates.
 
 ## Milestone 4: Publish Panel (Client-only)
 - [ ] 4.1 Config inputs: Target (Redmine/OpenProject), Base URL, Token; Remember token (localStorage).
