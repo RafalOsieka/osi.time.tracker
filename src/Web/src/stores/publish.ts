@@ -105,8 +105,28 @@ export const usePublishStore = defineStore('publish', () => {
   function joinComments(entries: TimeEntry[]): string {
     const titles = [...new Set(entries.map((e) => e.title.trim()))].filter(Boolean);
     let result = titles.join('; ');
-    if (result.length > 800) {
-      result = result.substring(0, 797) + '...';
+
+    const LIMIT = 255; // Common limit for many systems, or use a configurable one
+    if (result.length > LIMIT) {
+      // Find all unique titles and try to fit as many as possible
+      let current = '';
+      let added = 0;
+      for (let i = 0; i < titles.length; i++) {
+        const next = current ? current + '; ' + titles[i] : titles[i];
+        if (next.length > LIMIT - 15) {
+          // Leave space for " +N more"
+          break;
+        }
+        current = next;
+        added++;
+      }
+      const remaining = titles.length - added;
+      result = current + (remaining > 0 ? `; +${remaining} more` : '');
+
+      // Final safety truncate
+      if (result.length > LIMIT) {
+        result = result.substring(0, LIMIT - 3) + '...';
+      }
     }
     return result;
   }

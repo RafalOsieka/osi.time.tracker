@@ -60,3 +60,15 @@ export interface UpdateEntryRequest {
   startUtc: string;
   endUtc?: string | null;
 }
+
+export interface DailyReportDto {
+  date: string;
+  totalSeconds: number;
+}
+
+export interface ItemReportDto {
+  itemId: string;
+  itemName: string;
+  projectName: string;
+  totalSeconds: number;
+}

@@ -31,11 +31,11 @@
 - [x] 4.6 Error handling and retry per group; CORS error surfacing.
 
 ## Milestone 5: Polish & Reports
-- [ ] 5.1 Small reports UI: daily totals, by item/project; CSV export.
-- [ ] 5.2 Colors for projects; archive flows for items/projects.
-- [ ] 5.3 UX tidy (caps on comment length with "; " join, truncation message).
+- [x] 5.1 Small reports UI: daily totals, by item/project; CSV export.
+- [x] 5.2 Colors for projects; archive flows for items/projects.
+- [x] 5.3 UX tidy (caps on comment length with "; " join, truncation message).
 
 ## Validation & Docs
-- [ ] 6.1 Unit tests for rounding (aggregate nearest 15 with ties up) and overlap rules.
-- [ ] 6.2 Basic integration test for DB schema.
-- [ ] 6.3 README updates for configuring PostgreSQL and frontend token storage.
+- [x] 6.1 Unit tests for rounding (aggregate nearest 15 with ties up) and overlap rules.
+- [x] 6.2 Basic integration test for DB schema.
+- [x] 6.3 README updates for configuring PostgreSQL and frontend token storage.

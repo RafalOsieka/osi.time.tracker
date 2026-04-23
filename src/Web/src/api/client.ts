@@ -2,7 +2,9 @@ import ky from 'ky';
 
 import type {
   CreateEntryRequest,
+  DailyReportDto,
   Item,
+  ItemReportDto,
   Project,
   StartTimerRequest,
   TimeEntry,
@@ -48,4 +50,11 @@ export const projectsApi = {
   update: (id: string, body: { name: string; color?: string | null; isArchived: boolean }) =>
     ky.put(`${API}/projects/${id}`, { json: body }).json<Project>(),
   remove: (id: string) => ky.delete(`${API}/projects/${id}`).json<void>(),
+};
+
+export const reportsApi = {
+  getDaily: (from: string, to: string) =>
+    ky.get(`${API}/reports/daily`, { searchParams: { from, to } }).json<DailyReportDto[]>(),
+  getItem: (from: string, to: string) =>
+    ky.get(`${API}/reports/by-item`, { searchParams: { from, to } }).json<ItemReportDto[]>(),
 };

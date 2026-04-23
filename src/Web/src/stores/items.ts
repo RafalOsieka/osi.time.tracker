@@ -24,5 +24,14 @@ export const useItemsStore = defineStore('items', () => {
     }
   }
 
-  return { items, loading, error, load };
+  async function update(id: string, name: string, isArchived: boolean) {
+    const updated = await itemsApi.update(id, { name, isArchived });
+    const idx = items.value.findIndex((i) => i.id === id);
+    if (idx >= 0) {
+      items.value[idx] = updated;
+    }
+    return updated;
+  }
+
+  return { items, loading, error, load, update };
 });
