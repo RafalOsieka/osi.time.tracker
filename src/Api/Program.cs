@@ -1,5 +1,6 @@
 using osi.time.tracker.Core;
 using osi.time.tracker.Infrastructure;
+using osi.time.tracker.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,8 @@ if (app.Environment.IsDevelopment()) app.MapOpenApi();
 app.UseHttpsRedirection();
 
 app.MapFallbackToFile("index.html");
+
+await app.MigrateAndSeedAsync();
 
 var summaries = new[]
 {

@@ -9,7 +9,10 @@ public static class CoreExtensions
     public static IHostApplicationBuilder AddCore(this IHostApplicationBuilder builder)
     {
         builder.Services.AddSingleton(TimeProvider.System);
-        builder.Services.AddScoped<SampleService>();
+        builder.Services.AddScoped<TimerService>();
+        builder.Services.AddScoped<TimeEntryService>();
+        builder.Services.AddScoped<ItemService>();
+        builder.Services.AddScoped<ProjectService>();
 
         return builder;
     }

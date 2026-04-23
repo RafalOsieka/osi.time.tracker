@@ -1,15 +1,15 @@
 # Tasks: Time Tracking MVP
 
 ## Milestone 1: Storage + Domain (Core/Infra)
-- [ ] 1.1 Add EF Core (or Dapper) with PostgreSQL provider; connection string in configuration.
-- [ ] 1.2 Define entities: Project, Item, TimeEntry (and optional PublishRecord).
-- [ ] 1.3 Create initial migrations and apply.
-- [ ] 1.4 Implement services:
-  - [ ] 1.4.1 TimerService: enforce single active, start/stop flows.
-  - [ ] 1.4.2 TimeEntryService: CRUD + overlap validation; compute durations.
-  - [ ] 1.4.3 ItemService: CRUD and lookup by (RemoteTarget, BaseUrl, RemoteId).
-- [ ] 1.5 Implement grouping + rounding utility (aggregate 15-minute nearest, ties up).
-- [ ] 1.6 Seed minimal data helpers (optional).
+- [x] 1.1 Add EF Core (or Dapper) with PostgreSQL provider; connection string in configuration.
+- [x] 1.2 Define entities: Project, Item, TimeEntry (and optional PublishRecord).
+- [x] 1.3 Create initial migrations and apply.
+- [x] 1.4 Implement services:
+  - [x] 1.4.1 TimerService: enforce single active, start/stop flows.
+  - [x] 1.4.2 TimeEntryService: CRUD + overlap validation; compute durations.
+  - [x] 1.4.3 ItemService: CRUD and lookup by (RemoteTarget, BaseUrl, RemoteId).
+- [x] 1.5 Implement grouping + rounding utility (aggregate 15-minute nearest, ties up).
+- [x] 1.6 Seed minimal data helpers (optional).
 
 ## Milestone 2: API Endpoints (no auth)
 - [ ] 2.1 Timer: POST /api/timer/start, /api/timer/stop, GET /api/timer/active.
