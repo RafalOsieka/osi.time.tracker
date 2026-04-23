@@ -12,10 +12,10 @@
 - [x] 1.6 Seed minimal data helpers (optional).
 
 ## Milestone 2: API Endpoints (no auth)
-- [ ] 2.1 Timer: POST /api/timer/start, /api/timer/stop, GET /api/timer/active.
-- [ ] 2.2 Entries: GET /api/entries (range + filters), POST/PUT/DELETE for manual edits.
-- [ ] 2.3 Items: GET/POST/PUT/DELETE; ensure uniqueness of (target, baseUrl, remoteId).
-- [ ] 2.4 Reports: daily totals and by-item (raw totals), server-calculated for convenience.
+- [x] 2.1 Timer: POST /api/timer/start, /api/timer/stop, GET /api/timer/active.
+- [x] 2.2 Entries: GET /api/entries (range + filters), POST/PUT/DELETE for manual edits.
+- [x] 2.3 Items: GET/POST/PUT/DELETE; ensure uniqueness of (target, baseUrl, remoteId).
+- [x] 2.4 Reports: daily totals and by-item (raw totals), server-calculated for convenience.
 
 ## Milestone 3: Web UI - Basics
 - [ ] 3.1 TimerBar: item picker, title/note inputs, start/stop.

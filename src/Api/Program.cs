@@ -1,3 +1,4 @@
+using osi.time.tracker.Api.Endpoints;
 using osi.time.tracker.Core;
 using osi.time.tracker.Infrastructure;
 using osi.time.tracker.Infrastructure.Persistence;
@@ -18,6 +19,8 @@ app.MapDefaultEndpoints();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
+
+app.MapApiEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment()) app.MapOpenApi();

@@ -13,6 +13,7 @@ public static class CoreExtensions
         builder.Services.AddScoped<TimeEntryService>();
         builder.Services.AddScoped<ItemService>();
         builder.Services.AddScoped<ProjectService>();
+        builder.Services.AddScoped<ReportService>();
 
         return builder;
     }

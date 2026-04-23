@@ -12,6 +12,11 @@ public class ProjectService(IAppDbContext db, TimeProvider timeProvider)
         return await db.Projects.OrderBy(p => p.Name).ToListAsync(ct);
     }
 
+    public async Task<Project?> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        return await db.Projects.FirstOrDefaultAsync(p => p.Id == id, ct);
+    }
+
     public async Task<Result<Project>> CreateAsync(string name, string? color, CancellationToken ct = default)
     {
         var now = timeProvider.GetUtcNow().UtcDateTime;
