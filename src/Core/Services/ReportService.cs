@@ -5,7 +5,8 @@ namespace osi.time.tracker.Core.Services;
 
 public class ReportService(IAppDbContext db)
 {
-    public async Task<List<DailyReportDto>> GetDailyReportAsync(DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<List<DailyReportDto>> GetDailyReportAsync(DateTime from, DateTime to,
+        CancellationToken ct = default)
     {
         var entries = await db.TimeEntries
             .Where(e => e.StartUtc >= from && e.StartUtc < to && e.EndUtc != null)
@@ -22,7 +23,8 @@ public class ReportService(IAppDbContext db)
             .ToList();
     }
 
-    public async Task<List<ItemReportDto>> GetItemReportAsync(DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<List<ItemReportDto>> GetItemReportAsync(DateTime from, DateTime to,
+        CancellationToken ct = default)
     {
         var entries = await db.TimeEntries
             .Include(e => e.Item)

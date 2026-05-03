@@ -15,7 +15,8 @@ public class TimerService(IAppDbContext db, TimeProvider timeProvider)
             .FirstOrDefaultAsync(e => e.EndUtc == null, ct);
     }
 
-    public async Task<Result<TimeEntry>> StartAsync(Guid itemId, string title, string? note, CancellationToken ct = default)
+    public async Task<Result<TimeEntry>> StartAsync(Guid itemId, string title, string? note,
+        CancellationToken ct = default)
     {
         var active = await db.TimeEntries.FirstOrDefaultAsync(e => e.EndUtc == null, ct);
         if (active is not null)

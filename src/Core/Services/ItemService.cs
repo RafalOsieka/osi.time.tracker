@@ -22,7 +22,8 @@ public class ItemService(IAppDbContext db, TimeProvider timeProvider)
             .FirstOrDefaultAsync(i => i.Id == id, ct);
     }
 
-    public async Task<Item?> FindByRemoteAsync(RemoteTarget target, string baseUrl, string remoteId, CancellationToken ct = default)
+    public async Task<Item?> FindByRemoteAsync(RemoteTarget target, string baseUrl, string remoteId,
+        CancellationToken ct = default)
     {
         return await db.Items
             .Include(i => i.Project)
@@ -32,7 +33,8 @@ public class ItemService(IAppDbContext db, TimeProvider timeProvider)
                 i.RemoteId == remoteId, ct);
     }
 
-    public async Task<Result<Item>> CreateAsync(Guid projectId, string name, RemoteTarget remoteTarget, string remoteBaseUrl, string remoteId, CancellationToken ct = default)
+    public async Task<Result<Item>> CreateAsync(Guid projectId, string name, RemoteTarget remoteTarget,
+        string remoteBaseUrl, string remoteId, CancellationToken ct = default)
     {
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == projectId, ct);
         if (project is null)

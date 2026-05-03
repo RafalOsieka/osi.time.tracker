@@ -7,7 +7,8 @@ namespace osi.time.tracker.Core.Services;
 
 public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
 {
-    public async Task<List<TimeEntry>> GetAsync(DateTime from, DateTime to, Guid? itemId = null, CancellationToken ct = default)
+    public async Task<List<TimeEntry>> GetAsync(DateTime from, DateTime to, Guid? itemId = null,
+        CancellationToken ct = default)
     {
         var query = db.TimeEntries
             .Include(e => e.Item)
@@ -20,7 +21,8 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
         return await query.OrderByDescending(e => e.StartUtc).ToListAsync(ct);
     }
 
-    public async Task<Result<TimeEntry>> CreateAsync(Guid itemId, string title, string? note, DateTime startUtc, DateTime? endUtc, CancellationToken ct = default)
+    public async Task<Result<TimeEntry>> CreateAsync(Guid itemId, string title, string? note, DateTime startUtc,
+        DateTime? endUtc, CancellationToken ct = default)
     {
         var item = await db.Items.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == itemId, ct);
         if (item is null)
@@ -55,7 +57,8 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
         return Result<TimeEntry>.Success(entry);
     }
 
-    public async Task<Result<TimeEntry>> UpdateAsync(Guid id, string title, string? note, DateTime startUtc, DateTime? endUtc, CancellationToken ct = default)
+    public async Task<Result<TimeEntry>> UpdateAsync(Guid id, string title, string? note, DateTime startUtc,
+        DateTime? endUtc, CancellationToken ct = default)
     {
         var entry = await db.TimeEntries
             .Include(e => e.Item)
@@ -93,7 +96,8 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
         return Result.Success();
     }
 
-    private async Task<Result> CheckOverlapAsync(DateTime startUtc, DateTime? endUtc, Guid? excludeId, CancellationToken ct)
+    private async Task<Result> CheckOverlapAsync(DateTime startUtc, DateTime? endUtc, Guid? excludeId,
+        CancellationToken ct)
     {
         var query = db.TimeEntries.AsQueryable();
         if (excludeId.HasValue)

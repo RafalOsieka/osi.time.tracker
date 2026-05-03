@@ -13,7 +13,6 @@ export default defineConfig({
       '/api': {
         target: env['services__api__https__0'] || env['services__api__http__0'] || 'https://localhost:5001',
         changeOrigin: true,
-        rewrite: path => path.replace(/^\/api/, ''),
         secure: false,
       },
     },

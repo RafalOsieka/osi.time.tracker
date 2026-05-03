@@ -34,7 +34,8 @@ public class ProjectService(IAppDbContext db, TimeProvider timeProvider)
         return Result<Project>.Success(project);
     }
 
-    public async Task<Result<Project>> UpdateAsync(Guid id, string name, string? color, bool isArchived, CancellationToken ct = default)
+    public async Task<Result<Project>> UpdateAsync(Guid id, string name, string? color, bool isArchived,
+        CancellationToken ct = default)
     {
         var project = await db.Projects.FirstOrDefaultAsync(p => p.Id == id, ct);
         if (project is null)
