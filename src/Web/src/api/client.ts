@@ -30,6 +30,7 @@ export const entriesApi = {
   remove: (id: string) => ky.delete(`${API}/entries/${id}`).json<void>(),
 };
 
+// get single item endpoint missing
 export const itemsApi = {
   list: () => ky.get(`${API}/items`).json<Item[]>(),
   create: (body: {
@@ -44,6 +45,7 @@ export const itemsApi = {
   remove: (id: string) => ky.delete(`${API}/items/${id}`).json<void>(),
 };
 
+// get single project endpoint missing
 export const projectsApi = {
   list: () => ky.get(`${API}/projects`).json<Project[]>(),
   create: (body: { name: string; color?: string | null }) => ky.post(`${API}/projects`, { json: body }).json<Project>(),

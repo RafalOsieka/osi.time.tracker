@@ -5,7 +5,6 @@ import Column from 'primevue/column';
 import ColorPicker from 'primevue/colorpicker';
 import DataTable from 'primevue/datatable';
 import InputText from 'primevue/inputtext';
-import ToggleButton from 'primevue/togglebutton';
 import { onMounted, ref } from 'vue';
 
 import { useProjectsStore } from '../stores/projects';
