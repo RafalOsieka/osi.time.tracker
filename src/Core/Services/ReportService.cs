@@ -28,21 +28,21 @@ public class ReportService(IAppDbContext db)
     {
         var entries = await db.TimeEntries
             .Include(e => e.Item)
-            .Include(e => e.Project)
+            .ThenInclude(i => i.Project)
             .Where(e => e.StartUtc >= from && e.StartUtc < to && e.EndUtc != null)
             .ToListAsync(ct);
 
         return entries
-            .GroupBy(e => new { e.ItemId, e.Item.Name, ProjectName = e.Project.Name })
+            .GroupBy(e => new { e.ItemId, ItemTitle = e.Item.Title, ProjectName = e.Item.Project.Name })
             .Select(g => new ItemReportDto
             {
                 ItemId = g.Key.ItemId,
-                ItemName = g.Key.Name,
+                ItemTitle = g.Key.ItemTitle,
                 ProjectName = g.Key.ProjectName,
                 TotalSeconds = g.Sum(e => (e.EndUtc!.Value - e.StartUtc).TotalSeconds)
             })
             .OrderBy(r => r.ProjectName)
-            .ThenBy(r => r.ItemName)
+            .ThenBy(r => r.ItemTitle)
             .ToList();
     }
 }
@@ -56,7 +56,7 @@ public class DailyReportDto
 public class ItemReportDto
 {
     public Guid ItemId { get; init; }
-    public string ItemName { get; init; } = string.Empty;
+    public string ItemTitle { get; init; } = string.Empty;
     public string ProjectName { get; init; } = string.Empty;
     public double TotalSeconds { get; init; }
 }

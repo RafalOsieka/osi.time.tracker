@@ -18,7 +18,7 @@ public static class TimerEndpoints
         group.MapPost("/start",
             async ([FromBody] StartTimerRequest request, TimerService timerService, CancellationToken ct) =>
             {
-                var result = await timerService.StartAsync(request.ItemId, request.Title, request.Note, ct);
+                var result = await timerService.StartAsync(request.ItemId, request.Title, ct);
                 return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
             });
 
@@ -30,4 +30,4 @@ public static class TimerEndpoints
     }
 }
 
-public record StartTimerRequest(Guid ItemId, string Title, string? Note);
+public record StartTimerRequest(Guid? ItemId, string Title);

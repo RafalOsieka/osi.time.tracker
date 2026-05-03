@@ -9,15 +9,13 @@ public class ItemConfiguration : IEntityTypeConfiguration<Item>
     public void Configure(EntityTypeBuilder<Item> builder)
     {
         builder.HasKey(i => i.Id);
-        builder.Property(i => i.Name).IsRequired();
-        builder.Property(i => i.RemoteTarget).IsRequired();
-        builder.Property(i => i.RemoteBaseUrl).IsRequired();
-        builder.Property(i => i.RemoteId).IsRequired();
+        builder.Property(i => i.Title).IsRequired();
         builder.Property(i => i.IsArchived).HasDefaultValue(false);
         builder.Property(i => i.CreatedUtc).IsRequired();
         builder.Property(i => i.UpdatedUtc).IsRequired();
 
-        builder.HasIndex(i => new { i.RemoteTarget, i.RemoteBaseUrl, i.RemoteId }).IsUnique();
+        // Within a project, a remote-mapped item is unique by its remote ID.
+        builder.HasIndex(i => new { i.ProjectId, i.RemoteId }).IsUnique();
 
         builder.HasOne(i => i.Project)
             .WithMany(p => p.Items)

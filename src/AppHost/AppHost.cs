@@ -3,7 +3,8 @@ using Projects;
 var builder = DistributedApplication.CreateBuilder(args);
 
 var postgres = builder.AddPostgres("postgres")
-    .WithDataVolume()
+    .WithDataVolume("osi-time-tracker-postgres-data")
+    .WithPgWeb()
     .AddDatabase("osi-time-tracker-db");
 
 var api = builder.AddProject<Api>("api")

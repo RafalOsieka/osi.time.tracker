@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using osi.time.tracker.Core.Entities;
+using osi.time.tracker.Core.Services;
 
 namespace osi.time.tracker.Infrastructure.Persistence;
 
@@ -13,35 +14,28 @@ public static class SeedData
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         await db.Database.MigrateAsync();
+        await SeedDefaultProjectAsync(db);
+    }
 
-        if (await db.Projects.AnyAsync())
+    /// <summary>
+    /// Ensures exactly one Project exists with <see cref="Project.IsDefault"/> = true.
+    /// Creates the system "Local" project on first run.
+    /// </summary>
+    public static async Task SeedDefaultProjectAsync(ApplicationDbContext db, CancellationToken ct = default)
+    {
+        if (await db.Projects.AnyAsync(p => p.IsDefault, ct))
             return;
 
         var now = DateTime.UtcNow;
-
-        var project = new Project
+        db.Projects.Add(new Project
         {
             Id = Guid.NewGuid(),
-            Name = "Sample Project",
-            Color = "#4f46e5",
+            Name = ProjectService.DefaultProjectName,
+            IsDefault = true,
             CreatedUtc = now,
             UpdatedUtc = now
-        };
-        db.Projects.Add(project);
+        });
 
-        var item = new Item
-        {
-            Id = Guid.NewGuid(),
-            ProjectId = project.Id,
-            Name = "Sample Issue #1",
-            RemoteTarget = RemoteTarget.Redmine,
-            RemoteBaseUrl = "https://redmine.example.com",
-            RemoteId = "1",
-            CreatedUtc = now,
-            UpdatedUtc = now
-        };
-        db.Items.Add(item);
-
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
     }
 }

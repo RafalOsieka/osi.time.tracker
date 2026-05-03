@@ -36,32 +36,22 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("RemoteBaseUrl")
-                        .IsRequired()
-                        .HasColumnType("text");
-
                     b.Property<string>("RemoteId")
-                        .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<short>("RemoteTarget")
-                        .HasColumnType("smallint");
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ProjectId");
-
-                    b.HasIndex("RemoteTarget", "RemoteBaseUrl", "RemoteId")
+                    b.HasIndex("ProjectId", "RemoteId")
                         .IsUnique();
 
                     b.ToTable("Items");
@@ -84,14 +74,32 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<bool>("IsDefault")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("RemoteBaseUrl")
+                        .HasColumnType("text");
+
+                    b.Property<short?>("RemoteTarget")
+                        .HasColumnType("smallint");
 
                     b.Property<DateTime>("UpdatedUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsDefault")
+                        .IsUnique()
+                        .HasFilter("\"IsDefault\" = TRUE");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
 
                     b.ToTable("Projects");
                 });
@@ -109,12 +117,6 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("ItemId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("Note")
-                        .HasColumnType("text");
-
-                    b.Property<Guid>("ProjectId")
                         .HasColumnType("uuid");
 
                     b.Property<bool>("Published")
@@ -143,9 +145,7 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ItemId");
-
-                    b.HasIndex("ProjectId", "ItemId", "StartUtc");
+                    b.HasIndex("ItemId", "StartUtc");
 
                     b.ToTable("TimeEntries");
                 });
@@ -169,15 +169,7 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("osi.time.tracker.Core.Entities.Project", "Project")
-                        .WithMany("TimeEntries")
-                        .HasForeignKey("ProjectId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Item");
-
-                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("osi.time.tracker.Core.Entities.Item", b =>
@@ -188,8 +180,6 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("osi.time.tracker.Core.Entities.Project", b =>
                 {
                     b.Navigation("Items");
-
-                    b.Navigation("TimeEntries");
                 });
 #pragma warning restore 612, 618
         }

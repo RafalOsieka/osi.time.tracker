@@ -20,7 +20,7 @@ public static class EntryEndpoints
         group.MapPost("/",
             async ([FromBody] CreateEntryRequest request, TimeEntryService entryService, CancellationToken ct) =>
             {
-                var result = await entryService.CreateAsync(request.ItemId, request.Title, request.Note,
+                var result = await entryService.CreateAsync(request.ItemId, request.Title,
                     request.StartUtc, request.EndUtc, ct);
                 return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
             });
@@ -29,8 +29,8 @@ public static class EntryEndpoints
             async (Guid id, [FromBody] UpdateEntryRequest request, TimeEntryService entryService,
                 CancellationToken ct) =>
             {
-                var result = await entryService.UpdateAsync(id, request.Title, request.Note, request.StartUtc,
-                    request.EndUtc, ct);
+                var result = await entryService.UpdateAsync(id, request.Title,
+                    request.StartUtc, request.EndUtc, ct);
                 return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
             });
 
@@ -42,6 +42,6 @@ public static class EntryEndpoints
     }
 }
 
-public record CreateEntryRequest(Guid ItemId, string Title, string? Note, DateTime StartUtc, DateTime? EndUtc);
+public record CreateEntryRequest(Guid ItemId, string Title, DateTime StartUtc, DateTime? EndUtc);
 
-public record UpdateEntryRequest(string Title, string? Note, DateTime StartUtc, DateTime? EndUtc);
+public record UpdateEntryRequest(string Title, DateTime StartUtc, DateTime? EndUtc);

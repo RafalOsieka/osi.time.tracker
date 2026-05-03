@@ -42,7 +42,6 @@ export const useEntriesStore = defineStore('entries', () => {
       entries.value[idx] = {
         ...entries.value[idx],
         title: req.title,
-        note: req.note ?? null,
         startUtc: req.startUtc,
         endUtc: req.endUtc ?? null,
       };

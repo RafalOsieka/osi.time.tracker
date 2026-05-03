@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import Select from 'primevue/select';
 import { computed, onMounted, ref } from 'vue';
 
 import type { TimeEntry } from '../api/types';
 import { useEntriesStore } from '../stores/entries';
+import { useItemsStore } from '../stores/items';
+import { useProjectsStore } from '../stores/projects';
 import { useTimerStore } from '../stores/timer';
-import { endOfToday, formatDuration, fromLocalInputValue, startOfToday, startOfWeek, toLocalInputValue } from '../utils/time';
+import {
+  endOfToday,
+  formatDuration,
+  fromLocalInputValue,
+  startOfToday,
+  startOfWeek,
+  toLocalInputValue,
+} from '../utils/time';
 
 type Range = 'today' | 'week';
 
 const entriesStore = useEntriesStore();
+const itemsStore = useItemsStore();
+const projectsStore = useProjectsStore();
 const timerStore = useTimerStore();
 
 const range = ref<Range>('today');
@@ -18,19 +30,29 @@ const editingId = ref<string | null>(null);
 
 interface EditDraft {
   title: string;
-  note: string;
+  itemId: string;
   startLocal: string;
   endLocal: string;
 }
-const draft = ref<EditDraft>({ title: '', note: '', startLocal: '', endLocal: '' });
+const draft = ref<EditDraft>({ title: '', itemId: '', startLocal: '', endLocal: '' });
 
 async function reload() {
   const to = endOfToday();
   const from = range.value === 'today' ? startOfToday() : startOfWeek();
-  await entriesStore.load(from, to);
+  await Promise.all([entriesStore.load(from, to), itemsStore.load(), projectsStore.load()]);
 }
 
 onMounted(reload);
+
+const itemOptions = computed(() =>
+  itemsStore.items
+    .filter((i) => !i.isArchived)
+    .map((i) => {
+      const proj = projectsStore.projects.find((p) => p.id === i.projectId)?.name ?? '';
+      const remote = i.remoteId ? ` #${i.remoteId}` : '';
+      return { label: proj ? `${proj} • ${i.title}${remote}` : `${i.title}${remote}`, value: i.id };
+    }),
+);
 
 function entryDuration(e: TimeEntry): number {
   const start = new Date(e.startUtc).getTime();
@@ -38,13 +60,15 @@ function entryDuration(e: TimeEntry): number {
   return Math.max(0, Math.floor((end - start) / 1000));
 }
 
-const totalSeconds = computed(() => entriesStore.entries.reduce((sum, e) => sum + entryDuration(e), 0));
+const totalSeconds = computed(() =>
+  entriesStore.entries.reduce((sum, e) => sum + entryDuration(e), 0),
+);
 
 function startEdit(e: TimeEntry) {
   editingId.value = e.id;
   draft.value = {
     title: e.title,
-    note: e.note ?? '',
+    itemId: e.itemId,
     startLocal: toLocalInputValue(e.startUtc),
     endLocal: toLocalInputValue(e.endUtc),
   };
@@ -56,12 +80,25 @@ function cancelEdit() {
 
 async function saveEdit(e: TimeEntry) {
   try {
-    await entriesStore.update(e.id, {
-      title: draft.value.title.trim(),
-      note: draft.value.note.trim() || null,
-      startUtc: fromLocalInputValue(draft.value.startLocal),
-      endUtc: draft.value.endLocal ? fromLocalInputValue(draft.value.endLocal) : null,
-    });
+    // If user re-targeted entry to a different item, perform "move":
+    // backend exposes update for title/start/end only; for item moves we
+    // use a small workaround — recreate entry under new item and delete original.
+    const movingItem = draft.value.itemId && draft.value.itemId !== e.itemId;
+    if (movingItem) {
+      await entriesStore.create({
+        itemId: draft.value.itemId,
+        title: draft.value.title.trim(),
+        startUtc: fromLocalInputValue(draft.value.startLocal),
+        endUtc: draft.value.endLocal ? fromLocalInputValue(draft.value.endLocal) : null,
+      });
+      await entriesStore.remove(e.id);
+    } else {
+      await entriesStore.update(e.id, {
+        title: draft.value.title.trim(),
+        startUtc: fromLocalInputValue(draft.value.startLocal),
+        endUtc: draft.value.endLocal ? fromLocalInputValue(draft.value.endLocal) : null,
+      });
+    }
     editingId.value = null;
   } catch (err) {
     alert((err as Error).message);
@@ -86,18 +123,14 @@ async function splitEntry(e: TimeEntry) {
   const end = new Date(e.endUtc).getTime();
   const mid = new Date(start + Math.floor((end - start) / 2)).toISOString();
   try {
-    // Shorten original to mid
     await entriesStore.update(e.id, {
       title: e.title,
-      note: e.note,
       startUtc: e.startUtc,
       endUtc: mid,
     });
-    // Create second half
     await entriesStore.create({
       itemId: e.itemId,
       title: e.title,
-      note: e.note,
       startUtc: mid,
       endUtc: e.endUtc,
     });
@@ -108,6 +141,14 @@ async function splitEntry(e: TimeEntry) {
 
 function isActive(e: TimeEntry): boolean {
   return e.endUtc === null;
+}
+
+function itemLabelOf(e: TimeEntry): string {
+  const item = e.item ?? itemsStore.items.find((i) => i.id === e.itemId);
+  if (!item) return '';
+  const proj = projectsStore.projects.find((p) => p.id === item.projectId)?.name ?? '';
+  const remote = item.remoteId ? ` #${item.remoteId}` : '';
+  return proj ? `${proj} • ${item.title}${remote}` : `${item.title}${remote}`;
 }
 </script>
 
@@ -138,7 +179,8 @@ function isActive(e: TimeEntry): boolean {
         </div>
       </div>
       <div class="text-sm text-slate-500">
-        Total: <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">{{ formatDuration(totalSeconds) }}</span>
+        Total:
+        <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">{{ formatDuration(totalSeconds) }}</span>
       </div>
     </div>
 
@@ -153,7 +195,14 @@ function isActive(e: TimeEntry): boolean {
         <template v-if="editingId === entry.id">
           <div class="flex flex-col gap-2">
             <InputText v-model="draft.title" placeholder="Title" />
-            <InputText v-model="draft.note" placeholder="Note" />
+            <Select
+              v-model="draft.itemId"
+              :options="itemOptions"
+              option-label="label"
+              option-value="value"
+              placeholder="Move to item"
+              filter
+            />
             <div class="flex flex-wrap gap-2">
               <label class="flex flex-col text-xs text-slate-500">
                 Start
@@ -189,11 +238,16 @@ function isActive(e: TimeEntry): boolean {
                 >
                   running
                 </span>
+                <span
+                  v-if="entry.published"
+                  class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                >
+                  published
+                </span>
               </div>
-              <span v-if="entry.item" class="text-xs text-slate-500">
-                {{ entry.item.name }} (#{{ entry.item.remoteId }})
+              <span class="text-xs text-slate-500">
+                {{ itemLabelOf(entry) }}
               </span>
-              <span v-if="entry.note" class="text-xs text-slate-500 italic">{{ entry.note }}</span>
               <span class="mt-1 text-xs text-slate-400">
                 {{ new Date(entry.startUtc).toLocaleString() }}
                 –

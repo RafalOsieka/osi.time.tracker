@@ -1,14 +1,17 @@
 import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import { projectsApi } from '../api/client';
-import type { Project } from '../api/types';
+import type { CreateProjectRequest, Project, UpdateProjectRequest } from '../api/types';
 
 export const useProjectsStore = defineStore('projects', () => {
   const projects = ref<Project[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
   let loaded = false;
+
+  const defaultProject = computed(() => projects.value.find((p) => p.isDefault) ?? null);
+  const remoteProjects = computed(() => projects.value.filter((p) => p.isRemote && !p.isArchived));
 
   async function load(force = false) {
     if (loaded && !force) return;
@@ -24,21 +27,35 @@ export const useProjectsStore = defineStore('projects', () => {
     }
   }
 
-  async function create(name: string, color?: string | null) {
-    const created = await projectsApi.create({ name, color });
+  function sortInPlace() {
+    projects.value.sort((a, b) => {
+      // Default project first
+      if (a.isDefault !== b.isDefault) return a.isDefault ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  async function create(req: CreateProjectRequest) {
+    const created = await projectsApi.create(req);
     projects.value.push(created);
-    projects.value.sort((a, b) => a.name.localeCompare(b.name));
+    sortInPlace();
     return created;
   }
 
-  async function update(id: string, name: string, color: string | null, isArchived: boolean) {
-    const updated = await projectsApi.update(id, { name, color, isArchived });
+  async function update(id: string, req: UpdateProjectRequest) {
+    const updated = await projectsApi.update(id, req);
     const idx = projects.value.findIndex((p) => p.id === id);
     if (idx >= 0) {
       projects.value[idx] = updated;
     }
+    sortInPlace();
     return updated;
   }
 
-  return { projects, loading, error, load, create, update };
+  async function remove(id: string) {
+    await projectsApi.remove(id);
+    projects.value = projects.value.filter((p) => p.id !== id);
+  }
+
+  return { projects, loading, error, defaultProject, remoteProjects, load, create, update, remove };
 });

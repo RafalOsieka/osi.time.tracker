@@ -2,21 +2,22 @@
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import Textarea from 'primevue/textarea';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import { useEntriesStore } from '../stores/entries';
 import { useItemsStore } from '../stores/items';
+import { useProjectsStore } from '../stores/projects';
 import { useTimerStore } from '../stores/timer';
 import { formatDuration } from '../utils/time';
 
 const timerStore = useTimerStore();
 const itemsStore = useItemsStore();
+const projectsStore = useProjectsStore();
 const entriesStore = useEntriesStore();
 
-const selectedItemId = ref<string | null>(null);
+const NEW_ITEM = '__new__';
+const selectedItemId = ref<string>(NEW_ITEM);
 const title = ref('');
-const note = ref('');
 
 const now = ref(Date.now());
 let tickHandle: number | undefined;
@@ -27,17 +28,29 @@ const elapsed = computed(() => {
   return Math.max(0, Math.floor((now.value - start) / 1000));
 });
 
-const itemOptions = computed(() =>
-  itemsStore.items
-    .filter((i) => !i.isArchived)
-    .map((i) => ({
-      label: `${i.name} (#${i.remoteId})`,
-      value: i.id,
-    })),
-);
+function projectLabel(projectId: string): string {
+  return projectsStore.projects.find((p) => p.id === projectId)?.name ?? '';
+}
+
+function itemLabel(i: { title: string; remoteId: string | null; projectId: string }): string {
+  const proj = projectLabel(i.projectId);
+  const remote = i.remoteId ? ` #${i.remoteId}` : '';
+  return proj ? `${proj} • ${i.title}${remote}` : `${i.title}${remote}`;
+}
+
+const itemOptions = computed(() => {
+  const opts: { label: string; value: string }[] = [
+    { label: '➕ New item (Default Project)', value: NEW_ITEM },
+  ];
+  for (const i of itemsStore.items) {
+    if (i.isArchived) continue;
+    opts.push({ label: itemLabel(i), value: i.id });
+  }
+  return opts;
+});
 
 onMounted(async () => {
-  await Promise.all([timerStore.refresh(), itemsStore.load()]);
+  await Promise.all([timerStore.refresh(), itemsStore.load(), projectsStore.load()]);
   tickHandle = window.setInterval(() => {
     now.value = Date.now();
   }, 1000);
@@ -48,15 +61,16 @@ onUnmounted(() => {
 });
 
 async function onStart() {
-  if (!selectedItemId.value || !title.value.trim()) return;
+  if (!title.value.trim()) return;
+  const itemId =
+    selectedItemId.value === NEW_ITEM || !selectedItemId.value ? null : selectedItemId.value;
   await timerStore.start({
-    itemId: selectedItemId.value,
+    itemId,
     title: title.value.trim(),
-    note: note.value.trim() || null,
   });
-  // reset inputs
   title.value = '';
-  note.value = '';
+  // Refresh items list to surface any implicitly-created item.
+  await itemsStore.load(true);
 }
 
 async function onStop() {
@@ -76,7 +90,7 @@ async function onStop() {
           {{ timerStore.active.title }}
         </span>
         <span v-if="timerStore.active.item" class="text-sm text-slate-500">
-          {{ timerStore.active.item.name }} (#{{ timerStore.active.item.remoteId }})
+          {{ itemLabel(timerStore.active.item) }}
         </span>
       </div>
       <div class="font-mono text-2xl font-bold text-primary tabular-nums">
@@ -91,16 +105,20 @@ async function onStop() {
         :options="itemOptions"
         option-label="label"
         option-value="value"
-        placeholder="Select item"
+        placeholder="Item / new"
         filter
-        class="md:w-64"
+        class="md:w-72"
       />
-      <InputText v-model="title" placeholder="What are you working on?" class="flex-1" />
-      <Textarea v-model="note" placeholder="Note (optional)" rows="1" auto-resize class="flex-1" />
+      <InputText
+        v-model="title"
+        placeholder="What are you working on?"
+        class="flex-1"
+        @keyup.enter="onStart"
+      />
       <Button
         label="Start"
         icon="pi pi-play"
-        :disabled="!selectedItemId || !title.trim()"
+        :disabled="!title.trim()"
         :loading="timerStore.loading"
         @click="onStart"
       />

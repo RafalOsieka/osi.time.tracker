@@ -1,90 +1,67 @@
 import { defineStore } from 'pinia';
-import { ref, watch } from 'vue';
 
-import type { TimeEntry } from '../api/types';
+import type { Project, TimeEntry } from '../api/types';
 
 export interface GroupedEntry {
-  remoteId: string;
-  itemId: string;
-  itemName: string;
   projectId: string;
   projectName: string;
+  itemId: string;
+  itemTitle: string;
+  remoteId: string; // required for publishing
   spentOn: string; // YYYY-MM-DD
   rawSeconds: number;
   entries: TimeEntry[];
 }
 
-export interface PublishConfig {
-  target: 1 | 2; // 1 = Redmine, 2 = OpenProject
-  baseUrl: string;
-  token: string;
-  remember: boolean;
-  activityId?: string;
-}
-
 export const usePublishStore = defineStore('publish', () => {
-  const config = ref<PublishConfig>({
-    target: 1,
-    baseUrl: '',
-    token: '',
-    remember: false,
-  });
-
-  // Load config from localStorage
-  const savedConfig = localStorage.getItem('publish_config');
-  if (savedConfig) {
-    try {
-      const parsed = JSON.parse(savedConfig);
-      config.value = { ...config.value, ...parsed };
-      if (!config.value.remember) {
-        config.value.token = '';
-      }
-    } catch (e) {
-      console.error('Failed to parse publish config', e);
-    }
-  }
-
-  // Persist config
-  watch(
-    config,
-    (val) => {
-      const toSave = { ...val };
-      if (!val.remember) {
-        toSave.token = '';
-      }
-      localStorage.setItem('publish_config', JSON.stringify(toSave));
-    },
-    { deep: true }
-  );
-
-  function groupEntries(entries: TimeEntry[]): GroupedEntry[] {
-    const unpublished = entries.filter((e) => !e.published && e.endUtc && e.item);
+  /**
+   * Group unpublished, completed entries by (project, item, day).
+   * Items must have a remoteId, and their owning project must be remote-configured.
+   */
+  function groupEntries(
+    entries: TimeEntry[],
+    projects: Project[],
+    itemsById: Map<string, { id: string; title: string; projectId: string; remoteId: string | null }>,
+  ): GroupedEntry[] {
+    const projectsById = new Map(projects.map((p) => [p.id, p]));
     const groups: Record<string, GroupedEntry> = {};
 
-    for (const e of unpublished) {
-      const item = e.item!;
+    for (const e of entries) {
+      if (e.published || !e.endUtc) continue;
+      const item = itemsById.get(e.itemId) ?? e.item;
+      if (!item || !item.remoteId) continue;
+      const project = projectsById.get(item.projectId);
+      if (!project || !project.isRemote) continue;
+
       const startDate = new Date(e.startUtc);
-      const spentOn = `${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, '0')}-${startDate.getDate().toString().padStart(2, '0')}`;
-      const key = `${item.remoteId}_${spentOn}`;
+      const spentOn = `${startDate.getFullYear()}-${(startDate.getMonth() + 1)
+        .toString()
+        .padStart(2, '0')}-${startDate.getDate().toString().padStart(2, '0')}`;
+      const key = `${item.id}_${spentOn}`;
 
       if (!groups[key]) {
         groups[key] = {
-          remoteId: item.remoteId,
+          projectId: project.id,
+          projectName: project.name,
           itemId: item.id,
-          itemName: item.name,
-          projectId: e.projectId,
-          projectName: e.project?.name ?? 'Unknown',
+          itemTitle: item.title,
+          remoteId: item.remoteId,
           spentOn,
           rawSeconds: 0,
           entries: [],
         };
       }
-      const duration = (new Date(e.endUtc!).getTime() - startDate.getTime()) / 1000;
+      const duration = (new Date(e.endUtc).getTime() - startDate.getTime()) / 1000;
       groups[key].rawSeconds += duration;
       groups[key].entries.push(e);
     }
 
-    return Object.values(groups).sort((a, b) => a.spentOn.localeCompare(b.spentOn) || a.itemName.localeCompare(b.itemName));
+    return Object.values(groups).sort(
+      (a, b) =>
+        a.spentOn.localeCompare(b.spentOn) ||
+        a.projectName.localeCompare(b.projectName) ||
+        a.itemTitle.localeCompare(b.itemTitle),
+    );
   }
 
   function roundToNearest15(seconds: number): number {
@@ -106,33 +83,24 @@ export const usePublishStore = defineStore('publish', () => {
     const titles = [...new Set(entries.map((e) => e.title.trim()))].filter(Boolean);
     let result = titles.join('; ');
 
-    const LIMIT = 255; // Common limit for many systems, or use a configurable one
+    const LIMIT = 255;
     if (result.length > LIMIT) {
-      // Find all unique titles and try to fit as many as possible
       let current = '';
       let added = 0;
       for (let i = 0; i < titles.length; i++) {
         const next = current ? current + '; ' + titles[i] : titles[i];
-        if (next.length > LIMIT - 15) {
-          // Leave space for " +N more"
-          break;
-        }
+        if (next.length > LIMIT - 15) break;
         current = next;
         added++;
       }
       const remaining = titles.length - added;
       result = current + (remaining > 0 ? `; +${remaining} more` : '');
-
-      // Final safety truncate
-      if (result.length > LIMIT) {
-        result = result.substring(0, LIMIT - 3) + '...';
-      }
+      if (result.length > LIMIT) result = result.substring(0, LIMIT - 3) + '...';
     }
     return result;
   }
 
   return {
-    config,
     groupEntries,
     roundToNearest15,
     formatIsoDuration,

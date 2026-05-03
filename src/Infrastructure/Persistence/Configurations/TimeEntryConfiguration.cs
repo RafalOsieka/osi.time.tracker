@@ -15,12 +15,7 @@ public class TimeEntryConfiguration : IEntityTypeConfiguration<TimeEntry>
         builder.Property(e => e.UpdatedUtc).IsRequired();
         builder.Property(e => e.Published).HasDefaultValue(false);
 
-        builder.HasIndex(e => new { e.ProjectId, e.ItemId, e.StartUtc });
-
-        builder.HasOne(e => e.Project)
-            .WithMany(p => p.TimeEntries)
-            .HasForeignKey(e => e.ProjectId)
-            .OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(e => new { e.ItemId, e.StartUtc });
 
         builder.HasOne(e => e.Item)
             .WithMany(i => i.TimeEntries)

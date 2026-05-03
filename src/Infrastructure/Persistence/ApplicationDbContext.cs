@@ -4,13 +4,8 @@ using osi.time.tracker.Core.Persistence;
 
 namespace osi.time.tracker.Infrastructure.Persistence;
 
-public class ApplicationDbContext : DbContext, IAppDbContext
+public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : DbContext(options), IAppDbContext
 {
-    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
-        : base(options)
-    {
-    }
-
     public DbSet<Project> Projects => Set<Project>();
     public DbSet<Item> Items => Set<Item>();
     public DbSet<TimeEntry> TimeEntries => Set<TimeEntry>();

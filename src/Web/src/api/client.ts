@@ -2,13 +2,19 @@ import ky from 'ky';
 
 import type {
   CreateEntryRequest,
+  CreateItemRequest,
+  CreateProjectRequest,
   DailyReportDto,
   Item,
   ItemReportDto,
+  MatchItemRequest,
+  MergeItemsRequest,
   Project,
   StartTimerRequest,
   TimeEntry,
   UpdateEntryRequest,
+  UpdateItemRequest,
+  UpdateProjectRequest,
 } from './types';
 
 const API = '/api';
@@ -30,27 +36,21 @@ export const entriesApi = {
   remove: (id: string) => ky.delete(`${API}/entries/${id}`).json<void>(),
 };
 
-// get single item endpoint missing
 export const itemsApi = {
   list: () => ky.get(`${API}/items`).json<Item[]>(),
-  create: (body: {
-    projectId: string;
-    name: string;
-    remoteTarget: number;
-    remoteBaseUrl: string;
-    remoteId: string;
-  }) => ky.post(`${API}/items`, { json: body }).json<Item>(),
-  update: (id: string, body: { name: string; isArchived: boolean }) =>
-    ky.put(`${API}/items/${id}`, { json: body }).json<Item>(),
+  get: (id: string) => ky.get(`${API}/items/${id}`).json<Item>(),
+  create: (body: CreateItemRequest) => ky.post(`${API}/items`, { json: body }).json<Item>(),
+  update: (id: string, body: UpdateItemRequest) => ky.put(`${API}/items/${id}`, { json: body }).json<Item>(),
+  match: (id: string, body: MatchItemRequest) => ky.patch(`${API}/items/${id}/match`, { json: body }).json<Item>(),
+  merge: (body: MergeItemsRequest) => ky.post(`${API}/items/merge`, { json: body }).json<Item>(),
   remove: (id: string) => ky.delete(`${API}/items/${id}`).json<void>(),
 };
 
-// get single project endpoint missing
 export const projectsApi = {
   list: () => ky.get(`${API}/projects`).json<Project[]>(),
-  create: (body: { name: string; color?: string | null }) => ky.post(`${API}/projects`, { json: body }).json<Project>(),
-  update: (id: string, body: { name: string; color?: string | null; isArchived: boolean }) =>
-    ky.put(`${API}/projects/${id}`, { json: body }).json<Project>(),
+  get: (id: string) => ky.get(`${API}/projects/${id}`).json<Project>(),
+  create: (body: CreateProjectRequest) => ky.post(`${API}/projects`, { json: body }).json<Project>(),
+  update: (id: string, body: UpdateProjectRequest) => ky.put(`${API}/projects/${id}`, { json: body }).json<Project>(),
   remove: (id: string) => ky.delete(`${API}/projects/${id}`).json<void>(),
 };
 

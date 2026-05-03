@@ -12,7 +12,7 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
     {
         var query = db.TimeEntries
             .Include(e => e.Item)
-            .Include(e => e.Project)
+            .ThenInclude(i => i.Project)
             .Where(e => e.StartUtc >= from && e.StartUtc < to);
 
         if (itemId.HasValue)
@@ -21,7 +21,7 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
         return await query.OrderByDescending(e => e.StartUtc).ToListAsync(ct);
     }
 
-    public async Task<Result<TimeEntry>> CreateAsync(Guid itemId, string title, string? note, DateTime startUtc,
+    public async Task<Result<TimeEntry>> CreateAsync(Guid itemId, string title, DateTime startUtc,
         DateTime? endUtc, CancellationToken ct = default)
     {
         var item = await db.Items.Include(i => i.Project).FirstOrDefaultAsync(i => i.Id == itemId, ct);
@@ -39,10 +39,8 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
         var entry = new TimeEntry
         {
             Id = Guid.NewGuid(),
-            ProjectId = item.ProjectId,
             ItemId = item.Id,
             Title = title,
-            Note = note,
             StartUtc = startUtc,
             EndUtc = endUtc,
             CreatedUtc = now,
@@ -53,16 +51,15 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
         await db.SaveChangesAsync(ct);
 
         entry.Item = item;
-        entry.Project = item.Project;
         return Result<TimeEntry>.Success(entry);
     }
 
-    public async Task<Result<TimeEntry>> UpdateAsync(Guid id, string title, string? note, DateTime startUtc,
+    public async Task<Result<TimeEntry>> UpdateAsync(Guid id, string title, DateTime startUtc,
         DateTime? endUtc, CancellationToken ct = default)
     {
         var entry = await db.TimeEntries
             .Include(e => e.Item)
-            .Include(e => e.Project)
+            .ThenInclude(i => i.Project)
             .FirstOrDefaultAsync(e => e.Id == id, ct);
 
         if (entry is null)
@@ -76,7 +73,6 @@ public class TimeEntryService(IAppDbContext db, TimeProvider timeProvider)
             return Result<TimeEntry>.Failure(overlapCheck.Error);
 
         entry.Title = title;
-        entry.Note = note;
         entry.StartUtc = startUtc;
         entry.EndUtc = endUtc;
         entry.UpdatedUtc = timeProvider.GetUtcNow().UtcDateTime;

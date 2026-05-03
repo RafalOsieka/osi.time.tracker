@@ -7,7 +7,7 @@ import DatePicker from 'primevue/datepicker';
 import { onMounted, ref } from 'vue';
 
 import { useReportsStore } from '../stores/reports';
-import { formatDuration, startOfToday, endOfToday, startOfWeek } from '../utils/time';
+import { formatDuration, endOfToday, startOfWeek } from '../utils/time';
 
 const reportsStore = useReportsStore();
 
@@ -25,7 +25,7 @@ function exportCsv() {
   const headers = ['Project', 'Item', 'Duration (seconds)', 'Duration (formatted)'];
   const rows = reportsStore.itemReport.map((r) => [
     r.projectName,
-    r.itemName,
+    r.itemTitle,
     r.totalSeconds,
     formatDuration(r.totalSeconds),
   ]);
@@ -84,7 +84,7 @@ function exportCsv() {
         <template #content>
           <DataTable :value="reportsStore.itemReport" :loading="reportsStore.loading" size="small">
             <Column field="projectName" header="Project"></Column>
-            <Column field="itemName" header="Item"></Column>
+            <Column field="itemTitle" header="Item"></Column>
             <Column header="Total Time">
               <template #body="slotProps">
                 {{ formatDuration(slotProps.data.totalSeconds) }}

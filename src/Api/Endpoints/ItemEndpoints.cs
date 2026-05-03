@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using osi.time.tracker.Core.Entities;
 using osi.time.tracker.Core.Services;
 
 namespace osi.time.tracker.Api.Endpoints;
@@ -25,15 +24,28 @@ public static class ItemEndpoints
         group.MapPost("/",
             async ([FromBody] CreateItemRequest request, ItemService itemService, CancellationToken ct) =>
             {
-                var result = await itemService.CreateAsync(request.ProjectId, request.Name, request.RemoteTarget,
-                    request.RemoteBaseUrl, request.RemoteId, ct);
+                var result = await itemService.CreateAsync(request.ProjectId, request.Title, request.RemoteId, ct);
                 return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
             });
 
         group.MapPut("/{id:guid}",
             async (Guid id, [FromBody] UpdateItemRequest request, ItemService itemService, CancellationToken ct) =>
             {
-                var result = await itemService.UpdateAsync(id, request.Name, request.IsArchived, ct);
+                var result = await itemService.UpdateAsync(id, request.Title, request.IsArchived, ct);
+                return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
+            });
+
+        group.MapPatch("/{id:guid}/match",
+            async (Guid id, [FromBody] MatchItemRequest request, ItemService itemService, CancellationToken ct) =>
+            {
+                var result = await itemService.MatchRemoteAsync(id, request.RemoteId, request.RemoteTitle, ct);
+                return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
+            });
+
+        group.MapPost("/merge",
+            async ([FromBody] MergeItemsRequest request, ItemService itemService, CancellationToken ct) =>
+            {
+                var result = await itemService.MergeAsync(request.SourceId, request.TargetId, ct);
                 return result.IsFailure ? Results.BadRequest(result.Error) : Results.Ok(result.Value);
             });
 
@@ -45,11 +57,10 @@ public static class ItemEndpoints
     }
 }
 
-public record CreateItemRequest(
-    Guid ProjectId,
-    string Name,
-    RemoteTarget RemoteTarget,
-    string RemoteBaseUrl,
-    string RemoteId);
+public record CreateItemRequest(Guid ProjectId, string Title, string? RemoteId);
 
-public record UpdateItemRequest(string Name, bool IsArchived);
+public record UpdateItemRequest(string Title, bool IsArchived);
+
+public record MatchItemRequest(string RemoteId, string RemoteTitle);
+
+public record MergeItemsRequest(Guid SourceId, Guid TargetId);
