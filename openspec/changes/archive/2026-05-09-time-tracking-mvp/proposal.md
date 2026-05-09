@@ -1,7 +1,16 @@
 # Time Tracking MVP
 
-## Summary
-Build a single-user time tracking application integrated into the existing stack to capture work time against remote issues (Redmine or OpenProject), review and manually round times, and publish aggregated logs directly from the client (browser) to the remote systems.
+## Why
+
+There is no existing time tracking capability in the stack. Developers need to capture work time against remote issues (Redmine or OpenProject), review and round entries, and publish aggregated logs — all without a dedicated tool integrated into the project.
+
+## What Changes
+
+- Introduce a single-user time tracking application built on the existing stack (ASP.NET Core Minimal API, EF Core, PostgreSQL, Vue 3).
+- Add `TimeEntry` and `Item` domain entities with a single-active-timer constraint (no overlapping entries on save).
+- Implement aggregate rounding: sum durations per (remote issue, date), round to nearest 15-minute step (ties up, minimum 15 min if > 0).
+- Add client-side publish to Redmine (`POST /time_entries.json` with `X-Redmine-API-Key`) and OpenProject (`POST /api/v3/time_entries` with Bearer token, HAL links); API tokens stored in browser `localStorage` only.
+- Provide a review/publish screen showing grouped totals and rounded results per (issue, date); successful publish marks local rows with remote IDs.
 
 ## Goals
 - Track time while working on items mapped to remote issues/work packages.

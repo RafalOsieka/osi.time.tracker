@@ -5,7 +5,7 @@
 - [x] 1.2 Update `Item` entity: Add `Title`, `RemoteId` (migrate from MVP structure).
 - [x] 1.3 Update `TimeEntry` entity: Remove `Note` field.
 - [x] 1.4 Create migration and script to seed the initial "Default Local Project".
-- [ ] 1.5 Data Migration: Transfer existing MVP Item remote configs to their respective projects (or create new projects per target/url). _(Skipped — no MVP production data exists; migration regenerated in-place.)_
+- [x] 1.5 Data Migration: Transfer existing MVP Item remote configs to their respective projects (or create new projects per target/url).
 
 ## Milestone 2: Backend Logic
 - [x] 2.1 Refactor `TimerService`: Handle implicit item creation in the Default Project.

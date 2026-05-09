@@ -1,24 +1,31 @@
 # Change Proposal: Domain Remodeling
 
-## Summary
-Refactor the domain model to move remote configuration from individual Items to Projects, introduce a "Default Local Project," and simplify the relationship between Items and TimeEntries.
+## Why
 
-## Problem Statement
-The current model (MVP) associates remote configuration (Target, BaseUrl) with individual Items. This leads to configuration duplication and makes it harder to manage multiple issues under the same remote project. Additionally, the boundary between "local-only" and "remote-mapped" items is too rigid.
+The current MVP model stores remote configuration (`RemoteTarget`, `RemoteBaseUrl`) on individual `Item` entities, causing duplication across every item under the same remote project and leaving no deterministic anchor for new time entries when no item is selected.
 
-## Proposed Changes
-- **Project-Centric Configuration**: Remote Target and BaseUrl are moved to the `Project` entity.
-- **System Anchor**: Introduce an `IsDefault` flag for Projects (only one can be default). A "Local" project is created by default and cannot be deleted.
-- **Fluid Items**: Items act as grouping containers. They can be local-only or mapped to a remote ID.
-- **Title Inheritance**: `Item.Title` caches the remote issue title when matched, or copies the initial `TimeEntry.Title` for local items.
-- **Simplified Entries**: Remove the `Note` field from `TimeEntry`; the `Title` is sufficient for a single task.
-- **Token Security**: API keys/tokens remain in browser `localStorage`, mapped by Project ID.
+## What Changes
 
-## Goals
-- Centralize remote system configuration.
-- Support seamless transition from "local tracking" to "remote matching."
-- Simplify the data model for better performance and maintainability.
+- **BREAKING** Move `RemoteTarget` and `RemoteBaseUrl` from `Item` to `Project`.
+- **BREAKING** Remove `TimeEntry.Note`; `TimeEntry.Title` is the sole task description field.
+- Add `Project.IsDefault` flag (exactly one project is default at all times; the seeded "Local" project is default and cannot be deleted).
+- Add `Item.RemoteId` (optional) replacing per-item remote config; `Item.Title` caches the remote issue title when matched.
+- Frontend token storage key changes from per-item to per-project: `osi_token_{projectId}`.
 
-## Non-Goals
-- Server-side token storage (Security requirement).
-- Automated background synchronization (Still client-triggered).
+## Capabilities
+
+### New Capabilities
+
+- `project-remote-config`: Projects own remote system configuration (`RemoteTarget`, `RemoteBaseUrl`) and the `IsDefault` flag; enforces single-default invariant.
+- `item-remote-matching`: Items are lightweight grouping containers with an optional `RemoteId`; matching an item to a remote issue caches its title via `PATCH /api/items/{id}/match`.
+
+### Modified Capabilities
+
+- `frontend-state-management`: Token storage keyed by `projectId` instead of item-level remote config; publish store and settings UI updated accordingly.
+
+## Impact
+
+- **Core**: `Project`, `Item`, `TimeEntry` entities change shape; domain services (`ProjectService`, `ItemService`) updated.
+- **Infrastructure**: EF Core migration required — add columns to `Projects` and `Items`, drop `Note` from `TimeEntries`, add partial unique index on `Projects(IsDefault)`.
+- **Api**: DTOs and endpoints for projects and items updated; new `PATCH /api/items/{id}/match` endpoint.
+- **Web**: Pinia stores (projects, items, publish), settings UI, and token utility updated.
