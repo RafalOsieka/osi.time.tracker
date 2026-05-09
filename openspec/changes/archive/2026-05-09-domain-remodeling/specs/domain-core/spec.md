@@ -44,7 +44,7 @@ An `Item` entity SHALL have an optional `RemoteId` string field. When an item is
 - **WHEN** a time entry is created with a `Title`
 - **THEN** it is persisted without any note field
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Token storage keyed by project
 API tokens for remote systems SHALL be stored in browser `localStorage` using the key `osi_token_{projectId}` (previously keyed per item).
