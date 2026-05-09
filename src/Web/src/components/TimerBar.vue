@@ -77,48 +77,60 @@ async function onStop() {
 </script>
 
 <template>
+  <!-- Running: hero card -->
   <div
-    class="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm md:flex-row md:items-center dark:border-slate-800 dark:bg-slate-900"
+    v-if="timerStore.isRunning && timerStore.active"
+    class="timer-card--running w-full rounded-xl border p-6"
+    style="background-color: var(--ds-bg-surface); border-color: var(--ds-border)"
   >
-    <template v-if="timerStore.isRunning && timerStore.active">
-      <div class="flex flex-1 flex-col">
-        <span class="text-xs font-semibold tracking-wider text-slate-400 uppercase">Running</span>
-        <span class="truncate text-lg font-semibold text-slate-900 dark:text-white">
+    <span class="block text-xs font-semibold tracking-widest uppercase mb-4" style="color: var(--ds-text-lo)">Running</span>
+    <div class="flex flex-col items-center text-center mb-6">
+      <span class="font-mono text-7xl font-bold tabular-nums leading-none" style="color: var(--ds-accent)">
+        {{ formatDuration(elapsed) }}
+      </span>
+    </div>
+    <div class="flex items-end justify-between gap-4">
+      <div class="flex flex-col min-w-0">
+        <span class="text-lg font-semibold truncate" style="color: var(--ds-text-hi)">
           {{ timerStore.active.title }}
         </span>
-        <span v-if="timerStore.active.item" class="text-sm text-slate-500">
+        <span v-if="timerStore.active.item" class="text-sm" style="color: var(--ds-text-lo)">
           {{ itemLabel(timerStore.active.item) }}
         </span>
       </div>
-      <div class="text-primary font-mono text-2xl font-bold tabular-nums">
-        {{ formatDuration(elapsed) }}
-      </div>
       <Button :loading="timerStore.loading" icon="pi pi-stop" label="Stop" severity="danger" @click="onStop" />
-    </template>
-
-    <template v-else>
-      <Select
-        v-model="selectedItemId"
-        :options="itemOptions"
-        class="md:w-72"
-        filter
-        option-label="label"
-        option-value="value"
-        placeholder="Item / new"
-      />
-      <InputText v-model="title" class="flex-1" placeholder="What are you working on?" @keyup.enter="onStart" />
-      <Button
-        :disabled="!title.trim()"
-        :loading="timerStore.loading"
-        icon="pi pi-play"
-        label="Start"
-        @click="onStart"
-      />
-    </template>
+    </div>
   </div>
+
+  <!-- Idle: compact input row -->
+  <div
+    v-else
+    class="flex flex-col gap-3 rounded-xl border p-4 md:flex-row md:items-center"
+    style="background-color: var(--ds-bg-surface); border-color: var(--ds-border)"
+  >
+    <Select
+      v-model="selectedItemId"
+      :options="itemOptions"
+      class="md:w-72"
+      filter
+      option-label="label"
+      option-value="value"
+      placeholder="Item / new"
+    />
+    <InputText v-model="title" class="flex-1" placeholder="What are you working on?" @keyup.enter="onStart" />
+    <Button
+      :disabled="!title.trim()"
+      :loading="timerStore.loading"
+      icon="pi pi-play"
+      label="Start"
+      @click="onStart"
+    />
+  </div>
+
   <div
     v-if="timerStore.error"
-    class="mt-2 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-700 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-300"
+    class="mt-2 flex items-start gap-2 rounded-md border p-2 text-sm"
+    style="border-color: var(--ds-danger); background-color: color-mix(in srgb, var(--ds-danger) 10%, transparent); color: var(--ds-danger)"
   >
     <i class="pi pi-exclamation-circle mt-0.5"></i>
     <span>{{ timerStore.error }}</span>

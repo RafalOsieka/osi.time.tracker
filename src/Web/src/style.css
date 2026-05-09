@@ -15,16 +15,77 @@
 :root {
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
   --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
 
   font-family: var(--sans);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* Dark Studio — light mode palette */
+  --ds-bg-base: #f8f8fa;
+  --ds-bg-surface: #ffffff;
+  --ds-bg-raised: #f1f1f5;
+  --ds-accent: #d97706;
+  --ds-accent-glow: rgba(217, 119, 6, 0.12);
+  --ds-text-hi: #111118;
+  --ds-text-lo: #6b6b7a;
+  --ds-border: #e2e2ea;
+  --ds-border-hi: #c8c8d8;
+  --ds-success: #16a34a;
+  --ds-danger: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark Studio — dark mode palette */
+    --ds-bg-base: #0d0d10;
+    --ds-bg-surface: #16161c;
+    --ds-bg-raised: #1e1e26;
+    --ds-accent: #f59e0b;
+    --ds-accent-glow: rgba(245, 158, 11, 0.15);
+    --ds-text-hi: #f1f1f3;
+    --ds-text-lo: #6b6b7a;
+    --ds-border: #2a2a35;
+    --ds-border-hi: #3d3d4a;
+    --ds-success: #22c55e;
+    --ds-danger: #ef4444;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--ds-accent-glow), inset 3px 0 0 var(--ds-accent);
+  }
+  50% {
+    box-shadow: 0 0 24px 4px var(--ds-accent-glow), inset 3px 0 0 var(--ds-accent);
+  }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
 }
 
 body {
   margin: 0;
-  background-color: var(--p-content-background);
-  color: var(--p-text-color);
+  background-color: var(--ds-bg-base);
+  color: var(--ds-text-hi);
+}
+
+.ds-nav-item:hover {
+  background-color: var(--ds-bg-raised);
+  color: var(--ds-text-hi);
+}
+
+.ds-nav-item--active {
+  border-left: 3px solid var(--ds-accent);
+  color: var(--ds-accent) !important;
+  background-color: color-mix(in srgb, var(--ds-accent) 8%, transparent);
+  border-radius: 0 0.5rem 0.5rem 0;
+}
+
+.timer-card--running {
+  animation: pulse-glow 2s ease-in-out infinite;
+  will-change: box-shadow;
 }

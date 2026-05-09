@@ -152,55 +152,70 @@ function itemLabelOf(e: TimeEntry): string {
 </script>
 
 <template>
-  <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-    <div class="mb-3 flex items-center justify-between">
+  <div class="rounded-xl border p-4" style="background-color: var(--ds-bg-surface); border-color: var(--ds-border)">
+    <!-- Header -->
+    <div class="mb-4 flex items-center justify-between">
       <div class="flex items-center gap-2">
-        <h2 class="text-lg font-semibold text-slate-900 dark:text-white">Entries</h2>
-        <div class="flex rounded-md border border-slate-200 dark:border-slate-700">
+        <h2 class="text-lg font-semibold" style="color: var(--ds-text-hi)">Entries</h2>
+        <!-- Today / Week toggle -->
+        <div class="flex rounded-full border overflow-hidden" style="border-color: var(--ds-border)">
           <button
-            :class="[
-              'px-3 py-1 text-sm',
-              range === 'today' ? 'bg-primary text-primary-contrast' : 'text-slate-600 dark:text-slate-300',
-            ]"
-            @click="
-              range = 'today';
-              reload();
-            "
-          >
-            Today
-          </button>
+            class="px-3 py-1 text-sm transition-colors"
+            :style="range === 'today'
+              ? 'background-color: var(--ds-accent); color: #fff;'
+              : 'color: var(--ds-text-lo);'"
+            @click="range = 'today'; reload()"
+          >Today</button>
           <button
-            :class="[
-              'px-3 py-1 text-sm',
-              range === 'week' ? 'bg-primary text-primary-contrast' : 'text-slate-600 dark:text-slate-300',
-            ]"
-            @click="
-              range = 'week';
-              reload();
-            "
-          >
-            This Week
-          </button>
+            class="px-3 py-1 text-sm transition-colors"
+            :style="range === 'week'
+              ? 'background-color: var(--ds-accent); color: #fff;'
+              : 'color: var(--ds-text-lo);'"
+            @click="range = 'week'; reload()"
+          >This Week</button>
         </div>
       </div>
-      <div class="text-sm text-slate-500">
+      <div class="text-sm" style="color: var(--ds-text-lo)">
         Total:
-        <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">
+        <span class="font-mono font-semibold" style="color: var(--ds-accent)">
           {{ formatDuration(totalSeconds) }}
         </span>
       </div>
     </div>
 
-    <div v-if="entriesStore.loading" class="py-6 text-center text-slate-400">Loading...</div>
+    <div v-if="entriesStore.loading" class="py-6 text-center" style="color: var(--ds-text-lo)">Loading…</div>
 
-    <div v-else-if="entriesStore.entries.length === 0" class="py-8 text-center text-slate-400">
+    <div v-else-if="entriesStore.entries.length === 0" class="py-8 text-center" style="color: var(--ds-text-lo)">
       No entries in the selected range.
     </div>
 
-    <ul v-else class="divide-y divide-slate-100 dark:divide-slate-800">
-      <li v-for="entry in entriesStore.entries" :key="entry.id" class="py-3">
+    <!-- Timeline -->
+    <ul v-else class="relative">
+      <!-- Vertical connecting line -->
+      <div class="absolute left-[10px] top-3 bottom-3 w-px" style="background-color: var(--ds-border)"></div>
+
+      <li
+        v-for="entry in entriesStore.entries"
+        :key="entry.id"
+        class="group relative flex gap-4 py-3"
+      >
+        <!-- Dot -->
+        <div class="relative z-10 flex shrink-0 items-start pt-1">
+          <span
+            v-if="isActive(entry)"
+            class="block w-3 h-3 rounded-full"
+            style="background-color: var(--ds-success); animation: dot-pulse 1.5s ease-in-out infinite"
+          ></span>
+          <span
+            v-else
+            class="block w-3 h-3 rounded-full"
+            style="background-color: var(--ds-border-hi)"
+          ></span>
+        </div>
+
+        <!-- Edit form -->
         <template v-if="editingId === entry.id">
-          <div class="flex flex-col gap-2">
+          <div class="flex flex-1 flex-col gap-2">
             <InputText v-model="draft.title" placeholder="Title" />
             <Select
               v-model="draft.itemId"
@@ -211,19 +226,21 @@ function itemLabelOf(e: TimeEntry): string {
               placeholder="Move to item"
             />
             <div class="flex flex-wrap gap-2">
-              <label class="flex flex-col text-xs text-slate-500">
+              <label class="flex flex-col text-xs" style="color: var(--ds-text-lo)">
                 Start
                 <input
                   v-model="draft.startLocal"
-                  class="rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  class="rounded border px-2 py-1 text-sm"
+                  style="border-color: var(--ds-border); background-color: var(--ds-bg-raised); color: var(--ds-text-hi)"
                   type="datetime-local"
                 />
               </label>
-              <label class="flex flex-col text-xs text-slate-500">
+              <label class="flex flex-col text-xs" style="color: var(--ds-text-lo)">
                 End
                 <input
                   v-model="draft.endLocal"
-                  class="rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  class="rounded border px-2 py-1 text-sm"
+                  style="border-color: var(--ds-border); background-color: var(--ds-bg-raised); color: var(--ds-text-hi)"
                   type="datetime-local"
                 />
               </label>
@@ -234,38 +251,34 @@ function itemLabelOf(e: TimeEntry): string {
             </div>
           </div>
         </template>
+
+        <!-- View row -->
         <template v-else>
-          <div class="flex items-start justify-between gap-3">
+          <div class="flex flex-1 items-start justify-between gap-3 min-w-0">
             <div class="flex min-w-0 flex-1 flex-col">
-              <div class="flex items-center gap-2">
-                <span class="truncate font-medium text-slate-900 dark:text-white">{{ entry.title }}</span>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="font-medium truncate" style="color: var(--ds-text-hi)">{{ entry.title }}</span>
                 <span
                   v-if="isActive(entry)"
-                  class="rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                >
-                  running
-                </span>
+                  class="rounded-full px-2 py-0.5 text-xs"
+                  style="background-color: color-mix(in srgb, var(--ds-success) 15%, transparent); color: var(--ds-success)"
+                >running</span>
                 <span
                   v-if="entry.published"
-                  class="rounded-full bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                >
-                  published
-                </span>
+                  class="rounded-full px-2 py-0.5 text-xs"
+                  style="background-color: color-mix(in srgb, var(--ds-accent) 15%, transparent); color: var(--ds-accent)"
+                >published</span>
               </div>
-              <span class="text-xs text-slate-500">
-                {{ itemLabelOf(entry) }}
-              </span>
-              <span class="mt-1 text-xs text-slate-400">
-                {{ new Date(entry.startUtc).toLocaleString() }}
-                –
-                {{ entry.endUtc ? new Date(entry.endUtc).toLocaleTimeString() : '…' }}
+              <span class="text-xs" style="color: var(--ds-text-lo)">{{ itemLabelOf(entry) }}</span>
+              <span class="mt-0.5 font-mono text-xs" style="color: var(--ds-text-lo)">
+                {{ new Date(entry.startUtc).toLocaleString() }} – {{ entry.endUtc ? new Date(entry.endUtc).toLocaleTimeString() : '…' }}
               </span>
             </div>
-            <div class="flex flex-col items-end gap-1">
-              <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">
+            <div class="flex flex-col items-end gap-1 shrink-0">
+              <span class="font-mono font-semibold" style="color: var(--ds-text-hi)">
                 {{ formatDuration(entryDuration(entry)) }}
               </span>
-              <div class="flex gap-1">
+              <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
                   :disabled="isActive(entry)"
                   aria-label="Edit"
