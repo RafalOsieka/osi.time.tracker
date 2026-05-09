@@ -10,4 +10,9 @@
         <!-- Output directory for the build objects -->
         <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
     </PropertyGroup>
+    <ItemGroup>
+      <None Update="src\App.vue">
+        <DependentUpon>main.ts</DependentUpon>
+      </None>
+    </ItemGroup>
 </Project>
