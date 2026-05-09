@@ -13,7 +13,7 @@ The backend follows a Clean Architecture layout: `Core` holds domain entities an
 | Task                        | Command                                              | ~Time   |
 | --------------------------- | ---------------------------------------------------- | ------- |
 | Run full app (Aspire)       | `dotnet run --project src/AppHost/AppHost.csproj`    | ~15-60s |
-| Backend tests               | `dotnet test src/Core.Tests/Core.Tests.csproj`       | ~10-30s |
+| Backend tests               | `dotnet test tests/Core.Tests/Core.Tests.csproj`     | ~10-30s |
 | Frontend: install deps      | `cd src/Web && pnpm install`                         | ~1-3m   |
 | Frontend: dev server        | `cd src/Web && pnpm dev`                             | ~5-15s  |
 | Frontend: build             | `cd src/Web && pnpm build`                           | ~15-60s |
@@ -30,7 +30,6 @@ src/
   AppHost/                        .NET Aspire orchestration entry point (PostgreSQL, service wiring)
   ServiceDefaults/                Shared Aspire extensions (health checks, telemetry, etc.)
   Core/                           Domain layer: entities, business logic, interfaces
-  Core.Tests/                     xUnit tests for Core domain logic
   Infrastructure/                 EF Core DbContext, migrations, repository implementations
   Api/                            ASP.NET Core Minimal API endpoints, DTOs, DI setup
   Web/                            Vue 3 SPA frontend
@@ -45,6 +44,8 @@ src/
     package.json                  Frontend scripts, dependencies
     vite.config.ts                Vite build configuration
     vitest.config.ts              Vitest test configuration
+tests/
+  Core.Tests/                     xUnit tests for Core domain logic
 Directory.Build.props             Shared MSBuild properties for all backend projects
 Directory.Packages.props          Centralized NuGet package version management
 ```
@@ -64,7 +65,7 @@ Directory.Packages.props          Centralized NuGet package version management
 - Keep domain logic in `src/Core/`; do not leak infrastructure or HTTP concerns into it
 - Keep EF Core, migrations, and DB access in `src/Infrastructure/`
 - Keep API endpoint definitions in `src/Api/`; use DTOs — never expose domain entities directly over the wire
-- Run `dotnet test src/Core.Tests/Core.Tests.csproj` after any backend change and show output as evidence
+- Run `dotnet test tests/Core.Tests/Core.Tests.csproj` after any backend change and show output as evidence
 - Run `pnpm test` (from `src/Web`) after any frontend change and show output as evidence
 - Follow the rounding rule exactly: group by (Remote Item ID, Date), sum durations, round to nearest 15 min, ties up, minimum 15 min if > 0
 
