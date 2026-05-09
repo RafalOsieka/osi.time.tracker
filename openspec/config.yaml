@@ -1,11 +1,10 @@
 schema: spec-driven
 
-# Project context (architecture, domain, tech stack, constraints) lives in AGENTS.md
-# This file contains only OpenSpec workflow rules: how artifacts are generated and validated.
-
 context: |
   Language: English
   All artifacts must be written in English.
+  Project context (architecture, domain, tech stack, constraints) lives in AGENTS.md
+  This file contains only OpenSpec workflow rules: how artifacts are generated and validated.
 
 rules:
   specs:
