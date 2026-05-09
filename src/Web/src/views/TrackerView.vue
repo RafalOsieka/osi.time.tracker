@@ -1,11 +1,12 @@
 <script lang="ts" setup>
-import { ref } from 'vue';
 import Button from 'primevue/button';
+import { ref } from 'vue';
+
 import EntriesList from '../components/EntriesList.vue';
 import PublishPanel from '../components/PublishPanel.vue';
-import TimerBar from '../components/TimerBar.vue';
-import SettingsPanel from '../components/SettingsPanel.vue';
 import ReportsPanel from '../components/ReportsPanel.vue';
+import SettingsPanel from '../components/SettingsPanel.vue';
+import TimerBar from '../components/TimerBar.vue';
 
 const activeView = ref<'tracker' | 'reports' | 'settings'>('tracker');
 </script>
