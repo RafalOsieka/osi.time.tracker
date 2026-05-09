@@ -16,8 +16,8 @@ public class TimerService(IAppDbContext db, TimeProvider timeProvider, ProjectSe
     }
 
     /// <summary>
-    /// Starts a timer. If <paramref name="itemId"/> is null, an implicit Item is created
-    /// under the Default Project, using <paramref name="title"/> as its cached title.
+    ///     Starts a timer. If <paramref name="itemId" /> is null, an implicit Item is created
+    ///     under the Default Project, using <paramref name="title" /> as its cached title.
     /// </summary>
     public async Task<Result<TimeEntry>> StartAsync(Guid? itemId, string title, CancellationToken ct = default)
     {

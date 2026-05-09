@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
@@ -34,6 +34,7 @@ interface EditDraft {
   startLocal: string;
   endLocal: string;
 }
+
 const draft = ref<EditDraft>({ title: '', itemId: '', startLocal: '', endLocal: '' });
 
 async function reload() {
@@ -46,12 +47,12 @@ onMounted(reload);
 
 const itemOptions = computed(() =>
   itemsStore.items
-    .filter((i) => !i.isArchived)
-    .map((i) => {
-      const proj = projectsStore.projects.find((p) => p.id === i.projectId)?.name ?? '';
+    .filter(i => !i.isArchived)
+    .map(i => {
+      const proj = projectsStore.projects.find(p => p.id === i.projectId)?.name ?? '';
       const remote = i.remoteId ? ` #${i.remoteId}` : '';
       return { label: proj ? `${proj} • ${i.title}${remote}` : `${i.title}${remote}`, value: i.id };
-    }),
+    })
 );
 
 function entryDuration(e: TimeEntry): number {
@@ -60,9 +61,7 @@ function entryDuration(e: TimeEntry): number {
   return Math.max(0, Math.floor((end - start) / 1000));
 }
 
-const totalSeconds = computed(() =>
-  entriesStore.entries.reduce((sum, e) => sum + entryDuration(e), 0),
-);
+const totalSeconds = computed(() => entriesStore.entries.reduce((sum, e) => sum + entryDuration(e), 0));
 
 function startEdit(e: TimeEntry) {
   editingId.value = e.id;
@@ -144,9 +143,9 @@ function isActive(e: TimeEntry): boolean {
 }
 
 function itemLabelOf(e: TimeEntry): string {
-  const item = e.item ?? itemsStore.items.find((i) => i.id === e.itemId);
+  const item = e.item ?? itemsStore.items.find(i => i.id === e.itemId);
   if (!item) return '';
-  const proj = projectsStore.projects.find((p) => p.id === item.projectId)?.name ?? '';
+  const proj = projectsStore.projects.find(p => p.id === item.projectId)?.name ?? '';
   const remote = item.remoteId ? ` #${item.remoteId}` : '';
   return proj ? `${proj} • ${item.title}${remote}` : `${item.title}${remote}`;
 }
@@ -163,7 +162,10 @@ function itemLabelOf(e: TimeEntry): string {
               'px-3 py-1 text-sm',
               range === 'today' ? 'bg-primary text-primary-contrast' : 'text-slate-600 dark:text-slate-300',
             ]"
-            @click="range = 'today'; reload()"
+            @click="
+              range = 'today';
+              reload();
+            "
           >
             Today
           </button>
@@ -172,7 +174,10 @@ function itemLabelOf(e: TimeEntry): string {
               'px-3 py-1 text-sm',
               range === 'week' ? 'bg-primary text-primary-contrast' : 'text-slate-600 dark:text-slate-300',
             ]"
-            @click="range = 'week'; reload()"
+            @click="
+              range = 'week';
+              reload();
+            "
           >
             This Week
           </button>
@@ -180,7 +185,9 @@ function itemLabelOf(e: TimeEntry): string {
       </div>
       <div class="text-sm text-slate-500">
         Total:
-        <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">{{ formatDuration(totalSeconds) }}</span>
+        <span class="font-mono font-semibold text-slate-800 dark:text-slate-200">
+          {{ formatDuration(totalSeconds) }}
+        </span>
       </div>
     </div>
 
@@ -198,32 +205,32 @@ function itemLabelOf(e: TimeEntry): string {
             <Select
               v-model="draft.itemId"
               :options="itemOptions"
+              filter
               option-label="label"
               option-value="value"
               placeholder="Move to item"
-              filter
             />
             <div class="flex flex-wrap gap-2">
               <label class="flex flex-col text-xs text-slate-500">
                 Start
                 <input
                   v-model="draft.startLocal"
-                  type="datetime-local"
                   class="rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  type="datetime-local"
                 />
               </label>
               <label class="flex flex-col text-xs text-slate-500">
                 End
                 <input
                   v-model="draft.endLocal"
-                  type="datetime-local"
                   class="rounded border border-slate-200 px-2 py-1 text-sm dark:border-slate-700 dark:bg-slate-800"
+                  type="datetime-local"
                 />
               </label>
             </div>
             <div class="flex gap-2">
-              <Button label="Save" icon="pi pi-check" size="small" @click="saveEdit(entry)" />
-              <Button label="Cancel" icon="pi pi-times" severity="secondary" size="small" @click="cancelEdit" />
+              <Button icon="pi pi-check" label="Save" size="small" @click="saveEdit(entry)" />
+              <Button icon="pi pi-times" label="Cancel" severity="secondary" size="small" @click="cancelEdit" />
             </div>
           </div>
         </template>
@@ -260,31 +267,31 @@ function itemLabelOf(e: TimeEntry): string {
               </span>
               <div class="flex gap-1">
                 <Button
+                  :disabled="isActive(entry)"
+                  aria-label="Edit"
                   icon="pi pi-pencil"
-                  text
                   rounded
                   size="small"
-                  aria-label="Edit"
-                  :disabled="isActive(entry)"
+                  text
                   @click="startEdit(entry)"
                 />
                 <Button
+                  :disabled="isActive(entry)"
+                  aria-label="Split"
                   icon="pi pi-clone"
-                  text
                   rounded
                   size="small"
-                  aria-label="Split"
-                  :disabled="isActive(entry)"
+                  text
                   @click="splitEntry(entry)"
                 />
                 <Button
-                  icon="pi pi-trash"
-                  text
-                  rounded
-                  size="small"
-                  severity="danger"
-                  aria-label="Delete"
                   :disabled="isActive(entry) && timerStore.isRunning"
+                  aria-label="Delete"
+                  icon="pi pi-trash"
+                  rounded
+                  severity="danger"
+                  size="small"
+                  text
                   @click="removeEntry(entry)"
                 />
               </div>

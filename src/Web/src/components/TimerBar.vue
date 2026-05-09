@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
@@ -29,7 +29,7 @@ const elapsed = computed(() => {
 });
 
 function projectLabel(projectId: string): string {
-  return projectsStore.projects.find((p) => p.id === projectId)?.name ?? '';
+  return projectsStore.projects.find(p => p.id === projectId)?.name ?? '';
 }
 
 function itemLabel(i: { title: string; remoteId: string | null; projectId: string }): string {
@@ -39,9 +39,7 @@ function itemLabel(i: { title: string; remoteId: string | null; projectId: strin
 }
 
 const itemOptions = computed(() => {
-  const opts: { label: string; value: string }[] = [
-    { label: '➕ New item (Default Project)', value: NEW_ITEM },
-  ];
+  const opts: { label: string; value: string }[] = [{ label: '➕ New item (Default Project)', value: NEW_ITEM }];
   for (const i of itemsStore.items) {
     if (i.isArchived) continue;
     opts.push({ label: itemLabel(i), value: i.id });
@@ -62,8 +60,7 @@ onUnmounted(() => {
 
 async function onStart() {
   if (!title.value.trim()) return;
-  const itemId =
-    selectedItemId.value === NEW_ITEM || !selectedItemId.value ? null : selectedItemId.value;
+  const itemId = selectedItemId.value === NEW_ITEM || !selectedItemId.value ? null : selectedItemId.value;
   await timerStore.start({
     itemId,
     title: title.value.trim(),
@@ -93,33 +90,28 @@ async function onStop() {
           {{ itemLabel(timerStore.active.item) }}
         </span>
       </div>
-      <div class="font-mono text-2xl font-bold text-primary tabular-nums">
+      <div class="text-primary font-mono text-2xl font-bold tabular-nums">
         {{ formatDuration(elapsed) }}
       </div>
-      <Button label="Stop" icon="pi pi-stop" severity="danger" :loading="timerStore.loading" @click="onStop" />
+      <Button :loading="timerStore.loading" icon="pi pi-stop" label="Stop" severity="danger" @click="onStop" />
     </template>
 
     <template v-else>
       <Select
         v-model="selectedItemId"
         :options="itemOptions"
+        class="md:w-72"
+        filter
         option-label="label"
         option-value="value"
         placeholder="Item / new"
-        filter
-        class="md:w-72"
       />
-      <InputText
-        v-model="title"
-        placeholder="What are you working on?"
-        class="flex-1"
-        @keyup.enter="onStart"
-      />
+      <InputText v-model="title" class="flex-1" placeholder="What are you working on?" @keyup.enter="onStart" />
       <Button
-        label="Start"
-        icon="pi pi-play"
         :disabled="!title.trim()"
         :loading="timerStore.loading"
+        icon="pi pi-play"
+        label="Start"
         @click="onStart"
       />
     </template>

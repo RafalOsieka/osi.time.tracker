@@ -22,7 +22,7 @@ export const useEntriesStore = defineStore('entries', () => {
   }
 
   function upsert(entry: TimeEntry) {
-    const idx = entries.value.findIndex((e) => e.id === entry.id);
+    const idx = entries.value.findIndex(e => e.id === entry.id);
     if (idx >= 0) entries.value[idx] = entry;
     else entries.value.unshift(entry);
     entries.value.sort((a, b) => b.startUtc.localeCompare(a.startUtc));
@@ -36,8 +36,8 @@ export const useEntriesStore = defineStore('entries', () => {
 
   async function update(id: string, req: UpdateEntryRequest) {
     // optimistic update
-    const snapshot = entries.value.map((e) => ({ ...e }));
-    const idx = entries.value.findIndex((e) => e.id === id);
+    const snapshot = entries.value.map(e => ({ ...e }));
+    const idx = entries.value.findIndex(e => e.id === id);
     if (idx >= 0) {
       entries.value[idx] = {
         ...entries.value[idx],
@@ -58,7 +58,7 @@ export const useEntriesStore = defineStore('entries', () => {
 
   async function remove(id: string) {
     const snapshot = entries.value.slice();
-    entries.value = entries.value.filter((e) => e.id !== id);
+    entries.value = entries.value.filter(e => e.id !== id);
     try {
       await entriesApi.remove(id);
     } catch (e) {

@@ -86,7 +86,8 @@ public class ProjectService(IAppDbContext db, TimeProvider timeProvider)
             return Result<Project>.Failure("Project not found.");
 
         if (project.IsDefault && !isDefault)
-            return Result<Project>.Failure("The default project cannot be unset; mark another project as default instead.");
+            return Result<Project>.Failure(
+                "The default project cannot be unset; mark another project as default instead.");
 
         if (await db.Projects.AnyAsync(p => p.Name == name && p.Id != id, ct))
             return Result<Project>.Failure("A project with this name already exists.");
@@ -134,11 +135,9 @@ public class ProjectService(IAppDbContext db, TimeProvider timeProvider)
     private static Result ValidateRemoteConfig(RemoteTarget? remoteTarget, string? remoteBaseUrl)
     {
         if (!remoteTarget.HasValue)
-        {
             return string.IsNullOrWhiteSpace(remoteBaseUrl)
                 ? Result.Success()
                 : Result.Failure("RemoteBaseUrl can only be set when RemoteTarget is specified.");
-        }
 
         if (string.IsNullOrWhiteSpace(remoteBaseUrl))
             return Result.Failure("RemoteBaseUrl is required when RemoteTarget is set.");

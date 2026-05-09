@@ -18,8 +18,8 @@ public static class SeedData
     }
 
     /// <summary>
-    /// Ensures exactly one Project exists with <see cref="Project.IsDefault"/> = true.
-    /// Creates the system "Local" project on first run.
+    ///     Ensures exactly one Project exists with <see cref="Project.IsDefault" /> = true.
+    ///     Creates the system "Local" project on first run.
     /// </summary>
     public static async Task SeedDefaultProjectAsync(ApplicationDbContext db, CancellationToken ct = default)
     {

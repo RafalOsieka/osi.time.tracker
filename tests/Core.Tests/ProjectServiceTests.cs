@@ -4,7 +4,7 @@ using osi.time.tracker.Core.Services;
 using osi.time.tracker.Infrastructure.Persistence;
 using Xunit;
 
-namespace osi.time.tracker.Core.Tests;
+namespace Core.Tests;
 
 public class ProjectServiceTests : IDisposable
 {
@@ -14,10 +14,16 @@ public class ProjectServiceTests : IDisposable
     public ProjectServiceTests()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _db = new ApplicationDbContext(options);
         _service = new ProjectService(_db, TimeProvider.System);
+    }
+
+    public void Dispose()
+    {
+        _db.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -45,8 +51,8 @@ public class ProjectServiceTests : IDisposable
     {
         var first = await _service.GetOrCreateDefaultAsync();
 
-        var created = await _service.CreateAsync("Second", null, isDefault: true,
-            remoteTarget: null, remoteBaseUrl: null);
+        var created = await _service.CreateAsync("Second", null, true,
+            null, null);
 
         Assert.True(created.IsSuccess);
         Assert.True(created.Value!.IsDefault);
@@ -62,7 +68,7 @@ public class ProjectServiceTests : IDisposable
         var defaultProject = await _service.GetOrCreateDefaultAsync();
 
         var result = await _service.UpdateAsync(defaultProject.Id, defaultProject.Name, defaultProject.Color,
-            isArchived: false, isDefault: false, remoteTarget: null, remoteBaseUrl: null);
+            false, false, null, null);
 
         Assert.True(result.IsFailure);
     }
@@ -80,8 +86,8 @@ public class ProjectServiceTests : IDisposable
     [Fact]
     public async Task CreateAsyncShouldRejectInvalidRemoteConfig()
     {
-        var result = await _service.CreateAsync("Remote", null, isDefault: false,
-            remoteTarget: RemoteTarget.Redmine, remoteBaseUrl: "not-a-url");
+        var result = await _service.CreateAsync("Remote", null, false,
+            RemoteTarget.Redmine, "not-a-url");
 
         Assert.True(result.IsFailure);
     }
@@ -93,11 +99,5 @@ public class ProjectServiceTests : IDisposable
         var dup = await _service.CreateAsync("Alpha", null, false, null, null);
 
         Assert.True(dup.IsFailure);
-    }
-
-    public void Dispose()
-    {
-        _db.Dispose();
-        GC.SuppressFinalize(this);
     }
 }

@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import { ref } from 'vue';
 import Button from 'primevue/button';
 import EntriesList from '../components/EntriesList.vue';
@@ -24,22 +24,17 @@ const activeView = ref<'tracker' | 'reports' | 'settings'>('tracker');
           </div>
         </div>
         <div class="flex gap-2">
+          <Button :text="activeView !== 'tracker'" icon="pi pi-clock" label="Tracker" @click="activeView = 'tracker'" />
           <Button
-            label="Tracker"
-            icon="pi pi-clock"
-            :text="activeView !== 'tracker'"
-            @click="activeView = 'tracker'"
-          />
-          <Button
-            label="Reports"
-            icon="pi pi-chart-bar"
             :text="activeView !== 'reports'"
+            icon="pi pi-chart-bar"
+            label="Reports"
             @click="activeView = 'reports'"
           />
           <Button
-            label="Settings"
-            icon="pi pi-cog"
             :text="activeView !== 'settings'"
+            icon="pi pi-cog"
+            label="Settings"
             @click="activeView = 'settings'"
           />
         </div>

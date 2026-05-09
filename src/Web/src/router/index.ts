@@ -9,7 +9,7 @@ const router = createRouter({
       path: '/',
       name: 'tracker',
       component: TrackerView,
-    }
+    },
   ],
 });
 

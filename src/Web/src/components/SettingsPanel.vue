@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Column from 'primevue/column';
@@ -183,11 +183,11 @@ async function removeItem(i: Item) {
 }
 
 function projectName(projectId: string): string {
-  return projects.value.find((p) => p.id === projectId)?.name ?? '';
+  return projects.value.find(p => p.id === projectId)?.name ?? '';
 }
 
 function targetLabel(t: RemoteTarget | null): string {
-  return targetOptions.find((o) => o.value === t)?.label ?? '—';
+  return targetOptions.find(o => o.value === t)?.label ?? '—';
 }
 </script>
 
@@ -200,47 +200,44 @@ function targetLabel(t: RemoteTarget | null): string {
         <!-- Create project form -->
         <div class="mb-4 grid grid-cols-1 gap-2 md:grid-cols-2">
           <div class="flex items-center gap-2">
-            <InputText v-model="newProject.name" placeholder="Project name" class="flex-1" />
+            <InputText v-model="newProject.name" class="flex-1" placeholder="Project name" />
             <ColorPicker v-model="newProject.color" />
           </div>
           <div class="flex items-center gap-2">
             <Select
               v-model="newProject.remoteTarget"
               :options="targetOptions"
+              class="w-44"
               option-label="label"
               option-value="value"
-              class="w-44"
             />
             <InputText
               v-model="newProject.remoteBaseUrl"
               :disabled="newProject.remoteTarget === null"
-              placeholder="https://example.com"
               class="flex-1"
+              placeholder="https://example.com"
             />
           </div>
           <div class="flex items-center gap-2 md:col-span-2">
             <InputText
               v-model="newProject.token"
               :disabled="newProject.remoteTarget === null"
-              type="password"
-              placeholder="API token (stored locally only)"
               class="flex-1"
+              placeholder="API token (stored locally only)"
+              type="password"
             />
             <label class="flex items-center gap-2 text-sm">
               <input v-model="newProject.isDefault" type="checkbox" />
               Default
             </label>
-            <Button label="Add Project" icon="pi pi-plus" @click="createProject" />
+            <Button icon="pi pi-plus" label="Add Project" @click="createProject" />
           </div>
         </div>
 
         <DataTable :value="projects" data-key="id" size="small">
           <Column header="">
             <template #body="{ data }">
-              <div
-                class="h-4 w-4 rounded-full"
-                :style="{ backgroundColor: colorHex(data.color) }"
-              ></div>
+              <div :style="{ backgroundColor: colorHex(data.color) }" class="h-4 w-4 rounded-full"></div>
             </template>
           </Column>
           <Column field="name" header="Name">
@@ -277,8 +274,8 @@ function targetLabel(t: RemoteTarget | null): string {
                   <InputText
                     v-model="editing[data.id].token"
                     :disabled="editing[data.id].remoteTarget === null"
-                    type="password"
                     placeholder="API token"
+                    type="password"
                   />
                   <label class="flex items-center gap-2 text-xs">
                     <input v-model="editing[data.id].isDefault" type="checkbox" />
@@ -302,10 +299,7 @@ function targetLabel(t: RemoteTarget | null): string {
           </Column>
           <Column header="Status">
             <template #body="{ data }">
-              <span
-                :class="data.isArchived ? 'text-red-500' : 'text-green-500'"
-                class="text-xs font-bold uppercase"
-              >
+              <span :class="data.isArchived ? 'text-red-500' : 'text-green-500'" class="text-xs font-bold uppercase">
                 {{ data.isArchived ? 'Archived' : 'Active' }}
               </span>
             </template>
@@ -314,26 +308,26 @@ function targetLabel(t: RemoteTarget | null): string {
             <template #body="{ data }">
               <div class="flex gap-1">
                 <template v-if="editingId === data.id">
-                  <Button icon="pi pi-check" text rounded size="small" severity="success" @click="saveEdit(data)" />
-                  <Button icon="pi pi-times" text rounded size="small" severity="secondary" @click="cancelEdit" />
+                  <Button icon="pi pi-check" rounded severity="success" size="small" text @click="saveEdit(data)" />
+                  <Button icon="pi pi-times" rounded severity="secondary" size="small" text @click="cancelEdit" />
                 </template>
                 <template v-else>
-                  <Button icon="pi pi-pencil" text rounded size="small" @click="startEdit(data)" />
+                  <Button icon="pi pi-pencil" rounded size="small" text @click="startEdit(data)" />
                   <Button
                     :icon="data.isArchived ? 'pi pi-refresh' : 'pi pi-archive'"
                     :severity="data.isArchived ? 'success' : 'warning'"
-                    text
                     rounded
                     size="small"
+                    text
                     @click="toggleProjectArchive(data)"
                   />
                   <Button
-                    icon="pi pi-trash"
-                    severity="danger"
-                    text
-                    rounded
-                    size="small"
                     :disabled="data.isDefault"
+                    icon="pi pi-trash"
+                    rounded
+                    severity="danger"
+                    size="small"
+                    text
                     @click="removeProject(data)"
                   />
                 </template>
@@ -349,7 +343,7 @@ function targetLabel(t: RemoteTarget | null): string {
       <template #title>Items</template>
       <template #content>
         <DataTable :value="itemsStore.items" data-key="id" size="small">
-          <Column header="Title" field="title">
+          <Column field="title" header="Title">
             <template #body="{ data }">
               <span class="font-medium">{{ data.title }}</span>
               <span v-if="data.remoteId" class="ml-2 text-xs text-slate-500">#{{ data.remoteId }}</span>
@@ -360,10 +354,7 @@ function targetLabel(t: RemoteTarget | null): string {
           </Column>
           <Column header="Status">
             <template #body="{ data }">
-              <span
-                :class="data.isArchived ? 'text-red-500' : 'text-green-500'"
-                class="text-xs font-bold uppercase"
-              >
+              <span :class="data.isArchived ? 'text-red-500' : 'text-green-500'" class="text-xs font-bold uppercase">
                 {{ data.isArchived ? 'Archived' : 'Active' }}
               </span>
             </template>
@@ -371,24 +362,31 @@ function targetLabel(t: RemoteTarget | null): string {
           <Column header="Actions">
             <template #body="{ data }">
               <div class="flex gap-1">
-                <Button icon="pi pi-pencil" text rounded size="small" aria-label="Rename" @click="renameItem(data)" />
-                <Button icon="pi pi-link" text rounded size="small" aria-label="Match remote" @click="openMatch(data)" />
+                <Button aria-label="Rename" icon="pi pi-pencil" rounded size="small" text @click="renameItem(data)" />
+                <Button
+                  aria-label="Match remote"
+                  icon="pi pi-link"
+                  rounded
+                  size="small"
+                  text
+                  @click="openMatch(data)"
+                />
                 <Button
                   :icon="data.isArchived ? 'pi pi-refresh' : 'pi pi-archive'"
                   :severity="data.isArchived ? 'success' : 'warning'"
-                  text
                   rounded
                   size="small"
+                  text
                   @click="toggleItemArchive(data)"
                 />
-                <Button icon="pi pi-trash" severity="danger" text rounded size="small" @click="removeItem(data)" />
+                <Button icon="pi pi-trash" rounded severity="danger" size="small" text @click="removeItem(data)" />
               </div>
             </template>
           </Column>
         </DataTable>
         <p class="mt-4 text-xs text-slate-500">
-          Items can be created implicitly by starting a timer without selecting one — they appear under the
-          default project.
+          Items can be created implicitly by starting a timer without selecting one — they appear under the default
+          project.
         </p>
       </template>
     </Card>

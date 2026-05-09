@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import InputText from 'primevue/inputtext';
@@ -28,20 +28,20 @@ const submitting = ref(false);
 const error = ref<string | null>(null);
 
 const project = computed(() =>
-  props.item ? (projectsStore.projects.find((p) => p.id === props.item!.projectId) ?? null) : null,
+  props.item ? (projectsStore.projects.find(p => p.id === props.item!.projectId) ?? null) : null
 );
 
 const tokenPresent = computed(() => (project.value ? getProjectToken(project.value.id).length > 0 : false));
 
 watch(
   () => props.modelValue,
-  (open) => {
+  open => {
     if (open && props.item) {
       remoteId.value = props.item.remoteId ?? '';
       remoteTitle.value = props.item.title;
       error.value = null;
     }
-  },
+  }
 );
 
 function close() {
@@ -116,15 +116,16 @@ async function submit() {
 
 <template>
   <Dialog
-    :visible="modelValue"
-    modal
     :style="{ width: '32rem' }"
+    :visible="modelValue"
     header="Match with Remote Issue"
-    @update:visible="(v) => emit('update:modelValue', v)"
+    modal
+    @update:visible="v => emit('update:modelValue', v)"
   >
     <div v-if="item" class="flex flex-col gap-3">
       <div class="text-sm text-slate-500">
-        Item: <span class="font-medium text-slate-900 dark:text-white">{{ item.title }}</span>
+        Item:
+        <span class="font-medium text-slate-900 dark:text-white">{{ item.title }}</span>
       </div>
       <div class="text-sm text-slate-500">
         Project:
@@ -134,24 +135,30 @@ async function submit() {
         </span>
       </div>
 
-      <div v-if="!project?.isRemote" class="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
-        This item belongs to a non-remote project. You can still attach an arbitrary remote ID,
-        but title auto-fetch is disabled.
+      <div
+        v-if="!project?.isRemote"
+        class="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300"
+      >
+        This item belongs to a non-remote project. You can still attach an arbitrary remote ID, but title auto-fetch is
+        disabled.
       </div>
-      <div v-else-if="!tokenPresent" class="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300">
+      <div
+        v-else-if="!tokenPresent"
+        class="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-800 dark:border-amber-900/40 dark:bg-amber-900/20 dark:text-amber-300"
+      >
         No API token stored for this project. Add it on the Settings page to enable title auto-fetch.
       </div>
 
       <label class="flex flex-col gap-1 text-sm">
         Remote ID
         <div class="flex gap-2">
-          <InputText v-model="remoteId" placeholder="e.g. 12345" class="flex-1" />
+          <InputText v-model="remoteId" class="flex-1" placeholder="e.g. 12345" />
           <Button
-            label="Fetch title"
-            icon="pi pi-download"
-            severity="secondary"
             :disabled="!project?.isRemote || !tokenPresent || !remoteId.trim()"
             :loading="fetching"
+            icon="pi pi-download"
+            label="Fetch title"
+            severity="secondary"
             @click="fetchRemoteTitle"
           />
         </div>
@@ -167,7 +174,7 @@ async function submit() {
 
     <template #footer>
       <Button label="Cancel" severity="secondary" text @click="close" />
-      <Button label="Match" icon="pi pi-link" :loading="submitting" @click="submit" />
+      <Button :loading="submitting" icon="pi pi-link" label="Match" @click="submit" />
     </template>
   </Dialog>
 </template>

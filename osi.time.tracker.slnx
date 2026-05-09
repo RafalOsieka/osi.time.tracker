@@ -14,4 +14,7 @@
         <Project Path="src/Infrastructure/Infrastructure.csproj"/>
         <Project Path="src/ServiceDefaults/ServiceDefaults.csproj"/>
     </Folder>
+    <Folder Name="/tests/">
+        <Project Path="tests/Core.Tests/Core.Tests.csproj"/>
+    </Folder>
 </Solution>

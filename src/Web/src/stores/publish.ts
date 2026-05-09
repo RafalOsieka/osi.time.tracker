@@ -21,9 +21,9 @@ export const usePublishStore = defineStore('publish', () => {
   function groupEntries(
     entries: TimeEntry[],
     projects: Project[],
-    itemsById: Map<string, { id: string; title: string; projectId: string; remoteId: string | null }>,
+    itemsById: Map<string, { id: string; title: string; projectId: string; remoteId: string | null }>
   ): GroupedEntry[] {
-    const projectsById = new Map(projects.map((p) => [p.id, p]));
+    const projectsById = new Map(projects.map(p => [p.id, p]));
     const groups: Record<string, GroupedEntry> = {};
 
     for (const e of entries) {
@@ -60,7 +60,7 @@ export const usePublishStore = defineStore('publish', () => {
       (a, b) =>
         a.spentOn.localeCompare(b.spentOn) ||
         a.projectName.localeCompare(b.projectName) ||
-        a.itemTitle.localeCompare(b.itemTitle),
+        a.itemTitle.localeCompare(b.itemTitle)
     );
   }
 
@@ -80,7 +80,7 @@ export const usePublishStore = defineStore('publish', () => {
   }
 
   function joinComments(entries: TimeEntry[]): string {
-    const titles = [...new Set(entries.map((e) => e.title.trim()))].filter(Boolean);
+    const titles = [...new Set(entries.map(e => e.title.trim()))].filter(Boolean);
     let result = titles.join('; ');
 
     const LIMIT = 255;

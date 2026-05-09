@@ -73,7 +73,7 @@ public class ItemService(IAppDbContext db, TimeProvider timeProvider)
     }
 
     /// <summary>
-    /// Associates an item with a remote ID and updates its cached title.
+    ///     Associates an item with a remote ID and updates its cached title.
     /// </summary>
     public async Task<Result<Item>> MatchRemoteAsync(Guid id, string remoteId, string remoteTitle,
         CancellationToken ct = default)
@@ -102,7 +102,7 @@ public class ItemService(IAppDbContext db, TimeProvider timeProvider)
     }
 
     /// <summary>
-    /// Moves all TimeEntries from <paramref name="sourceId"/> into <paramref name="targetId"/> and archives the source.
+    ///     Moves all TimeEntries from <paramref name="sourceId" /> into <paramref name="targetId" /> and archives the source.
     /// </summary>
     public async Task<Result<Item>> MergeAsync(Guid sourceId, Guid targetId, CancellationToken ct = default)
     {

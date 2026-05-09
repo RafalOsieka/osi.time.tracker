@@ -10,8 +10,8 @@ export const useProjectsStore = defineStore('projects', () => {
   const error = ref<string | null>(null);
   let loaded = false;
 
-  const defaultProject = computed(() => projects.value.find((p) => p.isDefault) ?? null);
-  const remoteProjects = computed(() => projects.value.filter((p) => p.isRemote && !p.isArchived));
+  const defaultProject = computed(() => projects.value.find(p => p.isDefault) ?? null);
+  const remoteProjects = computed(() => projects.value.filter(p => p.isRemote && !p.isArchived));
 
   async function load(force = false) {
     if (loaded && !force) return;
@@ -44,7 +44,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
   async function update(id: string, req: UpdateProjectRequest) {
     const updated = await projectsApi.update(id, req);
-    const idx = projects.value.findIndex((p) => p.id === id);
+    const idx = projects.value.findIndex(p => p.id === id);
     if (idx >= 0) {
       projects.value[idx] = updated;
     }
@@ -54,7 +54,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
   async function remove(id: string) {
     await projectsApi.remove(id);
-    projects.value = projects.value.filter((p) => p.id !== id);
+    projects.value = projects.value.filter(p => p.id !== id);
   }
 
   return { projects, loading, error, defaultProject, remoteProjects, load, create, update, remove };

@@ -4,19 +4,19 @@ using osi.time.tracker.Core.Services;
 using osi.time.tracker.Infrastructure.Persistence;
 using Xunit;
 
-namespace osi.time.tracker.Core.Tests;
+namespace Core.Tests;
 
 public class TimeEntryServiceTests : IDisposable
 {
     private readonly ApplicationDbContext _db;
-    private readonly TimeEntryService _service;
-    private readonly Guid _projectId = Guid.NewGuid();
     private readonly Guid _itemId = Guid.NewGuid();
+    private readonly Guid _projectId = Guid.NewGuid();
+    private readonly TimeEntryService _service;
 
     public TimeEntryServiceTests()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         _db = new ApplicationDbContext(options);
         _service = new TimeEntryService(_db, TimeProvider.System);
@@ -40,14 +40,23 @@ public class TimeEntryServiceTests : IDisposable
         _db.SaveChanges();
     }
 
+    public void Dispose()
+    {
+        _db.Dispose();
+        GC.SuppressFinalize(this);
+    }
+
     [Fact]
     public async Task CreateAsyncShouldFailWhenOverlappingWithExisting()
     {
         // Existing: 10:00 - 11:00
-        await _service.CreateAsync(_itemId, "Existing", new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc));
+        await _service.CreateAsync(_itemId, "Existing", new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc));
 
         // New: 10:30 - 11:30 (Overlaps)
-        var result = await _service.CreateAsync(_itemId, "Overlapping", new DateTime(2026, 1, 1, 10, 30, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 11, 30, 0, DateTimeKind.Utc));
+        var result = await _service.CreateAsync(_itemId, "Overlapping",
+            new DateTime(2026, 1, 1, 10, 30, 0, DateTimeKind.Utc),
+            new DateTime(2026, 1, 1, 11, 30, 0, DateTimeKind.Utc));
 
         Assert.True(result.IsFailure);
         Assert.Equal("Time entry overlaps with an existing entry.", result.Error);
@@ -57,10 +66,12 @@ public class TimeEntryServiceTests : IDisposable
     public async Task CreateAsyncShouldSucceedWhenNoOverlap()
     {
         // Existing: 10:00 - 11:00
-        await _service.CreateAsync(_itemId, "Existing", new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc));
+        await _service.CreateAsync(_itemId, "Existing", new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc),
+            new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc));
 
         // New: 11:00 - 12:00 (No overlap - exact touch is fine)
-        var result = await _service.CreateAsync(_itemId, "No Overlap", new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+        var result = await _service.CreateAsync(_itemId, "No Overlap",
+            new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
 
         Assert.True(result.IsSuccess);
     }
@@ -72,7 +83,8 @@ public class TimeEntryServiceTests : IDisposable
         await _service.CreateAsync(_itemId, "Running", new DateTime(2026, 1, 1, 10, 0, 0, DateTimeKind.Utc), null);
 
         // New: 11:00 - 12:00 (Overlaps because running has no end)
-        var result = await _service.CreateAsync(_itemId, "Overlapping", new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
+        var result = await _service.CreateAsync(_itemId, "Overlapping",
+            new DateTime(2026, 1, 1, 11, 0, 0, DateTimeKind.Utc), new DateTime(2026, 1, 1, 12, 0, 0, DateTimeKind.Utc));
 
         Assert.True(result.IsFailure);
     }
@@ -83,11 +95,5 @@ public class TimeEntryServiceTests : IDisposable
         // This confirms that the model can be built and initialized without errors.
         // EF Core will throw if configurations (Fluent API) are invalid.
         Assert.NotNull(_db.Model);
-    }
-
-    public void Dispose()
-    {
-        _db.Dispose();
-        GC.SuppressFinalize(this);
     }
 }

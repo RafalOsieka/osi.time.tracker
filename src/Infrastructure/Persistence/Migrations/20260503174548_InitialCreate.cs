@@ -83,7 +83,9 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_Items_ProjectId_RemoteId",
                 table: "Items",
+#pragma warning disable CA1861
                 columns: new[] { "ProjectId", "RemoteId" },
+#pragma warning restore CA1861
                 unique: true);
 
             migrationBuilder.CreateIndex(
@@ -102,7 +104,9 @@ namespace osi.time.tracker.Infrastructure.Persistence.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_TimeEntries_ItemId_StartUtc",
                 table: "TimeEntries",
+#pragma warning disable CA1861
                 columns: new[] { "ItemId", "StartUtc" });
+#pragma warning restore CA1861
         }
 
         /// <inheritdoc />

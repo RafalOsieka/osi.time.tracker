@@ -1,4 +1,4 @@
-<script setup lang="ts">
+<script lang="ts" setup>
 import Button from 'primevue/button';
 import Card from 'primevue/card';
 import Column from 'primevue/column';
@@ -7,7 +7,7 @@ import DatePicker from 'primevue/datepicker';
 import { onMounted, ref } from 'vue';
 
 import { useReportsStore } from '../stores/reports';
-import { formatDuration, endOfToday, startOfWeek } from '../utils/time';
+import { endOfToday, formatDuration, startOfWeek } from '../utils/time';
 
 const reportsStore = useReportsStore();
 
@@ -23,14 +23,14 @@ onMounted(load);
 
 function exportCsv() {
   const headers = ['Project', 'Item', 'Duration (seconds)', 'Duration (formatted)'];
-  const rows = reportsStore.itemReport.map((r) => [
+  const rows = reportsStore.itemReport.map(r => [
     r.projectName,
     r.itemTitle,
     r.totalSeconds,
     formatDuration(r.totalSeconds),
   ]);
 
-  const csvContent = [headers, ...rows].map((e) => e.join(',')).join('\n');
+  const csvContent = [headers, ...rows].map(e => e.join(',')).join('\n');
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const link = document.createElement('a');
   const url = URL.createObjectURL(blob);
@@ -52,14 +52,14 @@ function exportCsv() {
             <span class="text-sm font-medium">Range:</span>
             <DatePicker
               v-model="dateRange"
-              selection-mode="range"
               :manual-input="false"
-              show-icon
               icon-display="input"
+              selection-mode="range"
+              show-icon
               @update:model-value="load"
             />
           </div>
-          <Button label="Export CSV" icon="pi pi-download" severity="secondary" @click="exportCsv" />
+          <Button icon="pi pi-download" label="Export CSV" severity="secondary" @click="exportCsv" />
         </div>
       </template>
     </Card>
@@ -68,7 +68,7 @@ function exportCsv() {
       <Card>
         <template #title>Daily Totals</template>
         <template #content>
-          <DataTable :value="reportsStore.dailyReport" :loading="reportsStore.loading" size="small">
+          <DataTable :loading="reportsStore.loading" :value="reportsStore.dailyReport" size="small">
             <Column field="date" header="Date"></Column>
             <Column header="Total Time">
               <template #body="slotProps">
@@ -82,7 +82,7 @@ function exportCsv() {
       <Card>
         <template #title>By Item</template>
         <template #content>
-          <DataTable :value="reportsStore.itemReport" :loading="reportsStore.loading" size="small">
+          <DataTable :loading="reportsStore.loading" :value="reportsStore.itemReport" size="small">
             <Column field="projectName" header="Project"></Column>
             <Column field="itemTitle" header="Item"></Column>
             <Column header="Total Time">

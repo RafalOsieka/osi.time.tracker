@@ -5,8 +5,8 @@ public static class TimeRoundingService
     private const int RoundingStepMinutes = 15;
 
     /// <summary>
-    /// Rounds total seconds to the nearest 15-minute increment (ties round up).
-    /// Returns the rounded value as a TimeSpan.
+    ///     Rounds total seconds to the nearest 15-minute increment (ties round up).
+    ///     Returns the rounded value as a TimeSpan.
     /// </summary>
     public static TimeSpan RoundToNearest15(double totalSeconds)
     {
@@ -28,8 +28,8 @@ public static class TimeRoundingService
     }
 
     /// <summary>
-    /// Rounds total seconds to the nearest 15-minute increment and returns decimal hours.
-    /// Suitable for Redmine time entry format.
+    ///     Rounds total seconds to the nearest 15-minute increment and returns decimal hours.
+    ///     Suitable for Redmine time entry format.
     /// </summary>
     public static decimal RoundToDecimalHours(double totalSeconds)
     {
@@ -38,8 +38,8 @@ public static class TimeRoundingService
     }
 
     /// <summary>
-    /// Rounds total seconds to the nearest 15-minute increment and returns ISO 8601 duration.
-    /// Suitable for OpenProject time entry format (e.g., "PT2H30M").
+    ///     Rounds total seconds to the nearest 15-minute increment and returns ISO 8601 duration.
+    ///     Suitable for OpenProject time entry format (e.g., "PT2H30M").
     /// </summary>
     public static string RoundToIsoDuration(double totalSeconds)
     {
@@ -55,7 +55,7 @@ public static class TimeRoundingService
     }
 
     /// <summary>
-    /// Groups time entries by (remoteId, spentOn date) and returns aggregated rounded totals.
+    ///     Groups time entries by (remoteId, spentOn date) and returns aggregated rounded totals.
     /// </summary>
     public static List<GroupedTime> GroupAndRound(
         IEnumerable<(string RemoteId, DateTime StartUtc, DateTime? EndUtc)> entries,

@@ -25,7 +25,7 @@ export const useItemsStore = defineStore('items', () => {
   }
 
   function upsert(item: Item) {
-    const idx = items.value.findIndex((i) => i.id === item.id);
+    const idx = items.value.findIndex(i => i.id === item.id);
     if (idx >= 0) items.value[idx] = item;
     else items.value.push(item);
   }
@@ -58,7 +58,7 @@ export const useItemsStore = defineStore('items', () => {
 
   async function remove(id: string) {
     await itemsApi.remove(id);
-    items.value = items.value.filter((i) => i.id !== id);
+    items.value = items.value.filter(i => i.id !== id);
   }
 
   return { items, loading, error, load, create, update, match, merge, remove, upsert };

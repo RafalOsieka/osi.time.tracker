@@ -1,32 +1,25 @@
 schema: spec-driven
 
-# Project context
+# Project context (architecture, domain, tech stack, constraints) lives in AGENTS.md
+# This file contains only OpenSpec workflow rules: how artifacts are generated and validated.
+
 context: |
-  # Tech Stack
-  - Backend: .NET 10 (Minimal API), Aspire (Orchestration), PostgreSQL.
-  - Frontend: Vue.js (SPA + PWA), Pinia, Vitest, Vite, pnpm.
-  - UI Library: PrimeVue 4 (Styled mode with Aura preset and Tailwind CSS 4; integrated with PriveVue MCP), PrimeIcons.
-  - Architecture: Clean Architecture (Api, Core, Infrastructure, ServiceDefaults, AppHost).
+  Language: English
+  All artifacts must be written in English.
 
-  # Environment & Build
-  - DEV: Aspire orchestrates API and Frontend (Vite proxy).
-  - PROD: Frontend build output to `src/Api/wwwroot`.
-  - Service Communication: Aspire service discovery.
-
-  # Standards & Workflow
-  - Code: C#, TypeScript. CPM for .NET, Security Analyzers, Warnings as Errors.
-  - Testing: xUnit (Backend), Vitest (Frontend). Integration tests for Api, Unit for Core.
-  - Error Handling: Result pattern for domain services (no exceptions for control flow).
-  - Git: Conventional Commits.
-
-# Per-artifact rules
 rules:
+  specs:
+    - For every requirement, include a `**Status**` field using exactly one of: `Met`, `Partially met`, `Not met`, `Blocked`
+    - For every requirement, include an `**Evidence**` list with paths to test files and method names; use `Evidence — none` when not yet covered
+    - If status is `Partially met`, add a `**Test Gaps**` subsection describing what is missing
+    - Use an `## Open Questions` section for unresolved items tagged `[UNCONFIRMED]`; do not implement unconfirmed items
+    - Use RFC 2119 keywords: MUST/SHALL for absolute requirements, SHOULD for recommendations, MAY for optional
   tasks:
-    - Include one final task to commit the changes after approval.
-    - Implementation: Always write a reproduction test before fixing a bug.
-    - Implementation: Small Batches (testable tasks), Self-Documenting (XML docs for public surface), Defensive (boundary validation).
-  implementation:
-    - Web: Always run `pnpm lint` and `pnpm format` before completing a task to ensure code quality.
-    - Backend: Always verify that the project builds (e.g., `dotnet build src/AppHost/AppHost.csproj`).
-    - Security: Security errors and warnings must be resolved; disabling checks or ignoring security warnings is not allowed.
-    - Reliability: Treat warnings as errors in both C# and TypeScript/Vue stacks.
+    - Separate frontend (Vue) and backend (.NET) tasks explicitly
+    - Keep each task completable in a single coding session (~2h max)
+    - Every backend task MUST have a corresponding test task (unit or integration)
+    - Every API endpoint task MUST have an integration test task covering happy path and at least one error scenario
+    - Frontend tasks covering forms or user flows MUST have a corresponding E2E test task
+  verify:
+    - Check that every MUST/SHALL requirement in the spec has a corresponding implementation
+    - Confirm error scenarios from the spec are handled in both frontend and backend
