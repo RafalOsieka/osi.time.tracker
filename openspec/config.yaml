@@ -7,6 +7,10 @@ context: |
   This file contains only OpenSpec workflow rules: how artifacts are generated and validated.
 
 rules:
+  explore:
+    - In explore mode, NEVER create proposals, design documents, or any OpenSpec artifacts without explicit user confirmation
+    - In explore mode, NEVER write or modify application code
+    - Only offer to create artifacts; wait for the user to confirm before creating anything
   specs:
     - For every requirement, include a `**Status**` field using exactly one of: `Met`, `Partially met`, `Not met`, `Blocked`
     - For every requirement, include an `**Evidence**` list with paths to test files and method names; use `Evidence — none` when not yet covered

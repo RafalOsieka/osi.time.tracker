@@ -82,6 +82,7 @@ Directory.Packages.props          Centralized NuGet package version management
 - Store API tokens or secrets in the backend or in source code; tokens live in the browser's `localStorage` only
 - Bypass or weaken failing tests (no `.skip`, no removed assertions, no `--passWithNoTests`)
 - Expose domain entities directly as API response types — always map to DTOs
+- In explore mode: create proposals, design documents, or any OpenSpec artifacts without explicit user confirmation — only offer, then wait
 
 ## Heuristics
 
