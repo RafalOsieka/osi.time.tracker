@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Application Layout Structure
 The system SHALL render all pages inside a `DefaultLayout.vue` component that provides the sidebar shell and a `<RouterView />` outlet. `App.vue` SHALL contain only a bare `<RouterView />`.
