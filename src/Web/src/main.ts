@@ -3,6 +3,7 @@ import './style.css';
 import Aura from '@primevue/themes/aura';
 import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
+import Tooltip from 'primevue/tooltip';
 import { createApp } from 'vue';
 
 import App from './App.vue';
@@ -91,5 +92,7 @@ app.use(PrimeVue, {
     },
   },
 });
+
+app.directive('tooltip', Tooltip);
 
 app.mount('#app');

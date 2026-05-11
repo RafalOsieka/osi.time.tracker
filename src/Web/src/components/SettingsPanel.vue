@@ -308,12 +308,14 @@ function targetLabel(t: RemoteTarget | null): string {
             <template #body="{ data }">
               <div class="flex gap-1">
                 <template v-if="editingId === data.id">
-                  <Button icon="pi pi-check" rounded severity="success" size="small" text @click="saveEdit(data)" />
-                  <Button icon="pi pi-times" rounded severity="secondary" size="small" text @click="cancelEdit" />
+                  <Button v-tooltip.top="'Save changes'" aria-label="Save changes" icon="pi pi-check" rounded severity="success" size="small" text @click="saveEdit(data)" />
+                  <Button v-tooltip.top="'Cancel editing'" aria-label="Cancel editing" icon="pi pi-times" rounded severity="secondary" size="small" text @click="cancelEdit" />
                 </template>
                 <template v-else>
-                  <Button icon="pi pi-pencil" rounded size="small" text @click="startEdit(data)" />
+                  <Button v-tooltip.top="'Edit project'" aria-label="Edit project" icon="pi pi-pencil" rounded size="small" text @click="startEdit(data)" />
                   <Button
+                    v-tooltip.top="data.isArchived ? 'Restore project' : 'Archive project'"
+                    :aria-label="data.isArchived ? 'Restore project' : 'Archive project'"
                     :icon="data.isArchived ? 'pi pi-refresh' : 'pi pi-archive'"
                     :severity="data.isArchived ? 'success' : 'warning'"
                     rounded
@@ -322,7 +324,9 @@ function targetLabel(t: RemoteTarget | null): string {
                     @click="toggleProjectArchive(data)"
                   />
                   <Button
+                    v-tooltip.top="'Delete project'"
                     :disabled="data.isDefault"
+                    aria-label="Delete project"
                     icon="pi pi-trash"
                     rounded
                     severity="danger"
@@ -362,9 +366,10 @@ function targetLabel(t: RemoteTarget | null): string {
           <Column header="Actions">
             <template #body="{ data }">
               <div class="flex gap-1">
-                <Button aria-label="Rename" icon="pi pi-pencil" rounded size="small" text @click="renameItem(data)" />
+                <Button v-tooltip.top="'Rename item'" aria-label="Rename item" icon="pi pi-pencil" rounded size="small" text @click="renameItem(data)" />
                 <Button
-                  aria-label="Match remote"
+                  v-tooltip.top="'Match with remote issue'"
+                  aria-label="Match with remote issue"
                   icon="pi pi-link"
                   rounded
                   size="small"
@@ -372,6 +377,8 @@ function targetLabel(t: RemoteTarget | null): string {
                   @click="openMatch(data)"
                 />
                 <Button
+                  v-tooltip.top="data.isArchived ? 'Restore item' : 'Archive item'"
+                  :aria-label="data.isArchived ? 'Restore item' : 'Archive item'"
                   :icon="data.isArchived ? 'pi pi-refresh' : 'pi pi-archive'"
                   :severity="data.isArchived ? 'success' : 'warning'"
                   rounded
@@ -379,7 +386,7 @@ function targetLabel(t: RemoteTarget | null): string {
                   text
                   @click="toggleItemArchive(data)"
                 />
-                <Button icon="pi pi-trash" rounded severity="danger" size="small" text @click="removeItem(data)" />
+                <Button v-tooltip.top="'Delete item'" aria-label="Delete item" icon="pi pi-trash" rounded severity="danger" size="small" text @click="removeItem(data)" />
               </div>
             </template>
           </Column>

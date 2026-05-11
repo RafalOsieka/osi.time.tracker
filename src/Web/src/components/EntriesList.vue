@@ -94,8 +94,8 @@ async function saveEdit(e: TimeEntry) {
     } else {
       await entriesStore.update(e.id, {
         title: draft.value.title.trim(),
-        startUtc: fromLocalInputValue(draft.value.startLocal),
-        endUtc: draft.value.endLocal ? fromLocalInputValue(draft.value.endLocal) : null,
+        startUtc: isActive(e) ? e.startUtc : fromLocalInputValue(draft.value.startLocal),
+        endUtc: isActive(e) ? null : (draft.value.endLocal ? fromLocalInputValue(draft.value.endLocal) : null),
       });
     }
     editingId.value = null;
@@ -192,7 +192,7 @@ function itemLabelOf(e: TimeEntry): string {
     <!-- Timeline -->
     <ul v-else class="relative">
       <!-- Vertical connecting line -->
-      <div class="absolute left-[10px] top-3 bottom-3 w-px" style="background-color: var(--ds-border)"></div>
+      <div class="absolute left-[10px] top-3 bottom-3 w-px" style="background-color: var(--ds-border); transform: translateX(-50%)"></div>
 
       <li
         v-for="entry in entriesStore.entries"
@@ -200,7 +200,7 @@ function itemLabelOf(e: TimeEntry): string {
         class="group relative flex gap-4 py-3"
       >
         <!-- Dot -->
-        <div class="relative z-10 flex shrink-0 items-start pt-1">
+        <div class="relative z-10 flex w-5 shrink-0 items-center justify-center pt-0.5">
           <span
             v-if="isActive(entry)"
             class="block w-3 h-3 rounded-full"
@@ -225,7 +225,7 @@ function itemLabelOf(e: TimeEntry): string {
               option-value="value"
               placeholder="Move to item"
             />
-            <div class="flex flex-wrap gap-2">
+            <div v-if="!isActive(entry)" class="flex flex-wrap gap-2">
               <label class="flex flex-col text-xs" style="color: var(--ds-text-lo)">
                 Start
                 <input
@@ -280,7 +280,7 @@ function itemLabelOf(e: TimeEntry): string {
               </span>
               <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                 <Button
-                  :disabled="isActive(entry)"
+                  v-tooltip.top="isActive(entry) ? 'Edit title & item' : 'Edit entry'"
                   aria-label="Edit"
                   icon="pi pi-pencil"
                   rounded
@@ -289,6 +289,7 @@ function itemLabelOf(e: TimeEntry): string {
                   @click="startEdit(entry)"
                 />
                 <Button
+                  v-tooltip.top="'Split entry in half'"
                   :disabled="isActive(entry)"
                   aria-label="Split"
                   icon="pi pi-clone"
@@ -298,6 +299,7 @@ function itemLabelOf(e: TimeEntry): string {
                   @click="splitEntry(entry)"
                 />
                 <Button
+                  v-tooltip.top="'Delete entry'"
                   :disabled="isActive(entry) && timerStore.isRunning"
                   aria-label="Delete"
                   icon="pi pi-trash"

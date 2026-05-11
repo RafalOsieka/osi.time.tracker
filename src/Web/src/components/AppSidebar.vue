@@ -58,8 +58,8 @@ function closeMobile() {
     <!-- Collapse toggle -->
     <div class="px-2 py-3 shrink-0">
       <button
+        v-tooltip.right="layout.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         class="flex w-full items-center justify-center rounded-lg p-2 transition-colors ds-nav-item"
-        :title="layout.sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'"
         style="color: var(--ds-text-lo)"
         @click="layout.toggleSidebar()"
       >
@@ -72,8 +72,8 @@ function closeMobile() {
   <!-- Mobile top bar -->
   <div class="lg:hidden flex items-center gap-3 px-4 py-3 border-b shrink-0" style="background-color: var(--ds-bg-surface); border-color: var(--ds-border)">
     <button
+      v-tooltip.bottom="'Open menu'"
       class="flex items-center justify-center rounded-lg p-2 transition-colors ds-nav-item"
-      title="Open menu"
       style="color: var(--ds-text-lo)"
       @click="mobileOpen = true"
     >
