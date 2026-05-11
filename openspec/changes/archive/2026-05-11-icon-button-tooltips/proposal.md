@@ -4,9 +4,15 @@
 
 Every icon button in the Web frontend must have a tooltip describing its expected action. This is a global UX requirement. The audit below covers all Vue components in `src/Web/src`.
 
-## Motivation
+## Why
 
 Icon-only buttons are not self-explanatory. Without tooltips, users must guess what each button does. PrimeVue's `v-tooltip` directive is already in use in `EntriesList.vue` and should be applied consistently across the entire app.
+
+## What Changes
+
+- Add `v-tooltip` directives to all icon-only buttons in `SettingsPanel.vue` (Projects and Items tables).
+- Replace native `title` attributes in `AppSidebar.vue` with `v-tooltip` for consistency.
+- No new imports or packages required — `v-tooltip` is already registered globally.
 
 ## Audit Results
 
