@@ -1,15 +1,17 @@
 {
     "mcpServers": {
         "primevue": {
-            "command": "pnpm",
+            "command": "pnx.CMD",
             "args": [
-                "dlx",
                 "-package",
                 "@modelcontextprotocol/sdk@1.25.2",
                 "-package",
                 "@primevue/mcp",
                 "primevue-mcp"
             ]
+        },
+        "Nuxt": {
+            "url": "https://nuxt.com/mcp"
         }
     }
 }
