@@ -25,35 +25,37 @@
 
 Core hierarchy: **User → Client → Project → Task → TimeEntry**
 
-| Term                   | Meaning                                                                                                          |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| **Client**             | A company or person the user works for; top-level grouping for projects; holds `RemoteSystemConfig`.            |
-| **RemoteSystemConfig** | Config for a remote issue tracker on a Client: system type, base URL, API credentials, adapter mode, rounding.  |
-| **Task**               | Unit of work inside a Project; may hold a `RemoteIssueRef` linking it to a remote issue.                        |
-| **RemoteIssueRef**     | Lightweight link on a Task: stores only the remote issue ID and cached metadata (title, URL).                    |
-| **TimeEntry**          | A logged time interval (start + end or duration) attached to a Task; can be pushed to a remote system.          |
-| **Adapter**            | Plugin implementing integration with one remote system (Redmine, OpenProject, …); follows a stable interface.   |
-| **Rounding Rule**      | Configurable rule applied to a TimeEntry duration before pushing (e.g. round up to nearest 15 minutes).         |
+| Term                   | Meaning                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Client**             | A company or person the user works for; top-level grouping for projects; holds `RemoteSystemConfig`.           |
+| **RemoteSystemConfig** | Config for a remote issue tracker on a Client: system type, base URL, API credentials, adapter mode, rounding. |
+| **Task**               | Unit of work inside a Project; may hold a `RemoteIssueRef` linking it to a remote issue.                       |
+| **RemoteIssueRef**     | Lightweight link on a Task: stores only the remote issue ID and cached metadata (title, URL).                  |
+| **TimeEntry**          | A logged time interval (start + end or duration) attached to a Task; can be pushed to a remote system.         |
+| **Adapter**            | Plugin implementing integration with one remote system (Redmine, OpenProject, …); follows a stable interface.  |
+| **Rounding Rule**      | Configurable rule applied to a TimeEntry duration before pushing (e.g. round up to nearest 15 minutes).        |
 
 ## Key Constraints
 
-- **No teams / shared workspaces** — every user's data is fully isolated; no cross-user visibility.
-- **No billing / invoicing** — pure time tracking; no hourly rates or invoice export.
-- **On-demand only** — no background sync with remote systems; all pushes and fetches are user-triggered.
-- **Self-hosted** — no SaaS dependency; must be deployable via `docker compose up` with no external services.
-- **Client-side adapter for VPN** — remote systems behind a VPN must be reached via the browser (client-side mode); CORS must be enabled on the remote system.
-- **MVP auth is minimal** — only login/logout is MVP; self-registration, password reset, and account deletion are V1.1.
+| Constraint    | Detail                                                              |
+| ------------- | ------------------------------------------------------------------- |
+| Security      | OWASP Top 10, rate limiting, CSP headers                            |
+| Feature scope | 🔴 MVP · 🟡 V1.1 · 🟢 Backlog · ⚫ Out of scope – see `docs/wbs.md` |
 
 ## Repository Structure
 
-| Path             | Contents                                              |
-| ---------------- | ----------------------------------------------------- |
-| `docs/vision.md` | System overview, domain model, roles, lifecycle, NFRs |
-| `docs/wbs.md`    | Feature list with priorities                          |
+| Path                   | Contents                                              |
+| ---------------------- | ----------------------------------------------------- |
+| `docs/vision.md`       | System overview, domain model, roles, lifecycle, NFRs |
+| `docs/wbs.md`          | Feature list with priorities                          |
+| `openspec/specs/`      | Behavioral specs – source of truth for implementation |
+| `openspec/changes/`    | Active and archived change proposals                  |
+| `openspec/config.yaml` | OpenSpec workflow rules                               |
 
 ## Current Phase
 
-Technical specification. No code yet.
+- [x] Technical business specification + OpenSpec initialization.
+- [ ] MVP.
 
 ## Language
 

@@ -1,0 +1,35 @@
+schema: spec-driven
+
+# Project context (architecture, domain, tech stack, constraints) lives in AGENTS.md.
+# This file contains only OpenSpec workflow rules: how artifacts are generated and validated.
+
+rules:
+  specs:
+    - "For every requirement, include a traceability code in the title: `### Requirement: REQ-<DOMAIN>-<NNN> Title`"
+    - "Keep standard OpenSpec headers: `### Requirement:` and `#### Scenario:`"
+    - "Domain prefixes: AUTH (authentication & identity), TTR (time tracking & reporting & remote integration), NFR (non-functional requirements)"
+    - "For every requirement, include a `**Status**` field using exactly one of: `Met`, `Partially met`, `Not met`, `Blocked`"
+    - For every requirement, include an `**Evidence**` list with paths to test files and method names; use `Evidence — none` when not yet covered
+    - If status is `Partially met`, add a `**Test Gaps**` subsection describing what is missing
+    - Blocked requirements must include an `**Implementation Notes**` subsection explaining the blocker
+    - Use an `## Open Questions` section for unresolved items tagged `[UNCONFIRMED]`; do not implement unconfirmed items
+    - "Use RFC 2119 keywords: MUST/SHALL for absolute requirements, SHOULD for recommendations, MAY for optional"
+    - Include error and edge-case scenarios, not just the happy path
+    - Scope to MVP unless explicitly marked 🟡 V1.1 or later
+  proposal:
+    - Read vision.md and wbs.md before writing; confirm the feature is in scope and at the correct priority
+    - Include a "Non-goals" section to prevent scope creep
+    - Keep under 400 words
+  design:
+    - Document trade-offs explicitly (at least one alternative considered)
+  tasks:
+    - Separate frontend and backend tasks explicitly.
+    - Keep each task completable in a single coding session (~2h max).
+    - Every backend task MUST have a corresponding test task (unit or integration)
+    - Every API endpoint task MUST have an integration test task covering happy path and at least one error scenario
+    - Frontend tasks covering forms or user flows MUST have a corresponding E2E test task
+    - Frontend tasks covering utilities or non-UI logic MUST have a corresponding unit test task
+  verify:
+    - Check that every MUST/SHALL requirement in the spec has a corresponding implementation
+    - Confirm i18n keys exist for all user-visible strings (EN)
+    - Confirm error scenarios from the spec are handled in both frontend and backend
