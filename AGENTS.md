@@ -4,7 +4,7 @@
 
 ## Architecture
 
-- **Frontend / Backend:** Nuxt 3 (Vue 3, TypeScript) — server routes serve as the API layer; no separate backend service in MVP.
+- **Frontend / Backend:** Nuxt 4 (Vue 3, TypeScript) — server routes serve as the API layer; no separate backend service in MVP.
 - **Database:** PostgreSQL — all user data is stored server-side; each user's data is strictly isolated.
 - **Adapter model:** Remote integrations are implemented as adapters (one per system type). Each adapter can run in **backend-side** mode (server-to-server, for public systems) or **client-side** mode (browser-to-remote, for VPN-protected systems). The adapter interface is identical in both modes.
 - **PWA:** Nuxt PWA module provides a service worker and offline cache; timer state is persisted locally.
@@ -14,9 +14,9 @@
 
 | Component     | Technology                                      |
 | ------------- | ----------------------------------------------- |
-| Frontend      | Nuxt 3, Vue 3, TypeScript                       |
+| Frontend      | Nuxt 4, Vue 3, TypeScript                       |
 | UI Library    | PrimeVue (+ optional Tailwind CSS)              |
-| Backend / API | Nuxt 3 server routes                            |
+| Backend / API | Nuxt 4 server routes                            |
 | Database      | PostgreSQL                                      |
 | Deployment    | Docker / Docker Compose                         |
 | PWA           | Nuxt PWA module (service worker, offline cache) |

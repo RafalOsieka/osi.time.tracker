@@ -198,9 +198,9 @@ Each supported remote system is implemented as an **adapter** (plugin). The adap
 
 | Component     | Technology                                      |
 | ------------- | ----------------------------------------------- |
-| Frontend      | Nuxt 3, Vue 3, TypeScript                       |
+| Frontend      | Nuxt 4, Vue 3, TypeScript                       |
 | UI Library    | PrimeVue (+ optional Tailwind CSS)              |
-| Backend / API | Nuxt 3 server routes (or separate Node service) |
+| Backend / API | Nuxt 4 server routes (or separate Node service) |
 | Database      | PostgreSQL                                      |
 | Deployment    | Docker / Docker Compose                         |
 | PWA           | Nuxt PWA module (service worker, offline cache) |
