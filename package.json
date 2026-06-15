@@ -10,11 +10,15 @@
     "postinstall": "nuxt prepare",
     "test:unit": "vitest --project unit",
     "test:e2e": "vitest --project e2e",
-    "test:nuxt": "vitest --project nuxt"
+    "test:nuxt": "vitest --project nuxt",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx server/db/migrate.ts"
   },
   "dependencies": {
     "@primeuix/themes": "^2.0.3",
+    "drizzle-orm": "^0.45.2",
     "nuxt": "^4.4.8",
+    "postgres": "^3.4.9",
     "primevue": "^4.5.5",
     "vue": "^3.5.35",
     "vue-router": "^5.1.0"
@@ -22,9 +26,13 @@
   "devDependencies": {
     "@nuxt/test-utils": "^4.0.3",
     "@primevue/nuxt-module": "^4.5.5",
+    "@types/node": "^25.9.3",
     "@vue/test-utils": "^2.4.11",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
     "happy-dom": "^20.10.3",
     "playwright-core": "^1.60.0",
+    "tsx": "^4.22.4",
     "vitest": "^4.1.8"
   },
   "author": "Rafal Osieka",

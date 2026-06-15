@@ -1,12 +1,12 @@
 <!-- FOR AI AGENTS - Human readability is a side effect, not a goal -->
 <!-- Managed by agent: keep sections concise; document only what exists. Mark not-yet-built items as Planned. -->
-<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, vitest.config.ts, app/, docs/, openspec/ -->
+<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, vitest.config.ts, drizzle.config.ts, app/, server/, test/, docs/, openspec/ -->
 
 # AGENTS.md
 
 **OSI Time Tracker** (`osi.time.tracker`) is a self-hosted, open-source personal time tracking web application for IT specialists working across multiple clients and projects. It supports a structured Client → Project → Task hierarchy, a live timer and manual time entry, and on-demand push of time entries to external issue trackers (Redmine, OpenProject) via a dual-mode adapter model.
 
-> **Status:** Early scaffolding. The repo is a fresh Nuxt 4 + PrimeVue starter. Most domain features below are **planned** (see `docs/wbs.md`), not yet implemented. Document only what exists; mark future work as Planned.
+> **Status:** Early MVP. The repo is a Nuxt 4 + PrimeVue starter with a server-side database persistence layer (PostgreSQL via Drizzle ORM) now in place. Most domain features below are still **planned** (see `docs/wbs.md`), not yet implemented. Document only what exists; mark future work as Planned.
 
 ## Commands
 > Package manager: **pnpm** (`^11.6.0`, see `devEngines` in `package.json`). Source: `package.json` scripts.
@@ -21,8 +21,12 @@
 | Unit tests | `pnpm test:unit` | Vitest `unit` project, `node` env, `test/unit/*.{test,spec}.ts` |
 | E2E tests | `pnpm test:e2e` | Vitest `e2e` project, `node` env, `test/e2e/*.{test,spec}.ts` |
 | Nuxt tests | `pnpm test:nuxt` | Vitest `nuxt` project, `nuxt` env, `test/nuxt/*.{test,spec}.ts` |
+| Generate migrations | `pnpm db:generate` | `drizzle-kit generate` — diffs `server/db/schema/*.ts` into `server/db/migrations` |
+| Apply migrations | `pnpm db:migrate` | `tsx server/db/migrate.ts` — applies pending migrations; needs `DATABASE_URL` |
 
-> Test runner: **Vitest 4** with `@nuxt/test-utils` (multi-project config in `vitest.config.ts`). The `test/` directory holds no tests yet — the scripts run but there is nothing to assert. Do not claim tests pass until specs exist. No lint or typecheck scripts are configured yet; add tooling (and document it here) before relying on it.
+> Test runner: **Vitest 4** with `@nuxt/test-utils` (multi-project config in `vitest.config.ts`). Database persistence tests exist: `test/unit/db-client.spec.ts` and `test/e2e/db.spec.ts` (the e2e suite spins up PostgreSQL via Docker and **skips itself when Docker is unavailable** — see `test/e2e/support/postgres.ts`). The `nuxt` project still has no specs. `DATABASE_URL` must be set (see `.env.example`) for DB code/tests to run. No lint or typecheck scripts are configured yet; add tooling (and document it here) before relying on it.
+
+> Database access: all server-side DB access goes through the shared lazy `db` client exported from `server/db/index.ts` (backed by `postgres.js` + Drizzle); never instantiate raw drivers directly. `DATABASE_URL` is also exposed server-only via `runtimeConfig.databaseUrl` in `nuxt.config.ts`.
 
 ## Technology
 
@@ -31,7 +35,7 @@
 | Frontend / API| Nuxt 4, Vue 3, TypeScript               | present   |
 | UI Library    | PrimeVue 4 (`@primevue/nuxt-module`, Aura preset) | present   |
 | Testing       | Vitest 4, `@nuxt/test-utils`, `@vue/test-utils`, happy-dom, playwright-core | present   |
-| Database      | PostgreSQL (via Drizzle ORM — proposed, see `openspec/changes/add-database`) | planned   |
+| Database      | PostgreSQL via Drizzle ORM (`drizzle-orm`, `postgres`, `drizzle-kit`, `tsx`) | present   |
 | Deployment    | Docker / Docker Compose                 | planned   |
 | Styling       | Tailwind CSS (optional)                 | planned   |
 | PWA           | Nuxt PWA module (service worker, offline cache) | planned   |
@@ -69,18 +73,24 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 
 ## Repository Structure
 
-| Path                   | Contents                                              | State   |
-| ---------------------- | ----------------------------------------------------- | ------- |
-| `app/`                 | Nuxt app source (`app.vue` entry)                     | present |
-| `nuxt.config.ts`       | Nuxt + PrimeVue configuration                         | present |
-| `vitest.config.ts`     | Vitest multi-project config (unit / e2e / nuxt)       | present |
-| `test/`                | Vitest test sources (`unit/`, `e2e/`, `nuxt/`)        | planned |
-| `public/`              | Static assets served as-is                            | present |
-| `docs/vision.md`       | System overview, domain model, roles, lifecycle, NFRs | present |
-| `docs/wbs.md`          | Feature list with priorities                          | present |
-| `openspec/config.yaml` | OpenSpec workflow rules                               | present |
-| `openspec/specs/`      | Behavioral specs – source of truth for implementation | planned |
-| `openspec/changes/`    | Active and archived change proposals                  | present |
+| Path | Contents |
+| --------------------------- | ----------------------------------------------------- |
+| `app/` | Nuxt app source (`app.vue` entry) |
+| `nuxt.config.ts` | Nuxt + PrimeVue configuration |
+| `vitest.config.ts` | Vitest multi-project config (unit / e2e / nuxt) |
+| `drizzle.config.ts` | Drizzle Kit config (schema `server/db/schema/*.ts`, out `server/db/migrations`) |
+| `.env.example` | Sample env (`DATABASE_URL`) |
+| `server/db/` | Drizzle client (`client.ts`, `index.ts`) + migrator (`migrate.ts`) |
+| `server/db/schema/` | Drizzle table schemas (`*.ts`) |
+| `server/db/migrations/` | Generated SQL migrations |
+| `test/` | Vitest test sources (`unit/`, `e2e/`; `nuxt/` empty) |
+| `public/` | Static assets served as-is |
+| `docs/vision.md` | System overview, domain model, roles, lifecycle, NFRs |
+| `docs/wbs.md` | Feature list with priorities |
+| `openspec/config.yaml` | OpenSpec workflow rules  |
+| `openspec/specs/` | Behavioral specs – source of truth |
+| `openspec/changes/archive/` | Archived change proposals |
+| `openspec/changes/**/` | Active change proposals |
 
 > OpenSpec project context lives in this file; `openspec/config.yaml` holds only workflow rules (spec/proposal/design/tasks/verify).
 
