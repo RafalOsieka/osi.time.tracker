@@ -7,7 +7,10 @@
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "postinstall": "nuxt prepare",
+    "test:unit": "vitest --project unit",
+    "test:e2e": "vitest --project e2e",
+    "test:nuxt": "vitest --project nuxt"
   },
   "dependencies": {
     "@primeuix/themes": "^2.0.3",
@@ -17,7 +20,12 @@
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
-    "@primevue/nuxt-module": "^4.5.5"
+    "@nuxt/test-utils": "^4.0.3",
+    "@primevue/nuxt-module": "^4.5.5",
+    "@vue/test-utils": "^2.4.11",
+    "happy-dom": "^20.10.3",
+    "playwright-core": "^1.60.0",
+    "vitest": "^4.1.8"
   },
   "author": "Rafal Osieka",
   "repository": {

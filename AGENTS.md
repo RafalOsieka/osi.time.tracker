@@ -1,6 +1,6 @@
 <!-- FOR AI AGENTS - Human readability is a side effect, not a goal -->
 <!-- Managed by agent: keep sections concise; document only what exists. Mark not-yet-built items as Planned. -->
-<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, app/, docs/, openspec/ -->
+<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, vitest.config.ts, app/, docs/, openspec/ -->
 
 # AGENTS.md
 
@@ -18,8 +18,11 @@
 | Build | `pnpm build` | `nuxt build` |
 | Static generate | `pnpm generate` | `nuxt generate` |
 | Preview prod build | `pnpm preview` | `nuxt preview` |
+| Unit tests | `pnpm test:unit` | Vitest `unit` project, `node` env, `test/unit/*.{test,spec}.ts` |
+| E2E tests | `pnpm test:e2e` | Vitest `e2e` project, `node` env, `test/e2e/*.{test,spec}.ts` |
+| Nuxt tests | `pnpm test:nuxt` | Vitest `nuxt` project, `nuxt` env, `test/nuxt/*.{test,spec}.ts` |
 
-> No lint, typecheck, or test scripts are configured yet. Do not claim tests pass — there is no test runner. Add tooling (and document it here) before relying on it.
+> Test runner: **Vitest 4** with `@nuxt/test-utils` (multi-project config in `vitest.config.ts`). The `test/` directory holds no tests yet — the scripts run but there is nothing to assert. Do not claim tests pass until specs exist. No lint or typecheck scripts are configured yet; add tooling (and document it here) before relying on it.
 
 ## Technology
 
@@ -27,12 +30,13 @@
 | ------------- | --------------------------------------- | --------- |
 | Frontend / API| Nuxt 4, Vue 3, TypeScript               | present   |
 | UI Library    | PrimeVue 4 (`@primevue/nuxt-module`, Aura preset) | present   |
-| Database      | PostgreSQL                              | planned   |
+| Testing       | Vitest 4, `@nuxt/test-utils`, `@vue/test-utils`, happy-dom, playwright-core | present   |
+| Database      | PostgreSQL (via Drizzle ORM — proposed, see `openspec/changes/add-database`) | planned   |
 | Deployment    | Docker / Docker Compose                 | planned   |
 | Styling       | Tailwind CSS (optional)                 | planned   |
 | PWA           | Nuxt PWA module (service worker, offline cache) | planned   |
 
-> "present" = installed/configured in `package.json` + `nuxt.config.ts`. "planned" = target architecture from `docs/vision.md`, not yet added.
+> "present" = installed/configured in `package.json` + `nuxt.config.ts` / `vitest.config.ts`. "planned" = target architecture from `docs/vision.md`, not yet added.
 
 ## Architecture (target)
 
@@ -69,20 +73,22 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 | ---------------------- | ----------------------------------------------------- | ------- |
 | `app/`                 | Nuxt app source (`app.vue` entry)                     | present |
 | `nuxt.config.ts`       | Nuxt + PrimeVue configuration                         | present |
+| `vitest.config.ts`     | Vitest multi-project config (unit / e2e / nuxt)       | present |
+| `test/`                | Vitest test sources (`unit/`, `e2e/`, `nuxt/`)        | planned |
 | `public/`              | Static assets served as-is                            | present |
 | `docs/vision.md`       | System overview, domain model, roles, lifecycle, NFRs | present |
 | `docs/wbs.md`          | Feature list with priorities                          | present |
 | `openspec/config.yaml` | OpenSpec workflow rules                               | present |
 | `openspec/specs/`      | Behavioral specs – source of truth for implementation | planned |
-| `openspec/changes/`    | Active and archived change proposals                  | planned |
+| `openspec/changes/`    | Active and archived change proposals                  | present |
 
 > OpenSpec project context lives in this file; `openspec/config.yaml` holds only workflow rules (spec/proposal/design/tasks/verify).
 
 ## Current Phase
 
 - [x] Technical business specification + OpenSpec initialization.
-- [x] Nuxt 4 + PrimeVue scaffolding.
-- [ ] MVP.
+- [x] MVP - Work In Progress.
+- [ ] MVP - Finished.
 
 ## Language
 
