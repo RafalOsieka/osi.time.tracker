@@ -1,6 +1,6 @@
 <!-- FOR AI AGENTS - Human readability is a side effect, not a goal -->
 <!-- Managed by agent: keep sections concise; document only what exists. Mark not-yet-built items as Planned. -->
-<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, vitest.config.ts, drizzle.config.ts, app/, server/, test/, docs/, openspec/ -->
+<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, vitest.config.ts, drizzle.config.ts, eslint.config.mjs, .prettierrc.json, app/, server/, test/, docs/, openspec/ -->
 
 # AGENTS.md
 
@@ -23,8 +23,14 @@
 | Nuxt tests | `pnpm test:nuxt` | Vitest `nuxt` project, `nuxt` env, `test/nuxt/*.{test,spec}.ts` |
 | Generate migrations | `pnpm db:generate` | `drizzle-kit generate` — diffs `server/db/schema/*.ts` into `server/db/migrations` |
 | Apply migrations | `pnpm db:migrate` | `tsx server/db/migrate.ts` — applies pending migrations; needs `DATABASE_URL` |
+| Lint | `pnpm lint` | `eslint .` — needs `nuxt prepare` (run via `postinstall`) first |
+| Lint & fix | `pnpm lint:fix` | `eslint . --fix` |
+| Format | `pnpm format` | `prettier --write .` |
+| Check formatting | `pnpm format:check` | `prettier --check .` |
 
-> Test runner: **Vitest 4** with `@nuxt/test-utils` (multi-project config in `vitest.config.ts`). Database persistence tests exist: `test/unit/db-client.spec.ts` and `test/e2e/db.spec.ts` (the e2e suite spins up PostgreSQL via Docker and **skips itself when Docker is unavailable** — see `test/e2e/support/postgres.ts`). The `nuxt` project still has no specs. `DATABASE_URL` must be set (see `.env.example`) for DB code/tests to run. No lint or typecheck scripts are configured yet; add tooling (and document it here) before relying on it.
+> Test runner: **Vitest 4** with `@nuxt/test-utils` (multi-project config in `vitest.config.ts`). Database persistence tests exist: `test/unit/db-client.spec.ts` and `test/e2e/db.spec.ts` (the e2e suite spins up PostgreSQL via Docker and **skips itself when Docker is unavailable** — see `test/e2e/support/postgres.ts`). The `nuxt` project still has no specs. `DATABASE_URL` must be set (see `.env.example`) for DB code/tests to run.
+
+> Linting & formatting: **ESLint 9** flat config (`eslint.config.mjs`, built on `@nuxt/eslint` via `withNuxt()` + `eslint-config-prettier`) and **Prettier 3** (`.prettierrc.json`: single quotes, semicolons, `printWidth` 100, `tabWidth` 2, `trailingComma: all`, `endOfLine: lf`). `pnpm lint`/`pnpm lint:fix` require `nuxt prepare` to have generated `.nuxt/eslint.config.mjs` first (runs via `postinstall`). ESLint ignores `.nuxt`, `.output`, `node_modules`, `dist`, and `server/db/migrations`; Prettier ignores paths via `.prettierignore`. Keep `eslint-config-prettier` appended **last** so Prettier owns stylistic rules. No typecheck script is configured yet; add tooling (and document it here) before relying on it.
 
 > Database access: all server-side DB access goes through the shared lazy `db` client exported from `server/db/index.ts` (backed by `postgres.js` + Drizzle); never instantiate raw drivers directly. `DATABASE_URL` is also exposed server-only via `runtimeConfig.databaseUrl` in `nuxt.config.ts`.
 
@@ -36,6 +42,7 @@
 | UI Library    | PrimeVue 4 (`@primevue/nuxt-module`, Aura preset) | present   |
 | Testing       | Vitest 4, `@nuxt/test-utils`, `@vue/test-utils`, happy-dom, playwright-core | present   |
 | Database      | PostgreSQL via Drizzle ORM (`drizzle-orm`, `postgres`, `drizzle-kit`, `tsx`) | present   |
+| Lint / Format | ESLint 9 (`@nuxt/eslint`, `eslint-config-prettier`) + Prettier 3 | present   |
 | Deployment    | Docker / Docker Compose                 | planned   |
 | Styling       | Tailwind CSS (optional)                 | planned   |
 | PWA           | Nuxt PWA module (service worker, offline cache) | planned   |
@@ -78,6 +85,9 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 | `app/` | Nuxt app source (`app.vue` entry) |
 | `nuxt.config.ts` | Nuxt + PrimeVue configuration |
 | `vitest.config.ts` | Vitest multi-project config (unit / e2e / nuxt) |
+| `eslint.config.mjs` | ESLint flat config (`@nuxt/eslint` + `eslint-config-prettier`) |
+| `.prettierrc.json` | Prettier formatting rules |
+| `.prettierignore` | Paths excluded from Prettier |
 | `drizzle.config.ts` | Drizzle Kit config (schema `server/db/schema/*.ts`, out `server/db/migrations`) |
 | `.env.example` | Sample env (`DATABASE_URL`) |
 | `server/db/` | Drizzle client (`client.ts`, `index.ts`) + migrator (`migrate.ts`) |

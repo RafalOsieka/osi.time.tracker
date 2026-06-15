@@ -1,8 +1,8 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import postgres from "postgres";
-import { sql as drizzleSql } from "drizzle-orm";
-import { createDatabaseClient } from "../../server/db/client";
-import { runMigrations } from "../../server/db/migrate";
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import postgres from 'postgres';
+import { sql as drizzleSql } from 'drizzle-orm';
+import { createDatabaseClient } from '../../server/db/client';
+import { runMigrations } from '../../server/db/migrate';
 import {
   TEST_DATABASE_URL,
   isDockerAvailable,
@@ -10,17 +10,17 @@ import {
   startPostgres,
   stopPostgres,
   writeMigrations,
-} from "./support/postgres";
+} from './support/postgres';
 
 const dockerAvailable = isDockerAvailable();
 const describeDb = dockerAvailable ? describe : describe.skip;
 
 if (!dockerAvailable) {
   // eslint-disable-next-line no-console
-  console.warn("[db.spec] Docker not available — skipping DB integration tests.");
+  console.warn('[db.spec] Docker not available — skipping DB integration tests.');
 }
 
-describeDb("database integration", () => {
+describeDb('database integration', () => {
   beforeAll(async () => {
     await startPostgres();
   }, 180_000);
@@ -29,22 +29,18 @@ describeDb("database integration", () => {
     stopPostgres();
   });
 
-  it("connects to Postgres and runs SELECT 1", async () => {
+  it('connects to Postgres and runs SELECT 1', async () => {
     const { db, sql } = createDatabaseClient(TEST_DATABASE_URL, { max: 1 });
     try {
-      const rows = await db.execute<{ value: number }>(
-        drizzleSql`SELECT 1 AS value`,
-      );
+      const rows = await db.execute<{ value: number }>(drizzleSql`SELECT 1 AS value`);
       expect(Number((rows as Array<{ value: number }>)[0].value)).toBe(1);
     } finally {
       await sql.end({ timeout: 5 });
     }
   });
 
-  it("applies all pending migrations against a fresh database", async () => {
-    const dir = writeMigrations([
-      "CREATE TABLE migrate_target (id integer PRIMARY KEY);",
-    ]);
+  it('applies all pending migrations against a fresh database', async () => {
+    const dir = writeMigrations(['CREATE TABLE migrate_target (id integer PRIMARY KEY);']);
     const probe = postgres(TEST_DATABASE_URL, { max: 1 });
     try {
       await runMigrations(TEST_DATABASE_URL, dir);
@@ -63,10 +59,8 @@ describeDb("database integration", () => {
     }
   });
 
-  it("is idempotent when run twice (second run applies nothing)", async () => {
-    const dir = writeMigrations([
-      "CREATE TABLE idem_target (id integer PRIMARY KEY);",
-    ]);
+  it('is idempotent when run twice (second run applies nothing)', async () => {
+    const dir = writeMigrations(['CREATE TABLE idem_target (id integer PRIMARY KEY);']);
     const probe = postgres(TEST_DATABASE_URL, { max: 1 });
     try {
       await runMigrations(TEST_DATABASE_URL, dir);
@@ -83,8 +77,8 @@ describeDb("database integration", () => {
     }
   });
 
-  it("fails (rejects) on a deliberately broken migration", async () => {
-    const dir = writeMigrations(["THIS IS NOT VALID SQL;"]);
+  it('fails (rejects) on a deliberately broken migration', async () => {
+    const dir = writeMigrations(['THIS IS NOT VALID SQL;']);
     try {
       await expect(runMigrations(TEST_DATABASE_URL, dir)).rejects.toBeTruthy();
     } finally {
@@ -92,31 +86,29 @@ describeDb("database integration", () => {
     }
   });
 
-  describe("startup sequence (dedicated migrate step)", () => {
+  describe('startup sequence (dedicated migrate step)', () => {
     // Models the Compose migrate-then-serve contract: the app only begins
     // serving traffic after migrations complete; a migration failure blocks it.
     async function startupSequence(migrationsDir: string): Promise<string[]> {
       const events: string[] = [];
       await runMigrations(TEST_DATABASE_URL, migrationsDir);
-      events.push("migrations-complete");
-      events.push("serving-traffic");
+      events.push('migrations-complete');
+      events.push('serving-traffic');
       return events;
     }
 
-    it("runs migrations to completion before serving traffic", async () => {
-      const dir = writeMigrations([
-        "CREATE TABLE startup_ok (id integer PRIMARY KEY);",
-      ]);
+    it('runs migrations to completion before serving traffic', async () => {
+      const dir = writeMigrations(['CREATE TABLE startup_ok (id integer PRIMARY KEY);']);
       try {
         const events = await startupSequence(dir);
-        expect(events).toEqual(["migrations-complete", "serving-traffic"]);
+        expect(events).toEqual(['migrations-complete', 'serving-traffic']);
       } finally {
         removeMigrations(dir);
       }
     });
 
-    it("blocks startup (never serves) when a migration fails", async () => {
-      const dir = writeMigrations(["BROKEN SQL HERE;"]);
+    it('blocks startup (never serves) when a migration fails', async () => {
+      const dir = writeMigrations(['BROKEN SQL HERE;']);
       let served = false;
       try {
         await runMigrations(TEST_DATABASE_URL, dir);

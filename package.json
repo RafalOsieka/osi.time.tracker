@@ -12,7 +12,11 @@
     "test:e2e": "vitest --project e2e",
     "test:nuxt": "vitest --project nuxt",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx server/db/migrate.ts"
+    "db:migrate": "tsx server/db/migrate.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@primeuix/themes": "^2.0.3",
@@ -24,14 +28,18 @@
     "vue-router": "^5.1.0"
   },
   "devDependencies": {
+    "@nuxt/eslint": "^1.9.0",
     "@nuxt/test-utils": "^4.0.3",
     "@primevue/nuxt-module": "^4.5.5",
     "@types/node": "^25.9.3",
     "@vue/test-utils": "^2.4.11",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
+    "eslint": "^9.18.0",
+    "eslint-config-prettier": "^9.1.0",
     "happy-dom": "^20.10.3",
     "playwright-core": "^1.60.0",
+    "prettier": "^3.4.2",
     "tsx": "^4.22.4",
     "vitest": "^4.1.8"
   },

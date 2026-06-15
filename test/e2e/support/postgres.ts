@@ -1,12 +1,12 @@
-import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import postgres from "postgres";
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import postgres from 'postgres';
 
-const CONTAINER_NAME = "osi-time-tracker-e2e-pg";
-const PASSWORD = "postgres";
-const DB = "osi_time_tracker_test";
+const CONTAINER_NAME = 'osi-time-tracker-e2e-pg';
+const PASSWORD = 'postgres';
+const DB = 'osi_time_tracker_test';
 const HOST_PORT = 54329;
 
 export const TEST_DATABASE_URL = `postgres://postgres:${PASSWORD}@127.0.0.1:${HOST_PORT}/${DB}`;
@@ -14,7 +14,7 @@ export const TEST_DATABASE_URL = `postgres://postgres:${PASSWORD}@127.0.0.1:${HO
 /** Returns true when a usable Docker CLI is available on the host. */
 export function isDockerAvailable(): boolean {
   try {
-    execFileSync("docker", ["info"], { stdio: "ignore" });
+    execFileSync('docker', ['info'], { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -23,7 +23,7 @@ export function isDockerAvailable(): boolean {
 
 function dockerSilent(args: string[]): void {
   try {
-    execFileSync("docker", args, { stdio: "ignore" });
+    execFileSync('docker', args, { stdio: 'ignore' });
   } catch {
     // best effort
   }
@@ -31,23 +31,23 @@ function dockerSilent(args: string[]): void {
 
 /** Starts a disposable Postgres container and waits until it accepts queries. */
 export async function startPostgres(): Promise<void> {
-  dockerSilent(["rm", "-f", CONTAINER_NAME]);
+  dockerSilent(['rm', '-f', CONTAINER_NAME]);
   execFileSync(
-    "docker",
+    'docker',
     [
-      "run",
-      "-d",
-      "--name",
+      'run',
+      '-d',
+      '--name',
       CONTAINER_NAME,
-      "-e",
+      '-e',
       `POSTGRES_PASSWORD=${PASSWORD}`,
-      "-e",
+      '-e',
       `POSTGRES_DB=${DB}`,
-      "-p",
+      '-p',
       `${HOST_PORT}:5432`,
-      "postgres:18-alpine",
+      'postgres:18-alpine',
     ],
-    { stdio: "ignore" },
+    { stdio: 'ignore' },
   );
 
   await waitForReady();
@@ -75,7 +75,7 @@ async function waitForReady(): Promise<void> {
 
 /** Stops and removes the disposable Postgres container. */
 export function stopPostgres(): void {
-  dockerSilent(["rm", "-f", CONTAINER_NAME]);
+  dockerSilent(['rm', '-f', CONTAINER_NAME]);
 }
 
 interface JournalEntry {
@@ -92,19 +92,19 @@ interface JournalEntry {
  * migration applied in order.
  */
 export function writeMigrations(sqls: string[]): string {
-  const dir = mkdtempSync(join(tmpdir(), "osi-time-tracker-migrations-"));
-  mkdirSync(join(dir, "meta"), { recursive: true });
+  const dir = mkdtempSync(join(tmpdir(), 'osi-time-tracker-migrations-'));
+  mkdirSync(join(dir, 'meta'), { recursive: true });
 
   const entries: JournalEntry[] = sqls.map((sql, idx) => {
-    const tag = `${String(idx).padStart(4, "0")}_migration`;
-    writeFileSync(join(dir, `${tag}.sql`), sql, "utf8");
-    return { idx, version: "7", when: Date.now() + idx, tag, breakpoints: true };
+    const tag = `${String(idx).padStart(4, '0')}_migration`;
+    writeFileSync(join(dir, `${tag}.sql`), sql, 'utf8');
+    return { idx, version: '7', when: Date.now() + idx, tag, breakpoints: true };
   });
 
   writeFileSync(
-    join(dir, "meta", "_journal.json"),
-    JSON.stringify({ version: "7", dialect: "postgresql", entries }, null, 2),
-    "utf8",
+    join(dir, 'meta', '_journal.json'),
+    JSON.stringify({ version: '7', dialect: 'postgresql', entries }, null, 2),
+    'utf8',
   );
 
   return dir;

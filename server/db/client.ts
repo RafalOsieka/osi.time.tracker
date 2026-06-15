@@ -1,5 +1,5 @@
-import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import postgres, { type Sql } from "postgres";
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import postgres, { type Sql } from 'postgres';
 
 /**
  * Resolves the database connection string from the environment, failing fast
@@ -10,7 +10,7 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
 
   if (!url) {
     throw new Error(
-      "DATABASE_URL is not set. Define it (see .env.example) before accessing the database.",
+      'DATABASE_URL is not set. Define it (see .env.example) before accessing the database.',
     );
   }
 

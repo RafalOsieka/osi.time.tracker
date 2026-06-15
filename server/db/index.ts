@@ -1,6 +1,6 @@
-import type { PostgresJsDatabase } from "drizzle-orm/postgres-js";
-import type { Sql } from "postgres";
-import { createDatabaseClient, resolveDatabaseUrl } from "./client";
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { Sql } from 'postgres';
+import { createDatabaseClient, resolveDatabaseUrl } from './client';
 
 let client: { db: PostgresJsDatabase; sql: Sql } | undefined;
 
@@ -26,4 +26,4 @@ export const db: PostgresJsDatabase = new Proxy({} as PostgresJsDatabase, {
   },
 });
 
-export { createDatabaseClient, resolveDatabaseUrl } from "./client";
+export { createDatabaseClient, resolveDatabaseUrl } from './client';

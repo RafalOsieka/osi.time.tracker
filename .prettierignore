@@ -1,0 +1,16 @@
+# Build / generated artifacts
+.nuxt
+.output
+node_modules
+dist
+
+# Lockfile and generated SQL migrations
+pnpm-lock.yaml
+server/db/migrations
+
+# Agent-managed configuration (reserved)
+.junie
+AGENTS.md
+
+# openspec
+openspec
