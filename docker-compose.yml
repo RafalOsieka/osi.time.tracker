@@ -1,0 +1,24 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-osi_time_tracker}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pg-osi-time-tracker:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-osi_time_tracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [osi-time-tracker]
+
+volumes:
+  pg-osi-time-tracker:
+
+networks:
+  osi-time-tracker:

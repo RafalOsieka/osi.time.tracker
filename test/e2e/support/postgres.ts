@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import postgres from "postgres";
 
-const CONTAINER_NAME = "osi-ttt-test-pg";
+const CONTAINER_NAME = "osi-time-tracker-e2e-pg";
 const PASSWORD = "postgres";
 const DB = "osi_time_tracker_test";
 const HOST_PORT = 54329;
@@ -45,7 +45,7 @@ export async function startPostgres(): Promise<void> {
       `POSTGRES_DB=${DB}`,
       "-p",
       `${HOST_PORT}:5432`,
-      "postgres:16-alpine",
+      "postgres:18-alpine",
     ],
     { stdio: "ignore" },
   );
@@ -92,7 +92,7 @@ interface JournalEntry {
  * migration applied in order.
  */
 export function writeMigrations(sqls: string[]): string {
-  const dir = mkdtempSync(join(tmpdir(), "osi-ttt-migrations-"));
+  const dir = mkdtempSync(join(tmpdir(), "osi-time-tracker-migrations-"));
   mkdirSync(join(dir, "meta"), { recursive: true });
 
   const entries: JournalEntry[] = sqls.map((sql, idx) => {

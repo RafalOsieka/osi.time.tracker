@@ -88,6 +88,26 @@ DATABASE_URL=postgres://postgres:postgres@localhost:5432/osi_time_tracker
 
 The server-side Drizzle client (`server/db`) and the migration tooling both read `DATABASE_URL`. If it is missing, client initialization and migrations fail fast with a clear error rather than connecting to a default.
 
+### Run the database (Docker Compose)
+
+A repo-root `docker-compose.yml` starts a local PostgreSQL (`postgres:18-alpine`) instance matching the default `DATABASE_URL`:
+
+```bash
+# Start the database in the background
+docker compose up -d
+
+# Apply pending migrations against the running container
+pnpm db:migrate
+
+# Stop the container (data is kept)
+docker compose down
+
+# Stop and DELETE the data volume (destroys all data)
+docker compose down -v
+```
+
+Data is stored in a persistent named volume (`pgdata`), so it survives `docker compose down` and container recreation — it is only removed with `docker compose down -v`. Credentials and the host port can be overridden via env vars (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`; see `.env.example`), which Compose auto-loads from a root `.env` file. The compose service and the e2e test harness share the same `postgres:18-alpine` image.
+
 ### Migrations
 
 Schema changes are expressed as committed SQL migration files under `server/db/migrations`:
