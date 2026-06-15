@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "osi-time-tracker",
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "^4.4.8",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
+  "author": "Rafal Osieka",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RafalOsieka/osi.time.tracker.git"
+  },
+  "license": "MIT",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^11.6.0",
+      "onFail": "download"
+    }
+  }
+}
