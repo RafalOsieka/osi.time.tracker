@@ -1,25 +1,46 @@
+<!-- FOR AI AGENTS - Human readability is a side effect, not a goal -->
+<!-- Managed by agent: keep sections concise; document only what exists. Mark not-yet-built items as Planned. -->
+<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, app/, docs/, openspec/ -->
+
 # AGENTS.md
 
 **OSI Time Tracker** (`osi.time.tracker`) is a self-hosted, open-source personal time tracking web application for IT specialists working across multiple clients and projects. It supports a structured Client → Project → Task hierarchy, a live timer and manual time entry, and on-demand push of time entries to external issue trackers (Redmine, OpenProject) via a dual-mode adapter model.
 
-## Architecture
+> **Status:** Early scaffolding. The repo is a fresh Nuxt 4 + PrimeVue starter. Most domain features below are **planned** (see `docs/wbs.md`), not yet implemented. Document only what exists; mark future work as Planned.
 
-- **Frontend / Backend:** Nuxt 4 (Vue 3, TypeScript) — server routes serve as the API layer; no separate backend service in MVP.
-- **Database:** PostgreSQL — all user data is stored server-side; each user's data is strictly isolated.
-- **Adapter model:** Remote integrations are implemented as adapters (one per system type). Each adapter can run in **backend-side** mode (server-to-server, for public systems) or **client-side** mode (browser-to-remote, for VPN-protected systems). The adapter interface is identical in both modes.
-- **PWA:** Nuxt PWA module provides a service worker and offline cache; timer state is persisted locally.
-- **Deployment:** Docker Compose — the full stack (app + database) is started with `docker compose up`.
+## Commands
+> Package manager: **pnpm** (`^11.6.0`, see `devEngines` in `package.json`). Source: `package.json` scripts.
+
+| Task | Command | Notes |
+|------|---------|-------|
+| Install deps | `pnpm install` | runs `nuxt prepare` via `postinstall` |
+| Dev server | `pnpm dev` | serves on `http://localhost:3000` |
+| Build | `pnpm build` | `nuxt build` |
+| Static generate | `pnpm generate` | `nuxt generate` |
+| Preview prod build | `pnpm preview` | `nuxt preview` |
+
+> No lint, typecheck, or test scripts are configured yet. Do not claim tests pass — there is no test runner. Add tooling (and document it here) before relying on it.
 
 ## Technology
 
-| Component     | Technology                                      |
-| ------------- | ----------------------------------------------- |
-| Frontend      | Nuxt 4, Vue 3, TypeScript                       |
-| UI Library    | PrimeVue (+ optional Tailwind CSS)              |
-| Backend / API | Nuxt 4 server routes                            |
-| Database      | PostgreSQL                                      |
-| Deployment    | Docker / Docker Compose                         |
-| PWA           | Nuxt PWA module (service worker, offline cache) |
+| Component     | Technology                              | State     |
+| ------------- | --------------------------------------- | --------- |
+| Frontend / API| Nuxt 4, Vue 3, TypeScript               | present   |
+| UI Library    | PrimeVue 4 (`@primevue/nuxt-module`, Aura preset) | present   |
+| Database      | PostgreSQL                              | planned   |
+| Deployment    | Docker / Docker Compose                 | planned   |
+| Styling       | Tailwind CSS (optional)                 | planned   |
+| PWA           | Nuxt PWA module (service worker, offline cache) | planned   |
+
+> "present" = installed/configured in `package.json` + `nuxt.config.ts`. "planned" = target architecture from `docs/vision.md`, not yet added.
+
+## Architecture (target)
+
+- **Frontend / Backend:** Nuxt 4 — server routes serve as the API layer; no separate backend service in MVP.
+- **Database:** PostgreSQL — all user data is stored server-side; each user's data is strictly isolated.
+- **Adapter model:** Remote integrations are adapters (one per system type). Each adapter runs in **backend-side** mode (server-to-server, public systems) or **client-side** mode (browser-to-remote, VPN-protected systems). The interface is identical in both modes.
+- **PWA:** Nuxt PWA module provides a service worker and offline cache; timer state persisted locally.
+- **Deployment:** Docker Compose — full stack (app + database) started with `docker compose up`.
 
 ## Domain
 
@@ -44,17 +65,23 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 
 ## Repository Structure
 
-| Path                   | Contents                                              |
-| ---------------------- | ----------------------------------------------------- |
-| `docs/vision.md`       | System overview, domain model, roles, lifecycle, NFRs |
-| `docs/wbs.md`          | Feature list with priorities                          |
-| `openspec/specs/`      | Behavioral specs – source of truth for implementation |
-| `openspec/changes/`    | Active and archived change proposals                  |
-| `openspec/config.yaml` | OpenSpec workflow rules                               |
+| Path                   | Contents                                              | State   |
+| ---------------------- | ----------------------------------------------------- | ------- |
+| `app/`                 | Nuxt app source (`app.vue` entry)                     | present |
+| `nuxt.config.ts`       | Nuxt + PrimeVue configuration                         | present |
+| `public/`              | Static assets served as-is                            | present |
+| `docs/vision.md`       | System overview, domain model, roles, lifecycle, NFRs | present |
+| `docs/wbs.md`          | Feature list with priorities                          | present |
+| `openspec/config.yaml` | OpenSpec workflow rules                               | present |
+| `openspec/specs/`      | Behavioral specs – source of truth for implementation | planned |
+| `openspec/changes/`    | Active and archived change proposals                  | planned |
+
+> OpenSpec project context lives in this file; `openspec/config.yaml` holds only workflow rules (spec/proposal/design/tasks/verify).
 
 ## Current Phase
 
 - [x] Technical business specification + OpenSpec initialization.
+- [x] Nuxt 4 + PrimeVue scaffolding.
 - [ ] MVP.
 
 ## Language
