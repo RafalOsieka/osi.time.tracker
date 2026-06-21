@@ -34,6 +34,8 @@
 
 > Database access: all server-side DB access goes through the shared lazy `db` client exported from `server/db/index.ts` (backed by `postgres.js` + Drizzle); never instantiate raw drivers directly. `DATABASE_URL` is also exposed server-only via `runtimeConfig.databaseUrl` in `nuxt.config.ts`.
 
+> Authentication: server-side session auth via **`nuxt-auth-utils`** — a sealed, `HttpOnly`, `SameSite=Strict` cookie (`Secure` in production) with a fixed lifetime (`runtimeConfig.session.maxAge`, 1 week). Requires `NUXT_SESSION_PASSWORD` (32+ chars, see `.env.example`); production startup fails fast if it is missing. Login/logout/session endpoints live under `server/api/auth/*`; protect private endpoints with the `requireAuth` helper (`server/utils/auth.ts`, wrapping `requireUserSession`). **`nuxt-security`** adds CSRF protection (mutating methods need the `csrf-token` header — use the `$csrfFetch`/`useCsrfFetch` helpers client-side) plus baseline security headers (incl. CSP). The client reads login state via `useUserSession` (wrapped by `app/composables/useAuth.ts`).
+
 ## Technology
 
 | Component     | Technology                              | State     |
@@ -42,6 +44,7 @@
 | UI Library    | PrimeVue 4 (`@primevue/nuxt-module`, Aura preset) | present   |
 | Testing       | Vitest 4, `@nuxt/test-utils`, `@vue/test-utils`, happy-dom, playwright-core | present   |
 | Database      | PostgreSQL via Drizzle ORM (`drizzle-orm`, `postgres`, `drizzle-kit`, `tsx`) | present   |
+| Auth / Security | `nuxt-auth-utils` (session cookie) + `nuxt-security` (CSRF, CSP/headers) | present   |
 | Lint / Format | ESLint 9 (`@nuxt/eslint`, `eslint-config-prettier`) + Prettier 3 | present   |
 | Deployment    | Docker / Docker Compose                 | planned   |
 | Styling       | Tailwind CSS (optional)                 | planned   |
@@ -89,7 +92,7 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 | `.prettierrc.json` | Prettier formatting rules |
 | `.prettierignore` | Paths excluded from Prettier |
 | `drizzle.config.ts` | Drizzle Kit config (schema `server/db/schema/*.ts`, out `server/db/migrations`) |
-| `.env.example` | Sample env (`DATABASE_URL`) |
+| `.env.example` | Sample env (`DATABASE_URL`, `NUXT_SESSION_PASSWORD`) |
 | `server/db/` | Drizzle client (`client.ts`, `index.ts`) + migrator (`migrate.ts`) |
 | `server/db/schema/` | Drizzle table schemas (`*.ts`) |
 | `server/db/migrations/` | Generated SQL migrations |

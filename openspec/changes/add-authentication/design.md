@@ -45,8 +45,8 @@ Use `runtimeConfig.session.maxAge` for a fixed lifetime. Sliding renewal is not 
 - **Module interplay (auth-utils + security) misconfiguration** → Mitigation: add tests asserting 401 on unauthenticated protected routes and rejection of missing-CSRF mutations.
 - **PWA/offline (WBS 8.1) cannot refresh server sessions offline** → Mitigation: out of scope here; note as a constraint for the offline design.
 
-## Open Questions
+## Open Questions (resolved)
 
-- Exact `maxAge` value (default proposal ~1 week).
-- `SameSite=Lax` vs `Strict` for target UX.
-- Whether to enable `nuxt-security` rate limiting now or defer to a dedicated NFR change.
+- `[RESOLVED]` Exact `maxAge` value → **1 week** (`60 * 60 * 24 * 7` seconds), set in `runtimeConfig.session.maxAge`.
+- `[RESOLVED]` `SameSite` choice → **`Strict`** (chosen over `Lax` for stronger CSRF defense-in-depth), set on the session cookie.
+- `[RESOLVED]` `nuxt-security` rate limiting → **deferred** to a dedicated NFR change; this change enables CSRF + baseline headers/CSP only.
