@@ -1,6 +1,7 @@
 /** Shape of the authenticated user exposed to the UI by the session. */
 export interface SessionUser {
-  name?: string | null;
+  email?: string | null;
+  displayName?: string | null;
 }
 
 /**
@@ -12,6 +13,6 @@ export function authStatusLabel(loggedIn: boolean, user?: SessionUser | null): s
   if (!loggedIn) {
     return 'You are not logged in';
   }
-  const name = user?.name?.trim();
+  const name = user?.displayName?.trim() || user?.email?.trim();
   return name ? `Logged in as ${name}` : 'Logged in';
 }

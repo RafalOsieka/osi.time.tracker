@@ -11,6 +11,16 @@ export default defineNuxtConfig({
   ],
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
+  routeRules: {
+    '/api/auth/login': {
+      security: {
+        rateLimiter: {
+          tokensPerInterval: 5,
+          interval: 60000, // 1 minute
+        },
+      },
+    },
+  },
   runtimeConfig: {
     // Server-only. Override at runtime with NUXT_DATABASE_URL or DATABASE_URL.
     databaseUrl: process.env.DATABASE_URL ?? '',

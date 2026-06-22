@@ -1,5 +1,6 @@
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import postgres, { type Sql } from 'postgres';
+import * as schema from './schema';
 
 /**
  * Resolves the database connection string from the environment, failing fast
@@ -25,9 +26,9 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
 export function createDatabaseClient(
   connectionString: string = resolveDatabaseUrl(),
   options?: { max?: number },
-): { db: PostgresJsDatabase; sql: Sql } {
+): { db: PostgresJsDatabase<typeof schema>; sql: Sql } {
   const sql = postgres(connectionString, { max: options?.max ?? 10 });
-  const db = drizzle(sql);
+  const db = drizzle(sql, { schema });
 
   return { db, sql };
 }

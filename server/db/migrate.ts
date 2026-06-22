@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createRequire } from 'node:module';
 import { migrate } from 'drizzle-orm/postgres-js/migrator';
 import { createDatabaseClient, resolveDatabaseUrl } from './client';
 
@@ -21,6 +22,39 @@ export async function runMigrations(
 
   try {
     await migrate(db, { migrationsFolder });
+
+    // Idempotent seeding of bootstrap user
+    const bootstrapEmail = process.env.BOOTSTRAP_USER_EMAIL?.trim().toLowerCase();
+    const bootstrapPassword = process.env.BOOTSTRAP_USER_PASSWORD;
+
+    if (bootstrapEmail && bootstrapPassword) {
+      const { users } = await import('./schema/users');
+      const { eq } = await import('drizzle-orm');
+
+      const existing = await db
+        .select()
+        .from(users)
+        .where(eq(users.email, bootstrapEmail))
+        .limit(1);
+
+      if (existing.length === 0) {
+        const requireModule = createRequire(import.meta.url);
+        const hashMjsPath =
+          'file:///' + requireModule.resolve('@adonisjs/hash').replace(/\\/g, '/');
+        const scryptMjsPath =
+          'file:///' + requireModule.resolve('@adonisjs/hash/drivers/scrypt').replace(/\\/g, '/');
+        const { Hash } = await import(hashMjsPath);
+        const { Scrypt } = await import(scryptMjsPath);
+        const hasher = new Hash(new Scrypt({}));
+
+        const passwordHash = await hasher.make(bootstrapPassword);
+
+        await db.insert(users).values({
+          email: bootstrapEmail,
+          passwordHash,
+        });
+      }
+    }
   } finally {
     await sql.end({ timeout: 5 });
   }

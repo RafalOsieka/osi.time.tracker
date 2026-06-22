@@ -4,7 +4,7 @@ definePageMeta({ layout: 'auth', public: true });
 const { login } = useAuth();
 const route = useRoute();
 
-const username = ref('');
+const email = ref('');
 const password = ref('');
 const error = ref('');
 const pending = ref(false);
@@ -13,8 +13,8 @@ async function onLogin() {
   error.value = '';
   pending.value = true;
   try {
-    await login({ username: username.value, password: password.value });
-    username.value = '';
+    await login({ email: email.value, password: password.value });
+    email.value = '';
     password.value = '';
     const target = sanitizeRedirect(route.query.redirect);
     await navigateTo(target);
@@ -28,12 +28,7 @@ async function onLogin() {
 
 <template>
   <form data-testid="login-form" style="display: grid; gap: 0.75rem" @submit.prevent="onLogin">
-    <InputText
-      v-model="username"
-      data-testid="username"
-      placeholder="Username"
-      autocomplete="username"
-    />
+    <InputText v-model="email" data-testid="email" placeholder="Email" autocomplete="email" />
     <Password
       v-model="password"
       data-testid="password"

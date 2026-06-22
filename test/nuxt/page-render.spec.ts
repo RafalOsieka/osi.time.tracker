@@ -54,7 +54,7 @@ describe('preserved test hooks', () => {
       },
     });
     expect(wrapper.find('[data-testid="login-form"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="username"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="email"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="password"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="login-button"]').exists()).toBe(true);
   });

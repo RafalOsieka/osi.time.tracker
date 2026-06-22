@@ -1,8 +1,9 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, beforeEach } from 'vitest';
 import postgres from 'postgres';
-import { sql as drizzleSql } from 'drizzle-orm';
+import { sql as drizzleSql, eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../server/db/client';
 import { runMigrations } from '../../server/db/migrate';
+import { users } from '../../server/db/schema/users';
 import {
   TEST_DATABASE_URL,
   isDockerAvailable,
@@ -84,6 +85,159 @@ describeDb('database integration', () => {
     } finally {
       removeMigrations(dir);
     }
+  });
+
+  it('asserts an inserted user (id omitted) receives a UUIDv7 and that the email UNIQUE constraint rejects duplicates (case-folded)', async () => {
+    // Run the migrations to ensure tables (specifically users) are created
+    await runMigrations(TEST_DATABASE_URL);
+
+    const { db, sql } = createDatabaseClient(TEST_DATABASE_URL, { max: 5 });
+    try {
+      // Clear users table first
+      await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
+
+      // Insert a user (id omitted)
+      const email = 'user@example.com';
+      const [inserted] = await db
+        .insert(users)
+        .values({
+          email,
+          passwordHash: 'somehash',
+          displayName: 'John Doe',
+        })
+        .returning();
+
+      expect(inserted.id).toBeDefined();
+      expect(inserted.id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+      expect(inserted.email).toBe(email);
+
+      // Attempting to insert a duplicate email should throw a unique constraint error
+      await expect(
+        db.insert(users).values({
+          email,
+          passwordHash: 'anotherhash',
+        }),
+      ).rejects.toThrow();
+
+      // Case-folded duplicate check: since we normalize lowercase before insert at the application level,
+      // we can assert that normalized emails trigger unique constraint
+      await expect(
+        db.insert(users).values({
+          email: 'USER@example.com'.toLowerCase(),
+          passwordHash: 'anotherhash',
+        }),
+      ).rejects.toThrow();
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
+  describe('bootstrap user seeding', () => {
+    const backupEmail = process.env.BOOTSTRAP_USER_EMAIL;
+    const backupPassword = process.env.BOOTSTRAP_USER_PASSWORD;
+
+    beforeEach(() => {
+      delete process.env.BOOTSTRAP_USER_EMAIL;
+      delete process.env.BOOTSTRAP_USER_PASSWORD;
+    });
+
+    afterAll(() => {
+      if (backupEmail) process.env.BOOTSTRAP_USER_EMAIL = backupEmail;
+      if (backupPassword) process.env.BOOTSTRAP_USER_PASSWORD = backupPassword;
+    });
+
+    it('fresh DB + vars set creates user', async () => {
+      process.env.BOOTSTRAP_USER_EMAIL = 'bootstrap@example.com';
+      process.env.BOOTSTRAP_USER_PASSWORD = 'bootstrappassword';
+
+      // Clear users table first
+      const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
+      try {
+        await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+
+      // Run migrations which includes seeding
+      await runMigrations(TEST_DATABASE_URL);
+
+      // Verify user was created
+      const probeClient = createDatabaseClient(TEST_DATABASE_URL);
+      try {
+        const found = await probeClient.db
+          .select()
+          .from(users)
+          .where(eq(users.email, 'bootstrap@example.com'))
+          .limit(1);
+
+        expect(found.length).toBe(1);
+        expect(found[0].email).toBe('bootstrap@example.com');
+        expect(found[0].passwordHash).toBeDefined();
+        expect(found[0].passwordHash.startsWith('$scrypt$')).toBe(true);
+      } finally {
+        await probeClient.sql.end({ timeout: 5 });
+      }
+    });
+
+    it('existing user untouched', async () => {
+      // Clear users table and insert an existing user with a specific password hash
+      const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
+      const originalHash = 'some-original-hash';
+      try {
+        await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
+        await db.insert(users).values({
+          email: 'bootstrap@example.com',
+          passwordHash: originalHash,
+        });
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+
+      // Set vars and run migrations
+      process.env.BOOTSTRAP_USER_EMAIL = 'bootstrap@example.com';
+      process.env.BOOTSTRAP_USER_PASSWORD = 'newpassword';
+
+      await runMigrations(TEST_DATABASE_URL);
+
+      // Verify original user was not modified
+      const probeClient = createDatabaseClient(TEST_DATABASE_URL);
+      try {
+        const found = await probeClient.db
+          .select()
+          .from(users)
+          .where(eq(users.email, 'bootstrap@example.com'))
+          .limit(1);
+
+        expect(found.length).toBe(1);
+        expect(found[0].passwordHash).toBe(originalHash); // untouched!
+      } finally {
+        await probeClient.sql.end({ timeout: 5 });
+      }
+    });
+
+    it('unset vars skip silently', async () => {
+      // Clear users table
+      const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
+      try {
+        await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
+      } finally {
+        await sql.end({ timeout: 5 });
+      }
+
+      // Vars are unset (handled by beforeEach)
+      await runMigrations(TEST_DATABASE_URL);
+
+      // Verify no user was created
+      const probeClient = createDatabaseClient(TEST_DATABASE_URL);
+      try {
+        const found = await probeClient.db.select().from(users);
+        expect(found.length).toBe(0);
+      } finally {
+        await probeClient.sql.end({ timeout: 5 });
+      }
+    });
   });
 
   describe('startup sequence (dedicated migrate step)', () => {

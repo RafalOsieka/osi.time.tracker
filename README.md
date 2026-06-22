@@ -78,6 +78,8 @@ Check out the [deployment documentation](https://nuxt.com/docs/getting-started/d
 
 The application uses [Drizzle ORM](https://orm.drizzle.team/) with the `postgres` driver against a PostgreSQL database.
 
+> **Requirement:** Requires **PostgreSQL >= 18** (for native `uuidv7()` support used for primary keys).
+
 ### Configuration
 
 Set the `DATABASE_URL` environment variable to a PostgreSQL connection string (see `.env.example`):
