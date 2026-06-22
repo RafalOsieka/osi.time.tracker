@@ -1,0 +1,24 @@
+{
+  "home": {
+    "welcome": "Witaj",
+    "statusLoggedOut": "Nie jesteś zalogowany",
+    "statusLoggedInAs": "Zalogowano jako {name}",
+    "statusLoggedIn": "Zalogowano"
+  },
+  "auth": {
+    "emailLabel": "E-mail",
+    "passwordLabel": "Hasło",
+    "loginButton": "Zaloguj się",
+    "loginFailed": "Logowanie nie powiodło się. Sprawdź swoje dane."
+  },
+  "layout": {
+    "title": "OSI Time Tracker",
+    "logoutButton": "Wyloguj się"
+  },
+  "errors": {
+    "auth": {
+      "credentialsRequired": "E-mail i hasło są wymagane.",
+      "invalidCredentials": "Nieprawidłowe dane logowania."
+    }
+  }
+}

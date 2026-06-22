@@ -113,6 +113,26 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 - [x] MVP - Work In Progress.
 - [ ] MVP - Finished.
 
+## Internationalization (i18n)
+
+**Standard**: `@nuxtjs/i18n` (vue-i18n), `strategy: 'no_prefix'`, two locales from day one: `en` (default) and `pl` (see `openspec/specs/internationalization/spec.md` and `docs/wbs.md` 8.4).
+
+**Locale resolution** (precedence): cookie `i18n_locale` → `Accept-Language` header → default `en`. Cookie is `SameSite=Lax`, `Secure` in production, not `HttpOnly`. No `locale` column on the user yet — deferred to User Settings (WBS 7.4).
+
+**Catalog layout**: `i18n/locales/{en,pl}.json`, nested namespaces:
+- `auth.*` — login page strings
+- `home.*` — home page strings
+- `layout.*` — default layout strings (title, logout button)
+- `errors.*` — server-returned message keys (see server contract below)
+
+**Server `messageKey` contract**: API error responses carry `{ messageKey: string, params?: Record<string, unknown> }` (type: `server/types/api-message.ts`). The server never returns rendered locale-specific text; the client translates via `t(messageKey, params)`. Server keys live under the reserved `errors.*` namespace — renames are a deliberate contract change. Use `extractMessageKey(err)` (`app/utils/extractMessageKey.ts`) to safely extract the key from a caught error.
+
+**Lint gate**: `@intlify/eslint-plugin-vue-i18n` in `eslint.config.mjs` (before `eslint-config-prettier`), `no-raw-text` at `error` severity. `pnpm lint` fails on raw literal strings in component templates. Heading elements (`h1`–`h6`) are excluded by the plugin's default `ignoreNodes`. Run `pnpm lint` (must pass; justify disables with comments).
+
+**No hardcoded strings policy**: All user-facing UI strings must come from `i18n/locales/`. Use `t('key')` in `<script setup>` (import `useI18n` from `vue-i18n` explicitly) and `{{ t('key') }}` in templates. Catalog parity between `en.json` and `pl.json` is enforced by `test/unit/i18n-catalog-parity.spec.ts`.
+
+Last verified: 2026-06-22 (added i18n infrastructure, en+pl catalogs, lint gate).
+
 ## Accessibility
 
 **Standard**: WCAG 2.1 Level AA (see `openspec/specs/accessibility/spec.md` and `docs/wbs.md` 8.5).

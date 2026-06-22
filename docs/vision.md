@@ -209,14 +209,14 @@ Each supported remote system is implemented as an **adapter** (plugin). The adap
 
 ## Non-Functional Highlights
 
-| Concern                  | Decision                                                                                  |
-| ------------------------ | ----------------------------------------------------------------------------------------- |
-| **PWA / Offline**        | Timer state persisted locally; app installable on desktop and mobile.                     |
-| **GDPR**                 | Right to erasure (account + all data deletion), data export (JSON/CSV).                   |
-| **Security (OWASP)**     | OWASP Top 10 baseline: input validation, rate limiting, CSP headers, secure cookies.      |
-| **Internationalization** | i18n-ready from day one; English as default; additional locales addable without refactor. |
-| **Accessibility**        | WCAG 2.1 AA target (enforced by `openspec/specs/accessibility/spec.md`). |
-| **Deployment**           | Self-hosted via Docker Compose; no SaaS dependency.                                       |
+| Concern                  | Decision                                                                                                                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PWA / Offline**        | Timer state persisted locally; app installable on desktop and mobile.                                                                                                                                               |
+| **GDPR**                 | Right to erasure (account + all data deletion), data export (JSON/CSV).                                                                                                                                             |
+| **Security (OWASP)**     | OWASP Top 10 baseline: input validation, rate limiting, CSP headers, secure cookies.                                                                                                                                |
+| **Internationalization** | i18n-ready from day one; `en` (default) + `pl` shipped; additional locales addable without refactor. Locale resolved via cookie → `Accept-Language` → `en`; persisted in cookie only until User Settings (WBS 7.4). |
+| **Accessibility**        | WCAG 2.1 AA target (enforced by `openspec/specs/accessibility/spec.md`).                                                                                                                                            |
+| **Deployment**           | Self-hosted via Docker Compose; no SaaS dependency.                                                                                                                                                                 |
 
 ---
 

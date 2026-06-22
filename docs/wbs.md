@@ -137,28 +137,28 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## 7. User Settings & Preferences
 
-| #   | Feature                          | Priority | Notes                                                       |
-| --- | -------------------------------- | -------- | ----------------------------------------------------------- |
-| 7.1 | Timezone selection               | 🔴       | All times stored in UTC; displayed in user's local timezone |
-| 7.2 | Week start day (Monday / Sunday) | 🔴       | Affects weekly timesheet and report grouping                |
-| 7.3 | Default rounding rule            | 🟡       | Applied globally unless overridden per remote target        |
-| 7.4 | Language / locale selection      | 🟡       | UI language; English default; i18n-ready from day one       |
-| 7.5 | Date and time format preferences | 🟢       |                                                             |
-| 7.6 | Theme (light / dark)             | 🟢       |                                                             |
+| #   | Feature                          | Priority | Notes                                                                                           |
+| --- | -------------------------------- | -------- | ----------------------------------------------------------------------------------------------- |
+| 7.1 | Timezone selection               | 🔴       | All times stored in UTC; displayed in user's local timezone                                     |
+| 7.2 | Week start day (Monday / Sunday) | 🔴       | Affects weekly timesheet and report grouping                                                    |
+| 7.3 | Default rounding rule            | 🟡       | Applied globally unless overridden per remote target                                            |
+| 7.4 | Language / locale selection      | 🟡       | UI language picker + persisted `locale` user column; cookie-only persistence in place since 8.4 |
+| 7.5 | Date and time format preferences | 🟢       |                                                                                                 |
+| 7.6 | Theme (light / dark)             | 🟢       |                                                                                                 |
 
 ---
 
 ## 8. Non-Functional Requirements & Crosscutting Concerns
 
-| #   | Requirement                      | Notes                                                                                                   |
-| --- | -------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| 8.1 | **PWA / Offline support**        | App installable on desktop and mobile; timer state persisted locally via service worker / local storage |
-| 8.2 | **GDPR compliance**              | Right to erasure (full account + data deletion), data export (JSON/CSV), no third-party data sharing    |
-| 8.3 | **Security (OWASP Top 10)**      | Input validation, rate limiting, CSP headers, secure session cookies, HTTPS enforced                    |
-| 8.4 | **Internationalization (i18n)**  | i18n-ready from day one; English as default; additional locales addable without code refactor           |
-| 8.5 | **Accessibility (WCAG 2.1 AA)**  | Keyboard navigation, screen reader support, sufficient color contrast (see `openspec/specs/accessibility/spec.md`) |
-| 8.6 | **Docker deployment**            | Full stack deployable via `docker compose up`; no external SaaS dependencies                            |
-| 8.7 | **Data isolation between users** | All queries scoped to the authenticated user; no cross-user data leakage possible                       |
-| 8.8 | **Audit / data integrity**       | TimeEntry records are immutable after push (push status + remote ID stored); no silent data loss        |
-| 8.9 | **Responsive design**            | Usable on desktop and tablet; mobile-friendly for quick timer start/stop                                |
-| 8.10 | **Accessibility runtime testing (axe-core)** 🟢 | Runtime a11y test gate via `vitest-axe` in the `nuxt` test project; deferred from `add-accessibility-standard` change |
+| #    | Requirement                                     | Notes                                                                                                                                                                                                                |
+| ---- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 8.1  | **PWA / Offline support**                       | App installable on desktop and mobile; timer state persisted locally via service worker / local storage                                                                                                              |
+| 8.2  | **GDPR compliance**                             | Right to erasure (full account + data deletion), data export (JSON/CSV), no third-party data sharing                                                                                                                 |
+| 8.3  | **Security (OWASP Top 10)**                     | Input validation, rate limiting, CSP headers, secure session cookies, HTTPS enforced                                                                                                                                 |
+| 8.4  | **Internationalization (i18n)**                 | ✅ Implemented: `en`+`pl` day-one via `@nuxtjs/i18n`; cookie → `Accept-Language` → `en` resolution; `errors.*` messageKey contract; ESLint `no-raw-text` gate. Locale picker + user `locale` column deferred to 7.4. |
+| 8.5  | **Accessibility (WCAG 2.1 AA)**                 | Keyboard navigation, screen reader support, sufficient color contrast (see `openspec/specs/accessibility/spec.md`)                                                                                                   |
+| 8.6  | **Docker deployment**                           | Full stack deployable via `docker compose up`; no external SaaS dependencies                                                                                                                                         |
+| 8.7  | **Data isolation between users**                | All queries scoped to the authenticated user; no cross-user data leakage possible                                                                                                                                    |
+| 8.8  | **Audit / data integrity**                      | TimeEntry records are immutable after push (push status + remote ID stored); no silent data loss                                                                                                                     |
+| 8.9  | **Responsive design**                           | Usable on desktop and tablet; mobile-friendly for quick timer start/stop                                                                                                                                             |
+| 8.10 | **Accessibility runtime testing (axe-core)** 🟢 | Runtime a11y test gate via `vitest-axe` in the `nuxt` test project; deferred from `add-accessibility-standard` change                                                                                                |

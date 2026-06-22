@@ -107,7 +107,7 @@ describeAuth('authentication integration', async () => {
       user: { email: 'alice@example.com' },
     });
 
-    // Error path: wrong password is rejected with a 401
+    // Error path: wrong password is rejected with a 401 and returns a messageKey
     const wrongPassJar = new CookieJar();
     const wrongPassToken = await primeCsrf(wrongPassJar);
     const wrongPass = await fetch(url('/api/auth/login'), {
@@ -120,6 +120,9 @@ describeAuth('authentication integration', async () => {
       body: JSON.stringify({ email: 'alice@example.com', password: 'wrongpassword' }),
     });
     expect(wrongPass.status).toBe(401);
+    const wrongPassBody = await wrongPass.json();
+    expect(wrongPassBody?.data?.messageKey).toBe('errors.auth.invalidCredentials');
+    expect(JSON.stringify(wrongPassBody)).not.toMatch(/Invalid credentials/);
 
     // Error path: unknown email is rejected indistinguishably with a 401
     const unknownJar = new CookieJar();
@@ -134,8 +137,10 @@ describeAuth('authentication integration', async () => {
       body: JSON.stringify({ email: 'unknown@example.com', password: 'secret' }),
     });
     expect(unknown.status).toBe(401);
+    const unknownBody = await unknown.json();
+    expect(unknownBody?.data?.messageKey).toBe('errors.auth.invalidCredentials');
 
-    // Error path: missing password is rejected with a 400.
+    // Error path: missing password is rejected with a 400 and returns a messageKey
     const jar2 = new CookieJar();
     const token2 = await primeCsrf(jar2);
     const bad = await fetch(url('/api/auth/login'), {
@@ -148,6 +153,9 @@ describeAuth('authentication integration', async () => {
       body: JSON.stringify({ email: 'alice@example.com' }),
     });
     expect(bad.status).toBe(400);
+    const badBody = await bad.json();
+    expect(badBody?.data?.messageKey).toBe('errors.auth.credentialsRequired');
+    expect(JSON.stringify(badBody)).not.toMatch(/Email and password are required/);
   });
 
   it('3.2 logout clears the session; subsequent request is unauthenticated', async () => {

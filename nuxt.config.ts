@@ -8,7 +8,27 @@ export default defineNuxtConfig({
     '@nuxt/eslint',
     'nuxt-auth-utils',
     'nuxt-security',
+    '@nuxtjs/i18n',
   ],
+  i18n: {
+    strategy: 'no_prefix',
+    defaultLocale: 'en',
+    fallbackLocale: 'en',
+    locales: [
+      { code: 'en', language: 'en-US', file: 'en.json' },
+      { code: 'pl', language: 'pl-PL', file: 'pl.json' },
+    ],
+    lazy: true,
+    langDir: '../i18n/locales',
+    detectBrowserLanguage: {
+      useCookie: true,
+      cookieKey: 'i18n_locale',
+      cookieSecure: process.env.NODE_ENV === 'production',
+      cookieCrossOrigin: false,
+      alwaysRedirect: false,
+      redirectOn: 'root',
+    },
+  },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   routeRules: {

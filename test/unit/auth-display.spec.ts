@@ -1,25 +1,32 @@
 import { describe, expect, it } from 'vitest';
-import { authStatusLabel } from '../../app/utils/authDisplay';
+import { authStatusKey } from '../../app/utils/authDisplay';
 
-describe('authStatusLabel', () => {
+describe('authStatusKey', () => {
   it('reports logged-out state', () => {
-    expect(authStatusLabel(false)).toBe('You are not logged in');
-    expect(authStatusLabel(false, { email: 'ignored@example.com' })).toBe('You are not logged in');
+    expect(authStatusKey(false)).toEqual({ key: 'home.statusLoggedOut' });
+    expect(authStatusKey(false, { email: 'ignored@example.com' })).toEqual({
+      key: 'home.statusLoggedOut',
+    });
   });
 
   it('greets the user by displayName or email when logged in', () => {
-    expect(authStatusLabel(true, { displayName: 'alice', email: 'alice@example.com' })).toBe(
-      'Logged in as alice',
-    );
-    expect(authStatusLabel(true, { displayName: '  bob  ' })).toBe('Logged in as bob');
-    expect(authStatusLabel(true, { email: 'alice@example.com' })).toBe(
-      'Logged in as alice@example.com',
-    );
+    expect(authStatusKey(true, { displayName: 'alice', email: 'alice@example.com' })).toEqual({
+      key: 'home.statusLoggedInAs',
+      params: { name: 'alice' },
+    });
+    expect(authStatusKey(true, { displayName: '  bob  ' })).toEqual({
+      key: 'home.statusLoggedInAs',
+      params: { name: 'bob' },
+    });
+    expect(authStatusKey(true, { email: 'alice@example.com' })).toEqual({
+      key: 'home.statusLoggedInAs',
+      params: { name: 'alice@example.com' },
+    });
   });
 
   it('falls back to a generic label when the name and email are missing', () => {
-    expect(authStatusLabel(true)).toBe('Logged in');
-    expect(authStatusLabel(true, null)).toBe('Logged in');
-    expect(authStatusLabel(true, { displayName: '   ' })).toBe('Logged in');
+    expect(authStatusKey(true)).toEqual({ key: 'home.statusLoggedIn' });
+    expect(authStatusKey(true, null)).toEqual({ key: 'home.statusLoggedIn' });
+    expect(authStatusKey(true, { displayName: '   ' })).toEqual({ key: 'home.statusLoggedIn' });
   });
 });

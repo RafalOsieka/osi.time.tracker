@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+const { t } = useI18n();
 const { logout } = useAuth();
 
 const pending = ref(false);
@@ -25,14 +27,14 @@ async function onLogout() {
         border-bottom: 1px solid var(--p-content-border-color, #e5e7eb);
       "
     >
-      <strong>OSI Time Tracker</strong>
+      <strong>{{ t('layout.title') }}</strong>
 
       <!-- Reserved slot for future nav items and the running-timer indicator. -->
       <nav style="display: flex; gap: 1rem; flex: 1"></nav>
 
       <Button
         data-testid="logout-button"
-        label="Log out"
+        :label="t('layout.logoutButton')"
         severity="secondary"
         :loading="pending"
         @click="onLogout"

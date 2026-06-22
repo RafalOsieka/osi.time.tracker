@@ -1,4 +1,5 @@
 import { findUserByEmail, DUMMY_HASH } from '../../utils/users';
+import type { ApiMessage } from '../../types/api-message';
 
 /**
  * Login endpoint.
@@ -13,9 +14,11 @@ export default defineEventHandler(async (event) => {
   const password = typeof body?.password === 'string' ? body.password : '';
 
   if (!emailInput || !password) {
+    const message: ApiMessage = { messageKey: 'errors.auth.credentialsRequired' };
     throw createError({
       statusCode: 400,
-      statusMessage: 'Email and password are required.',
+      statusMessage: 'errors.auth.credentialsRequired',
+      data: message,
     });
   }
 
@@ -30,9 +33,11 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!user || !isPasswordValid) {
+    const message: ApiMessage = { messageKey: 'errors.auth.invalidCredentials' };
     throw createError({
       statusCode: 401,
-      statusMessage: 'Invalid credentials.',
+      statusMessage: 'errors.auth.invalidCredentials',
+      data: message,
     });
   }
 

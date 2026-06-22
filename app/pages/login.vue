@@ -1,6 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+import { extractMessageKey } from '~/utils/extractMessageKey';
+
 definePageMeta({ layout: 'auth', public: true });
 
+const { t } = useI18n();
 const { login } = useAuth();
 const route = useRoute();
 
@@ -18,8 +22,8 @@ async function onLogin() {
     password.value = '';
     const target = sanitizeRedirect(route.query.redirect);
     await navigateTo(target);
-  } catch {
-    error.value = 'Login failed. Please check your credentials.';
+  } catch (err) {
+    error.value = t(extractMessageKey(err));
   } finally {
     pending.value = false;
   }
@@ -28,7 +32,7 @@ async function onLogin() {
 
 <template>
   <form data-testid="login-form" style="display: grid; gap: 0.75rem" @submit.prevent="onLogin">
-    <label for="email">Email</label>
+    <label for="email">{{ t('auth.emailLabel') }}</label>
     <InputText
       id="email"
       v-model="email"
@@ -37,7 +41,7 @@ async function onLogin() {
       :aria-invalid="!!error"
       :aria-describedby="error ? 'login-error' : undefined"
     />
-    <label for="password">Password</label>
+    <label for="password">{{ t('auth.passwordLabel') }}</label>
     <Password
       v-model="password"
       input-id="password"
@@ -48,7 +52,12 @@ async function onLogin() {
       :aria-invalid="!!error"
       :aria-describedby="error ? 'login-error' : undefined"
     />
-    <Button type="submit" data-testid="login-button" label="Log in" :loading="pending" />
+    <Button
+      type="submit"
+      data-testid="login-button"
+      :label="t('auth.loginButton')"
+      :loading="pending"
+    />
     <small
       v-if="error"
       id="login-error"
