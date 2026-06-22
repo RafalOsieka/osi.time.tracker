@@ -21,8 +21,24 @@ services:
       retries: 5
     networks: [osi-time-tracker]
 
+  pgadmin:
+    image: dpage/pgadmin4:9.16
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:-admin}
+    ports:
+      - '${PGADMIN_PORT:-8080}:80'
+    volumes:
+      - pgadmin-osi-time-tracker:/var/lib/pgadmin
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [osi-time-tracker]
+
 volumes:
   pg-osi-time-tracker:
+  pgadmin-osi-time-tracker:
 
 networks:
   osi-time-tracker:
