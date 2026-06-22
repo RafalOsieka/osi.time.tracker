@@ -215,7 +215,7 @@ Each supported remote system is implemented as an **adapter** (plugin). The adap
 | **GDPR**                 | Right to erasure (account + all data deletion), data export (JSON/CSV).                   |
 | **Security (OWASP)**     | OWASP Top 10 baseline: input validation, rate limiting, CSP headers, secure cookies.      |
 | **Internationalization** | i18n-ready from day one; English as default; additional locales addable without refactor. |
-| **Accessibility**        | WCAG 2.1 AA target.                                                                       |
+| **Accessibility**        | WCAG 2.1 AA target (enforced by `openspec/specs/accessibility/spec.md`). |
 | **Deployment**           | Self-hosted via Docker Compose; no SaaS dependency.                                       |
 
 ---

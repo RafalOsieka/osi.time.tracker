@@ -1,6 +1,6 @@
 <!-- FOR AI AGENTS - Human readability is a side effect, not a goal -->
 <!-- Managed by agent: keep sections concise; document only what exists. Mark not-yet-built items as Planned. -->
-<!-- Last verified: 2026-06-15 against package.json, nuxt.config.ts, vitest.config.ts, drizzle.config.ts, eslint.config.mjs, .prettierrc.json, app/, server/, test/, docs/, openspec/ -->
+<!-- Last verified: 2026-06-22 against package.json, eslint.config.mjs, AGENTS.md, app/pages/login.vue, openspec/changes/add-accessibility-standard/ -->
 
 # AGENTS.md
 
@@ -112,6 +112,21 @@ Core hierarchy: **User → Client → Project → Task → TimeEntry**
 - [x] Technical business specification + OpenSpec initialization.
 - [x] MVP - Work In Progress.
 - [ ] MVP - Finished.
+
+## Accessibility
+
+**Standard**: WCAG 2.1 Level AA (see `openspec/specs/accessibility/spec.md` and `docs/wbs.md` 8.5).
+
+**Lint gate**: `eslint-plugin-vuejs-accessibility` flat/recommended (in `eslint.config.mjs`, before prettier).
+
+**Per-PR checklist**:
+- Every interactive control has associated visible label (no placeholder-only names).
+- Form errors announced via live region (`role="alert"`) + `aria-describedby`/`aria-invalid`.
+- Keyboard operable, visible focus, no traps.
+- AA contrast; state not conveyed by color alone.
+- Run `pnpm lint` (must pass; justify disables with comments).
+
+Last verified: 2026-06-22 (added a11y plugin + initial UI fixes).
 
 ## Language
 

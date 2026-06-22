@@ -28,17 +28,34 @@ async function onLogin() {
 
 <template>
   <form data-testid="login-form" style="display: grid; gap: 0.75rem" @submit.prevent="onLogin">
-    <InputText v-model="email" data-testid="email" placeholder="Email" autocomplete="email" />
+    <label for="email">Email</label>
+    <InputText
+      id="email"
+      v-model="email"
+      data-testid="email"
+      autocomplete="email"
+      :aria-invalid="!!error"
+      :aria-describedby="error ? 'login-error' : undefined"
+    />
+    <label for="password">Password</label>
     <Password
       v-model="password"
+      input-id="password"
       data-testid="password"
       :feedback="false"
       toggle-mask
-      placeholder="Password"
-      input-style="width: 100%"
+      :input-style="{ width: '100%' }"
+      :aria-invalid="!!error"
+      :aria-describedby="error ? 'login-error' : undefined"
     />
     <Button type="submit" data-testid="login-button" label="Log in" :loading="pending" />
-    <small v-if="error" data-testid="login-error" style="color: var(--p-red-500, #ef4444)">
+    <small
+      v-if="error"
+      id="login-error"
+      role="alert"
+      data-testid="login-error"
+      style="color: var(--p-red-500, #ef4444)"
+    >
       {{ error }}
     </small>
   </form>

@@ -156,8 +156,9 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 | 8.2 | **GDPR compliance**              | Right to erasure (full account + data deletion), data export (JSON/CSV), no third-party data sharing    |
 | 8.3 | **Security (OWASP Top 10)**      | Input validation, rate limiting, CSP headers, secure session cookies, HTTPS enforced                    |
 | 8.4 | **Internationalization (i18n)**  | i18n-ready from day one; English as default; additional locales addable without code refactor           |
-| 8.5 | **Accessibility (WCAG 2.1 AA)**  | Keyboard navigation, screen reader support, sufficient color contrast                                   |
+| 8.5 | **Accessibility (WCAG 2.1 AA)**  | Keyboard navigation, screen reader support, sufficient color contrast (see `openspec/specs/accessibility/spec.md`) |
 | 8.6 | **Docker deployment**            | Full stack deployable via `docker compose up`; no external SaaS dependencies                            |
 | 8.7 | **Data isolation between users** | All queries scoped to the authenticated user; no cross-user data leakage possible                       |
 | 8.8 | **Audit / data integrity**       | TimeEntry records are immutable after push (push status + remote ID stored); no silent data loss        |
 | 8.9 | **Responsive design**            | Usable on desktop and tablet; mobile-friendly for quick timer start/stop                                |
+| 8.10 | **Accessibility runtime testing (axe-core)** 🟢 | Runtime a11y test gate via `vitest-axe` in the `nuxt` test project; deferred from `add-accessibility-standard` change |
