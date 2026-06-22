@@ -1,7 +1,7 @@
 # authentication Specification
 
 ## Purpose
-TBD - created by archiving change add-authentication. Update Purpose after archive.
+Define how the application authenticates users and protects server-side resources. Authentication is based on a sealed, server-side session cookie issued via `nuxt-auth-utils`, with email/password login, timing-safe and non-enumerating credential verification, logout, fixed-lifetime sessions, and client-side login-state detection. It also covers protection of private endpoints, CSRF protection, baseline security headers, login rate limiting via `nuxt-security`, and an environment-variable bootstrap user so MVP login is usable before self-registration exists.
 ## Requirements
 ### Requirement: REQ-AUTH-001 Session-cookie authentication via nuxt-auth-utils
 The application SHALL authenticate users with a server-side session represented by a sealed cookie issued through `nuxt-auth-utils`. The session cookie MUST be `HttpOnly`, MUST be `Secure` in production, and MUST use `SameSite=Lax`. The cookie sealing password SHALL be provided via the `NUXT_SESSION_PASSWORD` environment variable (32+ characters), and startup SHALL fail fast if it is missing in production.

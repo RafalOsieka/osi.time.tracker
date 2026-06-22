@@ -1,7 +1,7 @@
 # frontend-pages Specification
 
 ## Purpose
-TBD - created by archiving change add-frontend-pages. Update Purpose after archive.
+Define the application's page shell, layouts, and routing behavior. It activates Nuxt's file-based router with a minimal `app.vue` shell, a public `/login` page on the `auth` layout, and an authenticated home page on the `default` layout (with a logout control). A single private-by-default global middleware protects every route — pages are private unless they declare `public: true` — resolving server-side using the session cookie without browser-only APIs. This guarantees no login flash, safe handling of the `?redirect` target (rejecting open-redirect attempts), and preserved accessible route-change announcements.
 ## Requirements
 ### Requirement: REQ-AUTH-006 File-based routing shell
 The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL render only `<NuxtRouteAnnouncer />` and `<NuxtLayout><NuxtPage /></NuxtLayout>`, delegating all page content to files under `app/pages/`.
