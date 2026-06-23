@@ -6,9 +6,6 @@ Define the application's page shell, layouts, and routing behavior. It activates
 ### Requirement: REQ-AUTH-006 File-based routing shell
 The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL render only `<NuxtRouteAnnouncer />` and `<NuxtLayout><NuxtPage /></NuxtLayout>`, delegating all page content to files under `app/pages/`.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: Router renders the matched page
 - **WHEN** a user navigates to a route that maps to a page under `app/pages/`
 - **THEN** the application SHALL render that page inside its resolved layout via `<NuxtPage />`
@@ -19,9 +16,6 @@ The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL ren
 
 ### Requirement: REQ-AUTH-007 Public login page on the auth layout
 The application SHALL expose a `/login` page that renders the login form within the `auth` layout and is publicly accessible (declares `definePageMeta({ layout: 'auth', public: true })`). The page SHALL preserve the `login-form`, `username`, `password`, `login-button`, and `login-error` test hooks.
-
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Unauthenticated visitor can view login
 - **WHEN** an unauthenticated visitor navigates to `/login`
@@ -38,9 +32,6 @@ The application SHALL expose a `/login` page that renders the login form within 
 ### Requirement: REQ-AUTH-008 Authenticated home page on the default layout
 The application SHALL expose a `/` page that renders an authenticated welcome placeholder (greeting plus the signed-in user) within the `default` layout, preserving the `auth-status` test hook.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: Authenticated user sees the welcome placeholder
 - **WHEN** an authenticated user navigates to `/`
 - **THEN** the home page SHALL render the greeting and signed-in user inside the `default` layout
@@ -51,9 +42,6 @@ The application SHALL expose a `/` page that renders an authenticated welcome pl
 
 ### Requirement: REQ-AUTH-009 Private-by-default navigation guard
 A single global middleware SHALL protect every route. A page is private unless it declares `public: true`. The guard SHALL run during SSR using the session cookie and SHALL NOT use browser-only APIs.
-
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Unauthenticated access to a private route redirects to login
 - **WHEN** an unauthenticated visitor navigates to a private route
@@ -74,9 +62,6 @@ A single global middleware SHALL protect every route. A page is private unless i
 ### Requirement: REQ-NFR-015 No login flash and accessible routing
 Route protection SHALL resolve server-side so that protected markup is never painted for unauthenticated users (no login flash). The guard MUST NOT reference `window`, `localStorage`, or other browser-only globals, and route-change announcements SHALL be preserved.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: No protected markup before redirect
 - **WHEN** an unauthenticated visitor requests a private route
 - **THEN** the redirect SHALL be resolved during SSR before any protected page markup is sent to the browser
@@ -84,4 +69,3 @@ Route protection SHALL resolve server-side so that protected markup is never pai
 #### Scenario: Guard runs without browser globals
 - **WHEN** the guard executes on the server
 - **THEN** it SHALL complete without referencing browser-only APIs
-

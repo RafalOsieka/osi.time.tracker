@@ -8,8 +8,6 @@ Define the project-wide accessibility standard (WCAG 2.1 AA) that every page and
 ### Requirement: REQ-NFR-016 Accessible names for interactive controls
 Every interactive control (inputs, buttons, links, toggles, selects) SHALL expose a programmatic accessible name. A visible `<label>` associated with its control (via `for`/`id` or wrapping) SHALL be preferred; an `aria-label`/`aria-labelledby` MAY be used only when a visible label is genuinely not feasible. A `placeholder` SHALL NOT be the sole source of a control's accessible name. Icon-only controls SHALL provide a text alternative.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Text input has an associated label
 - **WHEN** a form text input is rendered
@@ -22,8 +20,6 @@ Every interactive control (inputs, buttons, links, toggles, selects) SHALL expos
 ### Requirement: REQ-NFR-017 Form errors are announced and associated
 Form validation and submission errors SHALL be programmatically associated with their field via `aria-describedby` and SHALL be announced to assistive technology through a live region (`role="alert"` or `aria-live`). Error state SHALL NOT be conveyed by color alone.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Submission error is announced
 - **WHEN** a form submission fails and an error message is shown
@@ -36,8 +32,6 @@ Form validation and submission errors SHALL be programmatically associated with 
 ### Requirement: REQ-NFR-018 Keyboard operability and visible focus
 All functionality SHALL be operable with the keyboard alone, in a logical focus order, with no keyboard traps. A visible focus indicator SHALL be present on every focusable element and SHALL NOT be removed without an equivalent replacement. The application SHALL NOT auto-focus or auto-redirect focus in a way that disorients keyboard users.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Primary flow is keyboard-only
 - **WHEN** a user navigates a page using only Tab/Shift+Tab/Enter/Space
@@ -50,8 +44,6 @@ All functionality SHALL be operable with the keyboard alone, in a logical focus 
 ### Requirement: REQ-NFR-019 Color contrast and non-color status
 Text and meaningful UI SHALL meet WCAG 2.1 AA contrast (≥ 4.5:1 for normal text, ≥ 3:1 for large text and essential non-text UI). Status and meaning (error, success, running/stopped) SHALL NOT be communicated by color alone; a text label, icon, or shape SHALL accompany it.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Body text meets AA contrast
 - **WHEN** text is rendered against its background
@@ -64,8 +56,6 @@ Text and meaningful UI SHALL meet WCAG 2.1 AA contrast (≥ 4.5:1 for normal tex
 ### Requirement: REQ-NFR-020 Enforced accessibility lint gate
 The project SHALL enforce statically checkable accessibility rules in CI via `eslint-plugin-vuejs-accessibility` configured with its flat-config recommended ruleset. The plugin SHALL be appended to the `withNuxt()` chain in `eslint.config.mjs` **before** `eslint-config-prettier`. `pnpm lint` SHALL fail when a template violates an enabled accessibility rule. Any rule deviation SHALL be justified with an inline ESLint disable comment that explains why.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Lint fails on a missing label
 - **WHEN** a template introduces an interactive control without an accessible name that the ruleset detects

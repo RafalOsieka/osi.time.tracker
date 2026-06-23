@@ -3,8 +3,6 @@
 ### Requirement: REQ-NFR-016 Internationalization infrastructure via @nuxtjs/i18n
 The application SHALL provide internationalization through `@nuxtjs/i18n` (vue-i18n) configured with the no-prefix routing strategy, so locale changes never alter URLs. The system SHALL support the locales `en` (default) and `pl`, each backed by a lazy-loaded JSON message catalog under `i18n/locales/`. The default and fallback locale SHALL be `en`, and any missing key in a non-default locale SHALL fall back to the `en` value.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Default locale is English
 - **WHEN** the application loads with no locale cookie and no usable `Accept-Language` header
@@ -25,8 +23,6 @@ The application SHALL provide internationalization through `@nuxtjs/i18n` (vue-i
 ### Requirement: REQ-NFR-017 Locale resolution and cookie persistence
 The application SHALL resolve the active locale using the precedence chain **locale cookie → `Accept-Language` request header → default `en`**. The chosen locale SHALL be persisted in a non-sealed cookie that is `SameSite=Lax`, `Secure` in production, and readable by the client (not `HttpOnly`). The system SHALL NOT persist locale on the user record in this change.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Cookie takes precedence over header
 - **WHEN** a request carries a locale cookie set to `pl` and an `Accept-Language` header preferring `en`
@@ -47,8 +43,6 @@ The application SHALL resolve the active locale using the precedence chain **loc
 ### Requirement: REQ-NFR-018 Document language and PrimeVue locale synchronization
 The application SHALL set the document root `lang` attribute to the active locale, and SHALL keep PrimeVue's component locale in sync with the active application locale so component-provided labels reflect the same language.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: html lang reflects active locale
 - **WHEN** the active locale is `pl`
@@ -61,8 +55,6 @@ The application SHALL set the document root `lang` attribute to the active local
 ### Requirement: REQ-NFR-019 Key-based server message contract
 Server API responses that convey user-facing messages (including errors from `server/api/auth/*`) SHALL carry a stable translation key in a `messageKey` field and MAY include a `params` object of interpolation values. The server SHALL NOT return rendered, locale-specific user-facing text for these messages, and the client SHALL translate the `messageKey` (with any `params`) using the active locale. Server-referenced keys SHALL reside under the reserved `errors.*` namespace.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Auth failure returns a key, not English text
 - **WHEN** a login attempt fails
@@ -79,8 +71,6 @@ Server API responses that convey user-facing messages (including errors from `se
 ### Requirement: REQ-NFR-020 No hardcoded UI strings enforced by lint gate
 All user-facing UI strings SHALL be sourced from i18n message catalogs rather than hardcoded in templates. The build SHALL enforce this via `@intlify/eslint-plugin-vue-i18n`, wired into the `withNuxt().append(...)` chain **before** `eslint-config-prettier`, so that `pnpm lint` fails when raw literal text appears in component templates.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Existing strings are externalized
 - **WHEN** the login page and default layout are rendered

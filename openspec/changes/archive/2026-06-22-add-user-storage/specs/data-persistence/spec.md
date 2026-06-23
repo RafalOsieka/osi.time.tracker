@@ -3,8 +3,6 @@
 ### Requirement: REQ-NFR-015 Domain table conventions (UUIDv7 + camelCase)
 All domain tables SHALL use a primary key declared as `uuid PRIMARY KEY DEFAULT uuidv7()`, relying on the PostgreSQL ≥ 18 native `uuidv7()` generator so values are time-ordered and produced correctly for every insert (including raw SQL and seed scripts). Column names SHALL use camelCase. The `users` table establishes this convention, and future domain tables SHALL follow it.
 
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Domain table uses UUIDv7 primary key
 - **WHEN** a domain table is created

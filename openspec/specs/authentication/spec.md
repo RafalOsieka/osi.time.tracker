@@ -6,9 +6,6 @@ Define how the application authenticates users and protects server-side resource
 ### Requirement: REQ-AUTH-001 Session-cookie authentication via nuxt-auth-utils
 The application SHALL authenticate users with a server-side session represented by a sealed cookie issued through `nuxt-auth-utils`. The session cookie MUST be `HttpOnly`, MUST be `Secure` in production, and MUST use `SameSite=Lax`. The cookie sealing password SHALL be provided via the `NUXT_SESSION_PASSWORD` environment variable (32+ characters), and startup SHALL fail fast if it is missing in production.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: Authenticated request is recognized
 - **WHEN** a request arrives carrying a valid, unexpired session cookie
 - **THEN** the server SHALL treat the request as authenticated and expose the session via `requireUserSession` / `getUserSession`
@@ -23,9 +20,6 @@ The application SHALL authenticate users with a server-side session represented 
 
 ### Requirement: REQ-AUTH-002 Login and logout endpoints
 The application SHALL expose a login endpoint that establishes a session via `setUserSession` and a logout endpoint that clears it via `clearUserSession`. Logout SHALL invalidate the session immediately so subsequent requests are unauthenticated. Login SHALL accept an **email** and **password** (the prior `username` field is removed); the email SHALL be normalized to lowercase (`email.trim().toLowerCase()`) before lookup. Login SHALL look up the user by normalized email and SHALL verify the supplied password against the stored `passwordHash` using `nuxt-auth-utils` `verifyPassword`. Invalid credentials SHALL return an error and SHALL NOT establish a session. Authentication failure SHALL be timing-safe and non-enumerating: when the email is unknown, the server SHALL verify the password against a dummy hash so that "unknown email" and "wrong password" are indistinguishable in response and timing. On success the session payload SHALL contain `{ id, email, displayName }`, where `id` is the durable per-user scope key and `displayName` MAY be null.
-
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Valid email and password logs in
 - **WHEN** a client posts an email and password matching a stored user (after lowercase normalization)
@@ -50,9 +44,6 @@ The application SHALL expose a login endpoint that establishes a session via `se
 ### Requirement: REQ-AUTH-003 Protection of private endpoints
 Endpoints that read or mutate user-scoped data SHALL require an authenticated session. Requests without a valid session SHALL be rejected with an unauthorized (401) response and SHALL NOT perform the requested action.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: Unauthenticated access is rejected
 - **WHEN** a request without a valid session targets a protected endpoint
 - **THEN** the server SHALL respond with HTTP 401 and SHALL NOT perform the action
@@ -63,9 +54,6 @@ Endpoints that read or mutate user-scoped data SHALL require an authenticated se
 
 ### Requirement: REQ-AUTH-004 Client login-state detection
 The client SHALL be able to determine whether a user is logged in via `useUserSession` (`loggedIn` / `user`) so the UI can render authenticated vs. unauthenticated states.
-
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: UI reflects logged-in state
 - **WHEN** a user has a valid session
@@ -78,18 +66,12 @@ The client SHALL be able to determine whether a user is logged in via `useUserSe
 ### Requirement: REQ-AUTH-005 Fixed session lifetime
 Sessions SHALL use a fixed maximum age configured via `runtimeConfig.session.maxAge`. Sliding/renew-on-activity expiry SHALL NOT be implemented in this change.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: Session expires after fixed lifetime
 - **WHEN** the configured `maxAge` has elapsed since the session cookie was issued
 - **THEN** the cookie SHALL be considered expired and the request SHALL be unauthenticated
 
 ### Requirement: REQ-NFR-014 CSRF protection, security headers, and login rate limiting via nuxt-security
 The application SHALL protect state-changing requests against CSRF and SHALL apply baseline security response headers using `nuxt-security`. CSRF validation SHALL apply to mutating HTTP methods (POST/PUT/PATCH/DELETE), and requests failing CSRF validation SHALL be rejected without performing the action. Additionally, `POST /api/auth/login` SHALL enforce a stricter rate limit than the global default to mitigate brute-force attacks (OWASP / NFR 8.3), implemented via the `nuxt-security` `rateLimiter` as a per-route override.
-
-**Status**: Not met
-**Evidence** — none
 
 #### Scenario: Mutating request without valid CSRF token is rejected
 - **WHEN** a state-changing request arrives without a valid CSRF token
@@ -114,9 +96,6 @@ The application SHALL protect state-changing requests against CSRF and SHALL app
 ### Requirement: REQ-AUTH-006 Env-var bootstrap user
 The system SHALL seed an initial user from the `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` environment variables during the dedicated migrate step, so MVP login is usable before self-registration exists. The password SHALL be hashed with `hashPassword` before insert and SHALL NOT be logged. The email SHALL be stored normalized to lowercase. Seeding SHALL be idempotent: it SHALL skip silently when the variables are unset, SHALL skip when a user with that email already exists, and SHALL NOT overwrite or reset an existing user's password.
 
-**Status**: Not met
-**Evidence** — none
-
 #### Scenario: Fresh database with variables set creates the user
 - **WHEN** the migrate step runs against a database with no matching user and both `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` are set
 - **THEN** the system SHALL insert a user with a lowercased email and a hashed password
@@ -128,4 +107,3 @@ The system SHALL seed an initial user from the `BOOTSTRAP_USER_EMAIL` and `BOOTS
 #### Scenario: Unset variables skip silently
 - **WHEN** the migrate step runs and `BOOTSTRAP_USER_EMAIL` or `BOOTSTRAP_USER_PASSWORD` is unset
 - **THEN** the system SHALL skip seeding without error
-
