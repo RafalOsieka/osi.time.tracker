@@ -12,5 +12,7 @@ server/db/migrations
 .junie
 AGENTS.md
 
-# openspec
+# other
 openspec
+pnpm-lock.yaml
+pnpm-workspace.yaml
