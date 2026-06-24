@@ -23,19 +23,16 @@ The final image stage SHALL include only the production runtime artifacts — th
 - **THEN** a `.dockerignore` SHALL exclude `node_modules`, `.output`, `.nuxt`, `.git`, and other non-essential paths from the build context
 
 ### Requirement: REQ-NFR-012 Container runtime configuration
-The application container SHALL be configured entirely through environment variables and MUST require `DATABASE_URL` and `NUXT_SESSION_PASSWORD` at runtime, without baking secrets into the image. The image SHALL fix `NODE_ENV=production`, while the listening port SHALL remain customizable via environment configuration. The container SHALL run as a non-root user.
+The application container SHALL be configured entirely through environment variables and MUST require `DATABASE_URL` and `NUXT_SESSION_PASSWORD` at runtime, without baking secrets into the image. The image SHALL fix both `NODE_ENV=production` and the container listening port (`3000`). The container SHALL run as a non-root user.
 
 #### Scenario: App starts with required configuration
 - **WHEN** the container is started with valid `DATABASE_URL` and `NUXT_SESSION_PASSWORD`
-- **THEN** the Nitro server starts as a non-root user with `NODE_ENV=production` and serves HTTP on the configured (customizable) port
+- **THEN** the Nitro server starts as a non-root user with `NODE_ENV=production` and serves HTTP on port `3000`
 
 #### Scenario: Missing required configuration
 - **WHEN** the container is started without `DATABASE_URL`
 - **THEN** the application SHALL fail fast with a clear error rather than starting in a broken state
 
-#### Scenario: Custom port honored
-- **WHEN** the container is started with a custom port value in its environment
-- **THEN** the Nitro server listens on that port and the host publishes it accordingly
 
 ### Requirement: REQ-NFR-013 Production verification compose
 The system SHALL provide a separate Docker Compose file (`docker-compose.local-prod.yml`, distinct from the existing dev database compose) that builds the production image and runs the application container for local verification of the productive build.

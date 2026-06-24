@@ -1,0 +1,30 @@
+services:
+  migrate:
+    build:
+      context: .
+      target: build
+    command: pnpm db:migrate
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/osi_time_tracker}
+    networks: [osi-time-tracker]
+    restart: 'no'
+
+  app:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://postgres:postgres@db:5432/osi_time_tracker}
+      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [osi-time-tracker]
+    restart: unless-stopped
+
+networks:
+  osi-time-tracker:
+    external: true
+    name: osi-time-tracker

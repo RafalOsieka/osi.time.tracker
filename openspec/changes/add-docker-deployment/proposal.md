@@ -22,7 +22,7 @@ The vision and WBS (8.6) require the full stack to be self-hostable via Docker, 
 
 - **New files**: `Dockerfile`, `docker-compose.local-prod.yml`, `.dockerignore`.
 - **Existing files**: existing `docker-compose.yml` kept as the dev DB stack; its `osi-time-tracker` network is referenced (external) by the prod compose; README/AGENTS docs updated.
-- **Runtime**: Node 24 Nitro server (`.output/server/index.mjs`) running as a non-root user with a fixed `NODE_ENV=production` and a customizable port; migrations run via `pnpm db:migrate` before serving traffic.
+- **Runtime**: Node 24 Nitro server (`.output/server/index.mjs`) running as a non-root user with a fixed `NODE_ENV=production` and a fixed container port (`3000`); migrations run via `pnpm db:migrate` before serving traffic.
 - **Dependencies**: no new npm dependencies; relies on Node + pnpm base images.
 
 ## Non-goals

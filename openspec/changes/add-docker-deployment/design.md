@@ -7,7 +7,7 @@ This design covers a production image and a separate compose (`docker-compose.lo
 ## Goals / Non-Goals
 
 **Goals:**
-- A multi-stage `Dockerfile` producing a slim final image containing only `.output/` plus a Node 24 runtime, run as a non-root user with `NODE_ENV=production` fixed and a customizable port.
+- A multi-stage `Dockerfile` producing a slim final image containing only `.output/` plus a Node 24 runtime, run as a non-root user with `NODE_ENV=production` and the container port fixed at `3000`.
 - A separate `docker-compose.local-prod.yml` that builds the image, runs the app, and connects to the existing DB compose via a shared network.
 - Apply pending migrations before the app serves traffic.
 - Keep the existing `docker-compose.yml` as a DB-only dev stack.
@@ -22,12 +22,12 @@ This design covers a production image and a separate compose (`docker-compose.lo
 - **Multi-stage build (deps → build → runtime).**
   - `base`: `node:24-alpine` with `corepack enable` to pin pnpm.
   - `build` stage: copy lockfile + manifest **and `pnpm-workspace.yaml`** before running `pnpm install --frozen-lockfile` (the workspace file is required for pnpm to resolve the install correctly), then copy source and run `pnpm build`.
-  - `runtime` stage: copy only `.output/` from the build stage; entrypoint runs `node .output/server/index.mjs`. The runtime fixes `NODE_ENV=production`, exposes a customizable port (e.g. via `PORT`/`NITRO_PORT`), and runs as a non-root user.
+  - `runtime` stage: copy only `.output/` from the build stage; entrypoint runs `node .output/server/index.mjs`. The runtime fixes `NODE_ENV=production`, exposes a fixed port (`3000`), and runs as a non-root user.
   - *Alternative considered*: single-stage image — rejected because it ships dev dependencies and source, bloating the image and widening attack surface.
 
 - **Non-root runtime user.** The runtime stage creates (or reuses the base image's `node`) an unprivileged user and switches to it via `USER` before the entrypoint, so the app never runs as root. *Alternative considered*: running as root — rejected as a needless privilege/attack-surface increase.
 
-- **Fixed `NODE_ENV`, customizable port.** `NODE_ENV=production` is baked into the image (production behavior is invariant for the productive build), while the listening port stays configurable through environment (`PORT`/`NITRO_PORT`) and the compose port mapping, so the same image can be published on different host ports.
+- **Fixed `NODE_ENV` and fixed container port.** Both `NODE_ENV=production` and the container listening port (`3000`) are fixed in the image. The host-side port mapping in the compose file can still vary, so the same image can be published on different host ports.
 
 - **Migrations require dev dependencies (`tsx`, `drizzle-kit` deps).** The slim runtime image intentionally lacks them, so migrations are NOT run from the runtime image. *Decision*: run migrations as a dedicated one-shot `migrate` compose service built from the **build stage** (which still has full `node_modules` + source). "One-shot" means the `migrate` service is a short-lived container that runs `pnpm db:migrate` exactly once and then **exits** — it is not a long-running service. The `app` service declares `depends_on` on `migrate` with `condition: service_completed_successfully`, so the app container only starts after the `migrate` container exits with status code 0; if migrations fail (non-zero exit), the app is never started.
   - *Alternative considered*: bundle `tsx`/dev deps into the runtime image and run migrations in the app entrypoint — rejected because it defeats the slim-image goal (REQ-NFR-011).
@@ -50,4 +50,4 @@ This design covers a production image and a separate compose (`docker-compose.lo
 
 - Runtime runs as a **non-root** user.
 - `HEALTHCHECK` is **deferred** to a future change (out of scope here).
-- `NODE_ENV=production` is **fixed** in the image; the listening **port is customizable** via environment/compose.
+- `NODE_ENV=production` is **fixed** in the image; the container listening **port is fixed** at `3000`.
