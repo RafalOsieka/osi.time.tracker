@@ -2,7 +2,7 @@
 
 # ── base ──────────────────────────────────────────────────────────────────────
 FROM node:24-alpine AS base
-RUN corepack enable
+RUN npm install -g pnpm@latest
 
 # ── build ─────────────────────────────────────────────────────────────────────
 FROM base AS build

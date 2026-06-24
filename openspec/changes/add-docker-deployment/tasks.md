@@ -1,10 +1,10 @@
 ## 1. Build context & image (backend/infra)
 
 - [x] 1.1 Add `.dockerignore` excluding `node_modules`, `.output`, `.nuxt`, `.git`, `test`, local env files, and other non-essential paths (REQ-NFR-011)
-- [x] 1.2 Create multi-stage `Dockerfile`: `base` (`node:24-alpine` + `corepack enable`), `build` (copy lockfile + `package.json` **and `pnpm-workspace.yaml`** before `pnpm install --frozen-lockfile`, then copy source and `pnpm build`), `runtime` (copy only `.output/`) (REQ-NFR-010, REQ-NFR-011)
+- [x] 1.2 Create multi-stage `Dockerfile`: `base` (`node:24-alpine` + `npm install -g pnpm@latest`), `build` (copy lockfile + `package.json` **and `pnpm-workspace.yaml`** before `pnpm install --frozen-lockfile`, then copy source and `pnpm build`), `runtime` (copy only `.output/`) (REQ-NFR-010, REQ-NFR-011)
 - [x] 1.3 Set runtime entrypoint to `node .output/server/index.mjs`; fix `NODE_ENV=production`, expose a fixed port (`3000`), and run as a non-root user; configure via `DATABASE_URL` and `NUXT_SESSION_PASSWORD` env (no baked secrets) (REQ-NFR-012)
-- [ ] 1.4 Verify a successful `docker build` produces a runnable image and that a broken build fails the command (REQ-NFR-010)
-- [ ] 1.5 Inspect the final image to confirm it contains `.output/` and excludes dev dependencies, `test/`, and source-only tooling (REQ-NFR-011)
+- [x] 1.4 Verify a successful `docker build` produces a runnable image and that a broken build fails the command (REQ-NFR-010)
+- [x] 1.5 Inspect the final image to confirm it contains `.output/` and excludes dev dependencies, `test/`, and source-only tooling (REQ-NFR-011)
 
 ## 2. Production compose & networking (infra)
 
@@ -20,10 +20,10 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Bring up `docker-compose.yml` (DB), then `docker-compose.local-prod.yml`; verify the one-shot `migrate` service runs and exits 0, the app starts, and `db` is reachable over the shared network (REQ-NFR-014, REQ-NFR-015)
-- [ ] 4.2 Verify the app responds on the published port (`3000`) and a request exercising the DB succeeds (REQ-NFR-012)
-- [ ] 4.3 Negative test: start the app container without `DATABASE_URL` and confirm it fails fast with a clear error (REQ-NFR-012)
-- [ ] 4.4 Negative test: start with the network/DB unavailable and confirm the app does not serve traffic and the failure is logged (REQ-NFR-015)
+- [x] 4.1 Bring up `docker-compose.yml` (DB), then `docker-compose.local-prod.yml`; verify the one-shot `migrate` service runs and exits 0, the app starts, and `db` is reachable over the shared network (REQ-NFR-014, REQ-NFR-015)
+- [x] 4.2 Verify the app responds on the published port (`3000`) and a request exercising the DB succeeds (REQ-NFR-012)
+- [x] 4.3 Negative test: start the app container without `DATABASE_URL` and confirm it fails fast with a clear error (REQ-NFR-012)
+- [x] 4.4 Negative test: start with the network/DB unavailable and confirm the app does not serve traffic and the failure is logged (REQ-NFR-015)
 
 ## 5. Documentation
 

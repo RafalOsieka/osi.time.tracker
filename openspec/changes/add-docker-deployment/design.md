@@ -20,7 +20,7 @@ This design covers a production image and a separate compose (`docker-compose.lo
 ## Decisions
 
 - **Multi-stage build (deps → build → runtime).**
-  - `base`: `node:24-alpine` with `corepack enable` to pin pnpm.
+  - `base`: `node:24-alpine` with `npm install -g pnpm@latest` to install pnpm (avoids corepack semver-range rejection from `devEngines.packageManager`).
   - `build` stage: copy lockfile + manifest **and `pnpm-workspace.yaml`** before running `pnpm install --frozen-lockfile` (the workspace file is required for pnpm to resolve the install correctly), then copy source and run `pnpm build`.
   - `runtime` stage: copy only `.output/` from the build stage; entrypoint runs `node .output/server/index.mjs`. The runtime fixes `NODE_ENV=production`, exposes a fixed port (`3000`), and runs as a non-root user.
   - *Alternative considered*: single-stage image — rejected because it ships dev dependencies and source, bloating the image and widening attack surface.
