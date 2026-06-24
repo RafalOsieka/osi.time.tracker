@@ -3,9 +3,20 @@ import withNuxt from './.nuxt/eslint.config.mjs';
 import prettier from 'eslint-config-prettier';
 import vueA11y from 'eslint-plugin-vuejs-accessibility';
 import vueI18n from '@intlify/eslint-plugin-vue-i18n';
+import tsParser from '@typescript-eslint/parser';
 
 export default withNuxt()
-  // Project-specific rule overrides go here.
+  .prepend({
+    // This prepend is need, as for some reason the default configuration
+    // is missing the typescript parser for vue (script lang="ts"),
+    // which causes some false lint issues being reported.
+    files: ['**/*.vue'],
+    languageOptions: {
+      parserOptions: {
+        parser: tsParser,
+      },
+    },
+  })
   .append(vueA11y.configs['flat/recommended']) // Accessibility rules (before Prettier)
   .append({
     rules: {

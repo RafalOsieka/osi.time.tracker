@@ -15,6 +15,12 @@
     "title": "OSI Time Tracker",
     "logoutButton": "Wyloguj się"
   },
+  "theme": {
+    "toggleLabel": "Motyw",
+    "light": "Jasny",
+    "dark": "Ciemny",
+    "system": "Systemowy"
+  },
   "errors": {
     "auth": {
       "credentialsRequired": "E-mail i hasło są wymagane.",

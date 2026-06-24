@@ -36,6 +36,7 @@
     "@nuxtjs/i18n": "^10.4.0",
     "@primevue/nuxt-module": "^4.5.5",
     "@types/node": "^25.9.4",
+    "@typescript-eslint/parser": "^8.62.0",
     "@vue/test-utils": "^2.4.11",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",

@@ -30,7 +30,7 @@ async function onLogout() {
       <strong>{{ t('layout.title') }}</strong>
 
       <!-- Reserved slot for future nav items and the running-timer indicator. -->
-      <nav style="display: flex; gap: 1rem; flex: 1"></nav>
+      <nav style="display: flex; gap: 1rem; flex: 1" />
 
       <Button
         data-testid="logout-button"

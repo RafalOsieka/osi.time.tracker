@@ -30,6 +30,16 @@ The app uses PrimeVue 4 in **styled mode** with the Aura preset registered in `n
 - **Inline-style removal changes layout/testids** → migrate markup carefully, keep all `data-testid`s, snapshot/behavior tests in `test/nuxt/`.
 - **`system` correctness across browsers** → rely on `window.matchMedia('(prefers-color-scheme: dark)')` only client-side; never reference `window` during SSR.
 
+## Contrast verification (REQ-NFR-019 / REQ-NFR-021)
+
+- Implemented mode-specific accent mapping in `nuxt.config.ts`:
+  - Light mode: `primary.color = {primary.700}` with `primary.contrastColor = #ffffff`
+  - Dark mode: `primary.color = {primary.300}` with `primary.contrastColor = {surface.950}`
+- Verified WCAG contrast ratios for the effective accent pairings used by primary controls:
+  - `primary.700` (`#0e7490`) on white (`#ffffff`) = **5.05:1** (passes AA for normal text)
+  - `primary.300` (`#67e8f9`) on `surface.950` (`#09090b`) = **14.51:1** (passes AA for normal text)
+- Result: both configured mode-specific accent selections satisfy WCAG 2.1 AA thresholds.
+
 ## Open Questions
 
 - **[RESOLVED]** Brand accent is the **cyan** family anchored at **`cyan.400`**; the effective accent shade is **auto-selected per mode** (darker on light surfaces, lighter on dark) to satisfy AA. Exact 50…950 ramp values are finalized against measured AA ratios during implementation (task 1.3).

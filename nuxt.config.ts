@@ -1,4 +1,37 @@
 import Aura from '@primeuix/themes/aura';
+import { definePreset } from '@primeuix/themes';
+
+const CustomAuraTheme = definePreset(Aura, {
+  semantic: {
+    primary: {
+      50: '{cyan.50}',
+      100: '{cyan.100}',
+      200: '{cyan.200}',
+      300: '{cyan.300}',
+      400: '{cyan.400}',
+      500: '{cyan.500}',
+      600: '{cyan.600}',
+      700: '{cyan.700}',
+      800: '{cyan.800}',
+      900: '{cyan.900}',
+      950: '{cyan.950}',
+    },
+    colorScheme: {
+      light: {
+        primary: {
+          color: '{primary.700}',
+          contrastColor: '#ffffff',
+        },
+      },
+      dark: {
+        primary: {
+          color: '{primary.300}',
+          contrastColor: '{surface.950}',
+        },
+      },
+    },
+  },
+});
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
@@ -29,6 +62,7 @@ export default defineNuxtConfig({
       redirectOn: 'root',
     },
   },
+  css: ['~/assets/css/main.css'],
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   routeRules: {
@@ -73,7 +107,10 @@ export default defineNuxtConfig({
   primevue: {
     options: {
       theme: {
-        preset: Aura,
+        preset: CustomAuraTheme,
+        options: {
+          darkModeSelector: '.dark',
+        },
       },
     },
   },

@@ -47,12 +47,14 @@ describe('preserved test hooks', () => {
     const wrapper = await mountSuspended(LoginPage, {
       global: {
         stubs: {
+          Card: { template: '<div data-testid="card"><slot name="content" /></div>' },
           InputText: inputStub,
           Password: inputStub,
           Button: { template: '<button><slot />{{ label }}</button>', props: ['label'] },
         },
       },
     });
+    expect(wrapper.find('[data-testid="login-card"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="login-form"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="email"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="password"]').exists()).toBe(true);
@@ -77,6 +79,10 @@ describe('preserved test hooks', () => {
       slots: { default: () => h('p', { 'data-testid': 'slotted' }, 'content') },
     });
     expect(wrapper.find('[data-testid="logout-button"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="theme-toggle-group"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('Light');
+    expect(wrapper.text()).toContain('Dark');
+    expect(wrapper.text()).toContain('System');
     expect(wrapper.find('[data-testid="slotted"]').exists()).toBe(true);
   });
 });
