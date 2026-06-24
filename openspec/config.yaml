@@ -13,7 +13,7 @@ rules:
     - Include error and edge-case scenarios, not just the happy path
     - Scope to MVP unless explicitly marked 🟡 V1.1 or later
   proposal:
-    - Read vision.md and wbs.md before writing; confirm the feature is in scope and at the correct priority
+    - Read vision.md/wbs.md/user-stories.md before writing; confirm the feature is in scope and at the correct priority
     - Include a "Non-goals" section to prevent scope creep
     - Keep under 400 words
   design:
