@@ -46,13 +46,13 @@ export default defineNuxtConfig({
   i18n: {
     strategy: 'no_prefix',
     defaultLocale: 'en',
-    fallbackLocale: 'en',
     locales: [
       { code: 'en', language: 'en-US', file: 'en.json' },
       { code: 'pl', language: 'pl-PL', file: 'pl.json' },
     ],
     lazy: true,
     langDir: '../i18n/locales',
+    vueI18n: '../i18n/i18n.config.ts',
     detectBrowserLanguage: {
       useCookie: true,
       cookieKey: 'i18n_locale',
@@ -62,7 +62,7 @@ export default defineNuxtConfig({
       redirectOn: 'root',
     },
   },
-  css: ['~/assets/css/main.css'],
+  css: ['primeicons/primeicons.css', '~/assets/css/main.css'],
   compatibilityDate: '2025-07-15',
   devtools: { enabled: true },
   routeRules: {
@@ -78,6 +78,12 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Server-only. Override at runtime with NUXT_DATABASE_URL or DATABASE_URL.
     databaseUrl: process.env.DATABASE_URL ?? '',
+    public: {
+      // Very-small "timer-stack" breakpoint (px). Below this width the timer
+      // region drops to its own full-width row. Distinct from the lg (1024 px)
+      // rail→drawer threshold. Override at runtime with NUXT_PUBLIC_TIMER_STACK_BREAKPOINT.
+      timerStackBreakpoint: 480,
+    },
     // Server-side session settings consumed by nuxt-auth-utils.
     // The sealing secret is provided via NUXT_SESSION_PASSWORD (32+ chars).
     session: {

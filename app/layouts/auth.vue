@@ -8,7 +8,6 @@ const { t } = useI18n();
   <div class="auth-layout">
     <section class="auth-layout__panel">
       <h1 class="auth-layout__title">{{ t('layout.title') }}</h1>
-      <ColorModeToggle />
       <slot />
     </section>
   </div>

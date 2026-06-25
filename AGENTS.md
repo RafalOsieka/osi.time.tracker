@@ -84,6 +84,7 @@ Notes:
 - Auth/CSRF helpers: protect private endpoints with `requireAuth` (`server/utils/auth.ts`); client-side mutating requests use `$csrfFetch` / `useCsrfFetch`.
 - Server `messageKey` contract: API error responses return `{ messageKey, params }` (not rendered text); the client translates via `t(messageKey, params)`.
 - Theming: treat the PrimeVue `primary` token in `nuxt.config.ts` as the single source of truth for brand accent; prefer theme tokens over inline colors/styles in app UI.
+- UI components: when changing or building UI, always look for an existing PrimeVue component first before implementing from scratch; only write custom markup/CSS when no suitable PrimeVue component exists.
 
 ## Build and Deployment
 

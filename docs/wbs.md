@@ -137,14 +137,14 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## 7. User Settings & Preferences
 
-| #   | Feature                          | Priority | Notes                                                                                                                                |
-| --- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 7.1 | Timezone selection               | 🔴       | All times stored in UTC; displayed in user's local timezone                                                                          |
-| 7.2 | Week start day (Monday / Sunday) | 🔴       | Affects weekly timesheet and report grouping                                                                                         |
-| 7.3 | Default rounding rule            | 🟡       | Applied globally unless overridden per remote target                                                                                 |
-| 7.4 | Language / locale selection      | 🟡       | UI language picker + persisted `locale` user column; cookie-only persistence in place since 8.4                                      |
-| 7.5 | Date and time format preferences | 🟢       |                                                                                                                                      |
-| 7.6 | Theme (light / dark)             | 🟡       | Auth-surface theming foundation landed (cookie-based light/dark/system + tokenized login/auth); authenticated shell rollout remains. |
+| #   | Feature                          | Priority | Notes                                                                                                                                                                                                                                                                           |
+| --- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7.1 | Timezone selection               | 🔴       | All times stored in UTC; displayed in user's local timezone                                                                                                                                                                                                                     |
+| 7.2 | Week start day (Monday / Sunday) | 🔴       | Affects weekly timesheet and report grouping                                                                                                                                                                                                                                    |
+| 7.3 | Default rounding rule            | 🟡       | Applied globally unless overridden per remote target                                                                                                                                                                                                                            |
+| 7.4 | Language / locale selection      | 🟡       | UI language picker + persisted `locale` user column; cookie-only persistence in place since 8.4                                                                                                                                                                                 |
+| 7.5 | Date and time format preferences | 🟢       |                                                                                                                                                                                                                                                                                 |
+| 7.6 | Theme (light / dark)             | 🟢       | Auth-surface theming foundation landed (cookie-based light/dark/system + tokenized login/auth); authenticated shell rollout complete (`add-authenticated-shell`: top bar, collapsible rail, off-canvas drawer, stacked timer row, utility menu, placeholder pages, i18n, a11y). |
 
 ---
 

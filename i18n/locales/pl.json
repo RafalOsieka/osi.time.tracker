@@ -15,6 +15,27 @@
     "title": "OSI Time Tracker",
     "logoutButton": "Wyloguj się"
   },
+  "nav": {
+    "dashboard": "Panel główny",
+    "clients": "Klienci",
+    "projects": "Projekty",
+    "tasks": "Zadania",
+    "reports": "Raporty",
+    "settings": "Ustawienia"
+  },
+  "utilityMenu": {
+    "label": "Menu",
+    "locale": "Język",
+    "theme": "Motyw",
+    "logout": "Wyloguj się"
+  },
+  "locale": {
+    "en": "English",
+    "pl": "Polski"
+  },
+  "page": {
+    "comingSoon": "Wkrótce."
+  },
   "theme": {
     "toggleLabel": "Motyw",
     "light": "Jasny",

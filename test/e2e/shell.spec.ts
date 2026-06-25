@@ -9,12 +9,8 @@ import { runMigrations } from '../../server/db/migrate';
 import { users } from '../../server/db/schema/users';
 import { TEST_DATABASE_URL, startPostgres, stopPostgres } from './support/postgres';
 
-// Set DATABASE_URL for Nitro and tests to pick up
 process.env.DATABASE_URL = TEST_DATABASE_URL;
 
-// Browser-driven flows need a real browser binary. playwright-core ships
-// without browsers, so skip (rather than fail) when none is installed —
-// mirroring the Docker-availability guard in `db.spec.ts`.
 function browserAvailable(): boolean {
   try {
     const path = chromium.executablePath();
@@ -28,14 +24,14 @@ const SESSION_PASSWORD = 'test-session-password-0123456789-abcdef';
 
 if (!browserAvailable()) {
   // eslint-disable-next-line no-console
-  console.warn('[auth-ui.spec] No browser available — skipping UI e2e tests.');
-  describe.skip('authentication UI flow (browser unavailable)', () => {
+  console.warn('[shell.spec] No browser available — skipping shell e2e tests.');
+  describe.skip('authenticated shell navigation (browser unavailable)', () => {
     it('skipped', () => {
       expect(true).toBe(true);
     });
   });
 } else {
-  describe('authentication UI flow', async () => {
+  describe('authenticated shell navigation', async () => {
     await setup({
       browser: true,
       nuxtConfig: { runtimeConfig: { session: { password: SESSION_PASSWORD } } },
@@ -45,7 +41,6 @@ if (!browserAvailable()) {
       await startPostgres();
       await runMigrations(TEST_DATABASE_URL);
 
-      // Resolve hasher and insert test users for E2E UI tests
       const requireModule = createRequire(import.meta.resolve('nuxt-auth-utils'));
       const hashMjsPath = 'file:///' + requireModule.resolve('@adonisjs/hash').replace(/\\/g, '/');
       const scryptMjsPath =
@@ -59,14 +54,9 @@ if (!browserAvailable()) {
       try {
         await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
         await db.insert(users).values({
-          email: 'alice@example.com',
+          email: 'shell@example.com',
           passwordHash,
-          displayName: 'alice',
-        });
-        await db.insert(users).values({
-          email: 'bob@example.com',
-          passwordHash,
-          displayName: 'bob',
+          displayName: 'shelluser',
         });
       } finally {
         await sql.end({ timeout: 5 });
@@ -77,37 +67,44 @@ if (!browserAvailable()) {
       stopPostgres();
     });
 
-    it('5.1 login flow logs the user in and the UI reflects it', async () => {
+    async function loginAs(email: string) {
       const page = await createPage('/');
-      await page.fill('[data-testid="email"]', 'alice@example.com');
+      await page.fill('[data-testid="email"]', email);
       await page.fill('[data-testid="password"] input', 'secret');
       await page.click('[data-testid="login-button"]');
+      await page.waitForSelector('[data-testid="app-topbar"]');
+      return page;
+    }
 
-      await page.waitForFunction(() =>
-        document
-          .querySelector('[data-testid="auth-status"]')
-          ?.textContent?.includes('Logged in as alice'),
-      );
-      const status = await page.textContent('[data-testid="auth-status"]');
-      expect(status).toContain('Logged in as alice');
+    it('shell renders top bar and sidebar after login', async () => {
+      const page = await loginAs('shell@example.com');
+      expect(await page.locator('[data-testid="app-topbar"]').isVisible()).toBe(true);
+      expect(await page.locator('nav[aria-label]').isVisible()).toBe(true);
     });
 
-    it('5.2 logout flow logs the user out and the UI reflects it', async () => {
-      const page = await createPage('/');
-      await page.fill('[data-testid="email"]', 'bob@example.com');
-      await page.fill('[data-testid="password"] input', 'secret');
-      await page.click('[data-testid="login-button"]');
-      await page.waitForFunction(() =>
-        document
-          .querySelector('[data-testid="auth-status"]')
-          ?.textContent?.includes('Logged in as bob'),
-      );
+    it('sidebar lists all skeleton destinations', async () => {
+      const page = await loginAs('shell@example.com');
+      const nav = page.locator('nav[aria-label]');
+      await expect(nav.locator('a[href="/"]')).toBeVisible();
+      await expect(nav.locator('a[href="/clients"]')).toBeVisible();
+      await expect(nav.locator('a[href="/projects"]')).toBeVisible();
+      await expect(nav.locator('a[href="/tasks"]')).toBeVisible();
+      await expect(nav.locator('a[href="/reports"]')).toBeVisible();
+      await expect(nav.locator('a[href="/settings"]')).toBeVisible();
+    });
 
+    it('navigating to an unbuilt destination shows a placeholder page', async () => {
+      const page = await loginAs('shell@example.com');
+      await page.click('nav[aria-label] a[href="/clients"]');
+      await page.waitForSelector('[data-testid="placeholder-page-clients"]');
+      expect(await page.locator('[data-testid="placeholder-page-clients"]').isVisible()).toBe(true);
+    });
+
+    it('logout is reachable via the utility menu', async () => {
+      const page = await loginAs('shell@example.com');
       await page.click('[data-testid="utility-menu-button"]');
       await page.getByRole('menuitem', { name: /log.?out/i }).click();
       await page.waitForSelector('[data-testid="login-form"]');
-      const status = await page.textContent('[data-testid="auth-status"]');
-      expect(status).toContain('not logged in');
     });
   });
 }

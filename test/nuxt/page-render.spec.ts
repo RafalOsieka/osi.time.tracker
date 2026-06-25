@@ -66,23 +66,38 @@ describe('preserved test hooks', () => {
     expect(wrapper.find('[data-testid="auth-status"]').exists()).toBe(true);
   });
 
-  it('default layout exposes the logout-button in its header', async () => {
+  it('default layout renders the shell top bar and page content', async () => {
     const wrapper = await mountSuspended(DefaultLayout, {
-      slots: { default: () => h('p', { 'data-testid': 'slotted' }, 'content') },
+      global: {
+        stubs: {
+          AppTopBar: {
+            template: '<header data-testid="app-topbar"><slot name="utility" /></header>',
+            props: ['sidebarOpen'],
+          },
+          AppSidebar: { template: '<nav />' },
+          AppUtilityMenu: {
+            template:
+              '<div data-testid="utility-menu-button"><a data-testid="logout-button">Log out</a></div>',
+          },
+          Drawer: {
+            template: '<div><slot /></div>',
+            props: ['visible', 'modal', 'dismissable', 'showCloseIcon', 'position'],
+          },
+          NuxtPage: { template: '<div data-testid="slotted">content</div>' },
+        },
+      },
     });
+    expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="logout-button"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="slotted"]').exists()).toBe(true);
   });
 
-  it('auth layout has no logout control', async () => {
+  it('auth layout has no logout control and no theme toggle', async () => {
     const wrapper = await mountSuspended(AuthLayout, {
       slots: { default: () => h('p', { 'data-testid': 'slotted' }, 'content') },
     });
     expect(wrapper.find('[data-testid="logout-button"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="theme-toggle-group"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('Light');
-    expect(wrapper.text()).toContain('Dark');
-    expect(wrapper.text()).toContain('System');
+    expect(wrapper.find('[data-testid="theme-toggle-group"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="slotted"]').exists()).toBe(true);
   });
 });
