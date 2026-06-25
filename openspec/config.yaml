@@ -25,7 +25,3 @@ rules:
     - Every API endpoint task MUST have an integration test task covering happy path and at least one error scenario
     - Frontend tasks covering forms or user flows MUST have a corresponding E2E test task
     - Frontend tasks covering utilities or non-UI logic MUST have a corresponding unit test task
-  verify:
-    - Check that every MUST/SHALL requirement in the spec has a corresponding implementation
-    - Confirm i18n keys exist for all user-visible strings (EN)
-    - Confirm error scenarios from the spec are handled in both frontend and backend
