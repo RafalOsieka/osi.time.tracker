@@ -42,10 +42,44 @@
     "dark": "Dark",
     "system": "System"
   },
+  "clients": {
+    "pageTitle": "Clients",
+    "newButton": "New",
+    "columnName": "Name",
+    "columnCreated": "Created",
+    "columnActions": "Actions",
+    "emptyState": "No clients yet.",
+    "emptyStateCta": "Create your first client",
+    "dialogTitleCreate": "New Client",
+    "dialogTitleEdit": "Edit Client",
+    "nameLabel": "Name",
+    "namePlaceholder": "Client name",
+    "saveButton": "Save",
+    "cancelButton": "Cancel",
+    "editButton": "Edit",
+    "deleteButton": "Delete",
+    "deleteConfirmHeader": "Delete Client",
+    "deleteConfirmMessage": "Are you sure you want to delete \"{name}\"?",
+    "deleteConfirmAccept": "Yes",
+    "deleteConfirmReject": "No",
+    "toastCreatedSummary": "Client created",
+    "toastCreatedDetail": "\"{name}\" has been created.",
+    "toastUpdatedSummary": "Client updated",
+    "toastUpdatedDetail": "\"{name}\" has been updated.",
+    "toastDeletedSummary": "Client deleted",
+    "toastDeletedDetail": "The client has been deleted."
+  },
+  "error": {
+    "clientNameRequired": "Name is required.",
+    "clientNameTooLong": "Name must be 100 characters or fewer.",
+    "clientNameDuplicate": "A client with this name already exists.",
+    "notFound": "Not found."
+  },
   "errors": {
     "auth": {
       "credentialsRequired": "Email and password are required.",
       "invalidCredentials": "Invalid credentials."
-    }
+    },
+    "unexpected": "An unexpected error occurred."
   }
 }

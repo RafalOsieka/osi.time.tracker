@@ -11,7 +11,7 @@ import { usePrimeVue } from 'primevue/config';
 export default defineNuxtPlugin(() => {
   // useI18n() requires a component setup context; access the i18n instance
   // via the Nuxt app instead, which is always available inside a plugin.
-  const { locale } = useNuxtApp().$i18n as { locale: Ref<string> };
+  const { locale } = useNuxtApp().$i18n;
   const primevue = usePrimeVue();
 
   watch(

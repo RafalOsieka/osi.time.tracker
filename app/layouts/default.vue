@@ -74,6 +74,8 @@ function onToggleSidebar() {
       <main class="app-shell__content" data-testid="app-content">
         <NuxtPage />
       </main>
+
+      <Toast />
     </div>
   </div>
 </template>

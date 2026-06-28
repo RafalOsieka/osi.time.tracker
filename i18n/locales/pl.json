@@ -42,10 +42,44 @@
     "dark": "Ciemny",
     "system": "Systemowy"
   },
+  "clients": {
+    "pageTitle": "Klienci",
+    "newButton": "Nowy",
+    "columnName": "Nazwa",
+    "columnCreated": "Utworzono",
+    "columnActions": "Akcje",
+    "emptyState": "Brak klientów.",
+    "emptyStateCta": "Utwórz pierwszego klienta",
+    "dialogTitleCreate": "Nowy klient",
+    "dialogTitleEdit": "Edytuj klienta",
+    "nameLabel": "Nazwa",
+    "namePlaceholder": "Nazwa klienta",
+    "saveButton": "Zapisz",
+    "cancelButton": "Anuluj",
+    "editButton": "Edytuj",
+    "deleteButton": "Usuń",
+    "deleteConfirmHeader": "Usuń klienta",
+    "deleteConfirmMessage": "Czy na pewno chcesz usunąć \"{name}\"?",
+    "deleteConfirmAccept": "Tak",
+    "deleteConfirmReject": "Nie",
+    "toastCreatedSummary": "Klient utworzony",
+    "toastCreatedDetail": "\"{name}\" został utworzony.",
+    "toastUpdatedSummary": "Klient zaktualizowany",
+    "toastUpdatedDetail": "\"{name}\" został zaktualizowany.",
+    "toastDeletedSummary": "Klient usunięty",
+    "toastDeletedDetail": "Klient został usunięty."
+  },
+  "error": {
+    "clientNameRequired": "Nazwa jest wymagana.",
+    "clientNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
+    "clientNameDuplicate": "Klient o tej nazwie już istnieje.",
+    "notFound": "Nie znaleziono."
+  },
   "errors": {
     "auth": {
       "credentialsRequired": "E-mail i hasło są wymagane.",
       "invalidCredentials": "Nieprawidłowe dane logowania."
-    }
+    },
+    "unexpected": "Wystąpił nieoczekiwany błąd."
   }
 }

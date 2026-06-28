@@ -74,6 +74,55 @@ bun run preview
 
 Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
 
+## Testing
+
+### Unit tests
+
+No external dependencies required:
+
+```bash
+pnpm test:unit
+```
+
+### Nuxt component / integration tests
+
+No external dependencies required:
+
+```bash
+pnpm test:nuxt
+```
+
+### E2E tests
+
+E2E tests have two tiers with different requirements:
+
+#### API / server e2e (no browser)
+
+Requires **Docker** with the `postgres:18-alpine` image available. The test harness spins up a disposable PostgreSQL container automatically on port `54329`.
+
+```bash
+# Ensure Docker is running, then:
+pnpm test:e2e
+```
+
+If Docker is not available, all API e2e suites are skipped automatically.
+
+#### Browser / UI e2e (Playwright)
+
+Requires **Docker** (see above) **and** Playwright browser binaries installed:
+
+```bash
+# Install Playwright browsers (one-time setup)
+pnpm exec playwright install chromium
+
+# Then run e2e tests as usual
+pnpm test:e2e
+```
+
+If Playwright browser binaries are not installed, the browser-based suites (`auth-ui`, `i18n-login`, `shell`) are skipped automatically.
+
+---
+
 ## Docker — Production Image
 
 The repository ships a multi-stage `Dockerfile` that produces a slim production image containing only the Nitro server output (`.output/`) and a Node 24 runtime.

@@ -50,10 +50,6 @@ function isActive(to: string) {
   border-width: 0;
 }
 
-.app-sidebar__menu .p-menu-list {
-  padding-inline-start: 6px;
-}
-
 .app-sidebar__menu .p-menu-item-content a {
   height: 2.5rem;
 }

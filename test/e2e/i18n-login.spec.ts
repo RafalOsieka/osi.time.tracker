@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll, afterAll } from 'vitest';
 import { createPage, setup } from '@nuxt/test-utils/e2e';
 import { chromium } from 'playwright-core';
 import { TEST_DATABASE_URL, startPostgres, stopPostgres } from './support/postgres';
@@ -19,8 +19,6 @@ function browserAvailable(): boolean {
 const SESSION_PASSWORD = 'test-session-password-0123456789-abcdef';
 
 if (!browserAvailable()) {
-  // eslint-disable-next-line no-console
-  console.warn('[i18n-login.spec] No browser available — skipping i18n e2e tests.');
   describe.skip('i18n login page locale rendering (browser unavailable)', () => {
     it('skipped', () => {
       expect(true).toBe(true);
@@ -31,6 +29,14 @@ if (!browserAvailable()) {
     await setup({
       browser: true,
       nuxtConfig: { runtimeConfig: { session: { password: SESSION_PASSWORD } } },
+    });
+
+    beforeAll(async () => {
+      await startPostgres();
+    }, 180_000);
+
+    afterAll(() => {
+      stopPostgres();
     });
 
     it.sequential('renders English labels by default (en locale)', async () => {
@@ -74,9 +80,4 @@ if (!browserAvailable()) {
     });
   });
 
-  // Ensure Postgres is started/stopped for this suite too
-  describe('i18n e2e lifecycle', async () => {
-    await startPostgres();
-    stopPostgres();
-  });
 }

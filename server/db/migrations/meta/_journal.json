@@ -8,6 +8,13 @@
       "when": 1782140335399,
       "tag": "0000_lyrical_justice",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782502337590,
+      "tag": "0001_rapid_hitman",
+      "breakpoints": true
     }
   ]
 }

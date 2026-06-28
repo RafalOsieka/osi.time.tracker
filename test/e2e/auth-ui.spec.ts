@@ -5,7 +5,6 @@ import { chromium } from 'playwright-core';
 import { sql as drizzleSql } from 'drizzle-orm';
 import { createRequire } from 'node:module';
 import { createDatabaseClient } from '../../server/db/client';
-import { runMigrations } from '../../server/db/migrate';
 import { users } from '../../server/db/schema/users';
 import { TEST_DATABASE_URL, startPostgres, stopPostgres } from './support/postgres';
 
@@ -27,8 +26,6 @@ function browserAvailable(): boolean {
 const SESSION_PASSWORD = 'test-session-password-0123456789-abcdef';
 
 if (!browserAvailable()) {
-  // eslint-disable-next-line no-console
-  console.warn('[auth-ui.spec] No browser available — skipping UI e2e tests.');
   describe.skip('authentication UI flow (browser unavailable)', () => {
     it('skipped', () => {
       expect(true).toBe(true);
@@ -43,7 +40,6 @@ if (!browserAvailable()) {
 
     beforeAll(async () => {
       await startPostgres();
-      await runMigrations(TEST_DATABASE_URL);
 
       // Resolve hasher and insert test users for E2E UI tests
       const requireModule = createRequire(import.meta.resolve('nuxt-auth-utils'));

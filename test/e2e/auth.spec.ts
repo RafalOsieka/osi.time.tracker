@@ -4,7 +4,6 @@ import { sql as drizzleSql } from 'drizzle-orm';
 import { createRequire } from 'node:module';
 import { CookieJar, primeCsrf } from './support/auth';
 import { createDatabaseClient } from '../../server/db/client';
-import { runMigrations } from '../../server/db/migrate';
 import { users } from '../../server/db/schema/users';
 import {
   TEST_DATABASE_URL,
@@ -36,7 +35,6 @@ describeAuth('authentication integration', async () => {
 
   beforeAll(async () => {
     await startPostgres();
-    await runMigrations(TEST_DATABASE_URL);
 
     // Resolve hasher and insert test user
     const requireModule = createRequire(import.meta.resolve('nuxt-auth-utils'));
