@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { ZodError } from 'zod';
-import { UpdateClientDto, updateClientSchema, type ClientDto } from '../../../shared/types/client';
+import { updateClientSchema } from '../../../shared/types/client';
+import type { UpdateClientDto, ClientDto } from '../../../shared/types/client';
 import { db } from '../../db/index';
 import { clients } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
@@ -59,6 +60,11 @@ export default defineEventHandler(async (event): Promise<ClientDto> => {
       .set({ name: parsedBody.name, updatedAt: new Date() })
       .where(and(eq(clients.id, id!), eq(clients.userId, user.id)))
       .returning();
+
+    if (!updated) {
+      throw createError({ statusCode: 500, data: { messageKey: 'error.unknown' } });
+    }
+
     return {
       id: updated.id,
       name: updated.name,

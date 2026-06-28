@@ -22,7 +22,7 @@ export default defineNuxtPlugin(() => {
           ...primevue.config.locale,
           // Expose the active locale code so PrimeVue-aware code can read it.
           // Full month/day name overrides for 'pl' can be added here later.
-        };
+        } as unknown as import('primevue/config').PrimeVueLocaleOptions;
         // Store the active locale on the PrimeVue config for reference.
         (primevue.config as Record<string, unknown>).activeLocale = newLocale;
       }

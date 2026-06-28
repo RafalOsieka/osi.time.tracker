@@ -1,6 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { ZodError } from 'zod';
-import { CreateClientDto, createClientSchema, type ClientDto } from '../../../shared/types/client';
+import { createClientSchema } from '../../../shared/types/client';
+import type { CreateClientDto, ClientDto } from '../../../shared/types/client';
 import { db } from '../../db/index';
 import { clients } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
@@ -45,6 +46,11 @@ export default defineEventHandler(async (event): Promise<ClientDto> => {
       .insert(clients)
       .values({ userId: user.id, name: parsedBody.name })
       .returning();
+
+    if (!created) {
+      throw createError({ statusCode: 500, data: { messageKey: 'error.unknown' } });
+    }
+
     return {
       id: created.id,
       name: created.name,

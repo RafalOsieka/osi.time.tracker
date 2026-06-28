@@ -110,8 +110,8 @@ function toggleMenu(event: Event) {
         class="p-menu-item-link"
         role="menuitem"
         tabindex="0"
-        @click="item.command?.($event)"
-        @keydown.enter.space.prevent="item.command?.($event)"
+        @click="item.command?.({ originalEvent: $event, item })"
+        @keydown.enter.space.prevent="item.command?.({ originalEvent: $event, item })"
       >
         <span class="p-menu-item-label">{{ item.label }}</span>
       </a>
