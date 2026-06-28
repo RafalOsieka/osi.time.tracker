@@ -19,7 +19,6 @@ const dockerAvailable = isDockerAvailable();
 const describeClients = dockerAvailable ? describe : describe.skip;
 
 if (!dockerAvailable) {
-  // eslint-disable-next-line no-console
   console.warn('[clients.spec] Docker not available — skipping Clients E2E integration tests.');
 }
 
@@ -141,6 +140,18 @@ describeClients('clients API integration', async () => {
     expect(emptyRes.status).toBe(422);
     const emptyBody = await emptyRes.json();
     expect(emptyBody?.data?.messageKey).toBe('error.clientNameRequired');
+
+    // Over-length name rejected
+    const longName = 'a'.repeat(101); // CLIENT_NAME_MAX_LENGTH + 1
+    const longRes = await fetch(url('/api/clients'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: longName }),
+    });
+    expect(longRes.status).toBe(422);
+    const longBody = await longRes.json();
+    expect(longBody?.data?.messageKey).toBe('error.clientNameTooLong');
+    expect(longBody?.data?.params).toEqual({ max: 100 });
 
     // Duplicate name rejected
     const dupRes = await fetch(url('/api/clients'), {

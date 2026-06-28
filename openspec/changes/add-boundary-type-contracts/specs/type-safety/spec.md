@@ -30,15 +30,19 @@ Response DTOs SHALL be plain TypeScript types (inferred or explicit) and SHALL N
 - **THEN** the field is typed as `string`, matching the JSON the client actually receives
 
 ### Requirement: REQ-NFR-013 ZodError maps to the locale-agnostic messageKey contract
-Validation failures SHALL be translated into the existing `{ messageKey, params }` server contract via a shared, generic translator that maps a Zod issue's `path` and `code` to a stable message key. Raw Zod (English) messages SHALL NOT be returned to the client.
+Validation failures SHALL be translated into the existing `{ messageKey, params }` server contract via a shared translator (`mapZodError`). Message keys SHALL be authored directly in the schema's Zod messages (via `message` / `required_error` / `invalid_type_error`); the translator SHALL read the first issue, detect a dot-notation message key, and return it together with any extracted parameters (e.g. `min`, `max`, `expected`, `received`, and custom `params`). Issues whose message is not a recognizable message key SHALL fall back to a safe `errors.unexpected` key. Raw Zod (English) messages SHALL NOT be returned to the client.
 
 #### Scenario: Missing name maps to a message key
 - **WHEN** body validation fails because `name` is absent
-- **THEN** the response contains `{ messageKey: 'error.clientNameRequired' }` and no human-readable English text from Zod
+- **THEN** the response contains `{ messageKey: 'error.clientNameRequired' }` (with params reflecting the issue, e.g. `expected`/`received`) and no human-readable English text from Zod
 
 #### Scenario: Over-length name maps to a parameterized key
 - **WHEN** body validation fails because `name` exceeds the maximum length
 - **THEN** the response contains `{ messageKey: 'error.clientNameTooLong', params: { max: <limit> } }`
+
+#### Scenario: Unmapped issue falls back to a safe key
+- **WHEN** a validation issue carries a message that is not a dot-notation message key
+- **THEN** the translator returns `{ messageKey: 'errors.unexpected' }`
 
 ### Requirement: REQ-NFR-014 Explicit any is a lint error
 The lint configuration SHALL set `@typescript-eslint/no-explicit-any` to `error`, enforced by the existing `pnpm lint` gate. Use of `any` SHALL be permitted only via an explicit `// eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation carrying a justification. The `no-unsafe-*` rule family is out of scope for this change.

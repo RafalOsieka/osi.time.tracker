@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
-import { h } from 'vue';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AppSidebar from '../../app/components/AppSidebar.vue';
 import AppUtilityMenu from '../../app/components/AppUtilityMenu.vue';

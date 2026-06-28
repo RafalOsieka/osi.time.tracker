@@ -1,7 +1,7 @@
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import type { Sql } from 'postgres';
 import { createDatabaseClient, resolveDatabaseUrl } from './client';
-import * as schema from './schema';
+import type * as schema from './schema';
 
 let client: { db: PostgresJsDatabase<typeof schema>; sql: Sql } | undefined;
 

@@ -50,7 +50,6 @@ export default defineNuxtConfig({
       { code: 'en', language: 'en-US', file: 'en.json' },
       { code: 'pl', language: 'pl-PL', file: 'pl.json' },
     ],
-    lazy: true,
     langDir: '../i18n/locales',
     vueI18n: '../i18n/i18n.config.ts',
     detectBrowserLanguage: {
@@ -119,5 +118,8 @@ export default defineNuxtConfig({
         },
       },
     },
+  },
+  typescript: {
+    typeCheck: true,
   },
 });

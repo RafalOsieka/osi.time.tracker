@@ -17,7 +17,6 @@ const dockerAvailable = isDockerAvailable();
 const describeDb = dockerAvailable ? describe : describe.skip;
 
 if (!dockerAvailable) {
-  // eslint-disable-next-line no-console
   console.warn('[db.spec] Docker not available — skipping DB integration tests.');
 }
 
@@ -268,7 +267,7 @@ describeDb('database integration', () => {
         await runMigrations(TEST_DATABASE_URL, dir);
         served = true;
       } catch {
-        served = false;
+        // Skip assignment since served is already false
       } finally {
         removeMigrations(dir);
       }

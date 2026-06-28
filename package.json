@@ -8,6 +8,7 @@
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
+    "type-check": "nuxt typecheck",
     "test:unit": "vitest --project unit",
     "test:e2e": "vitest --project e2e",
     "test:nuxt": "vitest --project nuxt",
@@ -28,7 +29,8 @@
     "primeicons": "^7.0.0",
     "primevue": "^4.5.5",
     "vue": "^3.5.38",
-    "vue-router": "^5.1.0"
+    "vue-router": "^5.1.0",
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
@@ -49,7 +51,9 @@
     "playwright-core": "^1.61.0",
     "prettier": "^3.8.4",
     "tsx": "^4.22.4",
-    "vitest": "^4.1.9"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9",
+    "vue-tsc": "^3.3.5"
   },
   "author": "Rafal Osieka",
   "repository": {

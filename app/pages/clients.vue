@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
-import { extractMessageKey } from '~/utils/extractMessageKey';
+import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
 const confirm = useConfirm();
@@ -10,18 +9,16 @@ const toast = useToast();
 const { $csrfFetch } = useNuxtApp();
 
 // --- Data fetching ---
-type Client = { id: string; name: string; createdAt: string };
-
 const {
   data: clientsData,
   pending: clientsPending,
   refresh: fetchClients,
-} = useAsyncData('clients', () => $fetch<Client[]>('/api/clients'), { server: false });
+} = useAsyncData('clients', () => $fetch<ClientDto[]>('/api/clients'), { server: false });
 
 // --- State ---
 const clients = computed(() => clientsData.value ?? []);
 const dialogVisible = ref(false);
-const editingClient = ref<Client | null>(null);
+const editingClient = ref<ClientDto | null>(null);
 const nameValue = ref('');
 const nameError = ref('');
 const saving = ref(false);
@@ -34,7 +31,7 @@ function openCreate() {
   dialogVisible.value = true;
 }
 
-function openEdit(client: { id: string; name: string }) {
+function openEdit(client: ClientDto) {
   editingClient.value = client;
   nameValue.value = client.name;
   nameError.value = '';
@@ -48,13 +45,17 @@ function closeDialog() {
 // --- Save (create or update) ---
 async function onSave() {
   nameError.value = '';
+
   saving.value = true;
   try {
     if (editingClient.value) {
-      const updated = await $csrfFetch<{ id: string; name: string; createdAt: string }>(
-        `/api/clients/${editingClient.value.id}`,
-        { method: 'PATCH', body: { name: nameValue.value } },
-      );
+      const payload: UpdateClientDto = { name: nameValue.value };
+
+      const updated = await $csrfFetch<ClientDto>(`/api/clients/${editingClient.value.id}`, {
+        method: 'PATCH',
+        body: payload,
+      });
+
       const idx = clients.value.findIndex((c) => c.id === updated.id);
       if (idx !== -1) {
         const next = [...clients.value];
@@ -68,10 +69,13 @@ async function onSave() {
         life: 3000,
       });
     } else {
-      const created = await $csrfFetch<{ id: string; name: string; createdAt: string }>(
-        '/api/clients',
-        { method: 'POST', body: { name: nameValue.value } },
-      );
+      const payload: CreateClientDto = { name: nameValue.value };
+
+      const created = await $csrfFetch<ClientDto>('/api/clients', {
+        method: 'POST',
+        body: payload,
+      });
+
       await fetchClients();
       toast.add({
         severity: 'success',
@@ -204,6 +208,8 @@ function onDelete(client: { id: string; name: string }) {
         <InputText
           id="client-name"
           v-model="nameValue"
+          required
+          :maxlength="CLIENT_NAME_MAX_LENGTH"
           :placeholder="t('clients.namePlaceholder')"
           :aria-invalid="!!nameError"
           :aria-describedby="nameError ? 'client-name-error' : undefined"

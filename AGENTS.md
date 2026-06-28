@@ -85,6 +85,7 @@ Notes:
 - Server `messageKey` contract: API error responses return `{ messageKey, params }` (not rendered text); the client translates via `t(messageKey, params)`.
 - Theming: treat the PrimeVue `primary` token in `nuxt.config.ts` as the single source of truth for brand accent; prefer theme tokens over inline colors/styles in app UI.
 - UI components: when changing or building UI, always look for an existing PrimeVue component first before implementing from scratch; only write custom markup/CSS when no suitable PrimeVue component exists.
+- Boundary types & validation: Every shape exchanged across the client/server boundary must be defined exactly once in a `shared/types/<entity>.ts` module (decoupled from Drizzle schemas). Request bodies are validated, normalized, and typed via a single `zod` schema. Response DTOs are plain types where JSON-serialized fields are typed in their serialized form (e.g. timestamps as `string`, never `Date`). Validation failures are mapped from `ZodError` to the `{ messageKey, params }` server error contract using `mapZodError`. Explicit `any` is a lint error (`@typescript-eslint/no-explicit-any: 'error'`); if unavoidable, annotate with a `// eslint-disable-next-line @typescript-eslint/no-explicit-any` comment detailing the justification.
 
 ## Build and Deployment
 

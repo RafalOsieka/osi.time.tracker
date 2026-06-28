@@ -1,6 +1,5 @@
-import { startPostgres, stopPostgres } from './postgres';
+import { startPostgres, stopPostgres, TEST_DATABASE_URL } from './postgres';
 import { runMigrations } from '../../../server/db/migrate';
-import { TEST_DATABASE_URL } from './postgres';
 
 export async function setup(): Promise<void> {
   console.warn('setup, ', TEST_DATABASE_URL);

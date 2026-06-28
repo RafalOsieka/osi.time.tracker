@@ -20,7 +20,6 @@ const dockerAvailable = isDockerAvailable();
 const describeAuth = dockerAvailable ? describe : describe.skip;
 
 if (!dockerAvailable) {
-  // eslint-disable-next-line no-console
   console.warn('[auth.spec] Docker not available — skipping Auth E2E integration tests.');
 }
 

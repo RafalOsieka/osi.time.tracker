@@ -7,7 +7,7 @@ API boundary shapes are currently re-described ad hoc on both sides of the wire 
 - Introduce **hand-written boundary contracts** in `shared/types/<entity>.ts` as the single source of truth both sides import (Option B: decoupled from DB columns).
 - Adopt **`zod`** (only, no `drizzle-zod`) for **request bodies**: one schema validates, normalizes (trim), and strips unknown keys at runtime; the request type is derived via `z.infer`.
 - **Response DTOs are plain inferred/explicit types** (no runtime parsing — the server is trusted), with the `Date → string` JSON serialization made explicit.
-- Add a shared **ZodError → `{ messageKey, params }` translator** (generic: maps issue `path`+`code` to a message key) so the locale-agnostic server contract is preserved.
+- Add a shared **ZodError → `{ messageKey, params }` translator** (`mapZodError`): message keys are authored directly in the schema's Zod messages, and the translator reads the first issue, detects a dot-notation message key, extracts any parameters (`min`/`max`/`expected`/`received`/custom `params`), and falls back to `errors.unexpected` otherwise — so the locale-agnostic server contract is preserved.
 - Enable **`@typescript-eslint/no-explicit-any: 'error'`** with a documented `eslint-disable` escape hatch as the hard gate.
 - **Retrofit the `clients` slice** end-to-end as the reference implementation for future entities.
 
@@ -22,6 +22,6 @@ API boundary shapes are currently re-described ad hoc on both sides of the wire 
 ## Impact
 
 - **Dependencies**: adds `zod`.
-- **Code**: new `shared/types/client.ts`; `server/api/clients/index.post.ts` (and any future handlers) route bodies through `schema.parse`; `pages/clients.vue` imports `ClientDto`; `server/utils/validation.ts` absorbed into schema + error translator.
+- **Code**: new `shared/types/client.ts` and `server/utils/zod-error.ts`; `server/api/clients/index.post.ts` and `server/api/clients/[id].patch.ts` route bodies through `schema.parse`; `pages/clients.vue` imports `ClientDto` and `CLIENT_NAME_MAX_LENGTH`; `server/utils/validation.ts` removed (absorbed into schema + error translator).
 - **Tooling**: `eslint.config.mjs` gains the `no-explicit-any` rule (enforced by the existing `pnpm lint` PR gate).
 - **Non-goals**: `no-unsafe-*` rules (deferred), `drizzle-zod`, runtime parsing of responses, and migrating non-`clients` features (none exist yet).

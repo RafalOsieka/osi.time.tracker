@@ -1,25 +1,38 @@
+import { and, eq, isNull } from 'drizzle-orm';
+import { ZodError } from 'zod';
+import { CreateClientDto, createClientSchema, type ClientDto } from '../../../shared/types/client';
 import { db } from '../../db/index';
 import { clients } from '../../db/schema';
-import { eq, isNull, and } from 'drizzle-orm';
-import { validateClientName } from '../../utils/validation';
+import { mapZodError } from '../../utils/zod-error';
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<ClientDto> => {
   const { user } = await requireAuth(event);
   const body = await readBody(event);
 
-  const validation = validateClientName(body?.name);
-  if (!validation.valid) {
-    throw createError({ statusCode: 422, data: { messageKey: validation.messageKey } });
+  let parsedBody: CreateClientDto;
+  try {
+    parsedBody = createClientSchema.parse(body);
+  } catch (err: unknown) {
+    if (err instanceof ZodError) {
+      const mapped = mapZodError(err);
+      throw createError({
+        statusCode: 422,
+        data: { messageKey: mapped.messageKey, params: mapped.params },
+      });
+    }
+    throw err;
   }
-
-  const trimmedName = (body.name as string).trim();
 
   // App-layer duplicate check (partial unique index is the primary guard)
   const existing = await db
     .select({ id: clients.id })
     .from(clients)
     .where(
-      and(eq(clients.userId, user.id), eq(clients.name, trimmedName), isNull(clients.deletedAt)),
+      and(
+        eq(clients.userId, user.id),
+        eq(clients.name, parsedBody.name),
+        isNull(clients.deletedAt),
+      ),
     )
     .limit(1);
 
@@ -30,9 +43,13 @@ export default defineEventHandler(async (event) => {
   try {
     const [created] = await db
       .insert(clients)
-      .values({ userId: user.id, name: trimmedName })
+      .values({ userId: user.id, name: parsedBody.name })
       .returning();
-    return created;
+    return {
+      id: created.id,
+      name: created.name,
+      createdAt: created.createdAt.toISOString(),
+    };
   } catch (err: unknown) {
     // Map DB unique constraint violation to duplicate error
     if (

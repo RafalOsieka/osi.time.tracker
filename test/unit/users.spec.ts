@@ -1,14 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createRequire } from 'node:module';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { normalizeEmail, DUMMY_HASH } from '../../server/utils/users';
 
 const require = createRequire(import.meta.resolve('nuxt-auth-utils'));
 const hashMjsPath = 'file:///' + require.resolve('@adonisjs/hash').replace(/\\/g, '/');
 const scryptMjsPath =
   'file:///' + require.resolve('@adonisjs/hash/drivers/scrypt').replace(/\\/g, '/');
-
-import { normalizeEmail, DUMMY_HASH } from '../../server/utils/users';
 
 describe('normalizeEmail', () => {
   it('trims whitespace and converts to lowercase', () => {

@@ -18,7 +18,7 @@ vi.mock('ofetch', async (importOriginal) => {
 });
 
 type Client = { id: string; name: string; createdAt: string };
-let useAsyncDataClients: Client[] = [];
+const useAsyncDataClients: Client[] = [];
 
 mockNuxtImport('useAsyncData', () => {
   return (_key: string, fetcher: () => Promise<Client[]>) => {

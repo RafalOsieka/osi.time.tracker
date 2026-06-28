@@ -1,19 +1,28 @@
+import { and, eq, isNull, ne } from 'drizzle-orm';
+import { ZodError } from 'zod';
+import { UpdateClientDto, updateClientSchema, type ClientDto } from '../../../shared/types/client';
 import { db } from '../../db/index';
 import { clients } from '../../db/schema';
-import { eq, isNull, and, ne } from 'drizzle-orm';
-import { validateClientName } from '../../utils/validation';
+import { mapZodError } from '../../utils/zod-error';
 
-export default defineEventHandler(async (event) => {
+export default defineEventHandler(async (event): Promise<ClientDto> => {
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
   const body = await readBody(event);
 
-  const validation = validateClientName(body?.name);
-  if (!validation.valid) {
-    throw createError({ statusCode: 422, data: { messageKey: validation.messageKey } });
+  let parsedBody: UpdateClientDto;
+  try {
+    parsedBody = updateClientSchema.parse(body);
+  } catch (err: unknown) {
+    if (err instanceof ZodError) {
+      const mapped = mapZodError(err);
+      throw createError({
+        statusCode: 422,
+        data: { messageKey: mapped.messageKey, params: mapped.params },
+      });
+    }
+    throw err;
   }
-
-  const trimmedName = (body.name as string).trim();
 
   // Verify ownership (404 for foreign/unknown id)
   const [existing] = await db
@@ -33,7 +42,7 @@ export default defineEventHandler(async (event) => {
     .where(
       and(
         eq(clients.userId, user.id),
-        eq(clients.name, trimmedName),
+        eq(clients.name, parsedBody.name),
         isNull(clients.deletedAt),
         ne(clients.id, id!),
       ),
@@ -47,10 +56,14 @@ export default defineEventHandler(async (event) => {
   try {
     const [updated] = await db
       .update(clients)
-      .set({ name: trimmedName, updatedAt: new Date() })
+      .set({ name: parsedBody.name, updatedAt: new Date() })
       .where(and(eq(clients.id, id!), eq(clients.userId, user.id)))
       .returning();
-    return updated;
+    return {
+      id: updated.id,
+      name: updated.name,
+      createdAt: updated.createdAt.toISOString(),
+    };
   } catch (err: unknown) {
     if (
       err &&
