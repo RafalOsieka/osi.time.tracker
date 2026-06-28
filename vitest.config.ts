@@ -1,5 +1,6 @@
-import { defineConfig } from 'vitest/config';
 import { defineVitestProject } from '@nuxt/test-utils/config';
+import { cpus } from 'node:os';
+import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
@@ -19,7 +20,7 @@ export default defineConfig({
           globalSetup: ['test/e2e/support/global-setup.ts'],
           hookTimeout: 600_000,
           testTimeout: 60_000,
-          fileParallelism: false,
+          maxWorkers: Math.max(1, Math.min(4, Math.floor(cpus().length / 2))),
         },
       },
       await defineVitestProject({

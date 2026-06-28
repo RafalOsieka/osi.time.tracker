@@ -21,7 +21,12 @@ function isActive(to: string) {
 </script>
 
 <template>
-  <Menu :model="navItems" class="app-sidebar__menu" aria-label="Main navigation">
+  <Menu
+    :model="navItems"
+    class="app-sidebar__menu"
+    aria-label="Main navigation"
+    data-testid="app-sidebar"
+  >
     <template #item="{ item, props: itemProps }">
       <NuxtLink
         v-tooltip.right="props.iconOnly ? item.label : undefined"

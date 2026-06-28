@@ -121,6 +121,22 @@ pnpm test:e2e
 
 If Playwright browser binaries are not installed, the browser-based suites (`auth-ui`, `i18n-login`, `shell`) are skipped automatically.
 
+#### Execution modes
+
+By default, the E2E harness performs a one-time production build (`pnpm build`) during global setup and runs tests against this build for maximum performance and parity with production.
+
+To run tests against the development server (useful for faster iteration without rebuilding), use the `NUXT_TEST_DEV` environment variable:
+
+```bash
+# Unix/macOS
+NUXT_TEST_DEV=1 pnpm test:e2e
+
+# Windows (PowerShell)
+$env:NUXT_TEST_DEV=1; pnpm test:e2e
+```
+
+When `NUXT_TEST_DEV` is set, the global build step is skipped and each test worker starts a Nuxt dev server.
+
 ---
 
 ## Docker — Production Image

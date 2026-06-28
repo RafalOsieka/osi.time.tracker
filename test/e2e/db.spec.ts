@@ -1,36 +1,36 @@
-import { afterAll, beforeAll, describe, expect, it, beforeEach } from 'vitest';
+import { afterAll, describe, expect, it, beforeEach } from 'vitest';
 import postgres from 'postgres';
 import { sql as drizzleSql, eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../server/db/client';
 import { runMigrations } from '../../server/db/migrate';
 import { users } from '../../server/db/schema/users';
-import {
-  TEST_DATABASE_URL,
-  isDockerAvailable,
-  removeMigrations,
-  startPostgres,
-  stopPostgres,
-  writeMigrations,
-} from './support/postgres';
+import { requireDocker } from './support/guards';
+import { provisionEmptyDatabase } from './support/database';
+import { removeMigrations, writeMigrations } from './support/postgres';
 
-const dockerAvailable = isDockerAvailable();
-const describeDb = dockerAvailable ? describe : describe.skip;
-
-if (!dockerAvailable) {
-  console.warn('[db.spec] Docker not available — skipping DB integration tests.');
-}
+const describeDb = requireDocker();
 
 describeDb('database integration', () => {
-  beforeAll(async () => {
-    await startPostgres();
-  }, 180_000);
+  let dbUrl: string;
+  const backupEmail = process.env.BOOTSTRAP_USER_EMAIL;
+  const backupPassword = process.env.BOOTSTRAP_USER_PASSWORD;
+
+  beforeEach(async () => {
+    dbUrl = await provisionEmptyDatabase();
+    // Temporarily delete bootstrap env vars by default for all tests in this file
+    // to prevent runMigrations with mock directories from attempting to seed users.
+    delete process.env.BOOTSTRAP_USER_EMAIL;
+    delete process.env.BOOTSTRAP_USER_PASSWORD;
+  });
 
   afterAll(() => {
-    stopPostgres();
+    // Restore backup env vars after all tests in this file complete
+    if (backupEmail) process.env.BOOTSTRAP_USER_EMAIL = backupEmail;
+    if (backupPassword) process.env.BOOTSTRAP_USER_PASSWORD = backupPassword;
   });
 
   it('connects to Postgres and runs SELECT 1', async () => {
-    const { db, sql } = createDatabaseClient(TEST_DATABASE_URL, { max: 1 });
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 1 });
     try {
       const rows = await db.execute<{ value: number }>(drizzleSql`SELECT 1 AS value`);
       expect(Number((rows as Array<{ value: number }>)[0].value)).toBe(1);
@@ -41,9 +41,9 @@ describeDb('database integration', () => {
 
   it('applies all pending migrations against a fresh database', async () => {
     const dir = writeMigrations(['CREATE TABLE migrate_target (id integer PRIMARY KEY);']);
-    const probe = postgres(TEST_DATABASE_URL, { max: 1 });
+    const probe = postgres(dbUrl, { max: 1 });
     try {
-      await runMigrations(TEST_DATABASE_URL, dir);
+      await runMigrations(dbUrl, dir);
 
       const tables = await probe`
         SELECT table_name FROM information_schema.tables
@@ -61,13 +61,13 @@ describeDb('database integration', () => {
 
   it('is idempotent when run twice (second run applies nothing)', async () => {
     const dir = writeMigrations(['CREATE TABLE idem_target (id integer PRIMARY KEY);']);
-    const probe = postgres(TEST_DATABASE_URL, { max: 1 });
+    const probe = postgres(dbUrl, { max: 1 });
     try {
-      await runMigrations(TEST_DATABASE_URL, dir);
+      await runMigrations(dbUrl, dir);
       const first = await probe`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
 
       // Second run must succeed without error and without re-applying.
-      await expect(runMigrations(TEST_DATABASE_URL, dir)).resolves.toBeUndefined();
+      await expect(runMigrations(dbUrl, dir)).resolves.toBeUndefined();
       const second = await probe`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
 
       expect(second[0].n).toBe(first[0].n);
@@ -80,7 +80,7 @@ describeDb('database integration', () => {
   it('fails (rejects) on a deliberately broken migration', async () => {
     const dir = writeMigrations(['THIS IS NOT VALID SQL;']);
     try {
-      await expect(runMigrations(TEST_DATABASE_URL, dir)).rejects.toBeTruthy();
+      await expect(runMigrations(dbUrl, dir)).rejects.toBeTruthy();
     } finally {
       removeMigrations(dir);
     }
@@ -88,9 +88,9 @@ describeDb('database integration', () => {
 
   it('asserts an inserted user (id omitted) receives a UUIDv7 and that the email UNIQUE constraint rejects duplicates (case-folded)', async () => {
     // Run the migrations to ensure tables (specifically users) are created
-    await runMigrations(TEST_DATABASE_URL);
+    await runMigrations(dbUrl);
 
-    const { db, sql } = createDatabaseClient(TEST_DATABASE_URL, { max: 5 });
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 5 });
     try {
       // Clear users table first
       await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
@@ -151,19 +151,11 @@ describeDb('database integration', () => {
       process.env.BOOTSTRAP_USER_EMAIL = 'bootstrap@example.com';
       process.env.BOOTSTRAP_USER_PASSWORD = 'bootstrappassword';
 
-      // Clear users table first
-      const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
-      try {
-        await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
-      } finally {
-        await sql.end({ timeout: 5 });
-      }
-
       // Run migrations which includes seeding
-      await runMigrations(TEST_DATABASE_URL);
+      await runMigrations(dbUrl);
 
       // Verify user was created
-      const probeClient = createDatabaseClient(TEST_DATABASE_URL);
+      const probeClient = createDatabaseClient(dbUrl);
       try {
         const found = await probeClient.db
           .select()
@@ -181,11 +173,13 @@ describeDb('database integration', () => {
     });
 
     it('existing user untouched', async () => {
-      // Clear users table and insert an existing user with a specific password hash
-      const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
+      // Create schema first
+      await runMigrations(dbUrl);
+
+      // Insert an existing user with a specific password hash
+      const { db, sql } = createDatabaseClient(dbUrl);
       const originalHash = 'some-original-hash';
       try {
-        await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
         await db.insert(users).values({
           email: 'bootstrap@example.com',
           passwordHash: originalHash,
@@ -198,10 +192,10 @@ describeDb('database integration', () => {
       process.env.BOOTSTRAP_USER_EMAIL = 'bootstrap@example.com';
       process.env.BOOTSTRAP_USER_PASSWORD = 'newpassword';
 
-      await runMigrations(TEST_DATABASE_URL);
+      await runMigrations(dbUrl);
 
       // Verify original user was not modified
-      const probeClient = createDatabaseClient(TEST_DATABASE_URL);
+      const probeClient = createDatabaseClient(dbUrl);
       try {
         const found = await probeClient.db
           .select()
@@ -217,19 +211,11 @@ describeDb('database integration', () => {
     });
 
     it('unset vars skip silently', async () => {
-      // Clear users table
-      const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
-      try {
-        await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
-      } finally {
-        await sql.end({ timeout: 5 });
-      }
-
-      // Vars are unset (handled by beforeEach)
-      await runMigrations(TEST_DATABASE_URL);
+      // Run migrations on fresh DB
+      await runMigrations(dbUrl);
 
       // Verify no user was created
-      const probeClient = createDatabaseClient(TEST_DATABASE_URL);
+      const probeClient = createDatabaseClient(dbUrl);
       try {
         const found = await probeClient.db.select().from(users);
         expect(found.length).toBe(0);
@@ -244,7 +230,7 @@ describeDb('database integration', () => {
     // serving traffic after migrations complete; a migration failure blocks it.
     async function startupSequence(migrationsDir: string): Promise<string[]> {
       const events: string[] = [];
-      await runMigrations(TEST_DATABASE_URL, migrationsDir);
+      await runMigrations(dbUrl, migrationsDir);
       events.push('migrations-complete');
       events.push('serving-traffic');
       return events;
@@ -264,7 +250,7 @@ describeDb('database integration', () => {
       const dir = writeMigrations(['BROKEN SQL HERE;']);
       let served = false;
       try {
-        await runMigrations(TEST_DATABASE_URL, dir);
+        await runMigrations(dbUrl, dir);
         served = true;
       } catch {
         // Skip assignment since served is already false

@@ -1,26 +1,12 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { setup, url } from '@nuxt/test-utils/e2e';
-import { sql as drizzleSql } from 'drizzle-orm';
-import { createRequire } from 'node:module';
+import { expect, it } from 'vitest';
+import { url } from '@nuxt/test-utils/e2e';
 import { CookieJar, primeCsrf } from './support/auth';
-import { createDatabaseClient } from '../../server/db/client';
-import { users } from '../../server/db/schema/users';
-import {
-  TEST_DATABASE_URL,
-  isDockerAvailable,
-  startPostgres,
-  stopPostgres,
-} from './support/postgres';
+import { requireDocker } from './support/guards';
+import { provisionDatabase } from './support/database';
+import { seedUsers } from './support/seed';
+import { setupServer } from './support/setupServer';
 
-process.env.DATABASE_URL = TEST_DATABASE_URL;
-
-const SESSION_PASSWORD = 'test-session-password-0123456789-abcdef';
-const dockerAvailable = isDockerAvailable();
-const describeClients = dockerAvailable ? describe : describe.skip;
-
-if (!dockerAvailable) {
-  console.warn('[clients.spec] Docker not available — skipping Clients E2E integration tests.');
-}
+const describeClients = requireDocker();
 
 /** Log in and return a primed CookieJar + CSRF token. */
 async function loginAs(
@@ -39,41 +25,12 @@ async function loginAs(
 }
 
 describeClients('clients API integration', async () => {
-  await setup({
-    nuxtConfig: {
-      runtimeConfig: {
-        session: { password: SESSION_PASSWORD },
-      },
-    },
-  });
-
-  beforeAll(async () => {
-    await startPostgres();
-
-    const requireModule = createRequire(import.meta.resolve('nuxt-auth-utils'));
-    const hashMjsPath = 'file:///' + requireModule.resolve('@adonisjs/hash').replace(/\\/g, '/');
-    const scryptMjsPath =
-      'file:///' + requireModule.resolve('@adonisjs/hash/drivers/scrypt').replace(/\\/g, '/');
-    const { Hash } = await import(hashMjsPath);
-    const { Scrypt } = await import(scryptMjsPath);
-    const hasher = new Hash(new Scrypt({}));
-    const passwordHash = await hasher.make('secret');
-
-    const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
-    try {
-      await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
-      await db.insert(users).values([
-        { email: 'alice@example.com', passwordHash, displayName: 'Alice' },
-        { email: 'bob@example.com', passwordHash, displayName: 'Bob' },
-      ]);
-    } finally {
-      await sql.end({ timeout: 5 });
-    }
-  }, 180_000);
-
-  afterAll(() => {
-    stopPostgres();
-  });
+  const dbUrl = await provisionDatabase();
+  await seedUsers(dbUrl, [
+    { email: 'alice@example.com', displayName: 'Alice' },
+    { email: 'bob@example.com', displayName: 'Bob' },
+  ]);
+  await setupServer({ databaseUrl: dbUrl });
 
   // 3.6 list returns only own non-deleted clients, ordered by name
   it('3.6 list returns only own non-deleted clients, ordered by name', async () => {

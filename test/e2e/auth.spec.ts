@@ -1,65 +1,26 @@
-import { describe, expect, it, beforeAll, afterAll } from 'vitest';
-import { setup, url } from '@nuxt/test-utils/e2e';
-import { sql as drizzleSql } from 'drizzle-orm';
-import { createRequire } from 'node:module';
+import { expect, it, beforeEach } from 'vitest';
+import { url } from '@nuxt/test-utils/e2e';
 import { CookieJar, primeCsrf } from './support/auth';
-import { createDatabaseClient } from '../../server/db/client';
-import { users } from '../../server/db/schema/users';
-import {
-  TEST_DATABASE_URL,
-  isDockerAvailable,
-  startPostgres,
-  stopPostgres,
-} from './support/postgres';
+import { requireDocker } from './support/guards';
+import { provisionDatabase } from './support/database';
+import { seedUsers } from './support/seed';
+import { setupServer } from './support/setupServer';
 
-// Set DATABASE_URL for Nitro and tests to pick up
-process.env.DATABASE_URL = TEST_DATABASE_URL;
-
-const SESSION_PASSWORD = 'test-session-password-0123456789-abcdef';
-const dockerAvailable = isDockerAvailable();
-const describeAuth = dockerAvailable ? describe : describe.skip;
-
-if (!dockerAvailable) {
-  console.warn('[auth.spec] Docker not available — skipping Auth E2E integration tests.');
-}
+const describeAuth = requireDocker();
 
 describeAuth('authentication integration', async () => {
-  await setup({
-    nuxtConfig: {
-      runtimeConfig: {
-        session: { password: SESSION_PASSWORD },
-      },
+  const dbUrl = await provisionDatabase();
+  await seedUsers(dbUrl, [
+    {
+      email: 'alice@example.com',
+      displayName: 'Alice Liddell',
     },
-  });
+  ]);
+  await setupServer({ databaseUrl: dbUrl });
 
-  beforeAll(async () => {
-    await startPostgres();
-
-    // Resolve hasher and insert test user
-    const requireModule = createRequire(import.meta.resolve('nuxt-auth-utils'));
-    const hashMjsPath = 'file:///' + requireModule.resolve('@adonisjs/hash').replace(/\\/g, '/');
-    const scryptMjsPath =
-      'file:///' + requireModule.resolve('@adonisjs/hash/drivers/scrypt').replace(/\\/g, '/');
-    const { Hash } = await import(hashMjsPath);
-    const { Scrypt } = await import(scryptMjsPath);
-    const hasher = new Hash(new Scrypt({}));
-    const passwordHash = await hasher.make('secret');
-
-    const { db, sql } = createDatabaseClient(TEST_DATABASE_URL);
-    try {
-      await db.execute(drizzleSql`TRUNCATE TABLE users CASCADE`);
-      await db.insert(users).values({
-        email: 'alice@example.com',
-        passwordHash,
-        displayName: 'Alice Liddell',
-      });
-    } finally {
-      await sql.end({ timeout: 5 });
-    }
-  }, 180_000);
-
-  afterAll(() => {
-    stopPostgres();
+  beforeEach(async () => {
+    // Wait to let the rate limiter replenish tokens
+    await new Promise((resolve) => setTimeout(resolve, 2000));
   });
 
   it('3.1 login sets a session cookie (happy path) and rejects invalid input', async () => {

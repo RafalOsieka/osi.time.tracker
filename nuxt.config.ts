@@ -69,7 +69,12 @@ export default defineNuxtConfig({
       security: {
         rateLimiter: {
           tokensPerInterval: 5,
-          interval: 60000, // 1 minute
+          interval:
+            process.env.NODE_ENV === 'test' ||
+            Boolean(process.env.VITEST) ||
+            process.env.IS_E2E === 'true'
+              ? 2000
+              : 60000,
         },
       },
     },
@@ -117,6 +122,12 @@ export default defineNuxtConfig({
           darkModeSelector: '.dark',
         },
       },
+    },
+  },
+  vite: {
+    server: {
+      // Disable HMR in E2E tests to avoid flakiness when running against the dev server.
+      hmr: process.env.IS_E2E === 'true' ? false : undefined,
     },
   },
   typescript: {

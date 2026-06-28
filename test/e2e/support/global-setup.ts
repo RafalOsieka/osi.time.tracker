@@ -1,18 +1,23 @@
+import { execSync } from 'node:child_process';
 import { startPostgres, stopPostgres, TEST_DATABASE_URL } from './postgres';
-import { runMigrations } from '../../../server/db/migrate';
+import { isDockerAvailable } from './guards';
+import { prepareTemplate } from './database';
 
 export async function setup(): Promise<void> {
-  console.warn('setup, ', TEST_DATABASE_URL);
   process.env.DATABASE_URL = TEST_DATABASE_URL;
-  console.warn('startPostgres');
-  await startPostgres();
-  console.warn('startPostgres completed');
-  await runMigrations(TEST_DATABASE_URL);
-  console.warn('runMigrations completed', TEST_DATABASE_URL);
+
+  if (isDockerAvailable()) {
+    await startPostgres();
+    await prepareTemplate();
+  }
+
+  if (!process.env.NUXT_TEST_DEV) {
+    execSync('pnpm build', { stdio: 'inherit' });
+  }
 }
 
 export async function teardown(): Promise<void> {
-  console.warn('stopPostgres');
-  stopPostgres();
-  console.warn('stopPostgres completed');
+  if (isDockerAvailable()) {
+    stopPostgres();
+  }
 }

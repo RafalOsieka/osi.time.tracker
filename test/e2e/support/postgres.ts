@@ -9,16 +9,11 @@ const PASSWORD = 'postgres';
 const DB = 'osi_time_tracker_test';
 const HOST_PORT = 54800;
 
-export const TEST_DATABASE_URL = `postgres://postgres:${PASSWORD}@host.docker.internal:${HOST_PORT}/${DB}`;
+export const TEST_DATABASE_URL = `postgres://postgres:${PASSWORD}@127.0.0.1:${HOST_PORT}/${DB}`;
 
-/** Returns true when a usable Docker CLI is available on the host. */
-export function isDockerAvailable(): boolean {
-  try {
-    execFileSync('docker', ['info'], { stdio: 'ignore' });
-    return true;
-  } catch {
-    return false;
-  }
+/** Returns the URL for the admin/postgres database. */
+export function getAdminUrl(): string {
+  return `postgres://postgres:${PASSWORD}@127.0.0.1:${HOST_PORT}/postgres`;
 }
 
 function dockerSilent(args: string[]): void {
@@ -43,7 +38,7 @@ export async function startPostgres(): Promise<void> {
   }
 
   // Clean up any stopped/crashed container from a previous run before starting fresh.
-  dockerSilent(['rm', '-f', CONTAINER_NAME]);
+  stopPostgres();
 
   execFileSync(
     'docker',
@@ -86,12 +81,9 @@ async function waitForReady(): Promise<void> {
   throw new Error(`Postgres did not become ready in time: ${String(lastError)}`);
 }
 
-/** Stops and removes the disposable Postgres container.
- *  No-op when called from parallel suites — the container is shared for the duration of the run
- *  and cleaned up at the start of the next run by startPostgres. */
+/** Stops and removes the disposable Postgres container. */
 export function stopPostgres(): void {
-  // Intentionally left as a no-op: multiple parallel suites share the same container.
-  // The container is removed at the beginning of the next startPostgres call.
+  dockerSilent(['rm', '-f', CONTAINER_NAME]);
 }
 
 interface JournalEntry {
