@@ -5,6 +5,7 @@ import type { CreateClientDto, ClientDto } from '../../../shared/types/client';
 import { db } from '../../db/index';
 import { clients } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
+import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ClientDto> => {
   const { user } = await requireAuth(event);
@@ -15,10 +16,9 @@ export default defineEventHandler(async (event): Promise<ClientDto> => {
     parsedBody = createClientSchema.parse(body);
   } catch (err: unknown) {
     if (err instanceof ZodError) {
-      const mapped = mapZodError(err);
       throw createError({
         statusCode: 422,
-        data: { messageKey: mapped.messageKey, params: mapped.params },
+        data: mapZodError(err) satisfies ApiMessage,
       });
     }
     throw err;
@@ -38,7 +38,10 @@ export default defineEventHandler(async (event): Promise<ClientDto> => {
     .limit(1);
 
   if (existing.length > 0) {
-    throw createError({ statusCode: 422, data: { messageKey: 'error.clientNameDuplicate' } });
+    throw createError({
+      statusCode: 422,
+      data: { messageKey: 'error.clientNameDuplicate' } satisfies ApiMessage,
+    });
   }
 
   try {
@@ -48,7 +51,10 @@ export default defineEventHandler(async (event): Promise<ClientDto> => {
       .returning();
 
     if (!created) {
-      throw createError({ statusCode: 500, data: { messageKey: 'error.unknown' } });
+      throw createError({
+        statusCode: 500,
+        data: { messageKey: 'error.unknown' } satisfies ApiMessage,
+      });
     }
 
     return {
@@ -64,7 +70,10 @@ export default defineEventHandler(async (event): Promise<ClientDto> => {
       'code' in err &&
       (err as { code: string }).code === '23505'
     ) {
-      throw createError({ statusCode: 422, data: { messageKey: 'error.clientNameDuplicate' } });
+      throw createError({
+        statusCode: 422,
+        data: { messageKey: 'error.clientNameDuplicate' } satisfies ApiMessage,
+      });
     }
     throw err;
   }

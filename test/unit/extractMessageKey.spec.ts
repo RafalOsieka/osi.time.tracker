@@ -14,11 +14,6 @@ describe('extractMessageKey', () => {
     expect(extractMessageKey({}, 'fallback')).toBe('fallback');
   });
 
-  it('returns messageKey from err.data.messageKey (login route shape)', () => {
-    const err = { data: { messageKey: 'errors.auth.invalidCredentials' } };
-    expect(extractMessageKey(err, 'fallback')).toBe('errors.auth.invalidCredentials');
-  });
-
   it('returns messageKey from err.data.data.messageKey (Nitro createError shape)', () => {
     const err = { data: { statusCode: 422, data: { messageKey: 'error.clientNameDuplicate' } } };
     expect(extractMessageKey(err, 'fallback')).toBe('error.clientNameDuplicate');
@@ -29,8 +24,8 @@ describe('extractMessageKey', () => {
     expect(extractMessageKey(err, 'fallback')).toBe('fallback');
   });
 
-  it('prefers direct err.data.messageKey over nested', () => {
-    const err = { data: { messageKey: 'direct', data: { messageKey: 'nested' } } };
-    expect(extractMessageKey(err, 'fallback')).toBe('direct');
+  it('returns fallback when err.data has no nested data object', () => {
+    const err = { data: { statusCode: 422 } };
+    expect(extractMessageKey(err, 'fallback')).toBe('fallback');
   });
 });

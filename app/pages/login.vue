@@ -23,7 +23,7 @@ async function onLogin() {
     const target = sanitizeRedirect(route.query.redirect);
     await navigateTo(target);
   } catch (err) {
-    error.value = t(extractMessageKey(err));
+    error.value = t(extractMessageKey(err, 'auth.loginFailed'));
   } finally {
     pending.value = false;
   }

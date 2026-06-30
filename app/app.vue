@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { resolveEffectiveMode, type ColorModePreference } from '~/utils/color-mode';
+import { resolveEffectiveMode } from '~/utils/color-mode';
 
-const COOKIE_KEY = 'color_mode';
-
-const colorMode = useCookie<ColorModePreference>(COOKIE_KEY, {
-  default: () => 'system',
-});
-
+const { preference } = useColorMode();
 const systemPrefersDark = useRequestHeader('sec-ch-prefers-color-scheme') === 'dark';
-const initialEffectiveMode = resolveEffectiveMode(colorMode.value ?? 'system', systemPrefersDark);
+const initialEffectiveMode = resolveEffectiveMode(preference.value ?? 'system', systemPrefersDark);
 
 const { locale } = useI18n();
 useHead({

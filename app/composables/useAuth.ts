@@ -7,7 +7,7 @@ export function useAuth() {
   const { loggedIn, user, fetch: refresh, clear } = useUserSession();
   const { $csrfFetch } = useNuxtApp();
 
-  async function login(credentials: { email: string; password: string }) {
+  async function login(credentials: LoginDto) {
     await $csrfFetch('/api/auth/login', { method: 'POST', body: credentials });
     await refresh();
   }

@@ -102,6 +102,8 @@ export default defineNuxtConfig({
     },
   },
   security: {
+    // Disable rate limiter in development to prevent Vite HMR and unbundled requests from getting blocked.
+    rateLimiter: process.env.NODE_ENV === 'development' ? false : undefined,
     // CSRF protection for state-changing requests. The underlying nuxt-csurf
     // module defaults to POST/PUT/PATCH; DELETE is added to satisfy the spec.
     csrf: {
@@ -128,6 +130,9 @@ export default defineNuxtConfig({
     server: {
       // Disable HMR in E2E tests to avoid flakiness when running against the dev server.
       hmr: process.env.IS_E2E === 'true' ? false : undefined,
+    },
+    optimizeDeps: {
+      include: ['zod'],
     },
   },
   typescript: {

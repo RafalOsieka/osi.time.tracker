@@ -1,8 +1,4 @@
-/** Shape of the authenticated user exposed to the UI by the session. */
-export interface SessionUser {
-  email?: string | null;
-  displayName?: string | null;
-}
+import type { User } from '#auth-utils';
 
 /** Return value of {@link authStatusKey} — a message key and optional params for `t()`. */
 export interface AuthStatusMessage {
@@ -15,7 +11,7 @@ export interface AuthStatusMessage {
  * the auth status label shown to the user. Kept free of Vue/Nuxt so it can be
  * unit tested in isolation (see `test/unit/auth-display.spec.ts`).
  */
-export function authStatusKey(loggedIn: boolean, user?: SessionUser | null): AuthStatusMessage {
+export function authStatusKey(loggedIn: boolean, user?: Partial<User> | null): AuthStatusMessage {
   if (!loggedIn) {
     return { key: 'home.statusLoggedOut' };
   }

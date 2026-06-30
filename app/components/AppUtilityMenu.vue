@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import type { ColorModePreference } from '~/utils/color-mode';
 
 const { t, locale, availableLocales } = useI18n();
 const { preference, setPreference } = useColorMode();
@@ -40,9 +41,9 @@ const selectedLocale = computed({
   },
 });
 
-const selectedTheme = computed({
+const selectedTheme = computed<ColorModePreference>({
   get: () => preference.value,
-  set: (val) => setPreference(val as 'light' | 'dark' | 'system'),
+  set: (val) => setPreference(val),
 });
 
 const menu = ref();

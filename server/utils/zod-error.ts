@@ -1,9 +1,7 @@
 import type { ZodError } from 'zod';
+import type { ApiMessage } from '../types/api-message';
 
-export function mapZodError(error: ZodError): {
-  messageKey: string;
-  params?: Record<string, unknown>;
-} {
+export function mapZodError(error: ZodError): ApiMessage {
   const issue = error.issues[0];
   if (!issue) {
     return { messageKey: 'errors.unexpected' };

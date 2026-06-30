@@ -1,4 +1,8 @@
+import { ZodError } from 'zod';
+import { loginSchema } from '../../../shared/types/auth';
+import type { LoginDto } from '../../../shared/types/auth';
 import { findUserByEmail, DUMMY_HASH } from '../../utils/users';
+import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
@@ -8,19 +12,22 @@ import type { ApiMessage } from '../../types/api-message';
  * cookie via `setUserSession`.
  */
 export default defineEventHandler(async (event) => {
-  const body = await readBody<{ email?: unknown; password?: unknown }>(event);
+  const body = await readBody(event);
 
-  const emailInput = typeof body?.email === 'string' ? body.email : '';
-  const password = typeof body?.password === 'string' ? body.password : '';
-
-  if (!emailInput || !password) {
-    const message: ApiMessage = { messageKey: 'errors.auth.credentialsRequired' };
-    throw createError({
-      statusCode: 400,
-      statusMessage: 'errors.auth.credentialsRequired',
-      data: message,
-    });
+  let credentials: LoginDto;
+  try {
+    credentials = loginSchema.parse(body);
+  } catch (err: unknown) {
+    if (err instanceof ZodError) {
+      throw createError({
+        statusCode: 400,
+        data: mapZodError(err) satisfies ApiMessage,
+      });
+    }
+    throw err;
   }
+
+  const { email: emailInput, password } = credentials;
 
   const user = await findUserByEmail(emailInput);
   let isPasswordValid = false;
@@ -33,11 +40,9 @@ export default defineEventHandler(async (event) => {
   }
 
   if (!user || !isPasswordValid) {
-    const message: ApiMessage = { messageKey: 'errors.auth.invalidCredentials' };
     throw createError({
       statusCode: 401,
-      statusMessage: 'errors.auth.invalidCredentials',
-      data: message,
+      data: { messageKey: 'errors.auth.invalidCredentials' } satisfies ApiMessage,
     });
   }
 

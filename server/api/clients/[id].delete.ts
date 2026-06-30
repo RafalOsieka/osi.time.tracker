@@ -1,6 +1,7 @@
 import { db } from '../../db/index';
 import { clients } from '../../db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
+import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event) => {
   const { user } = await requireAuth(event);
@@ -14,7 +15,10 @@ export default defineEventHandler(async (event) => {
     .limit(1);
 
   if (!existing) {
-    throw createError({ statusCode: 404, data: { messageKey: 'error.notFound' } });
+    throw createError({
+      statusCode: 404,
+      data: { messageKey: 'error.notFound' } satisfies ApiMessage,
+    });
   }
 
   await db

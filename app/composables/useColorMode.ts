@@ -20,7 +20,7 @@ export function useColorMode() {
     resolveEffectiveMode(preference.value ?? 'system', false),
   );
 
-  const applyClass = (mode: 'light' | 'dark') => {
+  const applyClass = (mode: EffectiveColorMode) => {
     if (import.meta.server) {
       return;
     }

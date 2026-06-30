@@ -102,7 +102,7 @@ async function onSave() {
 }
 
 // --- Delete ---
-function onDelete(client: { id: string; name: string }) {
+function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
   confirm.require({
     header: t('clients.deleteConfirmHeader'),
     message: t('clients.deleteConfirmMessage', { name: client.name }),
@@ -166,12 +166,12 @@ function onDelete(client: { id: string; name: string }) {
 
       <Column field="name" :header="t('clients.columnName')" sortable />
       <Column field="createdAt" :header="t('clients.columnCreated')" sortable>
-        <template #body="{ data }">
+        <template #body="{ data }: { data: ClientDto }">
           {{ new Date(data.createdAt).toLocaleDateString() }}
         </template>
       </Column>
       <Column :header="t('clients.columnActions')" style="width: 1%; white-space: nowrap">
-        <template #body="{ data }">
+        <template #body="{ data }: { data: ClientDto }">
           <div class="clients-actions">
             <Button
               icon="pi pi-pencil"
