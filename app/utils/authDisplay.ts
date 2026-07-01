@@ -1,6 +1,6 @@
 import type { User } from '#auth-utils';
 
-/** Return value of {@link authStatusKey} — a message key and optional params for `t()`. */
+/** Return value of {@link getAuthStatusMessage} — a message key and optional params for `t()`. */
 export interface AuthStatusMessage {
   key: string;
   params?: Record<string, string>;
@@ -11,7 +11,10 @@ export interface AuthStatusMessage {
  * the auth status label shown to the user. Kept free of Vue/Nuxt so it can be
  * unit tested in isolation (see `test/unit/auth-display.spec.ts`).
  */
-export function authStatusKey(loggedIn: boolean, user?: Partial<User> | null): AuthStatusMessage {
+export function getAuthStatusMessage(
+  loggedIn: boolean,
+  user?: Partial<User> | null,
+): AuthStatusMessage {
   if (!loggedIn) {
     return { key: 'home.statusLoggedOut' };
   }
