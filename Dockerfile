@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ── base ──────────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS base
+FROM node:25-alpine AS base
 RUN npm install -g pnpm@latest
 
 # ── build ─────────────────────────────────────────────────────────────────────
@@ -17,7 +17,7 @@ COPY . .
 RUN pnpm build
 
 # ── runtime ───────────────────────────────────────────────────────────────────
-FROM node:24-alpine AS runtime
+FROM node:25-alpine AS runtime
 WORKDIR /app
 
 # Fix production environment

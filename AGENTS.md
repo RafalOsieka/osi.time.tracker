@@ -20,10 +20,12 @@ Package manager is **pnpm** (`^11.6.0`). The project is a single package (not a 
 
 - `app/` — Nuxt app source: `pages/`, `layouts/`, `middleware/`, `composables/`, `plugins/`, `utils/`.
 - `server/` — Nitro server: `api/` route handlers, `db/` (Drizzle client, schema, migrations), `utils/`, `types/`.
+- `shared/` — cross-boundary code shared by client and server; `types/` holds the single-source-of-truth boundary types (e.g. `auth.ts`, `client.ts`).
 - `i18n/locales/` — translation catalogs (`en.json`, `pl.json`).
 - `test/` — `unit/`, `e2e/`, and `nuxt/` test suites.
 - `docs/` — project vision and work-breakdown notes.
 - `openspec/` — OpenSpec change/spec documents.
+- `.github/` — GitHub configuration: Dependabot (`dependabot.yml`) and CI/PR workflows (`workflows/ci.yml`, `workflows/pr-title.yml`).
 
 ## Setup Commands
 

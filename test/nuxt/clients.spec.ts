@@ -95,6 +95,12 @@ const commonStubs = {
 describe('clients page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+    } catch {
+      // ignore
+    }
   });
 
   it('4.6a renders empty state when no clients', async () => {
@@ -142,7 +148,9 @@ describe('clients page', () => {
   it('4.6d inline error displays on save with empty name', async () => {
     vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
     csrfFetchMock.mockRejectedValue({
-      data: { messageKey: 'error.clientNameRequired' },
+      data: {
+        data: { messageKey: 'error.clientNameRequired' },
+      },
     });
 
     const wrapper = await mountSuspended(ClientsPage, {
