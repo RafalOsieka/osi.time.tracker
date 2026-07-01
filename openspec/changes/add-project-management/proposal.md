@@ -5,9 +5,9 @@ User Story #2 (WBS 3.2) builds the second level of the `Client → Project → T
 ## What Changes
 
 - Add a new `projects` domain table (Drizzle schema + committed SQL migration), soft-delete from the start (`deletedAt`), with a `clientId` FK → `clients.id` and names unique per user per client among non-deleted rows.
-- Add authenticated, user-scoped Nitro API under `server/api/projects/`: list (with optional `clientId` filter), create, update, soft-delete — each guarded by `requireAuth` + CSRF and using the `{ messageKey, params }` error contract.
+- Add authenticated, user-scoped Nitro API under `server/api/projects/`: list (with optional `clientId` filter), create, update, soft-delete — each guarded by `requireAuth` + CSRF and using the `{ messageKey, params }` error contract. List/create/update responses include the resolved owning-client name (`clientName`), joined without filtering the client's `deletedAt`, so the name is present even for a soft-deleted client.
 - Validate `clientId` ownership on create/update: the referenced client must belong to the user and be non-deleted; a foreign/unknown `clientId` resolves to HTTP 404 (never confirms existence).
-- Replace the placeholder `app/pages/projects.vue` with a working CRUD surface: PrimeVue `DataTable`, `Dialog`-based create/edit form with a Client `Select` (dropdown), `ConfirmDialog` delete, `Toast` feedback, a dedicated empty state, and a Client filter above the table.
+- Replace the placeholder `app/pages/projects.vue` with a working CRUD surface: PrimeVue `DataTable`, `Dialog`-based create/edit form with a Client `Select` (dropdown), `ConfirmDialog` delete, `Toast` feedback, a dedicated empty state, and a Client filter above the table. The table renders each project's `clientName` directly from the DTO, and the edit dialog seeds the Client select with the project's soft-deleted client so it stays visible and pre-selected.
 - Surface field errors (empty/duplicate name, missing client) inline; surface server/network failures via `Toast`.
 - Add new i18n strings to `en.json` and `pl.json` in parity.
 
@@ -23,7 +23,7 @@ User Story #2 (WBS 3.2) builds the second level of the `Client → Project → T
 
 - **Schema/DB**: new `server/db/schema/projects.ts` + generated migration under `server/db/migrations`; exported from the schema barrel.
 - **API**: new handlers `server/api/projects/index.get.ts`, `index.post.ts`, `[id].patch.ts`, `[id].delete.ts`.
-- **Boundary types**: new `shared/types/project.ts` (single zod schema + serialized DTO).
+- **Boundary types**: new `shared/types/project.ts` (single zod schema + serialized DTO, including a `clientName` field).
 - **UI**: rewritten `app/pages/projects.vue`; reuses `utils/extractMessageKey`.
 - **i18n**: `i18n/locales/en.json`, `pl.json`.
 - **Tests**: `test/unit`, `test/nuxt`, `test/e2e` (including cross-user isolation and foreign-`clientId` → 404 negatives).

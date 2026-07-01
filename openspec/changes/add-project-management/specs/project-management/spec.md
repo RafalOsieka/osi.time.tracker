@@ -1,7 +1,15 @@
 ## ADDED Requirements
 
 ### Requirement: REQ-TTR-020 List own projects
-The system SHALL show the authenticated user only their own non-deleted projects, ordered by name, via `GET /api/projects`. The list SHALL exclude any project whose `deletedAt` is set and any project belonging to another user. The endpoint SHALL accept an optional `clientId` query parameter that further restricts results to that client, always additionally scoped by `userId`.
+The system SHALL show the authenticated user only their own non-deleted projects, ordered by name, via `GET /api/projects`. The list SHALL exclude any project whose `deletedAt` is set and any project belonging to another user. The endpoint SHALL accept an optional `clientId` query parameter that further restricts results to that client, always additionally scoped by `userId`. Each returned project SHALL include the owning client's name (`clientName`) resolved via a join that does NOT filter on the client's `deletedAt`, so the name is present even when the client has been soft-deleted.
+
+#### Scenario: Response includes the client name
+- **WHEN** an authenticated user lists their projects
+- **THEN** each returned project SHALL include a `clientName` field holding the name of its owning client
+
+#### Scenario: Client name persists after the client is soft-deleted
+- **WHEN** a project's owning client has been soft-deleted
+- **THEN** the project SHALL still appear in the list (when not itself deleted) with its `clientName` populated from the soft-deleted client
 
 #### Scenario: User sees only their own projects
 - **WHEN** an authenticated user requests their projects
@@ -55,7 +63,11 @@ The system SHALL allow an authenticated user to update the `name` and `clientId`
 
 #### Scenario: Successful edit
 - **WHEN** an authenticated user submits a valid new name and an owned `clientId` for their own project
-- **THEN** the system SHALL update the project, return it, and the row SHALL reflect the change
+- **THEN** the system SHALL update the project, return it (including the resolved `clientName`), and the row SHALL reflect the change
+
+#### Scenario: Edit dialog shows a soft-deleted client
+- **WHEN** an authenticated user opens the edit dialog for a project whose owning client has been soft-deleted (and is therefore absent from the active client list)
+- **THEN** the Client select SHALL be seeded with the project's `clientId`/`clientName` so the correct client is displayed and pre-selected
 
 #### Scenario: Edit to a duplicate name per client rejected
 - **WHEN** the new name matches another non-deleted project of the same user under the same client
