@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -6,7 +7,7 @@ const route = useRoute();
 
 const props = withDefaults(defineProps<{ iconOnly?: boolean }>(), { iconOnly: false });
 
-const navItems = computed(() => [
+const navItems = computed<MenuItem[]>(() => [
   { label: t('nav.dashboard'), route: '/', icon: 'pi pi-home', key: 'dashboard' },
   { label: t('nav.clients'), route: '/clients', icon: 'pi pi-users', key: 'clients' },
   { label: t('nav.projects'), route: '/projects', icon: 'pi pi-briefcase', key: 'projects' },

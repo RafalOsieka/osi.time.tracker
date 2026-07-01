@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { authStatusKey } from '~/utils/authDisplay';
+import { getAuthStatusMessage } from '~/utils/authDisplay';
 
 const { t } = useI18n();
 const { loggedIn, user } = useAuth();
 
 const statusLabel = computed(() => {
-  const { key, params } = authStatusKey(loggedIn.value, user.value);
+  const { key, params } = getAuthStatusMessage(loggedIn.value, user.value);
   return t(key, params ?? {});
 });
 </script>

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { MenuItem } from 'primevue/menuitem';
 import { useI18n } from 'vue-i18n';
 import type { ColorModePreference } from '~/utils/color-mode';
 
@@ -28,7 +29,7 @@ const localeOptions = computed(() =>
   availableLocales.map((code) => ({ value: code, label: t(`locale.${code}`) })),
 );
 
-const themeOptions = computed(() => [
+const themeOptions = computed<Array<{ value: ColorModePreference; label: string }>>(() => [
   { value: 'light', label: t('theme.light') },
   { value: 'dark', label: t('theme.dark') },
   { value: 'system', label: t('theme.system') },
@@ -46,8 +47,8 @@ const selectedTheme = computed<ColorModePreference>({
   set: (val) => setPreference(val),
 });
 
-const menu = ref();
-const menuItems = computed(() => [
+const menu = useTemplateRef('menu');
+const menuItems = computed<MenuItem[]>(() => [
   { key: 'locale' },
   { key: 'theme' },
   { separator: true },
@@ -58,7 +59,7 @@ const menuItems = computed(() => [
 ]);
 
 function toggleMenu(event: Event) {
-  menu.value.toggle(event);
+  menu.value?.toggle(event);
 }
 </script>
 
