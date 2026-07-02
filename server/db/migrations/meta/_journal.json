@@ -22,6 +22,13 @@
       "when": 1782924412248,
       "tag": "0002_hot_jazinda",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783018440994,
+      "tag": "0003_dry_ben_grimm",
+      "breakpoints": true
     }
   ]
 }

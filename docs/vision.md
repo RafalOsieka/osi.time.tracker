@@ -43,25 +43,30 @@ The core domain hierarchy is:
 
 ```
 User
- └─► Client
-       ├─► RemoteSystemConfig (optional, one per remote system type)
-       └─► Project
-             └─► Task
-                   ├─► TimeEntry (one or many)
-                   └─► RemoteIssueRef (optional)
+ ├─► Client
+ │     ├─► RemoteSystemConfig (optional, one per remote system type)
+ │     └─► Project
+ │           └─► Task (may optionally belong to a Project)
+ │                 ├─► TimeEntry (one or many)
+ │                 └─► RemoteIssueRef (optional)
+ └─► Task (project-less — belongs directly to the User)
+       ├─► TimeEntry (one or many)
+       └─► RemoteIssueRef (optional)
 ```
+
+A `Task` optionally belongs to a `Project`. A project-less Task is owned directly by the User and is not grouped under any Client or Project.
 
 ### Entities
 
-| Entity                 | Description                                                                                                                                                  |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **User**               | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                             |
-| **Client**             | A company or person the user works for. Top-level grouping for projects. Holds remote system configuration for that client's issue tracker.                  |
-| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule. |
-| **Project**            | A body of work for a Client. Contains tasks.                                                                                                                 |
-| **Task**               | A unit of work within a Project. Time is logged against a Task. May optionally be linked to a remote issue.                                                  |
-| **TimeEntry**          | A single logged time interval (start time, end time or duration) attached to a Task.                                                                         |
-| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and relevant issue metadata (title, URL).    |
+| Entity                 | Description                                                                                                                                                                            |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User**               | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                       |
+| **Client**             | A company or person the user works for. Top-level grouping for projects. Holds remote system configuration for that client's issue tracker.                                            |
+| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule.                           |
+| **Project**            | A body of work for a Client. Contains tasks.                                                                                                                                           |
+| **Task**               | A unit of work. Time is logged against a Task. A Task may optionally belong to a Project (project-less Tasks belong directly to the User). May optionally be linked to a remote issue. |
+| **TimeEntry**          | A single logged time interval (start time, end time or duration) attached to a Task.                                                                                                   |
+| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and relevant issue metadata (title, URL).                              |
 
 A `Client` holds the `RemoteSystemConfig` (connection details, credentials, adapter mode). A `Task` holds a `RemoteIssueRef` that references only the remote issue identifier and metadata — it does not duplicate connection details. When a `TimeEntry` is pushed, the adapter reads the connection config from the parent `Client` and the issue reference from the parent `Task`.
 
@@ -90,7 +95,7 @@ Register (email + password)
               ├─► (Optional) Configure RemoteSystemConfig on Client
               │     (system type, base URL, API credentials, adapter mode, rounding rule)
               └─► Create Project under Client
-                    └─► Create Task under Project
+                    └─► Create Task under Project (or create a project-less Task directly)
                           ├─► (Optional) Link Task to remote issue
                           │     ├─► Browse / search remote issues from configured system
                           │     └─► Attach RemoteIssueRef (issue ID + cached title/URL)
