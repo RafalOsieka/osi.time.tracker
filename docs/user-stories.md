@@ -40,13 +40,13 @@ Conventions that apply to every story:
 
 ## 3. Task management
 
-> **As a user, I want to create, edit, delete, and list Tasks under a Project, so I can track work at the level I log time against.** (WBS 3.3)
+> **As a user, I want to create, edit, delete, and list Tasks (optionally under a Project), so I can track work at the level I log time against.** (WBS 3.3)
 
 **Acceptance criteria**
 
-- I can create a Task, choosing which of my Projects it belongs to.
-- I can list Tasks, filterable by Project, and see a Project's Tasks on its detail view.
-- I can edit and delete a Task.
+- I can create a Task, optionally choosing which of my Projects it belongs to; a Task without a Project is allowed.
+- I can list Tasks, filterable by Project (including a filter for project-less Tasks), and see a Project's Tasks on its detail view.
+- I can edit and delete a Task, including assigning or removing its Project.
 - I cannot assign a Task to a Project I don't own.
 
 ---
