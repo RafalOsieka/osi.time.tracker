@@ -37,6 +37,7 @@
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
     "@nuxt/eslint": "^1.16.0",
+    "@nuxt/schema": "^4.4.8",
     "@nuxt/test-utils": "^4.0.3",
     "@nuxtjs/i18n": "^10.4.0",
     "@primevue/nuxt-module": "^4.5.5",

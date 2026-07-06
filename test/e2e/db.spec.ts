@@ -33,7 +33,7 @@ describeDb('database integration', () => {
     const { db, sql } = createDatabaseClient(dbUrl, { max: 1 });
     try {
       const rows = await db.execute<{ value: number }>(drizzleSql`SELECT 1 AS value`);
-      expect(Number((rows as Array<{ value: number }>)[0].value)).toBe(1);
+      expect(Number((rows as Array<{ value: number }>)[0]!.value)).toBe(1);
     } finally {
       await sql.end({ timeout: 5 });
     }
@@ -52,7 +52,7 @@ describeDb('database integration', () => {
       expect(tables.length).toBe(1);
 
       const applied = await probe`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
-      expect(applied[0].n).toBeGreaterThanOrEqual(1);
+      expect(applied[0]!.n).toBeGreaterThanOrEqual(1);
     } finally {
       await probe.end({ timeout: 5 });
       removeMigrations(dir);
@@ -70,7 +70,7 @@ describeDb('database integration', () => {
       await expect(runMigrations(dbUrl, dir)).resolves.toBeUndefined();
       const second = await probe`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
 
-      expect(second[0].n).toBe(first[0].n);
+      expect(second[0]!.n).toBe(first[0]!.n);
     } finally {
       await probe.end({ timeout: 5 });
       removeMigrations(dir);
@@ -106,11 +106,11 @@ describeDb('database integration', () => {
         })
         .returning();
 
-      expect(inserted.id).toBeDefined();
-      expect(inserted.id).toMatch(
+      expect(inserted!.id).toBeDefined();
+      expect(inserted!.id).toMatch(
         /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
-      expect(inserted.email).toBe(email);
+      expect(inserted!.email).toBe(email);
 
       // Attempting to insert a duplicate email should throw a unique constraint error
       await expect(
@@ -164,9 +164,9 @@ describeDb('database integration', () => {
           .limit(1);
 
         expect(found.length).toBe(1);
-        expect(found[0].email).toBe('bootstrap@example.com');
-        expect(found[0].passwordHash).toBeDefined();
-        expect(found[0].passwordHash.startsWith('$scrypt$')).toBe(true);
+        expect(found[0]!.email).toBe('bootstrap@example.com');
+        expect(found[0]!.passwordHash).toBeDefined();
+        expect(found[0]!.passwordHash.startsWith('$scrypt$')).toBe(true);
       } finally {
         await probeClient.sql.end({ timeout: 5 });
       }
@@ -204,7 +204,7 @@ describeDb('database integration', () => {
           .limit(1);
 
         expect(found.length).toBe(1);
-        expect(found[0].passwordHash).toBe(originalHash); // untouched!
+        expect(found[0]!.passwordHash).toBe(originalHash); // untouched!
       } finally {
         await probeClient.sql.end({ timeout: 5 });
       }
