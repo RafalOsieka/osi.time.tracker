@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Form } from '@primevue/forms';
+import { zodResolver } from '@primevue/forms/resolvers/zod';
+import type { FormSubmitEvent } from '@primevue/forms';
 import { useI18n } from 'vue-i18n';
 import { extractMessageKey } from '~/utils/extractMessageKey';
 
@@ -8,18 +11,18 @@ const { t } = useI18n();
 const { login } = useAuth();
 const route = useRoute();
 
-const email = ref('');
-const password = ref('');
+const resolver = zodResolver(loginSchema);
+const initialValues = { email: '', password: '' };
 const error = ref('');
 const pending = ref(false);
 
-async function onLogin() {
+async function onSubmit({ valid, values }: FormSubmitEvent) {
+  if (!valid) return;
+
   error.value = '';
   pending.value = true;
   try {
-    await login({ email: email.value, password: password.value });
-    email.value = '';
-    password.value = '';
+    await login({ email: values.email, password: values.password });
     const target = sanitizeRedirect(route.query.redirect);
     await navigateTo(target);
   } catch (err) {
@@ -33,26 +36,33 @@ async function onLogin() {
 <template>
   <Card data-testid="login-card">
     <template #content>
-      <form data-testid="login-form" class="login-form" @submit.prevent="onLogin">
+      <Form
+        v-slot="$form"
+        :resolver="resolver"
+        :initial-values="initialValues"
+        data-testid="login-form"
+        class="login-form"
+        @submit="onSubmit"
+      >
         <label for="email">{{ t('auth.emailLabel') }}</label>
         <InputText
           id="email"
-          v-model="email"
+          name="email"
           data-testid="email"
           autocomplete="email"
-          :aria-invalid="!!error"
-          :aria-describedby="error ? 'login-error' : undefined"
+          :aria-invalid="!!($form.email?.invalid || error)"
+          :aria-describedby="$form.email?.invalid || error ? 'login-error' : undefined"
         />
         <label for="password">{{ t('auth.passwordLabel') }}</label>
         <Password
-          v-model="password"
           input-id="password"
+          name="password"
           data-testid="password"
           :feedback="false"
           toggle-mask
           fluid
-          :aria-invalid="!!error"
-          :aria-describedby="error ? 'login-error' : undefined"
+          :aria-invalid="!!($form.password?.invalid || error)"
+          :aria-describedby="$form.password?.invalid || error ? 'login-error' : undefined"
         />
         <Button
           type="submit"
@@ -60,16 +70,19 @@ async function onLogin() {
           :label="t('auth.loginButton')"
           :loading="pending"
         />
-        <small
-          v-if="error"
+        <Message
+          v-if="$form.email?.invalid || $form.password?.invalid || error"
           id="login-error"
+          severity="error"
+          size="small"
+          variant="simple"
           role="alert"
           data-testid="login-error"
           class="login-error"
         >
-          {{ error }}
-        </small>
-      </form>
+          {{ error || t($form.email?.error?.message ?? $form.password?.error?.message) }}
+        </Message>
+      </Form>
     </template>
   </Card>
 </template>

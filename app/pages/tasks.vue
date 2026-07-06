@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { Form } from '@primevue/forms';
+import { zodResolver } from '@primevue/forms/resolvers/zod';
+import type { FormSubmitEvent } from '@primevue/forms';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
@@ -9,6 +12,8 @@ const toast = useToast();
 const { $csrfFetch } = useNuxtApp();
 
 const NONE_PROJECT_FILTER = 'none';
+
+const resolver = zodResolver(createTaskSchema);
 
 // --- Data fetching ---
 const { data: projectsData, pending: projectsPending } = useAsyncData(
@@ -48,26 +53,31 @@ const {
 const tasks = computed(() => tasksData.value ?? []);
 const dialogVisible = ref(false);
 const editingTask = ref<TaskDto | null>(null);
-const nameValue = ref('');
-const nameError = ref('');
-const projectValue = ref<string | null>(null);
+const initialValues = ref<{ name: string; projectId: string | null }>({
+  name: '',
+  projectId: null,
+});
+const nameServerError = ref('');
 const saving = ref(false);
 
 // --- Dialog helpers ---
 function openCreate() {
   editingTask.value = null;
-  nameValue.value = '';
-  nameError.value = '';
-  projectValue.value =
-    projectFilter.value && projectFilter.value !== NONE_PROJECT_FILTER ? projectFilter.value : null;
+  initialValues.value = {
+    name: '',
+    projectId:
+      projectFilter.value && projectFilter.value !== NONE_PROJECT_FILTER
+        ? projectFilter.value
+        : null,
+  };
+  nameServerError.value = '';
   dialogVisible.value = true;
 }
 
 function openEdit(task: TaskDto) {
   editingTask.value = task;
-  nameValue.value = task.name;
-  nameError.value = '';
-  projectValue.value = task.projectId;
+  initialValues.value = { name: task.name, projectId: task.projectId };
+  nameServerError.value = '';
   if (task.projectId && !projectOptions.value.some((p) => p.id === task.projectId)) {
     extraProjectOptions.value = [
       {
@@ -89,13 +99,14 @@ function closeDialog() {
 defineExpose({ openEdit });
 
 // --- Save (create or update) ---
-async function onSave() {
-  nameError.value = '';
+async function onSave({ valid, values }: FormSubmitEvent) {
+  nameServerError.value = '';
+  if (!valid) return;
 
   saving.value = true;
   try {
     if (editingTask.value) {
-      const payload: UpdateTaskDto = { name: nameValue.value, projectId: projectValue.value };
+      const payload: UpdateTaskDto = { name: values.name, projectId: values.projectId };
 
       const updated = await $csrfFetch<TaskDto>(`/api/tasks/${editingTask.value.id}`, {
         method: 'PATCH',
@@ -110,7 +121,7 @@ async function onSave() {
         life: 3000,
       });
     } else {
-      const payload: CreateTaskDto = { name: nameValue.value, projectId: projectValue.value };
+      const payload: CreateTaskDto = { name: values.name, projectId: values.projectId };
 
       const created = await $csrfFetch<TaskDto>('/api/tasks', {
         method: 'POST',
@@ -129,7 +140,7 @@ async function onSave() {
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
     if (key === 'error.taskNameRequired' || key === 'error.taskNameTooLong') {
-      nameError.value = t(key);
+      nameServerError.value = t(key);
     } else {
       toast.add({ severity: 'error', summary: t(key), life: 4000 });
     }
@@ -168,8 +179,6 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
 
 <template>
   <div data-testid="tasks-page">
-    <ConfirmDialog />
-
     <div class="tasks-filter">
       <label for="task-project-filter">{{ t('tasksPage.projectFilterLabel') }}</label>
       <Select
@@ -194,27 +203,21 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
       data-testid="tasks-table"
     >
       <template #header>
-        <div class="tasks-header">
-          <span class="tasks-title">{{ t('tasksPage.pageTitle') }}</span>
-          <Button
-            :label="t('tasksPage.newButton')"
-            icon="pi pi-plus"
-            data-testid="new-task-button"
-            @click="openCreate"
-          />
-        </div>
+        <TableHeader
+          :title="t('tasksPage.pageTitle')"
+          :new-label="t('tasksPage.newButton')"
+          new-testid="new-task-button"
+          @create="openCreate"
+        />
       </template>
 
       <template #empty>
-        <div class="tasks-empty" data-testid="tasks-empty-state">
-          <p>{{ t('tasksPage.emptyState') }}</p>
-          <Button
-            :label="t('tasksPage.emptyStateCta')"
-            icon="pi pi-plus"
-            data-testid="empty-state-cta"
-            @click="openCreate"
-          />
-        </div>
+        <EmptyState
+          :message="t('tasksPage.emptyState')"
+          :cta-label="t('tasksPage.emptyStateCta')"
+          testid="tasks-empty-state"
+          @create="openCreate"
+        />
       </template>
 
       <Column field="number" :header="t('tasksPage.columnNumber')" sortable>
@@ -233,25 +236,14 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
       </Column>
       <Column :header="t('tasksPage.columnActions')" style="width: 1%; white-space: nowrap">
         <template #body="{ data }: { data: TaskDto }">
-          <div class="tasks-actions">
-            <Button
-              icon="pi pi-pencil"
-              text
-              rounded
-              :aria-label="t('tasksPage.editButton')"
-              :data-testid="`edit-task-${data.id}`"
-              @click="openEdit(data)"
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              severity="danger"
-              :aria-label="t('tasksPage.deleteButton')"
-              :data-testid="`delete-task-${data.id}`"
-              @click="onDelete(data)"
-            />
-          </div>
+          <RowActions
+            :edit-label="t('tasksPage.editButton')"
+            :delete-label="t('tasksPage.deleteButton')"
+            :edit-testid="`edit-task-${data.id}`"
+            :delete-testid="`delete-task-${data.id}`"
+            @edit="openEdit(data)"
+            @delete="onDelete(data)"
+          />
         </template>
       </Column>
     </DataTable>
@@ -264,32 +256,29 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
       data-testid="task-dialog"
       @hide="closeDialog"
     >
-      <form class="task-form" @submit.prevent="onSave">
-        <label for="task-name">{{ t('tasksPage.nameLabel') }}</label>
-        <InputText
-          id="task-name"
-          v-model="nameValue"
-          required
-          :maxlength="TASK_NAME_MAX_LENGTH"
-          :placeholder="t('tasksPage.namePlaceholder')"
-          :aria-invalid="!!nameError"
-          :aria-describedby="nameError ? 'task-name-error' : undefined"
-          data-testid="task-name-input"
-        />
-        <small
-          v-if="nameError"
-          id="task-name-error"
-          role="alert"
-          class="task-field-error"
-          data-testid="task-name-error"
+      <Form :resolver="resolver" :initial-values="initialValues" class="task-form" @submit="onSave">
+        <FormFieldWrap
+          v-slot="{ field }"
+          :label="t('tasksPage.nameLabel')"
+          name="name"
+          input-id="task-name"
+          error-testid="task-name-error"
+          :server-error="nameServerError"
         >
-          {{ nameError }}
-        </small>
+          <InputText
+            id="task-name"
+            :maxlength="TASK_NAME_MAX_LENGTH"
+            :placeholder="t('tasksPage.namePlaceholder')"
+            :aria-invalid="field?.invalid"
+            :aria-describedby="field?.invalid ? 'task-name-error' : undefined"
+            data-testid="task-name-input"
+          />
+        </FormFieldWrap>
 
         <label for="task-project">{{ t('tasksPage.projectLabel') }}</label>
         <Select
           id="task-project"
-          v-model="projectValue"
+          name="projectId"
           :options="projectOptions"
           option-label="name"
           option-value="id"
@@ -298,22 +287,13 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
           data-testid="task-project-select"
         />
 
-        <div class="task-form-actions">
-          <Button
-            type="button"
-            :label="t('tasksPage.cancelButton')"
-            text
-            data-testid="cancel-button"
-            @click="closeDialog"
-          />
-          <Button
-            type="submit"
-            :label="t('tasksPage.saveButton')"
-            :loading="saving"
-            data-testid="save-button"
-          />
-        </div>
-      </form>
+        <FormDialogFooter
+          :cancel-label="t('tasksPage.cancelButton')"
+          :save-label="t('tasksPage.saveButton')"
+          :saving="saving"
+          @cancel="closeDialog"
+        />
+      </Form>
     </Dialog>
   </div>
 </template>
@@ -326,43 +306,9 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
   margin-bottom: 1rem;
 }
 
-.tasks-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tasks-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.tasks-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-}
-
-.tasks-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
 .task-form {
   display: grid;
   gap: 0.75rem;
   min-width: 20rem;
-}
-
-.task-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.task-field-error {
-  color: var(--p-form-field-invalid-color);
 }
 </style>

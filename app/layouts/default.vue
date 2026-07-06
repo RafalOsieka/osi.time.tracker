@@ -76,6 +76,7 @@ function onToggleSidebar() {
       </main>
 
       <Toast />
+      <ConfirmDialog />
     </div>
   </div>
 </template>

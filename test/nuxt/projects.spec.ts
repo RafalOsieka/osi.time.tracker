@@ -250,6 +250,21 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="project-dialog"]').exists()).toBe(true);
   });
 
+  it('blocks submission client-side and does not call the server when name/client are missing', async () => {
+    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    csrfFetchMock.mockResolvedValue({});
+
+    const wrapper = await mountSuspended(ProjectsPage, {
+      global: { stubs: commonStubs },
+    });
+
+    await wrapper.find('[data-testid="new-project-button"]').trigger('click');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(csrfFetchMock).not.toHaveBeenCalled();
+  });
+
   it('4.7d inline error displays on save with empty name', async () => {
     mockClients = [{ id: 'c1', name: 'Acme', createdAt: new Date().toISOString() }];
     vi.stubGlobal(
