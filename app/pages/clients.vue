@@ -1,12 +1,17 @@
 <script setup lang="ts">
+import { Form } from '@primevue/forms';
+import { zodResolver } from '@primevue/forms/resolvers/zod';
+import type { FormSubmitEvent } from '@primevue/forms';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const confirm = useConfirm();
 const toast = useToast();
 const { $csrfFetch } = useNuxtApp();
+
+const resolver = zodResolver(createClientSchema);
 
 // --- Data fetching ---
 const {
@@ -19,22 +24,22 @@ const {
 const clients = computed(() => clientsData.value ?? []);
 const dialogVisible = ref(false);
 const editingClient = ref<ClientDto | null>(null);
-const nameValue = ref('');
-const nameError = ref('');
+const initialValues = ref({ name: '' });
+const nameServerError = ref('');
 const saving = ref(false);
 
 // --- Dialog helpers ---
 function openCreate() {
   editingClient.value = null;
-  nameValue.value = '';
-  nameError.value = '';
+  initialValues.value = { name: '' };
+  nameServerError.value = '';
   dialogVisible.value = true;
 }
 
 function openEdit(client: ClientDto) {
   editingClient.value = client;
-  nameValue.value = client.name;
-  nameError.value = '';
+  initialValues.value = { name: client.name };
+  nameServerError.value = '';
   dialogVisible.value = true;
 }
 
@@ -43,25 +48,21 @@ function closeDialog() {
 }
 
 // --- Save (create or update) ---
-async function onSave() {
-  nameError.value = '';
+async function onSave({ valid, values }: FormSubmitEvent) {
+  nameServerError.value = '';
+  if (!valid) return;
 
   saving.value = true;
   try {
     if (editingClient.value) {
-      const payload: UpdateClientDto = { name: nameValue.value };
+      const payload: UpdateClientDto = { name: values.name };
 
       const updated = await $csrfFetch<ClientDto>(`/api/clients/${editingClient.value.id}`, {
         method: 'PATCH',
         body: payload,
       });
 
-      const idx = clients.value.findIndex((c) => c.id === updated.id);
-      if (idx !== -1) {
-        const next = [...clients.value];
-        next[idx] = updated;
-        clientsData.value = next;
-      }
+      await fetchClients();
       toast.add({
         severity: 'success',
         summary: t('clients.toastUpdatedSummary'),
@@ -69,7 +70,7 @@ async function onSave() {
         life: 3000,
       });
     } else {
-      const payload: CreateClientDto = { name: nameValue.value };
+      const payload: CreateClientDto = { name: values.name };
 
       const created = await $csrfFetch<ClientDto>('/api/clients', {
         method: 'POST',
@@ -92,7 +93,7 @@ async function onSave() {
       key === 'error.clientNameDuplicate' ||
       key === 'error.clientNameTooLong'
     ) {
-      nameError.value = t(key);
+      nameServerError.value = t(key);
     } else {
       toast.add({ severity: 'error', summary: t(key), life: 4000 });
     }
@@ -113,7 +114,7 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
     accept: async () => {
       try {
         await $csrfFetch(`/api/clients/${client.id}`, { method: 'DELETE' });
-        clientsData.value = clients.value.filter((c) => c.id !== client.id);
+        await fetchClients();
         toast.add({
           severity: 'success',
           summary: t('clients.toastDeletedSummary'),
@@ -131,7 +132,6 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
 
 <template>
   <div data-testid="clients-page">
-    <ConfirmDialog />
     <DataTable
       :value="clients"
       data-key="id"
@@ -141,56 +141,39 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
       data-testid="clients-table"
     >
       <template #header>
-        <div class="clients-header">
-          <span class="clients-title">{{ t('clients.pageTitle') }}</span>
-          <Button
-            :label="t('clients.newButton')"
-            icon="pi pi-plus"
-            data-testid="new-client-button"
-            @click="openCreate"
-          />
-        </div>
+        <TableHeader
+          :title="t('clients.pageTitle')"
+          :new-label="t('clients.newButton')"
+          new-testid="new-client-button"
+          @create="openCreate"
+        />
       </template>
 
       <template #empty>
-        <div class="clients-empty" data-testid="clients-empty-state">
-          <p>{{ t('clients.emptyState') }}</p>
-          <Button
-            :label="t('clients.emptyStateCta')"
-            icon="pi pi-plus"
-            data-testid="empty-state-cta"
-            @click="openCreate"
-          />
-        </div>
+        <EmptyState
+          :message="t('clients.emptyState')"
+          :cta-label="t('clients.emptyStateCta')"
+          testid="clients-empty-state"
+          @create="openCreate"
+        />
       </template>
 
       <Column field="name" :header="t('clients.columnName')" sortable />
       <Column field="createdAt" :header="t('clients.columnCreated')" sortable>
         <template #body="{ data }: { data: ClientDto }">
-          {{ new Date(data.createdAt).toLocaleDateString() }}
+          {{ formatDate(data.createdAt, locale) }}
         </template>
       </Column>
       <Column :header="t('clients.columnActions')" style="width: 1%; white-space: nowrap">
         <template #body="{ data }: { data: ClientDto }">
-          <div class="clients-actions">
-            <Button
-              icon="pi pi-pencil"
-              text
-              rounded
-              :aria-label="t('clients.editButton')"
-              :data-testid="`edit-client-${data.id}`"
-              @click="openEdit(data)"
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              severity="danger"
-              :aria-label="t('clients.deleteButton')"
-              :data-testid="`delete-client-${data.id}`"
-              @click="onDelete(data)"
-            />
-          </div>
+          <RowActions
+            :edit-label="t('clients.editButton')"
+            :delete-label="t('clients.deleteButton')"
+            :edit-testid="`edit-client-${data.id}`"
+            :delete-testid="`delete-client-${data.id}`"
+            @edit="openEdit(data)"
+            @delete="onDelete(data)"
+          />
         </template>
       </Column>
     </DataTable>
@@ -203,85 +186,45 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
       data-testid="client-dialog"
       @hide="closeDialog"
     >
-      <form class="client-form" @submit.prevent="onSave">
-        <label for="client-name">{{ t('clients.nameLabel') }}</label>
-        <InputText
-          id="client-name"
-          v-model="nameValue"
-          required
-          :maxlength="CLIENT_NAME_MAX_LENGTH"
-          :placeholder="t('clients.namePlaceholder')"
-          :aria-invalid="!!nameError"
-          :aria-describedby="nameError ? 'client-name-error' : undefined"
-          data-testid="client-name-input"
-        />
-        <small
-          v-if="nameError"
-          id="client-name-error"
-          role="alert"
-          class="client-name-error"
-          data-testid="client-name-error"
+      <Form
+        :resolver="resolver"
+        :initial-values="initialValues"
+        class="client-form"
+        @submit="onSave"
+      >
+        <FormFieldWrap
+          v-slot="{ field }"
+          :label="t('clients.nameLabel')"
+          name="name"
+          input-id="client-name"
+          error-testid="client-name-error"
+          :server-error="nameServerError"
         >
-          {{ nameError }}
-        </small>
-        <div class="client-form-actions">
-          <Button
-            type="button"
-            :label="t('clients.cancelButton')"
-            text
-            data-testid="cancel-button"
-            @click="closeDialog"
+          <InputText
+            id="client-name"
+            :maxlength="CLIENT_NAME_MAX_LENGTH"
+            :placeholder="t('clients.namePlaceholder')"
+            :aria-invalid="field?.invalid"
+            :aria-describedby="field?.invalid ? 'client-name-error' : undefined"
+            data-testid="client-name-input"
           />
-          <Button
-            type="submit"
-            :label="t('clients.saveButton')"
-            :loading="saving"
-            data-testid="save-button"
-          />
-        </div>
-      </form>
+        </FormFieldWrap>
+
+        <FormDialogFooter
+          :cancel-label="t('clients.cancelButton')"
+          :save-label="t('clients.saveButton')"
+          :saving="saving"
+          @cancel="closeDialog"
+        />
+      </Form>
     </Dialog>
   </div>
 </template>
 
 <style scoped>
-.clients-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.clients-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.clients-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-}
-
-.clients-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
 .client-form {
   display: grid;
   gap: 0.75rem;
   min-width: 20rem;
-}
-
-.client-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.client-name-error {
-  color: var(--p-form-field-invalid-color);
 }
 </style>

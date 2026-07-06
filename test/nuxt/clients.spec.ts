@@ -145,6 +145,21 @@ describe('clients page', () => {
     expect(wrapper.find('[data-testid="client-dialog"]').exists()).toBe(true);
   });
 
+  it('blocks submission client-side and does not call the server when name is empty', async () => {
+    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    csrfFetchMock.mockResolvedValue({});
+
+    const wrapper = await mountSuspended(ClientsPage, {
+      global: { stubs: commonStubs },
+    });
+
+    await wrapper.find('[data-testid="new-client-button"]').trigger('click');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(csrfFetchMock).not.toHaveBeenCalled();
+  });
+
   it('4.6d inline error displays on save with empty name', async () => {
     vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
     csrfFetchMock.mockRejectedValue({

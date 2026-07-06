@@ -205,6 +205,21 @@ describe('tasks page', () => {
     expect((select.element as HTMLSelectElement).value).toBe('deleted-project');
   });
 
+  it('blocks submission client-side and does not call the server when name is empty', async () => {
+    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    csrfFetchMock.mockResolvedValue({});
+
+    const wrapper = await mountSuspended(TasksPage, {
+      global: { stubs: commonStubs },
+    });
+
+    await wrapper.find('[data-testid="new-task-button"]').trigger('click');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(csrfFetchMock).not.toHaveBeenCalled();
+  });
+
   it('4.5d inline field error exposes aria-invalid and aria-describedby on save failure', async () => {
     vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
     csrfFetchMock.mockRejectedValue({

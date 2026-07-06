@@ -1,12 +1,17 @@
 <script setup lang="ts">
+import { Form } from '@primevue/forms';
+import { zodResolver } from '@primevue/forms/resolvers/zod';
+import type { FormSubmitEvent } from '@primevue/forms';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 
-const { t } = useI18n();
+const { t, locale } = useI18n();
 const confirm = useConfirm();
 const toast = useToast();
 const { $csrfFetch } = useNuxtApp();
+
+const resolver = zodResolver(createProjectSchema);
 
 // --- Data fetching ---
 const { data: clientsData, pending: clientsPending } = useAsyncData(
@@ -42,28 +47,25 @@ const {
 const projects = computed(() => projectsData.value ?? []);
 const dialogVisible = ref(false);
 const editingProject = ref<ProjectDto | null>(null);
-const nameValue = ref('');
-const nameError = ref('');
-const clientValue = ref<string | null>(null);
-const clientError = ref('');
+const initialValues = ref<{ name: string; clientId: string | null }>({ name: '', clientId: null });
+const nameServerError = ref('');
+const clientServerError = ref('');
 const saving = ref(false);
 
 // --- Dialog helpers ---
 function openCreate() {
   editingProject.value = null;
-  nameValue.value = '';
-  nameError.value = '';
-  clientValue.value = clientFilter.value;
-  clientError.value = '';
+  initialValues.value = { name: '', clientId: clientFilter.value };
+  nameServerError.value = '';
+  clientServerError.value = '';
   dialogVisible.value = true;
 }
 
 function openEdit(project: ProjectDto) {
   editingProject.value = project;
-  nameValue.value = project.name;
-  nameError.value = '';
-  clientValue.value = project.clientId;
-  clientError.value = '';
+  initialValues.value = { name: project.name, clientId: project.clientId };
+  nameServerError.value = '';
+  clientServerError.value = '';
   if (!clientOptions.value.some((c) => c.id === project.clientId)) {
     extraClientOptions.value = [{ id: project.clientId, name: project.clientName, createdAt: '' }];
   }
@@ -77,19 +79,15 @@ function closeDialog() {
 defineExpose({ openEdit });
 
 // --- Save (create or update) ---
-async function onSave() {
-  nameError.value = '';
-  clientError.value = '';
-
-  if (!clientValue.value) {
-    clientError.value = t('error.projectClientRequired');
-    return;
-  }
+async function onSave({ valid, values }: FormSubmitEvent) {
+  nameServerError.value = '';
+  clientServerError.value = '';
+  if (!valid) return;
 
   saving.value = true;
   try {
     if (editingProject.value) {
-      const payload: UpdateProjectDto = { name: nameValue.value, clientId: clientValue.value };
+      const payload: UpdateProjectDto = { name: values.name, clientId: values.clientId };
 
       const updated = await $csrfFetch<ProjectDto>(`/api/projects/${editingProject.value.id}`, {
         method: 'PATCH',
@@ -104,7 +102,7 @@ async function onSave() {
         life: 3000,
       });
     } else {
-      const payload: CreateProjectDto = { name: nameValue.value, clientId: clientValue.value };
+      const payload: CreateProjectDto = { name: values.name, clientId: values.clientId };
 
       const created = await $csrfFetch<ProjectDto>('/api/projects', {
         method: 'POST',
@@ -127,9 +125,9 @@ async function onSave() {
       key === 'error.projectNameDuplicate' ||
       key === 'error.projectNameTooLong'
     ) {
-      nameError.value = t(key);
+      nameServerError.value = t(key);
     } else if (key === 'error.projectClientRequired') {
-      clientError.value = t(key);
+      clientServerError.value = t(key);
     } else {
       toast.add({ severity: 'error', summary: t(key), life: 4000 });
     }
@@ -168,8 +166,6 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
 
 <template>
   <div data-testid="projects-page">
-    <ConfirmDialog />
-
     <div class="projects-filter">
       <label for="project-client-filter">{{ t('projects.clientFilterLabel') }}</label>
       <Select
@@ -194,27 +190,21 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
       data-testid="projects-table"
     >
       <template #header>
-        <div class="projects-header">
-          <span class="projects-title">{{ t('projects.pageTitle') }}</span>
-          <Button
-            :label="t('projects.newButton')"
-            icon="pi pi-plus"
-            data-testid="new-project-button"
-            @click="openCreate"
-          />
-        </div>
+        <TableHeader
+          :title="t('projects.pageTitle')"
+          :new-label="t('projects.newButton')"
+          new-testid="new-project-button"
+          @create="openCreate"
+        />
       </template>
 
       <template #empty>
-        <div class="projects-empty" data-testid="projects-empty-state">
-          <p>{{ t('projects.emptyState') }}</p>
-          <Button
-            :label="t('projects.emptyStateCta')"
-            icon="pi pi-plus"
-            data-testid="empty-state-cta"
-            @click="openCreate"
-          />
-        </div>
+        <EmptyState
+          :message="t('projects.emptyState')"
+          :cta-label="t('projects.emptyStateCta')"
+          testid="projects-empty-state"
+          @create="openCreate"
+        />
       </template>
 
       <Column field="name" :header="t('projects.columnName')" sortable />
@@ -225,30 +215,19 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
       </Column>
       <Column field="createdAt" :header="t('projects.columnCreated')" sortable>
         <template #body="{ data }: { data: ProjectDto }">
-          {{ new Date(data.createdAt).toLocaleDateString() }}
+          {{ formatDate(data.createdAt, locale) }}
         </template>
       </Column>
       <Column :header="t('projects.columnActions')" style="width: 1%; white-space: nowrap">
         <template #body="{ data }: { data: ProjectDto }">
-          <div class="projects-actions">
-            <Button
-              icon="pi pi-pencil"
-              text
-              rounded
-              :aria-label="t('projects.editButton')"
-              :data-testid="`edit-project-${data.id}`"
-              @click="openEdit(data)"
-            />
-            <Button
-              icon="pi pi-trash"
-              text
-              rounded
-              severity="danger"
-              :aria-label="t('projects.deleteButton')"
-              :data-testid="`delete-project-${data.id}`"
-              @click="onDelete(data)"
-            />
-          </div>
+          <RowActions
+            :edit-label="t('projects.editButton')"
+            :delete-label="t('projects.deleteButton')"
+            :edit-testid="`edit-project-${data.id}`"
+            :delete-testid="`delete-project-${data.id}`"
+            @edit="openEdit(data)"
+            @delete="onDelete(data)"
+          />
         </template>
       </Column>
     </DataTable>
@@ -261,66 +240,57 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
       data-testid="project-dialog"
       @hide="closeDialog"
     >
-      <form class="project-form" @submit.prevent="onSave">
-        <label for="project-name">{{ t('projects.nameLabel') }}</label>
-        <InputText
-          id="project-name"
-          v-model="nameValue"
-          required
-          :maxlength="PROJECT_NAME_MAX_LENGTH"
-          :placeholder="t('projects.namePlaceholder')"
-          :aria-invalid="!!nameError"
-          :aria-describedby="nameError ? 'project-name-error' : undefined"
-          data-testid="project-name-input"
-        />
-        <small
-          v-if="nameError"
-          id="project-name-error"
-          role="alert"
-          class="project-field-error"
-          data-testid="project-name-error"
+      <Form
+        :resolver="resolver"
+        :initial-values="initialValues"
+        class="project-form"
+        @submit="onSave"
+      >
+        <FormFieldWrap
+          v-slot="{ field }"
+          :label="t('projects.nameLabel')"
+          name="name"
+          input-id="project-name"
+          error-testid="project-name-error"
+          :server-error="nameServerError"
         >
-          {{ nameError }}
-        </small>
+          <InputText
+            id="project-name"
+            :maxlength="PROJECT_NAME_MAX_LENGTH"
+            :placeholder="t('projects.namePlaceholder')"
+            :aria-invalid="field?.invalid"
+            :aria-describedby="field?.invalid ? 'project-name-error' : undefined"
+            data-testid="project-name-input"
+          />
+        </FormFieldWrap>
 
-        <label for="project-client">{{ t('projects.clientLabel') }}</label>
-        <Select
-          id="project-client"
-          v-model="clientValue"
-          :options="clientOptions"
-          option-label="name"
-          option-value="id"
-          :placeholder="t('projects.clientPlaceholder')"
-          :aria-invalid="!!clientError"
-          :aria-describedby="clientError ? 'project-client-error' : undefined"
-          data-testid="project-client-select"
-        />
-        <small
-          v-if="clientError"
-          id="project-client-error"
-          role="alert"
-          class="project-field-error"
-          data-testid="project-client-error"
+        <FormFieldWrap
+          v-slot="{ field }"
+          :label="t('projects.clientLabel')"
+          name="clientId"
+          input-id="project-client"
+          error-testid="project-client-error"
+          :server-error="clientServerError"
         >
-          {{ clientError }}
-        </small>
+          <Select
+            id="project-client"
+            :options="clientOptions"
+            option-label="name"
+            option-value="id"
+            :placeholder="t('projects.clientPlaceholder')"
+            :aria-invalid="field?.invalid"
+            :aria-describedby="field?.invalid ? 'project-client-error' : undefined"
+            data-testid="project-client-select"
+          />
+        </FormFieldWrap>
 
-        <div class="project-form-actions">
-          <Button
-            type="button"
-            :label="t('projects.cancelButton')"
-            text
-            data-testid="cancel-button"
-            @click="closeDialog"
-          />
-          <Button
-            type="submit"
-            :label="t('projects.saveButton')"
-            :loading="saving"
-            data-testid="save-button"
-          />
-        </div>
-      </form>
+        <FormDialogFooter
+          :cancel-label="t('projects.cancelButton')"
+          :save-label="t('projects.saveButton')"
+          :saving="saving"
+          @cancel="closeDialog"
+        />
+      </Form>
     </Dialog>
   </div>
 </template>
@@ -333,43 +303,9 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
   margin-bottom: 1rem;
 }
 
-.projects-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.projects-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.projects-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-}
-
-.projects-actions {
-  display: flex;
-  gap: 0.25rem;
-}
-
 .project-form {
   display: grid;
   gap: 0.75rem;
   min-width: 20rem;
-}
-
-.project-form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-
-.project-field-error {
-  color: var(--p-form-field-invalid-color);
 }
 </style>
