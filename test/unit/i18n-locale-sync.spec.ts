@@ -20,7 +20,7 @@ describe('html lang binding', () => {
     useHeadMock({ htmlAttrs: { lang: locale } });
 
     expect(headCalls).toHaveLength(1);
-    expect(headCalls[0].htmlAttrs?.lang).toBe(locale);
+    expect(headCalls[0]!.htmlAttrs?.lang).toBe(locale);
   });
 });
 
@@ -31,7 +31,7 @@ describe('PrimeVue locale sync', () => {
 
     function syncLocale(newLocale: string) {
       if (primevue.config) {
-        primevue.config.locale = { ...primevue.config.locale };
+        primevue.config.locale = { ...(primevue.config.locale as Record<string, unknown>) };
         primevue.config.activeLocale = newLocale;
       }
     }

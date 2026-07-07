@@ -1,5 +1,5 @@
-import Aura from '@primeuix/themes/aura';
 import { definePreset } from '@primeuix/themes';
+import Aura from '@primeuix/themes/aura';
 
 const CustomAuraTheme = definePreset(Aura, {
   semantic: {
@@ -137,5 +137,9 @@ export default defineNuxtConfig({
   },
   typescript: {
     typeCheck: true,
+    tsConfig: {
+      // NOTE: nuxt tests are included by default
+      include: ['../test/e2e/*', '../test/unit/*'],
+    },
   },
 });

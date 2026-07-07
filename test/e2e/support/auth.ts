@@ -21,10 +21,10 @@ export class CookieJar {
           : [];
     for (const entry of raw) {
       const [pair] = entry.split(';');
-      const eq = pair.indexOf('=');
+      const eq = pair!.indexOf('=');
       if (eq === -1) continue;
-      const name = pair.slice(0, eq).trim();
-      const value = pair.slice(eq + 1).trim();
+      const name = pair!.slice(0, eq).trim();
+      const value = pair!.slice(eq + 1).trim();
       if (value === '' || value.toLowerCase() === 'deleted') {
         this.cookies.delete(name);
       } else {
@@ -55,5 +55,5 @@ export async function primeCsrf(jar: CookieJar): Promise<string> {
   if (!match) {
     throw new Error('CSRF token meta tag not found in rendered HTML');
   }
-  return match[1];
+  return match[1]!;
 }
