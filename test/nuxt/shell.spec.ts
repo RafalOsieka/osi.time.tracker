@@ -44,6 +44,8 @@ const utilityMenuStub = {
     '</div>',
 };
 
+const appTimerStub = { template: '<div data-testid="app-timer" />' };
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------
@@ -68,6 +70,7 @@ async function mountShell(overrideStubs: Record<string, unknown> = {}) {
         AppTopBar: topBarStub,
         AppSidebar: sidebarStub,
         AppUtilityMenu: utilityMenuStub,
+        AppTimer: appTimerStub,
         Drawer: drawerStub,
         NuxtPage: { template: '<div data-testid="app-content">page</div>' },
         ...overrideStubs,

@@ -1,9 +1,15 @@
 <script setup lang="ts">
 const { railMode, toggle } = useShellState();
+const { fetchRunning } = useTimer();
 
 // Drawer state for < lg viewports
 const drawerOpen = ref(false);
-const timerPlaceholderText = 'TIMER PLACEHOLDER';
+
+onMounted(() => {
+  fetchRunning().catch(() => {
+    // Best-effort: a failed initial fetch just leaves the timer idle.
+  });
+});
 
 function openDrawer() {
   drawerOpen.value = true;
@@ -33,7 +39,7 @@ function onToggleSidebar() {
     <AppTopBar :sidebar-open="drawerOpen || railMode === 'full'" @toggle-sidebar="onToggleSidebar">
       <template #timer>
         <div class="app-shell__timer-inline" data-testid="timer-region-inline">
-          {{ timerPlaceholderText }}
+          <AppTimer />
         </div>
       </template>
       <template #utility>
@@ -43,7 +49,7 @@ function onToggleSidebar() {
 
     <!-- Very-small stacked timer row (shown below timer-stack breakpoint) -->
     <div class="app-shell__timer-row" data-testid="timer-region-stacked">
-      {{ timerPlaceholderText }}
+      <AppTimer />
     </div>
 
     <div class="app-shell__body">

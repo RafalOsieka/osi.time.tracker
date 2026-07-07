@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../server/db/client';
 import { users } from '../../server/db/schema/users';
 import { clients } from '../../server/db/schema/clients';
@@ -10,7 +11,7 @@ import { provisionDatabase } from './support/database';
 const describeDb = requireDocker();
 
 describeDb('tasks schema', () => {
-  it('allows a nullable projectId, allows duplicate names, and enforces a per-user unique task number', async () => {
+  it('allows a nullable projectId and enforces per-scope name uniqueness among non-deleted tasks', async () => {
     const dbUrl = await provisionDatabase();
     const { db, sql } = createDatabaseClient(dbUrl, { max: 5 });
 
@@ -40,31 +41,50 @@ describeDb('tasks schema', () => {
       // projectId is nullable
       const [taskWithoutProject] = await db
         .insert(tasks)
-        .values({ userId: userA.id, name: 'Standalone Task', number: 1 })
+        .values({ userId: userA.id, name: 'Standalone Task' })
         .returning();
       if (!taskWithoutProject) throw new Error('taskWithoutProject not inserted');
       expect(taskWithoutProject.projectId).toBeNull();
 
-      // Duplicate task names are allowed for the same user
-      const [duplicateNameTask] = await db
+      // A different (userId, projectId, name) scope allows the same name
+      const [scopedNameTask] = await db
         .insert(tasks)
-        .values({ userId: userA.id, projectId: project.id, name: 'Standalone Task', number: 2 })
+        .values({ userId: userA.id, projectId: project.id, name: 'Standalone Task' })
         .returning();
-      if (!duplicateNameTask) throw new Error('duplicateNameTask not inserted');
-      expect(duplicateNameTask.name).toBe('Standalone Task');
+      if (!scopedNameTask) throw new Error('scopedNameTask not inserted');
+      expect(scopedNameTask.name).toBe('Standalone Task');
 
-      // The same task number can be reused across different users
+      // The same name can be reused across different users
       const [otherUserTask] = await db
         .insert(tasks)
-        .values({ userId: userB.id, name: 'Other User Task', number: 1 })
+        .values({ userId: userB.id, name: 'Standalone Task' })
         .returning();
       if (!otherUserTask) throw new Error('otherUserTask not inserted');
-      expect(otherUserTask.number).toBe(1);
+      expect(otherUserTask.name).toBe('Standalone Task');
 
-      // Duplicate task numbers for the same user must be rejected
+      // Duplicate (userId, projectId=null, name) must be rejected
       await expect(
-        db.insert(tasks).values({ userId: userA.id, name: 'Conflicting Number', number: 1 }),
+        db.insert(tasks).values({ userId: userA.id, name: 'Standalone Task' }),
       ).rejects.toThrow();
+
+      // Duplicate (userId, projectId, name) must be rejected
+      await expect(
+        db
+          .insert(tasks)
+          .values({ userId: userA.id, projectId: project.id, name: 'Standalone Task' }),
+      ).rejects.toThrow();
+
+      // Soft-deleting the conflicting row frees up the name for reuse
+      await db
+        .update(tasks)
+        .set({ deletedAt: new Date() })
+        .where(eq(tasks.id, taskWithoutProject.id));
+      const [reusedNameTask] = await db
+        .insert(tasks)
+        .values({ userId: userA.id, name: 'Standalone Task' })
+        .returning();
+      if (!reusedNameTask) throw new Error('reusedNameTask not inserted');
+      expect(reusedNameTask.name).toBe('Standalone Task');
     } finally {
       await sql.end({ timeout: 5 });
     }

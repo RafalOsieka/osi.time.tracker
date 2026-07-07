@@ -70,9 +70,9 @@ describeTasks('tasks API integration', async () => {
   ]);
   await setupServer({ databaseUrl: dbUrl });
 
-  // 3.2 list: own-only isolation, soft-deleted exclusion, number ordering, resolved names,
-  // projectId filter, foreign/unknown projectId, project-less, projectId=none sentinel
-  it('3.2 list returns own non-deleted tasks ordered by number and honors project filters', async () => {
+  // 3.2 list: own-only isolation, soft-deleted exclusion, name ordering, resolved names,
+  // projectId filter, foreign/unknown projectId, project-less, projectId=none sentinel, search
+  it('3.2 list returns own non-deleted tasks ordered by name and honors project/search filters', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
     const client = await createClient(jar, token, 'List Client ' + Date.now());
     const project = await createProject(jar, token, 'List Project ' + Date.now(), client.id);
@@ -81,19 +81,20 @@ describeTasks('tasks API integration', async () => {
     expect(empty.status).toBe(200);
     expect(await empty.json()).toEqual([]);
 
-    const t1 = await (await createTask(jar, token, 'Task One', project.id)).json();
-    const t2 = await (await createTask(jar, token, 'Task Two')).json();
+    const t1 = await (await createTask(jar, token, 'Alpha Task', project.id)).json();
+    const t2 = await (await createTask(jar, token, 'Beta Task')).json();
 
     const list = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows = await list.json();
     expect(rows).toHaveLength(2);
-    expect(rows[0].number).toBe(t1.number);
-    expect(rows[1].number).toBe(t2.number);
+    expect(rows[0].id).toBe(t1.id);
+    expect(rows[1].id).toBe(t2.id);
     expect(rows[0].projectName).toBe(project.name);
     expect(rows[0].clientName).toBe(client.name);
     expect(rows[1].projectId).toBeNull();
     expect(rows[1].projectName).toBeNull();
     expect(rows[1].clientName).toBeNull();
+    expect(rows.every((r: { number?: number }) => r.number === undefined)).toBe(true);
 
     // Filter by projectId
     const filtered = await fetch(url(`/api/tasks?projectId=${project.id}`), {
@@ -110,6 +111,14 @@ describeTasks('tasks API integration', async () => {
     const noneRows = await noneFiltered.json();
     expect(noneRows).toHaveLength(1);
     expect(noneRows[0].id).toBe(t2.id);
+
+    // Case-insensitive search filter
+    const searchRes = await fetch(url('/api/tasks?search=alp'), {
+      headers: { cookie: jar.header() },
+    });
+    const searchRows = await searchRes.json();
+    expect(searchRows).toHaveLength(1);
+    expect(searchRows[0].id).toBe(t1.id);
 
     // Foreign/unknown projectId → empty list
     const fakeId = '00000000-0000-0000-0000-000000000000';
@@ -151,8 +160,8 @@ describeTasks('tasks API integration', async () => {
   });
 
   // 3.4 create: happy path, project-less, empty-name rejection, invalid projectId,
-  // foreign/unknown projectId → 404, duplicate names allowed, numbering per user
-  it('3.4 create happy path, project-less, validation, and numbering', async () => {
+  // foreign/unknown projectId → 404, duplicate names match instead of duplicating
+  it('3.4 create happy path, project-less, validation, and no number field', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
     const client = await createClient(jar, token, 'Create Client ' + Date.now());
     const project = await createProject(jar, token, 'Create Project ' + Date.now(), client.id);
@@ -166,8 +175,7 @@ describeTasks('tasks API integration', async () => {
     expect(created.projectName).toBe(project.name);
     expect(created.clientName).toBe(client.name);
     expect(created.id).toBeDefined();
-    expect(created.number).toBeGreaterThanOrEqual(1);
-    const firstNumber = created.number;
+    expect(created.number).toBeUndefined();
 
     // Project-less creation
     const looseRes = await createTask(jar, token, 'Loose Task');
@@ -176,12 +184,6 @@ describeTasks('tasks API integration', async () => {
     expect(loose.projectId).toBeNull();
     expect(loose.projectName).toBeNull();
     expect(loose.clientName).toBeNull();
-    expect(loose.number).toBe(firstNumber + 1);
-
-    // Numbers increase monotonically per user
-    const thirdRes = await createTask(jar, token, 'Third Task');
-    const third = await thirdRes.json();
-    expect(third.number).toBe(firstNumber + 2);
 
     // Empty name rejected
     const emptyRes = await createTask(jar, token, '');
@@ -198,12 +200,12 @@ describeTasks('tasks API integration', async () => {
     const unknownRes = await createTask(jar, token, 'Ghost Task', fakeId);
     expect(unknownRes.status).toBe(404);
 
-    // Duplicate names allowed
+    // Duplicate name within the same scope matches the existing task instead of duplicating.
     const dupRes = await createTask(jar, token, 'New Task', project.id);
     expect(dupRes.status).toBe(200);
     const dup = await dupRes.json();
     expect(dup.name).toBe('New Task');
-    expect(dup.id).not.toBe(created.id);
+    expect(dup.id).toBe(created.id);
   });
 
   it('3.4b foreign projectId (owned by another user) → 404', async () => {
@@ -221,37 +223,26 @@ describeTasks('tasks API integration', async () => {
     expect(res.status).toBe(404);
   });
 
-  it('3.4c per-user numbering isolation and soft-deleted numbers not reused', async () => {
+  it('3.4c duplicate name in a different scope creates a distinct task', async () => {
     const alice = await loginAs('talice@example.com', 'secret');
     const bob = await loginAs('tbob@example.com', 'secret');
 
-    const aliceFirst = await (await createTask(alice.jar, alice.token, 'Alice First')).json();
-    const bobFirst = await (await createTask(bob.jar, bob.token, 'Bob First')).json();
-    expect(bobFirst.number).toBeGreaterThanOrEqual(1);
-    // Independent per-user counters: creating for Bob doesn't affect Alice's next number.
-    const aliceSecond = await (await createTask(alice.jar, alice.token, 'Alice Second')).json();
-    expect(aliceSecond.number).toBe(aliceFirst.number + 1);
-
-    // Soft-delete alice's second task, then create another: number should not be reused.
-    await fetch(url(`/api/tasks/${aliceSecond.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': alice.token, cookie: alice.jar.header() },
-    });
-    const aliceThird = await (await createTask(alice.jar, alice.token, 'Alice Third')).json();
-    expect(aliceThird.number).toBe(aliceSecond.number + 1);
+    const aliceFirst = await (await createTask(alice.jar, alice.token, 'Shared Name')).json();
+    const bobFirst = await (await createTask(bob.jar, bob.token, 'Shared Name')).json();
+    // Different users, so no matching/duplication across scopes.
+    expect(bobFirst.id).not.toBe(aliceFirst.id);
   });
 
-  // 3.6 patch: happy path, duplicate allowed, number unchanged, foreign id → 404,
+  // 3.6 patch: happy path, duplicate name re-validated, foreign id → 404,
   // unchanged project not re-validated, rename allowed under soft-deleted project,
   // clearing to null, assigning a project to a project-less task
-  it('3.6 patch happy path, immutable number, and project reassignment rules', async () => {
+  it('3.6 patch happy path and project reassignment rules', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
     const client = await createClient(jar, token, 'Patch T Client ' + Date.now());
     const projectA = await createProject(jar, token, 'Patch T Project A ' + Date.now(), client.id);
     const projectB = await createProject(jar, token, 'Patch T Project B ' + Date.now(), client.id);
 
     const created = await (await createTask(jar, token, 'Patch Me', projectA.id)).json();
-    const originalNumber = created.number;
 
     // Happy path rename + project change
     const patchRes = await fetch(url(`/api/tasks/${created.id}`), {
@@ -263,17 +254,17 @@ describeTasks('tasks API integration', async () => {
     const patched = await patchRes.json();
     expect(patched.name).toBe('Patched Name');
     expect(patched.projectId).toBe(projectB.id);
-    expect(patched.number).toBe(originalNumber);
+    expect(patched.number).toBeUndefined();
 
-    // Duplicate name allowed
+    // Different scope, so duplicate name is allowed to be a separate task
     const other = await (await createTask(jar, token, 'Other Task')).json();
     const dupPatch = await fetch(url(`/api/tasks/${other.id}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Patched Name' }),
+      body: JSON.stringify({ name: 'Solo Renamed' }),
     });
     expect(dupPatch.status).toBe(200);
-    expect((await dupPatch.json()).name).toBe('Patched Name');
+    expect((await dupPatch.json()).name).toBe('Solo Renamed');
 
     // Foreign/unknown id → 404
     const fakeId = '00000000-0000-0000-0000-000000000000';

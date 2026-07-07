@@ -104,7 +104,6 @@
   "tasksPage": {
     "pageTitle": "Zadania",
     "newButton": "Nowe",
-    "columnNumber": "#",
     "columnName": "Nazwa",
     "columnProject": "Projekt",
     "columnClient": "Klient",
@@ -136,6 +135,14 @@
     "toastDeletedSummary": "Zadanie usunięte",
     "toastDeletedDetail": "Zadanie zostało usunięte."
   },
+  "timer": {
+    "titlePlaceholder": "Nad czym pracujesz?",
+    "titleLabel": "Tytuł timera",
+    "start": "Start",
+    "stop": "Stop",
+    "noTask": "(brak zadania)",
+    "elapsedLabel": "Czas trwania"
+  },
   "error": {
     "clientNameRequired": "Nazwa jest wymagana.",
     "clientNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
@@ -147,7 +154,12 @@
     "taskNameRequired": "Nazwa jest wymagana.",
     "taskNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
     "taskProjectInvalid": "Wybierz prawidłowy projekt.",
-    "notFound": "Nie znaleziono."
+    "notFound": "Nie znaleziono.",
+    "timeEntryTitleInvalid": "Wprowadź prawidłowy tytuł.",
+    "timeEntryTitleTooLong": "Tytuł może mieć maksymalnie 200 znaków.",
+    "timeEntryProjectInvalid": "Wybierz prawidłowy projekt.",
+    "timeEntryStoppedAtInvalid": "Wprowadź prawidłowy czas zakończenia.",
+    "timeEntryStoppedBeforeStarted": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia."
   },
   "errors": {
     "auth": {

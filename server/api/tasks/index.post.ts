@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import { createTaskSchema } from '../../../shared/types/task';
 import type { CreateTaskDto, TaskDto } from '../../../shared/types/task';
@@ -6,8 +6,6 @@ import { db } from '../../db/index';
 import { tasks, projects, clients } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
-
-const MAX_NUMBER_ALLOCATION_ATTEMPTS = 5;
 
 export default defineEventHandler(async (event): Promise<TaskDto> => {
   const { user } = await requireAuth(event);
@@ -56,50 +54,71 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     clientName = client?.name ?? null;
   }
 
-  for (let attempt = 0; attempt < MAX_NUMBER_ALLOCATION_ATTEMPTS; attempt++) {
-    try {
-      const [created] = await db
-        .insert(tasks)
-        .values({
-          userId: user.id,
-          projectId,
-          name: parsedBody.name,
-          number: sql`COALESCE((SELECT MAX(${tasks.number}) FROM ${tasks} WHERE ${tasks.userId} = ${user.id}), 0) + 1`,
-        })
-        .returning();
+  const projectCondition =
+    projectId === null ? isNull(tasks.projectId) : eq(tasks.projectId, projectId);
 
-      if (!created) {
-        throw createError({
-          statusCode: 500,
-          data: { messageKey: 'error.unknown' } satisfies ApiMessage,
-        });
-      }
+  try {
+    const [created] = await db
+      .insert(tasks)
+      .values({
+        userId: user.id,
+        projectId,
+        name: parsedBody.name,
+      })
+      .returning();
 
-      return {
-        id: created.id,
-        number: created.number,
-        name: created.name,
-        projectId: created.projectId,
-        projectName,
-        clientName,
-        createdAt: created.createdAt.toISOString(),
-      };
-    } catch (err: unknown) {
-      const isUniqueViolation =
-        err &&
-        typeof err === 'object' &&
-        'code' in err &&
-        (err as { code: string }).code === '23505';
+    if (!created) {
+      throw createError({
+        statusCode: 500,
+        data: { messageKey: 'error.unknown' } satisfies ApiMessage,
+      });
+    }
 
-      if (isUniqueViolation && attempt < MAX_NUMBER_ALLOCATION_ATTEMPTS - 1) {
-        continue;
-      }
+    return {
+      id: created.id,
+      name: created.name,
+      projectId: created.projectId,
+      projectName,
+      clientName,
+      createdAt: created.createdAt.toISOString(),
+    };
+  } catch (err: unknown) {
+    const errorCode =
+      err && typeof err === 'object'
+        ? ((err as { code?: unknown; cause?: { code?: unknown } }).code ??
+          (err as { cause?: { code?: unknown } }).cause?.code)
+        : undefined;
+    const isUniqueViolation = errorCode === '23505';
+
+    if (!isUniqueViolation) {
       throw err;
     }
-  }
 
-  throw createError({
-    statusCode: 500,
-    data: { messageKey: 'error.unknown' } satisfies ApiMessage,
-  });
+    // REQ-TTR-027: duplicate name within scope matches the existing task instead of duplicating.
+    const [existing] = await db
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, user.id),
+          eq(tasks.name, parsedBody.name),
+          projectCondition,
+          isNull(tasks.deletedAt),
+        ),
+      )
+      .limit(1);
+
+    if (!existing) {
+      throw err;
+    }
+
+    return {
+      id: existing.id,
+      name: existing.name,
+      projectId: existing.projectId,
+      projectName,
+      clientName,
+      createdAt: existing.createdAt.toISOString(),
+    };
+  }
 });

@@ -75,6 +75,7 @@ describe('preserved test hooks', () => {
             props: ['sidebarOpen'],
           },
           AppSidebar: { template: '<nav />' },
+          AppTimer: { template: '<div data-testid="app-timer" />' },
           AppUtilityMenu: {
             template:
               '<div data-testid="utility-menu-button"><a data-testid="logout-button">Log out</a></div>',

@@ -197,7 +197,7 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
     <DataTable
       :value="tasks"
       data-key="id"
-      :sort-field="'number'"
+      :sort-field="'name'"
       :sort-order="1"
       :loading="tasksPending"
       data-testid="tasks-table"
@@ -220,9 +220,6 @@ function onDelete(task: Pick<TaskDto, 'id' | 'name'>) {
         />
       </template>
 
-      <Column field="number" :header="t('tasksPage.columnNumber')" sortable>
-        <template #body="{ data }: { data: TaskDto }">#{{ data.number }}</template>
-      </Column>
       <Column field="name" :header="t('tasksPage.columnName')" sortable />
       <Column :header="t('tasksPage.columnProject')">
         <template #body="{ data }: { data: TaskDto }">
