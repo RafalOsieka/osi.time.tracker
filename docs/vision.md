@@ -27,48 +27,59 @@ Existing solutions are either too heavyweight (full project management suites), 
 
 **OSI Time Tracker** is a web application (PWA-capable) with the following core feature areas:
 
-- **Time Tracking** — start/stop a live timer or create manual time entries
-- **Data Hierarchy** — organize work under Clients → Projects → Tasks
-- **Reporting** — view summaries by client/project and daily/weekly timesheets
+- **Time Tracking** — start/stop a live timer or create manual time entries; **time entries are the primary objects the user creates**
+- **Timer View** — the main working page: time entries listed per day, grouped by Task, expandable to individual entries
+- **Data Hierarchy** — organize work under Clients → Projects; Tasks are created and matched implicitly from time entry titles
+- **Reporting** — view summaries by client/project and weekly timesheets (the Timer View doubles as the daily timesheet)
 - **Remote Integration** — link local tasks to remote issues (Redmine, OpenProject) and push time entries on demand
 - **User Settings** — timezone, week start day, language, rounding preferences
 
-The application is self-hosted via Docker. Each user registers independently and manages their own isolated data.
+The application is self-hosted via Docker. Each user has an isolated account and manages their own data.
 
 ---
 
 ## Domain Model
 
-The core domain hierarchy is:
+The model is **entry-first**: the primary object a user creates is a `TimeEntry`. `Task`s are derived grouping entities — created, matched, renamed, merged, and garbage-collected automatically from entry titles. There is no dedicated task management page.
 
 ```
 User
  ├─► Client
  │     ├─► RemoteSystemConfig (optional, one per remote system type)
  │     └─► Project
- │           └─► Task (may optionally belong to a Project)
- │                 ├─► TimeEntry (one or many)
- │                 └─► RemoteIssueRef (optional)
- └─► Task (project-less — belongs directly to the User)
-       ├─► TimeEntry (one or many)
-       └─► RemoteIssueRef (optional)
+ ├─► Task (auto-created / auto-matched; projectId nullable ──► Project)
+ │     └─► RemoteIssueRef (optional)
+ └─► TimeEntry (taskId nullable ──► Task)
 ```
 
-A `Task` optionally belongs to a `Project`. A project-less Task is owned directly by the User and is not grouped under any Client or Project.
+A `TimeEntry` optionally points to a `Task` — the task's name is what the user perceives as the entry's "title". A `Task` optionally belongs to a `Project`; a project-less Task is owned directly by the User and is not grouped under any Client or Project.
 
 ### Entities
 
-| Entity                 | Description                                                                                                                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **User**               | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                       |
-| **Client**             | A company or person the user works for. Top-level grouping for projects. Holds remote system configuration for that client's issue tracker.                                            |
-| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule.                           |
-| **Project**            | A body of work for a Client. Contains tasks.                                                                                                                                           |
-| **Task**               | A unit of work. Time is logged against a Task. A Task may optionally belong to a Project (project-less Tasks belong directly to the User). May optionally be linked to a remote issue. |
-| **TimeEntry**          | A single logged time interval (start time, end time or duration) attached to a Task.                                                                                                   |
-| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and relevant issue metadata (title, URL).                              |
+| Entity                 | Description                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **User**               | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                                                                                                                                                                                 |
+| **Client**             | A company or person the user works for. Top-level grouping for projects. Holds remote system configuration for that client's issue tracker.                                                                                                                                                                                                      |
+| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule.                                                                                                                                                                                     |
+| **Project**            | A body of work for a Client. Contains tasks.                                                                                                                                                                                                                                                                                                     |
+| **Task**               | A derived unit of work grouping time entries. Auto-created or auto-matched when the user titles a time entry; renamed via the group header in the Timer View; hard-deleted (garbage-collected) when its last entry leaves. Has a name and an optional Project. No status, no number, no description. May optionally be linked to a remote issue. |
+| **TimeEntry**          | A single logged time interval (`startedAt` + `stoppedAt`; a running timer is an entry with no stop time). Carries no title of its own — its displayed title is the name of the Task it points to (`taskId` nullable ⇒ shown as "(no task)").                                                                                                     |
+| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and relevant issue metadata (title, URL).                                                                                                                                                                                        |
 
 A `Client` holds the `RemoteSystemConfig` (connection details, credentials, adapter mode). A `Task` holds a `RemoteIssueRef` that references only the remote issue identifier and metadata — it does not duplicate connection details. When a `TimeEntry` is pushed, the adapter reads the connection config from the parent `Client` and the issue reference from the parent `Task`.
+
+### Entry-First Semantics
+
+1. **Title = task binding.** A time entry's "title" is the name of the Task it points to. There is no separate description field on entries — the title is the only text.
+2. **Task matching key is `(user, name, project)`.** `project = none` is a scope of its own: at most one project-less "Code review" may exist, plus one per project.
+3. **Autocomplete & silent match.** While typing a title, existing Tasks (name + project context) are suggested. Picking one binds the entry to it. Typing an existing name without picking: if the existing task is project-less, the entry silently binds to it; if the existing task has a project, a new project-less Task is created.
+4. **Editing scope.** Retitling a **single entry** splits/reassigns it to another (or a new) Task. Editing a **group's** title in the Timer View renames the Task itself — the typo fix that applies everywhere.
+5. **Auto-merge invariant.** After any task mutation (rename, project assignment), if two Tasks share `(name, project)` they merge: entries move to the survivor, the emptied Task is garbage-collected. Merges are irreversible. _Future guard:_ once `RemoteIssueRef`s exist, a merge where both Tasks hold a ref must block or ask the user.
+6. **Untitled entries** (`taskId = null`) group into one "(no task)" bucket per day. Typing a title into the bucket header bulk-assigns all of that day's untitled entries to the matched/created Task.
+7. **Group row = mini task editor.** The group header in the Timer View (title + project selector) is the only task-editing surface. "(no project)" is a visible state nudging assignment for reports.
+8. **Task lifecycle is implicit.** Users never manage Tasks directly: Tasks are hard-deleted (no soft delete) when their last entry leaves. Clients and Projects keep soft-delete semantics.
+9. **Running timer = TimeEntry with no stop time.** Persisted server-side; at most one running entry per user. Duration is always derived (`stoppedAt − startedAt`).
+10. **Tie-breaker:** where behavior is unspecified, follow Toggl's handling.
 
 ---
 
@@ -76,36 +87,37 @@ A `Client` holds the `RemoteSystemConfig` (connection details, credentials, adap
 
 There is a single role in the system: **User**.
 
-| Role     | Description                                                             |
-| -------- | ----------------------------------------------------------------------- |
-| **User** | A self-registered account. Has full CRUD access to their own data only. |
+| Role     | Description                                              |
+| -------- | -------------------------------------------------------- |
+| **User** | An account with full CRUD access to their own data only. |
 
 - No admin role, no team hierarchy, no cross-user visibility.
 - Every user's data (clients, projects, tasks, time entries) is strictly isolated.
-- Account provisioning is via self-registration (email + password).
+- Account provisioning (MVP): a bootstrap user is provisioned via environment variables (`BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD`). Self-registration (email + password) is planned for V1.1.
 
 ---
 
 ## Core User Journey (MVP)
 
 ```
-Register (email + password)
-    └─► Log in
-        └─► Create Client
-              ├─► (Optional) Configure RemoteSystemConfig on Client
-              │     (system type, base URL, API credentials, adapter mode, rounding rule)
-              └─► Create Project under Client
-                    └─► Create Task under Project (or create a project-less Task directly)
-                          ├─► (Optional) Link Task to remote issue
-                          │     ├─► Browse / search remote issues from configured system
-                          │     └─► Attach RemoteIssueRef (issue ID + cached title/URL)
-                          └─► Start Timer  ──OR──  Create Manual Entry
-                                └─► Stop Timer → TimeEntry created
-                                      ├─► Review / edit TimeEntry
-                                      └─► (Optional) Push to remote system
-                                            ├─► Push single TimeEntry on demand
-                                            └─► (V1.1) Push all entries for a day
-                                                  (rounding applied per entry before push)
+Log in (bootstrap-provisioned account; self-registration in V1.1)
+    ├─► (Optional) Create Client ─► Create Project under Client
+    │         └─► (Optional) Configure RemoteSystemConfig on Client
+    │               (system type, base URL, API credentials, adapter mode, rounding rule)
+    └─► Start Timer  ──OR──  Create Manual Entry      ← the primary action; title optional
+          ├─► Type a title → autocomplete suggests existing Tasks (name + project)
+          │     ├─► Pick one → entry binds to that Task
+          │     └─► New title → Task auto-created behind the scenes
+          ├─► Leave untitled → entry lands in the day's "(no task)" bucket (title it later)
+          └─► Stop Timer → TimeEntry saved
+                └─► Timer View: entries per day, grouped by Task
+                      ├─► Expand a group → edit individual entries (retitle = split/reassign)
+                      ├─► Group header = mini task editor (rename Task, assign Project)
+                      ├─► Continue (▶) → start a new entry on the same Task
+                      └─► (Optional) Link Task to remote issue → push entries
+                            ├─► Push single TimeEntry on demand
+                            └─► (V1.1) Push all entries for a day
+                                  (rounding applied per entry before push)
 ```
 
 ---
@@ -126,7 +138,7 @@ Register (email + password)
       └──────────────────┘
 ```
 
-A time entry can also be created directly in the `Stopped` state via manual entry (no timer involved).
+A running timer **is** a TimeEntry with no stop time — persisted server-side, at most one per user. A time entry can also be created directly in the `Stopped` state via manual entry (no timer involved). Duration is always derived from the two timestamps.
 
 ---
 
@@ -152,7 +164,7 @@ A `Task` may optionally hold a `RemoteIssueRef` — a lightweight reference to a
 
 The user can browse and search issues from the configured remote system directly within the app. This enables two workflows:
 
-1. **Link while creating/editing a Task** — pick a remote issue from a search/browse dialog to attach a `RemoteIssueRef` to the task.
+1. **Link from a Task's group row in the Timer View** — pick a remote issue from a search/browse dialog to attach a `RemoteIssueRef` to the task.
 2. **Start time entry from remote issue** — a dedicated view lists open remote issues; the user selects one and immediately starts a timer, with the task and remote link pre-populated.
 
 ### Push Flow
@@ -204,9 +216,9 @@ Each supported remote system is implemented as an **adapter** (plugin). The adap
 | Component     | Technology                                      |
 | ------------- | ----------------------------------------------- |
 | Frontend      | Nuxt 4, Vue 3, TypeScript                       |
-| UI Library    | PrimeVue (+ optional Tailwind CSS)              |
-| Backend / API | Nuxt 4 server routes (or separate Node service) |
-| Database      | PostgreSQL                                      |
+| UI Library    | PrimeVue                                        |
+| Backend / API | Nuxt 4 server routes                            |
+| Database      | PostgreSQL ≥ 18 (native `uuidv7()`)             |
 | Deployment    | Docker / Docker Compose                         |
 | PWA           | Nuxt PWA module (service worker, offline cache) |
 
@@ -216,7 +228,7 @@ Each supported remote system is implemented as an **adapter** (plugin). The adap
 
 | Concern                  | Decision                                                                                                                                                                                                            |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **PWA / Offline**        | Timer state persisted locally; app installable on desktop and mobile.                                                                                                                                               |
+| **PWA / Offline**        | App installable on desktop and mobile; the running timer is server-persisted — an offline layer (local caching/sync) is added on top later (V1.1+).                                                                 |
 | **GDPR**                 | Right to erasure (account + all data deletion), data export (JSON/CSV).                                                                                                                                             |
 | **Security (OWASP)**     | OWASP Top 10 baseline: input validation, rate limiting, CSP headers, secure cookies.                                                                                                                                |
 | **Internationalization** | i18n-ready from day one; `en` (default) + `pl` shipped; additional locales addable without refactor. Locale resolved via cookie → `Accept-Language` → `en`; persisted in cookie only until User Settings (WBS 7.4). |
@@ -230,7 +242,9 @@ Each supported remote system is implemented as an **adapter** (plugin). The adap
 - **Billing & invoicing** — no hourly rates, no invoice generation or export
 - **Team features** — no shared workspaces, no roles within a team, no cross-user visibility
 - **Real-time / background sync** — no automatic background push to remote systems; all pushes are on-demand
-- **Admin-managed accounts** — no administrator role; all accounts are self-registered
+- **Admin-managed accounts** — no administrator role; accounts are bootstrap-provisioned (MVP) and self-registered (V1.1)
+- **Task management UI** — no dedicated tasks page; Tasks are created, renamed, merged, and deleted implicitly via time entries and the Timer View group rows
+- **Task metadata** — no task status, numbers, or descriptions; a Task is only a name plus an optional Project
 - **Automatic import of remote tasks** — remote issues are fetched on demand for linking/browsing; no background import or local copy of the full remote task list
 - **Mobile native apps** — web/PWA only; no iOS or Android native app
 - **SLA / time budgets** — no project budget tracking or deadline enforcement

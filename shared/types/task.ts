@@ -25,10 +25,14 @@ export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
 
 export interface TaskDto {
   id: string;
-  number: number;
   name: string;
   projectId: string | null;
   projectName: string | null;
   clientName: string | null;
   createdAt: string;
+}
+
+export interface ListTasksQuery {
+  projectId?: string;
+  search?: string;
 }

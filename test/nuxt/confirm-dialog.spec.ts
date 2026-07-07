@@ -3,6 +3,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import DefaultLayout from '../../app/layouts/default.vue';
 
 const ConfirmDialogStub = { template: '<div data-testid="confirm-dialog" />' };
+const AppTimerStub = { template: '<div data-testid="app-timer" />' };
 
 const confirmRequireMock = vi.fn();
 vi.mock('primevue/useconfirm', () => ({
@@ -27,6 +28,7 @@ describe('REQ-NFR-032: single app-level confirm dialog', () => {
       global: {
         stubs: {
           ConfirmDialog: ConfirmDialogStub,
+          AppTimer: AppTimerStub,
           NuxtPage: { template: '<div data-testid="app-content" />' },
         },
       },
@@ -40,6 +42,7 @@ describe('REQ-NFR-032: single app-level confirm dialog', () => {
       global: {
         stubs: {
           ConfirmDialog: ConfirmDialogStub,
+          AppTimer: AppTimerStub,
           NuxtPage: DeletePageStub,
         },
       },

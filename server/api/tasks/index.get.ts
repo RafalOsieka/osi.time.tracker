@@ -1,12 +1,13 @@
 import { db } from '../../db/index';
 import { tasks, projects, clients } from '../../db/schema';
-import { eq, isNull, asc, and } from 'drizzle-orm';
+import { eq, isNull, asc, and, ilike } from 'drizzle-orm';
 import type { TaskDto } from '../../../shared/types/task';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   const { user } = await requireAuth(event);
   const query = getQuery(event);
   const projectId = typeof query.projectId === 'string' ? query.projectId : undefined;
+  const search = typeof query.search === 'string' ? query.search.trim() : undefined;
 
   const conditions = [eq(tasks.userId, user.id), isNull(tasks.deletedAt)];
   if (projectId === 'none') {
@@ -14,11 +15,13 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   } else if (projectId) {
     conditions.push(eq(tasks.projectId, projectId));
   }
+  if (search) {
+    conditions.push(ilike(tasks.name, `%${search}%`));
+  }
 
   const rows = await db
     .select({
       id: tasks.id,
-      number: tasks.number,
       name: tasks.name,
       projectId: tasks.projectId,
       projectName: projects.name,
@@ -29,11 +32,10 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     .leftJoin(projects, eq(projects.id, tasks.projectId))
     .leftJoin(clients, eq(clients.id, projects.clientId))
     .where(and(...conditions))
-    .orderBy(asc(tasks.number));
+    .orderBy(asc(tasks.name));
 
   return rows.map((row) => ({
     id: row.id,
-    number: row.number,
     name: row.name,
     projectId: row.projectId,
     projectName: row.projectName ?? null,

@@ -104,7 +104,6 @@
   "tasksPage": {
     "pageTitle": "Tasks",
     "newButton": "New",
-    "columnNumber": "#",
     "columnName": "Name",
     "columnProject": "Project",
     "columnClient": "Client",
@@ -136,6 +135,14 @@
     "toastDeletedSummary": "Task deleted",
     "toastDeletedDetail": "The task has been deleted."
   },
+  "timer": {
+    "titlePlaceholder": "What are you working on?",
+    "titleLabel": "Timer title",
+    "start": "Start",
+    "stop": "Stop",
+    "noTask": "(no task)",
+    "elapsedLabel": "Elapsed time"
+  },
   "error": {
     "clientNameRequired": "Name is required.",
     "clientNameTooLong": "Name must be 100 characters or fewer.",
@@ -147,7 +154,12 @@
     "taskNameRequired": "Name is required.",
     "taskNameTooLong": "Name must be 100 characters or fewer.",
     "taskProjectInvalid": "Select a valid project.",
-    "notFound": "Not found."
+    "notFound": "Not found.",
+    "timeEntryTitleInvalid": "Enter a valid title.",
+    "timeEntryTitleTooLong": "Title must be 200 characters or fewer.",
+    "timeEntryProjectInvalid": "Select a valid project.",
+    "timeEntryStoppedAtInvalid": "Enter a valid stop time.",
+    "timeEntryStoppedBeforeStarted": "Stop time cannot be before the start time."
   },
   "errors": {
     "auth": {

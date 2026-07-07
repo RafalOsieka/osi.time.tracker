@@ -1,9 +1,4 @@
-# task-management Specification
-
-## Purpose
-Define authenticated, user-scoped CRUD for Tasks (the leaf of the `Client → Project → Task` hierarchy), with an optional project assignment (project-less tasks allowed), task names unique within a user's project scope, project ownership validation when assigned, soft delete, strict cross-user isolation, implicit task creation/matching from time-entry titles, and an accessible PrimeVue Dialog-based UI. The `uuidv7` `id` is the API identifier.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: REQ-TTR-026 List own tasks
 The system SHALL show the authenticated user only their own non-deleted tasks, ordered by `name`, via `GET /api/tasks`. The list SHALL exclude any task whose `deletedAt` is set and any task belonging to another user. Each returned task SHALL include its `uuidv7` `id`. The endpoint SHALL accept an optional `projectId` query parameter that further restricts results to that project, always additionally scoped by `userId`; a dedicated sentinel value (`projectId=none`) SHALL restrict results to project-less tasks (`projectId IS NULL`). The endpoint SHALL additionally accept an optional `search` query parameter that restricts results to tasks whose `name` contains the value case-insensitively, to power title autocomplete. Each returned task SHALL include the owning project's name (`projectName`) and the owning client's name (`clientName`) resolved via LEFT joins that do NOT filter on the project's or client's `deletedAt`, so the names are present even when a parent has been soft-deleted; for a project-less task both `projectId`, `projectName`, and `clientName` SHALL be `null`.
@@ -98,35 +93,22 @@ The system SHALL allow an authenticated user to update the `name` and `projectId
 - **WHEN** an authenticated user updates a project-less task, setting `projectId` to a non-deleted project they own
 - **THEN** the system SHALL validate ownership, assign the project, and return the task with the resolved `projectName` and `clientName`
 
-### Requirement: REQ-TTR-029 Soft-delete a task
-The system SHALL soft-delete a task via `DELETE /api/tasks/[id]` by setting `deletedAt`, scoped by `userId`, and SHALL never hard-delete the row. Deletion SHALL be confirmed via a confirm dialog before it is performed.
+### Requirement: REQ-NFR-025 Accessible, tokenized Tasks UI
+The Tasks page SHALL meet WCAG 2.1 AA: form fields including the Project select SHALL be labelled, the create/edit dialog and confirm dialog SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from PrimeVue theme tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
 
-#### Scenario: Successful soft delete
-- **WHEN** an authenticated user confirms deletion of their own task
-- **THEN** the system SHALL set `deletedAt`, retain the database row, the task SHALL disappear from the list, and a success Toast SHALL be shown
+#### Scenario: Inline field error is accessible
+- **WHEN** a field validation error is shown
+- **THEN** the field SHALL expose `aria-invalid` and reference the error via `aria-describedby`
 
-#### Scenario: Deletion requires confirmation
-- **WHEN** the user activates the delete action
-- **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
+#### Scenario: Project select is labelled
+- **WHEN** the create/edit dialog renders the Project select
+- **THEN** the select SHALL have an associated label and be keyboard operable
 
-### Requirement: REQ-TTR-030 Project relationship and ownership
-Every task SHALL belong to at most one project owned by the same user, or to no project at all (project-less). On create when a non-null `projectId` is supplied, and on update when the `projectId` is changed to a different non-null project, the system SHALL validate that the target `projectId` references a non-deleted project owned by the authenticated user; a foreign or unknown `projectId` SHALL resolve to HTTP 404 without confirming the project's existence. Omitting `projectId` or setting it to `null` SHALL create/leave the task project-less without any project validation. When an update leaves the `projectId` unchanged, the system SHALL NOT re-validate the existing project's ownership or soft-delete status, allowing edits to a task whose project was later soft-deleted.
+#### Scenario: Strings localized in parity
+- **WHEN** new user-facing strings are added
+- **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
-#### Scenario: Assigning a foreign project rejected
-- **WHEN** an authenticated user creates or updates a task with a `projectId` owned by another user
-- **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal that the project exists
-
-#### Scenario: Assigning an unknown project rejected
-- **WHEN** an authenticated user creates or updates a task with a `projectId` that does not exist
-- **THEN** the system SHALL respond with HTTP 404
-
-#### Scenario: Unchanged project is not re-validated
-- **WHEN** an authenticated user updates a task without changing its `projectId`
-- **THEN** the system SHALL NOT re-validate the existing project's ownership or soft-delete status and SHALL allow the update
-
-#### Scenario: Project-less task requires no project validation
-- **WHEN** an authenticated user creates or updates a task with `projectId` omitted or `null`
-- **THEN** the system SHALL treat the task as project-less and SHALL NOT perform any project ownership or soft-delete validation
+## ADDED Requirements
 
 ### Requirement: REQ-TTR-042 Task name uniqueness per project scope
 Every task's `name` SHALL be unique among the user's non-deleted tasks within its project scope, where `projectId = NULL` is a distinct scope. Uniqueness SHALL be enforced by partial unique indexes: `(userId, projectId, name) WHERE deletedAt IS NULL` and `(userId, name) WHERE projectId IS NULL AND deletedAt IS NULL`. This uniqueness is the matching key that lets time-entry titles resolve to at most one task per scope.
@@ -150,54 +132,8 @@ The system SHALL create and match tasks implicitly from time-entry titles as def
 - **WHEN** a user titles a time entry with a name that already exists in the target project scope
 - **THEN** the entry SHALL bind to the existing task and no duplicate task SHALL be created
 
-### Requirement: REQ-TTR-031 Strict cross-user isolation
-Every read and write SHALL be scoped by the authenticated user's id. A task id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence.
+## REMOVED Requirements
 
-#### Scenario: Foreign task id on read or write
-- **WHEN** an authenticated user references a task id owned by another user
-- **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal that the resource exists
-
-#### Scenario: Unknown task id
-- **WHEN** an authenticated user references a task id that does not exist
-- **THEN** the system SHALL respond with HTTP 404
-
-### Requirement: REQ-NFR-024 Authenticated and CSRF-guarded task endpoints
-All task endpoints SHALL require authentication via `requireAuth`, and mutating endpoints (`POST`, `PATCH`, `DELETE`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast.
-
-#### Scenario: Unauthenticated request rejected
-- **WHEN** any task endpoint is called without a valid session
-- **THEN** the system SHALL respond with HTTP 401
-
-#### Scenario: Missing CSRF token rejected
-- **WHEN** a mutating task request is made without a valid CSRF token
-- **THEN** the system SHALL reject the request
-
-#### Scenario: Server failure surfaced
-- **WHEN** a mutation fails with an API error
-- **THEN** the client SHALL show a Toast translated from the returned `messageKey`
-
-### Requirement: REQ-NFR-025 Accessible, tokenized Tasks UI
-The Tasks page SHALL meet WCAG 2.1 AA: form fields including the Project select SHALL be labelled, the create/edit dialog and confirm dialog SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from PrimeVue theme tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
-
-#### Scenario: Inline field error is accessible
-- **WHEN** a field validation error is shown
-- **THEN** the field SHALL expose `aria-invalid` and reference the error via `aria-describedby`
-
-#### Scenario: Project select is labelled
-- **WHEN** the create/edit dialog renders the Project select
-- **THEN** the select SHALL have an associated label and be keyboard operable
-
-#### Scenario: Strings localized in parity
-- **WHEN** new user-facing strings are added
-- **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
-
-### Requirement: REQ-TTR-035 Client-side validation of the task form
-The task create/edit form SHALL validate input client-side using the shared `createTaskSchema` from `shared/types/task.ts` (via a PrimeVue Forms resolver) before any request is sent. Validation failures SHALL render the schema's messageKey translated via `t()` as an inline field error and SHALL prevent the request. A cleared (null) project selection SHALL pass validation, since tasks MAY be project-less. Server-side validation SHALL remain unchanged and authoritative.
-
-#### Scenario: Empty name blocked client-side
-- **WHEN** the user submits the task form with an empty or whitespace-only name
-- **THEN** the form SHALL show the `error.taskNameRequired` message inline and SHALL NOT send a request
-
-#### Scenario: Project-less task passes validation
-- **WHEN** the user submits the task form with a valid name and no project selected
-- **THEN** client-side validation SHALL pass and the request SHALL be sent with a null `projectId`
+### Requirement: REQ-TTR-032 Per-user sequential task number
+**Reason**: The entry-first model (see `docs/vision.md`) removes the dedicated tasks page and creates tasks implicitly from time-entry titles, where the matching key is `(user, name, project)`. Per-user sequential numbers no longer have a surface or purpose, and would force implicit creation to invent numbers.
+**Migration**: The migration drops the `tasks.number` column and its `(userId, number)` unique index, and adds the `(userId, name, projectId)` / `(userId, name) WHERE projectId IS NULL` partial unique matching indexes (deduplicating any conflicting names first). `TaskDto` loses its `number` field and the Tasks UI no longer displays `#N`. Tasks are now distinguished by their `name` within a project scope and by their `uuidv7` `id`.

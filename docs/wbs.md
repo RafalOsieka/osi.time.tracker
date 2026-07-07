@@ -10,17 +10,17 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## Glossary
 
-| Term                   | Definition                                                                                                                                                   |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **User**               | A self-registered account. Owns all data beneath it. Fully isolated from other users on the same installation.                                               |
-| **Client**             | A company or person the User works for. Top-level grouping for Projects.                                                                                     |
-| **Project**            | A body of work for a Client. Contains Tasks.                                                                                                                 |
-| **Task**               | A unit of work within a Project. Time is logged against a Task. May optionally be linked to a remote issue.                                                  |
-| **TimeEntry**          | A single logged time interval (start time + end time, or duration) attached to a Task. Created by timer or manual entry.                                     |
-| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule. |
-| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and cached metadata (title, URL).            |
-| **Adapter**            | A plugin that implements the integration with a specific remote system (e.g. Redmine, OpenProject). Follows a stable interface.                              |
-| **Rounding Rule**      | A configurable rule applied to a TimeEntry duration before pushing to a remote system (e.g. round up to nearest 15 minutes).                                 |
+| Term                   | Definition                                                                                                                                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **User**               | An account (bootstrap-provisioned in MVP; self-registered from V1.1). Owns all data beneath it. Fully isolated from other users on the same installation.                                                                                                                                 |
+| **Client**             | A company or person the User works for. Top-level grouping for Projects.                                                                                                                                                                                                                  |
+| **Project**            | A body of work for a Client. Contains Tasks.                                                                                                                                                                                                                                              |
+| **Task**               | A derived unit of work grouping time entries. Auto-created/auto-matched from entry titles on `(name, project)`; optionally belongs to a Project; hard-deleted when its last entry leaves. No dedicated management page, no status, no number. May optionally be linked to a remote issue. |
+| **TimeEntry**          | A single logged time interval (start + stop; a running timer is an entry with no stop time). The primary object the user creates. Its displayed title is the name of the Task it points to (`taskId` nullable ⇒ "(no task)"). Created by timer or manual entry.                           |
+| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule.                                                                                                                              |
+| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and cached metadata (title, URL).                                                                                                                                         |
+| **Adapter**            | A plugin that implements the integration with a specific remote system (e.g. Redmine, OpenProject). Follows a stable interface.                                                                                                                                                           |
+| **Rounding Rule**      | A configurable rule applied to a TimeEntry duration before pushing to a remote system (e.g. round up to nearest 15 minutes).                                                                                                                                                              |
 
 ---
 
@@ -41,46 +41,47 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## 2. Time Tracking (Timer + Manual Entry)
 
-| #   | Feature                                     | Priority | Notes                                                                         |
-| --- | ------------------------------------------- | -------- | ----------------------------------------------------------------------------- |
-| 2.1 | Start / stop live timer                     | 🔴       | One active timer per user at a time; timer state persisted (PWA/offline-safe) |
-| 2.2 | Manual time entry (start + end or duration) | 🔴       | Create a TimeEntry without using the timer                                    |
-| 2.3 | Edit time entry                             | 🔴       | Change start time, end time, duration, task, description                      |
-| 2.4 | Delete time entry                           | 🔴       |                                                                               |
-| 2.5 | Description / notes on time entry           | 🔴       | Free-text field describing what was done                                      |
-| 2.6 | Tags on time entries                        | 🟡       | User-defined labels for cross-cutting categorization                          |
-| 2.7 | Duplicate time entry                        | 🟢       | Clone an existing entry as a starting point                                   |
-| 2.8 | Bulk edit / delete time entries             | 🟢       |                                                                               |
-| 2.9 | Running timer indicator (persistent UI)     | 🔴       | Visible in header/nav while timer is active                                   |
+| #    | Feature                                     | Priority | Notes                                                                                                                                                                                      |
+| ---- | ------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2.1  | Start / stop live timer                     | 🔴       | One active timer per user; a running timer is a TimeEntry with no stop time, persisted server-side                                                                                         |
+| 2.2  | Manual time entry (start + end or duration) | 🔴       | Create a TimeEntry without using the timer (sets both timestamps directly)                                                                                                                 |
+| 2.3  | Edit time entry                             | 🔴       | Change start/stop time or title; retitling a single entry splits/reassigns it to another (or a new) Task via autocomplete                                                                  |
+| 2.4  | Delete time entry                           | 🔴       | Orphaned Tasks (zero entries) are garbage-collected (hard delete)                                                                                                                          |
+| 2.5  | Title on time entry (= task binding)        | 🔴       | The entry's title is the name of its Task; typing a title auto-creates/matches a Task on `(name, project)`; untitled entries allowed (`taskId = null`). No separate description field (⚫) |
+| 2.6  | Tags on time entries                        | 🟡       | User-defined labels for cross-cutting categorization                                                                                                                                       |
+| 2.7  | Duplicate time entry                        | 🟢       | Clone an existing entry as a starting point                                                                                                                                                |
+| 2.8  | Bulk edit / delete time entries             | 🟢       |                                                                                                                                                                                            |
+| 2.9  | Running timer indicator (persistent UI)     | 🔴       | Visible in header/nav while timer is active                                                                                                                                                |
+| 2.10 | Timer view page (daily entry list)          | 🔴       | Primary page: entries listed per day, grouped by Task with expandable details; one "(no task)" bucket per day (bucket title edit = bulk assign); continue (▶) action; absorbs 4.2          |
 
 ---
 
 ## 3. Data Hierarchy Management (Clients / Projects / Tasks)
 
-| #   | Feature                                     | Priority | Notes                                                         |
-| --- | ------------------------------------------- | -------- | ------------------------------------------------------------- |
-| 3.1 | Create / edit / delete Client               | 🔴       |                                                               |
-| 3.2 | Create / edit / delete Project              | 🔴       | Belongs to a Client                                           |
-| 3.3 | Create / edit / delete Task                 | 🔴       | Belongs to a Project                                          |
-| 3.4 | Archive / soft-delete Client, Project, Task | 🟡       | Archived items hidden from active views but data is preserved |
-| 3.5 | Color labels on Clients / Projects          | 🟡       | Visual differentiation in lists and reports                   |
-| 3.6 | Search / filter Clients, Projects, Tasks    | 🟡       |                                                               |
-| 3.7 | Reorder / sort items                        | 🟢       |                                                               |
+| #   | Feature                                                        | Priority | Notes                                                                                                                                                                                                                                               |
+| --- | -------------------------------------------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 3.1 | Create / edit / delete Client                                  | 🔴       |                                                                                                                                                                                                                                                     |
+| 3.2 | Create / edit / delete Project                                 | 🔴       | Belongs to a Client                                                                                                                                                                                                                                 |
+| 3.3 | Implicit Task lifecycle (create / match / rename / merge / GC) | 🔴       | Tasks auto-created/matched from entry titles on `(name, project)`; group rename in the timer view = rename Task; auto-merge on `(name, project)` collision; hard-deleted when last entry leaves. No dedicated tasks page; no task numbers or status |
+| 3.4 | Archive / soft-delete Client, Project                          | 🟡       | Archived items hidden from active views but data is preserved; Tasks are garbage-collected (hard delete), never archived                                                                                                                            |
+| 3.5 | Color labels on Clients / Projects                             | 🟡       | Visual differentiation in lists and reports                                                                                                                                                                                                         |
+| 3.6 | Search / filter Clients, Projects                              | 🟡       | Task search happens via entry-title autocomplete (2.5)                                                                                                                                                                                              |
+| 3.7 | Reorder / sort items                                           | 🟢       |                                                                                                                                                                                                                                                     |
 
 ---
 
 ## 4. Reporting & Timesheets
 
-| #   | Feature                                 | Priority | Notes                                                               |
-| --- | --------------------------------------- | -------- | ------------------------------------------------------------------- |
-| 4.1 | Summary report by Client / Project      | 🔴       | Total hours grouped by Client and Project for a selected date range |
-| 4.2 | Daily timesheet view                    | 🔴       | All time entries for a given day, grouped by Task                   |
-| 4.3 | Weekly timesheet view                   | 🔴       | Hours per day across a week, grouped by Project/Task                |
-| 4.4 | Date range filter                       | 🔴       | Filter all reports by arbitrary start/end date                      |
-| 4.5 | CSV export of time entries              | 🟡       | Export filtered data for use in spreadsheets or invoicing tools     |
-| 4.6 | PDF export / printable timesheet        | 🟢       |                                                                     |
-| 4.7 | Dashboard with charts                   | 🟢       | Visual breakdown of time by client/project over a period            |
-| 4.8 | Billable / non-billable flag on entries | ⚫       | No billing concept in this application                              |
+| #   | Feature                                 | Priority | Notes                                                                    |
+| --- | --------------------------------------- | -------- | ------------------------------------------------------------------------ |
+| 4.1 | Summary report by Client / Project      | 🔴       | Total hours grouped by Client and Project for a selected date range      |
+| 4.2 | Daily timesheet view                    | ⚫       | Absorbed by the Timer view page (2.10) — same screen, no separate report |
+| 4.3 | Weekly timesheet view                   | 🔴       | Hours per day across a week, grouped by Project/Task                     |
+| 4.4 | Date range filter                       | 🔴       | Filter all reports by arbitrary start/end date                           |
+| 4.5 | CSV export of time entries              | 🟡       | Export filtered data for use in spreadsheets or invoicing tools          |
+| 4.6 | PDF export / printable timesheet        | 🟢       |                                                                          |
+| 4.7 | Dashboard with charts                   | 🟢       | Visual breakdown of time by client/project over a period                 |
+| 4.8 | Billable / non-billable flag on entries | ⚫       | No billing concept in this application                                   |
 
 ---
 
@@ -97,11 +98,11 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ### 5b. Linking Tasks to Remote Issues
 
-| #   | Feature                                            | Priority | Notes                                                                                                      |
-| --- | -------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| 5.5 | Browse / search remote issues from within the app  | 🔴       | Fetch open issues from the configured remote system; display in a searchable list                          |
-| 5.6 | Link a Task to a remote issue (RemoteIssueRef)     | 🔴       | Pick a remote issue from the browse dialog; stores issue ID + cached title/URL on the Task                 |
-| 5.7 | Start time entry directly from a remote issue view | 🔴       | Dedicated view listing remote issues; selecting one starts a timer with task and remote link pre-populated |
+| #   | Feature                                            | Priority | Notes                                                                                                                                                 |
+| --- | -------------------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 5.5 | Browse / search remote issues from within the app  | 🔴       | Fetch open issues from the configured remote system; display in a searchable list                                                                     |
+| 5.6 | Link a Task to a remote issue (RemoteIssueRef)     | 🔴       | From the Task's group row in the timer view; stores issue ID + cached title/URL on the Task. Merging two Tasks that both hold a ref must block or ask |
+| 5.7 | Start time entry directly from a remote issue view | 🔴       | Dedicated view listing remote issues; selecting one starts a timer with task and remote link pre-populated                                            |
 
 ### 5c. Pushing Time Entries
 
@@ -152,7 +153,7 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 | #    | Requirement                                     | Notes                                                                                                                                                                                                                |
 | ---- | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 8.1  | **PWA / Offline support**                       | App installable on desktop and mobile; timer state persisted locally via service worker / local storage                                                                                                              |
+| 8.1  | **PWA / Offline support**                       | App installable on desktop and mobile; the running timer is server-persisted — an offline layer (local caching/sync) is added on top later                                                                           |
 | 8.2  | **GDPR compliance**                             | Right to erasure (full account + data deletion), data export (JSON/CSV), no third-party data sharing                                                                                                                 |
 | 8.3  | **Security (OWASP Top 10)**                     | Input validation, rate limiting, CSP headers, secure session cookies, HTTPS enforced                                                                                                                                 |
 | 8.4  | **Internationalization (i18n)**                 | ✅ Implemented: `en`+`pl` day-one via `@nuxtjs/i18n`; cookie → `Accept-Language` → `en` resolution; `errors.*` messageKey contract; ESLint `no-raw-text` gate. Locale picker + user `locale` column deferred to 7.4. |

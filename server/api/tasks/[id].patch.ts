@@ -101,7 +101,6 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
   return {
     id: updated.id,
-    number: updated.number,
     name: updated.name,
     projectId: updated.projectId,
     projectName,

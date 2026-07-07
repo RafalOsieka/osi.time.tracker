@@ -26,7 +26,6 @@ type Project = {
 };
 type Task = {
   id: string;
-  number: number;
   name: string;
   projectId: string | null;
   projectName: string | null;
@@ -102,7 +101,7 @@ const DataTableStub = {
     <div data-testid="tasks-table">
       <slot name="header" />
       <slot name="empty" v-if="!value || value.length === 0" />
-      <div v-for="row in (value || [])" :key="row.id" data-testid="tasks-row">#{{ row.number }} {{ row.name }} {{ row.projectName }}</div>
+      <div v-for="row in (value || [])" :key="row.id" data-testid="tasks-row">{{ row.name }} {{ row.projectName }}</div>
     </div>
   `,
   props: ['value', 'dataKey', 'sortField', 'sortOrder'],
@@ -174,7 +173,6 @@ describe('tasks page', () => {
     mockTasks = [
       {
         id: '1',
-        number: 1,
         name: 'Orphaned Task',
         projectId: 'deleted-project',
         projectName: 'Deleted Project',
