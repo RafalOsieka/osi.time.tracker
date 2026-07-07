@@ -4,6 +4,7 @@ import { defineComponent, h } from 'vue';
 import { useTimer } from '../../app/composables/useTimer';
 
 const csrfFetchMock = vi.fn();
+const fetchMock = vi.fn();
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
@@ -34,6 +35,7 @@ describe('useTimer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     vi.clearAllMocks();
+    vi.stubGlobal('$fetch', fetchMock);
   });
 
   afterEach(() => {
@@ -44,6 +46,56 @@ describe('useTimer', () => {
     const { running, elapsedSeconds } = await setupTimer();
     expect(running.value).toBeNull();
     expect(elapsedSeconds.value).toBe(0);
+  });
+
+  it('loading is true during the in-flight running fetch and false after it resolves (running entry)', async () => {
+    const startedAt = new Date().toISOString();
+    let resolveFetch!: (value: unknown) => void;
+    fetchMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const { loading, fetchRunning } = await setupTimer();
+    expect(loading.value).toBe(false);
+
+    const fetchPromise = fetchRunning();
+    expect(loading.value).toBe(true);
+
+    resolveFetch({
+      id: 'entry-3',
+      taskId: null,
+      taskName: null,
+      projectId: null,
+      projectName: null,
+      clientName: null,
+      startedAt,
+      stoppedAt: null,
+    });
+    await fetchPromise;
+
+    expect(loading.value).toBe(false);
+  });
+
+  it('loading is true during the in-flight running fetch and false after it resolves (no running entry)', async () => {
+    let resolveFetch!: (value: unknown) => void;
+    fetchMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const { loading, fetchRunning } = await setupTimer();
+    expect(loading.value).toBe(false);
+
+    const fetchPromise = fetchRunning();
+    expect(loading.value).toBe(true);
+
+    resolveFetch(null);
+    await fetchPromise;
+
+    expect(loading.value).toBe(false);
   });
 
   it('start() sets the running entry and begins ticking elapsed time', async () => {

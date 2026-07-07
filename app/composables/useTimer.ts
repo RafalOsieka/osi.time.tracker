@@ -8,6 +8,7 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 export function useTimer() {
   const running = useState<TimeEntryDto | null>('timer-running-entry', () => null);
   const elapsedSeconds = useState<number>('timer-elapsed-seconds', () => 0);
+  const loading = useState<boolean>('timer-loading', () => false);
   let intervalId: ReturnType<typeof setInterval> | undefined;
 
   const { $csrfFetch } = useNuxtApp();
@@ -35,13 +36,18 @@ export function useTimer() {
   }
 
   async function fetchRunning(): Promise<void> {
-    const entry = await $fetch<TimeEntryDto | null>('/api/time-entries/running');
-    running.value = entry;
-    if (entry) {
-      startTicker();
-    } else {
-      stopTicker();
-      elapsedSeconds.value = 0;
+    loading.value = true;
+    try {
+      const entry = await $fetch<TimeEntryDto | null>('/api/time-entries/running');
+      running.value = entry;
+      if (entry) {
+        startTicker();
+      } else {
+        stopTicker();
+        elapsedSeconds.value = 0;
+      }
+    } finally {
+      loading.value = false;
     }
   }
 
@@ -65,6 +71,16 @@ export function useTimer() {
     elapsedSeconds.value = 0;
   }
 
+  async function updateTitle(title: string | null): Promise<void> {
+    if (!running.value) return;
+    const normalized = title && title.trim().length > 0 ? title : null;
+    const entry = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${running.value.id}`, {
+      method: 'PATCH',
+      body: { title: normalized },
+    });
+    running.value = entry;
+  }
+
   onScopeDispose(() => {
     stopTicker();
   });
@@ -72,8 +88,10 @@ export function useTimer() {
   return {
     running: readonly(running),
     elapsedSeconds: readonly(elapsedSeconds),
+    loading: readonly(loading),
     fetchRunning,
     start,
     stop,
+    updateTitle,
   };
 }

@@ -3,14 +3,36 @@ import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
-const { running, elapsedSeconds, start, stop } = useTimer();
+const { running, elapsedSeconds, loading, start, stop, updateTitle } = useTimer();
 
 const title = ref('');
+const editedTitle = ref('');
 const suggestions = ref<TaskDto[]>([]);
 const starting = ref(false);
 const stopping = ref(false);
+const overlayOpen = ref(false);
 
 const isRunning = computed(() => running.value !== null);
+const isLoading = computed(() => loading.value);
+
+watch(
+  () => running.value?.taskName ?? null,
+  (taskName) => {
+    editedTitle.value = taskName ?? '';
+  },
+  { immediate: true },
+);
+
+const displayedTitle = computed({
+  get: () => (isRunning.value ? editedTitle.value : title.value),
+  set: (value: string) => {
+    if (isRunning.value) {
+      editedTitle.value = value;
+    } else {
+      title.value = value;
+    }
+  },
+});
 
 const elapsedLabel = computed(() => {
   const total = elapsedSeconds.value;
@@ -36,7 +58,12 @@ async function search(event: AutoCompleteCompleteEvent) {
 }
 
 function onSelectSuggestion(task: TaskDto) {
-  title.value = task.name;
+  if (isRunning.value) {
+    editedTitle.value = task.name;
+    void updateTitle(task.name);
+  } else {
+    title.value = task.name;
+  }
 }
 
 async function onToggle() {
@@ -57,21 +84,40 @@ async function onToggle() {
     }
   }
 }
+
+async function onBlur() {
+  if (isRunning.value) {
+    await updateTitle(editedTitle.value);
+  }
+}
+
+async function onEnter() {
+  if (overlayOpen.value) return;
+  if (isRunning.value) {
+    await updateTitle(editedTitle.value);
+  } else if (!loading.value) {
+    await onToggle();
+  }
+}
 </script>
 
 <template>
   <div class="app-timer" data-testid="app-timer">
     <AutoComplete
-      v-model="title"
+      v-model="displayedTitle"
       :suggestions="suggestions"
       option-label="name"
-      :disabled="isRunning"
-      :placeholder="t('timer.titlePlaceholder')"
+      :disabled="isLoading"
+      :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
       :aria-label="t('timer.titleLabel')"
       input-id="timer-title"
       data-testid="timer-title-input"
       @complete="search"
       @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+      @blur="onBlur"
+      @keydown.enter="onEnter"
+      @before-show="overlayOpen = true"
+      @hide="overlayOpen = false"
     >
       <template #option="{ option }: { option: TaskDto }">
         {{ suggestionLabel(option) }}
@@ -91,6 +137,7 @@ async function onToggle() {
       :label="isRunning ? t('timer.stop') : t('timer.start')"
       :severity="isRunning ? 'danger' : 'primary'"
       :loading="starting || stopping"
+      :disabled="isLoading"
       :aria-pressed="isRunning"
       data-testid="timer-toggle-button"
       @click="onToggle"
