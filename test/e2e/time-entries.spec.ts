@@ -70,6 +70,27 @@ async function getRunning(jar: CookieJar): Promise<Response> {
   return fetch(url('/api/time-entries/running'), { headers: { cookie: jar.header() } });
 }
 
+async function listEntries(jar: CookieJar, from: string, to: string): Promise<Response> {
+  return fetch(
+    url(`/api/time-entries?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+    {
+      headers: { cookie: jar.header() },
+    },
+  );
+}
+
+async function bulkAssign(
+  jar: CookieJar,
+  token: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  return fetch(url('/api/time-entries/bulk-assign'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+    body: JSON.stringify(body),
+  });
+}
+
 describeTimeEntries('time-entries API integration', async () => {
   const dbUrl = await provisionDatabase();
   await seedUsers(dbUrl, [
@@ -203,5 +224,168 @@ describeTimeEntries('time-entries API integration', async () => {
       ).status,
     ).toBe(401);
     expect((await getRunning(anonJar)).status).toBe(401);
+  });
+
+  it('list filters by range, orders DESC, includes running entries and resolved names', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'List TE Client ' + Date.now());
+    const project = await createProject(jar, token, 'List TE Project ' + Date.now(), client.id);
+
+    const first = await (
+      await startEntry(jar, token, { title: 'List Entry 1', projectId: project.id })
+    ).json();
+    await patchEntry(jar, token, first.id, { stoppedAt: new Date().toISOString() });
+
+    const second = await (await startEntry(jar, token, { title: 'List Entry 2' })).json();
+
+    const from = new Date(Date.now() - 60_000).toISOString();
+    const to = new Date(Date.now() + 60_000).toISOString();
+    const res = await listEntries(jar, from, to);
+    expect(res.status).toBe(200);
+    const rows = await res.json();
+    const ids = rows.map((r: { id: string }) => r.id);
+    expect(ids.indexOf(second.id)).toBeLessThan(ids.indexOf(first.id));
+
+    const found1 = rows.find((r: { id: string }) => r.id === first.id);
+    expect(found1.taskName).toBe('List Entry 1');
+    expect(found1.projectName).toBe(project.name);
+    expect(found1.clientName).toBe(client.name);
+
+    const foundRunning = rows.find((r: { id: string }) => r.id === second.id);
+    expect(foundRunning.stoppedAt).toBeNull();
+
+    // Range excluding both entries → empty
+    const past = new Date(Date.now() - 3_600_000).toISOString();
+    const pastEnd = new Date(Date.now() - 1_800_000).toISOString();
+    const emptyRes = await listEntries(jar, past, pastEnd);
+    const emptyRows = await emptyRes.json();
+    expect(emptyRows.find((r: { id: string }) => r.id === first.id)).toBeUndefined();
+
+    await patchEntry(jar, token, second.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('list rejects an invalid/missing range with a messageKey', async () => {
+    const { jar } = await loginAs('talice@example.com', 'secret');
+
+    const missing = await fetch(url('/api/time-entries'), { headers: { cookie: jar.header() } });
+    expect(missing.status).toBe(422);
+    expect((await missing.json())?.data?.messageKey).toBe('error.timeEntryRangeInvalid');
+
+    const now = new Date().toISOString();
+    const inverted = await listEntries(jar, now, new Date(Date.now() - 1000).toISOString());
+    expect(inverted.status).toBe(422);
+    expect((await inverted.json())?.data?.messageKey).toBe('error.timeEntryRangeInvalid');
+  });
+
+  it('list only returns the authenticated user own entries', async () => {
+    const alice = await loginAs('talice@example.com', 'secret');
+    const bob = await loginAs('tbob@example.com', 'secret');
+
+    const bobEntry = await (
+      await startEntry(bob.jar, bob.token, { title: 'Bob List Entry' })
+    ).json();
+
+    const from = new Date(Date.now() - 60_000).toISOString();
+    const to = new Date(Date.now() + 60_000).toISOString();
+    const aliceRows = await (await listEntries(alice.jar, from, to)).json();
+    expect(aliceRows.find((r: { id: string }) => r.id === bobEntry.id)).toBeUndefined();
+
+    await patchEntry(bob.jar, bob.token, bobEntry.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('bulk-assign happy path titles all listed untitled entries with a single resolved task', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const e1 = await (await startEntry(jar, token, {})).json();
+    await patchEntry(jar, token, e1.id, { stoppedAt: new Date().toISOString() });
+    const e2 = await (await startEntry(jar, token, {})).json();
+    await patchEntry(jar, token, e2.id, { stoppedAt: new Date().toISOString() });
+
+    const title = 'Bulk Titled ' + Date.now();
+    const res = await bulkAssign(jar, token, { ids: [e1.id, e2.id], title });
+    expect(res.status).toBe(200);
+
+    const from = new Date(Date.now() - 60_000).toISOString();
+    const to = new Date(Date.now() + 60_000).toISOString();
+    const rows = await (await listEntries(jar, from, to)).json();
+    const found1 = rows.find((r: { id: string }) => r.id === e1.id);
+    const found2 = rows.find((r: { id: string }) => r.id === e2.id);
+    expect(found1.taskName).toBe(title);
+    expect(found2.taskName).toBe(title);
+    expect(found1.taskId).toBe(found2.taskId);
+  });
+
+  it('bulk-assign is atomic: a foreign, unknown, or already-titled id rolls back the whole request', async () => {
+    const alice = await loginAs('talice@example.com', 'secret');
+    const bob = await loginAs('tbob@example.com', 'secret');
+
+    const untitled = await (await startEntry(alice.jar, alice.token, {})).json();
+    await patchEntry(alice.jar, alice.token, untitled.id, {
+      stoppedAt: new Date().toISOString(),
+    });
+
+    const alreadyTitled = await (
+      await startEntry(alice.jar, alice.token, { title: 'Already Titled' })
+    ).json();
+    await patchEntry(alice.jar, alice.token, alreadyTitled.id, {
+      stoppedAt: new Date().toISOString(),
+    });
+
+    const bobEntry = await (await startEntry(bob.jar, bob.token, {})).json();
+    await patchEntry(bob.jar, bob.token, bobEntry.id, { stoppedAt: new Date().toISOString() });
+
+    // Foreign id
+    const foreignRes = await bulkAssign(alice.jar, alice.token, {
+      ids: [untitled.id, bobEntry.id],
+      title: 'Should Not Apply',
+    });
+    expect(foreignRes.status).toBeGreaterThanOrEqual(400);
+
+    // Unknown id
+    const unknownRes = await bulkAssign(alice.jar, alice.token, {
+      ids: [untitled.id, '00000000-0000-0000-0000-000000000000'],
+      title: 'Should Not Apply',
+    });
+    expect(unknownRes.status).toBeGreaterThanOrEqual(400);
+
+    // Already-titled id
+    const titledRes = await bulkAssign(alice.jar, alice.token, {
+      ids: [untitled.id, alreadyTitled.id],
+      title: 'Should Not Apply',
+    });
+    expect(titledRes.status).toBeGreaterThanOrEqual(400);
+
+    // No partial writes: `untitled` must still be untitled after all failed attempts
+    const from = new Date(Date.now() - 60_000).toISOString();
+    const to = new Date(Date.now() + 60_000).toISOString();
+    const rows = await (await listEntries(alice.jar, from, to)).json();
+    const found = rows.find((r: { id: string }) => r.id === untitled.id);
+    expect(found.taskId).toBeNull();
+  });
+
+  it('bulk-assign rejects an empty ids array or empty title', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const entry = await (await startEntry(jar, token, {})).json();
+    await patchEntry(jar, token, entry.id, { stoppedAt: new Date().toISOString() });
+
+    const emptyIds = await bulkAssign(jar, token, { ids: [], title: 'Title' });
+    expect(emptyIds.status).toBe(422);
+
+    const emptyTitle = await bulkAssign(jar, token, { ids: [entry.id], title: '' });
+    expect(emptyTitle.status).toBe(422);
+  });
+
+  it('bulk-assign requires auth and CSRF', async () => {
+    const anonJar = new CookieJar();
+    const anonToken = await primeCsrf(anonJar);
+
+    expect((await bulkAssign(anonJar, anonToken, { ids: [], title: 'Nope' })).status).toBe(401);
+
+    const { jar } = await loginAs('talice@example.com', 'secret');
+    const noCsrfRes = await fetch(url('/api/time-entries/bulk-assign'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', cookie: jar.header() },
+      body: JSON.stringify({ ids: [], title: 'Nope' }),
+    });
+    expect(noCsrfRes.status).toBeGreaterThanOrEqual(400);
   });
 });

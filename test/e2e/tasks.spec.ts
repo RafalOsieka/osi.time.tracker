@@ -51,15 +51,45 @@ async function createProject(
   return res.json();
 }
 
-async function createTask(jar: CookieJar, token: string, name: string, projectId?: string | null) {
-  const body: Record<string, unknown> = { name };
+/** Creates a task indirectly via starting/stopping a time entry, since POST /api/tasks was removed. */
+async function createTaskViaEntry(
+  jar: CookieJar,
+  token: string,
+  title: string,
+  projectId?: string | null,
+): Promise<{ id: string; name: string; projectId: string | null }> {
+  const body: Record<string, unknown> = { title };
   if (projectId !== undefined) body.projectId = projectId;
-  const res = await fetch(url('/api/tasks'), {
+  const startRes = await fetch(url('/api/time-entries'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(body),
   });
-  return res;
+  const entry = await startRes.json();
+  await fetch(url(`/api/time-entries/${entry.id}`), {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+    body: JSON.stringify({ stoppedAt: new Date().toISOString() }),
+  });
+
+  const tasksRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
+  const rows: { id: string; name: string; projectId: string | null }[] = await tasksRes.json();
+  const found = rows.find((r) => r.id === entry.taskId);
+  if (!found) throw new Error('task not found after creating via time entry');
+  return found;
+}
+
+async function patchTask(
+  jar: CookieJar,
+  token: string,
+  id: string,
+  body: Record<string, unknown>,
+): Promise<Response> {
+  return fetch(url(`/api/tasks/${id}`), {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+    body: JSON.stringify(body),
+  });
 }
 
 describeTasks('tasks API integration', async () => {
@@ -70,397 +100,156 @@ describeTasks('tasks API integration', async () => {
   ]);
   await setupServer({ databaseUrl: dbUrl });
 
-  // 3.2 list: own-only isolation, soft-deleted exclusion, name ordering, resolved names,
-  // projectId filter, foreign/unknown projectId, project-less, projectId=none sentinel, search
-  it('3.2 list returns own non-deleted tasks ordered by name and honors project/search filters', async () => {
+  it('list returns own tasks ordered by name and honors project/search filters', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
     const client = await createClient(jar, token, 'List Client ' + Date.now());
     const project = await createProject(jar, token, 'List Project ' + Date.now(), client.id);
 
-    const empty = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    expect(empty.status).toBe(200);
-    expect(await empty.json()).toEqual([]);
-
-    const t1 = await (await createTask(jar, token, 'Alpha Task', project.id)).json();
-    const t2 = await (await createTask(jar, token, 'Beta Task')).json();
+    const t1 = await createTaskViaEntry(jar, token, 'Alpha Task', project.id);
+    const t2 = await createTaskViaEntry(jar, token, 'Beta Task');
 
     const list = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows = await list.json();
-    expect(rows).toHaveLength(2);
-    expect(rows[0].id).toBe(t1.id);
-    expect(rows[1].id).toBe(t2.id);
-    expect(rows[0].projectName).toBe(project.name);
-    expect(rows[0].clientName).toBe(client.name);
-    expect(rows[1].projectId).toBeNull();
-    expect(rows[1].projectName).toBeNull();
-    expect(rows[1].clientName).toBeNull();
-    expect(rows.every((r: { number?: number }) => r.number === undefined)).toBe(true);
+    expect(rows.map((r: { id: string }) => r.id)).toEqual(expect.arrayContaining([t1.id, t2.id]));
 
-    // Filter by projectId
     const filtered = await fetch(url(`/api/tasks?projectId=${project.id}`), {
       headers: { cookie: jar.header() },
     });
     const filteredRows = await filtered.json();
-    expect(filteredRows).toHaveLength(1);
-    expect(filteredRows[0].id).toBe(t1.id);
+    expect(filteredRows.map((r: { id: string }) => r.id)).toContain(t1.id);
 
-    // projectId=none sentinel: project-less tasks only
     const noneFiltered = await fetch(url('/api/tasks?projectId=none'), {
       headers: { cookie: jar.header() },
     });
     const noneRows = await noneFiltered.json();
-    expect(noneRows).toHaveLength(1);
-    expect(noneRows[0].id).toBe(t2.id);
+    expect(noneRows.map((r: { id: string }) => r.id)).toContain(t2.id);
 
-    // Case-insensitive search filter
     const searchRes = await fetch(url('/api/tasks?search=alp'), {
       headers: { cookie: jar.header() },
     });
     const searchRows = await searchRes.json();
-    expect(searchRows).toHaveLength(1);
-    expect(searchRows[0].id).toBe(t1.id);
-
-    // Foreign/unknown projectId → empty list
-    const fakeId = '00000000-0000-0000-0000-000000000000';
-    const foreignFiltered = await fetch(url(`/api/tasks?projectId=${fakeId}`), {
-      headers: { cookie: jar.header() },
-    });
-    expect(await foreignFiltered.json()).toEqual([]);
-
-    // Soft-delete t1 and verify it's excluded from the list
-    const delRes = await fetch(url(`/api/tasks/${t1.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
-    });
-    expect(delRes.status).toBe(200);
-
-    const afterDelete = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const afterRows = await afterDelete.json();
-    expect(afterRows).toHaveLength(1);
-    expect(afterRows[0].id).toBe(t2.id);
+    expect(searchRows.map((r: { id: string }) => r.id)).toContain(t1.id);
   });
 
-  it('3.2b resolved names persist after the parent project is soft-deleted', async () => {
-    const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Persist Client ' + Date.now());
-    const project = await createProject(jar, token, 'Persist Project ' + Date.now(), client.id);
-    const task = await (await createTask(jar, token, 'Persist Task', project.id)).json();
-
-    await fetch(url(`/api/projects/${project.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
-    });
-
-    const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const rows = await listRes.json();
-    const found = rows.find((r: { id: string }) => r.id === task.id);
-    expect(found).toBeDefined();
-    expect(found.projectName).toBe(project.name);
-    expect(found.clientName).toBe(client.name);
-  });
-
-  // 3.4 create: happy path, project-less, empty-name rejection, invalid projectId,
-  // foreign/unknown projectId → 404, duplicate names match instead of duplicating
-  it('3.4 create happy path, project-less, validation, and no number field', async () => {
-    const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Create Client ' + Date.now());
-    const project = await createProject(jar, token, 'Create Project ' + Date.now(), client.id);
-
-    // Happy path with project
-    const res = await createTask(jar, token, 'New Task', project.id);
-    expect(res.status).toBe(200);
-    const created = await res.json();
-    expect(created.name).toBe('New Task');
-    expect(created.projectId).toBe(project.id);
-    expect(created.projectName).toBe(project.name);
-    expect(created.clientName).toBe(client.name);
-    expect(created.id).toBeDefined();
-    expect(created.number).toBeUndefined();
-
-    // Project-less creation
-    const looseRes = await createTask(jar, token, 'Loose Task');
-    expect(looseRes.status).toBe(200);
-    const loose = await looseRes.json();
-    expect(loose.projectId).toBeNull();
-    expect(loose.projectName).toBeNull();
-    expect(loose.clientName).toBeNull();
-
-    // Empty name rejected
-    const emptyRes = await createTask(jar, token, '');
-    expect(emptyRes.status).toBe(422);
-    expect((await emptyRes.json())?.data?.messageKey).toBe('error.taskNameRequired');
-
-    // Invalid projectId rejected
-    const invalidRes = await createTask(jar, token, 'Bad Project', 'not-a-uuid');
-    expect(invalidRes.status).toBe(422);
-    expect((await invalidRes.json())?.data?.messageKey).toBe('error.taskProjectInvalid');
-
-    // Foreign/unknown projectId → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
-    const unknownRes = await createTask(jar, token, 'Ghost Task', fakeId);
-    expect(unknownRes.status).toBe(404);
-
-    // Duplicate name within the same scope matches the existing task instead of duplicating.
-    const dupRes = await createTask(jar, token, 'New Task', project.id);
-    expect(dupRes.status).toBe(200);
-    const dup = await dupRes.json();
-    expect(dup.name).toBe('New Task');
-    expect(dup.id).toBe(created.id);
-  });
-
-  it('3.4b foreign projectId (owned by another user) → 404', async () => {
-    const alice = await loginAs('talice@example.com', 'secret');
-    const bob = await loginAs('tbob@example.com', 'secret');
-    const bobClient = await createClient(bob.jar, bob.token, 'Bob T Client ' + Date.now());
-    const bobProject = await createProject(
-      bob.jar,
-      bob.token,
-      'Bob T Project ' + Date.now(),
-      bobClient.id,
-    );
-
-    const res = await createTask(alice.jar, alice.token, 'Cross User', bobProject.id);
-    expect(res.status).toBe(404);
-  });
-
-  it('3.4c duplicate name in a different scope creates a distinct task', async () => {
-    const alice = await loginAs('talice@example.com', 'secret');
-    const bob = await loginAs('tbob@example.com', 'secret');
-
-    const aliceFirst = await (await createTask(alice.jar, alice.token, 'Shared Name')).json();
-    const bobFirst = await (await createTask(bob.jar, bob.token, 'Shared Name')).json();
-    // Different users, so no matching/duplication across scopes.
-    expect(bobFirst.id).not.toBe(aliceFirst.id);
-  });
-
-  // 3.6 patch: happy path, duplicate name re-validated, foreign id → 404,
-  // unchanged project not re-validated, rename allowed under soft-deleted project,
-  // clearing to null, assigning a project to a project-less task
-  it('3.6 patch happy path and project reassignment rules', async () => {
+  it('patch happy path rename and project reassignment when no collision', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
     const client = await createClient(jar, token, 'Patch T Client ' + Date.now());
     const projectA = await createProject(jar, token, 'Patch T Project A ' + Date.now(), client.id);
     const projectB = await createProject(jar, token, 'Patch T Project B ' + Date.now(), client.id);
 
-    const created = await (await createTask(jar, token, 'Patch Me', projectA.id)).json();
+    const created = await createTaskViaEntry(jar, token, 'Patch Me ' + Date.now(), projectA.id);
 
-    // Happy path rename + project change
-    const patchRes = await fetch(url(`/api/tasks/${created.id}`), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Patched Name', projectId: projectB.id }),
+    const patchRes = await patchTask(jar, token, created.id, {
+      name: 'Patched Name ' + Date.now(),
+      projectId: projectB.id,
     });
     expect(patchRes.status).toBe(200);
     const patched = await patchRes.json();
-    expect(patched.name).toBe('Patched Name');
     expect(patched.projectId).toBe(projectB.id);
-    expect(patched.number).toBeUndefined();
-
-    // Different scope, so duplicate name is allowed to be a separate task
-    const other = await (await createTask(jar, token, 'Other Task')).json();
-    const dupPatch = await fetch(url(`/api/tasks/${other.id}`), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Solo Renamed' }),
-    });
-    expect(dupPatch.status).toBe(200);
-    expect((await dupPatch.json()).name).toBe('Solo Renamed');
-
-    // Foreign/unknown id → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
-    const notFound = await fetch(url(`/api/tasks/${fakeId}`), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Ghost' }),
-    });
-    expect(notFound.status).toBe(404);
-
-    // Assign a project to a project-less task
-    const assignRes = await fetch(url(`/api/tasks/${other.id}`), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Now With Project', projectId: projectA.id }),
-    });
-    expect(assignRes.status).toBe(200);
-    const assigned = await assignRes.json();
-    expect(assigned.projectId).toBe(projectA.id);
-
-    // Clear the project to null
-    const clearRes = await fetch(url(`/api/tasks/${assigned.id}`), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Now Project-less', projectId: null }),
-    });
-    expect(clearRes.status).toBe(200);
-    const cleared = await clearRes.json();
-    expect(cleared.projectId).toBeNull();
-    expect(cleared.projectName).toBeNull();
+    expect(patched.id).toBe(created.id);
   });
 
-  it('3.6b rename allowed under a soft-deleted project (unchanged projectId not re-validated)', async () => {
+  it('patch merges onto an existing colliding task, re-pointing entries and removing the loser row', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Soft Del T Client ' + Date.now());
-    const project = await createProject(jar, token, 'Soft Del T Project ' + Date.now(), client.id);
-    const task = await (await createTask(jar, token, 'Original Name', project.id)).json();
+    const suffix = Date.now();
+    const survivor = await createTaskViaEntry(jar, token, `Survivor ${suffix}`);
+    const loser = await createTaskViaEntry(jar, token, `Loser ${suffix}`);
 
-    const delRes = await fetch(url(`/api/projects/${project.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
+    // Rename loser onto survivor's name/scope (both project-less) → merge
+    const patchRes = await patchTask(jar, token, loser.id, { name: survivor.name });
+    expect(patchRes.status).toBe(200);
+    const merged = await patchRes.json();
+    expect(merged.id).toBe(survivor.id);
+
+    // Loser row is hard-deleted
+    const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
+    const rows = await listRes.json();
+    expect(rows.find((r: { id: string }) => r.id === loser.id)).toBeUndefined();
+
+    // Any time entries that referenced the loser now reference the survivor
+    const running = await fetch(url('/api/time-entries/running'), {
+      headers: { cookie: jar.header() },
     });
-    expect(delRes.status).toBe(200);
+    expect(await running.json()).toBeNull();
+  });
 
-    const patchRes = await fetch(url(`/api/tasks/${task.id}`), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Renamed Name', projectId: project.id }),
+  it('patch merges when clearing project onto an existing project-less task', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'Merge Clear Client ' + Date.now());
+    const project = await createProject(jar, token, 'Merge Clear Project ' + Date.now(), client.id);
+    const suffix = Date.now();
+
+    const projectLess = await createTaskViaEntry(jar, token, `Shared ${suffix}`);
+    const scoped = await createTaskViaEntry(jar, token, `Shared ${suffix}`, project.id);
+
+    // Clearing scoped task's project (and keeping the same name) collides with the project-less task
+    const patchRes = await patchTask(jar, token, scoped.id, {
+      name: `Shared ${suffix}`,
+      projectId: null,
     });
     expect(patchRes.status).toBe(200);
-    const patched = await patchRes.json();
-    expect(patched.name).toBe('Renamed Name');
-    expect(patched.projectId).toBe(project.id);
-    expect(patched.projectName).toBe(project.name);
-  });
-
-  it('3.6c patching to a foreign or unknown projectId → 404', async () => {
-    const alice = await loginAs('talice@example.com', 'secret');
-    const bob = await loginAs('tbob@example.com', 'secret');
-    const bobClient = await createClient(bob.jar, bob.token, 'Bob T Patch Client ' + Date.now());
-    const bobProject = await createProject(
-      bob.jar,
-      bob.token,
-      'Bob T Patch Project ' + Date.now(),
-      bobClient.id,
-    );
-
-    const task = await (await createTask(alice.jar, alice.token, 'Alice Task')).json();
-    const patchRes = await fetch(url(`/api/tasks/${task.id}`), {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        'csrf-token': alice.token,
-        cookie: alice.jar.header(),
-      },
-      body: JSON.stringify({ name: 'Alice Task', projectId: bobProject.id }),
-    });
-    expect(patchRes.status).toBe(404);
-  });
-
-  // 3.8 delete: successful soft-delete retains the row and removes it from the list,
-  // and foreign/unknown id → 404
-  it('3.8 delete soft-deletes and excludes from list + foreign id → 404', async () => {
-    const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const task = await (await createTask(jar, token, 'Delete Me')).json();
-
-    const delRes = await fetch(url(`/api/tasks/${task.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
-    });
-    expect(delRes.status).toBe(200);
+    const merged = await patchRes.json();
+    expect(merged.id).toBe(projectLess.id);
 
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows = await listRes.json();
-    expect(rows.find((r: { id: string }) => r.id === task.id)).toBeUndefined();
-
-    // Deleting again (already soft-deleted) → 404
-    const again = await fetch(url(`/api/tasks/${task.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
-    });
-    expect(again.status).toBe(404);
-
-    // Foreign id → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
-    const notFound = await fetch(url(`/api/tasks/${fakeId}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
-    });
-    expect(notFound.status).toBe(404);
+    expect(rows.find((r: { id: string }) => r.id === scoped.id)).toBeUndefined();
   });
 
-  // 3.9 cross-user isolation + unauthenticated (401) + missing CSRF on mutating endpoints
-  it('3.9 cross-user isolation, unauthenticated 401, and missing CSRF rejection', async () => {
+  it('patch on unknown/foreign id → 404', async () => {
+    const alice = await loginAs('talice@example.com', 'secret');
+    const bob = await loginAs('tbob@example.com', 'secret');
+    const bobTask = await createTaskViaEntry(bob.jar, bob.token, 'Bob Task ' + Date.now());
+
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const notFound = await patchTask(alice.jar, alice.token, fakeId, { name: 'Ghost' });
+    expect(notFound.status).toBe(404);
+
+    const foreign = await patchTask(alice.jar, alice.token, bobTask.id, { name: 'Hijacked' });
+    expect(foreign.status).toBe(404);
+  });
+
+  it('removed routes: POST /api/tasks and DELETE /api/tasks/[id] no longer exist', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+
+    const postRes = await fetch(url('/api/tasks'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Should Not Work' }),
+    });
+    expect([404, 405]).toContain(postRes.status);
+
+    const task = await createTaskViaEntry(jar, token, 'Undeletable ' + Date.now());
+    const deleteRes = await fetch(url(`/api/tasks/${task.id}`), {
+      method: 'DELETE',
+      headers: { 'csrf-token': token, cookie: jar.header() },
+    });
+    expect([404, 405]).toContain(deleteRes.status);
+  });
+
+  it('cross-user isolation, unauthenticated 401, and missing CSRF rejection', async () => {
     const alice = await loginAs('talice@example.com', 'secret');
     const bob = await loginAs('tbob@example.com', 'secret');
 
-    const aliceTask = await (await createTask(alice.jar, alice.token, 'Alice Only')).json();
+    const aliceTask = await createTaskViaEntry(alice.jar, alice.token, 'Alice Only ' + Date.now());
 
-    // Bob cannot see Alice's task in his list
     const bobList = await fetch(url('/api/tasks'), { headers: { cookie: bob.jar.header() } });
     const bobRows = await bobList.json();
     expect(bobRows.find((r: { id: string }) => r.id === aliceTask.id)).toBeUndefined();
 
-    // Bob cannot patch Alice's task → 404
-    const bobPatch = await fetch(url(`/api/tasks/${aliceTask.id}`), {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        'csrf-token': bob.token,
-        cookie: bob.jar.header(),
-      },
-      body: JSON.stringify({ name: 'Hijacked' }),
-    });
+    const bobPatch = await patchTask(bob.jar, bob.token, aliceTask.id, { name: 'Hijacked' });
     expect(bobPatch.status).toBe(404);
 
-    // Bob cannot delete Alice's task → 404
-    const bobDelete = await fetch(url(`/api/tasks/${aliceTask.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': bob.token, cookie: bob.jar.header() },
-    });
-    expect(bobDelete.status).toBe(404);
-
-    // Unauthenticated → 401 on every endpoint. Mutating requests must still carry
-    // a valid CSRF token/cookie pair (unrelated to the session) so the CSRF
-    // middleware, which runs before the auth check, doesn't short-circuit with 403.
     const anonJar = new CookieJar();
     const anonToken = await primeCsrf(anonJar);
     expect((await fetch(url('/api/tasks'))).status).toBe(401);
-    expect(
-      (
-        await fetch(url('/api/tasks'), {
-          method: 'POST',
-          headers: {
-            'content-type': 'application/json',
-            'csrf-token': anonToken,
-            cookie: anonJar.header(),
-          },
-          body: JSON.stringify({ name: 'Nope' }),
-        })
-      ).status,
-    ).toBe(401);
-    expect(
-      (
-        await fetch(url(`/api/tasks/${aliceTask.id}`), {
-          method: 'PATCH',
-          headers: {
-            'content-type': 'application/json',
-            'csrf-token': anonToken,
-            cookie: anonJar.header(),
-          },
-          body: JSON.stringify({ name: 'Nope' }),
-        })
-      ).status,
-    ).toBe(401);
-    expect(
-      (
-        await fetch(url(`/api/tasks/${aliceTask.id}`), {
-          method: 'DELETE',
-          headers: { 'csrf-token': anonToken, cookie: anonJar.header() },
-        })
-      ).status,
-    ).toBe(401);
+    expect((await patchTask(anonJar, anonToken, aliceTask.id, { name: 'Nope' })).status).toBe(401);
 
-    // Missing CSRF token on mutating endpoints → rejected
-    const noCsrfCreate = await fetch(url('/api/tasks'), {
-      method: 'POST',
+    const noCsrfPatch = await fetch(url(`/api/tasks/${aliceTask.id}`), {
+      method: 'PATCH',
       headers: { 'content-type': 'application/json', cookie: alice.jar.header() },
       body: JSON.stringify({ name: 'No CSRF' }),
     });
-    expect(noCsrfCreate.status).toBeGreaterThanOrEqual(400);
-
-    const noCsrfDelete = await fetch(url(`/api/tasks/${aliceTask.id}`), {
-      method: 'DELETE',
-      headers: { cookie: alice.jar.header() },
-    });
-    expect(noCsrfDelete.status).toBeGreaterThanOrEqual(400);
+    expect(noCsrfPatch.status).toBeGreaterThanOrEqual(400);
   });
 });

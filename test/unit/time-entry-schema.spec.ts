@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   startTimeEntrySchema,
   updateTimeEntrySchema,
+  listTimeEntriesQuerySchema,
+  bulkAssignSchema,
   TIME_ENTRY_TITLE_MAX_LENGTH,
 } from '../../shared/types/time-entry';
 
@@ -63,5 +65,74 @@ describe('updateTimeEntrySchema', () => {
 
   it('rejects an invalid projectId', () => {
     expect(() => updateTimeEntrySchema.parse({ projectId: 'not-a-uuid' })).toThrow();
+  });
+});
+
+describe('listTimeEntriesQuerySchema', () => {
+  const from = '2024-01-01T00:00:00.000Z';
+  const to = '2024-01-02T00:00:00.000Z';
+
+  it('accepts a valid from/to range', () => {
+    const result = listTimeEntriesQuerySchema.parse({ from, to });
+    expect(result).toEqual({ from, to });
+  });
+
+  it('rejects a missing from or to', () => {
+    expect(() => listTimeEntriesQuerySchema.parse({ to })).toThrow();
+    expect(() => listTimeEntriesQuerySchema.parse({ from })).toThrow();
+  });
+
+  it('rejects a non-ISO from/to', () => {
+    expect(() => listTimeEntriesQuerySchema.parse({ from: 'not-a-date', to })).toThrow();
+  });
+
+  it('rejects a range where from >= to', () => {
+    expect(() => listTimeEntriesQuerySchema.parse({ from: to, to: from })).toThrow();
+    expect(() => listTimeEntriesQuerySchema.parse({ from, to: from })).toThrow();
+  });
+});
+
+describe('bulkAssignSchema', () => {
+  const validId = '018f2f8a-1234-7abc-8def-123456789abc';
+  const validProjectId2 = '018f2f8a-4321-7abc-8def-123456789abc';
+
+  it('accepts a valid body', () => {
+    const result = bulkAssignSchema.parse({ ids: [validId], title: 'New Title' });
+    expect(result.ids).toEqual([validId]);
+    expect(result.title).toBe('New Title');
+  });
+
+  it('trims the title', () => {
+    const result = bulkAssignSchema.parse({ ids: [validId], title: '  Trimmed  ' });
+    expect(result.title).toBe('Trimmed');
+  });
+
+  it('accepts an optional projectId', () => {
+    const result = bulkAssignSchema.parse({
+      ids: [validId],
+      title: 'Title',
+      projectId: validProjectId2,
+    });
+    expect(result.projectId).toBe(validProjectId2);
+  });
+
+  it('rejects an empty ids array', () => {
+    expect(() => bulkAssignSchema.parse({ ids: [], title: 'Title' })).toThrow();
+  });
+
+  it('rejects a non-uuid id', () => {
+    expect(() => bulkAssignSchema.parse({ ids: ['not-a-uuid'], title: 'Title' })).toThrow();
+  });
+
+  it('rejects an empty or missing title', () => {
+    expect(() => bulkAssignSchema.parse({ ids: [validId], title: '' })).toThrow();
+    expect(() => bulkAssignSchema.parse({ ids: [validId], title: '   ' })).toThrow();
+    expect(() => bulkAssignSchema.parse({ ids: [validId] })).toThrow();
+  });
+
+  it('rejects an invalid projectId', () => {
+    expect(() =>
+      bulkAssignSchema.parse({ ids: [validId], title: 'Title', projectId: 'not-a-uuid' }),
+    ).toThrow();
   });
 });

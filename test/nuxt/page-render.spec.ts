@@ -61,9 +61,17 @@ describe('preserved test hooks', () => {
     expect(wrapper.find('[data-testid="login-button"]').exists()).toBe(true);
   });
 
-  it('home page keeps the auth-status hook', async () => {
-    const wrapper = await mountSuspended(IndexPage);
-    expect(wrapper.find('[data-testid="auth-status"]').exists()).toBe(true);
+  it('home page renders the timer view', async () => {
+    const wrapper = await mountSuspended(IndexPage, {
+      global: {
+        stubs: {
+          EmptyState: { template: '<div data-testid="timer-view-empty-state" />' },
+          TimerBulkAssignDialog: { template: '<div />' },
+          TimerTaskEditorDialog: { template: '<div />' },
+        },
+      },
+    });
+    expect(wrapper.find('[data-testid="timer-view-page"]').exists()).toBe(true);
   });
 
   it('default layout renders the shell top bar and page content', async () => {

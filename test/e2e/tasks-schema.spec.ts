@@ -11,11 +11,18 @@ import { provisionDatabase } from './support/database';
 const describeDb = requireDocker();
 
 describeDb('tasks schema', () => {
-  it('allows a nullable projectId and enforces per-scope name uniqueness among non-deleted tasks', async () => {
+  it('has no deletedAt column and enforces per-scope name uniqueness via hard-delete only', async () => {
     const dbUrl = await provisionDatabase();
     const { db, sql } = createDatabaseClient(dbUrl, { max: 5 });
 
     try {
+      // No deletedAt column on tasks
+      const columns = await sql<{ column_name: string }[]>`
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'tasks' AND column_name = 'deletedAt'
+      `;
+      expect(columns).toHaveLength(0);
+
       const [userA] = await db
         .insert(users)
         .values({ email: 'tasks-schema-a@example.com', passwordHash: 'hash' })
@@ -74,11 +81,8 @@ describeDb('tasks schema', () => {
           .values({ userId: userA.id, projectId: project.id, name: 'Standalone Task' }),
       ).rejects.toThrow();
 
-      // Soft-deleting the conflicting row frees up the name for reuse
-      await db
-        .update(tasks)
-        .set({ deletedAt: new Date() })
-        .where(eq(tasks.id, taskWithoutProject.id));
+      // Hard-deleting the conflicting row frees up the name for reuse (no soft-delete anymore)
+      await db.delete(tasks).where(eq(tasks.id, taskWithoutProject.id));
       const [reusedNameTask] = await db
         .insert(tasks)
         .values({ userId: userA.id, name: 'Standalone Task' })

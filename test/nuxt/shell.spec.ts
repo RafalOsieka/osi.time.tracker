@@ -28,10 +28,9 @@ const sidebarStub = {
   props: ['iconOnly'],
   template:
     '<nav aria-label="Main navigation" data-testid="app-sidebar">' +
-    '<a data-testid="nav-link-dashboard" aria-current="page" href="/">Dashboard</a>' +
+    '<a data-testid="nav-link-timer" aria-current="page" href="/">Timer</a>' +
     '<a data-testid="nav-link-clients" href="/clients">Clients</a>' +
     '<a data-testid="nav-link-projects" href="/projects">Projects</a>' +
-    '<a data-testid="nav-link-tasks" href="/tasks">Tasks</a>' +
     '<a data-testid="nav-link-reports" href="/reports">Reports</a>' +
     '<a data-testid="nav-link-settings" href="/settings">Settings</a>' +
     '</nav>',
@@ -105,7 +104,7 @@ describe('REQ-AUTH-010: shell regions', () => {
 // REQ-AUTH-011: Sidebar lists all skeleton destinations
 // ---------------------------------------------------------------------------
 describe('REQ-AUTH-011: sidebar nav skeleton', () => {
-  it('sidebar lists all six destinations', async () => {
+  it('sidebar lists all five destinations', async () => {
     const wrapper = await mountSuspended(AppSidebar, {
       global: {
         stubs: {
@@ -121,7 +120,7 @@ describe('REQ-AUTH-011: sidebar nav skeleton', () => {
     expect(hrefs).toContain('/');
     expect(hrefs).toContain('/clients');
     expect(hrefs).toContain('/projects');
-    expect(hrefs).toContain('/tasks');
+    expect(hrefs).not.toContain('/tasks');
     expect(hrefs).toContain('/reports');
     expect(hrefs).toContain('/settings');
   });
