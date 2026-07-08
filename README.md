@@ -180,6 +180,58 @@ To stop the production stack:
 docker compose -f docker-compose.local-prod.yml down
 ```
 
+## Daily use (standalone stack)
+
+The repository provides a single-command standalone deployment stack (`docker-compose.standalone.yml`) designed for daily personal use. It runs the entire application—the PostgreSQL 18 database, the database migrator/seeder, and the Nuxt web application—fully contained within its own isolated environment.
+
+### Prerequisites
+
+- **Docker** and **Docker Compose** installed on your system.
+
+### .env Setup
+
+The standalone stack requires `NUXT_SESSION_PASSWORD` to be present in your environment. You can set this by creating a `.env` file in the project's root directory:
+
+```env
+# Secret used by nuxt-auth-utils to seal session cookies.
+# MUST be a secure, random string of 32+ characters.
+NUXT_SESSION_PASSWORD=your-secure-32-plus-character-secret-key-here
+```
+
+*Note: You do not need to set `DATABASE_URL` in your `.env` for the standalone stack, as it connects to the database service internally. If you are a developer, any `DATABASE_URL` set in your dev `.env` file will be safely ignored by the standalone stack.*
+
+### Commands
+
+**Start the stack:**
+This builds the images, waits for the database to become healthy, automatically applies any pending schema migrations and seeds the bootstrap user (if configured), and starts the web application on port `3000` (or the port specified in your `PORT` environment variable).
+```bash
+docker compose -f docker-compose.standalone.yml up -d --build
+```
+
+**Stop the stack (with data retention):**
+Stops and removes the containers while preserving all your database logs, time entries, and users inside the dedicated named volume `pg-osi-time-tracker-standalone`.
+```bash
+docker compose -f docker-compose.standalone.yml down
+```
+
+**Stop and delete all data (destructive):**
+Stops the containers and permanently deletes the named volume, destroying all stored users, clients, tasks, and time entries.
+```bash
+docker compose -f docker-compose.standalone.yml down -v
+```
+
+### Upgrade Flow
+
+To upgrade your standalone installation to the latest version while keeping your data fully intact:
+
+```bash
+# 1. Pull the latest code changes
+git pull
+
+# 2. Rebuild and start the containers (data is safely retained in the named volume)
+docker compose -f docker-compose.standalone.yml up -d --build
+```
+
 ## Database
 
 The application uses [Drizzle ORM](https://orm.drizzle.team/) with the `postgres` driver against a PostgreSQL database.

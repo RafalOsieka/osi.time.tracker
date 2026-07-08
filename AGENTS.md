@@ -96,6 +96,25 @@ Notes:
 - Static output (if using `pnpm generate`): `.output/public/`.
 - Database migrations must be applied (`pnpm db:migrate`) before the app serves traffic.
 
+### Docker Compose Files
+
+The project includes three separate Docker Compose configuration files, each serving a different purpose:
+
+1. `docker-compose.yml` (Development):
+   - Starts a local PostgreSQL 18 database and a PgAdmin instance.
+   - Used by developers to run the app locally in development mode using `pnpm dev`.
+   - Mounts a development-specific persistent named volume: `pg-osi-time-tracker`.
+
+2. `docker-compose.local-prod.yml` (Local Prod Verification):
+   - Builds and runs the multi-stage production Docker image locally.
+   - Joins the development database network as an external network to verify built container behaviors.
+   - Runs a one-shot migration task before starting.
+
+3. `docker-compose.standalone.yml` (Standalone Daily Use):
+   - Fully self-contained stack containing its own isolated PostgreSQL 18 database, automatic database migrator/seeder, and built production web application.
+   - Designed for daily personal hosting and production-like local setups.
+   - Uses an isolated internal network and its own dedicated persistent named volume: `pg-osi-time-tracker-standalone`.
+
 ## Security Considerations
 
 - CSRF protection is enabled via `nuxt-security` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.

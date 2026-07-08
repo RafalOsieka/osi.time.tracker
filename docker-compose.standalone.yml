@@ -1,0 +1,59 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-osi_time_tracker}
+    volumes:
+      - pg-osi-time-tracker-standalone:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-osi_time_tracker}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - osi-time-tracker-standalone
+
+  migrate:
+    build:
+      context: .
+      target: build
+    command: pnpm db:migrate
+    restart: 'no'
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-osi_time_tracker}
+      BOOTSTRAP_USER_EMAIL: ${BOOTSTRAP_USER_EMAIL}
+      BOOTSTRAP_USER_PASSWORD: ${BOOTSTRAP_USER_PASSWORD}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - osi-time-tracker-standalone
+
+  app:
+    build:
+      context: .
+      target: runtime
+    restart: unless-stopped
+    ports:
+      - '${PORT:-3000}:3000'
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-osi_time_tracker}
+      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:?NUXT_SESSION_PASSWORD is required}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks:
+      - osi-time-tracker-standalone
+
+volumes:
+  pg-osi-time-tracker-standalone:
+
+networks:
+  osi-time-tracker-standalone:
