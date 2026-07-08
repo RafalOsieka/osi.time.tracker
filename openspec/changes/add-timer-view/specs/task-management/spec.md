@@ -1,0 +1,124 @@
+# task-management Delta
+
+## ADDED Requirements
+
+### Requirement: REQ-TTR-047 Task hard-delete lifecycle and merge invariant
+Tasks SHALL have no soft-delete state: the `tasks` table SHALL carry no `deletedAt` column and task rows SHALL only ever be removed by hard delete. The system SHALL NOT expose a standalone task-delete endpoint; a task row is hard-deleted exactly when a merge (REQ-TTR-028) empties it of entries. Tasks SHALL be created only implicitly from time-entry titles (REQ-TTR-043) — no explicit create endpoint SHALL exist. A migration SHALL drop `tasks.deletedAt`, first hard-deleting previously soft-deleted task rows after setting their entries' `taskId` to `null`, and SHALL recreate the name-uniqueness indexes without the soft-delete predicate.
+
+#### Scenario: No standalone create or delete endpoints
+- **WHEN** a client calls `POST /api/tasks` or `DELETE /api/tasks/[id]`
+- **THEN** the system SHALL respond with HTTP 404 or 405 (route absent)
+
+#### Scenario: Merge hard-deletes the emptied task
+- **WHEN** an edit merges a task into a survivor, leaving it with no entries
+- **THEN** the emptied task row SHALL be hard-deleted in the same transaction
+
+#### Scenario: Migration cleans up soft-deleted tasks
+- **WHEN** the migration runs against a database containing soft-deleted task rows
+- **THEN** those rows SHALL be removed, their entries SHALL become untitled (`taskId` `null`), and the `deletedAt` column SHALL be dropped
+
+## MODIFIED Requirements
+
+### Requirement: REQ-TTR-026 List own tasks
+The system SHALL show the authenticated user only their own tasks, ordered by `name`, via `GET /api/tasks`. The list SHALL exclude any task belonging to another user. Each returned task SHALL include its `uuidv7` `id`. The endpoint SHALL accept an optional `projectId` query parameter that further restricts results to that project, always additionally scoped by `userId`; a dedicated sentinel value (`projectId=none`) SHALL restrict results to project-less tasks (`projectId IS NULL`). The endpoint SHALL additionally accept an optional `search` query parameter that restricts results to tasks whose `name` contains the value case-insensitively, to power title autocomplete. Each returned task SHALL include the owning project's name (`projectName`) and the owning client's name (`clientName`) resolved via LEFT joins that do NOT filter on the project's or client's `deletedAt`, so the names are present even when a parent has been soft-deleted; for a project-less task both `projectId`, `projectName`, and `clientName` SHALL be `null`.
+
+#### Scenario: User sees only their own tasks
+- **WHEN** an authenticated user requests their tasks
+- **THEN** the response SHALL contain only tasks where `userId` equals the user's id, ordered by `name`
+
+#### Scenario: Response includes the project and client names
+- **WHEN** an authenticated user lists their tasks
+- **THEN** each returned task SHALL include a `projectName` field and a `clientName` field naming its owning project and client
+
+#### Scenario: Names persist after a parent is soft-deleted
+- **WHEN** a task's owning project (or its client) has been soft-deleted
+- **THEN** the task SHALL still appear in the list with its `projectName` and `clientName` populated from the soft-deleted parent
+
+#### Scenario: Filter by project
+- **WHEN** an authenticated user requests their tasks with a `projectId` filter for a project they own
+- **THEN** the response SHALL contain only their tasks belonging to that project
+
+#### Scenario: Filter by a foreign or unknown project
+- **WHEN** an authenticated user requests tasks with a `projectId` that is unknown or owned by another user
+- **THEN** the system SHALL return an empty list and SHALL NOT reveal whether that project exists
+
+#### Scenario: Search by name
+- **WHEN** an authenticated user requests their tasks with a `search` value
+- **THEN** the response SHALL contain only their tasks whose `name` contains that value case-insensitively, with project/client context
+
+#### Scenario: List includes project-less tasks
+- **WHEN** an authenticated user has a task with no project and requests their tasks without a filter
+- **THEN** the response SHALL include that task with `projectId`, `projectName`, and `clientName` all `null`
+
+#### Scenario: Filter to project-less tasks
+- **WHEN** an authenticated user requests their tasks with the sentinel `projectId=none`
+- **THEN** the response SHALL contain only their tasks that have no project
+
+### Requirement: REQ-TTR-028 Edit a task
+The system SHALL allow an authenticated user to update the `name` and `projectId` of their own task via `PATCH /api/tasks/[id]`, addressing the task by its `uuidv7` `id` and applying the same `name` validation as title resolution (trimmed, non-empty, length-bounded). Editing SHALL be scoped by `userId`. The `projectId` MAY be set to a new project, or cleared to `null` to make the task project-less. Project ownership and non-deleted validation SHALL only be enforced when the `projectId` is changed to a different non-null project; clearing to `null` SHALL always be allowed. When the `projectId` is unchanged from the task's current project, the system SHALL NOT validate that project's soft-delete status, so the task's `name` can still be edited after its project has been soft-deleted.
+
+When the update would make the task's `(userId, name, projectId)` key collide with another existing task (the survivor), the system SHALL merge instead of rejecting: within a single transaction, all time entries of the edited task SHALL be re-pointed to the survivor, the emptied edited task SHALL be hard-deleted, and the survivor SHALL be returned (including its resolved `projectName` and `clientName`).
+
+#### Scenario: Successful edit
+- **WHEN** an authenticated user submits a valid new name and an owned `projectId` for their own task, with no key collision
+- **THEN** the system SHALL update the task and return it (including the resolved `projectName` and `clientName`)
+
+#### Scenario: Colliding edit merges into the survivor
+- **WHEN** an authenticated user renames or re-projects their task so its `(name, projectId)` matches another of their existing tasks
+- **THEN** the system SHALL move all of the edited task's entries to the surviving task, hard-delete the emptied task, and return the survivor — all within one transaction
+
+#### Scenario: Rename a task whose project is soft-deleted
+- **WHEN** an authenticated user updates the `name` of their own task without changing its `projectId`, and that task's current project has been soft-deleted
+- **THEN** the system SHALL allow the update and SHALL NOT reject it on account of the project's soft-delete status
+
+#### Scenario: Clear the project assignment
+- **WHEN** an authenticated user updates their own task and sets `projectId` to `null`
+- **THEN** the system SHALL make the task project-less (merging per the collision rule if a project-less task with that name exists) and return the resulting task
+
+#### Scenario: Assign a project to a project-less task
+- **WHEN** an authenticated user updates a project-less task, setting `projectId` to a non-deleted project they own
+- **THEN** the system SHALL validate ownership, assign the project, and return the task with the resolved `projectName` and `clientName`
+
+### Requirement: REQ-TTR-042 Task name uniqueness per project scope
+Every task's `name` SHALL be unique among the user's tasks within its project scope, where `projectId = NULL` is a distinct scope. Uniqueness SHALL be enforced by unique indexes: `(userId, projectId, name)` and `(userId, name) WHERE projectId IS NULL`. This uniqueness is the matching key that lets time-entry titles resolve to at most one task per scope and that determines the survivor when an edit triggers a merge.
+
+#### Scenario: Same name in two projects allowed
+- **WHEN** a user has a task named "Code review" in project A and creates "Code review" in project B
+- **THEN** both tasks SHALL be allowed because they occupy different project scopes
+
+#### Scenario: One project-less task per name
+- **WHEN** a user already has a project-less task named "Code review"
+- **THEN** the system SHALL NOT create a second project-less task with the same name; a title resolution SHALL match the existing one and an edit into that key SHALL merge
+
+### Requirement: REQ-NFR-024 Authenticated and CSRF-guarded task endpoints
+All task endpoints SHALL require authentication via `requireAuth`, and the mutating endpoint (`PATCH`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast.
+
+#### Scenario: Unauthenticated request rejected
+- **WHEN** any task endpoint is called without a valid session
+- **THEN** the system SHALL respond with HTTP 401
+
+#### Scenario: Missing CSRF token rejected
+- **WHEN** a mutating task request is made without a valid CSRF token
+- **THEN** the system SHALL reject the request
+
+#### Scenario: Server failure surfaced
+- **WHEN** a mutation fails with an API error
+- **THEN** the client SHALL show a Toast translated from the returned `messageKey`
+
+## REMOVED Requirements
+
+### Requirement: REQ-TTR-027 Create a task
+**Reason**: Explicit task creation contradicts the entry-first model; tasks are created only implicitly from time-entry titles (REQ-TTR-043).
+**Migration**: Remove `POST /api/tasks` and the create form; users create tasks by titling time entries (timer widget or bulk assign).
+
+### Requirement: REQ-TTR-029 Soft-delete a task
+**Reason**: Tasks switch to a hard-delete-only lifecycle (REQ-TTR-047); soft-deleted tasks blocked their name's uniqueness scope while invisible, breaking title convergence.
+**Migration**: Remove `DELETE /api/tasks/[id]`; drop `tasks.deletedAt` via migration (soft-deleted rows are hard-deleted, their entries detached). Task rows now disappear only via merge.
+
+### Requirement: REQ-NFR-025 Accessible, tokenized Tasks UI
+**Reason**: The standalone Tasks page is removed; task interaction moves to the timer view's mini editor (covered by REQ-NFR-028 in time-tracking).
+**Migration**: Delete `app/pages/tasks.vue`, its nav entry, tests, and page-specific i18n keys.
+
+### Requirement: REQ-TTR-035 Client-side validation of the task form
+**Reason**: The Tasks-page create/edit form is removed with the page; the mini editor's client-side validation is specified by REQ-TTR-049 in time-tracking.
+**Migration**: Remove the create-task schema usage from the deleted page; keep shared task types only as needed by the mini editor and PATCH endpoint.
