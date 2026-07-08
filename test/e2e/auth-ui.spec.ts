@@ -22,13 +22,9 @@ describeAuthUI('authentication UI flow', async () => {
     await page.fill('[data-testid="password"] input', 'secret');
     await page.click('[data-testid="login-button"]');
 
-    await page.waitForFunction(() =>
-      document
-        .querySelector('[data-testid="auth-status"]')
-        ?.textContent?.includes('Logged in as alice'),
-    );
-    const status = await page.textContent('[data-testid="auth-status"]');
-    expect(status).toContain('Logged in as alice');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    const avatarLabel = await page.textContent('[data-testid="utility-menu-button"]');
+    expect(avatarLabel?.trim()).toBe('A');
   });
 
   it('5.2 logout flow logs the user out and the UI reflects it', async () => {
@@ -37,11 +33,7 @@ describeAuthUI('authentication UI flow', async () => {
     await page.fill('[data-testid="email"]', 'bob@example.com');
     await page.fill('[data-testid="password"] input', 'secret');
     await page.click('[data-testid="login-button"]');
-    await page.waitForFunction(() =>
-      document
-        .querySelector('[data-testid="auth-status"]')
-        ?.textContent?.includes('Logged in as bob'),
-    );
+    await page.waitForSelector('[data-testid="timer-view-page"]');
 
     await page.click('[data-testid="utility-menu-button"]');
     await page

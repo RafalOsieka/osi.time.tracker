@@ -8,10 +8,9 @@ const route = useRoute();
 const props = withDefaults(defineProps<{ iconOnly?: boolean }>(), { iconOnly: false });
 
 const navItems = computed<MenuItem[]>(() => [
-  { label: t('nav.dashboard'), route: '/', icon: 'pi pi-home', key: 'dashboard' },
+  { label: t('nav.timer'), route: '/', icon: 'pi pi-stopwatch', key: 'timer' },
   { label: t('nav.clients'), route: '/clients', icon: 'pi pi-users', key: 'clients' },
   { label: t('nav.projects'), route: '/projects', icon: 'pi pi-briefcase', key: 'projects' },
-  { label: t('nav.tasks'), route: '/tasks', icon: 'pi pi-check-square', key: 'tasks' },
   { label: t('nav.reports'), route: '/reports', icon: 'pi pi-chart-bar', key: 'reports' },
   { label: t('nav.settings'), route: '/settings', icon: 'pi pi-cog', key: 'settings' },
 ]);
