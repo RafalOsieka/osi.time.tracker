@@ -10,11 +10,14 @@ WORKDIR /app
 
 # Copy package manifests first for better layer caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
 
-# Copy source and build
+# Skip postinstall (nuxt prepare) here — source isn't copied yet, so it would
+# run against an empty workspace and produce incomplete type stubs.
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+# Copy source, then generate Nuxt types and build
 COPY . .
-RUN pnpm build
+RUN pnpm exec nuxt prepare && pnpm build
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 FROM node:25-alpine AS runtime

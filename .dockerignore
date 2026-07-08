@@ -24,3 +24,7 @@ test
 
 # Misc
 *.log
+.github
+.junie
+docs
+openspec
