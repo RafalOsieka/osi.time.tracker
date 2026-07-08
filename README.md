@@ -198,24 +198,27 @@ The standalone stack requires `NUXT_SESSION_PASSWORD` to be present in your envi
 NUXT_SESSION_PASSWORD=your-secure-32-plus-character-secret-key-here
 ```
 
-*Note: You do not need to set `DATABASE_URL` in your `.env` for the standalone stack, as it connects to the database service internally. If you are a developer, any `DATABASE_URL` set in your dev `.env` file will be safely ignored by the standalone stack.*
+_Note: You do not need to set `DATABASE_URL` in your `.env` for the standalone stack, as it connects to the database service internally. If you are a developer, any `DATABASE_URL` set in your dev `.env` file will be safely ignored by the standalone stack._
 
 ### Commands
 
 **Start the stack:**
 This builds the images, waits for the database to become healthy, automatically applies any pending schema migrations and seeds the bootstrap user (if configured), and starts the web application on port `3000` (or the port specified in your `PORT` environment variable).
+
 ```bash
 docker compose -f docker-compose.standalone.yml up -d --build
 ```
 
 **Stop the stack (with data retention):**
 Stops and removes the containers while preserving all your database logs, time entries, and users inside the dedicated named volume `pg-osi-time-tracker-standalone`.
+
 ```bash
 docker compose -f docker-compose.standalone.yml down
 ```
 
 **Stop and delete all data (destructive):**
 Stops the containers and permanently deletes the named volume, destroying all stored users, clients, tasks, and time entries.
+
 ```bash
 docker compose -f docker-compose.standalone.yml down -v
 ```
