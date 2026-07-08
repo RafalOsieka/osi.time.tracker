@@ -16,15 +16,12 @@ export const tasks = pgTable(
     name: text('name').notNull(),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
-    deletedAt: timestamp('deletedAt', { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex('tasks_userId_projectId_name_unique')
-      .on(table.userId, table.projectId, table.name)
-      .where(sql`${table.deletedAt} IS NULL`),
+    uniqueIndex('tasks_userId_projectId_name_unique').on(table.userId, table.projectId, table.name),
     uniqueIndex('tasks_userId_name_unique')
       .on(table.userId, table.name)
-      .where(sql`${table.projectId} IS NULL AND ${table.deletedAt} IS NULL`),
+      .where(sql`${table.projectId} IS NULL`),
     index('tasks_userId_projectId_idx').on(table.userId, table.projectId),
   ],
 );

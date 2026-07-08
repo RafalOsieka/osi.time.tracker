@@ -159,7 +159,10 @@
     "timeEntryTitleTooLong": "Title must be 200 characters or fewer.",
     "timeEntryProjectInvalid": "Select a valid project.",
     "timeEntryStoppedAtInvalid": "Enter a valid stop time.",
-    "timeEntryStoppedBeforeStarted": "Stop time cannot be before the start time."
+    "timeEntryStoppedBeforeStarted": "Stop time cannot be before the start time.",
+    "timeEntryRangeInvalid": "Enter a valid date range.",
+    "timeEntryIdsInvalid": "Select at least one valid time entry.",
+    "timeEntryBulkAssignInvalid": "One or more time entries could not be assigned."
   },
   "errors": {
     "auth": {

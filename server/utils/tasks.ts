@@ -8,7 +8,7 @@ type DrizzleTx = PgTransaction<any, any, any>;
 /**
  * Resolves the task to associate with a time entry: trims `title`, returns
  * `null` for an empty/whitespace-only or missing title, otherwise matches an
- * existing non-deleted task scoped to `(userId, name, projectId)` (matching
+ * existing task scoped to `(userId, name, projectId)` (matching
  * `projectId ?? null` so project-less titles match project-less tasks), or
  * creates a new task when no match exists. Must run inside `tx` so the
  * lookup/insert participates in the caller's transaction.
@@ -31,14 +31,7 @@ export async function resolveTaskId(
   const [existing] = await tx
     .select({ id: tasks.id })
     .from(tasks)
-    .where(
-      and(
-        eq(tasks.userId, userId),
-        eq(tasks.name, trimmedTitle),
-        projectCondition,
-        isNull(tasks.deletedAt),
-      ),
-    )
+    .where(and(eq(tasks.userId, userId), eq(tasks.name, trimmedTitle), projectCondition))
     .limit(1);
 
   if (existing) {

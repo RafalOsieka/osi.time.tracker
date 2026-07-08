@@ -13,7 +13,7 @@ const { $csrfFetch } = useNuxtApp();
 
 const NONE_PROJECT_FILTER = 'none';
 
-const resolver = zodResolver(createTaskSchema);
+const resolver = zodResolver(updateTaskSchema);
 
 // --- Data fetching ---
 const { data: projectsData, pending: projectsPending } = useAsyncData(
@@ -121,7 +121,7 @@ async function onSave({ valid, values }: FormSubmitEvent) {
         life: 3000,
       });
     } else {
-      const payload: CreateTaskDto = { name: values.name, projectId: values.projectId };
+      const payload: UpdateTaskDto = { name: values.name, projectId: values.projectId };
 
       const created = await $csrfFetch<TaskDto>('/api/tasks', {
         method: 'POST',

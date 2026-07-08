@@ -2,26 +2,26 @@
 
 ## 1. Database & shared types (backend)
 
-- [ ] 1.1 Migration: detach entries of soft-deleted tasks (`taskId = null`), hard-delete those task rows, drop `tasks.deletedAt`, recreate name-uniqueness indexes without the `deletedAt` predicate; update `server/db/schema` accordingly (REQ-TTR-047, REQ-TTR-042)
-- [ ] 1.2 E2E test: migration/schema behavior — no `deletedAt` on tasks, unique indexes enforce `(userId, projectId, name)` and project-less scope (adapt `test/e2e/tasks-schema.spec.ts`)
-- [ ] 1.3 Update `shared/types/time-entry.ts`: add `listTimeEntriesQuerySchema` (`from`/`to` instants, `from < to`) and `bulkAssignSchema` (`ids` non-empty uuid array, trimmed non-empty `title`, optional `projectId`); update `shared/types/task.ts` (drop create-only schema, keep update schema for the mini editor)
-- [ ] 1.4 Unit tests for the new/changed zod schemas (valid, invalid range, empty ids/title; replace `test/unit/task-schema.spec.ts` coverage)
+- [x] 1.1 Migration: detach entries of soft-deleted tasks (`taskId = null`), hard-delete those task rows, drop `tasks.deletedAt`, recreate name-uniqueness indexes without the `deletedAt` predicate; update `server/db/schema` accordingly (REQ-TTR-047, REQ-TTR-042)
+- [x] 1.2 E2E test: migration/schema behavior — no `deletedAt` on tasks, unique indexes enforce `(userId, projectId, name)` and project-less scope (adapt `test/e2e/tasks-schema.spec.ts`)
+- [x] 1.3 Update `shared/types/time-entry.ts`: add `listTimeEntriesQuerySchema` (`from`/`to` instants, `from < to`) and `bulkAssignSchema` (`ids` non-empty uuid array, trimmed non-empty `title`, optional `projectId`); update `shared/types/task.ts` (drop create-only schema, keep update schema for the mini editor)
+- [x] 1.4 Unit tests for the new/changed zod schemas (valid, invalid range, empty ids/title; replace `test/unit/task-schema.spec.ts` coverage)
 
 ## 2. Task API changes (backend)
 
-- [ ] 2.1 Remove `POST /api/tasks` and `DELETE /api/tasks/[id]` route handlers; adjust `GET /api/tasks` and task queries to drop `deletedAt` filtering on tasks (REQ-TTR-026, REQ-TTR-047)
-- [ ] 2.2 Implement merge-on-collision in `PATCH /api/tasks/[id]`: single transaction re-points entries to the survivor, hard-deletes the emptied task, returns the survivor with context (REQ-TTR-028)
-- [ ] 2.3 E2E tests: PATCH merge happy path (rename onto existing key, entries moved, loser row gone), clear-project merge into project-less task, non-colliding edit still works, foreign/unknown id 404; removed routes return 404/405 (rework `test/e2e/tasks.spec.ts`)
+- [x] 2.1 Remove `POST /api/tasks` and `DELETE /api/tasks/[id]` route handlers; adjust `GET /api/tasks` and task queries to drop `deletedAt` filtering on tasks (REQ-TTR-026, REQ-TTR-047)
+- [x] 2.2 Implement merge-on-collision in `PATCH /api/tasks/[id]`: single transaction re-points entries to the survivor, hard-deletes the emptied task, returns the survivor with context (REQ-TTR-028)
+- [x] 2.3 E2E tests: PATCH merge happy path (rename onto existing key, entries moved, loser row gone), clear-project merge into project-less task, non-colliding edit still works, foreign/unknown id 404; removed routes return 404/405 (rework `test/e2e/tasks.spec.ts`)
 
 ## 3. Time-entry list endpoint (backend)
 
-- [ ] 3.1 Implement `GET /api/time-entries` (`index.get.ts`): validate `from`/`to`, return user-scoped `TimeEntryDto[]` in `[from, to)` by `startedAt` DESC with task/project/client LEFT joins (REQ-TTR-044)
-- [ ] 3.2 E2E tests: range filtering and ordering, running entry included, invalid/missing range rejected with `{ messageKey }`, cross-user isolation
+- [x] 3.1 Implement `GET /api/time-entries` (`index.get.ts`): validate `from`/`to`, return user-scoped `TimeEntryDto[]` in `[from, to)` by `startedAt` DESC with task/project/client LEFT joins (REQ-TTR-044)
+- [x] 3.2 E2E tests: range filtering and ordering, running entry included, invalid/missing range rejected with `{ messageKey }`, cross-user isolation
 
 ## 4. Bulk-assign endpoint (backend)
 
-- [ ] 4.1 Implement `POST /api/time-entries/bulk-assign`: single transaction, one `resolveTaskId` call, all-or-nothing update of owned untitled entries (REQ-TTR-045)
-- [ ] 4.2 E2E tests: happy path (all entries bound, task created or matched once), atomic rejection when an id is foreign/unknown/already-titled (no partial writes), empty title/ids rejected, CSRF/auth guards
+- [x] 4.1 Implement `POST /api/time-entries/bulk-assign`: single transaction, one `resolveTaskId` call, all-or-nothing update of owned untitled entries (REQ-TTR-045)
+- [x] 4.2 E2E tests: happy path (all entries bound, task created or matched once), atomic rejection when an id is foreign/unknown/already-titled (no partial writes), empty title/ids rejected, CSRF/auth guards
 
 ## 5. Timer view page (frontend)
 

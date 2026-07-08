@@ -9,7 +9,7 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   const projectId = typeof query.projectId === 'string' ? query.projectId : undefined;
   const search = typeof query.search === 'string' ? query.search.trim() : undefined;
 
-  const conditions = [eq(tasks.userId, user.id), isNull(tasks.deletedAt)];
+  const conditions = [eq(tasks.userId, user.id)];
   if (projectId === 'none') {
     conditions.push(isNull(tasks.projectId));
   } else if (projectId) {

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const TASK_NAME_MAX_LENGTH = 100;
 
-export const createTaskSchema = z.object({
+export const updateTaskSchema = z.object({
   name: z
     .string({
       required_error: 'error.taskNameRequired',
@@ -16,10 +16,6 @@ export const createTaskSchema = z.object({
     .uuid({ message: 'error.taskProjectInvalid' })
     .nullish(),
 });
-
-export type CreateTaskDto = z.infer<typeof createTaskSchema>;
-
-export const updateTaskSchema = createTaskSchema;
 
 export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
 

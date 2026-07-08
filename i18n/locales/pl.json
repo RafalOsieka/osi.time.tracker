@@ -159,7 +159,10 @@
     "timeEntryTitleTooLong": "Tytuł może mieć maksymalnie 200 znaków.",
     "timeEntryProjectInvalid": "Wybierz prawidłowy projekt.",
     "timeEntryStoppedAtInvalid": "Wprowadź prawidłowy czas zakończenia.",
-    "timeEntryStoppedBeforeStarted": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia."
+    "timeEntryStoppedBeforeStarted": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia.",
+    "timeEntryRangeInvalid": "Wprowadź prawidłowy zakres dat.",
+    "timeEntryIdsInvalid": "Wybierz co najmniej jeden prawidłowy wpis czasu.",
+    "timeEntryBulkAssignInvalid": "Nie udało się przypisać jednego lub więcej wpisów czasu."
   },
   "errors": {
     "auth": {

@@ -1,9 +1,9 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, ne } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import { updateTaskSchema } from '../../../shared/types/task';
 import type { UpdateTaskDto, TaskDto } from '../../../shared/types/task';
 import { db } from '../../db/index';
-import { tasks, projects, clients } from '../../db/schema';
+import { tasks, projects, clients, timeEntries } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
@@ -29,7 +29,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   const [existing] = await db
     .select({ id: tasks.id, projectId: tasks.projectId })
     .from(tasks)
-    .where(and(eq(tasks.id, id!), eq(tasks.userId, user.id), isNull(tasks.deletedAt)))
+    .where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)))
     .limit(1);
 
   if (!existing) {
@@ -65,11 +65,49 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     }
   }
 
-  const [updated] = await db
-    .update(tasks)
-    .set({ name: parsedBody.name, projectId: newProjectId, updatedAt: new Date() })
-    .where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)))
-    .returning();
+  const projectCondition =
+    newProjectId === null ? isNull(tasks.projectId) : eq(tasks.projectId, newProjectId);
+
+  const updatedId = await db.transaction(async (tx) => {
+    // Detect a collision with another task already occupying the target
+    // (userId, projectId, name) scope so the rename/move can be merged
+    // instead of failing on the unique constraint.
+    const [colliding] = await tx
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.userId, user.id),
+          eq(tasks.name, parsedBody.name),
+          projectCondition,
+          ne(tasks.id, id!),
+        ),
+      )
+      .limit(1);
+
+    if (colliding) {
+      // Merge: re-point all time entries from the edited task onto the
+      // surviving (colliding) task, then hard-delete the now-emptied row.
+      await tx
+        .update(timeEntries)
+        .set({ taskId: colliding.id, updatedAt: new Date() })
+        .where(eq(timeEntries.taskId, id!));
+
+      await tx.delete(tasks).where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)));
+
+      return colliding.id;
+    }
+
+    const [row] = await tx
+      .update(tasks)
+      .set({ name: parsedBody.name, projectId: newProjectId, updatedAt: new Date() })
+      .where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)))
+      .returning({ id: tasks.id });
+
+    return row!.id;
+  });
+
+  const [updated] = await db.select().from(tasks).where(eq(tasks.id, updatedId)).limit(1);
 
   if (!updated) {
     throw createError({
