@@ -3,7 +3,7 @@ import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
-const { running, elapsedSeconds, loading, start, stop, updateTitle } = useTimer();
+const { running, elapsedSeconds, loading, start, stop, updateTitle, updateStartedAt } = useTimer();
 
 const title = ref('');
 const editedTitle = ref('');
@@ -11,6 +11,12 @@ const suggestions = ref<TaskDto[]>([]);
 const starting = ref(false);
 const stopping = ref(false);
 const overlayOpen = ref(false);
+
+const startEditorPopover = ref();
+const startDate = ref<Date | null>(null);
+const startTime = ref<Date | null>(null);
+const startEditorError = ref('');
+const savingStartedAt = ref(false);
 
 const isRunning = computed(() => running.value !== null);
 const isLoading = computed(() => loading.value);
@@ -99,6 +105,40 @@ async function onEnter() {
     await onToggle();
   }
 }
+
+function openStartEditor(event: Event) {
+  if (!running.value) return;
+  const current = new Date(running.value.startedAt);
+  startDate.value = current;
+  startTime.value = current;
+  startEditorError.value = '';
+  startEditorPopover.value?.toggle(event);
+}
+
+function combineStartedAt(): Date | null {
+  if (!startDate.value || !startTime.value) return null;
+  const combined = new Date(startDate.value);
+  combined.setHours(startTime.value.getHours(), startTime.value.getMinutes(), 0, 0);
+  return combined;
+}
+
+async function onSaveStartedAt() {
+  const combined = combineStartedAt();
+  if (!combined) return;
+  if (combined.getTime() > Date.now()) {
+    startEditorError.value = t('error.timeEntryStartedAtInFuture');
+    return;
+  }
+  savingStartedAt.value = true;
+  try {
+    await updateStartedAt(combined.toISOString());
+    startEditorPopover.value?.hide();
+  } catch (err: unknown) {
+    startEditorError.value = t(extractMessageKey(err, 'errors.unexpected'));
+  } finally {
+    savingStartedAt.value = false;
+  }
+}
 </script>
 
 <template>
@@ -124,7 +164,19 @@ async function onEnter() {
       </template>
     </AutoComplete>
 
+    <button
+      v-if="isRunning"
+      type="button"
+      class="app-timer__elapsed app-timer__elapsed-trigger"
+      role="timer"
+      :aria-label="t('timer.editStartLabel')"
+      data-testid="timer-elapsed"
+      @click="openStartEditor"
+    >
+      {{ elapsedLabel }}
+    </button>
     <span
+      v-else
       class="app-timer__elapsed"
       role="timer"
       :aria-label="t('timer.elapsedLabel')"
@@ -132,6 +184,54 @@ async function onEnter() {
     >
       {{ elapsedLabel }}
     </span>
+
+    <Popover ref="startEditorPopover" data-testid="timer-start-editor-popover">
+      <div class="timer-start-editor">
+        <div class="timer-start-editor__field">
+          <label for="timer-start-editor-date">{{ t('timer.startEditor.dateLabel') }}</label>
+          <DatePicker
+            v-model="startDate"
+            input-id="timer-start-editor-date"
+            date-format="yy-mm-dd"
+            show-icon
+            data-testid="timer-start-editor-date-input"
+          />
+        </div>
+        <div class="timer-start-editor__field">
+          <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
+          <DatePicker
+            v-model="startTime"
+            input-id="timer-start-editor-time"
+            time-only
+            hour-format="24"
+            data-testid="timer-start-editor-time-input"
+          />
+        </div>
+        <p
+          v-if="startEditorError"
+          class="timer-start-editor__error"
+          role="alert"
+          data-testid="timer-start-editor-error"
+        >
+          {{ startEditorError }}
+        </p>
+        <div class="timer-start-editor__actions">
+          <Button
+            :label="t('timer.startEditor.cancelButton')"
+            severity="secondary"
+            text
+            data-testid="timer-start-editor-cancel-button"
+            @click="startEditorPopover?.hide()"
+          />
+          <Button
+            :label="t('timer.startEditor.saveButton')"
+            :loading="savingStartedAt"
+            data-testid="timer-start-editor-save-button"
+            @click="onSaveStartedAt"
+          />
+        </div>
+      </div>
+    </Popover>
 
     <Button
       :label="isRunning ? t('timer.stop') : t('timer.start')"
@@ -156,5 +256,35 @@ async function onEnter() {
   min-width: 4.5rem;
   font-family: monospace;
   color: var(--p-text-color);
+}
+
+.app-timer__elapsed-trigger {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.timer-start-editor {
+  display: grid;
+  gap: 0.75rem;
+  min-width: 16rem;
+}
+
+.timer-start-editor__field {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.timer-start-editor__error {
+  color: var(--p-red-500);
+  margin: 0;
+}
+
+.timer-start-editor__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style>

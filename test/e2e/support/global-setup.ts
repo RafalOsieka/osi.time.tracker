@@ -5,6 +5,7 @@ import { prepareTemplate } from './database';
 
 export async function setup(): Promise<void> {
   process.env.DATABASE_URL = TEST_DATABASE_URL;
+  process.env.IS_E2E = 'true';
 
   if (isDockerAvailable()) {
     await startPostgres();

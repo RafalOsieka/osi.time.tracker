@@ -1,6 +1,9 @@
 import { and, eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
-import { updateTimeEntrySchema } from '../../../shared/types/time-entry';
+import {
+  updateTimeEntrySchema,
+  TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS,
+} from '../../../shared/types/time-entry';
 import type { UpdateTimeEntryDto, TimeEntryDto } from '../../../shared/types/time-entry';
 import { db } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
@@ -43,13 +46,31 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   let stoppedAt: Date | null | undefined;
   if (parsedBody.stoppedAt !== undefined) {
     stoppedAt = parsedBody.stoppedAt === null ? null : new Date(parsedBody.stoppedAt);
+  }
 
-    if (stoppedAt !== null && stoppedAt < existing.startedAt) {
-      throw createError({
-        statusCode: 422,
-        data: { messageKey: 'error.timeEntryStoppedBeforeStarted' } satisfies ApiMessage,
-      });
-    }
+  let startedAt: Date | undefined;
+  if (parsedBody.startedAt !== undefined && parsedBody.startedAt !== null) {
+    startedAt = new Date(parsedBody.startedAt);
+  }
+
+  const effectiveStartedAt = startedAt ?? existing.startedAt;
+  const effectiveStoppedAt = stoppedAt !== undefined ? stoppedAt : existing.stoppedAt;
+
+  if (effectiveStoppedAt !== null && effectiveStartedAt > effectiveStoppedAt) {
+    throw createError({
+      statusCode: 422,
+      data: { messageKey: 'error.timeEntryStoppedBeforeStarted' } satisfies ApiMessage,
+    });
+  }
+
+  if (
+    effectiveStoppedAt === null &&
+    effectiveStartedAt.getTime() > Date.now() + TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS
+  ) {
+    throw createError({
+      statusCode: 422,
+      data: { messageKey: 'error.timeEntryStartedAtInFuture' } satisfies ApiMessage,
+    });
   }
 
   const updated = await db.transaction(async (tx) => {
@@ -73,6 +94,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
       .set({
         taskId,
         ...(stoppedAt !== undefined ? { stoppedAt } : {}),
+        ...(startedAt !== undefined ? { startedAt } : {}),
         updatedAt: new Date(),
       })
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))

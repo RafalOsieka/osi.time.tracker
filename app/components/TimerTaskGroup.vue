@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
-import { entryDurationSeconds, UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
-import { formatDuration, formatTime } from '~/utils/formatDuration';
-import type { TimeEntryDto } from '../../shared/types/time-entry';
+import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
+import { formatDuration } from '~/utils/formatDuration';
 
 const props = defineProps<{
   group: TimerViewGroup;
@@ -11,9 +10,15 @@ const props = defineProps<{
   now: number;
 }>();
 
-const emit = defineEmits<{ continue: []; edit: []; 'bulk-assign': [] }>();
+const emit = defineEmits<{
+  continue: [];
+  edit: [];
+  'bulk-assign': [];
+  'entry-changed': [];
+  'entry-deleted': [];
+}>();
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 
 const expanded = ref(false);
 const entriesId = computed(() => `timer-group-entries-${props.group.key}`);
@@ -32,18 +37,6 @@ const countLabel = computed(() => {
     ? t('timerView.entryCountOne', { count })
     : t('timerView.entryCount', { count });
 });
-
-function entryRangeLabel(entry: TimeEntryDto): string {
-  const start = formatTime(entry.startedAt, locale.value);
-  if (!entry.stoppedAt) {
-    return t('timerView.entryRunningLabel', { start });
-  }
-  return t('timerView.entryRangeLabel', { start, end: formatTime(entry.stoppedAt, locale.value) });
-}
-
-function entryDuration(entry: TimeEntryDto): string {
-  return formatDuration(entryDurationSeconds(entry, props.now));
-}
 </script>
 
 <template>
@@ -106,15 +99,14 @@ function entryDuration(entry: TimeEntryDto): string {
       class="timer-group__entries"
       :data-testid="`timer-group-entries-${group.key}`"
     >
-      <div
+      <TimerEntryRow
         v-for="entry in group.entries"
         :key="entry.id"
-        class="timer-entry"
-        :data-testid="`timer-entry-${entry.id}`"
-      >
-        <span>{{ entryRangeLabel(entry) }}</span>
-        <span>{{ entryDuration(entry) }}</span>
-      </div>
+        :entry="entry"
+        :now="now"
+        @changed="emit('entry-changed')"
+        @deleted="emit('entry-deleted')"
+      />
     </div>
   </div>
 </template>
@@ -170,13 +162,5 @@ function entryDuration(entry: TimeEntryDto): string {
   display: grid;
   gap: 0.25rem;
   padding: 0.5rem 0 0.25rem 1.75rem;
-}
-
-.timer-entry {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--p-text-muted-color);
 }
 </style>

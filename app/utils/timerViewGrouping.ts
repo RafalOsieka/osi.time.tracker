@@ -98,6 +98,34 @@ export function groupTimeEntriesByDay(
 }
 
 /**
+ * Combines a browser-local date (`Date`, time-of-day ignored) with an
+ * `HH:mm` wall-clock time into a UTC ISO instant string.
+ */
+export function combineLocalDateAndTime(date: Date, time: string): string {
+  const [hoursStr, minutesStr] = time.split(':');
+  const hours = Number(hoursStr);
+  const minutes = Number(minutesStr);
+  const combined = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    hours,
+    minutes,
+    0,
+    0,
+  );
+  return combined.toISOString();
+}
+
+/** Extracts the browser-local `HH:mm` wall-clock time from an ISO instant. */
+export function isoToLocalTime(iso: string): string {
+  const d = new Date(iso);
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+}
+
+/**
  * Computes the `[from, to)` instant window covering the most recent `daysBack`
  * browser-local days (including today), relative to `referenceDate`.
  */

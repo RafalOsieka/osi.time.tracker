@@ -68,6 +68,7 @@ describe('preserved test hooks', () => {
           EmptyState: { template: '<div data-testid="timer-view-empty-state" />' },
           TimerBulkAssignDialog: { template: '<div />' },
           TimerTaskEditorDialog: { template: '<div />' },
+          TimerAddEntryDialog: { template: '<div />' },
         },
       },
     });

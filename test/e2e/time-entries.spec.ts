@@ -70,6 +70,13 @@ async function getRunning(jar: CookieJar): Promise<Response> {
   return fetch(url('/api/time-entries/running'), { headers: { cookie: jar.header() } });
 }
 
+async function deleteEntry(jar: CookieJar, token: string, id: string): Promise<Response> {
+  return fetch(url(`/api/time-entries/${id}`), {
+    method: 'DELETE',
+    headers: { 'csrf-token': token, cookie: jar.header() },
+  });
+}
+
 async function listEntries(jar: CookieJar, from: string, to: string): Promise<Response> {
   return fetch(
     url(`/api/time-entries?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
@@ -387,5 +394,183 @@ describeTimeEntries('time-entries API integration', async () => {
       body: JSON.stringify({ ids: [], title: 'Nope' }),
     });
     expect(noCsrfRes.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it('manual creation: happy path with title creates a stopped entry, running entry untouched', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const running = await (await startEntry(jar, token, { title: 'Still Running' })).json();
+
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const res = await startEntry(jar, token, { title: 'Manual Entry', startedAt, stoppedAt });
+    expect(res.status).toBe(200);
+    const created = await res.json();
+    expect(created.taskName).toBe('Manual Entry');
+    expect(created.startedAt).toBe(startedAt);
+    expect(created.stoppedAt).toBe(stoppedAt);
+
+    const runningNow = await (await getRunning(jar)).json();
+    expect(runningNow.id).toBe(running.id);
+
+    await patchEntry(jar, token, running.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('manual creation: happy path without title creates an untitled stopped entry', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const res = await startEntry(jar, token, { startedAt, stoppedAt });
+    expect(res.status).toBe(200);
+    const created = await res.json();
+    expect(created.taskId).toBeNull();
+    expect(created.stoppedAt).toBe(stoppedAt);
+  });
+
+  it('manual creation: invalid pair rejected with a messageKey', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+
+    const onlyStart = await startEntry(jar, token, { startedAt: new Date().toISOString() });
+    expect(onlyStart.status).toBe(422);
+
+    const startedAt = new Date().toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const inverted = await startEntry(jar, token, { startedAt, stoppedAt });
+    expect(inverted.status).toBe(422);
+
+    const futureStart = new Date(Date.now() + 3_600_000).toISOString();
+    const futureStop = new Date(Date.now() + 7_200_000).toISOString();
+    const future = await startEntry(jar, token, { startedAt: futureStart, stoppedAt: futureStop });
+    expect(future.status).toBe(422);
+  });
+
+  it('startedAt patch: edits a stopped entry, rejects future start on running, rejects start after stop, allows overlap', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+
+    // Stopped-entry edit
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const stopped = await (
+      await startEntry(jar, token, { title: 'Stopped Entry', startedAt, stoppedAt })
+    ).json();
+    const newStart = new Date(Date.now() - 2.5 * 3_600_000).toISOString();
+    const editedStopped = await patchEntry(jar, token, stopped.id, { startedAt: newStart });
+    expect(editedStopped.status).toBe(200);
+    expect((await editedStopped.json()).startedAt).toBe(newStart);
+
+    // Start after stop rejected
+    const afterStop = new Date(Date.now() - 1800).toISOString();
+    const startAfterStopRes = await patchEntry(jar, token, stopped.id, { startedAt: afterStop });
+    expect(startAfterStopRes.status).toBe(422);
+    expect((await startAfterStopRes.json())?.data?.messageKey).toBe(
+      'error.timeEntryStoppedBeforeStarted',
+    );
+
+    // Running-entry edit rebasing elapsed
+    const running = await (await startEntry(jar, token, { title: 'Running Entry' })).json();
+    const pastStart = new Date(Date.now() - 3_600_000).toISOString();
+    const editedRunning = await patchEntry(jar, token, running.id, { startedAt: pastStart });
+    expect(editedRunning.status).toBe(200);
+    const editedRunningBody = await editedRunning.json();
+    expect(editedRunningBody.startedAt).toBe(pastStart);
+    expect(editedRunningBody.stoppedAt).toBeNull();
+
+    // Future start rejected on running entry
+    const futureStart = new Date(Date.now() + 3_600_000).toISOString();
+    const futureRes = await patchEntry(jar, token, running.id, { startedAt: futureStart });
+    expect(futureRes.status).toBe(422);
+    expect((await futureRes.json())?.data?.messageKey).toBe('error.timeEntryStartedAtInFuture');
+
+    // Overlap accepted: move running entry's start to overlap the stopped entry
+    const overlapRes = await patchEntry(jar, token, running.id, { startedAt });
+    expect(overlapRes.status).toBe(200);
+
+    // 404 for foreign/unknown id
+    const bob = await loginAs('tbob@example.com', 'secret');
+    const bobEntry = await (await startEntry(bob.jar, bob.token, { title: 'Bob Entry' })).json();
+    const foreignRes = await patchEntry(jar, token, bobEntry.id, { startedAt: pastStart });
+    expect(foreignRes.status).toBe(404);
+    const unknownRes = await patchEntry(jar, token, '00000000-0000-0000-0000-000000000000', {
+      startedAt: pastStart,
+    });
+    expect(unknownRes.status).toBe(404);
+
+    await patchEntry(bob.jar, bob.token, bobEntry.id, { stoppedAt: new Date().toISOString() });
+    await patchEntry(jar, token, running.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('delete: keeps the task when sibling entries remain', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const title = 'Delete Sibling Task ' + Date.now();
+    const startedAt1 = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt1 = new Date(Date.now() - 3_600_000).toISOString();
+    const entry1 = await (
+      await startEntry(jar, token, { title, startedAt: startedAt1, stoppedAt: stoppedAt1 })
+    ).json();
+    const startedAt2 = new Date(Date.now() - 1_800_000).toISOString();
+    const stoppedAt2 = new Date(Date.now() - 900_000).toISOString();
+    const entry2 = await (
+      await startEntry(jar, token, { title, startedAt: startedAt2, stoppedAt: stoppedAt2 })
+    ).json();
+    expect(entry1.taskId).toBe(entry2.taskId);
+
+    const delRes = await deleteEntry(jar, token, entry1.id);
+    expect(delRes.status).toBe(200);
+
+    const from = new Date(Date.now() - 3 * 3_600_000).toISOString();
+    const to = new Date().toISOString();
+    const rows = await (await listEntries(jar, from, to)).json();
+    const remaining = rows.find((r: { id: string }) => r.id === entry2.id);
+    expect(remaining.taskId).toBe(entry2.taskId);
+    expect(remaining.taskName).toBe(title);
+  });
+
+  it('delete: garbage collects the task when it was the last referencing entry', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const title = 'Delete Last Task ' + Date.now();
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const entry = await (await startEntry(jar, token, { title, startedAt, stoppedAt })).json();
+
+    const delRes = await deleteEntry(jar, token, entry.id);
+    expect(delRes.status).toBe(200);
+
+    // Re-creating an entry with the same title should mint a fresh task id
+    const recreated = await (await startEntry(jar, token, { title, startedAt, stoppedAt })).json();
+    expect(recreated.taskId).not.toBe(entry.taskId);
+  });
+
+  it('delete: an untitled entry is removed without affecting any task', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const entry = await (await startEntry(jar, token, { startedAt, stoppedAt })).json();
+    expect(entry.taskId).toBeNull();
+
+    const delRes = await deleteEntry(jar, token, entry.id);
+    expect(delRes.status).toBe(200);
+  });
+
+  it('delete: 404 for foreign/unknown id, 401 unauthenticated', async () => {
+    const alice = await loginAs('talice@example.com', 'secret');
+    const bob = await loginAs('tbob@example.com', 'secret');
+    const bobEntry = await (await startEntry(bob.jar, bob.token, { title: 'Bob Delete' })).json();
+    await patchEntry(bob.jar, bob.token, bobEntry.id, { stoppedAt: new Date().toISOString() });
+
+    const foreignRes = await deleteEntry(alice.jar, alice.token, bobEntry.id);
+    expect(foreignRes.status).toBe(404);
+
+    const unknownRes = await deleteEntry(
+      alice.jar,
+      alice.token,
+      '00000000-0000-0000-0000-000000000000',
+    );
+    expect(unknownRes.status).toBe(404);
+
+    const anonJar = new CookieJar();
+    const anonToken = await primeCsrf(anonJar);
+    const unauthRes = await deleteEntry(anonJar, anonToken, bobEntry.id);
+    expect(unauthRes.status).toBe(401);
+
+    await deleteEntry(bob.jar, bob.token, bobEntry.id);
   });
 });

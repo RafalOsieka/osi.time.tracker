@@ -46,7 +46,7 @@ Conventions that apply to every story:
 
 ---
 
-## 4. Live timer, titled entries & running indicator
+## 4. Live timer, titled entries & running indicator ✅ Delivered
 
 > **As a user, I want to start and stop a single live timer with an optional title that binds the entry to a Task behind the scenes, and always see a running-timer indicator, so I can capture time as I work without managing tasks upfront.** (WBS 2.1, 2.5, 2.9, 3.3)
 
@@ -62,7 +62,7 @@ Conventions that apply to every story:
 
 ---
 
-## 5. Timer view page (daily entries, grouped by Task)
+## 5. Timer view page (daily entries, grouped by Task) ✅ Delivered
 
 > **As a user, I want a timer view page listing my time entries per day, grouped by Task and expandable to individual entries, so I can review and organize my logged time in one place.** (WBS 2.10, 3.3; absorbs 4.2)
 
@@ -78,7 +78,7 @@ Conventions that apply to every story:
 
 ---
 
-## 6. Manual entries, edit & delete
+## 6. Manual entries, edit & delete ✅ Delivered
 
 > **As a user, I want to add manual time entries and edit or delete existing entries, so I can record and correct time I didn't capture with the timer.** (WBS 2.2–2.4)
 
@@ -86,6 +86,7 @@ Conventions that apply to every story:
 
 - I can create a manual TimeEntry with a start/end (or duration) and an optional title (same autocomplete/binding rules as the timer).
 - I can edit a TimeEntry's start and stop times.
+- I can edit the running timer's start time from the top bar (a date and hours+minutes field), which rebases the elapsed time shown; a resulting future start is blocked.
 - I can retitle a single entry, which splits/reassigns it to another (or a new) Task via autocomplete — the rest of the group is unaffected.
 - I can delete a TimeEntry; a Task whose last entry is removed is garbage-collected (hard delete).
 - I can only act on my own entries.
