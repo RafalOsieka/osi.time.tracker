@@ -63,7 +63,7 @@ export default defineNuxtConfig({
   },
   css: ['primeicons/primeicons.css', '~/assets/css/main.css'],
   compatibilityDate: '2025-07-15',
-  devtools: { enabled: true },
+  devtools: { enabled: process.env.IS_E2E !== 'true' },
   routeRules: {
     '/api/auth/login': {
       security: {
