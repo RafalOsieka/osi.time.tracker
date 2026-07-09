@@ -1,5 +1,7 @@
 # Nuxt Minimal Starter
 
+[![codecov](https://codecov.io/gh/RafalOsieka/osi.time.tracker/branch/main/graph/badge.svg)](https://codecov.io/gh/RafalOsieka/osi.time.tracker)
+
 Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
 
 ## Setup
@@ -136,6 +138,16 @@ $env:NUXT_TEST_DEV=1; pnpm test:e2e
 ```
 
 When `NUXT_TEST_DEV` is set, the global build step is skipped and each test worker starts a Nuxt dev server.
+
+### Coverage
+
+Coverage is measured from the **unit** and **nuxt** projects together (the `e2e` project is excluded):
+
+```bash
+pnpm test:coverage
+```
+
+This produces `text`, `json-summary`, and `lcov` reports under the git-ignored `coverage/` directory, scoped to `app/`, `server/`, and `shared/`. Coverage is uploaded to [Codecov](https://codecov.io) in CI and is **report-only** (informational) — it does not currently gate merges.
 
 ---
 
