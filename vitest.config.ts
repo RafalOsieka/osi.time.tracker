@@ -9,13 +9,7 @@ export default defineConfig({
       reporter: ['text', 'json-summary', 'lcov'],
       reportsDirectory: 'coverage',
       include: ['app/**', 'server/**', 'shared/**'],
-      exclude: [
-        'test/**',
-        '**/*.config.{ts,js,mjs,cjs}',
-        '.nuxt/**',
-        '.output/**',
-        '**/*.d.ts',
-      ],
+      exclude: ['test/**', '**/*.config.{ts,js,mjs,cjs}', '.nuxt/**', '.output/**', '**/*.d.ts'],
     },
     projects: [
       {
