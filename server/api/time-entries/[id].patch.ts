@@ -49,7 +49,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   }
 
   let startedAt: Date | undefined;
-  if (parsedBody.startedAt !== undefined) {
+  if (parsedBody.startedAt !== undefined && parsedBody.startedAt !== null) {
     startedAt = new Date(parsedBody.startedAt);
   }
 

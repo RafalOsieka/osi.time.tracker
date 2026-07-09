@@ -132,7 +132,7 @@ export default defineNuxtConfig({
       hmr: process.env.IS_E2E === 'true' ? false : undefined,
     },
     optimizeDeps: {
-      include: ['zod'],
+      include: ['@primevue/forms', '@primevue/forms/resolvers/zod', 'zod'],
     },
   },
   typescript: {

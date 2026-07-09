@@ -21,4 +21,4 @@
 
 - [x] 4.1 Add a Codecov coverage badge to `README.md` and a short "Coverage" note (scope = unit + nuxt, report-only) (REQ-NFR-031)
 - [x] 4.2 Update `AGENTS.md` Testing section with the `pnpm test:coverage` command and the coverage scope/policy (REQ-NFR-030, REQ-NFR-032)
-- [ ] 4.3 Open a PR and confirm: the `coverage` job runs green, the Codecov comment appears with diff coverage, and a coverage decrease does not fail the check (REQ-NFR-031, REQ-NFR-032)
+- [x] 4.3 Open a PR and confirm: the `coverage` job runs green, the Codecov comment appears with diff coverage, and a coverage decrease does not fail the check (REQ-NFR-031, REQ-NFR-032)
