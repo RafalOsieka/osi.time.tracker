@@ -40,6 +40,36 @@ describe('startTimeEntrySchema', () => {
   it('rejects an invalid projectId', () => {
     expect(() => startTimeEntrySchema.parse({ projectId: 'not-a-uuid' })).toThrow();
   });
+
+  it('accepts a valid startedAt/stoppedAt pair', () => {
+    const startedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const stoppedAt = new Date().toISOString();
+    const result = startTimeEntrySchema.parse({ startedAt, stoppedAt });
+    expect(result.startedAt).toBe(startedAt);
+    expect(result.stoppedAt).toBe(stoppedAt);
+  });
+
+  it('rejects providing only startedAt without stoppedAt', () => {
+    const startedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    expect(() => startTimeEntrySchema.parse({ startedAt })).toThrow();
+  });
+
+  it('rejects providing only stoppedAt without startedAt', () => {
+    const stoppedAt = new Date().toISOString();
+    expect(() => startTimeEntrySchema.parse({ stoppedAt })).toThrow();
+  });
+
+  it('rejects an inverted pair (stoppedAt before startedAt)', () => {
+    const startedAt = new Date().toISOString();
+    const stoppedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    expect(() => startTimeEntrySchema.parse({ startedAt, stoppedAt })).toThrow();
+  });
+
+  it('rejects a startedAt in the future', () => {
+    const startedAt = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const stoppedAt = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    expect(() => startTimeEntrySchema.parse({ startedAt, stoppedAt })).toThrow();
+  });
 });
 
 describe('updateTimeEntrySchema', () => {
@@ -65,6 +95,16 @@ describe('updateTimeEntrySchema', () => {
 
   it('rejects an invalid projectId', () => {
     expect(() => updateTimeEntrySchema.parse({ projectId: 'not-a-uuid' })).toThrow();
+  });
+
+  it('accepts a valid ISO startedAt', () => {
+    const iso = new Date().toISOString();
+    const result = updateTimeEntrySchema.parse({ startedAt: iso });
+    expect(result.startedAt).toBe(iso);
+  });
+
+  it('rejects a non-ISO startedAt', () => {
+    expect(() => updateTimeEntrySchema.parse({ startedAt: 'not-a-date' })).toThrow();
   });
 });
 

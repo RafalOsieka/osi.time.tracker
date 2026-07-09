@@ -81,6 +81,16 @@ export function useTimer() {
     running.value = entry;
   }
 
+  async function updateStartedAt(startedAt: string): Promise<void> {
+    if (!running.value) return;
+    const entry = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${running.value.id}`, {
+      method: 'PATCH',
+      body: { startedAt },
+    });
+    running.value = entry;
+    startTicker();
+  }
+
   onScopeDispose(() => {
     stopTicker();
   });
@@ -93,5 +103,6 @@ export function useTimer() {
     start,
     stop,
     updateTitle,
+    updateStartedAt,
   };
 }

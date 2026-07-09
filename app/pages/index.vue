@@ -115,6 +115,30 @@ function openEditor(group: {
 async function onTaskUpdated() {
   await refreshEntries();
 }
+
+// --- Add entry ---
+const addEntryVisible = ref(false);
+const addEntryDate = ref<Date | null>(null);
+const { fetchRunning } = useTimer();
+
+function openAddEntry(date: Date) {
+  addEntryDate.value = date;
+  addEntryVisible.value = true;
+}
+
+async function onEntryAdded() {
+  await refreshEntries();
+}
+
+async function onEntryChanged() {
+  await refreshEntries();
+  await fetchRunning();
+}
+
+async function onEntryDeleted() {
+  await refreshEntries();
+  await fetchRunning();
+}
 </script>
 
 <template>
@@ -141,6 +165,13 @@ async function onTaskUpdated() {
           <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
             {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
           </span>
+          <Button
+            :label="t('timerView.addEntry.buttonLabel')"
+            icon="pi pi-plus"
+            text
+            :data-testid="`timer-day-add-entry-${day.dayKey}`"
+            @click="openAddEntry(day.date)"
+          />
         </div>
 
         <TimerTaskGroup
@@ -152,6 +183,8 @@ async function onTaskUpdated() {
           @continue="onContinue(group)"
           @edit="openEditor(group)"
           @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
+          @entry-changed="onEntryChanged"
+          @entry-deleted="onEntryDeleted"
         />
       </div>
 
@@ -177,6 +210,12 @@ async function onTaskUpdated() {
       :task="editingTask"
       :project-options="projectOptions"
       @updated="onTaskUpdated"
+    />
+
+    <TimerAddEntryDialog
+      v-model:visible="addEntryVisible"
+      :date="addEntryDate"
+      @added="onEntryAdded"
     />
   </section>
 </template>

@@ -52,10 +52,11 @@ mockNuxtImport('useTimer', () => () => ({
   running: runningState,
   elapsedSeconds: elapsedSecondsState,
   loading: { value: false },
-  fetchRunning: vi.fn(),
+  fetchRunning: vi.fn().mockResolvedValue(undefined),
   start: startMock,
   stop: vi.fn(),
   updateTitle: vi.fn(),
+  updateStartedAt: vi.fn(),
 }));
 
 const ButtonStub = {
@@ -73,6 +74,8 @@ const commonStubs = {
   Button: ButtonStub,
   TimerBulkAssignDialog: { template: '<div />' },
   TimerTaskEditorDialog: { template: '<div />' },
+  TimerAddEntryDialog: { template: '<div />' },
+  TimerEntryRow: { template: '<div />', props: ['entry', 'now'] },
   Dialog: DialogStub,
 };
 

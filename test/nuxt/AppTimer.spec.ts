@@ -12,15 +12,23 @@ vi.mock('vue-i18n', async (importOriginal) => {
   };
 });
 
-const { runningState, elapsedSecondsState, loadingState, startMock, stopMock, updateTitleMock } =
-  vi.hoisted(() => ({
-    runningState: { value: null as unknown },
-    elapsedSecondsState: { value: 0 },
-    loadingState: { value: false },
-    startMock: vi.fn(),
-    stopMock: vi.fn(),
-    updateTitleMock: vi.fn(),
-  }));
+const {
+  runningState,
+  elapsedSecondsState,
+  loadingState,
+  startMock,
+  stopMock,
+  updateTitleMock,
+  updateStartedAtMock,
+} = vi.hoisted(() => ({
+  runningState: { value: null as unknown },
+  elapsedSecondsState: { value: 0 },
+  loadingState: { value: false },
+  startMock: vi.fn(),
+  stopMock: vi.fn(),
+  updateTitleMock: vi.fn(),
+  updateStartedAtMock: vi.fn(),
+}));
 
 mockNuxtImport('useTimer', () => () => ({
   running: runningState,
@@ -30,6 +38,7 @@ mockNuxtImport('useTimer', () => () => ({
   start: startMock,
   stop: stopMock,
   updateTitle: updateTitleMock,
+  updateStartedAt: updateStartedAtMock,
 }));
 
 const AutoCompleteStub = {
@@ -48,9 +57,23 @@ const AutoCompleteStub = {
 };
 const ButtonStub = {
   template:
-    '<button data-testid="timer-toggle-button" :aria-pressed="ariaPressed" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
+    '<button :data-testid="$attrs[\'data-testid\'] ?? \'timer-toggle-button\'" :aria-pressed="ariaPressed" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
   props: ['label', 'severity', 'loading', 'ariaPressed', 'disabled'],
   emits: ['click'],
+};
+const PopoverStub = {
+  template: '<div data-testid="timer-start-editor-popover"><slot /></div>',
+  methods: {
+    toggle: vi.fn(),
+    hide: vi.fn(),
+    show: vi.fn(),
+  },
+};
+const DatePickerStub = {
+  template:
+    '<input :data-testid="$attrs[\'data-testid\']" :value="modelValue" @input="$emit(\'update:modelValue\', new Date($event.target.value))" />',
+  props: ['modelValue', 'inputId', 'dateFormat', 'showIcon', 'timeOnly', 'hourFormat'],
+  emits: ['update:modelValue'],
 };
 
 function runningEntry(taskName: string | null = 'My Task') {
@@ -234,5 +257,77 @@ describe('AppTimer', () => {
     await input.trigger('blur');
 
     expect(updateTitleMock).toHaveBeenCalledWith('');
+  });
+
+  describe('start-time editor popover', () => {
+    function mount() {
+      return mountSuspended(AppTimer, {
+        global: {
+          stubs: {
+            AutoComplete: AutoCompleteStub,
+            Button: ButtonStub,
+            Popover: PopoverStub,
+            DatePicker: DatePickerStub,
+          },
+        },
+      });
+    }
+
+    it('makes the elapsed display an activatable trigger with an accessible label', async () => {
+      runningState.value = runningEntry();
+      const wrapper = await mount();
+
+      const trigger = wrapper.find('[data-testid="timer-elapsed"]');
+      expect(trigger.element.tagName).toBe('BUTTON');
+      expect(trigger.attributes('aria-label')).toBe('timer.editStartLabel');
+    });
+
+    it("seeds the date/time fields with the running entry's local start when opened", async () => {
+      const startedAt = new Date('2024-01-05T10:30:00.000Z');
+      runningState.value = { ...runningEntry(), startedAt: startedAt.toISOString() };
+      const wrapper = await mount();
+
+      await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
+
+      const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
+      const timeInput = wrapper.find('[data-testid="timer-start-editor-time-input"]');
+      expect(new Date(dateInput.attributes('value')!).getTime()).toBe(startedAt.getTime());
+      expect(new Date(timeInput.attributes('value')!).getTime()).toBe(startedAt.getTime());
+    });
+
+    it('blocks a future start with an inline error and does not call updateStartedAt', async () => {
+      runningState.value = runningEntry();
+      const wrapper = await mount();
+
+      await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
+
+      const future = new Date(Date.now() + 60 * 60 * 1000);
+      await wrapper
+        .find('[data-testid="timer-start-editor-date-input"]')
+        .setValue(future.toString());
+      await wrapper
+        .find('[data-testid="timer-start-editor-time-input"]')
+        .setValue(future.toString());
+      await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
+
+      expect(updateStartedAtMock).not.toHaveBeenCalled();
+      expect(wrapper.find('[data-testid="timer-start-editor-error"]').text()).toBe(
+        'error.timeEntryStartedAtInFuture',
+      );
+    });
+
+    it('commits a valid past start via updateStartedAt', async () => {
+      runningState.value = runningEntry();
+      const wrapper = await mount();
+
+      await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
+
+      const past = new Date(Date.now() - 60 * 60 * 1000);
+      await wrapper.find('[data-testid="timer-start-editor-date-input"]').setValue(past.toString());
+      await wrapper.find('[data-testid="timer-start-editor-time-input"]').setValue(past.toString());
+      await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
+
+      expect(updateStartedAtMock).toHaveBeenCalledTimes(1);
+    });
   });
 });

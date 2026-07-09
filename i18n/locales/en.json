@@ -140,6 +140,30 @@
       "nameRequiredError": "Name is required.",
       "toastUpdatedSummary": "Task updated",
       "toastUpdatedDetail": "\"{name}\" has been updated."
+    },
+    "addEntry": {
+      "buttonLabel": "+ Add entry",
+      "dialogTitle": "Add time entry",
+      "titleLabel": "Title",
+      "titlePlaceholder": "Task name (optional)",
+      "startLabel": "Start time",
+      "endLabel": "End time",
+      "rangeError": "End time cannot be before the start time.",
+      "saveButton": "Add",
+      "cancelButton": "Cancel",
+      "toastSuccessSummary": "Entry added"
+    },
+    "entryRow": {
+      "titleLabel": "Title",
+      "startLabel": "Start time",
+      "stopLabel": "Stop time",
+      "separator": "–",
+      "nowLabel": "now",
+      "deleteLabel": "Delete entry",
+      "deleteConfirmHeader": "Delete entry",
+      "deleteConfirmMessage": "Are you sure you want to delete this entry?",
+      "deleteConfirmAccept": "Yes",
+      "deleteConfirmReject": "No"
     }
   },
   "timer": {
@@ -148,7 +172,14 @@
     "start": "Start",
     "stop": "Stop",
     "noTask": "(no task)",
-    "elapsedLabel": "Elapsed time"
+    "elapsedLabel": "Elapsed time",
+    "editStartLabel": "Edit start time",
+    "startEditor": {
+      "dateLabel": "Date",
+      "timeLabel": "Time",
+      "saveButton": "Save",
+      "cancelButton": "Cancel"
+    }
   },
   "error": {
     "clientNameRequired": "Name is required.",
@@ -167,6 +198,10 @@
     "timeEntryProjectInvalid": "Select a valid project.",
     "timeEntryStoppedAtInvalid": "Enter a valid stop time.",
     "timeEntryStoppedBeforeStarted": "Stop time cannot be before the start time.",
+    "timeEntryStartedAtInvalid": "Enter a valid start time.",
+    "timeEntryStartedAtInFuture": "Start time cannot be in the future.",
+    "timeEntryStartAfterStop": "Start time cannot be after the stop time.",
+    "timeEntryManualPairIncomplete": "Provide both a start and a stop time.",
     "timeEntryRangeInvalid": "Enter a valid date range.",
     "timeEntryIdsInvalid": "Select at least one valid time entry.",
     "timeEntryBulkAssignInvalid": "One or more time entries could not be assigned."

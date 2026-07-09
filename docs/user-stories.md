@@ -86,6 +86,7 @@ Conventions that apply to every story:
 
 - I can create a manual TimeEntry with a start/end (or duration) and an optional title (same autocomplete/binding rules as the timer).
 - I can edit a TimeEntry's start and stop times.
+- I can edit the running timer's start time from the top bar (a date and hours+minutes field), which rebases the elapsed time shown; a resulting future start is blocked.
 - I can retitle a single entry, which splits/reassigns it to another (or a new) Task via autocomplete — the rest of the group is unaffected.
 - I can delete a TimeEntry; a Task whose last entry is removed is garbage-collected (hard delete).
 - I can only act on my own entries.

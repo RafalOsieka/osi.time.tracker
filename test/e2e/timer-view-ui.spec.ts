@@ -158,4 +158,101 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     await page.close();
   });
+
+  it('adds a manual entry from a day section and sees it grouped correctly', async () => {
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    const addButtonSelector = '[data-testid^="timer-day-add-entry-"]';
+    await page.waitForSelector(addButtonSelector);
+    await page.click(addButtonSelector);
+    await page.waitForSelector('[data-testid="add-entry-dialog"]');
+
+    await page.fill('[data-testid="add-entry-title-input"] input', 'Manual Add Entry Task');
+    await page.fill('[data-testid="add-entry-start-input"]', '08:00');
+    await page.fill('[data-testid="add-entry-end-input"]', '09:00');
+    await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
+
+    await page.waitForFunction(() => document.body.textContent?.includes('Manual Add Entry Task'));
+
+    await page.close();
+  });
+
+  it('blocks adding a manual entry with an inverted time range', async () => {
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    const addButtonSelector = '[data-testid^="timer-day-add-entry-"]';
+    await page.waitForSelector(addButtonSelector);
+    await page.click(addButtonSelector);
+    await page.waitForSelector('[data-testid="add-entry-dialog"]');
+
+    await page.fill('[data-testid="add-entry-title-input"] input', 'Inverted Range Task');
+    await page.fill('[data-testid="add-entry-start-input"]', '10:00');
+    await page.fill('[data-testid="add-entry-end-input"]', '09:00');
+    await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
+
+    await page.waitForSelector('[data-testid="add-entry-range-error"]');
+    // Dialog should stay open (no request was sent) and the entry should not appear.
+    expect(await page.isVisible('[data-testid="add-entry-dialog"]')).toBe(true);
+
+    await page.click('[data-testid="add-entry-dialog"] [data-testid="cancel-button"]');
+    await page.close();
+  });
+
+  it('edits an entry inline, retitles it to split into another group, and deletes it', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const seeded = await startEntry(jar, token, { title: 'Inline Edit Source Task' });
+    await stopEntry(jar, token, seeded.id);
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(() =>
+      document.body.textContent?.includes('Inline Edit Source Task'),
+    );
+
+    const sourceGroup = page
+      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
+        hasText: 'Inline Edit Source Task',
+      })
+      .first();
+    await sourceGroup.locator('[data-testid^="timer-group-toggle-"]').click();
+
+    const entrySelector = `[data-testid="timer-entry-${seeded.id}"]`;
+    await page.waitForSelector(entrySelector);
+
+    // --- Inline start-time edit ---
+    await page.click(`[data-testid="timer-entry-start-${seeded.id}"]`);
+    await page.fill(`[data-testid="timer-entry-start-input-${seeded.id}"]`, '07:30');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(
+      (id) =>
+        document
+          .querySelector(`[data-testid="timer-entry-start-${id}"]`)
+          ?.textContent?.includes('07:30'),
+      seeded.id,
+    );
+
+    // --- Retitle causing a group split ---
+    await page.click(`[data-testid="timer-entry-title-${seeded.id}"]`);
+    await page.fill(`[data-testid="timer-entry-title-input-${seeded.id}"]`, 'Inline Edit New Task');
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => document.body.textContent?.includes('Inline Edit New Task'));
+
+    const newGroup = page
+      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
+        hasText: 'Inline Edit New Task',
+      })
+      .first();
+    await newGroup.locator('[data-testid^="timer-group-toggle-"]').click();
+    await page.waitForSelector(entrySelector);
+
+    // --- Delete with confirmation ---
+    await page.click(`[data-testid="timer-entry-delete-${seeded.id}"]`);
+    await page.click('.p-confirmdialog-accept-button');
+    await page.waitForSelector(entrySelector, { state: 'detached' });
+
+    await page.close();
+  });
 });

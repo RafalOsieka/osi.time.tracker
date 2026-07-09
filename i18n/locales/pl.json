@@ -140,6 +140,30 @@
       "nameRequiredError": "Nazwa jest wymagana.",
       "toastUpdatedSummary": "Zadanie zaktualizowane",
       "toastUpdatedDetail": "\"{name}\" zostało zaktualizowane."
+    },
+    "addEntry": {
+      "buttonLabel": "+ Dodaj wpis",
+      "dialogTitle": "Dodaj wpis czasu",
+      "titleLabel": "Tytuł",
+      "titlePlaceholder": "Nazwa zadania (opcjonalnie)",
+      "startLabel": "Czas rozpoczęcia",
+      "endLabel": "Czas zakończenia",
+      "rangeError": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia.",
+      "saveButton": "Dodaj",
+      "cancelButton": "Anuluj",
+      "toastSuccessSummary": "Wpis dodany"
+    },
+    "entryRow": {
+      "titleLabel": "Tytuł",
+      "startLabel": "Czas rozpoczęcia",
+      "stopLabel": "Czas zakończenia",
+      "separator": "–",
+      "nowLabel": "teraz",
+      "deleteLabel": "Usuń wpis",
+      "deleteConfirmHeader": "Usuń wpis",
+      "deleteConfirmMessage": "Czy na pewno chcesz usunąć ten wpis?",
+      "deleteConfirmAccept": "Tak",
+      "deleteConfirmReject": "Nie"
     }
   },
   "timer": {
@@ -148,7 +172,14 @@
     "start": "Start",
     "stop": "Stop",
     "noTask": "(brak zadania)",
-    "elapsedLabel": "Czas trwania"
+    "elapsedLabel": "Czas trwania",
+    "editStartLabel": "Edytuj czas rozpoczęcia",
+    "startEditor": {
+      "dateLabel": "Data",
+      "timeLabel": "Czas",
+      "saveButton": "Zapisz",
+      "cancelButton": "Anuluj"
+    }
   },
   "error": {
     "clientNameRequired": "Nazwa jest wymagana.",
@@ -167,6 +198,10 @@
     "timeEntryProjectInvalid": "Wybierz prawidłowy projekt.",
     "timeEntryStoppedAtInvalid": "Wprowadź prawidłowy czas zakończenia.",
     "timeEntryStoppedBeforeStarted": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia.",
+    "timeEntryStartedAtInvalid": "Wprowadź prawidłowy czas rozpoczęcia.",
+    "timeEntryStartedAtInFuture": "Czas rozpoczęcia nie może być w przyszłości.",
+    "timeEntryStartAfterStop": "Czas rozpoczęcia nie może być późniejszy niż czas zakończenia.",
+    "timeEntryManualPairIncomplete": "Podaj czas rozpoczęcia i zakończenia.",
     "timeEntryRangeInvalid": "Wprowadź prawidłowy zakres dat.",
     "timeEntryIdsInvalid": "Wybierz co najmniej jeden prawidłowy wpis czasu.",
     "timeEntryBulkAssignInvalid": "Nie udało się przypisać jednego lub więcej wpisów czasu."

@@ -26,13 +26,17 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
     throw err;
   }
 
-  const startedAt = new Date();
+  const isManual = parsedBody.startedAt != null && parsedBody.stoppedAt != null;
+  const startedAt = isManual ? new Date(parsedBody.startedAt!) : new Date();
+  const stoppedAt = isManual ? new Date(parsedBody.stoppedAt!) : null;
 
   const created = await db.transaction(async (tx) => {
-    await tx
-      .update(timeEntries)
-      .set({ stoppedAt: startedAt, updatedAt: startedAt })
-      .where(and(eq(timeEntries.userId, user.id), isNull(timeEntries.stoppedAt)));
+    if (!isManual) {
+      await tx
+        .update(timeEntries)
+        .set({ stoppedAt: startedAt, updatedAt: startedAt })
+        .where(and(eq(timeEntries.userId, user.id), isNull(timeEntries.stoppedAt)));
+    }
 
     const taskId = await resolveTaskId(tx, user.id, parsedBody.title, parsedBody.projectId);
 
@@ -42,7 +46,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
         userId: user.id,
         taskId,
         startedAt,
-        stoppedAt: null,
+        stoppedAt,
       })
       .returning();
 

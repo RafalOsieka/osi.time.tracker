@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  combineLocalDateAndTime,
   computeWindowRange,
   entryDurationSeconds,
   groupTimeEntriesByDay,
+  isoToLocalTime,
   localDayKey,
   UNTITLED_GROUP_KEY,
 } from '../../app/utils/timerViewGrouping';
@@ -101,6 +103,21 @@ describe('groupTimeEntriesByDay', () => {
     });
     const day = groupTimeEntriesByDay([untitled, titled])[0]!;
     expect(day.groups.map((g) => g.key)).toEqual(['task-1', UNTITLED_GROUP_KEY]);
+  });
+});
+
+describe('combineLocalDateAndTime', () => {
+  it('combines a local date with an HH:mm time into a UTC ISO instant', () => {
+    const date = new Date(2024, 2, 15);
+    const iso = combineLocalDateAndTime(date, '09:30');
+    expect(new Date(iso).getTime()).toBe(new Date(2024, 2, 15, 9, 30).getTime());
+  });
+});
+
+describe('isoToLocalTime', () => {
+  it('extracts the browser-local HH:mm time from an ISO instant', () => {
+    const iso = new Date(2024, 2, 15, 9, 30).toISOString();
+    expect(isoToLocalTime(iso)).toBe('09:30');
   });
 });
 
