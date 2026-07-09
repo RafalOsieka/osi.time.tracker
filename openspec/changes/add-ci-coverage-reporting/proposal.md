@@ -28,6 +28,12 @@ None.
 - No e2e or server-route coverage instrumentation.
 - No changes to the existing verify jobs, application logic, or test behavior.
 
+## Manual Setup Notes
+
+- Link the repository on [codecov.io](https://codecov.io) (sign in with GitHub, add the org/repo).
+- For a public repository, uploads can typically be tokenless via the GitHub OIDC/Actions integration; only add a `CODECOV_TOKEN` repository secret if tokenless upload is unavailable or fails.
+- No other manual configuration is required — `codecov.yml` in the repo controls the report-only status policy.
+
 ## Impact
 
 - **New**: `codecov.yml`, `coverage` CI job in `.github/workflows/ci.yml`, `test:coverage` script, `@vitest/coverage-v8` devDependency, README coverage badge.
