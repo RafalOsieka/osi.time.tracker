@@ -70,6 +70,7 @@ Notes:
 - e2e tests require a running PostgreSQL (the e2e harness shares the `postgres:18-alpine` image; see `test/e2e/support/postgres.ts`).
 - **E2E Execution Modes**: By default, E2E tests run against a production build (`pnpm build`). Set `NUXT_TEST_DEV=1` to run against a dev server for faster iteration (e.g., `$env:NUXT_TEST_DEV=1; pnpm test:e2e`).
 - Add or update tests for any code you change, even if not explicitly requested. Keep the suite green before committing.
+- Run test coverage (`unit` + `nuxt` projects; `e2e` is excluded): `pnpm test:coverage`. This produces `text`, `json-summary`, and `lcov` reports under the git-ignored `coverage/` directory, scoped to `app/`, `server/`, and `shared/`. Coverage is uploaded to Codecov in CI and is **report-only** (informational) — it does not currently gate merges.
 
 ## Code Style
 

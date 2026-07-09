@@ -4,6 +4,13 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary', 'lcov'],
+      reportsDirectory: 'coverage',
+      include: ['app/**', 'server/**', 'shared/**'],
+      exclude: ['test/**', '**/*.config.{ts,js,mjs,cjs}', '.nuxt/**', '.output/**', '**/*.d.ts'],
+    },
     projects: [
       {
         test: {
