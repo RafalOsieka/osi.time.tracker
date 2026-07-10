@@ -85,6 +85,7 @@ function openBulkAssign(ids: string[]) {
 
 async function onBulkAssigned() {
   await refreshEntries();
+  await fetchRunning();
 }
 
 // --- Mini editor ---
@@ -114,6 +115,7 @@ function openEditor(group: {
 
 async function onTaskUpdated() {
   await refreshEntries();
+  await fetchRunning();
 }
 
 // --- Add entry ---
@@ -145,58 +147,60 @@ async function onEntryDeleted() {
   <section class="timer-view" data-testid="timer-view-page">
     <h2 class="timer-view__title">{{ t('timerView.pageTitle') }}</h2>
 
-    <EmptyState
-      v-if="isEmpty"
-      :message="t('timerView.emptyState')"
-      :cta-label="t('timerView.loadMore')"
-      testid="timer-view-empty-state"
-      @create="loadMore"
-    />
+    <ClientOnly>
+      <EmptyState
+        v-if="isEmpty"
+        :message="t('timerView.emptyState')"
+        :cta-label="t('timerView.loadMore')"
+        testid="timer-view-empty-state"
+        @create="loadMore"
+      />
 
-    <div v-else class="timer-view__days">
-      <div
-        v-for="day in days"
-        :key="day.dayKey"
-        class="timer-day"
-        :data-testid="`timer-day-${day.dayKey}`"
-      >
-        <div class="timer-day__heading">
-          <span class="timer-day__date">{{ dayHeading(day.date) }}</span>
-          <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
-            {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
-          </span>
-          <Button
-            :label="t('timerView.addEntry.buttonLabel')"
-            icon="pi pi-plus"
-            text
-            :data-testid="`timer-day-add-entry-${day.dayKey}`"
-            @click="openAddEntry(day.date)"
+      <div v-else class="timer-view__days">
+        <div
+          v-for="day in days"
+          :key="day.dayKey"
+          class="timer-day"
+          :data-testid="`timer-day-${day.dayKey}`"
+        >
+          <div class="timer-day__heading">
+            <span class="timer-day__date">{{ dayHeading(day.date) }}</span>
+            <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
+              {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
+            </span>
+            <Button
+              :label="t('timerView.addEntry.buttonLabel')"
+              icon="pi pi-plus"
+              text
+              :data-testid="`timer-day-add-entry-${day.dayKey}`"
+              @click="openAddEntry(day.date)"
+            />
+          </div>
+
+          <TimerTaskGroup
+            v-for="group in day.groups"
+            :key="group.key"
+            :group="group"
+            :is-live="isGroupLive(group)"
+            :now="now"
+            @continue="onContinue(group)"
+            @edit="openEditor(group)"
+            @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
+            @entry-changed="onEntryChanged"
+            @entry-deleted="onEntryDeleted"
           />
         </div>
 
-        <TimerTaskGroup
-          v-for="group in day.groups"
-          :key="group.key"
-          :group="group"
-          :is-live="isGroupLive(group)"
-          :now="now"
-          @continue="onContinue(group)"
-          @edit="openEditor(group)"
-          @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
-          @entry-changed="onEntryChanged"
-          @entry-deleted="onEntryDeleted"
-        />
+        <div class="timer-view__load-more">
+          <Button
+            :label="t('timerView.loadMore')"
+            text
+            data-testid="timer-view-load-more"
+            @click="loadMore"
+          />
+        </div>
       </div>
-
-      <div class="timer-view__load-more">
-        <Button
-          :label="t('timerView.loadMore')"
-          text
-          data-testid="timer-view-load-more"
-          @click="loadMore"
-        />
-      </div>
-    </div>
+    </ClientOnly>
 
     <TimerBulkAssignDialog
       v-model:visible="bulkAssignVisible"
