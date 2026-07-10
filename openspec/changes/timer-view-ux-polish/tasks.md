@@ -10,7 +10,7 @@
 - [x] 2.3 Create `app/components/TimeInput.vue`: text input, `v-model: string | null` (`HH:mm`), commit on blur/Enter, Escape cancels, invalid input silently reverts without model update; label and `data-testid` via props
 - [x] 2.4 Nuxt component tests for `TimeInput` (commit normalization, silent revert, Escape cancel, accessible label)
 
-## 3. Adopt TimeInput in the three time-entry locations (frontend)
+## 3. Adopt TimeInput in the th ree time-entry locations (frontend)
 
 - [x] 3.1 `TimerEntryRow.vue`: replace native `<input type="time">` for start and stop editing with `TimeInput`; keep combine-with-local-day logic and blur/Enter/Escape contract
 - [x] 3.2 `TimerAddEntryDialog.vue`: replace `InputText type="time"` start/end fields with `TimeInput`; keep inverted-times inline error

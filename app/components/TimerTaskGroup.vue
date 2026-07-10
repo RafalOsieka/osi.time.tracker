@@ -114,7 +114,7 @@ async function beginProjectEdit() {
 }
 
 async function commitProject(value: string | null) {
-  if (!props.group.taskId) return;
+  if (!editingProject.value || !props.group.taskId) return;
   editingProject.value = false;
   if (value === props.group.projectId) return;
   try {
@@ -131,6 +131,13 @@ async function commitProject(value: string | null) {
     });
   }
 }
+
+const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 3}ch`);
+const projectSelectWidth = computed(() => {
+  const selected = projectSelectOptions.value.find((p) => p.id === projectValue.value);
+  const label = selected ? selected.name : t('timerView.noProject');
+  return `${Math.max(label.length, 8) + 4}ch`;
+});
 
 const countLabel = computed(() => {
   const count = props.group.entries.length;
@@ -157,6 +164,8 @@ const countLabel = computed(() => {
         <InputText
           v-if="editingTitle"
           v-model="titleValue"
+          class="timer-group__title-input"
+          :style="{ width: titleInputWidth }"
           :aria-label="t('timerView.editLabel')"
           :data-testid="`timer-group-title-input-${group.key}`"
           @blur="commitTitle"
@@ -181,9 +190,12 @@ const countLabel = computed(() => {
           option-label="name"
           option-value="id"
           show-clear
+          class="timer-group__project-select"
+          :style="{ width: projectSelectWidth }"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-select-${group.key}`"
           @update:model-value="commitProject"
+          @hide="commitProject(projectValue)"
         />
         <Button
           v-else-if="!isUntitled"
@@ -290,5 +302,13 @@ const countLabel = computed(() => {
   display: grid;
   gap: 0.25rem;
   padding: 0.5rem 0 0.25rem 1.75rem;
+}
+
+.timer-group__title-input {
+  max-width: 100%;
+}
+
+.timer-group__project-select {
+  max-width: 100%;
 }
 </style>

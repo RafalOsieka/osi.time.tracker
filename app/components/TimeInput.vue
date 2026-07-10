@@ -54,6 +54,7 @@ function cancel() {
     :id="id"
     v-model="inputValue"
     inputmode="numeric"
+    class="time-input"
     :aria-label="label"
     :aria-describedby="describedby"
     :aria-invalid="invalid || undefined"
@@ -63,3 +64,11 @@ function cancel() {
     @keydown.esc.prevent="cancel"
   />
 </template>
+
+<style scoped>
+.time-input {
+  width: 5.5ch;
+  min-width: 5.5ch;
+  text-align: center;
+}
+</style>

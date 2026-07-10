@@ -29,6 +29,7 @@ const stopValue = ref(props.entry.stoppedAt ? isoToLocalTime(props.entry.stopped
 const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
+const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 1}ch`);
 
 async function startEditTitle() {
   editingField.value = null;
@@ -159,7 +160,8 @@ function onDelete() {
         v-model="titleValue"
         type="text"
         :aria-label="t('timerView.entryRow.titleLabel')"
-        class="timer-entry__input"
+        class="timer-entry__input timer-entry__title-input"
+        :style="{ width: titleInputWidth }"
         :data-testid="`timer-entry-title-input-${entry.id}`"
         @blur="commitTitle"
         @keydown.enter="commitTitle"
@@ -283,5 +285,9 @@ function onDelete() {
   border: 1px solid var(--p-content-border-color);
   border-radius: 4px;
   padding: 0.125rem 0.25rem;
+}
+
+.timer-entry__title-input {
+  max-width: 100%;
 }
 </style>
