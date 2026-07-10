@@ -5,7 +5,7 @@ import { formatDuration } from '~/utils/formatDuration';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const { t, locale } = useI18n();
-const { running, elapsedSeconds, start } = useTimer();
+const { running, elapsedSeconds, start, fetchRunning } = useTimer();
 
 const DEFAULT_WINDOW_DAYS = 7;
 const LOAD_MORE_DAYS = 7;
@@ -30,6 +30,7 @@ const { data: projectsData } = useAsyncData(
   { server: false },
 );
 const projectOptions = computed(() => projectsData.value ?? []);
+const activeEditorKey = ref<string | null>(null);
 
 const now = ref(Date.now());
 watch(elapsedSeconds, () => {
@@ -49,6 +50,18 @@ const displayEntries = computed<TimeEntryDto[]>(() => {
   return list;
 });
 
+let lastRunningId = running.value?.id ?? null;
+watch(
+  () => running.value?.id ?? null,
+  async (runningId) => {
+    const previousId = lastRunningId;
+    lastRunningId = runningId;
+    if ((previousId && !runningId) || (previousId && runningId && previousId !== runningId)) {
+      await refreshEntries();
+    }
+  },
+);
+
 const days = computed(() => groupTimeEntriesByDay(displayEntries.value, now.value));
 const isEmpty = computed(() => !entriesPending.value && days.value.length === 0);
 
@@ -63,6 +76,10 @@ function dayHeading(date: Date): string {
 
 function isGroupLive(group: { entries: TimeEntryDto[] }): boolean {
   return !!running.value && group.entries.some((e) => e.id === running.value!.id);
+}
+
+function startGroupEditing(groupKey: string) {
+  activeEditorKey.value = groupKey;
 }
 
 async function onContinue(group: { taskName: string | null; projectId: string | null }) {
@@ -88,41 +105,9 @@ async function onBulkAssigned() {
   await fetchRunning();
 }
 
-// --- Mini editor ---
-const editorVisible = ref(false);
-const editingTask = ref<{
-  id: string;
-  name: string;
-  projectId: string | null;
-  projectName: string | null;
-} | null>(null);
-
-function openEditor(group: {
-  taskId: string | null;
-  taskName: string | null;
-  projectId: string | null;
-  projectName: string | null;
-}) {
-  if (!group.taskId) return;
-  editingTask.value = {
-    id: group.taskId,
-    name: group.taskName ?? '',
-    projectId: group.projectId,
-    projectName: group.projectName,
-  };
-  editorVisible.value = true;
-}
-
-async function onTaskUpdated() {
-  await refreshEntries();
-  await fetchRunning();
-}
-
 // --- Add entry ---
 const addEntryVisible = ref(false);
 const addEntryDate = ref<Date | null>(null);
-const { fetchRunning } = useTimer();
-
 function openAddEntry(date: Date) {
   addEntryDate.value = date;
   addEntryVisible.value = true;
@@ -180,11 +165,14 @@ async function onEntryDeleted() {
           <TimerTaskGroup
             v-for="group in day.groups"
             :key="group.key"
+            :editor-key="`${day.dayKey}:${group.key}`"
             :group="group"
             :is-live="isGroupLive(group)"
             :now="now"
+            :active-editor-key="activeEditorKey"
+            :project-options="projectOptions"
+            @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
             @continue="onContinue(group)"
-            @edit="openEditor(group)"
             @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
             @entry-changed="onEntryChanged"
             @entry-deleted="onEntryDeleted"
@@ -207,13 +195,6 @@ async function onEntryDeleted() {
       :ids="bulkAssignIds"
       :project-options="projectOptions"
       @assigned="onBulkAssigned"
-    />
-
-    <TimerTaskEditorDialog
-      v-model:visible="editorVisible"
-      :task="editingTask"
-      :project-options="projectOptions"
-      @updated="onTaskUpdated"
     />
 
     <TimerAddEntryDialog

@@ -3,26 +3,50 @@ import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
 import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
+import { useToast } from 'primevue/usetoast';
 
-const props = defineProps<{
-  group: TimerViewGroup;
-  isLive: boolean;
-  now: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    group: TimerViewGroup;
+    isLive: boolean;
+    now: number;
+    editorKey: string;
+    activeEditorKey?: string | null;
+    projectOptions?: ProjectDto[];
+  }>(),
+  { activeEditorKey: null, projectOptions: () => [] },
+);
 
 const emit = defineEmits<{
   continue: [];
-  edit: [];
   'bulk-assign': [];
   'entry-changed': [];
   'entry-deleted': [];
+  'editing-started': [];
 }>();
 
 const { t } = useI18n();
+const toast = useToast();
+const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
 const entriesId = computed(() => `timer-group-entries-${props.group.key}`);
 const isUntitled = computed(() => props.group.key === UNTITLED_GROUP_KEY);
+const editingTitle = ref(false);
+const titleValue = ref('');
+const editingProject = ref(false);
+const projectValue = ref<string | null>(null);
+const projectSelect = ref<{ show: () => void; hide: () => void }>();
+
+watch(
+  () => props.activeEditorKey,
+  (activeKey) => {
+    if (activeKey === props.editorKey) return;
+    projectSelect.value?.hide();
+    editingTitle.value = false;
+    editingProject.value = false;
+  },
+);
 
 const contextLabel = computed(() => {
   if (!props.group.projectName) return null;
@@ -30,6 +54,83 @@ const contextLabel = computed(() => {
     ? `${props.group.projectName} · ${props.group.clientName}`
     : props.group.projectName;
 });
+
+const projectSelectOptions = computed(() => {
+  if (!props.group.projectId || props.projectOptions.some((p) => p.id === props.group.projectId)) {
+    return props.projectOptions;
+  }
+  return [
+    ...props.projectOptions,
+    {
+      id: props.group.projectId,
+      name: props.group.projectName ?? '',
+      clientId: '',
+      clientName: props.group.clientName ?? '',
+      createdAt: '',
+    },
+  ];
+});
+
+async function beginTitleEdit() {
+  emit('editing-started');
+  projectSelect.value?.hide();
+  editingProject.value = false;
+  titleValue.value = props.group.taskName ?? '';
+  editingTitle.value = true;
+  await nextTick();
+  document
+    .querySelector<HTMLInputElement>(`[data-testid="timer-group-title-input-${props.group.key}"]`)
+    ?.focus();
+}
+
+function cancelTitleEdit() {
+  editingTitle.value = false;
+}
+
+async function commitTitle() {
+  if (!editingTitle.value || !props.group.taskId) return;
+  editingTitle.value = false;
+  const name = titleValue.value.trim();
+  if (!name || name === props.group.taskName) return;
+  try {
+    await $csrfFetch(`/api/tasks/${props.group.taskId}`, { method: 'PATCH', body: { name } });
+    emit('entry-changed');
+  } catch (err: unknown) {
+    toast.add({
+      severity: 'error',
+      summary: t(extractMessageKey(err, 'errors.unexpected')),
+      life: 4000,
+    });
+  }
+}
+
+async function beginProjectEdit() {
+  emit('editing-started');
+  editingTitle.value = false;
+  projectValue.value = props.group.projectId;
+  editingProject.value = true;
+  await nextTick();
+  projectSelect.value?.show();
+}
+
+async function commitProject(value: string | null) {
+  if (!props.group.taskId) return;
+  editingProject.value = false;
+  if (value === props.group.projectId) return;
+  try {
+    await $csrfFetch(`/api/tasks/${props.group.taskId}`, {
+      method: 'PATCH',
+      body: { name: props.group.taskName, projectId: value },
+    });
+    emit('entry-changed');
+  } catch (err: unknown) {
+    toast.add({
+      severity: 'error',
+      summary: t(extractMessageKey(err, 'errors.unexpected')),
+      life: 4000,
+    });
+  }
+}
 
 const countLabel = computed(() => {
   const count = props.group.entries.length;
@@ -42,18 +143,58 @@ const countLabel = computed(() => {
 <template>
   <div class="timer-group" :data-testid="`timer-group-${group.key}`">
     <div class="timer-group__row">
-      <button
-        type="button"
-        class="timer-group__toggle"
-        :aria-expanded="expanded"
-        :aria-controls="entriesId"
-        :data-testid="`timer-group-toggle-${group.key}`"
-        @click="expanded = !expanded"
-      >
-        <i :class="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'" aria-hidden="true" />
-        <span class="timer-group__name">{{ group.taskName ?? t('timerView.noTask') }}</span>
-        <span v-if="contextLabel" class="timer-group__context">{{ contextLabel }}</span>
-      </button>
+      <div class="timer-group__toggle">
+        <Button
+          :icon="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
+          text
+          rounded
+          :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
+          :aria-expanded="expanded"
+          :aria-controls="entriesId"
+          :data-testid="`timer-group-toggle-${group.key}`"
+          @click="expanded = !expanded"
+        />
+        <InputText
+          v-if="editingTitle"
+          v-model="titleValue"
+          :aria-label="t('timerView.editLabel')"
+          :data-testid="`timer-group-title-input-${group.key}`"
+          @blur="commitTitle"
+          @keydown.enter="commitTitle"
+          @keydown.esc="cancelTitleEdit"
+        />
+        <Button
+          v-else-if="!isUntitled"
+          class="timer-group__inline-button timer-group__name"
+          text
+          :label="group.taskName ?? ''"
+          :aria-label="t('timerView.editLabel')"
+          :data-testid="`timer-group-title-${group.key}`"
+          @click.stop="beginTitleEdit"
+        />
+        <span v-else class="timer-group__name">{{ t('timerView.noTask') }}</span>
+        <Select
+          v-if="editingProject"
+          ref="projectSelect"
+          v-model="projectValue"
+          :options="projectSelectOptions"
+          option-label="name"
+          option-value="id"
+          show-clear
+          :aria-label="t('timerView.editor.projectLabel')"
+          :data-testid="`timer-group-project-select-${group.key}`"
+          @update:model-value="commitProject"
+        />
+        <Button
+          v-else-if="!isUntitled"
+          class="timer-group__inline-button timer-group__context"
+          text
+          :label="contextLabel ?? t('timerView.noProject')"
+          :aria-label="t('timerView.editor.projectLabel')"
+          :data-testid="`timer-group-project-${group.key}`"
+          @click.stop="beginProjectEdit"
+        />
+      </div>
 
       <span class="timer-group__count">{{ countLabel }}</span>
 
@@ -73,15 +214,6 @@ const countLabel = computed(() => {
         :aria-label="t('timerView.continueLabel')"
         :data-testid="`timer-group-continue-${group.key}`"
         @click="emit('continue')"
-      />
-      <Button
-        v-if="!isUntitled"
-        icon="pi pi-pencil"
-        text
-        rounded
-        :aria-label="t('timerView.editLabel')"
-        :data-testid="`timer-group-edit-${group.key}`"
-        @click="emit('edit')"
       />
       <Button
         v-else
@@ -128,11 +260,7 @@ const countLabel = computed(() => {
   align-items: center;
   gap: 0.5rem;
   flex: 1;
-  background: none;
-  border: none;
-  cursor: pointer;
   text-align: left;
-  font: inherit;
   color: inherit;
 }
 

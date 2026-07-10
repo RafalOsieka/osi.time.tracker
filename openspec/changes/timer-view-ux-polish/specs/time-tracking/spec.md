@@ -94,7 +94,7 @@ The application SHALL render the timer view as the home page at `/` (replacing t
 
 The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-NFR-034, shared-ui-components; the date is fixed by the day section). The form SHALL convert the local times to instants and submit them via `POST /api/time-entries` (REQ-TTR-036 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
 
-Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-NFR-034), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-TTR-039). Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different local day, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-TTR-050); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
+Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-NFR-034), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-TTR-039). Activating one of the row's inline editors SHALL cancel any other editor active in that row without committing, and the swapped-in input SHALL receive focus so editing starts with a single click. Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different local day, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-TTR-050); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
 
 The page SHALL observe the shell's running-timer state: when the running entry stops (including a stop triggered from the top-bar widget or a stop-on-new-start), the page SHALL refresh its entry list so the finished entry appears in its day/task group immediately, without a manual reload.
 
@@ -165,6 +165,8 @@ The group title SHALL be an activatable control that swaps to a text input; the 
 
 The project/client context SHALL be an activatable control that swaps to a project select with a clear option; when the task has no project, the group SHALL render a localized "(no project)" placeholder that is equally activatable. The select SHALL include the task's current project as an option even when that project has been soft-deleted. Committing a selection (including clearing) SHALL patch the task; dismissing without selection SHALL change nothing.
 
+Inline editing SHALL be single-click and exclusive: at most one inline editor (group title or group project, across all groups and days) SHALL be active at a time. Activating an editor SHALL cancel any other active inline editor — reverting its control to the read-only display without committing — and SHALL immediately make the new editor ready for input: the swapped-in text input SHALL receive focus, and the swapped-in project select SHALL open its option list, so no second click is required.
+
 On success the page SHALL update the affected groups (including regrouping when a merge occurred) and refresh the running-timer state. The "(no task)" group SHALL NOT offer title or project editing (it has no task).
 
 #### Scenario: Inline rename from the group header
@@ -191,6 +193,14 @@ On success the page SHALL update the affected groups (including regrouping when 
 - **WHEN** a task group has no project assigned
 - **THEN** the group SHALL render a localized "(no project)" placeholder that the user can activate to assign a project inline
 
+#### Scenario: Project editor opens on a single click
+- **WHEN** the user activates the group's project context (or the "(no project)" placeholder)
+- **THEN** the project select SHALL render with its option list already open, without requiring a second click
+
+#### Scenario: Activating one editor cancels another
+- **WHEN** an inline editor is active in one group and the user activates a title or project editor elsewhere (in the same or a different group)
+- **THEN** the previously active editor SHALL close without committing, its control SHALL return to the read-only display, and the newly opened editor SHALL receive focus
+
 #### Scenario: Soft-deleted project retained in the select
 - **WHEN** the task's current project has been soft-deleted
 - **THEN** the project select SHALL still list it as the current option
@@ -200,11 +210,15 @@ On success the page SHALL update the affected groups (including regrouping when 
 - **THEN** it SHALL NOT offer inline title or project editing
 
 ### Requirement: REQ-NFR-028 Accessible, localized, tokenized timer view
-The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semantic headings/landmarks, expand/collapse controls SHALL be keyboard operable and expose their expanded state, action controls (continue, assign) SHALL be labelled, and the inline editors (group title, group project, entry fields, and the shared smart time inputs) SHALL be activatable buttons or labelled inputs with accessible names, keyboard operable including Escape to cancel, with the project select reachable and operable by keyboard. The page SHALL prefer existing PrimeVue components, derive styling from theme tokens (no ad-hoc inline colors), format dates and durations via the active locale, and keep all user-facing strings (including the "(no project)" placeholder) in `en` and `pl` in parity. Server/network failures SHALL surface as a Toast translated from the `{ messageKey, params }` contract.
+The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semantic headings/landmarks, expand/collapse controls SHALL be keyboard operable and expose their expanded state, action controls (continue, assign) SHALL be labelled, and the inline editors (group title, group project, entry fields, and the shared smart time inputs) SHALL be activatable buttons or labelled inputs with accessible names, keyboard operable including Escape to cancel, with the project select reachable and operable by keyboard. Interactive controls SHALL NOT be nested inside one another: a group header row that combines an expand/collapse action with inline edit triggers SHALL use a non-interactive layout container with the controls as siblings. The page SHALL prefer existing PrimeVue components — edit triggers and inline editors SHALL use PrimeVue `Button` and `InputText`/`Select` rather than native `<button>`/`<input>` elements — derive styling from theme tokens (no ad-hoc inline colors), format dates and durations via the active locale, and keep all user-facing strings (including the "(no project)" placeholder) in `en` and `pl` in parity. Server/network failures SHALL surface as a Toast translated from the `{ messageKey, params }` contract.
 
 #### Scenario: Group toggle is accessible
 - **WHEN** a task group's expand control is rendered
 - **THEN** it SHALL be keyboard operable and expose its expanded/collapsed state to assistive technology
+
+#### Scenario: No nested interactive controls in the group header
+- **WHEN** a group header renders the expand control together with the inline title/project edit triggers
+- **THEN** the controls SHALL be rendered as siblings inside a non-interactive container, with no button or input nested inside another interactive element
 
 #### Scenario: Inline group editors are accessible
 - **WHEN** a task group's title and project context are rendered

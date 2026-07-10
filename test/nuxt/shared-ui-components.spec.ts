@@ -5,12 +5,19 @@ import TableHeader from '../../app/components/TableHeader.vue';
 import EmptyState from '../../app/components/EmptyState.vue';
 import RowActions from '../../app/components/RowActions.vue';
 import FormFieldWrap from '../../app/components/FormFieldWrap.vue';
+import TimeInput from '../../app/components/TimeInput.vue';
 
 const ButtonStub = {
   props: ['label', 'icon', 'ariaLabel'],
   emits: ['click'],
   template:
     '<button v-bind="$attrs" :aria-label="ariaLabel" @click="$emit(\'click\')">{{ label }}</button>',
+};
+const InputTextStub = {
+  template:
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+  props: ['modelValue', 'inputmode'],
+  emits: ['update:modelValue'],
 };
 
 describe('TableHeader', () => {
@@ -109,5 +116,58 @@ describe('FormFieldWrap', () => {
     expect(error.exists()).toBe(true);
     expect(error.attributes('role')).toBe('alert');
     expect(error.text()).toContain('Name is required');
+  });
+});
+
+describe('TimeInput', () => {
+  function mount(modelValue = '08:00') {
+    return mountSuspended(TimeInput, {
+      props: { modelValue, label: 'Start time', testid: 'time-input' },
+      global: { stubs: { InputText: InputTextStub } },
+    });
+  }
+
+  it('has an accessible label and commits a normalized compact value on blur', async () => {
+    const wrapper = await mount();
+    const input = wrapper.find<HTMLInputElement>('[data-testid="time-input"]');
+
+    expect(input.attributes('aria-label')).toBe('Start time');
+    await input.setValue('900');
+    await input.trigger('blur');
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([['09:00']]);
+    expect(input.element.value).toBe('09:00');
+  });
+
+  it('commits a normalized value on Enter', async () => {
+    const wrapper = await mount();
+    const input = wrapper.find('[data-testid="time-input"]');
+
+    await input.setValue('93');
+    await input.trigger('keydown.enter');
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([['09:30']]);
+  });
+
+  it('silently reverts invalid input without updating the model', async () => {
+    const wrapper = await mount();
+    const input = wrapper.find<HTMLInputElement>('[data-testid="time-input"]');
+
+    await input.setValue('59');
+    await input.trigger('blur');
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+    expect(input.element.value).toBe('08:00');
+  });
+
+  it('reverts on Escape without updating the model', async () => {
+    const wrapper = await mount();
+    const input = wrapper.find<HTMLInputElement>('[data-testid="time-input"]');
+
+    await input.setValue('12:30');
+    await input.trigger('keydown.esc');
+
+    expect(wrapper.emitted('update:modelValue')).toBeUndefined();
+    expect(input.element.value).toBe('08:00');
   });
 });

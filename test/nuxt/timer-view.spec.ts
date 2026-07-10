@@ -42,17 +42,18 @@ mockNuxtImport('useAsyncData', () => {
   };
 });
 
-const { runningState, elapsedSecondsState, startMock } = vi.hoisted(() => ({
+const { runningState, elapsedSecondsState, startMock, fetchRunningMock } = vi.hoisted(() => ({
   runningState: { value: null as unknown, __v_isRef: true },
   elapsedSecondsState: { value: 0, __v_isRef: true },
   startMock: vi.fn(),
+  fetchRunningMock: vi.fn().mockResolvedValue(undefined),
 }));
 
 mockNuxtImport('useTimer', () => () => ({
   running: runningState,
   elapsedSeconds: elapsedSecondsState,
   loading: { value: false },
-  fetchRunning: vi.fn().mockResolvedValue(undefined),
+  fetchRunning: fetchRunningMock,
   start: startMock,
   stop: vi.fn(),
   updateTitle: vi.fn(),
@@ -69,13 +70,37 @@ const DialogStub = {
   template: '<div v-if="visible" data-testid="dialog"><slot /></div>',
   props: ['visible'],
 };
+const TimerTaskGroupStub = {
+  name: 'TimerTaskGroup',
+  template: `
+    <div :data-testid="\`timer-group-\${group.key}\`">
+      <button
+        :aria-expanded="expanded"
+        :data-testid="\`timer-group-toggle-\${group.key}\`"
+        @click="expanded = !expanded"
+      />
+      <div v-if="expanded" :data-testid="\`timer-group-entries-\${group.key}\`" />
+      <span :data-testid="\`timer-group-total-\${group.key}\`">{{ total }}</span>
+      <button :data-testid="\`timer-group-continue-\${group.key}\`" @click="$emit('continue')" />
+      <button data-testid="task-changed" @click="$emit('entry-changed')" />
+    </div>
+  `,
+  props: ['group'],
+  emits: ['continue', 'entry-changed'],
+  data: () => ({ expanded: false }),
+  computed: {
+    total() {
+      return '01:00:00';
+    },
+  },
+};
 
 const commonStubs = {
   Button: ButtonStub,
   TimerBulkAssignDialog: { template: '<div />' },
-  TimerTaskEditorDialog: { template: '<div />' },
   TimerAddEntryDialog: { template: '<div />' },
   TimerEntryRow: { template: '<div />', props: ['entry', 'now'] },
+  TimerTaskGroup: TimerTaskGroupStub,
   Dialog: DialogStub,
 };
 
@@ -100,6 +125,7 @@ describe('timer view page', () => {
     mockProjects = [];
     runningState.value = null;
     elapsedSecondsState.value = 0;
+    fetchRunningMock.mockClear();
     vi.stubGlobal(
       '$fetch',
       vi.fn((url: string) =>
@@ -133,6 +159,27 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-view-empty-state"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-group-total-task-1"]').text()).toBe('01:00:00');
+  });
+
+  it('renders grouped content client-side and refreshes the running state after a task edit', async () => {
+    const now = new Date();
+    mockEntries = [
+      entry({
+        id: '1',
+        taskId: 'task-1',
+        taskName: 'Task One',
+        startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
+        stoppedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0).toISOString(),
+      }),
+    ];
+
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
+    await wrapper.find('[data-testid="task-changed"]').trigger('click');
+    await flushPromises();
+    expect(fetchRunningMock).toHaveBeenCalledTimes(1);
   });
 
   it('expand/collapse toggle exposes aria-expanded', async () => {

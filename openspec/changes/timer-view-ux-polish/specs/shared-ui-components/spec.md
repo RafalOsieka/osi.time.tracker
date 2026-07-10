@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: REQ-NFR-034 Shared smart time input component
-The application SHALL provide a reusable time-input component with an `HH:mm` string model (nullable) backed by a plain text input and a pure, unit-testable normalization function that forgivingly parses keyboard input into a valid `HH:mm` value. The parser SHALL apply these deterministic rules:
+The application SHALL provide a reusable time-input component with an `HH:mm` string model (nullable) backed by a PrimeVue `InputText` (numeric input mode) and a pure, unit-testable normalization function that forgivingly parses keyboard input into a valid `HH:mm` value. The parser SHALL apply these deterministic rules:
 
 - one digit `H` → `0H:00` (e.g. `9` → `09:00`);
 - two digits forming a valid hour (`00`–`23`) → that hour with `:00` (e.g. `23` → `23:00`);

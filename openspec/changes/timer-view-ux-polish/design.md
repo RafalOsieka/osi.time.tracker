@@ -26,9 +26,9 @@ Daily use of the timer view revealed UX friction and one data-freshness bug:
 
 ## Decisions
 
-### D1: Shared `TimeInput` — plain text input + pure parser (not `type="time"`, not `DatePicker time-only`)
+### D1: Shared `TimeInput` — text input + pure parser (not `type="time"`, not `DatePicker time-only`)
 
-A new `app/components/TimeInput.vue` with `v-model: string | null` (`HH:mm`) wrapping a text input, and a pure `normalizeTimeInput(raw: string): string | null` in `app/utils/` (unit-testable). Parser rules:
+A new `app/components/TimeInput.vue` with `v-model: string | null` (`HH:mm`) wrapping a PrimeVue `InputText` (`inputmode="numeric"`), and a pure `normalizeTimeInput(raw: string): string | null` in `app/utils/` (unit-testable). Parser rules:
 
 | Input | Result | Rule |
 |---|---|---|
@@ -69,6 +69,12 @@ The calendar affordance is valuable for dates. Fix scope: a manually typed valid
 `app/pages/index.vue` watches the `running` ref from `useTimer` and calls `refreshEntries()` when it transitions to `null` (or the running id changes) from an external cause (top-bar stop, stop-on-new-start). This closes the gap without new events or global state.
 
 - *Alternative — event bus / callback from `useTimer.stop()`*: more plumbing for the same effect; the watcher is local to the only page that needs it.
+
+### D5: Single-click, exclusive inline editing on PrimeVue controls (post-implementation follow-up)
+
+All inline edit triggers and editors use PrimeVue components (`Button` text variant for triggers, `InputText`/`Select` for editors) instead of native `<button>`/`<input>`; the group header is a non-interactive flex container so the expand `Button` and the edit triggers are siblings (no nested interactive controls). Editing is single-click and exclusive: activating an editor cancels the previously active one — within a component directly, and across groups via an `activeEditorKey` coordinated in `app/pages/index.vue` (`editor-key` prop + `editing-started` emit, keyed by day and group). After the swap the new text input is focused programmatically and the project `Select` is opened immediately via its `show()` method (`hide()` closes a leftover overlay), so no second click is ever required.
+
+- *Alternative — leave editors independent*: simpler, but stale open editors accumulate across groups and the select needed a second click. Rejected after UX feedback.
 
 ## Risks / Trade-offs
 

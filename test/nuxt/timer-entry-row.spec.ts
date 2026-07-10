@@ -40,9 +40,16 @@ const ButtonStub = {
   template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
   emits: ['click'],
 };
+const InputTextStub = {
+  template:
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+  props: ['modelValue', 'type', 'inputmode'],
+  emits: ['update:modelValue'],
+};
 
 const commonStubs = {
   Button: ButtonStub,
+  InputText: InputTextStub,
 };
 
 function makeEntry(overrides: Partial<TimeEntryDto> = {}): TimeEntryDto {
@@ -100,6 +107,51 @@ describe('TimerEntryRow', () => {
     expect(wrapper.find('[data-testid="timer-entry-title-input-entry-1"]').exists()).toBe(false);
   });
 
+  it('normalizes and commits a compact start time via PATCH', async () => {
+    csrfFetchMock.mockResolvedValue(makeEntry());
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: { entry: makeEntry(), now: Date.now() },
+      global: { stubs: commonStubs },
+    });
+
+    await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
+    const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
+    await input.setValue('900');
+    await input.trigger('blur');
+    await flushPromises();
+
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/time-entries/entry-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: { startedAt: new Date(2024, 2, 15, 9, 0).toISOString() },
+      }),
+    );
+  });
+
+  it('silently reverts an invalid stop time without sending a request', async () => {
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: { entry: makeEntry(), now: Date.now() },
+      global: { stubs: commonStubs },
+    });
+
+    await wrapper.find('[data-testid="timer-entry-stop-entry-1"]').trigger('click');
+    const input = wrapper.find('[data-testid="timer-entry-stop-input-entry-1"]');
+    await input.setValue('59');
+    await input.trigger('blur');
+    await flushPromises();
+
+    expect(csrfFetchMock).not.toHaveBeenCalled();
+    expect(
+      wrapper.find<HTMLInputElement>('[data-testid="timer-entry-stop-input-entry-1"]').element
+        .value,
+    ).toBe(
+      `${String(new Date(makeEntry().stoppedAt!).getHours()).padStart(2, '0')}:${String(
+        new Date(makeEntry().stoppedAt!).getMinutes(),
+      ).padStart(2, '0')}`,
+    );
+  });
+
   it('shows a confirmation before deleting and calls DELETE on accept', async () => {
     confirmRequireMock.mockImplementation((opts: { accept: () => void }) => {
       opts.accept();
@@ -119,6 +171,6 @@ describe('TimerEntryRow', () => {
       '/api/time-entries/entry-1',
       expect.objectContaining({ method: 'DELETE' }),
     );
-    expect(wrapper.emitted('deleted')).toBeTruthy();
+    expect(wrapper.emitted('deleted')).toHaveLength(1);
   });
 });

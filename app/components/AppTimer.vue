@@ -14,7 +14,8 @@ const overlayOpen = ref(false);
 
 const startEditorPopover = ref();
 const startDate = ref<Date | null>(null);
-const startTime = ref<Date | null>(null);
+const startDateText = ref('');
+const startTime = ref<string | null>(null);
 const startEditorError = ref('');
 const savingStartedAt = ref(false);
 
@@ -110,15 +111,43 @@ function openStartEditor(event: Event) {
   if (!running.value) return;
   const current = new Date(running.value.startedAt);
   startDate.value = current;
-  startTime.value = current;
+  startDateText.value = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
+  startTime.value = `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`;
   startEditorError.value = '';
   startEditorPopover.value?.toggle(event);
+}
+
+function commitStartDateText() {
+  const match = startDateText.value.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (!match) {
+    if (startDate.value) {
+      startDateText.value = `${startDate.value.getFullYear()}-${String(startDate.value.getMonth() + 1).padStart(2, '0')}-${String(startDate.value.getDate()).padStart(2, '0')}`;
+    }
+    return;
+  }
+  const candidate = new Date(Number(match[1]!), Number(match[2]!) - 1, Number(match[3]!));
+  if (
+    candidate.getFullYear() !== Number(match[1]!) ||
+    candidate.getMonth() !== Number(match[2]!) - 1 ||
+    candidate.getDate() !== Number(match[3]!)
+  ) {
+    commitStartDateText();
+    return;
+  }
+  startDate.value = candidate;
+  startDateText.value = `${match[1]}-${String(candidate.getMonth() + 1).padStart(2, '0')}-${String(candidate.getDate()).padStart(2, '0')}`;
+}
+
+function onStartDateInput(event: Event) {
+  const target = event.target as HTMLInputElement;
+  if (target?.value !== undefined) startDateText.value = target.value;
 }
 
 function combineStartedAt(): Date | null {
   if (!startDate.value || !startTime.value) return null;
   const combined = new Date(startDate.value);
-  combined.setHours(startTime.value.getHours(), startTime.value.getMinutes(), 0, 0);
+  const [hours = 0, minutes = 0] = startTime.value.split(':').map(Number);
+  combined.setHours(hours, minutes, 0, 0);
   return combined;
 }
 
@@ -164,17 +193,16 @@ async function onSaveStartedAt() {
       </template>
     </AutoComplete>
 
-    <button
+    <Button
       v-if="isRunning"
-      type="button"
       class="app-timer__elapsed app-timer__elapsed-trigger"
+      text
+      :label="elapsedLabel"
       role="timer"
       :aria-label="t('timer.editStartLabel')"
       data-testid="timer-elapsed"
       @click="openStartEditor"
-    >
-      {{ elapsedLabel }}
-    </button>
+    />
     <span
       v-else
       class="app-timer__elapsed"
@@ -195,16 +223,18 @@ async function onSaveStartedAt() {
             date-format="yy-mm-dd"
             show-icon
             data-testid="timer-start-editor-date-input"
+            @input="onStartDateInput"
+            @blur="commitStartDateText"
+            @keydown.enter.prevent="commitStartDateText"
           />
         </div>
         <div class="timer-start-editor__field">
           <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
-          <DatePicker
+          <TimeInput
+            id="timer-start-editor-time"
             v-model="startTime"
-            input-id="timer-start-editor-time"
-            time-only
-            hour-format="24"
-            data-testid="timer-start-editor-time-input"
+            :label="t('timer.startEditor.timeLabel')"
+            testid="timer-start-editor-time-input"
           />
         </div>
         <p
