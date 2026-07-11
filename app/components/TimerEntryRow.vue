@@ -29,20 +29,36 @@ const stopValue = ref(props.entry.stoppedAt ? isoToLocalTime(props.entry.stopped
 const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
+const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 1}ch`);
 
-function startEditTitle() {
+async function startEditTitle() {
+  editingField.value = null;
   titleValue.value = props.entry.taskName ?? '';
   editingField.value = 'title';
+  await nextTick();
+  document
+    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-title-input-${props.entry.id}"]`)
+    ?.focus();
 }
 
-function startEditStart() {
+async function startEditStart() {
+  editingField.value = null;
   startValue.value = isoToLocalTime(props.entry.startedAt);
   editingField.value = 'start';
+  await nextTick();
+  document
+    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-start-input-${props.entry.id}"]`)
+    ?.focus();
 }
 
-function startEditStop() {
+async function startEditStop() {
+  editingField.value = null;
   stopValue.value = props.entry.stoppedAt ? isoToLocalTime(props.entry.stoppedAt) : '';
   editingField.value = 'stop';
+  await nextTick();
+  document
+    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-stop-input-${props.entry.id}"]`)
+    ?.focus();
 }
 
 function cancelEdit() {
@@ -139,78 +155,72 @@ function onDelete() {
 <template>
   <div class="timer-entry" :data-testid="`timer-entry-${entry.id}`">
     <span class="timer-entry__title">
-      <input
+      <InputText
         v-if="editingField === 'title'"
         v-model="titleValue"
         type="text"
         :aria-label="t('timerView.entryRow.titleLabel')"
-        class="timer-entry__input"
+        class="timer-entry__input timer-entry__title-input"
+        :style="{ width: titleInputWidth }"
         :data-testid="`timer-entry-title-input-${entry.id}`"
         @blur="commitTitle"
         @keydown.enter="commitTitle"
         @keydown.esc="cancelEdit"
       />
-      <button
+      <Button
         v-else
-        type="button"
         class="timer-entry__edit-trigger"
+        text
+        :label="entry.taskName ?? t('timerView.noTask')"
         :aria-label="t('timerView.entryRow.titleLabel')"
         :data-testid="`timer-entry-title-${entry.id}`"
         @click="startEditTitle"
-      >
-        {{ entry.taskName ?? t('timerView.noTask') }}
-      </button>
+      />
     </span>
 
     <span class="timer-entry__range">
       <template v-if="editingField === 'start'">
-        <input
+        <TimeInput
           v-model="startValue"
-          type="time"
-          :aria-label="t('timerView.entryRow.startLabel')"
+          :label="t('timerView.entryRow.startLabel')"
           class="timer-entry__input"
-          :data-testid="`timer-entry-start-input-${entry.id}`"
-          @blur="commitStart"
-          @keydown.enter="commitStart"
-          @keydown.esc="cancelEdit"
+          :testid="`timer-entry-start-input-${entry.id}`"
+          @commit="commitStart"
+          @cancel="cancelEdit"
         />
       </template>
-      <button
+      <Button
         v-else
-        type="button"
         class="timer-entry__edit-trigger"
+        text
+        :label="formatTime(entry.startedAt, locale)"
         :aria-label="t('timerView.entryRow.startLabel')"
         :data-testid="`timer-entry-start-${entry.id}`"
         @click="startEditStart"
-      >
-        {{ formatTime(entry.startedAt, locale) }}
-      </button>
+      />
 
       <span aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
 
       <template v-if="entry.stoppedAt">
         <template v-if="editingField === 'stop'">
-          <input
+          <TimeInput
             v-model="stopValue"
-            type="time"
-            :aria-label="t('timerView.entryRow.stopLabel')"
+            :label="t('timerView.entryRow.stopLabel')"
             class="timer-entry__input"
-            :data-testid="`timer-entry-stop-input-${entry.id}`"
-            @blur="commitStop"
-            @keydown.enter="commitStop"
-            @keydown.esc="cancelEdit"
+            :testid="`timer-entry-stop-input-${entry.id}`"
+            @commit="commitStop"
+            @cancel="cancelEdit"
           />
         </template>
-        <button
+        <Button
           v-else
-          type="button"
           class="timer-entry__edit-trigger"
+          text
+          :label="formatTime(entry.stoppedAt, locale)"
           :aria-label="t('timerView.entryRow.stopLabel')"
           :data-testid="`timer-entry-stop-${entry.id}`"
           @click="startEditStop"
-        >
-          {{ formatTime(entry.stoppedAt, locale) }}
-        </button>
+        />
       </template>
       <span v-else>{{ t('timerView.entryRow.nowLabel') }}</span>
     </span>
@@ -275,5 +285,9 @@ function onDelete() {
   border: 1px solid var(--p-content-border-color);
   border-radius: 4px;
   padding: 0.125rem 0.25rem;
+}
+
+.timer-entry__title-input {
+  max-width: 100%;
 }
 </style>

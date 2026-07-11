@@ -71,10 +71,22 @@ const PopoverStub = {
 };
 const DatePickerStub = {
   template:
-    '<input :data-testid="$attrs[\'data-testid\']" :value="modelValue" @input="$emit(\'update:modelValue\', new Date($event.target.value))" />',
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'input\', $event)" @blur="$emit(\'blur\')" @keydown="$emit(\'keydown\', $event)" />',
   props: ['modelValue', 'inputId', 'dateFormat', 'showIcon', 'timeOnly', 'hourFormat'],
+  emits: ['update:modelValue', 'input', 'blur', 'keydown'],
+};
+const InputTextStub = {
+  template:
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+  props: ['modelValue', 'inputmode'],
   emits: ['update:modelValue'],
 };
+
+function localDateInputValue(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 function runningEntry(taskName: string | null = 'My Task') {
   return {
@@ -268,6 +280,7 @@ describe('AppTimer', () => {
             Button: ButtonStub,
             Popover: PopoverStub,
             DatePicker: DatePickerStub,
+            InputText: InputTextStub,
           },
         },
       });
@@ -290,9 +303,13 @@ describe('AppTimer', () => {
       await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
 
       const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
-      const timeInput = wrapper.find('[data-testid="timer-start-editor-time-input"]');
+      const timeInput = wrapper.find<HTMLInputElement>(
+        '[data-testid="timer-start-editor-time-input"]',
+      );
       expect(new Date(dateInput.attributes('value')!).getTime()).toBe(startedAt.getTime());
-      expect(new Date(timeInput.attributes('value')!).getTime()).toBe(startedAt.getTime());
+      expect(timeInput.element.value).toBe(
+        `${String(startedAt.getHours()).padStart(2, '0')}:${String(startedAt.getMinutes()).padStart(2, '0')}`,
+      );
     });
 
     it('blocks a future start with an inline error and does not call updateStartedAt', async () => {
@@ -304,10 +321,16 @@ describe('AppTimer', () => {
       const future = new Date(Date.now() + 60 * 60 * 1000);
       await wrapper
         .find('[data-testid="timer-start-editor-date-input"]')
-        .setValue(future.toString());
+        .setValue(localDateInputValue(future));
+      // Commit the typed date (blur) so the check does not fall back to today's
+      // date when now + 1h crosses midnight.
+      await wrapper.find('[data-testid="timer-start-editor-date-input"]').trigger('blur');
       await wrapper
         .find('[data-testid="timer-start-editor-time-input"]')
-        .setValue(future.toString());
+        .setValue(
+          `${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`,
+        );
+      await wrapper.find('[data-testid="timer-start-editor-time-input"]').trigger('blur');
       await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
 
       expect(updateStartedAtMock).not.toHaveBeenCalled();
@@ -323,11 +346,58 @@ describe('AppTimer', () => {
       await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
 
       const past = new Date(Date.now() - 60 * 60 * 1000);
-      await wrapper.find('[data-testid="timer-start-editor-date-input"]').setValue(past.toString());
-      await wrapper.find('[data-testid="timer-start-editor-time-input"]').setValue(past.toString());
+      await wrapper
+        .find('[data-testid="timer-start-editor-date-input"]')
+        .setValue(localDateInputValue(past));
+      // Commit the typed date (blur) so the check does not fall back to today's
+      // date when now - 1h crosses midnight backwards.
+      await wrapper.find('[data-testid="timer-start-editor-date-input"]').trigger('blur');
+      await wrapper
+        .find('[data-testid="timer-start-editor-time-input"]')
+        .setValue(
+          `${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}`,
+        );
+      await wrapper.find('[data-testid="timer-start-editor-time-input"]').trigger('blur');
       await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
 
       expect(updateStartedAtMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('commits an unpadded typed date and compact typed time', async () => {
+      runningState.value = runningEntry();
+      const wrapper = await mount();
+
+      await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
+      const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
+      await dateInput.setValue('2024-7-9');
+      await dateInput.trigger('blur');
+      const timeInput = wrapper.find<HTMLInputElement>(
+        '[data-testid="timer-start-editor-time-input"]',
+      );
+      await timeInput.setValue('900');
+      await timeInput.trigger('blur');
+      await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
+
+      const committedDate = wrapper.findComponent(DatePickerStub).props('modelValue') as Date;
+      expect(committedDate.getFullYear()).toBe(2024);
+      expect(committedDate.getMonth()).toBe(6);
+      expect(committedDate.getDate()).toBe(9);
+      expect(updateStartedAtMock).toHaveBeenCalledWith(new Date(2024, 6, 9, 9, 0).toISOString());
+      expect(timeInput.element.value).toBe('09:00');
+    });
+
+    it('reverts garbage date text without sending an update', async () => {
+      runningState.value = runningEntry();
+      const wrapper = await mount();
+
+      await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
+      const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
+      const originalDate = wrapper.findComponent(DatePickerStub).props('modelValue') as Date;
+      await dateInput.setValue('garbage');
+      await dateInput.trigger('blur');
+
+      expect(wrapper.findComponent(DatePickerStub).props('modelValue')).toBe(originalDate);
+      expect(updateStartedAtMock).not.toHaveBeenCalled();
     });
   });
 });

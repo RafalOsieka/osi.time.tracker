@@ -112,24 +112,24 @@ async function onSave() {
       <div class="add-entry-form__times">
         <div class="add-entry-form__time-field">
           <label for="add-entry-start-time">{{ t('timerView.addEntry.startLabel') }}</label>
-          <InputText
+          <TimeInput
             id="add-entry-start-time"
             v-model="startTime"
-            type="time"
+            :label="t('timerView.addEntry.startLabel')"
             :aria-invalid="!!rangeError"
             :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
-            data-testid="add-entry-start-input"
+            testid="add-entry-start-input"
           />
         </div>
         <div class="add-entry-form__time-field">
           <label for="add-entry-end-time">{{ t('timerView.addEntry.endLabel') }}</label>
-          <InputText
+          <TimeInput
             id="add-entry-end-time"
             v-model="endTime"
-            type="time"
+            :label="t('timerView.addEntry.endLabel')"
             :aria-invalid="!!rangeError"
             :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
-            data-testid="add-entry-end-input"
+            testid="add-entry-end-input"
           />
         </div>
       </div>

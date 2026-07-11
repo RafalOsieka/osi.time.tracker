@@ -95,7 +95,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector('[data-testid="bulk-assign-dialog"]', { state: 'hidden' });
     await page.waitForFunction(() => document.body.textContent?.includes('Bulk Assigned Task'));
 
-    // --- Mini-editor rename merge ---
+    // --- Inline rename merge ---
     // Create a second entry under a task with the same target name to force a merge on rename.
     const other = await startEntry(jar, token, { title: 'UI Timer Task Duplicate' });
     await stopEntry(jar, token, other.id);
@@ -110,11 +110,15 @@ describeTimerViewUI('timer view UI flow', async () => {
         hasText: 'UI Timer Task Duplicate',
       })
       .first();
-    await duplicateGroup.locator('[data-testid^="timer-group-edit-"]').click();
-    await page.waitForSelector('[data-testid="timer-task-editor-dialog"]');
-    await page.fill('[data-testid="timer-task-editor-name-input"]', 'UI Timer Task');
-    await page.click('[data-testid="timer-task-editor-dialog"] [data-testid="save-button"]');
-    await page.waitForSelector('[data-testid="timer-task-editor-dialog"]', { state: 'hidden' });
+    await duplicateGroup
+      .locator('[data-testid^="timer-group-title-"]:not([data-testid*="title-input"])')
+      .click();
+    // After the click the group's visible text changes (button → input), so the
+    // hasText-filtered group locator no longer matches; find the single active
+    // title input globally instead.
+    const renameInput = page.locator('[data-testid^="timer-group-title-input-"]');
+    await renameInput.fill('UI Timer Task');
+    await renameInput.press('Enter');
     await page.waitForFunction(
       () => !document.body.textContent?.includes('UI Timer Task Duplicate'),
     );
@@ -198,6 +202,84 @@ describeTimerViewUI('timer view UI flow', async () => {
     expect(await page.isVisible('[data-testid="add-entry-dialog"]')).toBe(true);
 
     await page.click('[data-testid="add-entry-dialog"] [data-testid="cancel-button"]');
+    await page.close();
+  });
+
+  it('assigns a project inline via the "(no project)" placeholder', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+
+    const clientRes = await fetch(url('/api/clients'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Inline Assign Client ' + Date.now() }),
+    });
+    const client = await clientRes.json();
+    const projectRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Inline Assign Project', clientId: client.id }),
+    });
+    const project = await projectRes.json();
+    expect(project.id).toBeDefined();
+
+    const seeded = await startEntry(jar, token, { title: 'Inline Project Assign Task' });
+    await stopEntry(jar, token, seeded.id);
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(() =>
+      document.body.textContent?.includes('Inline Project Assign Task'),
+    );
+
+    const group = page
+      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
+        hasText: 'Inline Project Assign Task',
+      })
+      .first();
+
+    // The "(no project)" placeholder is an activatable button; one click swaps in
+    // the project select with its option list already open.
+    await group
+      .locator('[data-testid^="timer-group-project-"]:not([data-testid*="project-select"])')
+      .click();
+    const option = page.locator('.p-select-option', { hasText: 'Inline Assign Project' }).first();
+    await option.click();
+
+    await page.waitForFunction(() =>
+      document
+        .querySelector('[data-testid^="timer-group-project-"]')
+        ?.closest('body')
+        ?.textContent?.includes('Inline Assign Project'),
+    );
+    const groupText = await group.textContent();
+    expect(groupText).toContain('Inline Assign Project');
+
+    await page.close();
+  });
+
+  it('shows a stopped entry in the timer view after stopping from the top-bar widget', async () => {
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    // Start a timer from the top-bar widget.
+    await page.fill('[data-testid="timer-title-input"] input', 'Topbar Stop Task');
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+    );
+
+    // Stop it from the top-bar widget; the timer view must refresh itself
+    // (no manual reload) and show the finished entry in its day/task group.
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Start',
+    );
+    await page.waitForFunction(() =>
+      document
+        .querySelector('[data-testid="timer-view-page"]')
+        ?.textContent?.includes('Topbar Stop Task'),
+    );
+
     await page.close();
   });
 
