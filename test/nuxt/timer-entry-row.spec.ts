@@ -42,9 +42,9 @@ const ButtonStub = {
 };
 const InputTextStub = {
   template:
-    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown.enter\', $event)" @keydown.esc="$emit(\'keydown.esc\', $event)" />',
   props: ['modelValue', 'type', 'inputmode'],
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'blur', 'keydown.enter', 'keydown.esc'],
 };
 
 const commonStubs = {
@@ -117,7 +117,7 @@ describe('TimerEntryRow', () => {
     await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
     const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
     await input.setValue('900');
-    await input.trigger('blur');
+    await input.trigger('keydown', { key: 'Enter' });
     await flushPromises();
 
     expect(csrfFetchMock).toHaveBeenCalledWith(
