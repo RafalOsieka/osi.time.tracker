@@ -116,7 +116,7 @@ describe('TimerEntryRow', () => {
 
     await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
     const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
-    await input.setValue('900');
+    await input.setValue('901');
     await input.trigger('keydown', { key: 'Enter' });
     await flushPromises();
 
@@ -124,7 +124,7 @@ describe('TimerEntryRow', () => {
       '/api/time-entries/entry-1',
       expect.objectContaining({
         method: 'PATCH',
-        body: { startedAt: new Date(2024, 2, 15, 9, 0).toISOString() },
+        body: { startedAt: new Date(2024, 2, 15, 9, 1).toISOString() },
       }),
     );
   });
