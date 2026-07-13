@@ -60,7 +60,7 @@ A `TimeEntry` optionally points to a `Task` — the task's name is what the user
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **User**               | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                                                                                                                                                                                 |
 | **Client**             | A company or person the user works for. Top-level grouping for projects. Holds remote system configuration for that client's issue tracker.                                                                                                                                                                                                      |
-| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. Stores system type, base URL, API credentials, adapter execution mode, and rounding rule.                                                                                                                                                                                     |
+| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. The full config (system type, base URL, adapter execution mode, rounding rule, and optional defaults for required remote fields) is stored in the database. For client-side mode (the only MVP mode) only the API secret/credential is held in the user's browser and never persisted server-side; backend-side mode (post-MVP) stores credentials encrypted server-side. |
 | **Project**            | A body of work for a Client. Contains tasks.                                                                                                                                                                                                                                                                                                     |
 | **Task**               | A derived unit of work grouping time entries. Auto-created or auto-matched when the user titles a time entry; renamed via the group header in the Timer View; hard-deleted (garbage-collected) when its last entry leaves. Has a name and an optional Project. No status, no number, no description. May optionally be linked to a remote issue. |
 | **TimeEntry**          | A single logged time interval (`startedAt` + `stoppedAt`; a running timer is an entry with no stop time). Carries no title of its own — its displayed title is the name of the Task it points to (`taskId` nullable ⇒ shown as "(no task)").                                                                                                     |
@@ -114,10 +114,9 @@ Log in (bootstrap-provisioned account; self-registration in V1.1)
                       ├─► Expand a group → edit individual entries (retitle = split/reassign)
                       ├─► Group header = mini task editor (rename Task, assign Project)
                       ├─► Continue (▶) → start a new entry on the same Task
-                      └─► (Optional) Link Task to remote issue → push entries
-                            ├─► Push single TimeEntry on demand
-                            └─► (V1.1) Push all entries for a day
-                                  (rounding applied per entry before push)
+                      └─► (Optional) Link Task to remote issue
+                            └─► Open the day's Remote Sync page → review rounded per-task totals + required fields → push the day
+                                  (one remote log per task; pushed entries and their tasks lock)
 ```
 
 ---
@@ -138,7 +137,7 @@ Log in (bootstrap-provisioned account; self-registration in V1.1)
       └──────────────────┘
 ```
 
-A running timer **is** a TimeEntry with no stop time — persisted server-side, at most one per user. A time entry can also be created directly in the `Stopped` state via manual entry (no timer involved). Duration is always derived from the two timestamps.
+A running timer **is** a TimeEntry with no stop time — persisted server-side, at most one per user. A time entry can also be created directly in the `Stopped` state via manual entry (no timer involved). Duration is always derived from the two timestamps. Once pushed via Remote Sync, an entry is **locked** (start/stop immutable, no delete) and a task holding any locked entry is locked (Project/Client immutable); the remote is never auto-mutated, retries are duplicate-safe, and there is no unlock in MVP (see the Push lock cascade and NFR 8.8).
 
 ---
 
@@ -150,9 +149,10 @@ Remote integration is configured at the **Client** level via a `RemoteSystemConf
 
 - **System type** (e.g. `redmine`, `openproject`)
 - **Base URL** of the remote system
-- **API credentials** (API key or token, stored securely per user)
+- **API credentials** (API key or token) — storage depends on execution mode: **client-side** configs (**the only MVP mode**) keep them **only in the user's browser** and never persist them to the server (the rest of the config is still stored in the database); **backend-side** configs (**post-MVP**) store them **encrypted server-side**.
 - **Adapter execution mode** (`client-side` or `backend-side` — see below)
 - **Rounding rule** (e.g. round up to nearest 15 minutes)
+- **Required remote fields** — some systems require extra fields on a time log (e.g. Redmine `activity_id`). The config may store adapter-fetched defaults; values can also be chosen on the Remote Sync page at push time.
 
 A `Task` may optionally hold a `RemoteIssueRef` — a lightweight reference to a specific issue in the client's remote system. It stores only:
 
@@ -167,22 +167,22 @@ The user can browse and search issues from the configured remote system directly
 1. **Link from a Task's group row in the Timer View** — pick a remote issue from a search/browse dialog to attach a `RemoteIssueRef` to the task.
 2. **Start time entry from remote issue** — a dedicated view lists open remote issues; the user selects one and immediately starts a timer, with the task and remote link pre-populated.
 
-### Push Flow
+### Remote Sync (day-level push)
 
-**Single entry push (MVP):** The user triggers a push for one `TimeEntry`:
+From the Timer view the user opens a **Remote Sync** page for a selected day. It lists that day's **pushable tasks** — tasks with entries that day whose Project → Client has a `RemoteSystemConfig`. Each row shows:
 
-1. The adapter reads the `RemoteSystemConfig` from the parent `Client` (base URL, credentials, rounding rule).
-2. The adapter reads the `RemoteIssueRef` from the parent `Task` to identify the target issue.
-3. The adapter applies the configured **rounding rule** (if any) to the duration.
-4. The adapter calls the remote API to create a time entry on the remote issue.
-5. The result (success / error) is shown to the user. The local `TimeEntry` is marked as pushed.
+- the Task and its **rounded aggregate time** for the day (the day's entries for the task summed, then rounded once via the configured rounding rule);
+- the linked **remote issue** (assignable/changeable inline if not yet linked);
+- any **required remote fields** for that system (adapter-provided options where available, otherwise plain input; a task's previously used value pre-filled where possible).
 
-**Day-level bulk push (V1.1):** The user selects a day and triggers a push for all unpushed entries that have a `RemoteIssueRef`:
+On confirm, a single action pushes the day: for each pushable task the adapter creates **one remote time log** against the linked issue with the rounded duration and required fields. A per-task success/failure summary is shown.
 
-1. The system collects all unpushed `TimeEntry` records for the selected day that are linked to a remote issue.
-2. For each entry, the adapter applies the configured rounding rule to the duration.
-3. Each rounded entry is pushed to its respective remote issue via the adapter.
-4. A summary of successes and failures is shown. Successfully pushed entries are marked as pushed.
+### Push lock cascade
+
+- On successful push, that day's pushed `TimeEntry` records are **locked**: their start/stop times cannot be edited and they cannot be deleted.
+- A `Task` that holds **any** locked entry is itself **locked**: its Project/Client cannot be changed (protecting the pushable grouping).
+- The remote counterpart is **never** auto-updated or deleted; there is **no unlock in MVP**.
+- Push retry is **idempotency-guarded** via the stored remote log ID so retries never create duplicates.
 
 ### Rounding
 
@@ -197,17 +197,19 @@ Some remote systems are hosted behind a client's VPN and are not reachable from 
 | **Backend-side** | Application server | Remote system is publicly reachable; API calls are made server-to-server.                 |
 | **Client-side**  | User's browser     | Remote system is behind a VPN; the browser (already on the VPN) makes API calls directly. |
 
-The execution mode is configured per `RemoteSystemConfig`. The adapter interface is identical in both modes; only the execution context differs. CORS must be enabled on the remote system for client-side mode to work.
+The execution mode is configured per `RemoteSystemConfig`. **MVP ships only the client-side mode**, where credentials are entered and held **only in the user's browser** and are never persisted to the server (the rest of the config still lives in the database). **Backend-side** mode (credentials encrypted server-side, server-to-server calls) is a **post-MVP** capability. The adapter interface is identical in both modes; only the execution context and credential handling differ. CORS must be enabled on the remote system for client-side mode to work.
 
 ### Adapter Model
 
 Each supported remote system is implemented as an **adapter** (plugin). The adapter interface is stable; new systems can be added without changing core logic.
 
-| Adapter        | Status |
-| -------------- | ------ |
-| Redmine        | MVP    |
-| OpenProject    | MVP    |
-| _(extensible)_ | Future |
+Each adapter is implemented as a **transport-agnostic core** (request building + response parsing) in `shared/`, wrapped by thin **server-side** and **browser-side** transports that supply authentication and handle CORS. The core is identical across execution modes; only the transport differs. **For MVP, only the OpenProject adapter and only the browser-side transport are built**; the Redmine adapter and the server-side transport are deferred to the end of / after MVP.
+
+| Adapter        | Status                |
+| -------------- | --------------------- |
+| OpenProject    | MVP                   |
+| Redmine        | End of MVP (deferred) |
+| _(extensible)_ | Future                |
 
 ---
 

@@ -93,7 +93,7 @@ Conventions that apply to every story:
 
 ---
 
-## 7. User settings (timezone & week start)
+## 7. User settings (timezone & week start) ✅ Delivered
 
 > **As a user, I want to set my timezone and week-start day, so times and weekly reports display correctly for me.** (WBS 7.1, 7.2)
 
@@ -125,34 +125,48 @@ Conventions that apply to every story:
 
 **Acceptance criteria**
 
-- I can configure a RemoteSystemConfig on a Client: system type (redmine/openproject), base URL, API credentials, execution mode (backend/client), and rounding rule.
-- My credentials are stored encrypted and never returned to the client in plaintext.
+- I can configure a RemoteSystemConfig on a Client: system type (redmine/openproject), base URL, API credentials, execution mode (backend/client), and rounding rule. The full config except the API secret is stored in the database.
+- For **client-side** configs (**the only MVP mode**), my credentials are entered and kept **only in my browser** and are never persisted to the server, while the rest of the config is still stored in the database.
+- (Post-MVP) For **backend-side** configs, my credentials are stored encrypted and never returned to the client in plaintext.
+- I can optionally set defaults for the remote system's **required fields** (e.g. Redmine activity), used to pre-fill the Remote Sync page.
 - I can edit and remove a Client's remote configuration.
 
 ---
 
-## 10. Adapters: browse, link & start timer from remote issues
+## 10a. Adapters: browse, search & link remote issues
 
-> **As a user, I want to browse/search remote issues, link a Task to a remote issue, and start a timer directly from an issue, so my local work maps to the client's tracker.** (WBS 5.5–5.7, fetch side of 5.13–5.14)
+> **As a user, I want to browse/search remote issues and link/unlink a Task to a remote issue, so my local work maps to the client's tracker.** (WBS 5.5–5.6, fetch side of 5.14–5.15)
 
 **Acceptance criteria**
 
-- I can browse/search open issues from a Client's configured remote system (Redmine and OpenProject), in backend or client-side execution mode.
-- I can link a remote issue to a Task from its group row in the Timer view, storing the issue ID and cached title/URL (RemoteIssueRef).
+- I can browse/search open issues from a Client's configured remote system (**OpenProject** for MVP; **Redmine** at the end of MVP), in **client-side** execution mode (backend-side is post-MVP).
+- I can link a remote issue to a Task from its group row in the Timer view (and inline on the Remote Sync page), storing the issue ID and cached title/URL (RemoteIssueRef).
 - I can unlink a remote issue from a Task.
-- I can open a remote-issue view and start a timer with the Task and remote link pre-populated.
 - A task merge where both Tasks hold a RemoteIssueRef is blocked (or requires an explicit choice).
 
 ---
 
-## 11. Push time entries with rounding, status & error handling
+## 10b. Start a timer from a remote issue
 
-> **As a user, I want to push a single time entry to the linked remote issue on demand, with rounding applied and status tracked, so my logged time reaches the client's system reliably.** (WBS 5.8–5.11)
+> **As a user, I want to open a remote-issue view and start a timer directly from an issue, so the Task and remote link are pre-populated.** (WBS 5.7)
 
 **Acceptance criteria**
 
-- I can trigger a push for one TimeEntry on demand.
-- The push is only allowed when the parent Task has a RemoteIssueRef and the Client has a RemoteSystemConfig.
-- The configured rounding rule is applied to the duration before sending.
-- On success, the entry is marked pushed with a push timestamp and remote entry ID.
-- On failure, a clear error message is shown and I can retry; the entry is never silently lost.
+- I can open a remote-issue view listing issues from a configured Client's tracker.
+- Selecting an issue starts a timer with the Task and remote link pre-populated.
+
+---
+
+## 11. Remote Sync: review & push a day's time to remote systems
+
+> **As a user, I want a per-day Remote Sync page that summarizes my pushable tasks with rounded times, so I can review and push a whole day's time to the client's tracker in one go.** (WBS 5.8–5.13)
+
+**Acceptance criteria**
+
+- From the Timer view I can open a Remote Sync page for a specific day.
+- It lists only that day's **pushable tasks** — tasks with entries that day whose Project → Client has a RemoteSystemConfig — each with its **rounded aggregate time** for the day.
+- I can assign/change the remote issue for a task inline if it isn't linked yet.
+- I can set the **required remote fields** for each task (options fetched from the remote system where available; my previous value pre-filled where possible).
+- Pushing sends **one remote time log per task** (rounded duration + required fields) against its linked issue; I see a per-task success/failure summary.
+- On success the pushed entries are **locked** (start/stop immutable, cannot be deleted) and a task with any locked entry is **locked** (Project/Client cannot be changed); there is **no unlock in MVP**.
+- Retrying a failed push **does not create a duplicate** remote log (guarded by the stored remote log ID).
