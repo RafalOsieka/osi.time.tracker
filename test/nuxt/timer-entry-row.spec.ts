@@ -124,7 +124,7 @@ describe('TimerEntryRow', () => {
       '/api/time-entries/entry-1',
       expect.objectContaining({
         method: 'PATCH',
-        body: { startedAt: new Date(2024, 2, 15, 9, 1).toISOString() },
+        body: { startedAt: '2024-03-15T09:01:00Z' },
       }),
     );
   });
@@ -145,11 +145,7 @@ describe('TimerEntryRow', () => {
     expect(
       wrapper.find<HTMLInputElement>('[data-testid="timer-entry-stop-input-entry-1"]').element
         .value,
-    ).toBe(
-      `${String(new Date(makeEntry().stoppedAt!).getHours()).padStart(2, '0')}:${String(
-        new Date(makeEntry().stoppedAt!).getMinutes(),
-      ).padStart(2, '0')}`,
-    );
+    ).toBe('10:00');
   });
 
   it('shows a confirmation before deleting and calls DELETE on accept', async () => {

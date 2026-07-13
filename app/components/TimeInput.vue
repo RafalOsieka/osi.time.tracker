@@ -9,8 +9,16 @@ const props = withDefaults(
     id?: string;
     describedby?: string;
     invalid?: boolean;
+    compact?: boolean;
   }>(),
-  { label: undefined, testid: undefined, id: undefined, describedby: undefined, invalid: false },
+  {
+    label: undefined,
+    testid: undefined,
+    id: undefined,
+    describedby: undefined,
+    invalid: false,
+    compact: true,
+  },
 );
 
 const emit = defineEmits<{
@@ -55,6 +63,7 @@ function cancel() {
     v-model="inputValue"
     inputmode="numeric"
     class="time-input"
+    :class="{ 'time-input--compact': compact }"
     :aria-label="label"
     :aria-describedby="describedby"
     :aria-invalid="invalid || undefined"
@@ -67,8 +76,11 @@ function cancel() {
 
 <style scoped>
 .time-input {
-  width: 5.5ch;
   min-width: 5.5ch;
+}
+
+.time-input--compact {
+  width: 5.5ch;
   text-align: center;
 }
 </style>

@@ -35,6 +35,16 @@
   "page": {
     "comingSoon": "Coming soon."
   },
+  "settings": {
+    "timezone": "Time zone",
+    "detectedTimezone": "Detected time zone: {timezone}",
+    "weekStart": "Week starts on",
+    "monday": "Monday",
+    "sunday": "Sunday",
+    "save": "Save settings",
+    "saved": "Settings saved.",
+    "saveError": "Settings could not be saved."
+  },
   "theme": {
     "toggleLabel": "Theme",
     "light": "Light",

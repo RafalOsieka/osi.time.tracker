@@ -41,6 +41,10 @@ mockNuxtImport('useTimer', () => () => ({
   updateStartedAt: updateStartedAtMock,
 }));
 
+mockNuxtImport('useUserSettings', () => () => ({
+  effective: { value: { timeZone: 'UTC', weekStart: 'monday' } },
+}));
+
 const AutoCompleteStub = {
   template:
     '<input data-testid="timer-title-input" :aria-label="ariaLabel" :placeholder="placeholder" :disabled="disabled" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" />',
@@ -306,10 +310,8 @@ describe('AppTimer', () => {
       const timeInput = wrapper.find<HTMLInputElement>(
         '[data-testid="timer-start-editor-time-input"]',
       );
-      expect(new Date(dateInput.attributes('value')!).getTime()).toBe(startedAt.getTime());
-      expect(timeInput.element.value).toBe(
-        `${String(startedAt.getHours()).padStart(2, '0')}:${String(startedAt.getMinutes()).padStart(2, '0')}`,
-      );
+      expect(localDateInputValue(new Date(dateInput.attributes('value')!))).toBe('2024-01-05');
+      expect(timeInput.element.value).toBe('10:30');
     });
 
     it('blocks a future start with an inline error and does not call updateStartedAt', async () => {
@@ -345,7 +347,7 @@ describe('AppTimer', () => {
 
       await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
 
-      const past = new Date(Date.now() - 60 * 60 * 1000);
+      const past = new Date('2020-01-01T00:00:00.000Z');
       await wrapper
         .find('[data-testid="timer-start-editor-date-input"]')
         .setValue(localDateInputValue(past));
@@ -382,7 +384,7 @@ describe('AppTimer', () => {
       expect(committedDate.getFullYear()).toBe(2024);
       expect(committedDate.getMonth()).toBe(6);
       expect(committedDate.getDate()).toBe(9);
-      expect(updateStartedAtMock).toHaveBeenCalledWith(new Date(2024, 6, 9, 9, 0).toISOString());
+      expect(updateStartedAtMock).toHaveBeenCalledWith('2024-07-09T09:00:00Z');
       expect(timeInput.element.value).toBe('09:00');
     });
 

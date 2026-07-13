@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
+import { ref } from 'vue';
 import IndexPage from '../../app/pages/index.vue';
 
 vi.mock('vue-i18n', async (importOriginal) => {
@@ -28,10 +29,26 @@ type Entry = {
 
 let mockEntries: Entry[] = [];
 let mockProjects: unknown[] = [];
+const settingsState = ref({
+  timezone: 'America/Los_Angeles' as string | null,
+  weekStart: 'monday' as const,
+});
+const entryFetches = vi.hoisted(() => ({ count: 0 }));
+
+mockNuxtImport('useUserSettings', () => () => ({
+  settings: computed(() => settingsState.value),
+  effective: computed(() => ({
+    timeZone: settingsState.value.timezone ?? 'UTC',
+    weekStart: settingsState.value.weekStart,
+  })),
+  detectedTimeZone: 'UTC',
+  save: vi.fn(),
+}));
 
 mockNuxtImport('useAsyncData', () => {
   return (key: string, fetcher: () => Promise<Entry[] | unknown[]>) => {
     const initial = key === 'timer-view-entries' ? mockEntries : mockProjects;
+    if (key === 'timer-view-entries') entryFetches.count += 1;
     const data = ref<Entry[] | unknown[]>(initial);
     fetcher()
       .then((result) => {
@@ -123,6 +140,8 @@ describe('timer view page', () => {
     vi.clearAllMocks();
     mockEntries = [];
     mockProjects = [];
+    settingsState.value = { timezone: 'America/Los_Angeles', weekStart: 'monday' };
+    entryFetches.count = 0;
     runningState.value = null;
     elapsedSecondsState.value = 0;
     fetchRunningMock.mockClear();
@@ -159,6 +178,36 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-view-empty-state"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-group-total-task-1"]').text()).toBe('01:00:00');
+  });
+
+  it('regroups loaded entries when the timezone changes without refetching', async () => {
+    const utcDate = new Date().toISOString().slice(0, 10);
+    const expectedLosAngelesDay = new Date(`${utcDate}T00:30:00Z`).toLocaleDateString('en-CA', {
+      timeZone: 'America/Los_Angeles',
+    });
+    const expectedTokyoDay = new Date(`${utcDate}T00:30:00Z`).toLocaleDateString('en-CA', {
+      timeZone: 'Asia/Tokyo',
+    });
+    mockEntries = [
+      entry({
+        id: 'boundary',
+        taskId: 'task-1',
+        taskName: 'Boundary task',
+        startedAt: `${utcDate}T00:30:00.000Z`,
+        stoppedAt: `${utcDate}T01:30:00.000Z`,
+      }),
+    ];
+
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+    expect(wrapper.find(`[data-testid="timer-day-${expectedLosAngelesDay}"]`).exists()).toBe(true);
+    expect(entryFetches.count).toBe(1);
+
+    settingsState.value = { timezone: 'Asia/Tokyo', weekStart: 'monday' };
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find(`[data-testid="timer-day-${expectedTokyoDay}"]`).exists()).toBe(true);
+    expect(wrapper.find(`[data-testid="timer-day-${expectedLosAngelesDay}"]`).exists()).toBe(false);
+    expect(entryFetches.count).toBe(1);
   });
 
   it('renders grouped content client-side and refreshes the running state after a task edit', async () => {

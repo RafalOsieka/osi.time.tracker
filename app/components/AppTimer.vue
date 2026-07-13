@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
+import { instantToZoned, wallClockToInstant, toPickerDate, fromPickerDate } from '~/utils/dateTime';
 
 const { t } = useI18n();
 const { running, elapsedSeconds, loading, start, stop, updateTitle, updateStartedAt } = useTimer();
+const { effective } = useUserSettings();
 
 const title = ref('');
 const editedTitle = ref('');
@@ -109,10 +111,10 @@ async function onEnter() {
 
 function openStartEditor(event: Event) {
   if (!running.value) return;
-  const current = new Date(running.value.startedAt);
-  startDate.value = current;
-  startDateText.value = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, '0')}-${String(current.getDate()).padStart(2, '0')}`;
-  startTime.value = `${String(current.getHours()).padStart(2, '0')}:${String(current.getMinutes()).padStart(2, '0')}`;
+  const current = instantToZoned(running.value.startedAt, effective.value.timeZone);
+  startDateText.value = current.toPlainDate().toString();
+  startDate.value = toPickerDate(startDateText.value, effective.value.timeZone);
+  startTime.value = `${String(current.hour).padStart(2, '0')}:${String(current.minute).padStart(2, '0')}`;
   startEditorError.value = '';
   startEditorPopover.value?.toggle(event);
 }
@@ -125,17 +127,12 @@ function commitStartDateText() {
     }
     return;
   }
-  const candidate = new Date(Number(match[1]!), Number(match[2]!) - 1, Number(match[3]!));
-  if (
-    candidate.getFullYear() !== Number(match[1]!) ||
-    candidate.getMonth() !== Number(match[2]!) - 1 ||
-    candidate.getDate() !== Number(match[3]!)
-  ) {
-    commitStartDateText();
-    return;
+  startDateText.value = `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
+  try {
+    startDate.value = toPickerDate(startDateText.value, effective.value.timeZone);
+  } catch {
+    startDateText.value = '';
   }
-  startDate.value = candidate;
-  startDateText.value = `${match[1]}-${String(candidate.getMonth() + 1).padStart(2, '0')}-${String(candidate.getDate()).padStart(2, '0')}`;
 }
 
 function onStartDateInput(event: Event) {
@@ -143,24 +140,25 @@ function onStartDateInput(event: Event) {
   if (target?.value !== undefined) startDateText.value = target.value;
 }
 
-function combineStartedAt(): Date | null {
+function combineStartedAt(): string | null {
   if (!startDate.value || !startTime.value) return null;
-  const combined = new Date(startDate.value);
-  const [hours = 0, minutes = 0] = startTime.value.split(':').map(Number);
-  combined.setHours(hours, minutes, 0, 0);
-  return combined;
+  return wallClockToInstant(
+    fromPickerDate(startDate.value),
+    startTime.value,
+    effective.value.timeZone,
+  );
 }
 
 async function onSaveStartedAt() {
   const combined = combineStartedAt();
   if (!combined) return;
-  if (combined.getTime() > Date.now()) {
+  if (new Date(combined).getTime() > Date.now()) {
     startEditorError.value = t('error.timeEntryStartedAtInFuture');
     return;
   }
   savingStartedAt.value = true;
   try {
-    await updateStartedAt(combined.toISOString());
+    await updateStartedAt(combined);
     startEditorPopover.value?.hide();
   } catch (err: unknown) {
     startEditorError.value = t(extractMessageKey(err, 'errors.unexpected'));
@@ -234,6 +232,7 @@ async function onSaveStartedAt() {
             id="timer-start-editor-time"
             v-model="startTime"
             :label="t('timer.startEditor.timeLabel')"
+            :compact="false"
             testid="timer-start-editor-time-input"
           />
         </div>

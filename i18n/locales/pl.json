@@ -35,6 +35,16 @@
   "page": {
     "comingSoon": "Wkrótce."
   },
+  "settings": {
+    "timezone": "Strefa czasowa",
+    "detectedTimezone": "Wykryta strefa czasowa: {timezone}",
+    "weekStart": "Początek tygodnia",
+    "monday": "Poniedziałek",
+    "sunday": "Niedziela",
+    "save": "Zapisz ustawienia",
+    "saved": "Ustawienia zapisane.",
+    "saveError": "Nie udało się zapisać ustawień."
+  },
   "theme": {
     "toggleLabel": "Motyw",
     "light": "Jasny",
