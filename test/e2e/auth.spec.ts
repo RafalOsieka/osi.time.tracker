@@ -5,6 +5,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { E2E_LOGIN_RATE_LIMIT } from '../../shared/config/rate-limit';
 
 const describeAuth = requireDocker();
 
@@ -20,7 +21,7 @@ describeAuth('authentication integration', async () => {
 
   beforeEach(async () => {
     // Wait to let the rate limiter replenish tokens
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, E2E_LOGIN_RATE_LIMIT.interval));
   });
 
   it('3.1 login sets a session cookie (happy path) and rejects invalid input', async () => {
@@ -183,8 +184,8 @@ describeAuth('authentication integration', async () => {
     const jar = new CookieJar();
     const token = await primeCsrf(jar);
 
-    // Make 5 successful / failed requests - the rate limiter should allow them
-    for (let i = 0; i < 5; i++) {
+    // Make N successful / failed requests - the rate limiter should allow them
+    for (let i = 0; i < E2E_LOGIN_RATE_LIMIT.tokensPerInterval; i++) {
       const res = await fetch(url('/api/auth/login'), {
         method: 'POST',
         headers: {
@@ -197,7 +198,7 @@ describeAuth('authentication integration', async () => {
       expect(res.status).toBe(401);
     }
 
-    // The 6th attempt should be rejected with 429
+    // The next attempt (beyond the bucket size) should be rejected with 429
     const throttled = await fetch(url('/api/auth/login'), {
       method: 'POST',
       headers: {

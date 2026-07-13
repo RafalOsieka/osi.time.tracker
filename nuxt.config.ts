@@ -1,5 +1,6 @@
 import { definePreset } from '@primeuix/themes';
 import Aura from '@primeuix/themes/aura';
+import { PROD_LOGIN_RATE_LIMIT, E2E_LOGIN_RATE_LIMIT } from './shared/config/rate-limit';
 
 const CustomAuraTheme = definePreset(Aura, {
   semantic: {
@@ -67,15 +68,12 @@ export default defineNuxtConfig({
   routeRules: {
     '/api/auth/login': {
       security: {
-        rateLimiter: {
-          tokensPerInterval: 5,
-          interval:
-            process.env.NODE_ENV === 'test' ||
-            Boolean(process.env.VITEST) ||
-            process.env.IS_E2E === 'true'
-              ? 2000
-              : 60000,
-        },
+        rateLimiter:
+          process.env.NODE_ENV === 'test' ||
+          Boolean(process.env.VITEST) ||
+          process.env.IS_E2E === 'true'
+            ? E2E_LOGIN_RATE_LIMIT
+            : PROD_LOGIN_RATE_LIMIT,
       },
     },
   },
