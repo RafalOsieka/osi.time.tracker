@@ -132,7 +132,7 @@ The running title SHALL be editable in place: an edit SHALL be committed via `PA
 
 Pressing Enter in the title input SHALL start the timer when the suggestion overlay is closed; when the suggestion overlay is open, Enter SHALL retain the autocomplete's default select/close behavior and SHALL NOT start the timer.
 
-While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the browser-local timezone. The time field SHALL be the shared smart time input (REQ-NFR-034, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field MAY offer a calendar picker, but a manually typed valid `yyyy-mm-dd` date (tolerating unpadded month/day, e.g. `2026-7-9`) SHALL be committed on blur or Enter rather than reverted; text that does not resolve to a valid date SHALL revert to the previous value. Committing SHALL send the combined date and time as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-TTR-039); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
+While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the user's effective timezone (REQ-AUTH-017, user-settings). The time field SHALL be the shared smart time input (REQ-NFR-034, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field MAY offer a calendar picker, but a manually typed valid `yyyy-mm-dd` date (tolerating unpadded month/day, e.g. `2026-7-9`) SHALL be committed on blur or Enter rather than reverted; text that does not resolve to a valid date SHALL revert to the previous value. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-NFR-035) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-TTR-039); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
 
 When a task edit affects the running entry (rename, project change, merge-on-collision, or bulk assignment binding the running entry to a task), the client SHALL re-fetch the running state (`GET /api/time-entries/running`) so the shell indicator reflects the updated title immediately.
 
@@ -176,7 +176,7 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 
 #### Scenario: Elapsed time opens the start edit popover
 - **WHEN** the user activates the elapsed-time control while a timer is running
-- **THEN** a popover SHALL open with a date field and a smart hours-and-minutes input seeded with the running entry's current start in local time
+- **THEN** a popover SHALL open with a date field and a smart hours-and-minutes input seeded with the running entry's current start in the user's effective timezone
 
 #### Scenario: Typed time is normalized in the popover
 - **WHEN** the user types a compact time such as `900` into the popover's time field and commits (blur or Enter)
@@ -192,7 +192,7 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 
 #### Scenario: Committing a new start rebases the ticker
 - **WHEN** the user commits a valid past start date/time in the popover
-- **THEN** the running entry SHALL be patched with the new `startedAt` and the elapsed time SHALL rebase from it, remaining running
+- **THEN** the running entry SHALL be patched with the new `startedAt` (converted from the effective timezone) and the elapsed time SHALL rebase from it, remaining running
 
 #### Scenario: Future start blocked in the popover
 - **WHEN** the popover's combined date and time resolve to a future instant
@@ -256,17 +256,19 @@ The system SHALL allow an authenticated user to assign a set of their untitled t
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
 ### Requirement: REQ-TTR-046 Timer view page
-The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the browser-local timezone (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the browser-local timezone, the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. The page SHALL initially load the most recent 7 days and provide a "load more" control that extends the window further back by the same step; days without entries SHALL NOT render empty groups. When the user has no entries at all, the page SHALL render a dedicated empty state pointing to the timer widget.
+The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-AUTH-017, user-settings; day boundaries computed via the timezone-aware utilities of REQ-NFR-035) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. The page SHALL initially load the most recent 7 days and provide a "load more" control that extends the window further back by the same step; days without entries SHALL NOT render empty groups. When the user has no entries at all, the page SHALL render a dedicated empty state pointing to the timer widget.
 
-The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-NFR-034, shared-ui-components; the date is fixed by the day section). The form SHALL convert the local times to instants and submit them via `POST /api/time-entries` (REQ-TTR-036 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
+The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-NFR-034, shared-ui-components; the date is fixed by the day section). The form SHALL convert the entered wall-clock times to instants using the effective timezone (REQ-NFR-035) and submit them via `POST /api/time-entries` (REQ-TTR-036 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
 
-Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-NFR-034), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-TTR-039). Activating one of the row's inline editors SHALL cancel any other editor active in that row without committing, and the swapped-in input SHALL receive focus so editing starts with a single click. Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different local day, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-TTR-050); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
+Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-NFR-034), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-TTR-039). Activating one of the row's inline editors SHALL cancel any other editor active in that row without committing, and the swapped-in input SHALL receive focus so editing starts with a single click. Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different day in the effective timezone, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-TTR-050); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
 
 The page SHALL observe the shell's running-timer state: when the running entry stops (including a stop triggered from the top-bar widget or a stop-on-new-start), the page SHALL refresh its entry list so the finished entry appears in its day/task group immediately, without a manual reload.
 
-#### Scenario: Entries grouped by local day and task
+When the user's timezone or week-start setting changes, the page SHALL regroup and re-render from the already-loaded entries (pure re-render); no data migration or refetch SHALL be required for correctness.
+
+#### Scenario: Entries grouped by effective-timezone day and task
 - **WHEN** the authenticated user opens `/` with entries on multiple days
-- **THEN** the page SHALL show one section per browser-local day, newest first, each with a day total and per-task groups showing name, context, entry count, and group total
+- **THEN** the page SHALL show one section per day in the effective timezone, newest first, each with a day total and per-task groups showing name, context, entry count, and group total
 
 #### Scenario: Day list renders client-side only
 - **WHEN** the timer view is served with server-side rendering enabled
@@ -290,7 +292,7 @@ The page SHALL observe the shell's running-timer state: when the running entry s
 
 #### Scenario: Add a manual entry to a day
 - **WHEN** the user activates a day's "add entry" action and submits a valid start/end time pair with an optional title
-- **THEN** a stopped entry SHALL be created for that day and appear in the matching task group
+- **THEN** a stopped entry SHALL be created for that day (times interpreted in the effective timezone) and appear in the matching task group
 
 #### Scenario: Manual form accepts compact typed times
 - **WHEN** the user types `900` into the manual form's start-time field and commits
@@ -313,7 +315,7 @@ The page SHALL observe the shell's running-timer state: when the running entry s
 - **THEN** the entry SHALL move to the group of the re-resolved task and the remaining entries of the original group SHALL be unaffected
 
 #### Scenario: Cross-midnight edit regroups the entry
-- **WHEN** an inline `startedAt` edit moves an entry to a different browser-local day
+- **WHEN** an inline `startedAt` edit moves an entry to a different day in the effective timezone
 - **THEN** the page SHALL show the entry under the new day's section
 
 #### Scenario: Top-bar stop refreshes the list
@@ -323,6 +325,10 @@ The page SHALL observe the shell's running-timer state: when the running entry s
 #### Scenario: Delete an entry with confirmation
 - **WHEN** the user activates an entry's delete action and confirms
 - **THEN** the entry SHALL be deleted, removed from the page, and a group left with no entries SHALL disappear
+
+#### Scenario: Timezone change regroups without refetch
+- **WHEN** the user changes their timezone setting while entries are displayed
+- **THEN** the page SHALL regroup the loaded entries under the day boundaries of the new timezone without requiring a reload
 
 ### Requirement: REQ-TTR-050 Delete a time entry with task garbage collection
 The system SHALL allow an authenticated user to delete their own `TimeEntry` via `DELETE /api/time-entries/[id]`, addressed by its `uuidv7` `id` and scoped by `userId`. Within a single transaction the system SHALL delete the entry and, when the entry's `taskId` was non-null and no other time entry references that task afterwards, SHALL hard-delete the emptied `Task` (garbage collection). A foreign or unknown entry id SHALL resolve to HTTP 404 without confirming existence. On success the system SHALL respond with a success status and no entry data.
