@@ -9,9 +9,13 @@ export function formatDuration(totalSeconds: number): string {
 }
 
 /** Formats an ISO timestamp as a locale-aware time (HH:MM). */
-export function formatTime(iso: string, locale: string): string {
+export function formatTime(
+  iso: string,
+  locale: string,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', timeZone });
 }

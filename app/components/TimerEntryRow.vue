@@ -2,18 +2,19 @@
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
-import {
-  combineLocalDateAndTime,
-  entryDurationSeconds,
-  isoToLocalTime,
-} from '~/utils/timerViewGrouping';
+import { entryDurationSeconds, isoToLocalTime, localDayKey } from '~/utils/timerViewGrouping';
+import { wallClockToInstant } from '~/utils/dateTime';
 import { formatDuration, formatTime } from '~/utils/formatDuration';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
-const props = defineProps<{
-  entry: TimeEntryDto;
-  now: number;
-}>();
+const props = withDefaults(
+  defineProps<{
+    entry: TimeEntryDto;
+    now: number;
+    timeZone?: string;
+  }>(),
+  { timeZone: 'UTC' },
+);
 
 const emit = defineEmits<{ changed: []; deleted: [] }>();
 
@@ -24,8 +25,10 @@ const { $csrfFetch } = useNuxtApp();
 
 const editingField = ref<'title' | 'start' | 'stop' | null>(null);
 const titleValue = ref(props.entry.taskName ?? '');
-const startValue = ref(isoToLocalTime(props.entry.startedAt));
-const stopValue = ref(props.entry.stoppedAt ? isoToLocalTime(props.entry.stoppedAt) : '');
+const startValue = ref(isoToLocalTime(props.entry.startedAt, props.timeZone));
+const stopValue = ref(
+  props.entry.stoppedAt ? isoToLocalTime(props.entry.stoppedAt, props.timeZone) : '',
+);
 const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
@@ -43,7 +46,7 @@ async function startEditTitle() {
 
 async function startEditStart() {
   editingField.value = null;
-  startValue.value = isoToLocalTime(props.entry.startedAt);
+  startValue.value = isoToLocalTime(props.entry.startedAt, props.timeZone);
   editingField.value = 'start';
   await nextTick();
   document
@@ -53,7 +56,9 @@ async function startEditStart() {
 
 async function startEditStop() {
   editingField.value = null;
-  stopValue.value = props.entry.stoppedAt ? isoToLocalTime(props.entry.stoppedAt) : '';
+  stopValue.value = props.entry.stoppedAt
+    ? isoToLocalTime(props.entry.stoppedAt, props.timeZone)
+    : '';
   editingField.value = 'stop';
   await nextTick();
   document
@@ -87,8 +92,8 @@ async function commitTitle() {
 }
 
 function combineWithEntryDay(iso: string, time: string): string {
-  const base = new Date(iso);
-  return combineLocalDateAndTime(base, time);
+  const dateKey = localDayKey(iso, props.timeZone);
+  return wallClockToInstant(dateKey, time, props.timeZone);
 }
 
 async function commitStart() {
@@ -105,7 +110,7 @@ async function commitStart() {
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
     toast.add({ severity: 'error', summary: t(key), life: 4000 });
-    startValue.value = isoToLocalTime(props.entry.startedAt);
+    startValue.value = isoToLocalTime(props.entry.startedAt, props.timeZone);
   }
 }
 
@@ -124,7 +129,9 @@ async function commitStop() {
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
     toast.add({ severity: 'error', summary: t(key), life: 4000 });
-    stopValue.value = props.entry.stoppedAt ? isoToLocalTime(props.entry.stoppedAt) : '';
+    stopValue.value = props.entry.stoppedAt
+      ? isoToLocalTime(props.entry.stoppedAt, props.timeZone)
+      : '';
   }
 }
 
@@ -193,7 +200,7 @@ function onDelete() {
         v-else
         class="timer-entry__edit-trigger"
         text
-        :label="formatTime(entry.startedAt, locale)"
+        :label="formatTime(entry.startedAt, locale, timeZone)"
         :aria-label="t('timerView.entryRow.startLabel')"
         :data-testid="`timer-entry-start-${entry.id}`"
         @click="startEditStart"
@@ -216,7 +223,7 @@ function onDelete() {
           v-else
           class="timer-entry__edit-trigger"
           text
-          :label="formatTime(entry.stoppedAt, locale)"
+          :label="formatTime(entry.stoppedAt, locale, timeZone)"
           :aria-label="t('timerView.entryRow.stopLabel')"
           :data-testid="`timer-entry-stop-${entry.id}`"
           @click="startEditStop"

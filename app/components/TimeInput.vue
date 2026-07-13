@@ -11,7 +11,14 @@ const props = withDefaults(
     invalid?: boolean;
     compact?: boolean;
   }>(),
-  { label: undefined, testid: undefined, id: undefined, describedby: undefined, invalid: false, compact: true },
+  {
+    label: undefined,
+    testid: undefined,
+    id: undefined,
+    describedby: undefined,
+    invalid: false,
+    compact: true,
+  },
 );
 
 const emit = defineEmits<{

@@ -1,4 +1,7 @@
 import type { TimeEntryDto } from '../../shared/types/time-entry';
+import { instantToZoned, wallClockToInstant } from './dateTime';
+import type { DateTimeSettings } from './dateTime';
+import { Temporal } from 'temporal-polyfill';
 
 export const UNTITLED_GROUP_KEY = 'untitled';
 
@@ -21,12 +24,11 @@ export interface TimerViewDay {
 }
 
 /** Browser-local day key (YYYY-MM-DD) derived from an ISO instant. */
-export function localDayKey(iso: string): string {
-  const d = new Date(iso);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+export function localDayKey(
+  iso: string,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
+  return instantToZoned(iso, timeZone).toPlainDate().toString();
 }
 
 export function entryDurationSeconds(entry: TimeEntryDto, now: number = Date.now()): number {
@@ -39,17 +41,20 @@ export function entryDurationSeconds(entry: TimeEntryDto, now: number = Date.now
 export function groupTimeEntriesByDay(
   entries: TimeEntryDto[],
   now: number = Date.now(),
+  settings: DateTimeSettings = {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    weekStart: 'monday' as const,
+  },
 ): TimerViewDay[] {
   const dayMap = new Map<string, TimerViewDay>();
 
   for (const entry of entries) {
-    const dayKey = localDayKey(entry.startedAt);
+    const dayKey = localDayKey(entry.startedAt, settings.timeZone);
     let day = dayMap.get(dayKey);
     if (!day) {
-      const d = new Date(entry.startedAt);
       day = {
         dayKey,
-        date: new Date(d.getFullYear(), d.getMonth(), d.getDate()),
+        date: new Date(`${dayKey}T00:00:00`),
         totalSeconds: 0,
         groups: [],
       };
@@ -101,28 +106,22 @@ export function groupTimeEntriesByDay(
  * Combines a browser-local date (`Date`, time-of-day ignored) with an
  * `HH:mm` wall-clock time into a UTC ISO instant string.
  */
-export function combineLocalDateAndTime(date: Date, time: string): string {
-  const [hoursStr, minutesStr] = time.split(':');
-  const hours = Number(hoursStr);
-  const minutes = Number(minutesStr);
-  const combined = new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    hours,
-    minutes,
-    0,
-    0,
-  );
-  return combined.toISOString();
+export function combineLocalDateAndTime(
+  date: Date,
+  time: string,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
+  const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  return wallClockToInstant(dateKey, time, timeZone);
 }
 
 /** Extracts the browser-local `HH:mm` wall-clock time from an ISO instant. */
-export function isoToLocalTime(iso: string): string {
-  const d = new Date(iso);
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${hours}:${minutes}`;
+export function isoToLocalTime(
+  iso: string,
+  timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): string {
+  const zoned = instantToZoned(iso, timeZone);
+  return `${String(zoned.hour).padStart(2, '0')}:${String(zoned.minute).padStart(2, '0')}`;
 }
 
 /**
@@ -132,13 +131,21 @@ export function isoToLocalTime(iso: string): string {
 export function computeWindowRange(
   daysBack: number,
   referenceDate: Date = new Date(),
+  settings: DateTimeSettings = {
+    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    weekStart: 'monday' as const,
+  },
 ): { from: string; to: string } {
-  const startOfToday = new Date(
-    referenceDate.getFullYear(),
-    referenceDate.getMonth(),
-    referenceDate.getDate(),
-  );
-  const to = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000);
-  const from = new Date(startOfToday.getTime() - (daysBack - 1) * 24 * 60 * 60 * 1000);
-  return { from: from.toISOString(), to: to.toISOString() };
+  const today = Temporal.Instant.from(referenceDate.toISOString())
+    .toZonedDateTimeISO(settings.timeZone)
+    .toPlainDate();
+  const dayOfWeek = today.dayOfWeek;
+  const weekOffset = settings.weekStart === 'sunday' ? dayOfWeek % 7 : dayOfWeek - 1;
+  const windowStart =
+    daysBack % 7 === 0
+      ? today.subtract({ days: weekOffset + daysBack - 7 })
+      : today.subtract({ days: daysBack - 1 });
+  const start = windowStart.toZonedDateTime(settings.timeZone);
+  const to = windowStart.add({ days: daysBack }).toZonedDateTime(settings.timeZone);
+  return { from: start.toInstant().toString(), to: to.toInstant().toString() };
 }

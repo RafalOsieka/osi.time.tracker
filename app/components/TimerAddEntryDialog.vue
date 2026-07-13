@@ -8,6 +8,7 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 const props = defineProps<{
   visible: boolean;
   date: Date | null;
+  timeZone: string;
 }>();
 
 const emit = defineEmits<{ 'update:visible': [boolean]; added: [TimeEntryDto] }>();
@@ -52,8 +53,8 @@ async function onSave() {
   if (!props.date) return;
   rangeError.value = '';
 
-  const startedAt = combineLocalDateAndTime(props.date, startTime.value);
-  const stoppedAt = combineLocalDateAndTime(props.date, endTime.value);
+  const startedAt = combineLocalDateAndTime(props.date, startTime.value, props.timeZone);
+  const stoppedAt = combineLocalDateAndTime(props.date, endTime.value, props.timeZone);
 
   if (new Date(startedAt).getTime() > new Date(stoppedAt).getTime()) {
     rangeError.value = t('timerView.addEntry.rangeError');

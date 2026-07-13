@@ -2,17 +2,26 @@
 import { useI18n } from 'vue-i18n';
 import { computeWindowRange, groupTimeEntriesByDay } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
+import { toPickerDate } from '~/utils/dateTime';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const { t, locale } = useI18n();
 const { running, elapsedSeconds, start, fetchRunning } = useTimer();
+const { effective } = useUserSettings();
 
 const DEFAULT_WINDOW_DAYS = 7;
 const LOAD_MORE_DAYS = 7;
 
 const windowDays = ref(DEFAULT_WINDOW_DAYS);
 
-const windowRange = computed(() => computeWindowRange(windowDays.value));
+const initialTimeZone = effective.value.timeZone;
+const initialWeekStart = effective.value.weekStart;
+const windowRange = computed(() =>
+  computeWindowRange(windowDays.value, new Date(), {
+    timeZone: initialTimeZone,
+    weekStart: initialWeekStart,
+  }),
+);
 
 const {
   data: entriesData,
@@ -62,15 +71,18 @@ watch(
   },
 );
 
-const days = computed(() => groupTimeEntriesByDay(displayEntries.value, now.value));
+const days = computed(() =>
+  groupTimeEntriesByDay(displayEntries.value, now.value, effective.value),
+);
 const isEmpty = computed(() => !entriesPending.value && days.value.length === 0);
 
-function dayHeading(date: Date): string {
-  return date.toLocaleDateString(locale.value, {
+function dayHeading(dayKey: string): string {
+  return new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
+    timeZone: effective.value.timeZone,
   });
 }
 
@@ -108,8 +120,8 @@ async function onBulkAssigned() {
 // --- Add entry ---
 const addEntryVisible = ref(false);
 const addEntryDate = ref<Date | null>(null);
-function openAddEntry(date: Date) {
-  addEntryDate.value = date;
+function openAddEntry(dayKey: string) {
+  addEntryDate.value = toPickerDate(dayKey, effective.value.timeZone);
   addEntryVisible.value = true;
 }
 
@@ -149,7 +161,7 @@ async function onEntryDeleted() {
           :data-testid="`timer-day-${day.dayKey}`"
         >
           <div class="timer-day__heading">
-            <span class="timer-day__date">{{ dayHeading(day.date) }}</span>
+            <span class="timer-day__date">{{ dayHeading(day.dayKey) }}</span>
             <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
               {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
             </span>
@@ -158,7 +170,7 @@ async function onEntryDeleted() {
               icon="pi pi-plus"
               text
               :data-testid="`timer-day-add-entry-${day.dayKey}`"
-              @click="openAddEntry(day.date)"
+              @click="openAddEntry(day.dayKey)"
             />
           </div>
 
@@ -169,6 +181,7 @@ async function onEntryDeleted() {
             :group="group"
             :is-live="isGroupLive(group)"
             :now="now"
+            :time-zone="effective.timeZone"
             :active-editor-key="activeEditorKey"
             :project-options="projectOptions"
             @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
@@ -200,6 +213,7 @@ async function onEntryDeleted() {
     <TimerAddEntryDialog
       v-model:visible="addEntryVisible"
       :date="addEntryDate"
+      :time-zone="effective.timeZone"
       @added="onEntryAdded"
     />
   </section>

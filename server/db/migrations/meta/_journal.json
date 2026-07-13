@@ -43,6 +43,13 @@
       "when": 1783527808817,
       "tag": "0005_orange_otto_octavius",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783956489436,
+      "tag": "0006_deep_spiral",
+      "breakpoints": true
     }
   ]
 }

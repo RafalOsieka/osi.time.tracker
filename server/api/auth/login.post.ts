@@ -51,6 +51,7 @@ export default defineEventHandler(async (event) => {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      settings: { timezone: user.timezone, weekStart: user.weekStart as 'monday' | 'sunday' },
     },
     loggedInAt: Date.now(),
   });
@@ -61,6 +62,7 @@ export default defineEventHandler(async (event) => {
       id: user.id,
       email: user.email,
       displayName: user.displayName,
+      settings: { timezone: user.timezone, weekStart: user.weekStart as 'monday' | 'sunday' },
     },
   };
 });

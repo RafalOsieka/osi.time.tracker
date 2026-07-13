@@ -71,7 +71,14 @@ function group(key = 'task-1') {
 
 function mount(props: Record<string, unknown> = {}) {
   return mountSuspended(TimerTaskGroup, {
-    props: { group: group(), isLive: false, now: Date.now(), editorKey: 'a', ...props },
+    props: {
+      group: group(),
+      isLive: false,
+      now: Date.now(),
+      timeZone: 'UTC',
+      editorKey: 'a',
+      ...props,
+    },
     global: { plugins: [testI18n()], stubs },
   });
 }

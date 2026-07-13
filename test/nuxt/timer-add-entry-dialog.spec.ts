@@ -32,7 +32,7 @@ const InputTextStub = {
 
 function mount() {
   return mountSuspended(TimerAddEntryDialog, {
-    props: { visible: true, date: new Date(2024, 2, 15) },
+    props: { visible: true, date: new Date(2024, 2, 15), timeZone: 'UTC' },
     global: {
       stubs: {
         Dialog: DialogStub,
@@ -66,8 +66,8 @@ describe('TimerAddEntryDialog', () => {
       method: 'POST',
       body: {
         title: 'Manual task',
-        startedAt: combineLocalDateAndTime(new Date(2024, 2, 15), '09:00'),
-        stoppedAt: combineLocalDateAndTime(new Date(2024, 2, 15), '10:30'),
+        startedAt: combineLocalDateAndTime(new Date(2024, 2, 15), '09:00', 'UTC'),
+        stoppedAt: combineLocalDateAndTime(new Date(2024, 2, 15), '10:30', 'UTC'),
       },
     });
     expect(wrapper.emitted('added')).toEqual([[created]]);

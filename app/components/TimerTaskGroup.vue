@@ -10,6 +10,7 @@ const props = withDefaults(
     group: TimerViewGroup;
     isLive: boolean;
     now: number;
+    timeZone: string;
     editorKey: string;
     activeEditorKey?: string | null;
     projectOptions?: ProjectDto[];
@@ -248,6 +249,7 @@ const countLabel = computed(() => {
         :key="entry.id"
         :entry="entry"
         :now="now"
+        :time-zone="timeZone"
         @changed="emit('entry-changed')"
         @deleted="emit('entry-deleted')"
       />

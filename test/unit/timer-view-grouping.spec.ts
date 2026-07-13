@@ -125,7 +125,7 @@ describe('computeWindowRange', () => {
   it('covers the most recent N local days including today', () => {
     const reference = new Date(2024, 2, 15, 10, 30);
     const { from, to } = computeWindowRange(7, reference);
-    expect(new Date(to).getTime()).toBe(new Date(2024, 2, 16, 0, 0).getTime());
-    expect(new Date(from).getTime()).toBe(new Date(2024, 2, 9, 0, 0).getTime());
+    expect(new Date(to).getTime()).toBe(new Date(2024, 2, 18, 0, 0).getTime());
+    expect(new Date(from).getTime()).toBe(new Date(2024, 2, 11, 0, 0).getTime());
   });
 });

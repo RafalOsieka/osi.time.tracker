@@ -1,4 +1,12 @@
 import { z } from 'zod';
+import type { UserSettingsDto } from './user-settings';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string | null;
+  settings: UserSettingsDto;
+}
 
 export const loginSchema = z.object({
   email: z
