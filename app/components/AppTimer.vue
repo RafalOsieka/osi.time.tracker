@@ -234,6 +234,7 @@ async function onSaveStartedAt() {
             id="timer-start-editor-time"
             v-model="startTime"
             :label="t('timer.startEditor.timeLabel')"
+            :compact="false"
             testid="timer-start-editor-time-input"
           />
         </div>
