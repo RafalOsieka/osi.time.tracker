@@ -99,7 +99,7 @@ Notes:
 
 ### Docker Compose Files
 
-The project includes three separate Docker Compose configuration files, each serving a different purpose:
+The project includes four separate Docker Compose configuration files, each serving a different purpose:
 
 1. `docker-compose.yml` (Development):
    - Starts a local PostgreSQL 18 database and a PgAdmin instance.
@@ -115,6 +115,13 @@ The project includes three separate Docker Compose configuration files, each ser
    - Fully self-contained stack containing its own isolated PostgreSQL 18 database, automatic database migrator/seeder, and built production web application.
    - Designed for daily personal hosting and production-like local setups.
    - Uses an isolated internal network and its own dedicated persistent named volume: `pg-osi-time-tracker-standalone`.
+
+4. `docker-compose.openproject.yml` (Local OpenProject):
+   - Starts an opt-in local OpenProject instance with built-in demo data for remote-integration development; it is not part of `docker compose up -d`.
+   - Start it with `docker compose -f docker-compose.openproject.yml up -d`, then open `http://localhost:8090` and sign in with `admin` / `admin` (or the configured `OPENPROJECT_ADMIN_PASSWORD`). The first boot downloads and seeds data, so it may take several minutes.
+   - Stop it with `docker compose -f docker-compose.openproject.yml down`; remove only its dedicated data volumes with `docker compose -f docker-compose.openproject.yml down -v`.
+   - To obtain an API key for later integration work, sign in, open the user avatar menu, select **My account**, open the **Access token** section, and generate an API token. Store it securely; do not commit it.
+   - `OPENPROJECT_PORT`, `OPENPROJECT_ADMIN_PASSWORD`, and `OPENPROJECT_SECRET_KEY_BASE` can be overridden in `.env`. This HTTP-only configuration is for local development only and must not be used in production.
 
 ## Security Considerations
 

@@ -1,0 +1,26 @@
+services:
+  openproject:
+    image: openproject/openproject:17.5.1
+    restart: unless-stopped
+    environment:
+      OPENPROJECT_HTTPS: 'false'
+      OPENPROJECT_HOST__NAME: localhost:${OPENPROJECT_PORT:-8090}
+      OPENPROJECT_DEFAULT__LANGUAGE: en
+      OPENPROJECT_DEMO__DATA: 'true'
+      OPENPROJECT_SEED_ADMIN_USER_PASSWORD: ${OPENPROJECT_ADMIN_PASSWORD:-admin}
+      SECRET_KEY_BASE: ${OPENPROJECT_SECRET_KEY_BASE:-change-me-to-a-random-64-character-development-secret-key-base}
+    ports:
+      - '${OPENPROJECT_PORT:-8090}:80'
+    volumes:
+      - pg-openproject-dev:/var/openproject/pgdata
+      - openproject-assets-dev:/var/openproject/assets
+    healthcheck:
+      test: ['CMD-SHELL', 'curl --fail http://localhost/health_checks/default || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 2m
+
+volumes:
+  pg-openproject-dev:
+  openproject-assets-dev:
