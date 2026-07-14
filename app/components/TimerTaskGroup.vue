@@ -4,6 +4,7 @@ import type { TimerViewGroup } from '~/utils/timerViewGrouping';
 import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
 import { useToast } from 'primevue/usetoast';
+import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
 
 const props = withDefaults(
   defineProps<{
@@ -14,8 +15,9 @@ const props = withDefaults(
     editorKey: string;
     activeEditorKey?: string | null;
     projectOptions?: ProjectDto[];
+    remoteConfig?: RemoteSystemConfigDto | null;
   }>(),
-  { activeEditorKey: null, projectOptions: () => [] },
+  { activeEditorKey: null, projectOptions: () => [], remoteConfig: null },
 );
 
 const emit = defineEmits<{
@@ -146,6 +148,46 @@ const countLabel = computed(() => {
     ? t('timerView.entryCountOne', { count })
     : t('timerView.entryCount', { count });
 });
+
+const showRemoteIssueControl = computed(() => !!props.remoteConfig && !!props.group.taskId);
+const isRedmineConfig = computed(() => props.remoteConfig?.systemType === 'redmine');
+const remoteIssueRef = computed(() => props.group.remoteIssueRef);
+const remoteIssueTooltip = computed(() =>
+  remoteIssueRef.value
+    ? `${t('timerView.remoteIssue.linkedTooltipPrefix')} #${remoteIssueRef.value.remoteIssueId}: ${remoteIssueRef.value.cachedTitle}`
+    : undefined,
+);
+
+async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: string }) {
+  if (!props.group.taskId) return;
+  try {
+    await $csrfFetch(`/api/tasks/${props.group.taskId}/remote-issue-ref`, {
+      method: 'POST',
+      body: payload,
+    });
+    emit('entry-changed');
+  } catch (err: unknown) {
+    toast.add({
+      severity: 'error',
+      summary: t(extractMessageKey(err, 'errors.unexpected')),
+      life: 4000,
+    });
+  }
+}
+
+async function unlinkRemoteIssue() {
+  if (!props.group.taskId) return;
+  try {
+    await $csrfFetch(`/api/tasks/${props.group.taskId}/remote-issue-ref`, { method: 'DELETE' });
+    emit('entry-changed');
+  } catch (err: unknown) {
+    toast.add({
+      severity: 'error',
+      summary: t(extractMessageKey(err, 'errors.unexpected')),
+      life: 4000,
+    });
+  }
+}
 </script>
 
 <template>
@@ -218,6 +260,55 @@ const countLabel = computed(() => {
       <span class="timer-group__total" :data-testid="`timer-group-total-${group.key}`">
         {{ formatDuration(group.totalSeconds) }}
       </span>
+
+      <template v-if="showRemoteIssueControl">
+        <Button
+          v-if="remoteIssueRef && remoteIssueRef.url"
+          as="a"
+          :href="remoteIssueRef.url"
+          target="_blank"
+          rel="noopener noreferrer"
+          text
+          :label="`#${remoteIssueRef.remoteIssueId}`"
+          :title="remoteIssueTooltip"
+          class="timer-group__remote-issue-link"
+          :data-testid="`timer-group-remote-issue-link-${group.key}`"
+        />
+        <span
+          v-else-if="remoteIssueRef"
+          :title="remoteIssueTooltip"
+          class="timer-group__remote-issue-link"
+          :data-testid="`timer-group-remote-issue-cached-${group.key}`"
+        >
+          #{{ remoteIssueRef.remoteIssueId }}
+        </span>
+        <span
+          v-else
+          class="timer-group__remote-issue-unlinked"
+          :data-testid="`timer-group-remote-issue-unlinked-${group.key}`"
+        >
+          {{ t('timerView.remoteIssue.unlinked') }}
+        </span>
+
+        <RemoteIssuePicker
+          v-if="!isRedmineConfig"
+          :config="remoteConfig!"
+          :current-ref="remoteIssueRef"
+          :data-testid="`timer-group-remote-issue-picker-${group.key}`"
+          @link="linkRemoteIssue"
+          @unlink="unlinkRemoteIssue"
+        />
+        <Button
+          v-else
+          icon="pi pi-pencil"
+          text
+          rounded
+          disabled
+          :aria-label="t('timerView.remoteIssue.editLabel')"
+          :title="t('timerView.remoteIssue.editDisabledRedmine')"
+          :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
+        />
+      </template>
 
       <Button
         v-if="!isUntitled"
@@ -308,6 +399,18 @@ const countLabel = computed(() => {
 
 .timer-group__title-input {
   max-width: 100%;
+}
+
+.timer-group__remote-issue-link {
+  font-family: monospace;
+  font-size: 0.875rem;
+  color: var(--p-primary-color);
+  text-decoration: none;
+}
+
+.timer-group__remote-issue-unlinked {
+  font-size: 0.875rem;
+  color: var(--p-text-muted-color);
 }
 
 .timer-group__project-select {

@@ -1,4 +1,5 @@
 import type { TimeEntryDto } from '../../shared/types/time-entry';
+import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 import { instantToZoned, wallClockToInstant } from './dateTime';
 import type { DateTimeSettings } from './dateTime';
 import { Temporal } from 'temporal-polyfill';
@@ -12,6 +13,7 @@ export interface TimerViewGroup {
   projectId: string | null;
   projectName: string | null;
   clientName: string | null;
+  remoteIssueRef?: RemoteIssueRefDto;
   entries: TimeEntryDto[];
   totalSeconds: number;
 }
@@ -71,6 +73,7 @@ export function groupTimeEntriesByDay(
         projectId: entry.projectId,
         projectName: entry.projectName,
         clientName: entry.clientName,
+        remoteIssueRef: entry.remoteIssueRef,
         entries: [],
         totalSeconds: 0,
       };

@@ -6,6 +6,7 @@ import { db } from '../../db/index';
 import { timeEntries, tasks, projects, clients } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
+import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   const { user } = await requireAuth(event);
@@ -51,6 +52,9 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     )
     .orderBy(desc(timeEntries.startedAt));
 
+  const taskIds = [...new Set(rows.map((row) => row.taskId).filter((id): id is string => !!id))];
+  const refs = await getRemoteIssueRefsForTasks(user.id, taskIds);
+
   return rows.map((row) => ({
     id: row.id,
     taskId: row.taskId,
@@ -60,5 +64,6 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     clientName: row.clientName ?? null,
     startedAt: row.startedAt.toISOString(),
     stoppedAt: row.stoppedAt ? row.stoppedAt.toISOString() : null,
+    remoteIssueRef: row.taskId ? refs.get(row.taskId) : undefined,
   }));
 });

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RemoteIssueRefDto } from './remote-issue-ref';
 
 export const TIME_ENTRY_TITLE_MAX_LENGTH = 200;
 
@@ -82,6 +83,7 @@ export interface TimeEntryDto {
   clientName: string | null;
   startedAt: string;
   stoppedAt: string | null;
+  remoteIssueRef?: RemoteIssueRefDto;
 }
 
 export const listTimeEntriesQuerySchema = z

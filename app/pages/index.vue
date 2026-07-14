@@ -41,6 +41,28 @@ const { data: projectsData } = useAsyncData(
 const projectOptions = computed(() => projectsData.value ?? []);
 const activeEditorKey = ref<string | null>(null);
 
+const { ensureLoaded: ensureRemoteConfigLoaded, getConfig: getRemoteConfigForClient } =
+  useActiveRemoteConfigs();
+
+function clientIdForProject(projectId: string | null): string | null {
+  return projectOptions.value.find((p) => p.id === projectId)?.clientId ?? null;
+}
+
+watch(
+  projectOptions,
+  (options) => {
+    const clientIds = new Set(options.map((p) => p.clientId));
+    for (const clientId of clientIds) {
+      void ensureRemoteConfigLoaded(clientId);
+    }
+  },
+  { immediate: true },
+);
+
+function remoteConfigForGroup(group: { projectId: string | null }) {
+  return getRemoteConfigForClient(clientIdForProject(group.projectId));
+}
+
 const now = ref(Date.now());
 watch(elapsedSeconds, () => {
   now.value = Date.now();
@@ -184,6 +206,7 @@ async function onEntryDeleted() {
             :time-zone="effective.timeZone"
             :active-editor-key="activeEditorKey"
             :project-options="projectOptions"
+            :remote-config="remoteConfigForGroup(group)"
             @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
             @continue="onContinue(group)"
             @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"

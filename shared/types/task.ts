@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RemoteIssueRefDto } from './remote-issue-ref';
 
 export const TASK_NAME_MAX_LENGTH = 100;
 
@@ -26,6 +27,7 @@ export interface TaskDto {
   projectName: string | null;
   clientName: string | null;
   createdAt: string;
+  remoteIssueRef?: RemoteIssueRefDto;
 }
 
 export interface ListTasksQuery {
