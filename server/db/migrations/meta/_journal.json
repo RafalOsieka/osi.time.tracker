@@ -50,6 +50,13 @@
       "when": 1783956489436,
       "tag": "0006_deep_spiral",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1784050073219,
+      "tag": "0007_tiny_doomsday",
+      "breakpoints": true
     }
   ]
 }
