@@ -2,9 +2,11 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db/index';
 import { tasks, projects, clients } from '../db/schema';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
+import { getRemoteIssueRefForTask } from './remote-issue-refs';
 
 interface TimeEntryRow {
   id: string;
+  userId: string;
   taskId: string | null;
   startedAt: Date;
   stoppedAt: Date | null;
@@ -19,6 +21,11 @@ export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
   let projectId: string | null = null;
   let projectName: string | null = null;
   let clientName: string | null = null;
+  let remoteIssueRef: TimeEntryDto['remoteIssueRef'];
+
+  if (row.taskId) {
+    remoteIssueRef = (await getRemoteIssueRefForTask(row.userId, row.taskId)) ?? undefined;
+  }
 
   if (row.taskId) {
     const [task] = await db
@@ -60,5 +67,6 @@ export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
     clientName,
     startedAt: row.startedAt.toISOString(),
     stoppedAt: row.stoppedAt ? row.stoppedAt.toISOString() : null,
+    remoteIssueRef,
   };
 }

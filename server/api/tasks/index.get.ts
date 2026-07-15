@@ -2,6 +2,7 @@ import { db } from '../../db/index';
 import { tasks, projects, clients } from '../../db/schema';
 import { eq, isNull, asc, and, ilike } from 'drizzle-orm';
 import type { TaskDto } from '../../../shared/types/task';
+import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   const { user } = await requireAuth(event);
@@ -34,6 +35,11 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     .where(and(...conditions))
     .orderBy(asc(tasks.name));
 
+  const refs = await getRemoteIssueRefsForTasks(
+    user.id,
+    rows.map((row) => row.id),
+  );
+
   return rows.map((row) => ({
     id: row.id,
     name: row.name,
@@ -41,5 +47,6 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     projectName: row.projectName ?? null,
     clientName: row.clientName ?? null,
     createdAt: row.createdAt.toISOString(),
+    remoteIssueRef: refs.get(row.id),
   }));
 });

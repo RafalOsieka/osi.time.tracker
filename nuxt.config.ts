@@ -114,6 +114,16 @@ export default defineNuxtConfig({
       // Baseline Content-Security-Policy; tighten iteratively post-MVP.
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:'],
+        // Remote-issue-linking (REQ-TTR-106) performs a *browser-side* fetch
+        // straight to each user's own configured OpenProject/Redmine base
+        // URL (never proxied through the OSI server), so the exact origin
+        // is not known at build time and cannot be enumerated per-request
+        // with a static nuxt-security directive. As a pragmatic MVP
+        // trade-off (see design.md risk "CSP blocks configured origins"),
+        // connect-src is broadened to any HTTP(S) origin rather than
+        // implementing per-session dynamic CSP; 'data:'/other schemes stay
+        // blocked, and all other directives remain at their strict default.
+        'connect-src': ["'self'", 'https:', 'http:'],
       },
     },
   },
@@ -133,7 +143,7 @@ export default defineNuxtConfig({
       hmr: process.env.IS_E2E === 'true' ? false : undefined,
     },
     optimizeDeps: {
-      include: ['@primevue/forms', '@primevue/forms/resolvers/zod', 'zod'],
+      include: ['@primevue/forms', '@primevue/forms/resolvers/zod', 'temporal-polyfill', 'zod'],
     },
   },
   typescript: {

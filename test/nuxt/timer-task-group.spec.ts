@@ -38,12 +38,31 @@ const SelectStub = {
   methods: { show: selectShowMock, hide: selectHideMock },
 };
 
+const PopoverStub = {
+  template: '<div><slot /></div>',
+  methods: { toggle: vi.fn(), hide: vi.fn() },
+};
+
 const stubs = {
   Button: ButtonStub,
   InputText: InputTextStub,
   Select: SelectStub,
+  Popover: PopoverStub,
   TimerEntryRow: true,
 };
+
+const openProjectConfig = {
+  id: 'config-1',
+  clientId: 'client-1',
+  systemType: 'openproject' as const,
+  baseUrl: 'https://op.example.com',
+  executionMode: 'client' as const,
+  roundingRule: 'none' as const,
+  requiredFieldDefaults: {},
+  createdAt: '',
+  updatedAt: '',
+};
+const redmineConfig = { ...openProjectConfig, systemType: 'redmine' as const };
 
 function testI18n() {
   return createI18n({
@@ -180,5 +199,53 @@ describe('TimerTaskGroup', () => {
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-group-title-input-task-a"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-group-project-select-task-b"]').exists()).toBe(true);
+  });
+
+  it('omits the remote-issue control entirely when there is no active configuration', async () => {
+    const wrapper = await mount({ remoteConfig: null });
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
+      false,
+    );
+  });
+
+  it('shows an unlinked status and an enabled picker when an OpenProject config exists but no reference', async () => {
+    const wrapper = await mount({ remoteConfig: openProjectConfig });
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').text()).toBe(
+      'timerView.remoteIssue.unlinked',
+    );
+  });
+
+  it('renders a linked anchor with the reference URL and a tooltip', async () => {
+    const wrapper = await mount({
+      remoteConfig: openProjectConfig,
+      group: {
+        ...group(),
+        remoteIssueRef: {
+          id: 'ref-1',
+          taskId: 'task-1',
+          userId: 'user-1',
+          remoteSystemConfigId: 'config-1',
+          remoteIssueId: '42',
+          cachedTitle: 'Fix login bug',
+          url: 'https://op.example.com/work_packages/42',
+          createdAt: '',
+          updatedAt: '',
+        },
+      },
+    });
+    const link = wrapper.find('[data-testid="timer-group-remote-issue-link-task-1"]');
+    expect(link.attributes('href')).toBe('https://op.example.com/work_packages/42');
+    expect(link.attributes('target')).toBe('_blank');
+    expect(link.attributes('title')).toContain('Fix login bug');
+  });
+
+  it('renders a disabled pencil button with an explanation for a Redmine configuration', async () => {
+    const wrapper = await mount({ remoteConfig: redmineConfig });
+    const disabledButton = wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]');
+    expect(disabledButton.attributes('disabled')).toBeDefined();
+    expect(disabledButton.attributes('title')).toBe('timerView.remoteIssue.editDisabledRedmine');
   });
 });

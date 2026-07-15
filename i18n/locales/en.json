@@ -193,6 +193,12 @@
       "deleteConfirmMessage": "Are you sure you want to delete this entry?",
       "deleteConfirmAccept": "Yes",
       "deleteConfirmReject": "No"
+    },
+    "remoteIssue": {
+      "unlinked": "(unlinked)",
+      "editLabel": "Link remote issue",
+      "editDisabledRedmine": "Search is not available for Redmine yet.",
+      "linkedTooltipPrefix": "Linked to"
     }
   },
   "timer": {
@@ -209,6 +215,21 @@
       "saveButton": "Save",
       "cancelButton": "Cancel"
     }
+  },
+  "remoteIssuePicker": {
+    "modeLabel": "Search by",
+    "modeTitle": "Title",
+    "modeId": "Issue ID",
+    "queryLabel": "Search query",
+    "queryPlaceholder": "Search query",
+    "submitButton": "Search",
+    "resultsLabel": "Search results",
+    "resultCount": "{count} results found",
+    "resultCountOne": "{count} result found",
+    "emptyResults": "No results found.",
+    "loading": "Searching\u2026",
+    "unlinkButton": "Unlink",
+    "unlinkConfirmMessage": "Remove the link to this remote issue?"
   },
   "error": {
     "clientNameRequired": "Name is required.",
@@ -238,7 +259,16 @@
     "timeEntryManualPairIncomplete": "Provide both a start and a stop time.",
     "timeEntryRangeInvalid": "Enter a valid date range.",
     "timeEntryIdsInvalid": "Select at least one valid time entry.",
-    "timeEntryBulkAssignInvalid": "One or more time entries could not be assigned."
+    "timeEntryBulkAssignInvalid": "One or more time entries could not be assigned.",
+    "remoteIssueIdRequired": "Remote issue id is required.",
+    "remoteIssueTitleRequired": "Remote issue title is required.",
+    "remoteIssueTaskNoConfig": "This task has no active remote system configuration to link against.",
+    "remoteIssueConfigNotOpenProject": "Linking is only supported for OpenProject configurations.",
+    "taskMergeConflictingRemoteIssueRef": "Both tasks are linked to different remote issues, so they cannot be merged.",
+    "remoteIssueSearchTitleTooShort": "Enter at least 3 characters to search.",
+    "remoteIssueSearchIdInvalid": "Enter a valid issue id.",
+    "remoteIssueSearchNotFound": "No issue was found with that id.",
+    "remoteIssueSearchFailed": "The search could not be completed. Please try again."
   },
   "errors": {
     "auth": {

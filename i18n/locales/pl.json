@@ -193,6 +193,12 @@
       "deleteConfirmMessage": "Czy na pewno chcesz usunąć ten wpis?",
       "deleteConfirmAccept": "Tak",
       "deleteConfirmReject": "Nie"
+    },
+    "remoteIssue": {
+      "unlinked": "(niepołączone)",
+      "editLabel": "Połącz ze zdalnym zgłoszeniem",
+      "editDisabledRedmine": "Wyszukiwanie nie jest jeszcze dostępne dla Redmine.",
+      "linkedTooltipPrefix": "Połączone z"
     }
   },
   "timer": {
@@ -209,6 +215,21 @@
       "saveButton": "Zapisz",
       "cancelButton": "Anuluj"
     }
+  },
+  "remoteIssuePicker": {
+    "modeLabel": "Szukaj według",
+    "modeTitle": "Tytuł",
+    "modeId": "Identyfikator zgłoszenia",
+    "queryLabel": "Zapytanie wyszukiwania",
+    "queryPlaceholder": "Zapytanie wyszukiwania",
+    "submitButton": "Szukaj",
+    "resultsLabel": "Wyniki wyszukiwania",
+    "resultCount": "Znaleziono {count} wyników",
+    "resultCountOne": "Znaleziono {count} wynik",
+    "emptyResults": "Nie znaleziono wyników.",
+    "loading": "Wyszukiwanie\u2026",
+    "unlinkButton": "Odlącz",
+    "unlinkConfirmMessage": "Usunąć połączenie z tym zdalnym zgłoszeniem?"
   },
   "error": {
     "clientNameRequired": "Nazwa jest wymagana.",
@@ -238,7 +259,16 @@
     "timeEntryManualPairIncomplete": "Podaj czas rozpoczęcia i zakończenia.",
     "timeEntryRangeInvalid": "Wprowadź prawidłowy zakres dat.",
     "timeEntryIdsInvalid": "Wybierz co najmniej jeden prawidłowy wpis czasu.",
-    "timeEntryBulkAssignInvalid": "Nie udało się przypisać jednego lub więcej wpisów czasu."
+    "timeEntryBulkAssignInvalid": "Nie udało się przypisać jednego lub więcej wpisów czasu.",
+    "remoteIssueIdRequired": "Identyfikator zdalnego zgłoszenia jest wymagany.",
+    "remoteIssueTitleRequired": "Tytuł zdalnego zgłoszenia jest wymagany.",
+    "remoteIssueTaskNoConfig": "To zadanie nie ma aktywnej konfiguracji systemu zdalnego do połączenia.",
+    "remoteIssueConfigNotOpenProject": "Łączenie jest obsługiwane tylko dla konfiguracji OpenProject.",
+    "taskMergeConflictingRemoteIssueRef": "Oba zadania są połączone z różnymi zdalnymi zgłoszeniami, więc nie można ich scalić.",
+    "remoteIssueSearchTitleTooShort": "Wprowadź co najmniej 3 znaki, aby wyszukać.",
+    "remoteIssueSearchIdInvalid": "Wprowadź prawidłowy identyfikator zgłoszenia.",
+    "remoteIssueSearchNotFound": "Nie znaleziono zgłoszenia o tym identyfikatorze.",
+    "remoteIssueSearchFailed": "Nie udało się zakończyć wyszukiwania. Spróbuj ponownie."
   },
   "errors": {
     "auth": {
