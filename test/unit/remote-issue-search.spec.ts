@@ -20,6 +20,7 @@ const config: RemoteSystemConfigDto = {
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',
+  transportMode: 'direct',
   roundingRule: 'none',
   requiredFieldDefaults: {},
   createdAt: '2024-01-01T00:00:00.000Z',

@@ -5,7 +5,11 @@ import {
   parseIssueByIdResult,
   parseTitleSearchResults,
 } from '../../shared/utils/openproject-adapter';
+import { REMOTE_PROXY_SECRET_HEADER } from '../../shared/config/remote-proxy';
+import { extractMessageKey } from '../utils/extractMessageKey';
 import type {
+  ProxiedRemoteIssueSearchDto,
+  ProxiedRemoteIssueSearchResponseDto,
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
@@ -20,11 +24,14 @@ export interface RemoteIssueSearchInput {
 }
 
 /**
- * Browser-side OpenProject search transport. Builds requests using the
- * shared adapter, authenticates directly against the configured OpenProject
+ * OpenProject search transport, selected per-request by the configuration's
+ * `transportMode` (REQ-TTR-106): `direct` builds requests via the shared
+ * adapter and authenticates straight against the configured OpenProject
  * base URL with the browser-held credential (never through `$fetch` /
  * `useCsrfFetch`, so the OSI session/CSRF material never leaks to a
- * third-party origin), and exposes bounded, stale-suppressed results.
+ * third-party origin); `proxied` sends the search and the per-request
+ * secret to the OSI server, which forwards it to the tracker. Both modes
+ * expose the same bounded, stale-suppressed results.
  */
 export function useRemoteIssueSearch(config: RemoteSystemConfigDto) {
   const { get: getSecret } = useRemoteConfigSecret();
@@ -65,59 +72,24 @@ export function useRemoteIssueSearch(config: RemoteSystemConfigDto) {
     errorKey.value = null;
 
     const secret = getSecret(config.id);
-    const request =
-      input.mode === 'title'
-        ? buildTitleSearchRequest(config.baseUrl, value)
-        : buildIssueByIdRequest(config.baseUrl, value);
 
     try {
-      const response = await fetch(request.url, {
-        method: request.method,
-        headers: {
-          Accept: 'application/json',
-          ...(secret ? { Authorization: `Basic ${encodeBasicAuth(secret)}` } : {}),
-        },
-      });
+      const searchResults =
+        config.transportMode === 'proxied'
+          ? await searchProxied(input.mode, value, secret)
+          : await searchDirect(input.mode, value, secret);
 
       // A superseded request must never overwrite newer results/errors.
-      if (token !== requestToken) {
-        return;
-      }
-
-      if (input.mode === 'id') {
-        if (response.status === 404) {
-          results.value = [];
-          errorKey.value = 'error.remoteIssueSearchNotFound';
-          return;
-        }
-        if (!response.ok) {
-          results.value = [];
-          errorKey.value = 'error.remoteIssueSearchFailed';
-          return;
-        }
-        const payload = await response.json();
-        if (token !== requestToken) return;
-        const result = parseIssueByIdResult(payload, response.status);
-        results.value = result ? [result] : [];
-        if (!result) {
-          errorKey.value = 'error.remoteIssueSearchNotFound';
-        }
-        return;
-      }
-
-      if (!response.ok) {
-        results.value = [];
-        errorKey.value = 'error.remoteIssueSearchFailed';
-        return;
-      }
-
-      const payload = await response.json();
       if (token !== requestToken) return;
-      results.value = parseTitleSearchResults(payload);
-    } catch {
+
+      results.value = searchResults;
+      if (input.mode === 'id' && searchResults.length === 0) {
+        errorKey.value = 'error.remoteIssueSearchNotFound';
+      }
+    } catch (err: unknown) {
       if (token !== requestToken) return;
       results.value = [];
-      errorKey.value = 'error.remoteIssueSearchFailed';
+      errorKey.value = extractMessageKey(err, 'error.remoteIssueSearchFailed');
     } finally {
       if (token === requestToken) {
         loading.value = false;
@@ -125,7 +97,80 @@ export function useRemoteIssueSearch(config: RemoteSystemConfigDto) {
     }
   }
 
+  /**
+   * `direct` transport: queries the configured OpenProject origin straight
+   * from the browser with the browser-held credential.
+   */
+  async function searchDirect(
+    mode: RemoteIssueSearchMode,
+    value: string,
+    secret: string | null,
+  ): Promise<RemoteIssueSearchResult[]> {
+    const request =
+      mode === 'title'
+        ? buildTitleSearchRequest(config.baseUrl, value)
+        : buildIssueByIdRequest(config.baseUrl, value);
+
+    const response = await fetch(request.url, {
+      method: request.method,
+      headers: {
+        Accept: 'application/json',
+        ...(secret ? { Authorization: `Basic ${encodeBasicAuth(secret)}` } : {}),
+      },
+    });
+
+    if (mode === 'id') {
+      if (response.status === 404) return [];
+      if (!response.ok) throw toDirectTransportError('error.remoteIssueSearchFailed');
+      const payload = await response.json();
+      const result = parseIssueByIdResult(payload, response.status);
+      return result ? [result] : [];
+    }
+
+    if (!response.ok) throw toDirectTransportError('error.remoteIssueSearchFailed');
+    const payload = await response.json();
+    return parseTitleSearchResults(payload);
+  }
+
+  /**
+   * `proxied` transport: sends the search and the per-request secret to the
+   * OSI server (REQ-TTR-111/112), which forwards it to the tracker. The
+   * secret is attached only to this request header and never persisted.
+   */
+  async function searchProxied(
+    mode: RemoteIssueSearchMode,
+    value: string,
+    secret: string | null,
+  ): Promise<RemoteIssueSearchResult[]> {
+    if (!secret) {
+      throw toDirectTransportError('error.remoteProxySecretRequired');
+    }
+
+    const { $csrfFetch } = useNuxtApp();
+    const body: ProxiedRemoteIssueSearchDto = {
+      remoteSystemConfigId: config.id,
+      mode,
+      query: value,
+    };
+    const response = await $csrfFetch<ProxiedRemoteIssueSearchResponseDto>('/api/remote/search', {
+      method: 'POST',
+      headers: { [REMOTE_PROXY_SECRET_HEADER]: secret },
+      body,
+    });
+
+    return response.results;
+  }
+
   return { search, results, loading, errorKey };
+}
+
+/**
+ * Wraps a local (non-`$fetch`) failure in the same `data.data.messageKey`
+ * shape `extractMessageKey` expects from a Nitro `createError` response, so
+ * both transports report errors through one consistent path.
+ */
+function toDirectTransportError(messageKey: string): { data: { data: { messageKey: string } } } {
+  return { data: { data: { messageKey } } };
 }
 
 /**

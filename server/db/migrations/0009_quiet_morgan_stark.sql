@@ -1,0 +1,1 @@
+ALTER TABLE "remote_system_configs" ADD COLUMN "transportMode" text DEFAULT 'direct' NOT NULL;

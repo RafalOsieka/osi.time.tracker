@@ -82,6 +82,9 @@
       "systemTypeLabel": "Remote system",
       "baseUrlLabel": "Base URL",
       "baseUrlPlaceholder": "https://issues.example.com",
+      "transportModeLabel": "Search transport",
+      "transportModeDirect": "Direct (browser to tracker)",
+      "transportModeProxied": "Proxied (through this server)",
       "roundingRuleLabel": "Rounding rule",
       "roundingNone": "No rounding",
       "rounding15m": "Round up to 15 minutes",
@@ -239,6 +242,7 @@
     "remoteConfigBaseUrlRequired": "Base URL is required.",
     "remoteConfigBaseUrlInvalid": "Base URL must be a valid URL.",
     "remoteConfigExecutionModeRequired": "Execution mode is required.",
+    "remoteConfigTransportModeRequired": "Transport mode is required.",
     "remoteConfigRoundingRuleRequired": "Rounding rule is required.",
     "projectNameRequired": "Name is required.",
     "projectNameTooLong": "Name must be 100 characters or fewer.",
@@ -268,7 +272,12 @@
     "remoteIssueSearchTitleTooShort": "Enter at least 3 characters to search.",
     "remoteIssueSearchIdInvalid": "Enter a valid issue id.",
     "remoteIssueSearchNotFound": "No issue was found with that id.",
-    "remoteIssueSearchFailed": "The search could not be completed. Please try again."
+    "remoteIssueSearchFailed": "The search could not be completed. Please try again.",
+    "remoteConfigIdRequired": "A valid remote configuration id is required.",
+    "remoteIssueSearchQueryRequired": "Enter a search query.",
+    "remoteProxySecretRequired": "An API key is required to search this tracker.",
+    "remoteProxyAuthRejected": "The tracker rejected the provided API key.",
+    "remoteProxyConnectionFailed": "The tracker could not be reached. Check its address and your network connection."
   },
   "errors": {
     "auth": {

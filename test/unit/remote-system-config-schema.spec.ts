@@ -13,7 +13,7 @@ describe('createRemoteSystemConfigSchema', () => {
 
   it('parses a valid body', () => {
     const result = createRemoteSystemConfigSchema.parse(valid);
-    expect(result).toEqual(valid);
+    expect(result).toEqual({ ...valid, transportMode: 'direct' });
   });
 
   it('accepts optional requiredFieldDefaults', () => {
@@ -37,6 +37,22 @@ describe('createRemoteSystemConfigSchema', () => {
 
   it('rejects an unknown systemType', () => {
     expect(() => createRemoteSystemConfigSchema.parse({ ...valid, systemType: 'jira' })).toThrow();
+  });
+
+  it('defaults transportMode to direct when omitted', () => {
+    const result = createRemoteSystemConfigSchema.parse(valid);
+    expect(result.transportMode).toBe('direct');
+  });
+
+  it('accepts an explicit proxied transportMode', () => {
+    const result = createRemoteSystemConfigSchema.parse({ ...valid, transportMode: 'proxied' });
+    expect(result.transportMode).toBe('proxied');
+  });
+
+  it('rejects an invalid transportMode', () => {
+    expect(() =>
+      createRemoteSystemConfigSchema.parse({ ...valid, transportMode: 'tunneled' }),
+    ).toThrow();
   });
 
   it('strips a secret field submitted alongside a valid body', () => {

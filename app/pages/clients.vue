@@ -29,13 +29,27 @@ const roundingRuleOptions = [
   { label: t('clients.remoteConfig.rounding30m'), value: 'up_30m' },
   { label: t('clients.remoteConfig.rounding1h'), value: 'up_1h' },
 ];
+const transportModeOptions = [
+  { label: t('clients.remoteConfig.transportModeDirect'), value: 'direct' },
+  { label: t('clients.remoteConfig.transportModeProxied'), value: 'proxied' },
+];
 
 // --- Data fetching ---
+// `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
+// hydration (matching the server-rendered markup) instead of flipping to `true`
+// synchronously during setup, which caused a DataTable loading-overlay hydration
+// mismatch.
 const {
   data: clientsData,
   pending: clientsPending,
   refresh: fetchClients,
-} = useAsyncData('clients', () => $fetch<ClientDto[]>('/api/clients'), { server: false });
+} = useAsyncData('clients', () => $fetch<ClientDto[]>('/api/clients'), {
+  server: false,
+  immediate: false,
+});
+onMounted(() => {
+  void fetchClients();
+});
 
 // --- State ---
 const clients = computed(() => clientsData.value ?? []);
@@ -51,10 +65,12 @@ const remoteConfigLoading = ref(false);
 const remoteConfigInitialValues = ref<{
   systemType: RemoteSystemType;
   baseUrl: string;
+  transportMode: RemoteTransportMode;
   roundingRule: RemoteRoundingRule;
 }>({
   systemType: 'redmine',
   baseUrl: '',
+  transportMode: 'direct',
   roundingRule: 'none',
 });
 const remoteConfigSecret = ref('');
@@ -80,7 +96,12 @@ async function openEdit(client: ClientDto) {
   remoteConfigSecret.value = '';
   baseUrlServerError.value = '';
   systemTypeServerError.value = '';
-  remoteConfigInitialValues.value = { systemType: 'redmine', baseUrl: '', roundingRule: 'none' };
+  remoteConfigInitialValues.value = {
+    systemType: 'redmine',
+    baseUrl: '',
+    transportMode: 'direct',
+    roundingRule: 'none',
+  };
   remoteConfigLoading.value = true;
   try {
     const config = await $fetch<RemoteSystemConfigDto>(`/api/clients/${client.id}/remote-config`);
@@ -88,6 +109,7 @@ async function openEdit(client: ClientDto) {
     remoteConfigInitialValues.value = {
       systemType: config.systemType,
       baseUrl: config.baseUrl,
+      transportMode: config.transportMode,
       roundingRule: config.roundingRule,
     };
     remoteConfigSecret.value = getSecret(config.id) ?? '';
@@ -114,6 +136,7 @@ async function onSaveRemoteConfig({ valid, values }: FormSubmitEvent) {
       systemType: values.systemType,
       baseUrl: values.baseUrl,
       executionMode: 'client',
+      transportMode: values.transportMode,
       roundingRule: values.roundingRule,
     };
     const saved = await $csrfFetch<RemoteSystemConfigDto>(
@@ -164,6 +187,7 @@ function onRemoveRemoteConfig() {
         remoteConfigInitialValues.value = {
           systemType: 'redmine',
           baseUrl: '',
+          transportMode: 'direct',
           roundingRule: 'none',
         };
         toast.add({
@@ -394,6 +418,23 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
               :aria-invalid="field?.invalid"
               :aria-describedby="field?.invalid ? 'remote-config-base-url-error' : undefined"
               data-testid="remote-config-base-url-input"
+            />
+          </FormFieldWrap>
+
+          <FormFieldWrap
+            v-slot="{ field }"
+            :label="t('clients.remoteConfig.transportModeLabel')"
+            name="transportMode"
+            input-id="remote-config-transport-mode"
+            error-testid="remote-config-transport-mode-error"
+          >
+            <Select
+              id="remote-config-transport-mode"
+              :options="transportModeOptions"
+              option-label="label"
+              option-value="value"
+              :aria-invalid="field?.invalid"
+              data-testid="remote-config-transport-mode-select"
             />
           </FormFieldWrap>
 

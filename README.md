@@ -141,6 +141,19 @@ OSI Time Tracker is designed to be self-hosted via Docker. A multi-stage product
 
 Database migrations (`pnpm db:migrate`) must be applied before the app serves traffic. The standalone stack runs the migration step automatically.
 
+### VPN internal DNS (proxied remote transport)
+
+When a remote-system configuration uses `proxied` transport, the OSI server itself makes the outbound request to your tracker instead of the browser, so the app container needs to resolve and reach the tracker's hostname. If your tracker is only reachable over a VPN with its own internal DNS, add the VPN's resolver to the `app` service in `docker-compose.standalone.yml` (or your own compose override), e.g.:
+
+```yaml
+services:
+  app:
+    dns:
+      - 10.0.0.1 # your VPN's internal DNS resolver
+```
+
+This is a deployment concern only; OSI does not perform any application-level DNS or VPN handling.
+
 ## Project structure
 
 ```
