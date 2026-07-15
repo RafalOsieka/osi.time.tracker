@@ -1,302 +1,162 @@
-# Nuxt Minimal Starter
+<div align="center">
 
-[![codecov](https://codecov.io/gh/RafalOsieka/osi.time.tracker/branch/main/graph/badge.svg)](https://codecov.io/gh/RafalOsieka/osi.time.tracker)
+# OSI Time Tracker
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+**A self-hosted, open-source personal time tracker for IT specialists who juggle multiple clients and projects.**
 
-## Setup
+[![CI](https://github.com/RafalOsieka/osi.time.tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/RafalOsieka/osi.time.tracker/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
-Make sure to install dependencies:
+Built with [Nuxt 4](https://nuxt.com/) · [Vue 3](https://vuejs.org/) · [PrimeVue](https://primevue.org/) · [Drizzle ORM](https://orm.drizzle.team/) · [PostgreSQL](https://www.postgresql.org/)
 
-```bash
-# npm
-npm install
+</div>
 
-# pnpm
-pnpm install
+> [!NOTE]
+> **Status: early MVP.** The foundation (auth, sessions, database, i18n, security, testing) is in place, while most domain features described in the vision are still being built. See [`docs/wbs.md`](./docs/wbs.md) and [`openspec/`](./openspec/) for the roadmap and specifications.
 
-# yarn
-yarn install
+## Overview
 
-# bun
-bun install
-```
+OSI Time Tracker gives independent IT consultants full ownership of their time data. Each user works in a fully isolated workspace — no teams, no shared data, no SaaS. You track time locally in a clean `Client → Project → Task` hierarchy, then push time entries to your clients' issue trackers **on demand**, so you never re-enter the same data twice.
 
-## Development Server
+It solves a recurring problem for multi-client work: your clients run different trackers (Redmine, OpenProject, …), and there is no lightweight, self-hosted tool that tracks time in a structured hierarchy, links local tasks to remote issues, and pushes entries to those systems without manual re-entry.
 
-Start the development server on `http://localhost:3000`:
+## Features
 
-```bash
-# npm
-npm run dev
+- **Time tracking** — start/stop a live timer or add manual entries; time entries are the primary objects you create.
+- **Timer view** — your daily working page: entries listed per day, grouped by task and expandable to individual entries.
+- **Entry-first data model** — tasks are derived automatically from entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
+- **Client & project organization** — group work under `Client → Project`, with soft-delete semantics.
+- **Remote integration** — link local tasks to remote issues (OpenProject in MVP; Redmine deferred) and push a day's rounded totals with a single action.
+- **Adapter model** — pluggable adapters run either browser-side (for trackers behind a VPN) or server-side; MVP ships the client-side OpenProject adapter.
+- **Internationalization** — English and Polish catalogs kept in strict parity, with browser-language detection.
+- **Security baseline** — sealed cookie sessions, CSRF protection, rate limiting, and a Content-Security-Policy out of the box.
+- **Accessibility** — WCAG 2.1 AA target, enforced through a lint gate.
 
-# pnpm
-pnpm dev
+## Tech stack
 
-# yarn
-yarn dev
+| Area                    | Technology                                                             |
+| ----------------------- | ---------------------------------------------------------------------- |
+| Frontend / SSR          | Nuxt 4, Vue 3, Vue Router, TypeScript                                  |
+| UI                      | PrimeVue 4 (Aura theme), PrimeIcons                                    |
+| Backend / API           | Nitro server routes (Nuxt)                                             |
+| Database                | PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver |
+| Auth & sessions         | `nuxt-auth-utils`, `nuxt-security`                                     |
+| Validation              | `zod` (single source of truth for boundary types)                     |
+| i18n                    | `@nuxtjs/i18n` (`en`, `pl`)                                            |
+| Testing                 | Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`         |
+| Tooling                 | pnpm, ESLint, Prettier, Docker Compose                                 |
 
-# bun
-bun run dev
-```
-
-## Production
-
-Build the application for production:
-
-```bash
-# npm
-npm run build
-
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
-
-## Testing
-
-### Unit tests
-
-No external dependencies required:
-
-```bash
-pnpm test:unit
-```
-
-### Nuxt component / integration tests
-
-No external dependencies required:
-
-```bash
-pnpm test:nuxt
-```
-
-### E2E tests
-
-E2E tests have two tiers with different requirements:
-
-#### API / server e2e (no browser)
-
-Requires **Docker** with the `postgres:18-alpine` image available. The test harness spins up a disposable PostgreSQL container automatically on port `54329`.
-
-```bash
-# Ensure Docker is running, then:
-pnpm test:e2e
-```
-
-If Docker is not available, all API e2e suites are skipped automatically.
-
-#### Browser / UI e2e (Playwright)
-
-Requires **Docker** (see above) **and** Playwright browser binaries installed:
-
-```bash
-# Install Playwright browsers (one-time setup)
-pnpm exec playwright install chromium
-
-# Then run e2e tests as usual
-pnpm test:e2e
-```
-
-If Playwright browser binaries are not installed, the browser-based suites (`auth-ui`, `i18n-login`, `shell`) are skipped automatically.
-
-#### Execution modes
-
-By default, the E2E harness performs a one-time production build (`pnpm build`) during global setup and runs tests against this build for maximum performance and parity with production.
-
-To run tests against the development server (useful for faster iteration without rebuilding), use the `NUXT_TEST_DEV` environment variable:
-
-```bash
-# Unix/macOS
-NUXT_TEST_DEV=1 pnpm test:e2e
-
-# Windows (PowerShell)
-$env:NUXT_TEST_DEV=1; pnpm test:e2e
-```
-
-When `NUXT_TEST_DEV` is set, the global build step is skipped and each test worker starts a Nuxt dev server.
-
-### Coverage
-
-Coverage is measured from the **unit** and **nuxt** projects together (the `e2e` project is excluded):
-
-```bash
-pnpm test:coverage
-```
-
-This produces `text`, `json-summary`, and `lcov` reports under the git-ignored `coverage/` directory, scoped to `app/`, `server/`, and `shared/`. Coverage is uploaded to [Codecov](https://codecov.io) in CI and is **report-only** (informational) — it does not currently gate merges.
-
----
-
-## Docker — Production Image
-
-The repository ships a multi-stage `Dockerfile` that produces a slim production image containing only the Nitro server output (`.output/`) and a Node 24 runtime.
-
-### Runtime decisions
-
-- **Non-root user**: the container runs as the unprivileged `node` user — never as root.
-- **Fixed `NODE_ENV=production`**: baked into the image; production behaviour is invariant.
-- **Fixed port**: the container listens on port `3000` (the Nitro default). The host-side port mapping can be changed via the `PORT` variable in the compose file.
-- **No baked secrets**: `DATABASE_URL` and `NUXT_SESSION_PASSWORD` must be supplied at container start via environment variables.
-- **`HEALTHCHECK` deferred**: intentionally omitted from this image; will be added in a future change.
-
-### Local production verification
-
-Use `docker-compose.local-prod.yml` to build and run the production image locally against the existing dev database stack.
-
-**Required environment variables** (set in `.env` or export before running):
-
-| Variable                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | PostgreSQL connection string for the **in-container** connection. Must NOT use `localhost` — inside a container `localhost` refers to the container itself. Use the Docker service name `db` when the database runs in the same compose network (e.g. `postgres://postgres:postgres@db:5432/osi_time_tracker`), or `host.docker.internal` when the database runs on the host machine (e.g. `postgres://postgres:postgres@host.docker.internal:5432/osi_time_tracker`). Defaults to the `@db:5432` form if unset. |
-| `NUXT_SESSION_PASSWORD` | 32+ character secret for sealing session cookies                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-
-**Startup order** — the DB compose must be running before the prod compose, because the prod compose joins the `osi-time-tracker` network as external:
-
-```bash
-# 1. Start the database (creates the osi-time-tracker network)
-docker compose up -d
-
-# 2. Build the production image, run migrations, then start the app
-docker compose -f docker-compose.local-prod.yml up --build
-```
-
-The `migrate` service runs `pnpm db:migrate` once and exits. The `app` service starts only after `migrate` exits with status 0. If migrations fail, the app is never started.
-
-To stop the production stack:
-
-```bash
-docker compose -f docker-compose.local-prod.yml down
-```
-
-## Daily use (standalone stack)
-
-The repository provides a single-command standalone deployment stack (`docker-compose.standalone.yml`) designed for daily personal use. It runs the entire application—the PostgreSQL 18 database, the database migrator/seeder, and the Nuxt web application—fully contained within its own isolated environment.
+## Getting started
 
 ### Prerequisites
 
-- **Docker** and **Docker Compose** installed on your system.
+- [Node.js](https://nodejs.org/) (latest LTS recommended)
+- [pnpm](https://pnpm.io/) `^11`
+- [Docker](https://www.docker.com/) (for a local PostgreSQL 18 instance)
 
-### .env Setup
-
-The standalone stack requires `NUXT_SESSION_PASSWORD` to be present in your environment. You can set this by creating a `.env` file in the project's root directory:
-
-```env
-# Secret used by nuxt-auth-utils to seal session cookies.
-# MUST be a secure, random string of 32+ characters.
-NUXT_SESSION_PASSWORD=your-secure-32-plus-character-secret-key-here
-```
-
-_Note: You do not need to set `DATABASE_URL` in your `.env` for the standalone stack, as it connects to the database service internally. If you are a developer, any `DATABASE_URL` set in your dev `.env` file will be safely ignored by the standalone stack._
-
-### Commands
-
-**Start the stack:**
-This builds the images, waits for the database to become healthy, automatically applies any pending schema migrations and seeds the bootstrap user (if configured), and starts the web application on port `3000` (or the port specified in your `PORT` environment variable).
+### Installation
 
 ```bash
-docker compose -f docker-compose.standalone.yml up -d --build
-```
+# 1. Install dependencies (also runs `nuxt prepare`)
+pnpm install
 
-**Stop the stack (with data retention):**
-Stops and removes the containers while preserving all your database logs, time entries, and users inside the dedicated named volume `pg-osi-time-tracker-standalone`.
+# 2. Create your environment file and set the required secrets
+cp .env.example .env
 
-```bash
-docker compose -f docker-compose.standalone.yml down
-```
-
-**Stop and delete all data (destructive):**
-Stops the containers and permanently deletes the named volume, destroying all stored users, clients, tasks, and time entries.
-
-```bash
-docker compose -f docker-compose.standalone.yml down -v
-```
-
-### Upgrade Flow
-
-To upgrade your standalone installation to the latest version while keeping your data fully intact:
-
-```bash
-# 1. Pull the latest code changes
-git pull
-
-# 2. Rebuild and start the containers (data is safely retained in the named volume)
-docker compose -f docker-compose.standalone.yml up -d --build
-```
-
-## Database
-
-The application uses [Drizzle ORM](https://orm.drizzle.team/) with the `postgres` driver against a PostgreSQL database.
-
-> **Requirement:** Requires **PostgreSQL >= 18** (for native `uuidv7()` support used for primary keys).
-
-### Configuration
-
-Set the `DATABASE_URL` environment variable to a PostgreSQL connection string (see `.env.example`):
-
-```bash
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/osi_time_tracker
-```
-
-The server-side Drizzle client (`server/db`) and the migration tooling both read `DATABASE_URL`. If it is missing, client initialization and migrations fail fast with a clear error rather than connecting to a default.
-
-### Run the database (Docker Compose)
-
-A repo-root `docker-compose.yml` starts a local PostgreSQL (`postgres:18-alpine`) instance matching the default `DATABASE_URL`:
-
-```bash
-# Start the database in the background
+# 3. Start a local PostgreSQL 18 container (plus PgAdmin)
 docker compose up -d
 
-# Apply pending migrations against the running container
+# 4. Apply database migrations
 pnpm db:migrate
 
-# Stop the container (data is kept)
-docker compose down
-
-# Stop and DELETE the data volume (destroys all data)
-docker compose down -v
+# 5. Start the dev server on http://localhost:3000
+pnpm dev
 ```
 
-Data is stored in a persistent named volume (`pgdata`), so it survives `docker compose down` and container recreation — it is only removed with `docker compose down -v`. Credentials and the host port can be overridden via env vars (`POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`; see `.env.example`), which Compose auto-loads from a root `.env` file. The compose service and the e2e test harness share the same `postgres:18-alpine` image.
+### Environment variables
 
-### Migrations
+| Variable                | Description                                                                                       |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`          | PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`. |
+| `NUXT_SESSION_PASSWORD` | 32+ character secret used by `nuxt-auth-utils` to seal session cookies.                            |
 
-Schema changes are expressed as committed SQL migration files under `server/db/migrations`:
+> [!IMPORTANT]
+> Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing. Never log or commit these secrets.
+
+## Development
 
 ```bash
-# Generate a new SQL migration after editing the schema
-pnpm db:generate
+pnpm dev            # start the dev server (http://localhost:3000)
+pnpm build          # production build (output in .output/)
+pnpm preview        # preview the production build locally
+pnpm generate       # generate a static site
 
-# Apply all pending migrations to the database in DATABASE_URL
-pnpm db:migrate
+pnpm lint           # ESLint (includes Vue i18n + accessibility rules)
+pnpm lint:fix       # auto-fix lint issues
+pnpm format         # format with Prettier
+pnpm format:check   # verify formatting
 ```
 
-Migrations are generated by `drizzle-kit` and applied by the `drizzle-orm` migrator, which records applied migrations so they are not re-run.
+### Database
 
-### Unattended migrations (Docker Compose)
+The schema lives in `server/db/schema` and migrations are committed SQL files under `server/db/migrations`.
 
-The production compose stack (`docker-compose.local-prod.yml`) runs a dedicated one-shot `migrate` container that executes `pnpm db:migrate` to completion **before** the application begins serving traffic. If a migration fails, the container exits non-zero and the `app` service is never started.
+```bash
+pnpm db:generate    # generate a new migration after editing the schema
+pnpm db:migrate     # apply pending migrations
+docker compose down # stop the local database (keeps data)
+docker compose down -v  # stop and delete the data volume
+```
+
+## Testing
+
+Vitest is configured with three projects:
+
+```bash
+pnpm test:unit      # unit tests   (test/unit/*.{test,spec}.ts, node env)
+pnpm test:e2e       # e2e tests    (test/e2e/*.{test,spec}.ts, node env)
+pnpm test:nuxt      # component/integration tests (test/nuxt, nuxt env)
+pnpm test:coverage  # coverage for unit + nuxt projects
+```
+
+Focus on a single test by name:
+
+```bash
+pnpm exec vitest run -t "<test name>"
+```
+
+> [!TIP]
+> E2E tests run against a production build by default and require a running PostgreSQL (the harness uses `postgres:18-alpine`). For faster iteration, run them against the dev server with `NUXT_TEST_DEV=1` (`pnpm test:e2e:dev`).
+
+## Deployment
+
+OSI Time Tracker is designed to be self-hosted via Docker. A multi-stage production `Dockerfile` and several Compose files are provided:
+
+| File                              | Purpose                                                                    |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| `docker-compose.yml`              | Local development database (PostgreSQL 18) + PgAdmin.                       |
+| `docker-compose.local-prod.yml`   | Build and run the production image against the dev database network.       |
+| `docker-compose.standalone.yml`   | Fully self-contained stack (database, migrator, web app) for daily hosting. |
+| `docker-compose.openproject.yml`  | Opt-in local OpenProject instance for remote-integration development.      |
+
+Database migrations (`pnpm db:migrate`) must be applied before the app serves traffic. The standalone stack runs the migration step automatically.
+
+## Project structure
+
+```
+app/       Nuxt app source (pages, layouts, middleware, composables, plugins, utils)
+server/    Nitro server: api/ handlers, db/ (Drizzle client, schema, migrations), utils, types
+shared/    Cross-boundary code shared by client and server; boundary types live in shared/types
+i18n/      Translation catalogs (en.json, pl.json)
+test/      unit/, e2e/, and nuxt/ test suites
+docs/      Project vision and work-breakdown notes
+openspec/  OpenSpec change/spec documents (behavioral source of truth)
+```
+
+## Documentation
+
+- [`docs/vision.md`](./docs/vision.md) — product vision, domain model, and non-functional goals.
+- [`docs/wbs.md`](./docs/wbs.md) — work-breakdown structure and roadmap.
+- [`openspec/`](./openspec/) — specifications and active change proposals.
+- [`AGENTS.md`](./AGENTS.md) — conventions and workflow for automated agents.
+- [`CODING_STANDARDS.md`](./CODING_STANDARDS.md) — code style and standards.

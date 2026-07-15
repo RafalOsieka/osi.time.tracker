@@ -1,146 +1,148 @@
 # AGENTS.md
 
+Guidance for AI coding agents working on **OSI Time Tracker**. This complements `README.md` (human-focused) and `CODING_STANDARDS.md` (authoritative style guide). When any of these conflict, prefer `CODING_STANDARDS.md` for style and this file for workflow.
+
 ## Project Overview
 
-**OSI Time Tracker** is a self-hosted, open-source personal time tracker for IT specialists working across multiple clients and projects. It supports a `Client → Project → Task` hierarchy, a live timer plus manual entry, and on-demand push of time entries to external issue trackers (Redmine, OpenProject) via a dual-mode adapter model.
+OSI Time Tracker is a self-hosted, open-source personal time tracker for IT consultants who work across multiple clients and projects. Each user works in a fully isolated, single-user workspace: time is tracked locally in a `Client → Project → Task` hierarchy and pushed to remote issue trackers (OpenProject in the MVP) on demand.
 
-> **Status:** Early MVP — most domain features are still planned (see `docs/wbs.md` and `openspec/`). Document only what exists.
+- **Status:** early MVP — the platform foundation (auth, sessions, database, i18n, security, testing) exists; most domain features are still being built. See `docs/wbs.md` and `openspec/` for the roadmap.
+- **Rendering:** SSR via Nuxt/Nitro.
 
-`osi-time-tracker` is a time-tracking web application built with [Nuxt 4](https://nuxt.com/) (Vue 3). It uses:
+### Tech stack
 
-- **Frontend/SSR**: Nuxt 4, Vue 3, Vue Router, [PrimeVue 4](https://primevue.org/) with the Aura theme.
-- **Internationalization**: `@nuxtjs/i18n` (locales: `en`, `pl`; lazy-loaded catalogs in `i18n/locales`).
-- **Authentication & sessions**: `nuxt-auth-utils` (sealed cookie sessions) plus `nuxt-security` (CSRF, rate limiting, security headers).
-- **Database**: [Drizzle ORM](https://orm.drizzle.team/) with the `postgres` driver against **PostgreSQL >= 18** (uses native `uuidv7()` for primary keys).
-- **Testing**: [Vitest 4](https://vitest.dev/) with three projects (unit, e2e, nuxt) via `@nuxt/test-utils`.
-
-Package manager is **pnpm** (`^11.6.0`). The project is a single package (not a monorepo), but uses a `pnpm-workspace.yaml`.
-
-### Directory layout
-
-- `app/` — Nuxt app source: `pages/`, `layouts/`, `middleware/`, `composables/`, `plugins/`, `utils/`.
-- `server/` — Nitro server: `api/` route handlers, `db/` (Drizzle client, schema, migrations), `utils/`, `types/`.
-- `shared/` — cross-boundary code shared by client and server; `types/` holds the single-source-of-truth boundary types (e.g. `auth.ts`, `client.ts`).
-- `i18n/locales/` — translation catalogs (`en.json`, `pl.json`).
-- `test/` — `unit/`, `e2e/`, and `nuxt/` test suites.
-- `docs/` — project vision and work-breakdown notes.
-- `openspec/` — OpenSpec change/spec documents.
-- `.github/` — GitHub configuration: Dependabot (`dependabot.yml`) and CI/PR workflows (`workflows/ci.yml`, `workflows/pr-title.yml`).
+- **Frontend / SSR:** Nuxt 4, Vue 3 (`<script setup lang="ts">`), Vue Router, TypeScript.
+- **UI:** PrimeVue 4 (Aura theme) + PrimeIcons; `@primevue/forms`.
+- **Backend / API:** Nitro server routes under `server/api`.
+- **Database:** PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver.
+- **Auth & security:** `nuxt-auth-utils` (sealed cookie sessions), `nuxt-security` (CSRF, rate limiting, CSP).
+- **Validation:** `zod` — single source of truth for boundary types.
+- **i18n:** `@nuxtjs/i18n` with `en` and `pl` catalogs kept in strict parity.
+- **Testing:** Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`.
+- **Tooling:** pnpm, ESLint, Prettier, Docker Compose.
 
 ## Setup Commands
 
-- Install dependencies: `pnpm install`
-- Prepare Nuxt types (runs automatically via `postinstall`): `pnpm exec nuxt prepare`
-- Copy environment template and set `DATABASE_URL`: see `.env.example`
+The package manager is **pnpm** (`^11`). Do not use `npm` or `yarn`.
 
-Required environment variables:
+```bash
+pnpm install            # install deps (also runs `nuxt prepare` via postinstall)
+cp .env.example .env    # create env file, then set required secrets
+docker compose up -d    # start local PostgreSQL 18 (+ PgAdmin)
+pnpm db:migrate         # apply database migrations
+pnpm dev                # dev server on http://localhost:3000
+```
 
-- `DATABASE_URL` — PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`. The Drizzle client and migration tooling fail fast if it is missing.
-- `NUXT_SESSION_PASSWORD` — 32+ character secret used by `nuxt-auth-utils` to seal session cookies.
+### Required environment variables
+
+| Variable                | Description                                                                 |
+| ----------------------- | --------------------------------------------------------------------------- |
+| `DATABASE_URL`          | PostgreSQL connection string (e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`). |
+| `NUXT_SESSION_PASSWORD` | 32+ character secret used by `nuxt-auth-utils` to seal session cookies.     |
+
+Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing. Never log or commit secrets.
 
 ## Development Workflow
 
-- Start the dev server (`http://localhost:3000`): `pnpm dev`
-- Build for production: `pnpm build`
-- Preview the production build locally: `pnpm preview`
-- Generate a static site: `pnpm generate`
+```bash
+pnpm dev            # start dev server (hot reload) on http://localhost:3000
+pnpm build          # production build (output in .output/)
+pnpm preview        # preview the production build locally
+pnpm generate       # generate a static site
+pnpm type-check     # nuxt typecheck (vue-tsc)
+```
 
 ### Database
 
-- Start a local PostgreSQL 18 container: `docker compose up -d`
-- Generate a new SQL migration after editing the schema: `pnpm db:generate`
-- Apply pending migrations: `pnpm db:migrate`
-- Stop the container (keeps data): `docker compose down`
-- Stop and delete the data volume: `docker compose down -v`
+The schema lives in `server/db/schema`; migrations are committed SQL files under `server/db/migrations`.
 
-Migrations are committed SQL files under `server/db/migrations`, generated by `drizzle-kit` and applied by the `drizzle-orm` migrator. The schema lives in `server/db/schema`. Drizzle config is in `drizzle.config.ts`.
+```bash
+pnpm db:generate        # generate a new migration after editing the schema
+pnpm db:migrate         # apply pending migrations (tsx server/db/migrate.ts)
+docker compose down     # stop the local database (keeps data)
+docker compose down -v  # stop and delete the data volume
+```
+
+Always apply migrations before the app serves traffic.
 
 ## Testing Instructions
 
-The Vitest setup (`vitest.config.ts`) defines three projects:
+Vitest is configured with three projects (see `vitest.config.ts`):
 
-- Run unit tests (`test/unit/*.{test,spec}.ts`, node env): `pnpm test:unit`
-- Run e2e tests (`test/e2e/*.{test,spec}.ts`, node env): `pnpm test:e2e`
-- Run Nuxt component/integration tests (`test/nuxt/*.{test,spec}.ts`, nuxt env): `pnpm test:nuxt`
-- Focus on a single test by name: `pnpm exec vitest run -t "<test name>"`
+```bash
+pnpm test:unit      # unit tests    (test/unit/*.{test,spec}.ts, node env)
+pnpm test:e2e       # e2e tests     (test/e2e/*.{test,spec}.ts, node env)
+pnpm test:nuxt      # component/integration tests (test/nuxt/*, nuxt env)
+pnpm test:coverage  # coverage for the unit + nuxt projects
+```
 
-Notes:
-
-- Test files use the `*.spec.ts` / `*.test.ts` naming convention under `test/<unit|e2e|nuxt>/`.
-- e2e tests require a running PostgreSQL (the e2e harness shares the `postgres:18-alpine` image; see `test/e2e/support/postgres.ts`).
-- **E2E Execution Modes**: By default, E2E tests run against a production build (`pnpm build`). Set `NUXT_TEST_DEV=1` to run against a dev server for faster iteration (e.g., `$env:NUXT_TEST_DEV=1; pnpm test:e2e`).
-- Add or update tests for any code you change, even if not explicitly requested. Keep the suite green before committing.
-- Run test coverage (`unit` + `nuxt` projects; `e2e` is excluded): `pnpm test:coverage`. This produces `text`, `json-summary`, and `lcov` reports under the git-ignored `coverage/` directory, scoped to `app/`, `server/`, and `shared/`. Coverage is uploaded to Codecov in CI and is **report-only** (informational) — it does not currently gate merges.
+- **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
+- **Naming:** test files use `*.spec.ts` under the matching `test/` project directory.
+- **E2E:** run against a production build by default and require a running PostgreSQL (the harness uses `postgres:18-alpine`). For faster iteration use `pnpm test:e2e:dev` (`NUXT_TEST_DEV=1`).
+- **Determinism:** prefer deterministic tests; seed any randomness. Assert against stable `data-testid` selectors, not fragile markup.
+- Add or update tests alongside any code change, and keep the whole suite green.
 
 ## Code Style
 
-- Language: TypeScript everywhere; Vue 3 Single File Components (`<script setup>`).
-- Linting: ESLint (`@nuxt/eslint` flat config in `eslint.config.mjs`, with Vue i18n and accessibility plugins).
-  - Lint: `pnpm lint`
-  - Auto-fix: `pnpm lint:fix`
-- Formatting: Prettier (`eslint-config-prettier` integrated).
-  - Format: `pnpm format`
-  - Check formatting: `pnpm format:check`
-- Follow existing patterns: 2-space indentation, single quotes, trailing commas, semicolons (match surrounding files).
-- Server API routes follow Nitro naming: `*.<method>.ts` (e.g. `login.post.ts`, `session.get.ts`).
-- Keep all user-facing strings in the i18n catalogs (`i18n/locales/*.json`); both `en` and `pl` must stay in parity (enforced by `test/unit/i18n-catalog-parity.spec.ts`).
-- Database access: always use the shared lazy `db` client exported from `server/db/index.ts`; never instantiate raw drivers directly.
-- Auth/CSRF helpers: protect private endpoints with `requireAuth` (`server/utils/auth.ts`); client-side mutating requests use `$csrfFetch` / `useCsrfFetch`.
-- Server `messageKey` contract: API error responses return `{ messageKey, params }` (not rendered text); the client translates via `t(messageKey, params)`.
-- Theming: treat the PrimeVue `primary` token in `nuxt.config.ts` as the single source of truth for brand accent; prefer theme tokens over inline colors/styles in app UI.
-- UI components: when changing or building UI, always look for an existing PrimeVue component first before implementing from scratch; only write custom markup/CSS when no suitable PrimeVue component exists. Prefer `FormFieldWrap`, `Form`, `InputText`, `Password`, `DatePicker`, `Select`, `AutoComplete`, and `Button` over native `<label>`, `<form>`, `<input>`, `<select>`, and `<button>` elements. For example, use `<InputText v-model="name" />` for text entry and `<Button label="Save" @click="save" />` for actions. Native elements remain appropriate for semantic structure (`span`, headings), unsupported controls, or deliberately lightweight internal components such as `TimeInput` only when it wraps a PrimeVue input. Never nest interactive controls; use a layout container when a row contains an expand action and inline editors.
-- Boundary types & validation: Every shape exchanged across the client/server boundary must be defined exactly once in a `shared/types/<entity>.ts` module (decoupled from Drizzle schemas). Request bodies are validated, normalized, and typed via a single `zod` schema. Response DTOs are plain types where JSON-serialized fields are typed in their serialized form (e.g. timestamps as `string`, never `Date`). Validation failures are mapped from `ZodError` to the `{ messageKey, params }` server error contract using `mapZodError`. Explicit `any` is a lint error (`@typescript-eslint/no-explicit-any: 'error'`); if unavoidable, annotate with a `// eslint-disable-next-line @typescript-eslint/no-explicit-any` comment detailing the justification.
+Follow `CODING_STANDARDS.md` — key rules summarized here:
+
+- **TypeScript everywhere**; Vue 3 SFCs use `<script setup lang="ts">`, ordered `<script setup>` → `<template>` → `<style scoped>`.
+- **No explicit `any`.** Prefer `unknown` and narrow. If unavoidable, disable the rule on a single line with a justifying comment.
+- **Formatting:** 2-space indentation, single quotes, semicolons, trailing commas on multi-line literals, ~100-char lines, UTF-8 with a trailing newline. Let Prettier/ESLint own whitespace.
+- **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`).
+- **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.
+- **UI:** prefer existing PrimeVue components over native elements; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA; scope styles with BEM-style class names and theme tokens.
+- **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with a single zod schema and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract. Never return rendered text — clients translate `messageKey`. Access the database only through the shared lazy client; emit timestamps as ISO strings.
+- **Boundary types:** define each cross-boundary shape once in `shared/types`, decoupled from the DB schema; derive input types with `z.infer<typeof schema>`.
+
+### Linting & formatting
+
+```bash
+pnpm lint           # ESLint (includes Vue i18n + accessibility rules)
+pnpm lint:fix       # auto-fix lint issues
+pnpm format         # format with Prettier
+pnpm format:check   # verify formatting
+```
+
+Run lint, format check, and the relevant test projects before opening a PR. After moving files or changing imports, re-run `pnpm lint`.
+
+## Project Structure
+
+```
+app/       Nuxt app source (pages, layouts, middleware, composables, plugins, utils)
+server/    Nitro server: api/ handlers, db/ (Drizzle client, schema, migrations), utils, types
+shared/    Cross-boundary code shared by client and server; boundary types live in shared/types
+i18n/      Translation catalogs (en.json, pl.json)
+test/      unit/, e2e/, and nuxt/ test suites
+docs/      Project vision and work-breakdown notes
+openspec/  OpenSpec change/spec documents (behavioral source of truth)
+```
 
 ## Build and Deployment
 
-- Production build output: `.output/` (standard Nuxt/Nitro build via `pnpm build`).
-- Static output (if using `pnpm generate`): `.output/public/`.
-- Database migrations must be applied (`pnpm db:migrate`) before the app serves traffic.
+Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compose files are provided:
 
-### Docker Compose Files
+| File                              | Purpose                                                                     |
+| --------------------------------- | --------------------------------------------------------------------------- |
+| `docker-compose.yml`              | Local development database (PostgreSQL 18) + PgAdmin.                        |
+| `docker-compose.local-prod.yml`   | Build and run the production image against the dev database network.        |
+| `docker-compose.standalone.yml`   | Fully self-contained stack (database, migrator, web app) for daily hosting. |
+| `docker-compose.openproject.yml`  | Opt-in local OpenProject instance for remote-integration development.       |
 
-The project includes four separate Docker Compose configuration files, each serving a different purpose:
-
-1. `docker-compose.yml` (Development):
-   - Starts a local PostgreSQL 18 database and a PgAdmin instance.
-   - Used by developers to run the app locally in development mode using `pnpm dev`.
-   - Mounts a development-specific persistent named volume: `pg-osi-time-tracker`.
-
-2. `docker-compose.local-prod.yml` (Local Prod Verification):
-   - Builds and runs the multi-stage production Docker image locally.
-   - Joins the development database network as an external network to verify built container behaviors.
-   - Runs a one-shot migration task before starting.
-
-3. `docker-compose.standalone.yml` (Standalone Daily Use):
-   - Fully self-contained stack containing its own isolated PostgreSQL 18 database, automatic database migrator/seeder, and built production web application.
-   - Designed for daily personal hosting and production-like local setups.
-   - Uses an isolated internal network and its own dedicated persistent named volume: `pg-osi-time-tracker-standalone`.
-
-4. `docker-compose.openproject.yml` (Local OpenProject):
-   - Starts an opt-in local OpenProject instance with built-in demo data for remote-integration development; it is not part of `docker compose up -d`.
-   - Start it with `docker compose -f docker-compose.openproject.yml up -d`, then open `http://localhost:8090` and sign in with `admin` / `admin` (or the configured `OPENPROJECT_ADMIN_PASSWORD`). The first boot downloads and seeds data, so it may take several minutes.
-   - Stop it with `docker compose -f docker-compose.openproject.yml down`; remove only its dedicated data volumes with `docker compose -f docker-compose.openproject.yml down -v`.
-   - To obtain an API key for later integration work, sign in, open the user avatar menu, select **My account**, open the **Access token** section, and generate an API token. Store it securely; do not commit it.
-   - `OPENPROJECT_PORT`, `OPENPROJECT_ADMIN_PASSWORD`, and `OPENPROJECT_SECRET_KEY_BASE` can be overridden in `.env`. This HTTP-only configuration is for local development only and must not be used in production.
-
-## Security Considerations
-
-- CSRF protection is enabled via `nuxt-security` for `POST`, `PUT`, `PATCH`, and `DELETE` requests.
-- The login endpoint (`/api/auth/login`) is rate-limited (5 requests/minute).
-- Session cookies are `httpOnly`, `sameSite: strict`, and `secure` in production. Never log or expose `NUXT_SESSION_PASSWORD` or `DATABASE_URL`.
-- A baseline Content-Security-Policy is configured in `nuxt.config.ts`.
+- Production build output lives in `.output/`.
+- Migrations must be applied before serving traffic; the standalone stack runs the migration step automatically.
+- CI runs via GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Pull Request Guidelines
 
-- Before committing, ensure the following pass:
-  - `pnpm lint`
-  - `pnpm format:check`
-  - `pnpm test:unit` (and `pnpm test:e2e` / `pnpm test:nuxt` when relevant to the change)
-- Keep commits focused; update tests and i18n catalogs alongside code changes.
+- Keep one logical change per commit with a short, clear summary line.
+- Update tests and i18n catalogs in the same change as the code they support.
+- Before opening a PR, ensure these pass: `pnpm lint`, `pnpm format:check`, `pnpm type-check`, and the relevant test projects (`pnpm test:unit`, `pnpm test:nuxt`, and `pnpm test:e2e` when server behavior changes).
+- Keep PRs focused and reasonably small.
 
 ## Additional Notes
 
-- Nuxt DevTools is enabled in development.
-- This project follows an OpenSpec workflow. Before implementing, consult `openspec/specs/` (behavioral source of truth) and active proposals in `openspec/changes/`; the domain model and roadmap live in `docs/vision.md` / `docs/wbs.md`.
-- The `i18n` strategy is `no_prefix` with browser-language detection via the `i18n_locale` cookie.
-- Accessibility target is WCAG 2.1 AA (see `openspec/specs/accessibility/spec.md`), enforced via the `eslint-plugin-vuejs-accessibility` lint gate (`pnpm lint`).
+- `openspec/` is the behavioral source of truth — consult existing specs/change proposals before implementing domain features, and align changes with them.
+- The domain model is entry-first: tasks are derived automatically from time-entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
+- Never instantiate raw database drivers; always go through the shared lazy Drizzle client.
+- Do not weaken, skip, or disable tests to force a green run.
