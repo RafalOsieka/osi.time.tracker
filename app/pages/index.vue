@@ -23,6 +23,9 @@ const windowRange = computed(() =>
   }),
 );
 
+// `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
+// hydration (matching the server-rendered markup) instead of flipping to `true`
+// synchronously during setup, which caused a hydration mismatch on the empty state.
 const {
   data: entriesData,
   pending: entriesPending,
@@ -30,14 +33,18 @@ const {
 } = useAsyncData(
   'timer-view-entries',
   () => $fetch<TimeEntryDto[]>('/api/time-entries', { query: windowRange.value }),
-  { server: false, watch: [windowRange] },
+  { server: false, immediate: false, watch: [windowRange] },
 );
 
-const { data: projectsData } = useAsyncData(
+const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
   'projects-for-timer-view',
   () => $fetch<ProjectDto[]>('/api/projects'),
-  { server: false },
+  { server: false, immediate: false },
 );
+onMounted(() => {
+  void refreshEntries();
+  void refreshProjectOptions();
+});
 const projectOptions = computed(() => projectsData.value ?? []);
 const activeEditorKey = ref<string | null>(null);
 

@@ -82,6 +82,9 @@
       "systemTypeLabel": "System zdalny",
       "baseUrlLabel": "Adres URL bazowy",
       "baseUrlPlaceholder": "https://issues.example.com",
+      "transportModeLabel": "Transport wyszukiwania",
+      "transportModeDirect": "Bezpośredni (przeglądarka do systemu)",
+      "transportModeProxied": "Przez proxy (przez ten serwer)",
       "roundingRuleLabel": "Reguła zaokrąglania",
       "roundingNone": "Bez zaokrąglania",
       "rounding15m": "Zaokrąglaj do 15 minut",
@@ -239,6 +242,7 @@
     "remoteConfigBaseUrlRequired": "Adres URL bazowy jest wymagany.",
     "remoteConfigBaseUrlInvalid": "Adres URL bazowy musi być prawidłowym adresem URL.",
     "remoteConfigExecutionModeRequired": "Tryb wykonania jest wymagany.",
+    "remoteConfigTransportModeRequired": "Transport wyszukiwania jest wymagany.",
     "remoteConfigRoundingRuleRequired": "Reguła zaokrąglania jest wymagana.",
     "projectNameRequired": "Nazwa jest wymagana.",
     "projectNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
@@ -268,7 +272,12 @@
     "remoteIssueSearchTitleTooShort": "Wprowadź co najmniej 3 znaki, aby wyszukać.",
     "remoteIssueSearchIdInvalid": "Wprowadź prawidłowy identyfikator zgłoszenia.",
     "remoteIssueSearchNotFound": "Nie znaleziono zgłoszenia o tym identyfikatorze.",
-    "remoteIssueSearchFailed": "Nie udało się zakończyć wyszukiwania. Spróbuj ponownie."
+    "remoteIssueSearchFailed": "Nie udało się zakończyć wyszukiwania. Spróbuj ponownie.",
+    "remoteConfigIdRequired": "Wymagany jest prawidłowy identyfikator konfiguracji zdalnej.",
+    "remoteIssueSearchQueryRequired": "Wprowadź zapytanie wyszukiwania.",
+    "remoteProxySecretRequired": "Klucz API jest wymagany do wyszukiwania w tym systemie.",
+    "remoteProxyAuthRejected": "System zdalny odrzucił podany klucz API.",
+    "remoteProxyConnectionFailed": "Nie udało się połączyć z systemem zdalnym. Sprawdź jego adres i połączenie sieciowe."
   },
   "errors": {
     "auth": {

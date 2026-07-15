@@ -14,11 +14,18 @@ const { $csrfFetch } = useNuxtApp();
 const resolver = zodResolver(createProjectSchema);
 
 // --- Data fetching ---
-const { data: clientsData, pending: clientsPending } = useAsyncData(
-  'clients-for-projects',
-  () => $fetch<ClientDto[]>('/api/clients'),
-  { server: false },
-);
+// `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
+// hydration (matching the server-rendered markup) instead of flipping to `true`
+// synchronously during setup, which caused a DataTable/Select loading hydration
+// mismatch.
+const {
+  data: clientsData,
+  pending: clientsPending,
+  refresh: fetchClientOptions,
+} = useAsyncData('clients-for-projects', () => $fetch<ClientDto[]>('/api/clients'), {
+  server: false,
+  immediate: false,
+});
 const extraClientOptions = ref<ClientDto[]>([]);
 const clientOptions = computed(() => {
   const active = clientsData.value ?? [];
@@ -40,8 +47,12 @@ const {
     $fetch<ProjectDto[]>('/api/projects', {
       query: clientFilter.value ? { clientId: clientFilter.value } : {},
     }),
-  { server: false, watch: [clientFilter] },
+  { server: false, immediate: false, watch: [clientFilter] },
 );
+onMounted(() => {
+  void fetchClientOptions();
+  void fetchProjects();
+});
 
 // --- State ---
 const projects = computed(() => projectsData.value ?? []);

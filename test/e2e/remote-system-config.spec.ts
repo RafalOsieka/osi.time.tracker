@@ -158,6 +158,57 @@ describeRemoteConfig('remote system config API integration', async () => {
     expect(updated.secret).toBeUndefined();
   });
 
+  // 2.2 transportMode
+  it('2.2 upsert accepts direct/proxied, defaults to direct, rejects invalid mode', async () => {
+    const alice = await loginAs('alice@example.com', 'secret');
+    const client = await createClient(alice.jar, alice.token, 'Transport Client');
+
+    const putHeaders = {
+      'content-type': 'application/json',
+      'csrf-token': alice.token,
+      cookie: alice.jar.header(),
+    };
+
+    // Omitted transportMode defaults to direct
+    const defaultRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+      method: 'PUT',
+      headers: putHeaders,
+      body: JSON.stringify(validConfig),
+    });
+    expect(defaultRes.status).toBe(200);
+    expect((await defaultRes.json()).transportMode).toBe('direct');
+
+    // Explicit proxied
+    const proxiedRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+      method: 'PUT',
+      headers: putHeaders,
+      body: JSON.stringify({ ...validConfig, transportMode: 'proxied' }),
+    });
+    expect(proxiedRes.status).toBe(200);
+    expect((await proxiedRes.json()).transportMode).toBe('proxied');
+
+    // Explicit direct
+    const directRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+      method: 'PUT',
+      headers: putHeaders,
+      body: JSON.stringify({ ...validConfig, transportMode: 'direct' }),
+    });
+    expect(directRes.status).toBe(200);
+    expect((await directRes.json()).transportMode).toBe('direct');
+
+    // Invalid mode rejected
+    const invalidRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+      method: 'PUT',
+      headers: putHeaders,
+      body: JSON.stringify({ ...validConfig, transportMode: 'tunneled' }),
+    });
+    expect(invalidRes.status).toBe(422);
+    const invalidBody = await invalidRes.json();
+    // An invalid enum *value* (not a missing/wrong-typed field) falls back to the
+    // generic messageKey, matching the existing systemType enum-invalid behavior.
+    expect(invalidBody?.data?.messageKey).toBe('errors.unexpected');
+  });
+
   // 3.6 DELETE
   it('3.6 delete removes owner config; non-owner cannot delete', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
