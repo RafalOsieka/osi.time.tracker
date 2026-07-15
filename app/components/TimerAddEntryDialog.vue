@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Form } from '@primevue/forms';
 import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
@@ -93,26 +94,37 @@ async function onSave() {
     data-testid="add-entry-dialog"
     @update:visible="emit('update:visible', $event)"
   >
-    <form class="add-entry-form" @submit.prevent="onSave">
-      <label for="add-entry-title">{{ t('timerView.addEntry.titleLabel') }}</label>
-      <AutoComplete
-        v-model="title"
+    <Form class="add-entry-form" @submit="onSave">
+      <FormFieldWrap
+        :label="t('timerView.addEntry.titleLabel')"
+        name="title"
         input-id="add-entry-title"
-        :suggestions="suggestions"
-        option-label="name"
-        :placeholder="t('timerView.addEntry.titlePlaceholder')"
-        data-testid="add-entry-title-input"
-        @complete="search"
-        @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+        error-testid="add-entry-title-error"
       >
-        <template #option="{ option }: { option: TaskDto }">
-          {{ option.name }}
-        </template>
-      </AutoComplete>
+        <AutoComplete
+          v-model="title"
+          input-id="add-entry-title"
+          :suggestions="suggestions"
+          option-label="name"
+          :placeholder="t('timerView.addEntry.titlePlaceholder')"
+          data-testid="add-entry-title-input"
+          @complete="search"
+          @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+        >
+          <template #option="{ option }: { option: TaskDto }">
+            {{ option.name }}
+          </template>
+        </AutoComplete>
+      </FormFieldWrap>
 
       <div class="add-entry-form__times">
-        <div class="add-entry-form__time-field">
-          <label for="add-entry-start-time">{{ t('timerView.addEntry.startLabel') }}</label>
+        <FormFieldWrap
+          class="add-entry-form__time-field"
+          :label="t('timerView.addEntry.startLabel')"
+          name="startTime"
+          input-id="add-entry-start-time"
+          error-testid="add-entry-start-time-error"
+        >
           <TimeInput
             id="add-entry-start-time"
             v-model="startTime"
@@ -121,9 +133,14 @@ async function onSave() {
             :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
             testid="add-entry-start-input"
           />
-        </div>
-        <div class="add-entry-form__time-field">
-          <label for="add-entry-end-time">{{ t('timerView.addEntry.endLabel') }}</label>
+        </FormFieldWrap>
+        <FormFieldWrap
+          class="add-entry-form__time-field"
+          :label="t('timerView.addEntry.endLabel')"
+          name="endTime"
+          input-id="add-entry-end-time"
+          error-testid="add-entry-end-time-error"
+        >
           <TimeInput
             id="add-entry-end-time"
             v-model="endTime"
@@ -132,7 +149,7 @@ async function onSave() {
             :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
             testid="add-entry-end-input"
           />
-        </div>
+        </FormFieldWrap>
       </div>
 
       <Message
@@ -153,7 +170,7 @@ async function onSave() {
         :saving="saving"
         @cancel="close"
       />
-    </form>
+    </Form>
   </Dialog>
 </template>
 

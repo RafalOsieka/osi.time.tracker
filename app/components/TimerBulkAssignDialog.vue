@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Form } from '@primevue/forms';
 import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
@@ -85,24 +86,30 @@ async function onSave() {
     data-testid="bulk-assign-dialog"
     @update:visible="emit('update:visible', $event)"
   >
-    <form class="bulk-assign-form" @submit.prevent="onSave">
-      <label for="bulk-assign-name">{{ t('timerView.bulkAssign.nameLabel') }}</label>
-      <AutoComplete
-        v-model="title"
+    <Form class="bulk-assign-form" @submit="onSave">
+      <FormFieldWrap
+        :label="t('timerView.bulkAssign.nameLabel')"
+        name="title"
         input-id="bulk-assign-name"
-        :suggestions="suggestions"
-        option-label="name"
-        :placeholder="t('timerView.bulkAssign.namePlaceholder')"
-        :aria-invalid="!!nameError"
-        :aria-describedby="nameError ? 'bulk-assign-name-error' : undefined"
-        data-testid="bulk-assign-name-input"
-        @complete="search"
-        @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+        error-testid="bulk-assign-name-error"
       >
-        <template #option="{ option }: { option: TaskDto }">
-          {{ option.name }}
-        </template>
-      </AutoComplete>
+        <AutoComplete
+          v-model="title"
+          input-id="bulk-assign-name"
+          :suggestions="suggestions"
+          option-label="name"
+          :placeholder="t('timerView.bulkAssign.namePlaceholder')"
+          :aria-invalid="!!nameError"
+          :aria-describedby="nameError ? 'bulk-assign-name-error' : undefined"
+          data-testid="bulk-assign-name-input"
+          @complete="search"
+          @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+        >
+          <template #option="{ option }: { option: TaskDto }">
+            {{ option.name }}
+          </template>
+        </AutoComplete>
+      </FormFieldWrap>
       <Message
         v-if="nameError"
         id="bulk-assign-name-error"
@@ -115,17 +122,23 @@ async function onSave() {
         {{ nameError }}
       </Message>
 
-      <label for="bulk-assign-project">{{ t('timerView.bulkAssign.projectLabel') }}</label>
-      <Select
-        id="bulk-assign-project"
-        v-model="projectId"
-        :options="projectOptions"
-        option-label="name"
-        option-value="id"
-        show-clear
-        :placeholder="t('timerView.bulkAssign.projectPlaceholder')"
-        data-testid="bulk-assign-project-select"
-      />
+      <FormFieldWrap
+        :label="t('timerView.bulkAssign.projectLabel')"
+        name="projectId"
+        input-id="bulk-assign-project"
+        error-testid="bulk-assign-project-error"
+      >
+        <Select
+          id="bulk-assign-project"
+          v-model="projectId"
+          :options="projectOptions"
+          option-label="name"
+          option-value="id"
+          show-clear
+          :placeholder="t('timerView.bulkAssign.projectPlaceholder')"
+          data-testid="bulk-assign-project-select"
+        />
+      </FormFieldWrap>
 
       <FormDialogFooter
         :cancel-label="t('timerView.bulkAssign.cancelButton')"
@@ -133,7 +146,7 @@ async function onSave() {
         :saving="saving"
         @cancel="close"
       />
-    </form>
+    </Form>
   </Dialog>
 </template>
 
