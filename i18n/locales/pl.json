@@ -148,6 +148,7 @@
     "collapseLabel": "Zwiń",
     "entryRangeLabel": "{start} – {end}",
     "entryRunningLabel": "{start} – teraz",
+    "remoteSyncAction": "Synchronizacja zdalna",
     "bulkAssign": {
       "buttonLabel": "Przypisz",
       "dialogTitle": "Przypisz do zadania",
@@ -219,6 +220,27 @@
       "cancelButton": "Anuluj"
     }
   },
+  "remoteSync": {
+    "pageTitle": "Synchronizacja zdalna – {date}",
+    "dayTotal": "Suma: {duration}",
+    "emptyState": "Brak wpisów czasu w tym dniu.",
+    "untitledBucketLabel": "(brak zadania)",
+    "originalDurationLabel": "Czas oryginalny",
+    "roundedDurationLabel": "Czas zaokrąglony",
+    "roundedDurationHint": "Wartość 0 wyłącza to zadanie z przyszłej wysyłki.",
+    "activityLabel": "Czynność",
+    "activityEmptyOption": "Wybierz czynność",
+    "activityFetchError": "Nie udało się wczytać czynności.",
+    "activityLoading": "Wczytywanie czynności\u2026",
+    "state": {
+      "noClient": "To zadanie nie ma projektu ani klienta, więc nie może być sprawdzone pod kątem wysyłki zdalnej.",
+      "noConfig": "Klient tego zadania nie ma konfiguracji systemu zdalnego.",
+      "systemNotImplemented": "System zdalny tego zadania ({systemType}) nie jest jeszcze obsługiwany.",
+      "unlinked": "To zadanie nie jest jeszcze połączone ze zdalnym zgłoszeniem.",
+      "manageable": "Gotowe do przeglądu."
+    },
+    "linkAction": "Połącz ze zdalnym zgłoszeniem"
+  },
   "remoteIssuePicker": {
     "modeLabel": "Szukaj według",
     "modeTitle": "Tytuł",
@@ -277,7 +299,10 @@
     "remoteIssueSearchQueryRequired": "Wprowadź zapytanie wyszukiwania.",
     "remoteProxySecretRequired": "Klucz API jest wymagany do wyszukiwania w tym systemie.",
     "remoteProxyAuthRejected": "System zdalny odrzucił podany klucz API.",
-    "remoteProxyConnectionFailed": "Nie udało się połączyć z systemem zdalnym. Sprawdź jego adres i połączenie sieciowe."
+    "remoteProxyConnectionFailed": "Nie udało się połączyć z systemem zdalnym. Sprawdź jego adres i połączenie sieciowe.",
+    "remoteSyncDateRequired": "Data jest wymagana.",
+    "remoteSyncDateInvalid": "Wprowadź prawidłową datę.",
+    "remoteActivitiesFetchFailed": "Nie udało się wczytać czynności. Spróbuj ponownie."
   },
   "errors": {
     "auth": {

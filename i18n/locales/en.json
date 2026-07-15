@@ -148,6 +148,7 @@
     "collapseLabel": "Collapse",
     "entryRangeLabel": "{start} – {end}",
     "entryRunningLabel": "{start} – now",
+    "remoteSyncAction": "Remote Sync",
     "bulkAssign": {
       "buttonLabel": "Assign",
       "dialogTitle": "Assign to a task",
@@ -219,6 +220,27 @@
       "cancelButton": "Cancel"
     }
   },
+  "remoteSync": {
+    "pageTitle": "Remote Sync – {date}",
+    "dayTotal": "Total: {duration}",
+    "emptyState": "No time entries for this day.",
+    "untitledBucketLabel": "(no task)",
+    "originalDurationLabel": "Original duration",
+    "roundedDurationLabel": "Rounded duration",
+    "roundedDurationHint": "A value of 0 excludes this task from any future push.",
+    "activityLabel": "Activity",
+    "activityEmptyOption": "Select an activity",
+    "activityFetchError": "Activities could not be loaded.",
+    "activityLoading": "Loading activities\u2026",
+    "state": {
+      "noClient": "This task has no Project or Client, so it cannot be reviewed for a remote push.",
+      "noConfig": "This task's Client has no remote system configuration.",
+      "systemNotImplemented": "This task's remote system ({systemType}) is not supported yet.",
+      "unlinked": "This task is not linked to a remote issue yet.",
+      "manageable": "Ready for review."
+    },
+    "linkAction": "Link remote issue"
+  },
   "remoteIssuePicker": {
     "modeLabel": "Search by",
     "modeTitle": "Title",
@@ -277,7 +299,10 @@
     "remoteIssueSearchQueryRequired": "Enter a search query.",
     "remoteProxySecretRequired": "An API key is required to search this tracker.",
     "remoteProxyAuthRejected": "The tracker rejected the provided API key.",
-    "remoteProxyConnectionFailed": "The tracker could not be reached. Check its address and your network connection."
+    "remoteProxyConnectionFailed": "The tracker could not be reached. Check its address and your network connection.",
+    "remoteSyncDateRequired": "A date is required.",
+    "remoteSyncDateInvalid": "Enter a valid date.",
+    "remoteActivitiesFetchFailed": "Activities could not be loaded. Please try again."
   },
   "errors": {
     "auth": {

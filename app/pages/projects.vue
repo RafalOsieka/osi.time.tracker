@@ -10,6 +10,7 @@ const { t, locale } = useI18n();
 const confirm = useConfirm();
 const toast = useToast();
 const { $csrfFetch } = useNuxtApp();
+const { effective } = useUserSettings();
 
 const resolver = zodResolver(createProjectSchema);
 
@@ -226,7 +227,7 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
       </Column>
       <Column field="createdAt" :header="t('projects.columnCreated')" sortable>
         <template #body="{ data }: { data: ProjectDto }">
-          {{ formatDate(data.createdAt, locale) }}
+          {{ formatDate(data.createdAt, locale, effective.timeZone) }}
         </template>
       </Column>
       <Column :header="t('projects.columnActions')" style="width: 1%; white-space: nowrap">

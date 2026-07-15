@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   OPENPROJECT_TITLE_SEARCH_MAX_RESULTS,
   buildIssueByIdRequest,
+  buildTimeEntryActivitiesRequest,
   buildTitleSearchRequest,
   deriveIssueUrl,
   normalizeBaseUrl,
   parseIssueByIdResult,
+  parseTimeEntryActivitiesResults,
   parseTitleSearchResults,
 } from '../../shared/utils/openproject-adapter';
 
@@ -145,5 +147,57 @@ describe('parseIssueByIdResult', () => {
       200,
     );
     expect(closed).toEqual({ remoteIssueId: '7', title: 'Closed issue' });
+  });
+});
+
+describe('buildTimeEntryActivitiesRequest', () => {
+  it('builds the global time-entries schema request', () => {
+    const request = buildTimeEntryActivitiesRequest('https://op.example.com/');
+    expect(request.url).toBe('https://op.example.com/api/v3/time_entries/schema');
+    expect(request.method).toBe('GET');
+  });
+});
+
+describe('parseTimeEntryActivitiesResults', () => {
+  it('parses the activity field allowed values', () => {
+    const payload = {
+      activity: {
+        _embedded: {
+          allowedValues: [
+            { id: 1, name: 'Development' },
+            { id: 2, name: 'Management' },
+          ],
+        },
+      },
+    };
+    expect(parseTimeEntryActivitiesResults(payload)).toEqual([
+      { id: '1', name: 'Development' },
+      { id: '2', name: 'Management' },
+    ]);
+  });
+
+  it('skips malformed allowed-value elements rather than throwing', () => {
+    const payload = {
+      activity: {
+        _embedded: {
+          allowedValues: [{ id: 1, name: 'Valid' }, { id: 2 }, { name: 'No id' }, null],
+        },
+      },
+    };
+    expect(parseTimeEntryActivitiesResults(payload)).toEqual([{ id: '1', name: 'Valid' }]);
+  });
+
+  it('returns an empty array when allowedValues is missing or not an array', () => {
+    expect(parseTimeEntryActivitiesResults({})).toEqual([]);
+    expect(parseTimeEntryActivitiesResults({ activity: {} })).toEqual([]);
+    expect(parseTimeEntryActivitiesResults({ activity: { _embedded: {} } })).toEqual([]);
+    expect(
+      parseTimeEntryActivitiesResults({ activity: { _embedded: { allowedValues: 'nope' } } }),
+    ).toEqual([]);
+  });
+
+  it('returns an empty array for a completely malformed payload', () => {
+    expect(parseTimeEntryActivitiesResults(null)).toEqual([]);
+    expect(parseTimeEntryActivitiesResults(undefined)).toEqual([]);
   });
 });

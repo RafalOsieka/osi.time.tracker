@@ -201,6 +201,13 @@ async function onEntryDeleted() {
               :data-testid="`timer-day-add-entry-${day.dayKey}`"
               @click="openAddEntry(day.dayKey)"
             />
+            <NuxtLink
+              :to="`/sync/${day.dayKey}`"
+              class="timer-day__remote-sync-link"
+              :data-testid="`timer-day-remote-sync-${day.dayKey}`"
+            >
+              {{ t('timerView.remoteSyncAction') }}
+            </NuxtLink>
           </div>
 
           <TimerTaskGroup
@@ -283,6 +290,12 @@ async function onEntryDeleted() {
   font-family: monospace;
   font-weight: 400;
   color: var(--p-text-muted-color);
+}
+
+.timer-day__remote-sync-link {
+  font-size: 0.875rem;
+  color: var(--p-primary-color);
+  text-decoration: none;
 }
 
 .timer-view__load-more {

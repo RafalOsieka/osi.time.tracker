@@ -1,9 +1,12 @@
 import {
   buildIssueByIdRequest,
+  buildTimeEntryActivitiesRequest,
   buildTitleSearchRequest,
   parseIssueByIdResult,
+  parseTimeEntryActivitiesResults,
   parseTitleSearchResults,
 } from '../../shared/utils/openproject-adapter';
+import type { AdapterFieldOption } from '../../shared/utils/openproject-adapter';
 import type {
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
@@ -55,6 +58,33 @@ export async function proxyOpenProjectSearch(
     return parseTitleSearchResults(payload._data);
   } catch (err: unknown) {
     throw mapUpstreamError(err, mode);
+  }
+}
+
+/**
+ * Forwards a time-entry activities options request to a resolved
+ * OpenProject base URL, using the per-request forwarded secret, and maps
+ * the response through the shared adapter into adapter-neutral options.
+ * Never logs or echoes back `secret`.
+ */
+export async function proxyOpenProjectActivities(
+  baseUrl: string,
+  secret: string,
+): Promise<AdapterFieldOption[]> {
+  const request = buildTimeEntryActivitiesRequest(baseUrl);
+
+  try {
+    const payload = await $fetch.raw(request.url, {
+      method: request.method,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Basic ${encodeBasicAuth(secret)}`,
+      },
+    });
+
+    return parseTimeEntryActivitiesResults(payload._data);
+  } catch (err: unknown) {
+    throw mapUpstreamError(err, 'title');
   }
 }
 
