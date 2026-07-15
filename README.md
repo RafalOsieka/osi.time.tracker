@@ -34,17 +34,17 @@ It solves a recurring problem for multi-client work: your clients run different 
 
 ## Tech stack
 
-| Area                    | Technology                                                             |
-| ----------------------- | ---------------------------------------------------------------------- |
-| Frontend / SSR          | Nuxt 4, Vue 3, Vue Router, TypeScript                                  |
-| UI                      | PrimeVue 4 (Aura theme), PrimeIcons                                    |
-| Backend / API           | Nitro server routes (Nuxt)                                             |
-| Database                | PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver |
-| Auth & sessions         | `nuxt-auth-utils`, `nuxt-security`                                     |
-| Validation              | `zod` (single source of truth for boundary types)                     |
-| i18n                    | `@nuxtjs/i18n` (`en`, `pl`)                                            |
-| Testing                 | Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`         |
-| Tooling                 | pnpm, ESLint, Prettier, Docker Compose                                 |
+| Area            | Technology                                                              |
+| --------------- | ----------------------------------------------------------------------- |
+| Frontend / SSR  | Nuxt 4, Vue 3, Vue Router, TypeScript                                   |
+| UI              | PrimeVue 4 (Aura theme), PrimeIcons                                     |
+| Backend / API   | Nitro server routes (Nuxt)                                              |
+| Database        | PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver |
+| Auth & sessions | `nuxt-auth-utils`, `nuxt-security`                                      |
+| Validation      | `zod` (single source of truth for boundary types)                       |
+| i18n            | `@nuxtjs/i18n` (`en`, `pl`)                                             |
+| Testing         | Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`          |
+| Tooling         | pnpm, ESLint, Prettier, Docker Compose                                  |
 
 ## Getting started
 
@@ -75,8 +75,8 @@ pnpm dev
 
 ### Environment variables
 
-| Variable                | Description                                                                                       |
-| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| Variable                | Description                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL`          | PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`. |
 | `NUXT_SESSION_PASSWORD` | 32+ character secret used by `nuxt-auth-utils` to seal session cookies.                            |
 
@@ -132,12 +132,12 @@ pnpm exec vitest run -t "<test name>"
 
 OSI Time Tracker is designed to be self-hosted via Docker. A multi-stage production `Dockerfile` and several Compose files are provided:
 
-| File                              | Purpose                                                                    |
-| --------------------------------- | -------------------------------------------------------------------------- |
-| `docker-compose.yml`              | Local development database (PostgreSQL 18) + PgAdmin.                       |
-| `docker-compose.local-prod.yml`   | Build and run the production image against the dev database network.       |
-| `docker-compose.standalone.yml`   | Fully self-contained stack (database, migrator, web app) for daily hosting. |
-| `docker-compose.openproject.yml`  | Opt-in local OpenProject instance for remote-integration development.      |
+| File                             | Purpose                                                                     |
+| -------------------------------- | --------------------------------------------------------------------------- |
+| `docker-compose.yml`             | Local development database (PostgreSQL 18) + PgAdmin.                       |
+| `docker-compose.local-prod.yml`  | Build and run the production image against the dev database network.        |
+| `docker-compose.standalone.yml`  | Fully self-contained stack (database, migrator, web app) for daily hosting. |
+| `docker-compose.openproject.yml` | Opt-in local OpenProject instance for remote-integration development.       |
 
 Database migrations (`pnpm db:migrate`) must be applied before the app serves traffic. The standalone stack runs the migration step automatically.
 

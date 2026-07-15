@@ -117,40 +117,41 @@ async function onSave() {
         </AutoComplete>
       </FormFieldWrap>
 
-      <div class="add-entry-form__times">
-        <FormFieldWrap
-          class="add-entry-form__time-field"
+      <FormFieldWrap
+        class="add-entry-form__time-field"
+        :label="t('timerView.addEntry.startLabel')"
+        name="startTime"
+        input-id="add-entry-start-time"
+        error-testid="add-entry-start-time-error"
+      >
+        <TimeInput
+          id="add-entry-start-time"
+          v-model="startTime"
           :label="t('timerView.addEntry.startLabel')"
-          name="startTime"
-          input-id="add-entry-start-time"
-          error-testid="add-entry-start-time-error"
-        >
-          <TimeInput
-            id="add-entry-start-time"
-            v-model="startTime"
-            :label="t('timerView.addEntry.startLabel')"
-            :aria-invalid="!!rangeError"
-            :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
-            testid="add-entry-start-input"
-          />
-        </FormFieldWrap>
-        <FormFieldWrap
-          class="add-entry-form__time-field"
+          :compact="false"
+          :aria-invalid="!!rangeError"
+          :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
+          testid="add-entry-start-input"
+        />
+      </FormFieldWrap>
+
+      <FormFieldWrap
+        class="add-entry-form__time-field"
+        :label="t('timerView.addEntry.endLabel')"
+        name="endTime"
+        input-id="add-entry-end-time"
+        error-testid="add-entry-end-time-error"
+      >
+        <TimeInput
+          id="add-entry-end-time"
+          v-model="endTime"
           :label="t('timerView.addEntry.endLabel')"
-          name="endTime"
-          input-id="add-entry-end-time"
-          error-testid="add-entry-end-time-error"
-        >
-          <TimeInput
-            id="add-entry-end-time"
-            v-model="endTime"
-            :label="t('timerView.addEntry.endLabel')"
-            :aria-invalid="!!rangeError"
-            :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
-            testid="add-entry-end-input"
-          />
-        </FormFieldWrap>
-      </div>
+          :compact="false"
+          :aria-invalid="!!rangeError"
+          :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
+          testid="add-entry-end-input"
+        />
+      </FormFieldWrap>
 
       <Message
         v-if="rangeError"
@@ -179,11 +180,6 @@ async function onSave() {
   display: grid;
   gap: 0.75rem;
   min-width: 20rem;
-}
-
-.add-entry-form__times {
-  display: flex;
-  gap: 1rem;
 }
 
 .add-entry-form__time-field {
