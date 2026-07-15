@@ -83,6 +83,7 @@ describe('TimerAddEntryDialog', () => {
     await end.setValue('1000');
     await end.trigger('blur');
     await wrapper.find('form').trigger('submit');
+    await flushPromises();
 
     expect(csrfFetchMock).not.toHaveBeenCalled();
     expect(wrapper.find('[data-testid="add-entry-range-error"]').text()).toBe(

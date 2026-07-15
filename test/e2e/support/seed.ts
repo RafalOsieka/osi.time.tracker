@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic import of hasher module has no stable type
 let sharedHasher: any;
 
 async function getHasher() {
