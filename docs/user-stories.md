@@ -119,7 +119,7 @@ Conventions that apply to every story:
 
 ---
 
-## 9. Remote system configuration & secure credentials
+## 9. Remote system configuration & secure credentials ✅ Delivered
 
 > **As a user, I want to configure a remote issue tracker per Client with an execution mode and rounding rule, with my credentials stored securely, so I can later link issues and push time.** (WBS 5.1–5.4)
 
@@ -133,7 +133,7 @@ Conventions that apply to every story:
 
 ---
 
-## 10a. Adapters: browse, search & link remote issues
+## 10a. Adapters: browse, search & link remote issues ✅ Delivered
 
 > **As a user, I want to browse/search remote issues and link/unlink a Task to a remote issue, so my local work maps to the client's tracker.** (WBS 5.5–5.6, fetch side of 5.14–5.15)
 
@@ -157,16 +157,31 @@ Conventions that apply to every story:
 
 ---
 
-## 11. Remote Sync: review & push a day's time to remote systems
+## 11a. Remote Sync: per-day review page
 
-> **As a user, I want a per-day Remote Sync page that summarizes my pushable tasks with rounded times, so I can review and push a whole day's time to the client's tracker in one go.** (WBS 5.8–5.13)
+> **As a user, I want a per-day Remote Sync page that shows all of a day's tasks with editable rounded times and required remote fields, so I can review a whole day's time before pushing it to the client's tracker.** (WBS 5.8, 5.9, 5.12, fetch side of 5.13)
 
 **Acceptance criteria**
 
 - From the Timer view I can open a Remote Sync page for a specific day.
-- It lists only that day's **pushable tasks** — tasks with entries that day whose Project → Client has a RemoteSystemConfig — each with its **rounded aggregate time** for the day.
-- I can assign/change the remote issue for a task inline if it isn't linked yet.
-- I can set the **required remote fields** for each task (options fetched from the remote system where available; my previous value pre-filled where possible).
-- Pushing sends **one remote time log per task** (rounded duration + required fields) against its linked issue; I see a per-task success/failure summary.
+- It lists **all** of that day's tasks (including a read-only "(no task)" bucket), each in an explicit state:
+  - **read-only** with a stated reason — no Project/Client, Client has no RemoteSystemConfig, the config's system type isn't implemented yet (e.g. redmine), or (from story 11b) already pushed for that day;
+  - **read-only but linkable** — the task has no RemoteIssueRef; the link action (reusing the dialog from story 10a) is available inline and flips the row to manageable;
+  - **manageable** otherwise.
+- Each manageable task shows its **original duration** (the day's entries summed) and, separately, an **editable rounded duration** pre-filled by applying the configured rounding rule **once** to the sum (in a shared utility reused by story 11b). I can override the rounded value; a value of **0 excludes the task from any future push**.
+- I can set the **required remote fields** for each manageable task (e.g. the OpenProject activity), with options fetched from the remote system and pre-filled from the config defaults (previously-used-value pre-fill arrives with story 11b). Selected values are page state only — persistence arrives with story 11b.
+- The page is **review-only**: there is no push action yet.
+
+---
+
+## 11b. Remote Sync: push a day's time & lock cascade
+
+> **As a user, I want to push a reviewed day's time to the client's tracker in one go, with pushed entries locked and retries duplicate-safe, so my remote timesheet stays consistent.** (WBS 5.10, 5.11, rest of 5.13)
+
+**Acceptance criteria**
+
+- Pushing sends **one remote time log per task** (the reviewed — possibly user-edited — duration + required fields) against its linked issue, executed client-side; tasks with a duration of **0 are excluded** from the push. I see a per-task success/failure summary.
+- Push records persist the **remote log ID**, the **exact duration pushed** (not the rule-computed value), and the field values used; a task's previously used field value (e.g. OpenProject activity, possibly from another day) is pre-filled on later visits, taking precedence over config defaults.
+- Tasks already pushed for the day appear on the Remote Sync page as **read-only** with a pushed indicator.
 - On success the pushed entries are **locked** (start/stop immutable, cannot be deleted) and a task with any locked entry is **locked** (Project/Client cannot be changed); there is **no unlock in MVP**.
 - Retrying a failed push **does not create a duplicate** remote log (guarded by the stored remote log ID).

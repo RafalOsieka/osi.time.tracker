@@ -169,13 +169,13 @@ The user can browse and search issues from the configured remote system directly
 
 ### Remote Sync (day-level push)
 
-From the Timer view the user opens a **Remote Sync** page for a selected day. It lists that day's **pushable tasks** — tasks with entries that day whose Project → Client has a `RemoteSystemConfig`. Each row shows:
+From the Timer view the user opens a **Remote Sync** page for a selected day. It lists **all** of that day's tasks; each row is either **manageable** or **read-only with a stated reason** (no Project/Client, Client has no `RemoteSystemConfig`, the system type isn't implemented yet, or the task was already pushed for that day). A task without a `RemoteIssueRef` is read-only too, but an inline link action flips it to manageable. Each manageable row shows:
 
-- the Task and its **rounded aggregate time** for the day (the day's entries for the task summed, then rounded once via the configured rounding rule);
+- the **original duration** (the day's entries for the task summed) and, separately, an **editable rounded duration** — pre-filled by applying the configured rounding rule **once** to the sum, and overridable by the user (the rule is a default, not a mandate);
 - the linked **remote issue** (assignable/changeable inline if not yet linked);
-- any **required remote fields** for that system (adapter-provided options where available, otherwise plain input; a task's previously used value pre-filled where possible).
+- any **required remote fields** for that system (adapter-provided options where available, otherwise plain input; a task's previously used value — possibly from another day — pre-filled where possible, falling back to the config defaults).
 
-On confirm, a single action pushes the day: for each pushable task the adapter creates **one remote time log** against the linked issue with the rounded duration and required fields. A per-task success/failure summary is shown.
+On confirm, a single action pushes the day: for each manageable task the adapter creates **one remote time log** against the linked issue with the reviewed duration and required fields; tasks whose duration is **0** are excluded from the push. A per-task success/failure summary is shown, and push records store the **exact duration pushed** plus the field values used.
 
 ### Push lock cascade
 
