@@ -58,15 +58,27 @@ The system SHALL show the authenticated user only their own tasks, ordered by `n
 ### Requirement: REQ-TTR-028 Edit a task
 The system SHALL allow an authenticated user to update the `name` and `projectId` of their own task via `PATCH /api/tasks/[id]`, addressing the task by its `uuidv7` `id` and applying the same `name` validation as title resolution (trimmed, non-empty, length-bounded). Editing SHALL be scoped by `userId`. The `projectId` MAY be set to a new project, or cleared to `null` to make the task project-less. Project ownership and non-deleted validation SHALL only be enforced when the `projectId` is changed to a different non-null project; clearing to `null` SHALL always be allowed. When the `projectId` is unchanged from the task's current project, the system SHALL NOT validate that project's soft-delete status, so the task's `name` can still be edited after its project has been soft-deleted.
 
-When the update would make the task's `(userId, name, projectId)` key collide with another existing task (the survivor), the system SHALL merge instead of rejecting: within a single transaction, all time entries of the edited task SHALL be re-pointed to the survivor, the emptied edited task SHALL be hard-deleted, and the survivor SHALL be returned (including its resolved `projectName` and `clientName`).
+When the update would make the task's `(userId, name, projectId)` key collide with another existing task (the survivor), the system SHALL merge within a single transaction. If neither Task has a remote issue reference, all time entries of the edited Task SHALL be re-pointed to the survivor and the emptied edited Task SHALL be hard-deleted. If only one Task has a reference, that reference SHALL be preserved on the survivor. If both references identify the same remote issue using configuration provenance plus remote issue ID, one identical reference SHALL be preserved. If both Tasks have different references, the entire edit and merge SHALL be rejected with HTTP 409 and neither Task, its entries, nor its reference SHALL change. A successful merge SHALL return the survivor including its resolved `projectName`, `clientName`, and remote reference.
 
 #### Scenario: Successful edit
 - **WHEN** an authenticated user submits a valid new name and an owned `projectId` for their own task, with no key collision
-- **THEN** the system SHALL update the task and return it (including the resolved `projectName` and `clientName`)
+- **THEN** the system SHALL update the task and return it (including the resolved `projectName`, `clientName`, and remote reference)
 
-#### Scenario: Colliding edit merges into the survivor
-- **WHEN** an authenticated user renames or re-projects their task so its `(name, projectId)` matches another of their existing tasks
-- **THEN** the system SHALL move all of the edited task's entries to the surviving task, hard-delete the emptied task, and return the survivor — all within one transaction
+#### Scenario: Colliding edit merges unlinked Tasks
+- **WHEN** an authenticated user renames or re-projects their unlinked Task so its `(name, projectId)` matches another unlinked Task
+- **THEN** the system SHALL move all entries to the survivor, hard-delete the emptied Task, and return the survivor within one transaction
+
+#### Scenario: Merge preserves a sole reference
+- **WHEN** exactly one of the edited Task and survivor has a remote issue reference
+- **THEN** the system SHALL preserve that reference on the survivor in the same merge transaction
+
+#### Scenario: Merge collapses identical references
+- **WHEN** both merging Tasks reference the same configuration provenance and remote issue ID
+- **THEN** the system SHALL preserve one reference on the survivor and complete the merge atomically
+
+#### Scenario: Merge rejects different references
+- **WHEN** both merging Tasks have references that differ by configuration provenance or remote issue ID
+- **THEN** the system SHALL respond with HTTP 409 and SHALL leave both Tasks, their entries, and their references unchanged
 
 #### Scenario: Rename a task whose project is soft-deleted
 - **WHEN** an authenticated user updates the `name` of their own task without changing its `projectId`, and that task's current project has been soft-deleted
@@ -74,11 +86,11 @@ When the update would make the task's `(userId, name, projectId)` key collide wi
 
 #### Scenario: Clear the project assignment
 - **WHEN** an authenticated user updates their own task and sets `projectId` to `null`
-- **THEN** the system SHALL make the task project-less (merging per the collision rule if a project-less task with that name exists) and return the resulting task
+- **THEN** the system SHALL make the task project-less (merging per the collision and reference rules if a project-less task with that name exists) and return the resulting task
 
 #### Scenario: Assign a project to a project-less task
 - **WHEN** an authenticated user updates a project-less task, setting `projectId` to a non-deleted project they own
-- **THEN** the system SHALL validate ownership, assign the project, and return the task with the resolved `projectName` and `clientName`
+- **THEN** the system SHALL validate ownership, assign the project, and return the task with the resolved `projectName`, `clientName`, and remote reference
 
 ### Requirement: REQ-TTR-030 Project relationship and ownership
 Every task SHALL belong to at most one project owned by the same user, or to no project at all (project-less). On create when a non-null `projectId` is supplied, and on update when the `projectId` is changed to a different non-null project, the system SHALL validate that the target `projectId` references a non-deleted project owned by the authenticated user; a foreign or unknown `projectId` SHALL resolve to HTTP 404 without confirming the project's existence. Omitting `projectId` or setting it to `null` SHALL create/leave the task project-less without any project validation. When an update leaves the `projectId` unchanged, the system SHALL NOT re-validate the existing project's ownership or soft-delete status, allowing edits to a task whose project was later soft-deleted.
