@@ -40,18 +40,21 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     });
   }
 
-  const newProjectId = parsedBody.projectId ?? null;
+  // An omitted projectId keeps the current project, an explicit null clears
+  // it, and a provided uuid assigns it (ownership validated below).
+  const projectProvided = parsedBody.projectId !== undefined;
+  const targetProjectId = projectProvided ? (parsedBody.projectId ?? null) : existing.projectId;
 
   // Only re-validate the project's ownership/soft-delete status when changed
   // to a non-null project, so a rename works even after the current project
   // was soft-deleted, and clearing to null never needs validation.
-  if (newProjectId !== existing.projectId && newProjectId !== null) {
+  if (targetProjectId !== existing.projectId && targetProjectId !== null) {
     const [project] = await db
       .select({ id: projects.id })
       .from(projects)
       .where(
         and(
-          eq(projects.id, newProjectId),
+          eq(projects.id, targetProjectId),
           eq(projects.userId, user.id),
           isNull(projects.deletedAt),
         ),
@@ -67,7 +70,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   }
 
   const projectCondition =
-    newProjectId === null ? isNull(tasks.projectId) : eq(tasks.projectId, newProjectId);
+    targetProjectId === null ? isNull(tasks.projectId) : eq(tasks.projectId, targetProjectId);
 
   const updatedId = await db.transaction(async (tx) => {
     // Detect a collision with another task already occupying the target
@@ -136,7 +139,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
     const [row] = await tx
       .update(tasks)
-      .set({ name: parsedBody.name, projectId: newProjectId, updatedAt: new Date() })
+      .set({ name: parsedBody.name, projectId: targetProjectId, updatedAt: new Date() })
       .where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)))
       .returning({ id: tasks.id });
 

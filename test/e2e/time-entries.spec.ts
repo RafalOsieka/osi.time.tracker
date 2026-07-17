@@ -498,6 +498,44 @@ describeTimeEntries('time-entries API integration', async () => {
     await patchEntry(jar, token, running.id, { stoppedAt: new Date().toISOString() });
   });
 
+  it('patch title only keeps the entry current project scope (no silent unassign)', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'TE Title Only Client ' + Date.now());
+    const project = await createProject(
+      jar,
+      token,
+      'TE Title Only Project ' + Date.now(),
+      client.id,
+    );
+
+    const created = await (
+      await startEntry(jar, token, { title: 'Scoped Entry ' + Date.now(), projectId: project.id })
+    ).json();
+
+    const retitled = await patchEntry(jar, token, created.id, { title: 'Retitled ' + Date.now() });
+    expect(retitled.status).toBe(200);
+    const retitledBody = await retitled.json();
+    expect(retitledBody.projectId).toBe(project.id);
+
+    await patchEntry(jar, token, created.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('patch projectId: null moves the entry to the project-less scope', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'TE Clear Client ' + Date.now());
+    const project = await createProject(jar, token, 'TE Clear Project ' + Date.now(), client.id);
+    const title = 'Clear Scope Entry ' + Date.now();
+
+    const created = await (await startEntry(jar, token, { title, projectId: project.id })).json();
+
+    const cleared = await patchEntry(jar, token, created.id, { title, projectId: null });
+    expect(cleared.status).toBe(200);
+    const clearedBody = await cleared.json();
+    expect(clearedBody.projectId).toBeNull();
+
+    await patchEntry(jar, token, created.id, { stoppedAt: new Date().toISOString() });
+  });
+
   it('delete: keeps the task when sibling entries remain', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
     const title = 'Delete Sibling Task ' + Date.now();
