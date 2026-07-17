@@ -98,6 +98,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 ## 10. Testing
 
 - Add or update tests alongside any code change; keep the suite green.
+- Fix bugs test-first: before changing the code, write a regression test that reproduces the defect and confirm it **fails**; after the fix, confirm it **passes**. Never weaken, skip, or delete that test to force a green run; leave it in place as a permanent regression guard. Trivial defects (typos, obvious single-line errors) may rely on a documented manual check instead.
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
