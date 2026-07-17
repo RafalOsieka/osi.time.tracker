@@ -77,16 +77,18 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
     let taskId = existing.taskId;
     if (parsedBody.title !== undefined || parsedBody.projectId !== undefined) {
       let title = parsedBody.title;
-      if (title === undefined && existing.taskId) {
+      let projectId = parsedBody.projectId;
+      if (existing.taskId && (title === undefined || projectId === undefined)) {
         const [currentTask] = await tx
-          .select({ name: tasks.name })
+          .select({ name: tasks.name, projectId: tasks.projectId })
           .from(tasks)
           .where(eq(tasks.id, existing.taskId))
           .limit(1);
-        title = currentTask?.name;
+        if (title === undefined) title = currentTask?.name;
+        if (projectId === undefined) projectId = currentTask?.projectId;
       }
 
-      taskId = await resolveTaskId(tx, user.id, title, parsedBody.projectId);
+      taskId = await resolveTaskId(tx, user.id, title, projectId);
     }
 
     const [row] = await tx

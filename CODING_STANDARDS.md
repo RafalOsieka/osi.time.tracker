@@ -72,34 +72,44 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Express validation messages as translation keys (e.g. `error.entityNameRequired`) rather than human-readable sentences.
 - Keep shared limits and magic values as exported `UPPER_SNAKE_CASE` constants and reference them in both the schema and the code that enforces them.
 
-## 7. Comments & Documentation
+## 7. Date/Time & Timezone Handling
+
+- All timezone-sensitive date arithmetic (day keys, day/week boundaries, combining a wall-clock date and time into an instant) MUST use the `Temporal` API (`temporal-polyfill`), never browser-local `Date` getters (`getFullYear()`, `getDay()`, etc.) or server-local `Date` math.
+- The effective timezone is the authenticated user's saved `timezone` setting (`useUserSettings().effective.timeZone` on the client, the `users.timezone` column on the server), falling back to the browser-detected timezone only when nothing is saved yet — never assume `UTC` or the host machine's timezone.
+- Every human-readable date/time format call (`Intl.DateTimeFormat`, `Date#toLocaleDateString`/`toLocaleTimeString`, and any wrapper such as `formatDate`) MUST pass an explicit `timeZone` option derived from the effective setting. Omitting `timeZone` silently falls back to the runtime's local timezone and will render the wrong day/time for users whose saved timezone differs.
+- Utilities that accept a `timeZone` parameter (e.g. `app/utils/dateTime.ts`, `app/utils/timerViewGrouping.ts`) may default it to the browser-detected timezone for convenience, but every call site with access to a signed-in user's settings MUST pass the effective timezone explicitly rather than relying on the default.
+- UTC ISO 8601 instants remain the only on-the-wire representation; the server performs no timezone-aware rendering, only timezone-aware bucketing/boundary math when explicitly given the user's timezone (see `server/utils/day-boundary.ts`).
+- Interop with PrimeVue `DatePicker` (which consumes browser-local `Date` objects) is confined to the dedicated adapter pair (`toPickerDate`/`fromPickerDate` in `app/utils/dateTime.ts`); no other code should construct dates from browser-local getters.
+
+## 8. Comments & Documentation
 
 - Explain _why_, not _what_; document non-obvious design decisions and constraints.
 - Use JSDoc (`/** ... */`) for public/exported functions and composables that carry meaningful behavior or caveats.
 - Use single-line `//` comments for inline rationale.
 - Keep comments in sync with the code they describe; delete stale comments.
 
-## 8. Error Handling
+## 9. Error Handling
 
 - Type caught errors as `unknown` and narrow them before use.
 - Handle expected failure modes explicitly (validation, not-found, duplicates); avoid silent failures.
 - Re-throw unexpected errors rather than swallowing them.
 - Guard asynchronous flows against stale/superseded results where ordering matters.
 
-## 9. Testing
+## 10. Testing
 
 - Add or update tests alongside any code change; keep the suite green.
+- Fix bugs test-first: before changing the code, write a regression test that reproduces the defect and confirm it **fails**; after the fix, confirm it **passes**. Never weaken, skip, or delete that test to force a green run; leave it in place as a permanent regression guard. Trivial defects (typos, obvious single-line errors) may rely on a documented manual check instead.
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
 
-## 10. Commits & Reviews
+## 11. Commits & Reviews
 
 - One logical change per commit, with a short, clear summary line.
 - Update tests and i18n catalogs in the same change as the code they support.
 - Run linting, format checks, and the relevant test projects before opening a pull request.
 - Keep pull requests focused and reasonably small; be constructive in review.
 
-## 11. Changes to This Guide
+## 12. Changes to This Guide
 
 Conventions evolve. Propose improvements by opening an issue or a pull request that updates this document, and align the change with the project's tooling configuration.

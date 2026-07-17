@@ -10,6 +10,7 @@ const { t, locale } = useI18n();
 const confirm = useConfirm();
 const toast = useToast();
 const { $csrfFetch } = useNuxtApp();
+const { effective } = useUserSettings();
 
 const resolver = zodResolver(createClientSchema);
 // executionMode currently only supports 'client' and is set automatically on save,
@@ -317,7 +318,7 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
       <Column field="name" :header="t('clients.columnName')" sortable />
       <Column field="createdAt" :header="t('clients.columnCreated')" sortable>
         <template #body="{ data }: { data: ClientDto }">
-          {{ formatDate(data.createdAt, locale) }}
+          {{ formatDate(data.createdAt, locale, effective.timeZone) }}
         </template>
       </Column>
       <Column :header="t('clients.columnActions')" style="width: 1%; white-space: nowrap">

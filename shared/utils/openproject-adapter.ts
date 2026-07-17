@@ -122,3 +122,65 @@ export function parseIssueByIdResult(
 
   return { remoteIssueId: String(element.id), title: element.subject };
 }
+
+/** An adapter-neutral `{ id, name }` option, e.g. a selectable OpenProject activity. */
+export interface AdapterFieldOption {
+  id: string;
+  name: string;
+}
+
+/**
+ * Builds the OpenProject global time-entries schema request, used to fetch
+ * the `activity` field's allowed values (required-field options).
+ */
+export function buildTimeEntryActivitiesRequest(baseUrl: string): AdapterRequest {
+  return {
+    url: `${normalizeBaseUrl(baseUrl)}/api/v3/time_entries/schema`,
+    method: 'GET',
+  };
+}
+
+interface OpenProjectSchemaAllowedValue {
+  id?: unknown;
+  name?: unknown;
+}
+
+interface OpenProjectSchemaFieldPayload {
+  _embedded?: {
+    allowedValues?: unknown;
+  };
+}
+
+interface OpenProjectTimeEntrySchemaPayload {
+  activity?: OpenProjectSchemaFieldPayload;
+}
+
+/**
+ * Parses an OpenProject time-entries schema response into the `activity`
+ * field's adapter-neutral allowed-value options. Malformed/unexpected
+ * shapes (missing `activity`, missing `_embedded.allowedValues`,
+ * non-array values, elements missing `id`/`name`) are handled by skipping
+ * rather than throwing.
+ */
+export function parseTimeEntryActivitiesResults(payload: unknown): AdapterFieldOption[] {
+  const activity = (payload as OpenProjectTimeEntrySchemaPayload | undefined)?.activity;
+  const allowedValues = activity?._embedded?.allowedValues;
+  if (!Array.isArray(allowedValues)) {
+    return [];
+  }
+
+  const options: AdapterFieldOption[] = [];
+  for (const value of allowedValues as OpenProjectSchemaAllowedValue[]) {
+    if (
+      value == null ||
+      typeof value !== 'object' ||
+      (typeof value.id !== 'string' && typeof value.id !== 'number') ||
+      typeof value.name !== 'string'
+    ) {
+      continue;
+    }
+    options.push({ id: String(value.id), name: value.name });
+  }
+
+  return options;
+}

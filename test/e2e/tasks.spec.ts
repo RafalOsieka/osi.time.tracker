@@ -196,6 +196,53 @@ describeTasks('tasks API integration', async () => {
     expect(rows.find((r: { id: string }) => r.id === scoped.id)).toBeUndefined();
   });
 
+  it('patch with name only keeps the current project (no silent unassign)', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'Name Only Client ' + Date.now());
+    const project = await createProject(jar, token, 'Name Only Project ' + Date.now(), client.id);
+
+    const created = await createTaskViaEntry(jar, token, 'Rename Me ' + Date.now(), project.id);
+
+    const patchRes = await patchTask(jar, token, created.id, { name: 'Renamed ' + Date.now() });
+    expect(patchRes.status).toBe(200);
+    const patched = await patchRes.json();
+    expect(patched.projectId).toBe(project.id);
+  });
+
+  it('patch with projectId: null explicitly clears the project', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'Clear Client ' + Date.now());
+    const project = await createProject(jar, token, 'Clear Project ' + Date.now(), client.id);
+    const suffix = Date.now();
+
+    const created = await createTaskViaEntry(jar, token, `Clear Me ${suffix}`, project.id);
+
+    const patchRes = await patchTask(jar, token, created.id, {
+      name: `Clear Me ${suffix}`,
+      projectId: null,
+    });
+    expect(patchRes.status).toBe(200);
+    const patched = await patchRes.json();
+    expect(patched.projectId).toBeNull();
+  });
+
+  it('patch with an owned projectId sets the project (ownership validated)', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'Set Client ' + Date.now());
+    const project = await createProject(jar, token, 'Set Project ' + Date.now(), client.id);
+    const suffix = Date.now();
+
+    const created = await createTaskViaEntry(jar, token, `Set Me ${suffix}`);
+
+    const patchRes = await patchTask(jar, token, created.id, {
+      name: `Set Me ${suffix}`,
+      projectId: project.id,
+    });
+    expect(patchRes.status).toBe(200);
+    const patched = await patchRes.json();
+    expect(patched.projectId).toBe(project.id);
+  });
+
   it('patch on unknown/foreign id → 404', async () => {
     const alice = await loginAs('talice@example.com', 'secret');
     const bob = await loginAs('tbob@example.com', 'secret');

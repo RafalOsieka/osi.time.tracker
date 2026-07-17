@@ -324,6 +324,27 @@ describeProjects('projects API integration', async () => {
     expect(found.clientName).toBe(client.name);
   });
 
+  // Pinning test: clientId is required, so a name-only PATCH fails loud instead of silently
+  // clearing the client. Guards against a future relaxation reintroducing silent data loss.
+  it('patch with name only (no clientId) returns 422', async () => {
+    const { jar, token } = await loginAs('alice@example.com', 'secret');
+    const client = await createClient(jar, token, 'Pin Client ' + Date.now());
+
+    const createRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Pin Me', clientId: client.id }),
+    });
+    const project = await createRes.json();
+
+    const patchRes = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Pinned Name' }),
+    });
+    expect(patchRes.status).toBe(422);
+  });
+
   // 3.10 delete soft-deletes (row retained) + foreign id → 404
   it('3.10 delete soft-deletes (row retained) + foreign id → 404', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
