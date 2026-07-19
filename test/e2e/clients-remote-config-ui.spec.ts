@@ -54,6 +54,13 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
 
     await page.fill('[data-testid="remote-config-base-url-input"]', 'https://redmine.example.com');
     await page.fill('[data-testid="remote-config-secret-input"] input', 'super-secret-api-key');
+
+    // Pick a non-default system type (default is OpenProject) so reopening the
+    // dialog must reflect the *saved* value rather than the default. This guards
+    // the edit-dialog reactivity bug where the Form snapshotted stale defaults.
+    await page.click('[data-testid="remote-config-system-type-select"]');
+    await page.getByRole('option', { name: 'Redmine' }).click();
+
     await page.click('[data-testid="remote-config-save-button"]');
     await page.waitForSelector('[data-testid="remote-config-remove-button"]');
 
@@ -67,6 +74,10 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
     await page.waitForSelector('[data-testid="client-dialog"]', { state: 'hidden' });
     await row.locator('[data-testid^="edit-client-"]').click();
     await page.waitForSelector('[data-testid="remote-config-remove-button"]');
+    const savedSystemType = await page
+      .locator('[data-testid="remote-config-system-type-select"]')
+      .textContent();
+    expect(savedSystemType).toContain('Redmine');
     expect(await page.inputValue('[data-testid="remote-config-base-url-input"]')).toBe(
       'https://redmine.example.com',
     );
