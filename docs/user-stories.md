@@ -157,7 +157,7 @@ Conventions that apply to every story:
 
 ---
 
-## 11a. Remote Sync: per-day review page
+## 11a. Remote Sync: per-day review page ✅ Delivered
 
 > **As a user, I want a per-day Remote Sync page that shows all of a day's tasks with editable rounded times and required remote fields, so I can review a whole day's time before pushing it to the client's tracker.** (WBS 5.8, 5.9, 5.12, fetch side of 5.13)
 
