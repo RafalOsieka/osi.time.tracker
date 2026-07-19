@@ -3,7 +3,8 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ClientsPage from '../../app/pages/clients.vue';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
+const fetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
@@ -19,6 +20,8 @@ vi.mock('ofetch', async (importOriginal) => {
 
 type Client = { id: string; name: string; createdAt: string };
 const useAsyncDataClients: Client[] = [];
+
+mockNuxtImport('$fetch', () => fetchMock);
 
 mockNuxtImport('useAsyncData', () => {
   return (_key: string, fetcher: () => Promise<Client[]>) => {
@@ -104,7 +107,7 @@ describe('clients page', () => {
   });
 
   it('4.6a renders empty state when no clients', async () => {
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    fetchMock.mockResolvedValue([]);
 
     csrfFetchMock.mockResolvedValue({});
     const wrapper = await mountSuspended(ClientsPage, {
@@ -121,7 +124,7 @@ describe('clients page', () => {
       { id: '1', name: 'Acme Inc', createdAt: new Date().toISOString() },
       { id: '2', name: 'Zebra Corp', createdAt: new Date().toISOString() },
     ];
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(mockClients));
+    fetchMock.mockResolvedValue(mockClients);
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ClientsPage, {
@@ -133,7 +136,7 @@ describe('clients page', () => {
   });
 
   it('4.6c dialog opens on new button click', async () => {
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    fetchMock.mockResolvedValue([]);
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ClientsPage, {
@@ -146,7 +149,7 @@ describe('clients page', () => {
   });
 
   it('blocks submission client-side and does not call the server when name is empty', async () => {
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    fetchMock.mockResolvedValue([]);
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ClientsPage, {
@@ -161,7 +164,7 @@ describe('clients page', () => {
   });
 
   it('4.6d inline error displays on save with empty name', async () => {
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue([]));
+    fetchMock.mockResolvedValue([]);
     csrfFetchMock.mockRejectedValue({
       data: {
         data: { messageKey: 'error.clientNameRequired' },

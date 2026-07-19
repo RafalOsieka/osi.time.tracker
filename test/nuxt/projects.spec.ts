@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ProjectsPage from '../../app/pages/projects.vue';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();

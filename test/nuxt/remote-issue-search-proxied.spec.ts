@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useRemoteIssueSearch } from '../../app/composables/useRemoteIssueSearch';
 import { REMOTE_PROXY_SECRET_HEADER } from '../../shared/config/remote-proxy';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();

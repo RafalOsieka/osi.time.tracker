@@ -4,7 +4,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import TimerTaskGroup from '../../app/components/TimerTaskGroup.vue';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
 const selectShowMock = vi.fn();
 const selectHideMock = vi.fn();
 
