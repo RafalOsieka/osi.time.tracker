@@ -115,8 +115,8 @@ Log in (bootstrap-provisioned account; self-registration in V1.1)
                       ├─► Group header = mini task editor (rename Task, assign Project)
                       ├─► Continue (▶) → start a new entry on the same Task
                       └─► (Optional) Link Task to remote issue
-                            └─► Open the day's Remote Sync page → review rounded per-task totals + required fields → push the day
-                                  (one remote log per task; pushed entries and their tasks lock)
+                            └─► Open the day's Remote Sync page → select entries, review export duration + required fields → export
+                                  (one remote log per included task; non-locking provenance; intentional repeats allowed)
 ```
 
 ---
@@ -131,13 +131,13 @@ Log in (bootstrap-provisioned account; self-registration in V1.1)
           ┌────▼────┐
           │ Stopped │  ← time entry saved (editable)
           └────┬────┘
-               │ push (optional, requires RemoteIssueRef on parent Task)
+               │ export (optional, requires RemoteIssueRef on parent Task)
       ┌────────▼─────────┐
-      │ Pushed to Remote │  ← time entry sent to external system via adapter
+      │ Exported         │  ← selected entries included in a remote log; local data stays mutable
       └──────────────────┘
 ```
 
-A running timer **is** a TimeEntry with no stop time — persisted server-side, at most one per user. A time entry can also be created directly in the `Stopped` state via manual entry (no timer involved). Duration is always derived from the two timestamps. Once pushed via Remote Sync, an entry is **locked** (start/stop immutable, no delete) and a task holding any locked entry is locked (Project/Client immutable); the remote is never auto-mutated, retries are duplicate-safe, and there is no unlock in MVP (see the Push lock cascade and NFR 8.8).
+A running timer **is** a TimeEntry with no stop time — persisted server-side, at most one per user. A time entry can also be created directly in the `Stopped` state via manual entry (no timer involved). Duration is always derived from the two timestamps. Exporting via Remote Sync records append-only provenance and does **not** lock local entries or tasks; intentional re-export is allowed with confirmation, and a narrow remote-success/local-finalize failure window is reported as uncertain rather than claimed to be strictly idempotent.
 
 ---
 
@@ -167,22 +167,23 @@ The user can browse and search issues from the configured remote system directly
 1. **Link from a Task's group row in the Timer View** — pick a remote issue from a search/browse dialog to attach a `RemoteIssueRef` to the task.
 2. **Start time entry from remote issue** — a dedicated view lists open remote issues; the user selects one and immediately starts a timer, with the task and remote link pre-populated.
 
-### Remote Sync (day-level push)
+### Remote Sync (user-controlled export)
 
-From the Timer view the user opens a **Remote Sync** page for a selected day. It lists **all** of that day's tasks; each row is either **manageable** or **read-only with a stated reason** (no Project/Client, Client has no `RemoteSystemConfig`, the system type isn't implemented yet, or the task was already pushed for that day). A task without a `RemoteIssueRef` is read-only too, but an inline link action flips it to manageable. Each manageable row shows:
+From the Timer view the user opens a **Remote Sync** page for a selected day. It lists **all** of that day's tasks; each row is either **manageable** or **read-only with a stated reason** (no Project/Client, Client has no `RemoteSystemConfig`, unsupported system type, no activities available, or a retryable remote load failure). A task without a `RemoteIssueRef` is read-only too, but an inline link action flips it toward manageable. Each manageable row shows:
 
-- the **original duration** (the day's entries for the task summed) and, separately, an **editable rounded duration** — pre-filled by applying the configured rounding rule **once** to the sum, and overridable by the user (the rule is a default, not a mandate);
-- the linked **remote issue** (assignable/changeable inline if not yet linked);
-- any **required remote fields** for that system (adapter-provided options where available, otherwise plain input; a task's previously used value — possibly from another day — pre-filled where possible, falling back to the config defaults).
+- completed **local entries** with individual selection (eligible entries selected by default);
+- the **original duration**, **selected total**, and an **editable export duration** pre-filled by applying the configured rounding rule once to the selected total (overridable; reset restores the rounded selected total);
+- the linked **remote issue**;
+- required remote fields (e.g. OpenProject activity), with previously finalized values preferred over config defaults;
+- **current-account same-day remote logs** for the linked issue as informational context only.
 
-On confirm, a single action pushes the day: for each manageable task the adapter creates **one remote time log** against the linked issue with the reviewed duration and required fields; tasks whose duration is **0** are excluded from the push. A per-task success/failure summary is shown, and push records store the **exact duration pushed** plus the field values used.
+On export, the browser orchestrates one remote create per included task (direct or Nitro-proxied transport) and finalizes each success through an authenticated local endpoint. No selection, zero duration, missing activity, or unresolved prerequisites exclude a task. Successful exports append non-locking provenance (remote log id, exact duration, required fields, selected entry ids). Selecting previously exported entries requires confirmation; intentional repeats are allowed. If remote creation succeeds but local finalization fails, the task is marked uncertain and the user is warned that retry may duplicate the remote log. Known finalized remote log ids are replayed without creating another remote log.
 
-### Push lock cascade
+### Provenance is non-locking
 
-- On successful push, that day's pushed `TimeEntry` records are **locked**: their start/stop times cannot be edited and they cannot be deleted.
-- A `Task` that holds **any** locked entry is itself **locked**: its Project/Client cannot be changed (protecting the pushable grouping).
-- The remote counterpart is **never** auto-updated or deleted; there is **no unlock in MVP**.
-- Push retry is **idempotency-guarded** via the stored remote log ID so retries never create duplicates.
+- Successful exports do **not** lock local entries or tasks; normal authorized edits, deletes, and reassignments remain available.
+- Provenance is append-only and may cover the same task/day or entry more than once.
+- Remote-only logs never infer local provenance or block export.
 
 ### Rounding
 

@@ -68,25 +68,75 @@ describe('deriveRemoteSyncRowState', () => {
     ).toBe('manageable');
   });
 
-  it('gives no_client precedence over every other missing prerequisite', () => {
+  it('returns activity_loading while activities are in flight', () => {
+    expect(
+      deriveRemoteSyncRowState({
+        hasProject: true,
+        hasClient: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: true,
+        activityStatus: 'loading',
+      }),
+    ).toBe('activity_loading');
+  });
+
+  it('returns activity_error for a retryable transport failure', () => {
+    expect(
+      deriveRemoteSyncRowState({
+        hasProject: true,
+        hasClient: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: true,
+        activityStatus: 'error',
+      }),
+    ).toBe('activity_error');
+  });
+
+  it('returns no_activity for a successful empty activity response', () => {
+    expect(
+      deriveRemoteSyncRowState({
+        hasProject: true,
+        hasClient: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: true,
+        activityStatus: 'empty',
+      }),
+    ).toBe('no_activity');
+  });
+
+  it('does not convert transport failure into no_activity', () => {
+    expect(
+      deriveRemoteSyncRowState({
+        hasProject: true,
+        hasClient: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: true,
+        activityStatus: 'error',
+      }),
+    ).not.toBe('no_activity');
+  });
+
+  it('gives no_client precedence over activity outcomes', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: false,
         hasClient: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
+        activityStatus: 'available',
       }),
     ).toBe('no_client');
   });
 
-  it('gives no_config precedence over system_not_implemented and unlinked', () => {
+  it('gives unlinked precedence over activity outcomes', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
         hasClient: true,
-        config: null,
-        hasIssueRef: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: false,
+        activityStatus: 'empty',
       }),
-    ).toBe('no_config');
+    ).toBe('unlinked');
   });
 });

@@ -204,3 +204,269 @@ export function parseTimeEntryActivitiesResults(payload: unknown): AdapterFieldO
 
   return options;
 }
+
+/** Current authenticated OpenProject account identity. */
+export interface OpenProjectAccount {
+  id: string;
+  name: string;
+}
+
+/**
+ * Builds the OpenProject request that resolves the authenticated remote account
+ * (`GET /api/v3/users/me`).
+ */
+export function buildCurrentAccountRequest(baseUrl: string): AdapterRequest {
+  return {
+    url: `${normalizeBaseUrl(baseUrl)}/api/v3/users/me`,
+    method: 'GET',
+  };
+}
+
+/**
+ * Parses `/api/v3/users/me` into an adapter-neutral account identity.
+ * Returns `null` for malformed payloads.
+ */
+export function parseCurrentAccountResult(payload: unknown): OpenProjectAccount | null {
+  if (payload == null || typeof payload !== 'object') {
+    return null;
+  }
+  const row = payload as { id?: unknown; name?: unknown };
+  if ((typeof row.id !== 'string' && typeof row.id !== 'number') || typeof row.name !== 'string') {
+    return null;
+  }
+  return { id: String(row.id), name: row.name };
+}
+
+/**
+ * Serializes whole seconds to an OpenProject ISO-8601 duration (`PT…H…M…S`).
+ * Zero and negative inputs yield `PT0S`.
+ */
+export function formatOpenProjectDuration(totalSeconds: number): string {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+  let out = 'PT';
+  if (hours > 0) out += `${hours}H`;
+  if (minutes > 0) out += `${minutes}M`;
+  if (secs > 0 || (hours === 0 && minutes === 0)) out += `${secs}S`;
+  return out;
+}
+
+/**
+ * Parses an OpenProject ISO-8601 duration (`PT1H30M`, `PT45M`, `PT90S`, …)
+ * into whole seconds. Returns `null` when the value cannot be parsed.
+ */
+export function parseOpenProjectDuration(value: unknown): number | null {
+  if (typeof value !== 'string') return null;
+  const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i.exec(value.trim());
+  if (!match) return null;
+  const hours = Number(match[1] ?? 0);
+  const minutes = Number(match[2] ?? 0);
+  const seconds = Number(match[3] ?? 0);
+  if (![hours, minutes, seconds].every((n) => Number.isFinite(n))) return null;
+  return hours * 3600 + minutes * 60 + seconds;
+}
+
+export interface BuildTimeLogsRequestInput {
+  baseUrl: string;
+  /** Local calendar day `YYYY-MM-DD`. */
+  spentOn: string;
+  /** Linked work-package ids to include. */
+  workPackageIds: string[];
+  /** When set, restricts results to this remote user id (current account). */
+  userId?: string;
+  /** Absolute next-page URL from a previous collection response. */
+  nextPageUrl?: string;
+  pageSize?: number;
+}
+
+/**
+ * Builds a filtered, paginated OpenProject time-entries collection request for
+ * the given spent-on date and work packages. Prefer `nextPageUrl` when following
+ * pagination so upstream offsets stay authoritative.
+ */
+export function buildTimeLogsRequest(input: BuildTimeLogsRequestInput): AdapterRequest {
+  if (input.nextPageUrl) {
+    return { url: input.nextPageUrl, method: 'GET' };
+  }
+
+  const filters: Array<Record<string, { operator: string; values: string[] }>> = [
+    { spent_on: { operator: '=d', values: [input.spentOn] } },
+    // OpenProject 14+ models time entries against a polymorphic entity.
+    { entity_type: { operator: '=', values: ['WorkPackage'] } },
+  ];
+  if (input.workPackageIds.length > 0) {
+    filters.push({
+      entity_id: { operator: '=', values: input.workPackageIds },
+    });
+  }
+  // Prefer an explicit account id; fall back to OpenProject's `me` sentinel.
+  filters.push({
+    user_id: { operator: '=', values: [input.userId ?? 'me'] },
+  });
+
+  const params = new URLSearchParams({
+    filters: JSON.stringify(filters),
+    pageSize: String(input.pageSize ?? 100),
+  });
+
+  return {
+    url: `${normalizeBaseUrl(input.baseUrl)}/api/v3/time_entries?${params.toString()}`,
+    method: 'GET',
+  };
+}
+
+export interface ParsedTimeLogPage {
+  logs: Array<{
+    remoteLogId: string;
+    remoteIssueId: string;
+    spentOn: string;
+    durationSeconds: number;
+    activityId: string | null;
+    activityName: string | null;
+    comment: string | null;
+    remoteUserId: string | null;
+  }>;
+  /** Absolute URL of the next page, when present. */
+  nextPageUrl: string | null;
+}
+
+interface OpenProjectHalLink {
+  href?: unknown;
+  title?: unknown;
+}
+
+interface OpenProjectTimeEntryElement {
+  id?: unknown;
+  spentOn?: unknown;
+  hours?: unknown;
+  comment?: { raw?: unknown } | unknown;
+  _links?: {
+    /** Current OpenProject link for the logged entity (work package or meeting). */
+    entity?: OpenProjectHalLink;
+    /** Deprecated alias retained for older OpenProject responses. */
+    workPackage?: OpenProjectHalLink;
+    activity?: OpenProjectHalLink;
+    user?: OpenProjectHalLink;
+    self?: OpenProjectHalLink;
+  };
+}
+
+interface OpenProjectTimeEntryCollection {
+  _embedded?: { elements?: unknown };
+  _links?: { next?: OpenProjectHalLink };
+}
+
+function hrefId(href: unknown): string | null {
+  if (typeof href !== 'string') return null;
+  const match = /\/(\d+)(?:\?.*)?$/.exec(href);
+  return match?.[1] ?? null;
+}
+
+/**
+ * Parses one page of OpenProject time entries into adapter-neutral logs and
+ * the optional next-page URL. Malformed elements are skipped.
+ */
+export function parseTimeLogsPage(payload: unknown): ParsedTimeLogPage {
+  const collection = payload as OpenProjectTimeEntryCollection | undefined;
+  const elements = collection?._embedded?.elements;
+  const logs: ParsedTimeLogPage['logs'] = [];
+
+  if (Array.isArray(elements)) {
+    for (const element of elements as OpenProjectTimeEntryElement[]) {
+      if (element == null || typeof element !== 'object') continue;
+      const remoteLogId =
+        typeof element.id === 'string' || typeof element.id === 'number'
+          ? String(element.id)
+          : hrefId(element._links?.self?.href);
+      // Prefer `entity` (current); fall back to deprecated `workPackage`.
+      const remoteIssueId =
+        hrefId(element._links?.entity?.href) ?? hrefId(element._links?.workPackage?.href);
+      const spentOn = typeof element.spentOn === 'string' ? element.spentOn : null;
+      const durationSeconds = parseOpenProjectDuration(element.hours);
+      if (!remoteLogId || !remoteIssueId || !spentOn || durationSeconds == null) continue;
+
+      const activityHref = element._links?.activity?.href;
+      const activityId = hrefId(activityHref);
+      const activityName =
+        typeof element._links?.activity?.title === 'string' ? element._links.activity.title : null;
+      let comment: string | null = null;
+      if (
+        element.comment != null &&
+        typeof element.comment === 'object' &&
+        typeof (element.comment as { raw?: unknown }).raw === 'string'
+      ) {
+        comment = (element.comment as { raw: string }).raw;
+      } else if (typeof element.comment === 'string') {
+        comment = element.comment;
+      }
+
+      logs.push({
+        remoteLogId,
+        remoteIssueId,
+        spentOn,
+        durationSeconds,
+        activityId,
+        activityName,
+        comment,
+        remoteUserId: hrefId(element._links?.user?.href),
+      });
+    }
+  }
+
+  const nextHref = collection?._links?.next?.href;
+  return {
+    logs,
+    nextPageUrl: typeof nextHref === 'string' && nextHref.length > 0 ? nextHref : null,
+  };
+}
+
+export interface BuildCreateTimeEntryInput {
+  baseUrl: string;
+  remoteIssueId: string;
+  /** Local calendar day `YYYY-MM-DD`. */
+  spentOn: string;
+  /** Exact export duration in whole seconds. */
+  durationSeconds: number;
+  activityId: string;
+  comment?: string;
+}
+
+/**
+ * Builds the OpenProject create-time-entry request for one exported task.
+ */
+export function buildCreateTimeEntryRequest(input: BuildCreateTimeEntryInput): AdapterRequest {
+  return {
+    url: `${normalizeBaseUrl(input.baseUrl)}/api/v3/time_entries`,
+    method: 'POST',
+    body: {
+      spentOn: input.spentOn,
+      hours: formatOpenProjectDuration(input.durationSeconds),
+      comment: input.comment ? { raw: input.comment } : undefined,
+      _links: {
+        // OpenProject 14+ accepts the polymorphic `entity` link (work package).
+        entity: {
+          href: `/api/v3/work_packages/${encodeURIComponent(input.remoteIssueId)}`,
+        },
+        activity: {
+          href: `/api/v3/time_entries/activities/${encodeURIComponent(input.activityId)}`,
+        },
+      },
+    },
+  };
+}
+
+/**
+ * Parses a create-time-entry response into the remote log id. Returns `null`
+ * when the payload is malformed.
+ */
+export function parseCreateTimeEntryResult(payload: unknown): { remoteLogId: string } | null {
+  if (payload == null || typeof payload !== 'object') return null;
+  const row = payload as OpenProjectTimeEntryElement;
+  if (typeof row.id === 'string' || typeof row.id === 'number') {
+    return { remoteLogId: String(row.id) };
+  }
+  const fromSelf = hrefId(row._links?.self?.href);
+  return fromSelf ? { remoteLogId: fromSelf } : null;
+}

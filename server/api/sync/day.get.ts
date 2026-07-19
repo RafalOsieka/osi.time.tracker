@@ -1,21 +1,36 @@
-import { and, eq, isNull, gte, lt } from 'drizzle-orm';
+import { and, eq, isNull, gte, lt, inArray } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import { remoteSyncDayQuerySchema } from '../../../shared/types/remote-sync-day';
-import type { RemoteSyncDayDto, RemoteSyncDayQuery } from '../../../shared/types/remote-sync-day';
+import type {
+  RemoteSyncDayDto,
+  RemoteSyncDayEntryDto,
+  RemoteSyncDayQuery,
+  RemoteSyncExportProvenanceDto,
+} from '../../../shared/types/remote-sync-day';
 import { db } from '../../db/index';
-import { timeEntries, tasks, projects, clients, remoteSystemConfigs, users } from '../../db/schema';
+import {
+  timeEntries,
+  tasks,
+  projects,
+  clients,
+  remoteSystemConfigs,
+  users,
+  remoteExports,
+  remoteExportEntries,
+} from '../../db/schema';
 import { computeDayBoundary } from '../../utils/day-boundary';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * Returns the authenticated user's day-review aggregate (REQ-TTR-118): one
- * row per Task with entries that day, carrying the summed unrounded
- * duration, the resolvable Client configuration surface, and the remote
- * issue reference when present, plus the untitled-entries total. The day
- * boundary is computed server-side in the user's configured timezone,
- * mirroring the Timer view's rule. Never includes credential material.
+ * Returns the authenticated user's day-review aggregate (REQ-TTR-118/120/122):
+ * one row per Task with entries that day, carrying completed entry details,
+ * prior export provenance, the summed unrounded duration, the resolvable
+ * Client configuration surface, and the remote issue reference when present,
+ * plus the untitled-entries total. The day boundary is computed server-side
+ * in the user's configured timezone, mirroring the Timer view's rule. Never
+ * includes credential material.
  */
 export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const { user } = await requireAuth(event);
@@ -44,6 +59,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
 
   const rows = await db
     .select({
+      entryId: timeEntries.id,
       taskId: timeEntries.taskId,
       taskName: tasks.name,
       projectId: tasks.projectId,
@@ -99,6 +115,78 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const taskIds = [...new Set(rows.map((r) => r.taskId).filter((id): id is string => !!id))];
   const refs = await getRemoteIssueRefsForTasks(user.id, taskIds);
 
+  const completedEntryIds = rows.filter((r) => r.taskId && r.stoppedAt).map((r) => r.entryId);
+
+  const previouslyExportedEntryIds = new Set<string>();
+  const exportsByTaskId = new Map<string, RemoteSyncExportProvenanceDto[]>();
+
+  if (taskIds.length > 0) {
+    const exportRows = await db
+      .select({
+        exportId: remoteExports.id,
+        taskId: remoteExports.taskId,
+        remoteLogId: remoteExports.remoteLogId,
+        remoteIssueId: remoteExports.remoteIssueId,
+        exportDurationSeconds: remoteExports.exportDurationSeconds,
+        requiredFieldValues: remoteExports.requiredFieldValues,
+        createdAt: remoteExports.createdAt,
+        entryId: remoteExportEntries.entryId,
+      })
+      .from(remoteExports)
+      .leftJoin(remoteExportEntries, eq(remoteExportEntries.exportId, remoteExports.id))
+      .where(
+        and(
+          eq(remoteExports.userId, user.id),
+          eq(remoteExports.localDate, parsedQuery.date),
+          inArray(remoteExports.taskId, taskIds),
+        ),
+      );
+
+    const exportEntryIds = new Map<string, string[]>();
+    for (const row of exportRows) {
+      if (row.entryId) {
+        previouslyExportedEntryIds.add(row.entryId);
+        const list = exportEntryIds.get(row.exportId) ?? [];
+        list.push(row.entryId);
+        exportEntryIds.set(row.exportId, list);
+      }
+    }
+
+    const seenExportIds = new Set<string>();
+    for (const row of exportRows) {
+      if (seenExportIds.has(row.exportId)) continue;
+      seenExportIds.add(row.exportId);
+      const provenance: RemoteSyncExportProvenanceDto = {
+        exportId: row.exportId,
+        remoteLogId: row.remoteLogId,
+        remoteIssueId: row.remoteIssueId,
+        exportDurationSeconds: row.exportDurationSeconds,
+        requiredFieldValues: row.requiredFieldValues ?? {},
+        entryIds: exportEntryIds.get(row.exportId) ?? [],
+        createdAt: row.createdAt.toISOString(),
+      };
+      const list = exportsByTaskId.get(row.taskId) ?? [];
+      list.push(provenance);
+      exportsByTaskId.set(row.taskId, list);
+    }
+  }
+
+  // Mark entries with any prior provenance (not limited to this local day).
+  if (completedEntryIds.length > 0) {
+    const links = await db
+      .select({ entryId: remoteExportEntries.entryId })
+      .from(remoteExportEntries)
+      .where(
+        and(
+          eq(remoteExportEntries.userId, user.id),
+          inArray(remoteExportEntries.entryId, completedEntryIds),
+        ),
+      );
+    for (const link of links) {
+      previouslyExportedEntryIds.add(link.entryId);
+    }
+  }
+
   const rowsByTaskId = new Map<
     string,
     {
@@ -108,6 +196,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       clientName: string | null;
       clientId: string | null;
       totalSeconds: number;
+      entries: RemoteSyncDayEntryDto[];
     }
   >();
   let untitledTotalSeconds = 0;
@@ -127,15 +216,30 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
         clientName: row.clientName ?? null,
         clientId: row.clientId ?? null,
         totalSeconds: 0,
+        entries: [],
       };
       rowsByTaskId.set(row.taskId, entry);
     }
     entry.totalSeconds += duration;
+
+    // Only completed entries are selectable for export (REQ-TTR-120).
+    if (row.stoppedAt) {
+      entry.entries.push({
+        id: row.entryId,
+        startedAt: row.startedAt.toISOString(),
+        stoppedAt: row.stoppedAt.toISOString(),
+        durationSeconds: duration,
+        previouslyExported: previouslyExportedEntryIds.has(row.entryId),
+      });
+    }
   }
 
   const dayRows = Array.from(rowsByTaskId.values()).map((entry) => {
     const config = entry.clientId ? (configsByClientId.get(entry.clientId) ?? null) : null;
     const ref = refs.get(entry.taskId);
+    const exportsForTask = exportsByTaskId.get(entry.taskId) ?? [];
+    exportsForTask.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    entry.entries.sort((a, b) => a.startedAt.localeCompare(b.startedAt));
     return {
       taskId: entry.taskId,
       taskName: entry.taskName,
@@ -144,6 +248,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       totalSeconds: entry.totalSeconds,
       config,
       issueRef: ref ? { remoteIssueId: ref.remoteIssueId, cachedTitle: ref.cachedTitle } : null,
+      entries: entry.entries,
+      exports: exportsForTask,
     };
   });
 

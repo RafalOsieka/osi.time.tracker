@@ -1,16 +1,24 @@
 import {
+  buildCreateTimeEntryRequest,
+  buildCurrentAccountRequest,
   buildIssueByIdRequest,
   buildTimeEntryActivitiesRequest,
+  buildTimeLogsRequest,
   buildTitleSearchRequest,
+  parseCreateTimeEntryResult,
+  parseCurrentAccountResult,
   parseIssueByIdResult,
   parseTimeEntryActivitiesResults,
+  parseTimeLogsPage,
   parseTitleSearchResults,
+  type AdapterFieldOption,
+  type OpenProjectAccount,
 } from '../../shared/utils/openproject-adapter';
-import type { AdapterFieldOption } from '../../shared/utils/openproject-adapter';
 import type {
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
+import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
 import type { ApiMessage } from '../types/api-message';
 
 /**
@@ -57,7 +65,10 @@ export async function proxyOpenProjectSearch(
 
     return parseTitleSearchResults(payload._data);
   } catch (err: unknown) {
-    throw mapUpstreamError(err, mode);
+    throw mapUpstreamError(err, {
+      mode,
+      failureMessageKey: 'error.remoteIssueSearchFailed',
+    });
   }
 }
 
@@ -93,7 +104,161 @@ export async function proxyOpenProjectActivities(
     if (getUpstreamStatus(err) === 403) {
       return [];
     }
-    throw mapUpstreamError(err, 'title');
+    throw mapUpstreamError(err, {
+      failureMessageKey: 'error.remoteActivitiesFetchFailed',
+    });
+  }
+}
+
+/**
+ * Resolves the authenticated OpenProject account for the configured origin.
+ */
+export async function proxyOpenProjectCurrentAccount(
+  baseUrl: string,
+  secret: string,
+): Promise<OpenProjectAccount> {
+  const request = buildCurrentAccountRequest(baseUrl);
+  try {
+    const payload = await $fetch.raw(request.url, {
+      method: request.method,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Basic ${encodeBasicAuth(secret)}`,
+      },
+    });
+    const account = parseCurrentAccountResult(payload._data);
+    if (!account) {
+      throw createError({
+        statusCode: 502,
+        data: { messageKey: 'error.remoteAccountFetchFailed' } satisfies ApiMessage,
+      });
+    }
+    return account;
+  } catch (err: unknown) {
+    if ((err as { statusCode?: number })?.statusCode === 502) throw err;
+    throw mapUpstreamError(err, {
+      failureMessageKey: 'error.remoteAccountFetchFailed',
+    });
+  }
+}
+
+/**
+ * Fetches all pages of same-day current-account time logs for the given work
+ * packages. Destination URLs are always derived from `baseUrl`; absolute
+ * next-page links must stay on the same origin.
+ */
+export async function proxyOpenProjectTimeLogs(
+  baseUrl: string,
+  secret: string,
+  input: {
+    spentOn: string;
+    workPackageIds: string[];
+    userId?: string;
+  },
+): Promise<RemoteTimeLogDto[]> {
+  const allowedOrigin = new URL(normalizeProxyBase(baseUrl)).origin;
+  const logs: RemoteTimeLogDto[] = [];
+  let nextPageUrl: string | undefined;
+
+  for (let page = 0; page < 50; page += 1) {
+    const request = buildTimeLogsRequest({
+      baseUrl,
+      spentOn: input.spentOn,
+      workPackageIds: input.workPackageIds,
+      userId: input.userId,
+      nextPageUrl,
+    });
+    assertSameOrigin(request.url, allowedOrigin);
+
+    try {
+      const payload = await $fetch.raw(request.url, {
+        method: request.method,
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Basic ${encodeBasicAuth(secret)}`,
+        },
+      });
+      const parsed = parseTimeLogsPage(payload._data);
+      logs.push(...parsed.logs);
+      if (!parsed.nextPageUrl) break;
+      nextPageUrl = parsed.nextPageUrl;
+    } catch (err: unknown) {
+      throw mapUpstreamError(err, {
+        failureMessageKey: 'error.remoteTimeLogsFetchFailed',
+      });
+    }
+  }
+
+  return logs;
+}
+
+/**
+ * Creates one OpenProject time entry and returns the remote log id.
+ */
+export async function proxyOpenProjectCreateTimeEntry(
+  baseUrl: string,
+  secret: string,
+  input: {
+    remoteIssueId: string;
+    spentOn: string;
+    durationSeconds: number;
+    activityId: string;
+    comment?: string;
+  },
+): Promise<{ remoteLogId: string }> {
+  const request = buildCreateTimeEntryRequest({
+    baseUrl,
+    remoteIssueId: input.remoteIssueId,
+    spentOn: input.spentOn,
+    durationSeconds: input.durationSeconds,
+    activityId: input.activityId,
+    comment: input.comment,
+  });
+
+  try {
+    const payload = await $fetch.raw(request.url, {
+      method: request.method,
+      body: request.body as BodyInit | Record<string, unknown> | null | undefined,
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Basic ${encodeBasicAuth(secret)}`,
+      },
+    });
+    const created = parseCreateTimeEntryResult(payload._data);
+    if (!created) {
+      throw createError({
+        statusCode: 502,
+        data: { messageKey: 'error.remoteExportCreateFailed' } satisfies ApiMessage,
+      });
+    }
+    return created;
+  } catch (err: unknown) {
+    if ((err as { statusCode?: number })?.statusCode === 502) throw err;
+    throw mapUpstreamError(err, {
+      failureMessageKey: 'error.remoteExportCreateFailed',
+    });
+  }
+}
+
+function normalizeProxyBase(baseUrl: string): string {
+  return baseUrl.replace(/\/+$/, '');
+}
+
+function assertSameOrigin(targetUrl: string, allowedOrigin: string): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(targetUrl);
+  } catch {
+    throw createError({
+      statusCode: 400,
+      data: { messageKey: 'error.remoteProxyOriginRejected' } satisfies ApiMessage,
+    });
+  }
+  if (parsed.origin !== allowedOrigin) {
+    throw createError({
+      statusCode: 400,
+      data: { messageKey: 'error.remoteProxyOriginRejected' } satisfies ApiMessage,
+    });
   }
 }
 
@@ -106,11 +271,14 @@ function getUpstreamStatus(err: unknown): number | undefined {
 
 function mapUpstreamError(
   err: unknown,
-  mode: RemoteIssueSearchMode,
+  options: {
+    mode?: RemoteIssueSearchMode;
+    failureMessageKey: string;
+  },
 ): ReturnType<typeof createError> {
   const status = getUpstreamStatus(err);
 
-  if (status === 404 && mode === 'id') {
+  if (status === 404 && options.mode === 'id') {
     return createError({
       statusCode: 404,
       data: { messageKey: 'error.remoteIssueSearchNotFound' } satisfies ApiMessage,
@@ -127,7 +295,7 @@ function mapUpstreamError(
   if (status !== undefined) {
     return createError({
       statusCode: 502,
-      data: { messageKey: 'error.remoteIssueSearchFailed' } satisfies ApiMessage,
+      data: { messageKey: options.failureMessageKey } satisfies ApiMessage,
     });
   }
 
