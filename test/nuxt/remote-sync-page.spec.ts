@@ -5,7 +5,8 @@ import { createI18n } from 'vue-i18n';
 import RemoteSyncPage from '../../app/pages/sync/[date].vue';
 import type { RemoteSyncDayDto } from '../../shared/types/remote-sync-day';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
+const dollarFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.fn();
 
 vi.mock('ofetch', async (importOriginal) => {
@@ -15,6 +16,7 @@ vi.mock('ofetch', async (importOriginal) => {
 vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }));
 
 mockNuxtImport('useRoute', () => () => ({ params: { date: '2026-03-15' } }));
+mockNuxtImport('$fetch', () => dollarFetchMock);
 
 let dayData: RemoteSyncDayDto;
 
@@ -119,6 +121,7 @@ async function mount() {
 describe('RemoteSync page', () => {
   beforeEach(() => {
     csrfFetchMock.mockReset();
+    dollarFetchMock.mockReset();
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     installFakeLocalStorage();
@@ -138,7 +141,7 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
 
     const wrapper = await mount();
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
@@ -166,7 +169,7 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -203,7 +206,7 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -250,7 +253,7 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -278,7 +281,7 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
     fetchMock.mockResolvedValue({ ok: false, status: 500 });
 
     const wrapper = await mount();
@@ -299,7 +302,7 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mount();
@@ -320,7 +323,7 @@ describe('RemoteSync page', () => {
 
   it('renders the empty state when there are no entries for the day', async () => {
     dayData = makeDay();
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
 
     const wrapper = await mount();
     expect(wrapper.find('[data-testid="remote-sync-empty-state"]').exists()).toBe(true);
@@ -328,7 +331,7 @@ describe('RemoteSync page', () => {
 
   it('renders the read-only untitled bucket separately from task rows', async () => {
     dayData = makeDay({ untitledTotalSeconds: 900 });
-    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    dollarFetchMock.mockResolvedValue(dayData);
 
     const wrapper = await mount();
     expect(wrapper.find('[data-testid="remote-sync-untitled-row"]').exists()).toBe(true);

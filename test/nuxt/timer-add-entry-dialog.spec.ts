@@ -4,7 +4,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
 import { combineLocalDateAndTime } from '../../app/utils/timerViewGrouping';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();

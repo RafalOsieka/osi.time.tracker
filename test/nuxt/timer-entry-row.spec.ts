@@ -4,7 +4,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import TimerEntryRow from '../../app/components/TimerEntryRow.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
-const csrfFetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();

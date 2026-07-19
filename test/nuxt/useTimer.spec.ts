@@ -1,10 +1,10 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { defineComponent, h } from 'vue';
 import { useTimer } from '../../app/composables/useTimer';
 
-const csrfFetchMock = vi.fn();
-const fetchMock = vi.fn();
+const csrfFetchMock = vi.hoisted(() => vi.fn());
+const fetchMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
@@ -17,6 +17,8 @@ vi.mock('ofetch', async (importOriginal) => {
     }),
   };
 });
+
+mockNuxtImport('$fetch', () => fetchMock);
 
 /** Mounts a throwaway host component so `useTimer()` runs inside a real Nuxt app context. */
 async function setupTimer() {
