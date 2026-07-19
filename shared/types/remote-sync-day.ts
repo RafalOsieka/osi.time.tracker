@@ -10,13 +10,18 @@ import type {
  * function (`deriveRemoteSyncRowState`). `no_client`/`no_config`/
  * `system_not_implemented` render read-only with a stated reason;
  * `unlinked` is read-only but linkable; `manageable` exposes the editable
- * rounded duration and required-field controls.
+ * rounded duration and required-field controls. Activity load outcomes
+ * (`activity_loading` / `activity_error` / `no_activity`) are applied by the
+ * client after the static prerequisites resolve to manageable.
  */
 export const remoteSyncRowStateSchema = z.enum([
   'no_client',
   'no_config',
   'system_not_implemented',
   'unlinked',
+  'activity_loading',
+  'activity_error',
+  'no_activity',
   'manageable',
 ]);
 
@@ -42,6 +47,30 @@ export interface RemoteSyncIssueRefDto {
   cachedTitle: string;
 }
 
+/** One completed local time entry under a day-review task row (REQ-TTR-120). */
+export interface RemoteSyncDayEntryDto {
+  id: string;
+  startedAt: string;
+  stoppedAt: string;
+  durationSeconds: number;
+  /** True when at least one prior finalized export included this entry. */
+  previouslyExported: boolean;
+}
+
+/**
+ * Append-only provenance for one successfully finalized remote log on this
+ * task/day (REQ-TTR-122). Multiple records per task/day are allowed.
+ */
+export interface RemoteSyncExportProvenanceDto {
+  exportId: string;
+  remoteLogId: string;
+  remoteIssueId: string;
+  exportDurationSeconds: number;
+  requiredFieldValues: Record<string, string>;
+  entryIds: string[];
+  createdAt: string;
+}
+
 export interface RemoteSyncDayRowDto {
   taskId: string;
   taskName: string;
@@ -50,6 +79,10 @@ export interface RemoteSyncDayRowDto {
   totalSeconds: number;
   config: RemoteSyncConfigSurfaceDto | null;
   issueRef: RemoteSyncIssueRefDto | null;
+  /** Completed entries attributed to this task on the requested local day. */
+  entries: RemoteSyncDayEntryDto[];
+  /** Prior finalized exports for this task on the requested local day. */
+  exports: RemoteSyncExportProvenanceDto[];
 }
 
 /** The day-review aggregate returned by `GET /api/sync/day`. */
@@ -79,4 +112,10 @@ export interface RemoteSyncRowStateInput {
   hasClient: boolean;
   config: { systemType: RemoteSystemType } | null;
   hasIssueRef: boolean;
+  /**
+   * Optional activity-fetch outcome applied only after static prerequisites
+   * resolve to a linked, implemented configuration. Omitted/undefined leaves
+   * the static mapping unchanged (typically `manageable`).
+   */
+  activityStatus?: 'loading' | 'error' | 'empty' | 'available';
 }

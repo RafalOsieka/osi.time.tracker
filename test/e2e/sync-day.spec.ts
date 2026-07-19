@@ -89,7 +89,7 @@ describeSyncDay('sync day-review API integration', async () => {
   ]);
   await setupServer({ databaseUrl: dbUrl });
 
-  it('returns one row per task with config/link state, plus the untitled bucket', async () => {
+  it('returns one row per task with config/link state, entry details, and the untitled bucket', async () => {
     const { jar, token } = await loginAs('salice@example.com', 'secret');
     await setTimezone(jar, token, 'UTC');
     const client = await createClient(jar, token, 'Sync Client ' + Date.now());
@@ -105,12 +105,13 @@ describeSyncDay('sync day-review API integration', async () => {
     const date = '2026-03-15';
     const startedAt = `${date}T10:00:00.000Z`;
     const stoppedAt = `${date}T10:30:00.000Z`;
-    await createEntry(jar, token, {
+    const entryRes = await createEntry(jar, token, {
       title: 'Manageable Task ' + Date.now(),
       projectId: project.id,
       startedAt,
       stoppedAt,
     });
+    const entry = await entryRes.json();
     await createEntry(jar, token, { startedAt, stoppedAt });
 
     const res = await getDay(jar, date);
@@ -122,6 +123,11 @@ describeSyncDay('sync day-review API integration', async () => {
     expect(row).toBeDefined();
     expect(row.config).not.toBeNull();
     expect(row.config.systemType).toBe('openproject');
+    expect(row.entries).toHaveLength(1);
+    expect(row.entries[0].id).toBe(entry.id);
+    expect(row.entries[0].durationSeconds).toBe(30 * 60);
+    expect(row.entries[0].previouslyExported).toBe(false);
+    expect(row.exports).toEqual([]);
   });
 
   it('does not include another user data (foreign-user isolation)', async () => {

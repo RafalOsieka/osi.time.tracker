@@ -6,11 +6,9 @@ const IMPLEMENTED_SYSTEM_TYPES = new Set(['openproject']);
 /**
  * Pure, precedence-ordered mapping from a Task's resolvable Project/Client
  * and remote-config state to its explicit Remote Sync row state:
- * `no_client` (no Project or no resolvable Client) → `no_config` (Client
- * has no active configuration) → `system_not_implemented` (configured
- * system type has no adapter, e.g. `redmine`) → `unlinked` (usable config,
- * no `RemoteIssueRef`) → `manageable` (all prerequisites met). Story 11b
- * adds a further `pushed` precedence step ahead of `manageable`.
+ * `no_client` → `no_config` → `system_not_implemented` → `unlinked` →
+ * optional activity outcome (`activity_loading` / `activity_error` /
+ * `no_activity`) → `manageable`.
  */
 export function deriveRemoteSyncRowState(input: RemoteSyncRowStateInput): RemoteSyncRowState {
   if (!input.hasProject || !input.hasClient) {
@@ -25,5 +23,16 @@ export function deriveRemoteSyncRowState(input: RemoteSyncRowStateInput): Remote
   if (!input.hasIssueRef) {
     return 'unlinked';
   }
-  return 'manageable';
+
+  switch (input.activityStatus) {
+    case 'loading':
+      return 'activity_loading';
+    case 'error':
+      return 'activity_error';
+    case 'empty':
+      return 'no_activity';
+    case 'available':
+    default:
+      return 'manageable';
+  }
 }

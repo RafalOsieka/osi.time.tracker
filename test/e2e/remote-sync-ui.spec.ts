@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest';
 import { createPage, url } from '@nuxt/test-utils/e2e';
+import type { Page } from 'playwright-core';
 import { requireBrowser } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
@@ -7,6 +8,8 @@ import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
 
 const describeRemoteSyncUI = requireBrowser();
+
+const OPENPROJECT_BASE_URL = 'https://op.remote-sync-ui.example.com';
 
 describeRemoteSyncUI('remote sync page UI flow', async () => {
   const dbUrl = await provisionDatabase();
@@ -62,6 +65,27 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     return page;
   }
 
+  /** Serves the OpenProject time-entry form so activities load and the row becomes manageable. */
+  async function mockOpenProjectActivities(page: Page): Promise<void> {
+    await page.route(`${OPENPROJECT_BASE_URL}/api/v3/time_entries/form**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          _embedded: {
+            schema: {
+              activity: {
+                _embedded: {
+                  allowedValues: [{ id: 1, name: 'Development' }],
+                },
+              },
+            },
+          },
+        }),
+      });
+    });
+  }
+
   it('opens Remote Sync from a Timer-view day, edits a rounded duration, and links an issue inline', async () => {
     const { jar, token } = await apiLogin('remotesyncui@example.com');
     await fetch(url('/api/user/settings'), {
@@ -72,17 +96,19 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     const client = await createClient(jar, token, 'Sync UI Client ' + Date.now());
     const project = await createProject(jar, token, 'Sync UI Project ' + Date.now(), client.id);
-    await fetch(url(`/api/clients/${client.id}/remote-config`), {
+    const configRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
       method: 'PUT',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({
         systemType: 'openproject',
-        baseUrl: 'https://op.invalid.example',
+        baseUrl: OPENPROJECT_BASE_URL,
         executionMode: 'client',
         transportMode: 'direct',
         roundingRule: 'up_15m',
       }),
     });
+    const config = await configRes.json();
+    expect(config.id).toBeTruthy();
 
     const now = new Date();
     const startedAt = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
@@ -104,6 +130,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const dayKey = startedAt.slice(0, 10);
 
     const page = await loginPage('remotesyncui@example.com');
+    await mockOpenProjectActivities(page);
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction((t) => document.body.textContent?.includes(t), title);
 
@@ -116,8 +143,9 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const stateText = await page.textContent(`[data-testid="remote-sync-state-${entry.taskId}"]`);
     expect(stateText).toBeTruthy();
 
-    // Edit the rounded duration inline.
+    // Edit the rounded duration inline once activities make the row manageable.
     const roundedSelector = `[data-testid="remote-sync-rounded-duration-${entry.taskId}"]`;
+    await page.waitForSelector(roundedSelector);
     await page.fill(roundedSelector, '00:00:00');
     await page.keyboard.press('Tab');
     await page.waitForSelector(`[data-testid="remote-sync-excluded-hint-${entry.taskId}"]`);

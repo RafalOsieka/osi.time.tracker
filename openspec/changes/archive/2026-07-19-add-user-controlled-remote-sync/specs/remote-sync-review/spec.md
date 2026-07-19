@@ -1,8 +1,5 @@
-# remote-sync-review Specification
+## MODIFIED Requirements
 
-## Purpose
-TBD - created by archiving change remote-sync-page. Update Purpose after archive.
-## Requirements
 ### Requirement: REQ-TTR-114 Per-day Remote Sync page lists all of the day's tasks
 
 The application SHALL provide a Remote Sync page for a specific day, reachable from each day header
@@ -141,37 +138,7 @@ rows.
 - **THEN** affected rows SHALL show an accessible retry action and SHALL NOT be classified as having
   no activities
 
-### Requirement: REQ-TTR-118 Day-review data is aggregated server-side and user-scoped
-
-The application SHALL provide an authenticated read endpoint that returns the day-review aggregate for a given date: per task with entries that day — task identity and name, project and client names, the summed original duration, the Client configuration surface needed for state derivation (system type, rounding rule, required-field defaults, transport mode, base URL, configuration id), and the remote issue reference (remote issue ID and cached title) when present — plus the untitled-entries total. All data SHALL be scoped to the authenticated user; durations SHALL be returned unrounded; timestamps SHALL be ISO strings; no credential material SHALL ever be included. Invalid dates SHALL be rejected with a `{ messageKey, params }` validation error.
-
-#### Scenario: Aggregate returns one row per task with config and link state
-- **WHEN** an authenticated user requests the day review for a valid date
-- **THEN** the response SHALL contain one row per Task with entries that day, carrying the summed duration, resolvable config surface, and issue reference when present
-
-#### Scenario: Foreign data is never included
-- **WHEN** another user has entries on the same date
-- **THEN** the response SHALL contain only the authenticated user's tasks and entries
-
-#### Scenario: Invalid date is rejected
-- **WHEN** the date parameter is missing or not a valid calendar date
-- **THEN** the endpoint SHALL respond with a 422 `{ messageKey, params }` validation error
-
-#### Scenario: No credentials in the payload
-- **WHEN** the day review is returned for clients with remote configurations
-- **THEN** the payload SHALL include no API secret or credential material
-
-### Requirement: REQ-TTR-119 Remote Sync page accessibility and i18n
-
-The Remote Sync page SHALL meet WCAG 2.1 AA: row states and reasons SHALL be conveyed in text (not color alone), duration and field controls SHALL have accessible labels, asynchronous option loading and errors SHALL be announced via live regions, and all interactions SHALL be keyboard operable. All user-facing strings SHALL come from the i18n catalogs with `en`/`pl` parity, and stable `data-testid` hooks SHALL be provided for rows, states, durations, and field controls.
-
-#### Scenario: States are announced as text
-- **WHEN** a row is read-only for any reason
-- **THEN** the reason SHALL be available as translated text to assistive technologies, not conveyed by styling alone
-
-#### Scenario: Keyboard-only review
-- **WHEN** a keyboard user tabs through the page
-- **THEN** the day navigation, rounded-duration fields, activity selects, and inline link actions SHALL all be reachable and operable without a pointer
+## ADDED Requirements
 
 ### Requirement: REQ-TTR-120 Users select entries for export without local locking
 
@@ -303,4 +270,3 @@ remote origin, and SHALL NOT persist or log forwarded remote credentials.
 #### Scenario: Transport failures remain isolated and retryable
 - **WHEN** either transport fails for one task or shared request scope
 - **THEN** the page SHALL expose the same retryable state and SHALL NOT block unaffected tasks
-
