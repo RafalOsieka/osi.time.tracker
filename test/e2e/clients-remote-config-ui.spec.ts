@@ -42,6 +42,8 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
     const row = page.locator('tr', { hasText: clientName });
     await row.locator('[data-testid^="edit-client-"]').click();
     await page.waitForSelector('[data-testid="client-dialog"]');
+    // Wait until the async config fetch settles so the form is mounted once with defaults.
+    await page.waitForSelector('[data-testid="remote-config-form"]');
 
     // Capture outgoing PUT bodies to ensure the secret is never sent
     const sentBodies: string[] = [];

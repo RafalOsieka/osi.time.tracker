@@ -309,8 +309,11 @@ describeSyncExport('sync export finalization API', async () => {
   });
 
   it('requires authentication', async () => {
+    // Valid CSRF pair without a session reaches the handler as unauthenticated (401),
+    // rather than being rejected earlier by CSRF protection (403).
     const jar = new CookieJar();
-    const res = await finalize(jar, 'nope', {
+    const token = await primeCsrf(jar);
+    const res = await finalize(jar, token, {
       taskId: '01900000-0000-7000-8000-000000000001',
       localDate: '2026-04-01',
       remoteIssueId: '42',

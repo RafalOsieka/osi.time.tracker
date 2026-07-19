@@ -132,6 +132,9 @@ describeDb('remote exports schema', () => {
       expect(remainingExports).toHaveLength(1);
       expect(remainingExports[0]!.id).toBe(export2.id);
 
+      // time_entries.taskId has no ON DELETE CASCADE, so clear remaining entries first.
+      await db.delete(timeEntries).where(eq(timeEntries.taskId, task.id));
+
       // Deleting the task cascades remaining exports.
       await db.delete(tasks).where(eq(tasks.id, task.id));
       const exportsAfterTaskDelete = await db.select().from(remoteExports);

@@ -79,6 +79,7 @@
     "toastDeletedDetail": "The client has been deleted.",
     "remoteConfig": {
       "heading": "Remote system configuration",
+      "loading": "Loading remote configuration…",
       "systemTypeLabel": "Remote system",
       "baseUrlLabel": "Base URL",
       "baseUrlPlaceholder": "https://issues.example.com",

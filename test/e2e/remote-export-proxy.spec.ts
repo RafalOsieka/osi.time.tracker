@@ -147,7 +147,8 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
       body: JSON.stringify({ remoteSystemConfigId: config.id }),
     });
     expect(accountRes.status).toBe(200);
-    expect(await accountRes.json()).toEqual({ id: '7', name: 'Ada' });
+    const accountBody = await accountRes.json();
+    expect(accountBody).toEqual({ id: '7', name: 'Ada' });
 
     const logsRes = await fetch(url('/api/remote/time-logs'), {
       method: 'POST',
@@ -186,17 +187,11 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
       }),
     });
     expect(createRes.status).toBe(200);
-    expect(await createRes.json()).toEqual({ remoteLogId: '99' });
+    const createBody = await createRes.json();
+    expect(createBody).toEqual({ remoteLogId: '99' });
 
-    for (const res of [accountRes, logsRes, createRes]) {
-      expect(
-        JSON.stringify(
-          await res
-            .clone()
-            .json()
-            .catch(() => ({})),
-        ),
-      ).not.toContain(secret);
+    for (const body of [accountBody, logsBody, createBody]) {
+      expect(JSON.stringify(body)).not.toContain(secret);
     }
     expect(tracker.seenAuth.some((value) => value.includes('Basic '))).toBe(true);
   });
@@ -206,9 +201,16 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
     const client = await createClient(user.jar, user.token, 'Export Proxy Guard Client');
     const config = await createProxiedConfig(user.jar, user.token, client.id, tracker.baseUrl);
 
+    // Unauthenticated with a valid CSRF pair (no session) must be 401, not CSRF 403.
+    const anonJar = new CookieJar();
+    const anonToken = await primeCsrf(anonJar);
     const anon = await fetch(url('/api/remote/account'), {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': anonToken,
+        cookie: anonJar.header(),
+      },
       body: JSON.stringify({ remoteSystemConfigId: config.id }),
     });
     expect(anon.status).toBe(401);

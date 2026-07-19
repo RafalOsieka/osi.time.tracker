@@ -79,6 +79,7 @@
     "toastDeletedDetail": "Klient został usunięty.",
     "remoteConfig": {
       "heading": "Konfiguracja systemu zdalnego",
+      "loading": "Ładowanie konfiguracji zdalnej…",
       "systemTypeLabel": "System zdalny",
       "baseUrlLabel": "Adres URL bazowy",
       "baseUrlPlaceholder": "https://issues.example.com",

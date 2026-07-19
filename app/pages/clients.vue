@@ -76,14 +76,10 @@ const remoteConfigInitialValues = ref<{
 });
 const remoteConfigSecret = ref('');
 // PrimeVue's <Form> snapshots `initial-values` once at mount and never re-reads
-// them, so an async-loaded config would not display. This key forces a remount
-// (a) when switching to a different client (`editingClient.id`), and (b) once
-// the async remote-config fetch settles (`remoteConfigLoading` flips to ready),
-// so the Form re-reads the resolved `initial-values` — the saved systemType,
-// or the default when there is no config yet.
-const remoteConfigFormKey = computed(
-  () => `${editingClient.value?.id ?? 'new'}:${remoteConfigLoading.value ? 'loading' : 'ready'}`,
-);
+// them. Mount the form only after the async remote-config fetch settles (see
+// `v-if="!remoteConfigLoading"` below), and key it by client id so switching
+// clients always remounts with the resolved defaults or saved values.
+const remoteConfigFormKey = computed(() => editingClient.value?.id ?? 'new');
 const baseUrlServerError = ref('');
 const systemTypeServerError = ref('');
 const remoteConfigSaving = ref(false);
@@ -389,11 +385,21 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
         <Divider />
         <h3 class="remote-config-heading">{{ t('clients.remoteConfig.heading') }}</h3>
 
+        <p
+          v-if="remoteConfigLoading"
+          class="remote-config-loading"
+          data-testid="remote-config-loading"
+        >
+          {{ t('clients.remoteConfig.loading') }}
+        </p>
+
         <Form
+          v-else
           :key="remoteConfigFormKey"
           :resolver="remoteConfigResolver"
           :initial-values="remoteConfigInitialValues"
           class="remote-config-form"
+          data-testid="remote-config-form"
           @submit="onSaveRemoteConfig"
         >
           <FormFieldWrap
@@ -521,6 +527,11 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
   display: grid;
   gap: 0.75rem;
   min-width: 20rem;
+}
+
+.remote-config-loading {
+  margin: 0;
+  color: var(--p-text-muted-color);
 }
 
 .remote-config-actions {
