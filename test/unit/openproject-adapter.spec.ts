@@ -151,22 +151,36 @@ describe('parseIssueByIdResult', () => {
 });
 
 describe('buildTimeEntryActivitiesRequest', () => {
-  it('builds the global time-entries schema request', () => {
-    const request = buildTimeEntryActivitiesRequest('https://op.example.com/');
-    expect(request.url).toBe('https://op.example.com/api/v3/time_entries/schema');
-    expect(request.method).toBe('GET');
+  it('builds the project-scoped time-entry form POST request keyed by the work package', () => {
+    const request = buildTimeEntryActivitiesRequest('https://op.example.com/', '42');
+    expect(request.url).toBe('https://op.example.com/api/v3/time_entries/form');
+    expect(request.method).toBe('POST');
+    expect(request.body).toEqual({
+      _links: { workPackage: { href: '/api/v3/work_packages/42' } },
+    });
+  });
+
+  it('URL-encodes the work-package id in the href', () => {
+    const request = buildTimeEntryActivitiesRequest('https://op.example.com', 'a b');
+    expect(request.body).toEqual({
+      _links: { workPackage: { href: '/api/v3/work_packages/a%20b' } },
+    });
   });
 });
 
 describe('parseTimeEntryActivitiesResults', () => {
-  it('parses the activity field allowed values', () => {
+  it('parses the form schema activity field allowed values', () => {
     const payload = {
-      activity: {
-        _embedded: {
-          allowedValues: [
-            { id: 1, name: 'Development' },
-            { id: 2, name: 'Management' },
-          ],
+      _embedded: {
+        schema: {
+          activity: {
+            _embedded: {
+              allowedValues: [
+                { id: 1, name: 'Development' },
+                { id: 2, name: 'Management' },
+              ],
+            },
+          },
         },
       },
     };
@@ -178,9 +192,13 @@ describe('parseTimeEntryActivitiesResults', () => {
 
   it('skips malformed allowed-value elements rather than throwing', () => {
     const payload = {
-      activity: {
-        _embedded: {
-          allowedValues: [{ id: 1, name: 'Valid' }, { id: 2 }, { name: 'No id' }, null],
+      _embedded: {
+        schema: {
+          activity: {
+            _embedded: {
+              allowedValues: [{ id: 1, name: 'Valid' }, { id: 2 }, { name: 'No id' }, null],
+            },
+          },
         },
       },
     };
@@ -189,10 +207,15 @@ describe('parseTimeEntryActivitiesResults', () => {
 
   it('returns an empty array when allowedValues is missing or not an array', () => {
     expect(parseTimeEntryActivitiesResults({})).toEqual([]);
-    expect(parseTimeEntryActivitiesResults({ activity: {} })).toEqual([]);
-    expect(parseTimeEntryActivitiesResults({ activity: { _embedded: {} } })).toEqual([]);
+    expect(parseTimeEntryActivitiesResults({ _embedded: {} })).toEqual([]);
+    expect(parseTimeEntryActivitiesResults({ _embedded: { schema: {} } })).toEqual([]);
+    expect(parseTimeEntryActivitiesResults({ _embedded: { schema: { activity: {} } } })).toEqual(
+      [],
+    );
     expect(
-      parseTimeEntryActivitiesResults({ activity: { _embedded: { allowedValues: 'nope' } } }),
+      parseTimeEntryActivitiesResults({
+        _embedded: { schema: { activity: { _embedded: { allowedValues: 'nope' } } } },
+      }),
     ).toEqual([]);
   });
 

@@ -62,20 +62,26 @@ export async function proxyOpenProjectSearch(
 }
 
 /**
- * Forwards a time-entry activities options request to a resolved
- * OpenProject base URL, using the per-request forwarded secret, and maps
- * the response through the shared adapter into adapter-neutral options.
- * Never logs or echoes back `secret`.
+ * Forwards a project-scoped time-entry activities options request, keyed by
+ * the given work-package `remoteIssueId`, to a resolved OpenProject base
+ * URL, using the per-request forwarded secret, and maps the response
+ * through the shared adapter into adapter-neutral options. Never logs or
+ * echoes back `secret`. A `403` is treated as an empty result rather than a
+ * hard failure: OpenProject returns it for work packages whose type doesn't
+ * allow time logging (e.g. a "Summary" item), which is a per-work-package
+ * permission outcome, not a rejected credential.
  */
 export async function proxyOpenProjectActivities(
   baseUrl: string,
   secret: string,
+  remoteIssueId: string,
 ): Promise<AdapterFieldOption[]> {
-  const request = buildTimeEntryActivitiesRequest(baseUrl);
+  const request = buildTimeEntryActivitiesRequest(baseUrl, remoteIssueId);
 
   try {
     const payload = await $fetch.raw(request.url, {
       method: request.method,
+      body: request.body as BodyInit | Record<string, unknown> | null | undefined,
       headers: {
         Accept: 'application/json',
         Authorization: `Basic ${encodeBasicAuth(secret)}`,
@@ -84,17 +90,25 @@ export async function proxyOpenProjectActivities(
 
     return parseTimeEntryActivitiesResults(payload._data);
   } catch (err: unknown) {
+    if (getUpstreamStatus(err) === 403) {
+      return [];
+    }
     throw mapUpstreamError(err, 'title');
   }
+}
+
+function getUpstreamStatus(err: unknown): number | undefined {
+  return (
+    (err as { statusCode?: number; response?: { status?: number } })?.statusCode ??
+    (err as { response?: { status?: number } })?.response?.status
+  );
 }
 
 function mapUpstreamError(
   err: unknown,
   mode: RemoteIssueSearchMode,
 ): ReturnType<typeof createError> {
-  const status =
-    (err as { statusCode?: number; response?: { status?: number } })?.statusCode ??
-    (err as { response?: { status?: number } })?.response?.status;
+  const status = getUpstreamStatus(err);
 
   if (status === 404 && mode === 'id') {
     return createError({

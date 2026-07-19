@@ -14,6 +14,12 @@ export const proxiedRemoteActivitiesSchema = z.object({
       invalid_type_error: 'error.remoteConfigIdRequired',
     })
     .uuid({ message: 'error.remoteConfigIdRequired' }),
+  remoteIssueId: z
+    .string({
+      required_error: 'error.remoteIssueIdRequired',
+      invalid_type_error: 'error.remoteIssueIdRequired',
+    })
+    .min(1, { message: 'error.remoteIssueIdRequired' }),
 });
 
 export type ProxiedRemoteActivitiesDto = z.infer<typeof proxiedRemoteActivitiesSchema>;

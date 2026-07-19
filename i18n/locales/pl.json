@@ -296,6 +296,7 @@
     "remoteIssueSearchNotFound": "Nie znaleziono zgłoszenia o tym identyfikatorze.",
     "remoteIssueSearchFailed": "Nie udało się zakończyć wyszukiwania. Spróbuj ponownie.",
     "remoteConfigIdRequired": "Wymagany jest prawidłowy identyfikator konfiguracji zdalnej.",
+    "remoteIssueIdRequired": "Wymagany jest prawidłowy identyfikator zdalnego zgłoszenia.",
     "remoteIssueSearchQueryRequired": "Wprowadź zapytanie wyszukiwania.",
     "remoteProxySecretRequired": "Klucz API jest wymagany do wyszukiwania w tym systemie.",
     "remoteProxyAuthRejected": "System zdalny odrzucił podany klucz API.",

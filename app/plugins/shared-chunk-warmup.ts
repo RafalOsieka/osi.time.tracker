@@ -18,7 +18,7 @@ export default defineNuxtPlugin(() => {
       config: null,
       hasIssueRef: false,
     });
-    buildTimeEntryActivitiesRequest('');
+    buildTimeEntryActivitiesRequest('', '');
     void REMOTE_PROXY_SECRET_HEADER;
   }
 });
