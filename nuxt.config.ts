@@ -147,7 +147,12 @@ export default defineNuxtConfig({
     },
   },
   typescript: {
-    typeCheck: true,
+    // Disabled rather than `true`: with Nuxt 4.5 (Vite 8), the in-dev live checker
+    // (vite-plugin-checker) fails to resolve its runtime client under Nuxt's non-root
+    // `/_nuxt/` base ("Failed to resolve import ... @vite-plugin-checker-runtime"), a
+    // known upstream bug (fi3ework/vite-plugin-checker#661) unfixed as of v0.14.4.
+    // `pnpm type-check` (run in CI) still performs the full `vue-tsc` type check.
+    typeCheck: false,
     tsConfig: {
       // NOTE: nuxt tests are included by default
       include: ['../test/e2e/*', '../test/unit/*'],
