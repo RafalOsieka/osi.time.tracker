@@ -55,7 +55,7 @@ async function createProxiedConfig(
   return res.json();
 }
 
-/** Minimal fake OpenProject server serving the time-entries schema. */
+/** Minimal fake OpenProject server serving the project-scoped time-entry form. */
 function startFakeTracker(): Promise<{ server: Server; baseUrl: string }> {
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
@@ -68,19 +68,36 @@ function startFakeTracker(): Promise<{ server: Server; baseUrl: string }> {
         res.end(JSON.stringify({ error: 'unauthorized' }));
         return;
       }
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(
-        JSON.stringify({
-          activity: {
+
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      req.on('end', () => {
+        const rawBody = Buffer.concat(chunks).toString('utf-8');
+
+        if (rawBody.includes('/work_packages/no-log-time')) {
+          res.writeHead(403, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: 'forbidden' }));
+          return;
+        }
+
+        res.writeHead(200, { 'content-type': 'application/json' });
+        res.end(
+          JSON.stringify({
             _embedded: {
-              allowedValues: [
-                { id: 1, name: 'Development' },
-                { id: 2, name: 'Management' },
-              ],
+              schema: {
+                activity: {
+                  _embedded: {
+                    allowedValues: [
+                      { id: 1, name: 'Development' },
+                      { id: 2, name: 'Management' },
+                    ],
+                  },
+                },
+              },
             },
-          },
-        }),
-      );
+          }),
+        );
+      });
     });
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
@@ -116,7 +133,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         cookie: alice.jar.header(),
         [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id }),
+      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -124,6 +141,26 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
       { id: '1', name: 'Development' },
       { id: '2', name: 'Management' },
     ]);
+  });
+
+  it('treats an upstream 403 (work package does not allow time logging) as an empty result', async () => {
+    const alice = await loginAs('alice@example.com', 'secret');
+    const client = await createClient(alice.jar, alice.token, 'Activities No-Log-Time Client');
+    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+
+    const res = await fetch(url('/api/remote/activities'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': alice.token,
+        cookie: alice.jar.header(),
+        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+      },
+      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: 'no-log-time' }),
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.options).toEqual([]);
   });
 
   it('maps an upstream auth rejection to the translated messageKey without echoing the secret', async () => {
@@ -140,7 +177,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         cookie: alice.jar.header(),
         [REMOTE_PROXY_SECRET_HEADER]: secret,
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id }),
+      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
     });
     expect(res.status).toBe(502);
     const body = await res.json();
@@ -160,7 +197,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id }),
+      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
     });
     expect(missingSecretRes.status).toBe(422);
     expect((await missingSecretRes.json())?.data?.messageKey).toBe(
@@ -175,7 +212,10 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         cookie: alice.jar.header(),
         [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: '00000000-0000-0000-0000-000000000000' }),
+      body: JSON.stringify({
+        remoteSystemConfigId: '00000000-0000-0000-0000-000000000000',
+        remoteIssueId: '42',
+      }),
     });
     expect(unknownConfigRes.status).toBe(404);
   });

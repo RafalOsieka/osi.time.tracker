@@ -169,7 +169,9 @@ describe('RemoteSync page', () => {
     vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({ activity: { _embedded: { allowedValues: [] } } }),
+      json: async () => ({
+        _embedded: { schema: { activity: { _embedded: { allowedValues: [] } } } },
+      }),
     });
 
     const wrapper = await mount();
@@ -205,12 +207,16 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
-        activity: {
-          _embedded: {
-            allowedValues: [
-              { id: 1, name: 'Development' },
-              { id: 2, name: 'Management' },
-            ],
+        _embedded: {
+          schema: {
+            activity: {
+              _embedded: {
+                allowedValues: [
+                  { id: 1, name: 'Development' },
+                  { id: 2, name: 'Management' },
+                ],
+              },
+            },
           },
         },
       }),
@@ -219,6 +225,43 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     const select = wrapper.find('[data-testid="remote-sync-activity-select-task-3"]');
     expect((select.element as HTMLSelectElement).value).toBe('2');
+  });
+
+  it('fetches activities once for rows sharing the same resolved config and work package', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-6a',
+          taskName: 'Shared Scope A',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 1800,
+          config: { ...baseConfig, id: 'config-6' },
+          issueRef: { remoteIssueId: '7', cachedTitle: 'Shared Issue' },
+        },
+        {
+          taskId: 'task-6b',
+          taskName: 'Shared Scope B',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 900,
+          config: { ...baseConfig, id: 'config-6' },
+          issueRef: { remoteIssueId: '7', cachedTitle: 'Shared Issue' },
+        },
+      ],
+    });
+    vi.stubGlobal('$fetch', vi.fn().mockResolvedValue(dayData));
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        _embedded: {
+          schema: { activity: { _embedded: { allowedValues: [{ id: 1, name: 'Dev' }] } } },
+        },
+      }),
+    });
+
+    await mount();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it('shows a translated error when the activities fetch fails', async () => {

@@ -6,7 +6,9 @@ export const OPENPROJECT_TITLE_SEARCH_MAX_RESULTS = 25;
 /** A pure, transport-agnostic HTTP request description. */
 export interface AdapterRequest {
   url: string;
-  method: 'GET';
+  method: 'GET' | 'POST';
+  /** JSON body for `POST`/form endpoints; unused by `GET` requests. */
+  body?: unknown;
 }
 
 /**
@@ -130,13 +132,24 @@ export interface AdapterFieldOption {
 }
 
 /**
- * Builds the OpenProject global time-entries schema request, used to fetch
- * the `activity` field's allowed values (required-field options).
+ * Builds the OpenProject project-scoped time-entry form request, used to
+ * fetch the `activity` field's allowed values (required-field options) for
+ * the project that owns `remoteIssueId`'s work package. OpenProject derives
+ * the project itself from the linked work package, so no separate
+ * work-package-to-project lookup is needed.
  */
-export function buildTimeEntryActivitiesRequest(baseUrl: string): AdapterRequest {
+export function buildTimeEntryActivitiesRequest(
+  baseUrl: string,
+  remoteIssueId: string,
+): AdapterRequest {
   return {
-    url: `${normalizeBaseUrl(baseUrl)}/api/v3/time_entries/schema`,
-    method: 'GET',
+    url: `${normalizeBaseUrl(baseUrl)}/api/v3/time_entries/form`,
+    method: 'POST',
+    body: {
+      _links: {
+        workPackage: { href: `/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}` },
+      },
+    },
   };
 }
 
@@ -155,15 +168,22 @@ interface OpenProjectTimeEntrySchemaPayload {
   activity?: OpenProjectSchemaFieldPayload;
 }
 
+interface OpenProjectTimeEntryFormPayload {
+  _embedded?: {
+    schema?: OpenProjectTimeEntrySchemaPayload;
+  };
+}
+
 /**
- * Parses an OpenProject time-entries schema response into the `activity`
- * field's adapter-neutral allowed-value options. Malformed/unexpected
- * shapes (missing `activity`, missing `_embedded.allowedValues`,
- * non-array values, elements missing `id`/`name`) are handled by skipping
- * rather than throwing.
+ * Parses an OpenProject project-scoped time-entry form response into the
+ * `activity` field's adapter-neutral allowed-value options. Malformed/
+ * unexpected shapes (missing `schema`/`activity`, missing
+ * `_embedded.allowedValues`, non-array values, elements missing `id`/`name`)
+ * are handled by skipping rather than throwing.
  */
 export function parseTimeEntryActivitiesResults(payload: unknown): AdapterFieldOption[] {
-  const activity = (payload as OpenProjectTimeEntrySchemaPayload | undefined)?.activity;
+  const activity = (payload as OpenProjectTimeEntryFormPayload | undefined)?._embedded?.schema
+    ?.activity;
   const allowedValues = activity?._embedded?.allowedValues;
   if (!Array.isArray(allowedValues)) {
     return [];

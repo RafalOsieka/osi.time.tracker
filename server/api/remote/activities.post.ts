@@ -63,7 +63,11 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteActivities
     });
   }
 
-  const options = await proxyOpenProjectActivities(config.baseUrl, secret);
+  const options = await proxyOpenProjectActivities(
+    config.baseUrl,
+    secret,
+    parsedBody.remoteIssueId,
+  );
 
   return { options };
 });

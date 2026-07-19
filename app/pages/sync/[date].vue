@@ -119,14 +119,20 @@ function commitRounded(row: RemoteSyncDayRowDto) {
   roundedInputText.value = { ...roundedInputText.value, [row.taskId]: formatDuration(seconds) };
 }
 
-// --- Activities, fetched once per remote configuration ---
+// --- Activities, fetched once per resolved project/work package ---
 interface ActivitiesState {
   options: AdapterFieldOption[];
   loading: boolean;
   errorKey: string | null;
 }
 
-const activitiesByConfigId = ref<Record<string, ActivitiesState>>({});
+const activitiesByScopeKey = ref<Record<string, ActivitiesState>>({});
+
+function activitiesScopeKeyFor(row: RemoteSyncDayRowDto): string | null {
+  const remoteIssueId = issueRefFor(row)?.remoteIssueId;
+  if (!row.config || !remoteIssueId) return null;
+  return `${row.config.id}:${remoteIssueId}`;
+}
 
 function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigDto {
   return {
@@ -143,17 +149,21 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigD
   };
 }
 
-async function ensureActivitiesLoaded(config: RemoteSyncConfigSurfaceDto) {
-  if (activitiesByConfigId.value[config.id]) return;
-  activitiesByConfigId.value = {
-    ...activitiesByConfigId.value,
-    [config.id]: { options: [], loading: true, errorKey: null },
+async function ensureActivitiesLoaded(
+  config: RemoteSyncConfigSurfaceDto,
+  remoteIssueId: string,
+  scopeKey: string,
+) {
+  if (activitiesByScopeKey.value[scopeKey]) return;
+  activitiesByScopeKey.value = {
+    ...activitiesByScopeKey.value,
+    [scopeKey]: { options: [], loading: true, errorKey: null },
   };
   const { fetchOptions, options, errorKey } = useRemoteActivities(toPickerConfig(config));
-  await fetchOptions();
-  activitiesByConfigId.value = {
-    ...activitiesByConfigId.value,
-    [config.id]: { options: options.value, loading: false, errorKey: errorKey.value },
+  await fetchOptions(remoteIssueId);
+  activitiesByScopeKey.value = {
+    ...activitiesByScopeKey.value,
+    [scopeKey]: { options: options.value, loading: false, errorKey: errorKey.value },
   };
 }
 
@@ -161,8 +171,10 @@ watch(
   rows,
   (list) => {
     for (const row of list) {
-      if (row.config && stateFor(row) === 'manageable') {
-        void ensureActivitiesLoaded(row.config);
+      const remoteIssueId = issueRefFor(row)?.remoteIssueId;
+      const scopeKey = activitiesScopeKeyFor(row);
+      if (row.config && remoteIssueId && scopeKey && stateFor(row) === 'manageable') {
+        void ensureActivitiesLoaded(row.config, remoteIssueId, scopeKey);
       }
     }
   },
@@ -170,8 +182,9 @@ watch(
 );
 
 function activitiesFor(row: RemoteSyncDayRowDto): ActivitiesState {
+  const scopeKey = activitiesScopeKeyFor(row);
   return (
-    (row.config && activitiesByConfigId.value[row.config.id]) ?? {
+    (scopeKey ? activitiesByScopeKey.value[scopeKey] : undefined) ?? {
       options: [],
       loading: false,
       errorKey: null,

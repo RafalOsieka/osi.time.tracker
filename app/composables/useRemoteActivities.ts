@@ -15,8 +15,9 @@ import { useRemoteConfigSecret } from './useRemoteConfigSecret';
 
 /**
  * Fetches the OpenProject time-entry activity options for a given remote
- * configuration (REQ-TTR-117), once per config, via the same
- * direct/proxied transport selection as `useRemoteIssueSearch`.
+ * configuration, project-scoped by the linked work package `remoteIssueId`
+ * (REQ-TTR-117), via the same direct/proxied transport selection as
+ * `useRemoteIssueSearch`.
  */
 export function useRemoteActivities(config: RemoteSystemConfigDto) {
   const { get: getSecret } = useRemoteConfigSecret();
@@ -25,7 +26,7 @@ export function useRemoteActivities(config: RemoteSystemConfigDto) {
   const loading = ref(false);
   const errorKey = ref<string | null>(null);
 
-  async function fetchOptions(): Promise<void> {
+  async function fetchOptions(remoteIssueId: string): Promise<void> {
     loading.value = true;
     errorKey.value = null;
 
@@ -33,7 +34,9 @@ export function useRemoteActivities(config: RemoteSystemConfigDto) {
 
     try {
       options.value =
-        config.transportMode === 'proxied' ? await fetchProxied(secret) : await fetchDirect(secret);
+        config.transportMode === 'proxied'
+          ? await fetchProxied(secret, remoteIssueId)
+          : await fetchDirect(secret, remoteIssueId);
     } catch (err: unknown) {
       options.value = [];
       errorKey.value = extractMessageKey(err, 'error.remoteActivitiesFetchFailed');
@@ -42,15 +45,27 @@ export function useRemoteActivities(config: RemoteSystemConfigDto) {
     }
   }
 
-  async function fetchDirect(secret: string | null): Promise<AdapterFieldOption[]> {
-    const request = buildTimeEntryActivitiesRequest(config.baseUrl);
+  async function fetchDirect(
+    secret: string | null,
+    remoteIssueId: string,
+  ): Promise<AdapterFieldOption[]> {
+    const request = buildTimeEntryActivitiesRequest(config.baseUrl, remoteIssueId);
     const response = await fetch(request.url, {
       method: request.method,
       headers: {
         Accept: 'application/json',
+        'Content-Type': 'application/json',
         ...(secret ? { Authorization: `Basic ${encodeBasicAuth(secret)}` } : {}),
       },
+      body: JSON.stringify(request.body),
     });
+    if (response.status === 403) {
+      // OpenProject returns 403 for work packages whose type doesn't allow
+      // time logging (e.g. a "Summary" item) — a per-work-package
+      // permission outcome, not a rejected credential, so treat it as an
+      // empty result rather than a hard failure.
+      return [];
+    }
     if (!response.ok) {
       throw toDirectTransportError('error.remoteActivitiesFetchFailed');
     }
@@ -58,13 +73,16 @@ export function useRemoteActivities(config: RemoteSystemConfigDto) {
     return parseTimeEntryActivitiesResults(payload);
   }
 
-  async function fetchProxied(secret: string | null): Promise<AdapterFieldOption[]> {
+  async function fetchProxied(
+    secret: string | null,
+    remoteIssueId: string,
+  ): Promise<AdapterFieldOption[]> {
     if (!secret) {
       throw toDirectTransportError('error.remoteProxySecretRequired');
     }
 
     const { $csrfFetch } = useNuxtApp();
-    const body: ProxiedRemoteActivitiesDto = { remoteSystemConfigId: config.id };
+    const body: ProxiedRemoteActivitiesDto = { remoteSystemConfigId: config.id, remoteIssueId };
     const response = await $csrfFetch<ProxiedRemoteActivitiesResponseDto>(
       '/api/remote/activities',
       {

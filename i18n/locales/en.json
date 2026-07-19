@@ -296,6 +296,7 @@
     "remoteIssueSearchNotFound": "No issue was found with that id.",
     "remoteIssueSearchFailed": "The search could not be completed. Please try again.",
     "remoteConfigIdRequired": "A valid remote configuration id is required.",
+    "remoteIssueIdRequired": "A valid remote issue id is required.",
     "remoteIssueSearchQueryRequired": "Enter a search query.",
     "remoteProxySecretRequired": "An API key is required to search this tracker.",
     "remoteProxyAuthRejected": "The tracker rejected the provided API key.",
