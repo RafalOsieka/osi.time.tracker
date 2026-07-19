@@ -21,8 +21,8 @@ const remoteConfigResolver = zodResolver(
 const { get: getSecret, set: setSecret, clear: clearSecret } = useRemoteConfigSecret();
 
 const systemTypeOptions = [
-  { label: 'Redmine', value: 'redmine' },
   { label: 'OpenProject', value: 'openproject' },
+  { label: 'Redmine', value: 'redmine' },
 ];
 const roundingRuleOptions = [
   { label: t('clients.remoteConfig.roundingNone'), value: 'none' },
@@ -69,12 +69,21 @@ const remoteConfigInitialValues = ref<{
   transportMode: RemoteTransportMode;
   roundingRule: RemoteRoundingRule;
 }>({
-  systemType: 'redmine',
+  systemType: 'openproject',
   baseUrl: '',
   transportMode: 'direct',
   roundingRule: 'none',
 });
 const remoteConfigSecret = ref('');
+// PrimeVue's <Form> snapshots `initial-values` once at mount and never re-reads
+// them, so an async-loaded config would not display. This key forces a remount
+// (a) when switching to a different client (`editingClient.id`), and (b) once
+// the async remote-config fetch settles (`remoteConfigLoading` flips to ready),
+// so the Form re-reads the resolved `initial-values` — the saved systemType,
+// or the default when there is no config yet.
+const remoteConfigFormKey = computed(
+  () => `${editingClient.value?.id ?? 'new'}:${remoteConfigLoading.value ? 'loading' : 'ready'}`,
+);
 const baseUrlServerError = ref('');
 const systemTypeServerError = ref('');
 const remoteConfigSaving = ref(false);
@@ -98,7 +107,7 @@ async function openEdit(client: ClientDto) {
   baseUrlServerError.value = '';
   systemTypeServerError.value = '';
   remoteConfigInitialValues.value = {
-    systemType: 'redmine',
+    systemType: 'openproject',
     baseUrl: '',
     transportMode: 'direct',
     roundingRule: 'none',
@@ -186,7 +195,7 @@ function onRemoveRemoteConfig() {
         remoteConfig.value = null;
         remoteConfigSecret.value = '';
         remoteConfigInitialValues.value = {
-          systemType: 'redmine',
+          systemType: 'openproject',
           baseUrl: '',
           transportMode: 'direct',
           roundingRule: 'none',
@@ -381,6 +390,7 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
         <h3 class="remote-config-heading">{{ t('clients.remoteConfig.heading') }}</h3>
 
         <Form
+          :key="remoteConfigFormKey"
           :resolver="remoteConfigResolver"
           :initial-values="remoteConfigInitialValues"
           class="remote-config-form"
