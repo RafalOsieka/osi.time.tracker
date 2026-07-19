@@ -9,9 +9,7 @@ const csrfFetchMock = vi.hoisted(() => vi.fn());
 const dollarFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.fn();
 const confirmRequireMock = vi.hoisted(() => vi.fn());
-const createTimeEntryMock = vi.hoisted(() =>
-  vi.fn().mockResolvedValue({ remoteLogId: '9001' }),
-);
+const createTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ remoteLogId: '9001' }));
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
