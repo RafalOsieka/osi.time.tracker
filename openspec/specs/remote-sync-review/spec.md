@@ -5,11 +5,17 @@ TBD - created by archiving change remote-sync-page. Update Purpose after archive
 ## Requirements
 ### Requirement: REQ-TTR-114 Per-day Remote Sync page lists all of the day's tasks
 
-The application SHALL provide a Remote Sync page for a specific day, reachable from each day header in the Timer view. The page SHALL list **all** Tasks that have time entries on that day, plus a "(no task)" bucket when untitled entries exist that day, so the page's total matches the Timer view's day total. The day boundary SHALL be computed in the user's configured timezone using the same rule as the Timer view. The page SHALL be private (authentication required) and SHALL be **review-only**: it SHALL NOT expose any push action or persist reviewed values.
+The application SHALL provide a Remote Sync page for a specific day, reachable from each day header
+in the Timer view. The page SHALL list **all** Tasks that have time entries on that day, plus a
+"(no task)" bucket when untitled entries exist that day, so the page's total matches the Timer view's
+day total. The day boundary SHALL be computed in the user's configured timezone using the same rule
+as the Timer view. The page SHALL be private (authentication required) and SHALL expose export
+actions only for eligible linked tasks.
 
 #### Scenario: Open the Remote Sync page for a day
 - **WHEN** an authenticated user activates the Remote Sync action on a Timer-view day
-- **THEN** the application SHALL navigate to the Remote Sync page for that date and list every Task with entries on that day, including a read-only "(no task)" bucket when untitled entries exist
+- **THEN** the application SHALL navigate to the Remote Sync page for that date and list every Task
+  with entries on that day, including a read-only "(no task)" bucket when untitled entries exist
 
 #### Scenario: Day with no entries
 - **WHEN** the user opens the Remote Sync page for a day with no time entries
@@ -21,89 +27,119 @@ The application SHALL provide a Remote Sync page for a specific day, reachable f
 
 #### Scenario: Unauthenticated access is redirected
 - **WHEN** an unauthenticated visitor requests the Remote Sync page
-- **THEN** the global guard SHALL redirect to `/login` with the page as the redirect target before any protected markup is sent
+- **THEN** the global guard SHALL redirect to `/login` with the page as the redirect target before
+  any protected markup is sent
 
 ### Requirement: REQ-TTR-115 Explicit per-row state with stated reason
 
-Each task row on the Remote Sync page SHALL be in exactly one explicit state, derived by a pure shared function: **read-only with a translated stated reason** — the Task has no Project (or no resolvable Client), the Client has no `RemoteSystemConfig`, or the configuration's system type is not implemented yet (e.g. `redmine`); **read-only but linkable** — the Task's configuration is usable but the Task has no `RemoteIssueRef`; or **manageable** — all prerequisites are met. The "(no task)" bucket SHALL always be read-only. Read-only rows SHALL still display the task name and original duration.
+Each task row on the Remote Sync page SHALL expose exactly one effective state: **read-only with a
+translated stated reason** when the Task has no Project or Client, the Client has no
+`RemoteSystemConfig`, the system type is unsupported, or a successful activity fetch yielded no
+activities; **read-only but linkable** when configuration is usable but no `RemoteIssueRef` exists;
+**temporarily unavailable with a retryable error** when required remote data failed to load; or
+**manageable** when every prerequisite is met. The "(no task)" bucket SHALL always be read-only.
+Read-only rows SHALL still display task name, entries, original duration, and any successfully loaded
+remote-log context.
 
 #### Scenario: Task without a Project is read-only
 - **WHEN** a listed Task has no Project
-- **THEN** its row SHALL be read-only and display a translated reason indicating the missing Client/Project
+- **THEN** its row SHALL be read-only and display a translated reason indicating the missing
+  Client/Project
 
 #### Scenario: Client without a remote configuration is read-only
 - **WHEN** a listed Task's Client has no `RemoteSystemConfig`
-- **THEN** its row SHALL be read-only and display a translated reason indicating the missing remote configuration
+- **THEN** its row SHALL be read-only and display a translated reason indicating the missing remote
+  configuration
 
 #### Scenario: Unsupported system type is read-only
-- **WHEN** a listed Task's configuration has a system type without an implemented adapter (e.g. `redmine`)
-- **THEN** its row SHALL be read-only and display a translated reason indicating the system is not supported yet
+- **WHEN** a listed Task's configuration has a system type without an implemented adapter
+- **THEN** its row SHALL be read-only and display a translated reason indicating the system is not
+  supported yet
 
 #### Scenario: Unlinked task is read-only but linkable
 - **WHEN** a listed Task resolves to a usable OpenProject configuration but has no `RemoteIssueRef`
-- **THEN** its row SHALL be read-only for duration and required fields while exposing an inline link action
+- **THEN** its row SHALL be read-only for export controls while exposing an inline link action
 
 #### Scenario: Fully eligible task is manageable
-- **WHEN** a listed Task has a Project, a usable OpenProject configuration, and a `RemoteIssueRef`
-- **THEN** its row SHALL be manageable, exposing the editable rounded duration and required-field controls
+- **WHEN** a listed Task is linked and all required remote data loaded successfully with at least one
+  activity
+- **THEN** its row SHALL be manageable and expose entry selection, duration, activity, and export
+  controls
 
 ### Requirement: REQ-TTR-116 Original and editable rounded durations
 
-Each task row SHALL display the **original duration** — the sum of that Task's entry durations for the day. Each **manageable** row SHALL additionally display a separately labeled, **editable rounded duration**, pre-filled by applying the Client configuration's rounding rule **once** to the summed duration via a shared pure utility (`none` passes the sum through; `up_15m`/`up_30m`/`up_1h` round up to the next multiple, leaving exact multiples unchanged and `0` as `0`). The user SHALL be able to override the rounded value; a value of `0` SHALL mark the task as excluded from any future push and SHALL display a translated hint. Edited values SHALL be page state only and SHALL NOT be persisted.
+Each task row SHALL display the **original duration**, calculated from all of that Task's entries for
+the day. Each manageable row SHALL additionally display the selected-entry total and a separately
+labeled editable export duration, pre-filled by applying the Client configuration's rounding rule
+once to the selected-entry total. Eligible completed entries SHALL be selected by default. A user
+override SHALL be retained when selection changes until explicitly reset. No selected entries or an
+export duration of `0` SHALL exclude the task from export. Reviewed values SHALL remain page state
+until a successful export is finalized.
 
-#### Scenario: Rounded default is computed once from the sum
-- **WHEN** a manageable Task has entries summing to 50 minutes under an `up_15m` rule
-- **THEN** its editable rounded duration SHALL be pre-filled with 60 minutes while the original duration still shows 50 minutes
+#### Scenario: Rounded default is computed from selected entries
+- **WHEN** selected entries sum to 50 minutes under an `up_15m` rule
+- **THEN** the editable export duration SHALL default to 60 minutes while original and selected
+  totals remain separately visible
 
 #### Scenario: Exact multiple is unchanged
-- **WHEN** a manageable Task's summed duration is already an exact multiple of the rounding increment
-- **THEN** the pre-filled rounded duration SHALL equal the original duration
+- **WHEN** the selected total is an exact multiple of the rounding increment
+- **THEN** the default export duration SHALL equal the selected total
 
-#### Scenario: User overrides the rounded value
-- **WHEN** the user edits the rounded duration to a different valid value
-- **THEN** the row SHALL retain the edited value as page state without any server persistence
+#### Scenario: Selection changes a non-overridden default
+- **WHEN** the user changes entry selection before overriding the export duration
+- **THEN** the application SHALL recompute the rounded default once from the new selected total
 
-#### Scenario: Zero excludes from a future push
-- **WHEN** the user sets a manageable Task's rounded duration to 0
-- **THEN** the row SHALL display a translated indication that the task is excluded from any future push
+#### Scenario: Selection does not silently replace an override
+- **WHEN** the user changes entry selection after overriding the export duration
+- **THEN** the application SHALL retain the override until the user explicitly resets it
+
+#### Scenario: Zero or empty selection excludes the task
+- **WHEN** no entries are selected or the export duration is `0`
+- **THEN** the task SHALL be excluded and display a translated explanation
 
 #### Scenario: Invalid duration input reverts
 - **WHEN** the user enters a value that cannot be normalized to a valid duration
 - **THEN** the field SHALL revert to the previous value without emitting a change
 
-### Requirement: REQ-TTR-117 Required remote fields with fetched options and config-default pre-fill
+### Requirement: REQ-TTR-117 Required remote fields with fetched options and pre-fill
 
-For each **manageable** row, the Remote Sync page SHALL expose the remote system's required fields — for OpenProject, the time-entry **activity** — as a labeled select control. The available options SHALL be fetched from the remote system via the adapter using the configuration's transport (browser-direct or server proxy), **project-scoped** by posting the remote time-entry form keyed by the manageable row's linked work package, so the options reflect the activities enabled for that row's project. Options SHALL be fetched **once per resolved project/work package per page load**, deduplicated so that rows resolving to the same project reuse a single fetch, with browser-held credential rules unchanged. The control SHALL be pre-selected from the configuration's `requiredFieldDefaults` when the stored default matches a fetched option. Selected values SHALL be page state only and SHALL NOT be persisted. An empty options result SHALL render as a silent empty select without an error. A failed options fetch SHALL show a translated inline error for the affected rows without blocking the rest of the page.
+For each otherwise manageable row, the Remote Sync page SHALL fetch project-scoped OpenProject
+time-entry activities once per resolved scope and expose them in a labeled select. The select SHALL
+prefer the task's most recently finalized activity, then a matching configuration default. Selected
+values SHALL remain page state until finalization. A successful empty response SHALL produce a
+read-only no-activity state stating that no activity is available and the task will not be pushed.
+A failed request SHALL produce a translated accessible retryable error without blocking unrelated
+rows.
 
 #### Scenario: Activities are fetched and selectable
+- **WHEN** the page loads with otherwise manageable OpenProject rows
+- **THEN** each row SHALL offer the activities fetched for its project/work-package scope
 
-- **WHEN** the page loads with manageable OpenProject rows
-- **THEN** the adapter SHALL fetch the available time-entry activities once per resolved project/work package and each manageable row SHALL offer that project's activities in a labeled select
+#### Scenario: Rows sharing a scope reuse one fetch
+- **WHEN** multiple rows resolve to the same activity scope
+- **THEN** the adapter SHALL fetch activities once and reuse the result
 
-#### Scenario: Rows sharing a project reuse one fetch
+#### Scenario: Previously used activity takes precedence
+- **WHEN** provenance provides a valid most-recent activity and a different config default exists
+- **THEN** the previously used activity SHALL be selected
 
-- **WHEN** multiple manageable rows resolve to the same project/work-package scope
-- **THEN** the adapter SHALL fetch the activities once for that scope and reuse the result across those rows
+#### Scenario: Config default is the fallback
+- **WHEN** no valid previously used activity exists and the config default matches an option
+- **THEN** the config default SHALL be selected
 
-#### Scenario: Config default pre-selects an activity
+#### Scenario: No matching pre-fill leaves the control unselected
+- **WHEN** neither source matches a fetched option
+- **THEN** the activity control SHALL remain unselected without an error
 
-- **WHEN** the configuration's `requiredFieldDefaults` contains an activity matching a fetched option
-- **THEN** that option SHALL be pre-selected on the row's activity control
+#### Scenario: Successful empty response prevents export
+- **WHEN** the project-scoped fetch succeeds with no activities
+- **THEN** affected rows SHALL be read-only with a stated reason that no activity is available and
+  their time will not be pushed to the remote system
 
-#### Scenario: No matching default leaves the control unselected
-
-- **WHEN** the configuration has no activity default or the default matches no fetched option
-- **THEN** the activity control SHALL render unselected without an error
-
-#### Scenario: Empty options render silently
-
-- **WHEN** the project-scoped fetch returns no activities
-- **THEN** the activity control SHALL render as an empty select without surfacing an error or hint
-
-#### Scenario: Options fetch fails
-
-- **WHEN** the remote activities request fails (credential rejected, CORS, network)
-- **THEN** the affected rows SHALL show a translated accessible error state while other rows and page content remain functional
+#### Scenario: Options fetch fails and can be retried
+- **WHEN** an activities request fails because of credentials, CORS, or network conditions
+- **THEN** affected rows SHALL show an accessible retry action and SHALL NOT be classified as having
+  no activities
 
 ### Requirement: REQ-TTR-118 Day-review data is aggregated server-side and user-scoped
 
@@ -136,4 +172,135 @@ The Remote Sync page SHALL meet WCAG 2.1 AA: row states and reasons SHALL be con
 #### Scenario: Keyboard-only review
 - **WHEN** a keyboard user tabs through the page
 - **THEN** the day navigation, rounded-duration fields, activity selects, and inline link actions SHALL all be reachable and operable without a pointer
+
+### Requirement: REQ-TTR-120 Users select entries for export without local locking
+
+The application SHALL list every completed local entry beneath its task with an individually
+operable selection control. Eligible entries SHALL be selected by default. A successful export SHALL
+NOT prevent any selected entry from later being edited, deleted, reassigned, or selected again, and
+SHALL NOT lock its Task.
+
+#### Scenario: Eligible entries default to selected
+- **WHEN** a manageable row first loads
+- **THEN** all completed entries eligible for that row SHALL be selected
+
+#### Scenario: User exports a subset
+- **WHEN** the user deselects one or more entries and exports the task
+- **THEN** the remote log and local provenance SHALL use only the remaining selected entries
+
+#### Scenario: Exported local data remains mutable
+- **WHEN** an export has been finalized successfully
+- **THEN** normal authorized entry and task mutations SHALL remain available
+
+### Requirement: REQ-TTR-121 Current-account remote logs provide same-day context
+
+The browser-orchestrated OpenProject client SHALL resolve the authenticated remote account and fetch
+that account's time logs for the selected local date and linked issues, following pagination. The
+page SHALL display those logs beside the corresponding task as informational context only. Remote
+logs SHALL NOT alter selection, infer local-entry provenance, or block export.
+
+#### Scenario: Same-day logs for the current account are displayed
+- **WHEN** the current OpenProject account has logs on a linked issue for the selected date
+- **THEN** those logs SHALL be displayed with stable identifying details beside that task
+
+#### Scenario: Other accounts are excluded
+- **WHEN** other accounts have logs on the same issue and date
+- **THEN** their logs SHALL NOT be displayed
+
+#### Scenario: Remote logs do not change export eligibility
+- **WHEN** one or more contextual remote logs are displayed
+- **THEN** local entries SHALL remain selected according to local page state and export SHALL remain
+  available
+
+#### Scenario: Remote-log fetch fails
+- **WHEN** remote-log context cannot be loaded
+- **THEN** the row SHALL show an accessible retryable context error without misrepresenting that no
+  logs exist or blocking an otherwise valid export
+
+### Requirement: REQ-TTR-122 Successful exports persist non-locking provenance and warn on repeats
+
+For every remote log successfully created and locally finalized, the application SHALL persist a
+user-scoped append-only export record containing task, local date, remote issue and log IDs, exact
+export duration, required-field values, selected local entry IDs, and timestamps. Previously
+exported entries SHALL remain selectable. If any selected entry has provenance, the application
+SHALL identify the affected task and require explicit repeat-export confirmation before remote
+creation.
+
+#### Scenario: Successful export records exact provenance
+- **WHEN** OpenProject creates a log and local finalization succeeds
+- **THEN** one export record and its selected-entry associations SHALL be persisted atomically with
+  the exact submitted values and returned remote log ID
+
+#### Scenario: Previously exported entry is selected again
+- **WHEN** the selection contains an entry associated with an earlier export
+- **THEN** the page SHALL warn about repeat-export risk and require confirmation while allowing the
+  export to continue
+
+#### Scenario: New entries can be exported later
+- **WHEN** entries are added to a task/day after an earlier export
+- **THEN** those entries SHALL be selectable and exportable in another remote log
+
+#### Scenario: Stale or foreign finalization is rejected
+- **WHEN** finalization references an entry not owned by the user, not completed, on another local
+  date, or assigned to another task
+- **THEN** the endpoint SHALL reject the request without persisting partial provenance
+
+### Requirement: REQ-TTR-123 Export reports per-task outcomes without claiming strict idempotency
+
+The page SHALL create at most one remote log for each included task in one batch action and SHALL
+display a success, failure, or uncertain-finalization outcome per task without hiding successful
+tasks. Tasks with no selected entries, zero duration, no activity, or unresolved prerequisites SHALL
+be excluded. A known finalized remote log ID SHALL never be recreated automatically, but failure
+after remote creation and before local finalization SHALL be reported as uncertain and SHALL warn
+that retry can duplicate the remote log.
+
+#### Scenario: Mixed batch outcomes remain visible
+- **WHEN** some task exports succeed and others fail
+- **THEN** the page SHALL show the outcome and actionable error for every attempted task
+
+#### Scenario: Excluded tasks are not sent
+- **WHEN** a task has no selection, zero duration, no activities, or an unresolved prerequisite
+- **THEN** no remote create request SHALL be made for that task
+
+#### Scenario: Local finalization fails after remote creation
+- **WHEN** OpenProject returns a remote log ID but local finalization fails
+- **THEN** the task SHALL be marked uncertain, remote-log context SHALL be refreshable, and the user
+  SHALL be warned that retry may create a duplicate
+
+#### Scenario: Known finalized operation is not automatically recreated
+- **WHEN** the same finalized export operation is retried with its known remote log ID
+- **THEN** the application SHALL return the stored result without creating another remote log
+
+### Requirement: REQ-TTR-124 Browser orchestration supports direct and proxied client transport
+
+The browser SHALL orchestrate remote reads, one remote creation per included task, and local
+finalization regardless of transport. The OpenProject client SHALL support sending remote requests
+directly from the browser or through authenticated Nitro proxy endpoints selected by remote-system
+configuration. Both modes SHALL provide equivalent account resolution, activities, paginated time
+logs, time-entry creation, error classification, retry behavior, deduplication, and per-task outcome
+isolation. The proxy SHALL authorize the local user, restrict requests to that user's configured
+remote origin, and SHALL NOT persist or log forwarded remote credentials.
+
+#### Scenario: Direct transport completes the two-phase operation
+- **WHEN** a remote configuration selects direct browser transport and the user exports a task
+- **THEN** the browser SHALL create the OpenProject log directly and finalize the returned remote ID
+  through the authenticated local endpoint
+
+#### Scenario: Proxy transport completes the same two-phase operation
+- **WHEN** a remote configuration selects Nitro proxy transport and the user exports a task
+- **THEN** the browser SHALL request remote creation through the proxy and finalize the returned
+  remote ID through the same authenticated local endpoint
+
+#### Scenario: Proxy credentials remain ephemeral
+- **WHEN** Nitro forwards a remote request containing remote credentials
+- **THEN** it SHALL use them only for that request and SHALL NOT persist them or include them in logs
+
+#### Scenario: Proxy destination is restricted
+- **WHEN** a proxy request targets an origin other than the authenticated user's configured remote
+  system origin
+- **THEN** Nitro SHALL reject the request without contacting the supplied destination
+
+#### Scenario: Transport failures remain isolated and retryable
+- **WHEN** either transport fails for one task or shared request scope
+- **THEN** the page SHALL expose the same retryable state and SHALL NOT block unaffected tasks
 
