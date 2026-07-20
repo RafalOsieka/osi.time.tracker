@@ -88,6 +88,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       id: string;
       systemType: 'redmine' | 'openproject';
       baseUrl: string;
+      executionMode: 'client' | 'server';
       roundingRule: 'none' | 'up_15m' | 'up_30m' | 'up_1h';
       requiredFieldDefaults: Record<string, string>;
     }
@@ -103,6 +104,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
           id: config.id,
           systemType: config.systemType,
           baseUrl: config.baseUrl,
+          executionMode: config.executionMode,
           roundingRule: config.roundingRule,
           requiredFieldDefaults: config.requiredFieldDefaults,
         });

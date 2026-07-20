@@ -139,7 +139,7 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigD
     clientId: '',
     systemType: config.systemType,
     baseUrl: config.baseUrl,
-    executionMode: 'client',
+    executionMode: config.executionMode,
     roundingRule: config.roundingRule,
     requiredFieldDefaults: config.requiredFieldDefaults,
     createdAt: '',

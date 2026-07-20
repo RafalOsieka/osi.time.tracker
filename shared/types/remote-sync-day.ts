@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import type { RemoteRoundingRule, RemoteSystemType } from './remote-system-config';
+import type {
+  RemoteExecutionMode,
+  RemoteRoundingRule,
+  RemoteSystemType,
+} from './remote-system-config';
 
 /**
  * Explicit per-row state on the Remote Sync page, derived by a pure shared
@@ -32,6 +36,7 @@ export interface RemoteSyncConfigSurfaceDto {
   id: string;
   systemType: RemoteSystemType;
   baseUrl: string;
+  executionMode: RemoteExecutionMode;
   roundingRule: RemoteRoundingRule;
   requiredFieldDefaults: Record<string, string>;
 }

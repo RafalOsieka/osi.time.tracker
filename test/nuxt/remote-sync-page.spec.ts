@@ -126,6 +126,7 @@ const baseConfig = {
   id: 'config-1',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
+  executionMode: 'client' as const,
   roundingRule: 'up_15m' as const,
   requiredFieldDefaults: {},
 };
@@ -282,6 +283,34 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     const select = wrapper.find('[data-testid="remote-sync-activity-select-task-3"]');
     expect((select.element as HTMLSelectElement).value).toBe('2');
+  });
+
+  it('routes activities/account fetches through the server for a server-execution-mode config', async () => {
+    window.localStorage.setItem('rsc:config-server', 'secret-value');
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-server',
+          taskName: 'Server Routed Task',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-server', executionMode: 'server' },
+          issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-server', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    csrfFetchMock.mockResolvedValue({ options: [{ id: '1', name: 'Dev' }] });
+
+    await mount();
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/remote/activities',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   it('fetches activities once for rows sharing the same resolved config and work package', async () => {
