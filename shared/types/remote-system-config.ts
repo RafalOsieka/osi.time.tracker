@@ -7,7 +7,12 @@ export const remoteSystemTypeSchema = z.enum(['redmine', 'openproject'], {
 
 export type RemoteSystemType = z.infer<typeof remoteSystemTypeSchema>;
 
-export const remoteExecutionModeSchema = z.enum(['client'], {
+/**
+ * Selects the execution mode: `client` (default) sends remote requests
+ * directly from the browser to the tracker; `server` routes them through
+ * the OSI server, which forwards them to the tracker (no CORS involved).
+ */
+export const remoteExecutionModeSchema = z.enum(['client', 'server'], {
   required_error: 'error.remoteConfigExecutionModeRequired',
   invalid_type_error: 'error.remoteConfigExecutionModeRequired',
 });
@@ -21,18 +26,6 @@ export const remoteRoundingRuleSchema = z.enum(['none', 'up_15m', 'up_30m', 'up_
 
 export type RemoteRoundingRule = z.infer<typeof remoteRoundingRuleSchema>;
 
-/**
- * Selects the search transport: `direct` (default) keeps the existing
- * browser-to-tracker request; `proxied` routes the search through the OSI
- * server, which forwards it to the tracker (no CORS involved).
- */
-export const remoteTransportModeSchema = z.enum(['direct', 'proxied'], {
-  required_error: 'error.remoteConfigTransportModeRequired',
-  invalid_type_error: 'error.remoteConfigTransportModeRequired',
-});
-
-export type RemoteTransportMode = z.infer<typeof remoteTransportModeSchema>;
-
 export const createRemoteSystemConfigSchema = z.object({
   systemType: remoteSystemTypeSchema,
   baseUrl: z
@@ -42,8 +35,7 @@ export const createRemoteSystemConfigSchema = z.object({
     })
     .trim()
     .url({ message: 'error.remoteConfigBaseUrlInvalid' }),
-  executionMode: remoteExecutionModeSchema,
-  transportMode: remoteTransportModeSchema.default('direct'),
+  executionMode: remoteExecutionModeSchema.default('client'),
   roundingRule: remoteRoundingRuleSchema,
   requiredFieldDefaults: z.record(z.string(), z.string()).optional(),
 });
@@ -60,7 +52,6 @@ export interface RemoteSystemConfigDto {
   systemType: RemoteSystemType;
   baseUrl: string;
   executionMode: RemoteExecutionMode;
-  transportMode: RemoteTransportMode;
   roundingRule: RemoteRoundingRule;
   requiredFieldDefaults: Record<string, string>;
   createdAt: string;

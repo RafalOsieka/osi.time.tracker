@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { url } from '@nuxt/test-utils/e2e';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../shared/config/remote-secret';
 import { CookieJar, primeCsrf } from './support/auth';
 import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
@@ -47,8 +47,7 @@ async function createProxiedConfig(
     body: JSON.stringify({
       systemType: 'openproject',
       baseUrl,
-      executionMode: 'client',
-      transportMode: 'proxied',
+      executionMode: 'server',
       roundingRule: 'none',
     }),
   });
@@ -131,7 +130,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
     });
@@ -154,7 +153,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: 'no-log-time' }),
     });
@@ -175,13 +174,13 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: secret,
+        [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
     });
     expect(res.status).toBe(502);
     const body = await res.json();
-    expect(body?.data?.messageKey).toBe('error.remoteProxyAuthRejected');
+    expect(body?.data?.messageKey).toBe('error.remoteServerModeAuthRejected');
     expect(JSON.stringify(body)).not.toContain(secret);
   });
 
@@ -201,7 +200,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
     });
     expect(missingSecretRes.status).toBe(422);
     expect((await missingSecretRes.json())?.data?.messageKey).toBe(
-      'error.remoteProxySecretRequired',
+      'error.remoteServerModeSecretRequired',
     );
 
     const unknownConfigRes = await fetch(url('/api/remote/activities'), {
@@ -210,7 +209,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({
         remoteSystemConfigId: '00000000-0000-0000-0000-000000000000',

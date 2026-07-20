@@ -98,7 +98,6 @@ describeSyncDay('sync day-review API integration', async () => {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
       executionMode: 'client',
-      transportMode: 'direct',
       roundingRule: 'none',
     });
 

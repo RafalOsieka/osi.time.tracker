@@ -288,7 +288,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     });
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForFunction(() =>
-      document.body.textContent?.includes('The search could not be completed'),
+      document.body.textContent?.includes('The tracker could not be reached'),
     );
 
     // --- Bounded title results: mocked backend returns more than the cap; UI must still cap at 25 ---

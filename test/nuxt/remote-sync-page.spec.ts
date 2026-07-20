@@ -19,14 +19,14 @@ vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }));
 vi.mock('primevue/useconfirm', () => ({
   useConfirm: () => ({ require: confirmRequireMock }),
 }));
-vi.mock('../../app/composables/useOpenProjectClient', () => ({
-  useOpenProjectClient: () => ({
+vi.mock('../../app/composables/useRemoteSyncClient', () => ({
+  useRemoteSyncClient: () => ({
     resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
     fetchTimeLogs: vi.fn().mockResolvedValue([]),
     createTimeEntry: createTimeEntryMock,
     invalidateCaches: vi.fn(),
   }),
-  mapOpenProjectClientError: (err: unknown, fallback: string) => fallback,
+  mapRemoteSyncClientError: (err: unknown, fallback: string) => fallback,
 }));
 
 mockNuxtImport('useRoute', () => () => ({ params: { date: '2026-03-15' } }));
@@ -126,7 +126,6 @@ const baseConfig = {
   id: 'config-1',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
-  transportMode: 'direct' as const,
   roundingRule: 'up_15m' as const,
   requiredFieldDefaults: {},
 };

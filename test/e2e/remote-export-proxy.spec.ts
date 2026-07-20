@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { url } from '@nuxt/test-utils/e2e';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../shared/config/remote-secret';
 import { CookieJar, primeCsrf } from './support/auth';
 import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
@@ -47,8 +47,7 @@ async function createProxiedConfig(
     body: JSON.stringify({
       systemType: 'openproject',
       baseUrl,
-      executionMode: 'client',
-      transportMode: 'proxied',
+      executionMode: 'server',
       roundingRule: 'none',
     }),
   });
@@ -142,7 +141,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': user.token,
         cookie: user.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: secret,
+        [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id }),
     });
@@ -156,7 +155,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': user.token,
         cookie: user.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: secret,
+        [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({
         remoteSystemConfigId: config.id,
@@ -176,7 +175,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': user.token,
         cookie: user.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: secret,
+        [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({
         remoteSystemConfigId: config.id,
@@ -232,7 +231,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': user.token,
         cookie: user.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: '00000000-0000-0000-0000-000000000000' }),
     });

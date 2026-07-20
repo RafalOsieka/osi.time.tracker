@@ -1,31 +1,30 @@
-import { and, eq, isNull } from 'drizzle-orm';
 import { ZodError } from 'zod';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
 import { proxiedRemoteActivitiesSchema } from '../../../shared/types/remote-activities';
 import type {
   ProxiedRemoteActivitiesDto,
   ProxiedRemoteActivitiesResponseDto,
 } from '../../../shared/types/remote-activities';
-import { db } from '../../db/index';
-import { remoteSystemConfigs } from '../../db/schema';
-import { proxyOpenProjectActivities } from '../../utils/remote-issue-proxy';
+import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
+import { resolveOwnedRemoteConfig } from '../../utils/remote/resolve-owned-config';
+import { toApiError } from '../../utils/remote/adapter-error';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * Forwards a `proxied`-transport time-entry activities options request to
- * the caller's own configured tracker (REQ-TTR-117), mirroring
- * `/api/remote/search`: the target base URL is always derived server-side
- * from the authenticated user's owned, stored configuration.
+ * `server`-execution-mode time-entry activities options request
+ * (REQ-TTR-117), mirroring `/api/remote/search`: the target base URL is
+ * always derived server-side from the authenticated user's owned, stored
+ * configuration.
  */
 export default defineEventHandler(async (event): Promise<ProxiedRemoteActivitiesResponseDto> => {
   const { user } = await requireAuth(event);
 
-  const secret = getRequestHeader(event, REMOTE_PROXY_SECRET_HEADER);
+  const secret = getRequestHeader(event, REMOTE_SECRET_HEADER);
   if (!secret) {
     throw createError({
       statusCode: 422,
-      data: { messageKey: 'error.remoteProxySecretRequired' } satisfies ApiMessage,
+      data: { messageKey: 'error.remoteServerModeSecretRequired' } satisfies ApiMessage,
     });
   }
 
@@ -44,30 +43,12 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteActivities
     throw err;
   }
 
-  const [config] = await db
-    .select({ id: remoteSystemConfigs.id, baseUrl: remoteSystemConfigs.baseUrl })
-    .from(remoteSystemConfigs)
-    .where(
-      and(
-        eq(remoteSystemConfigs.id, parsedBody.remoteSystemConfigId),
-        eq(remoteSystemConfigs.userId, user.id),
-        isNull(remoteSystemConfigs.deletedAt),
-      ),
-    )
-    .limit(1);
+  const config = await resolveOwnedRemoteConfig(user.id, parsedBody.remoteSystemConfigId);
+  const adapter = createServerRemoteAdapter(config, secret);
 
-  if (!config) {
-    throw createError({
-      statusCode: 404,
-      data: { messageKey: 'error.notFound' } satisfies ApiMessage,
-    });
+  try {
+    return { options: await adapter.getActivityOptions(parsedBody.remoteIssueId) };
+  } catch (err: unknown) {
+    return toApiError(err);
   }
-
-  const options = await proxyOpenProjectActivities(
-    config.baseUrl,
-    secret,
-    parsedBody.remoteIssueId,
-  );
-
-  return { options };
 });

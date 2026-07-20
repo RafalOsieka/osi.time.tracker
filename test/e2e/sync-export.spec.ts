@@ -121,7 +121,6 @@ describeSyncExport('sync export finalization API', async () => {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
       executionMode: 'client',
-      transportMode: 'direct',
       roundingRule: 'none',
     });
     const date = '2026-04-01';

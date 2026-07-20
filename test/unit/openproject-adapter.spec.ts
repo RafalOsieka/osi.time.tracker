@@ -1,226 +1,135 @@
 import { describe, expect, it } from 'vitest';
+import { OpenProjectAdapter } from '../../shared/remote/openproject/adapter';
 import {
-  OPENPROJECT_TITLE_SEARCH_MAX_RESULTS,
-  buildIssueByIdRequest,
-  buildTimeEntryActivitiesRequest,
-  buildTitleSearchRequest,
-  deriveIssueUrl,
-  normalizeBaseUrl,
-  parseIssueByIdResult,
-  parseTimeEntryActivitiesResults,
-  parseTitleSearchResults,
-} from '../../shared/utils/openproject-adapter';
+  RemoteAdapterError,
+  type RemoteRequest,
+  type RemoteResponse,
+  type Transport,
+} from '../../shared/types/remote-adapter';
 
-describe('normalizeBaseUrl', () => {
-  it('removes a single trailing slash', () => {
-    expect(normalizeBaseUrl('https://op.example.com/')).toBe('https://op.example.com');
-  });
+/** A `Transport` that throws for a status outside the 2xx range, mirroring a real transport's contract. */
+function fakeTransport(
+  handler: (request: RemoteRequest) => RemoteResponse | Promise<RemoteResponse>,
+): Transport {
+  return {
+    async execute(request: RemoteRequest): Promise<RemoteResponse> {
+      const response = await handler(request);
+      if (response.status >= 400 && response.status !== 403 && response.status !== 404) {
+        throw { statusCode: response.status };
+      }
+      return response;
+    },
+  };
+}
 
-  it('removes multiple trailing slashes', () => {
-    expect(normalizeBaseUrl('https://op.example.com///')).toBe('https://op.example.com');
-  });
-
-  it('leaves a URL without a trailing slash unchanged', () => {
-    expect(normalizeBaseUrl('https://op.example.com')).toBe('https://op.example.com');
-  });
-});
-
-describe('buildTitleSearchRequest', () => {
-  it('encodes the title as a JSON filters query param without a status restriction', () => {
-    const request = buildTitleSearchRequest('https://op.example.com/', 'Fix login bug');
-    const parsedUrl = new URL(request.url);
-    expect(parsedUrl.origin + parsedUrl.pathname).toBe(
-      'https://op.example.com/api/v3/work_packages',
-    );
-    const filters = JSON.parse(parsedUrl.searchParams.get('filters')!);
-    expect(filters).toEqual([{ subject: { operator: '~', values: ['Fix login bug'] } }]);
-    expect(filters[0].status).toBeUndefined();
-    expect(request.method).toBe('GET');
-  });
-
-  it('bounds the requested pageSize to the fixed maximum', () => {
-    const request = buildTitleSearchRequest('https://op.example.com', 'anything');
-    const parsedUrl = new URL(request.url);
-    expect(parsedUrl.searchParams.get('pageSize')).toBe(
-      String(OPENPROJECT_TITLE_SEARCH_MAX_RESULTS),
-    );
-  });
-
-  it('avoids a duplicated slash when the base URL already ends with one', () => {
-    const request = buildTitleSearchRequest('https://op.example.com/', 'x');
-    expect(request.url.startsWith('https://op.example.com/api/v3/work_packages')).toBe(true);
-    expect(request.url).not.toContain('//api');
-  });
-});
-
-describe('buildIssueByIdRequest', () => {
-  it('builds an exact-ID lookup request', () => {
-    const request = buildIssueByIdRequest('https://op.example.com', '42');
-    expect(request.url).toBe('https://op.example.com/api/v3/work_packages/42');
-    expect(request.method).toBe('GET');
-  });
-
-  it('URL-encodes the id and normalizes a trailing slash on the base URL', () => {
-    const request = buildIssueByIdRequest('https://op.example.com/', 'a b');
-    expect(request.url).toBe('https://op.example.com/api/v3/work_packages/a%20b');
-  });
-});
-
-describe('deriveIssueUrl', () => {
-  it('derives a browsable work-package URL without a duplicated slash', () => {
-    expect(deriveIssueUrl('https://op.example.com/', '42')).toBe(
-      'https://op.example.com/work_packages/42',
-    );
-  });
-});
-
-describe('parseTitleSearchResults', () => {
-  function makeElements(count: number) {
-    return Array.from({ length: count }, (_, i) => ({ id: i + 1, subject: `Issue ${i + 1}` }));
-  }
-
-  it('parses a well-formed collection payload', () => {
-    const payload = { _embedded: { elements: makeElements(3) } };
-    expect(parseTitleSearchResults(payload)).toEqual([
-      { remoteIssueId: '1', title: 'Issue 1' },
-      { remoteIssueId: '2', title: 'Issue 2' },
-      { remoteIssueId: '3', title: 'Issue 3' },
-    ]);
-  });
-
-  it('caps the result list at the fixed maximum even when the backend returns more', () => {
-    const payload = { _embedded: { elements: makeElements(100) } };
-    const results = parseTitleSearchResults(payload);
-    expect(results).toHaveLength(OPENPROJECT_TITLE_SEARCH_MAX_RESULTS);
-    expect(results[0]).toEqual({ remoteIssueId: '1', title: 'Issue 1' });
-  });
-
-  it('returns an empty array when _embedded is missing', () => {
-    expect(parseTitleSearchResults({})).toEqual([]);
-  });
-
-  it('returns an empty array when elements is not an array', () => {
-    expect(parseTitleSearchResults({ _embedded: { elements: 'nope' } })).toEqual([]);
-  });
-
-  it('skips elements missing a subject or id rather than throwing', () => {
-    const payload = {
-      _embedded: {
-        elements: [
-          { id: 1, subject: 'Valid' },
-          { id: 2 },
-          { subject: 'No id' },
-          null,
-          'not-an-object',
-        ],
-      },
-    };
-    expect(parseTitleSearchResults(payload)).toEqual([{ remoteIssueId: '1', title: 'Valid' }]);
-  });
-
-  it('returns an empty array for a completely malformed payload', () => {
-    expect(parseTitleSearchResults(null)).toEqual([]);
-    expect(parseTitleSearchResults(undefined)).toEqual([]);
-    expect(parseTitleSearchResults('garbage')).toEqual([]);
-  });
-});
-
-describe('parseIssueByIdResult', () => {
-  it('parses a well-formed single work-package payload', () => {
-    const result = parseIssueByIdResult({ id: 42, subject: 'Some Issue' }, 200);
-    expect(result).toEqual({ remoteIssueId: '42', title: 'Some Issue' });
-  });
-
-  it('returns null for a 404 status instead of throwing', () => {
-    expect(parseIssueByIdResult({ error: 'not found' }, 404)).toBeNull();
-  });
-
-  it('returns null for a malformed payload regardless of status', () => {
-    expect(parseIssueByIdResult(null, 200)).toBeNull();
-    expect(parseIssueByIdResult({ subject: 'No id' }, 200)).toBeNull();
-    expect(parseIssueByIdResult({ id: 42 }, 200)).toBeNull();
-  });
-
-  it('returns a result regardless of the work package status field', () => {
-    const closed = parseIssueByIdResult(
-      { id: 7, subject: 'Closed issue', status: { name: 'Closed' } },
-      200,
-    );
-    expect(closed).toEqual({ remoteIssueId: '7', title: 'Closed issue' });
-  });
-});
-
-describe('buildTimeEntryActivitiesRequest', () => {
-  it('builds the project-scoped time-entry form POST request keyed by the work package', () => {
-    const request = buildTimeEntryActivitiesRequest('https://op.example.com/', '42');
-    expect(request.url).toBe('https://op.example.com/api/v3/time_entries/form');
-    expect(request.method).toBe('POST');
-    expect(request.body).toEqual({
-      _links: { workPackage: { href: '/api/v3/work_packages/42' } },
-    });
-  });
-
-  it('URL-encodes the work-package id in the href', () => {
-    const request = buildTimeEntryActivitiesRequest('https://op.example.com', 'a b');
-    expect(request.body).toEqual({
-      _links: { workPackage: { href: '/api/v3/work_packages/a%20b' } },
-    });
-  });
-});
-
-describe('parseTimeEntryActivitiesResults', () => {
-  it('parses the form schema activity field allowed values', () => {
-    const payload = {
-      _embedded: {
-        schema: {
-          activity: {
+describe('OpenProjectAdapter', () => {
+  it('follows time-log pagination across pages until nextPageUrl is absent', async () => {
+    let calls = 0;
+    const transport = fakeTransport((request) => {
+      calls += 1;
+      if (!request.url.includes('offset=2')) {
+        return {
+          status: 200,
+          payload: {
             _embedded: {
-              allowedValues: [
-                { id: 1, name: 'Development' },
-                { id: 2, name: 'Management' },
+              elements: [
+                {
+                  id: 1,
+                  spentOn: '2026-03-15',
+                  hours: 'PT1H',
+                  _links: { entity: { href: '/api/v3/work_packages/42' } },
+                },
               ],
             },
+            _links: { next: { href: 'https://op.example.com/api/v3/time_entries?offset=2' } },
+          },
+        };
+      }
+      return {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 2,
+                spentOn: '2026-03-15',
+                hours: 'PT30M',
+                _links: { entity: { href: '/api/v3/work_packages/42' } },
+              },
+            ],
           },
         },
+      };
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const logs = await adapter.fetchTimeLogs({ spentOn: '2026-03-15', workPackageIds: ['42'] });
+
+    expect(calls).toBe(2);
+    expect(logs.map((log) => log.remoteLogId)).toEqual(['1', '2']);
+  });
+
+  it('treats a 403 activities response as empty rather than a hard failure', async () => {
+    const transport = fakeTransport(() => ({ status: 403, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', 'secret');
+
+    const options = await adapter.getActivityOptions('42');
+
+    expect(options).toEqual([]);
+  });
+
+  it('resolves a 404 exact-id lookup to null rather than throwing', async () => {
+    const transport = fakeTransport(() => ({ status: 404, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const result = await adapter.getIssueById('999');
+
+    expect(result).toBeNull();
+  });
+
+  it('maps a rejected credential to a distinct auth-rejected messageKey', async () => {
+    const transport = fakeTransport(() => ({ status: 401, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', 'bad-secret');
+
+    await expect(adapter.searchIssues('anything')).rejects.toMatchObject({
+      messageKey: 'error.remoteServerModeAuthRejected',
+    });
+  });
+
+  it('maps a generic upstream failure to the operation-specific messageKey', async () => {
+    const transport = fakeTransport(() => ({ status: 500, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    await expect(adapter.searchIssues('anything')).rejects.toMatchObject({
+      messageKey: 'error.remoteIssueSearchFailed',
+    });
+  });
+
+  it('maps a connection failure with no status to the connection-failed messageKey', async () => {
+    const transport: Transport = {
+      async execute(): Promise<RemoteResponse> {
+        throw new Error('ECONNREFUSED');
       },
     };
-    expect(parseTimeEntryActivitiesResults(payload)).toEqual([
-      { id: '1', name: 'Development' },
-      { id: '2', name: 'Management' },
-    ]);
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    await expect(adapter.getCurrentAccount()).rejects.toBeInstanceOf(RemoteAdapterError);
+    await expect(adapter.getCurrentAccount()).rejects.toMatchObject({
+      messageKey: 'error.remoteServerModeConnectionFailed',
+    });
   });
 
-  it('skips malformed allowed-value elements rather than throwing', () => {
-    const payload = {
-      _embedded: {
-        schema: {
-          activity: {
-            _embedded: {
-              allowedValues: [{ id: 1, name: 'Valid' }, { id: 2 }, { name: 'No id' }, null],
-            },
-          },
-        },
-      },
-    };
-    expect(parseTimeEntryActivitiesResults(payload)).toEqual([{ id: '1', name: 'Valid' }]);
-  });
+  it('creates a time entry and returns the remote log id', async () => {
+    const transport = fakeTransport(() => ({ status: 201, payload: { id: 99 } }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', 'secret');
 
-  it('returns an empty array when allowedValues is missing or not an array', () => {
-    expect(parseTimeEntryActivitiesResults({})).toEqual([]);
-    expect(parseTimeEntryActivitiesResults({ _embedded: {} })).toEqual([]);
-    expect(parseTimeEntryActivitiesResults({ _embedded: { schema: {} } })).toEqual([]);
-    expect(parseTimeEntryActivitiesResults({ _embedded: { schema: { activity: {} } } })).toEqual(
-      [],
-    );
-    expect(
-      parseTimeEntryActivitiesResults({
-        _embedded: { schema: { activity: { _embedded: { allowedValues: 'nope' } } } },
-      }),
-    ).toEqual([]);
-  });
+    const result = await adapter.createTimeEntry({
+      remoteIssueId: '42',
+      spentOn: '2026-03-15',
+      durationSeconds: 900,
+      activityId: '5',
+    });
 
-  it('returns an empty array for a completely malformed payload', () => {
-    expect(parseTimeEntryActivitiesResults(null)).toEqual([]);
-    expect(parseTimeEntryActivitiesResults(undefined)).toEqual([]);
+    expect(result).toEqual({ remoteLogId: '99' });
   });
 });

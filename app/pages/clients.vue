@@ -13,11 +13,7 @@ const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
 
 const resolver = zodResolver(createClientSchema);
-// executionMode currently only supports 'client' and is set automatically on save,
-// so it is not part of the on-screen form and is omitted from its resolver.
-const remoteConfigResolver = zodResolver(
-  createRemoteSystemConfigSchema.omit({ executionMode: true }),
-);
+const remoteConfigResolver = zodResolver(createRemoteSystemConfigSchema);
 const { get: getSecret, set: setSecret, clear: clearSecret } = useRemoteConfigSecret();
 
 const systemTypeOptions = [
@@ -30,9 +26,9 @@ const roundingRuleOptions = [
   { label: t('clients.remoteConfig.rounding30m'), value: 'up_30m' },
   { label: t('clients.remoteConfig.rounding1h'), value: 'up_1h' },
 ];
-const transportModeOptions = [
-  { label: t('clients.remoteConfig.transportModeDirect'), value: 'direct' },
-  { label: t('clients.remoteConfig.transportModeProxied'), value: 'proxied' },
+const executionModeOptions = [
+  { label: t('clients.remoteConfig.executionModeClient'), value: 'client' },
+  { label: t('clients.remoteConfig.executionModeServer'), value: 'server' },
 ];
 
 // --- Data fetching ---
@@ -66,12 +62,12 @@ const remoteConfigLoading = ref(false);
 const remoteConfigInitialValues = ref<{
   systemType: RemoteSystemType;
   baseUrl: string;
-  transportMode: RemoteTransportMode;
+  executionMode: RemoteExecutionMode;
   roundingRule: RemoteRoundingRule;
 }>({
   systemType: 'openproject',
   baseUrl: '',
-  transportMode: 'direct',
+  executionMode: 'client',
   roundingRule: 'none',
 });
 const remoteConfigSecret = ref('');
@@ -105,7 +101,7 @@ async function openEdit(client: ClientDto) {
   remoteConfigInitialValues.value = {
     systemType: 'openproject',
     baseUrl: '',
-    transportMode: 'direct',
+    executionMode: 'client',
     roundingRule: 'none',
   };
   remoteConfigLoading.value = true;
@@ -115,7 +111,7 @@ async function openEdit(client: ClientDto) {
     remoteConfigInitialValues.value = {
       systemType: config.systemType,
       baseUrl: config.baseUrl,
-      transportMode: config.transportMode,
+      executionMode: config.executionMode,
       roundingRule: config.roundingRule,
     };
     remoteConfigSecret.value = getSecret(config.id) ?? '';
@@ -141,8 +137,7 @@ async function onSaveRemoteConfig({ valid, values }: FormSubmitEvent) {
     const payload: CreateRemoteSystemConfigDto = {
       systemType: values.systemType,
       baseUrl: values.baseUrl,
-      executionMode: 'client',
-      transportMode: values.transportMode,
+      executionMode: values.executionMode,
       roundingRule: values.roundingRule,
     };
     const saved = await $csrfFetch<RemoteSystemConfigDto>(
@@ -193,7 +188,7 @@ function onRemoveRemoteConfig() {
         remoteConfigInitialValues.value = {
           systemType: 'openproject',
           baseUrl: '',
-          transportMode: 'direct',
+          executionMode: 'client',
           roundingRule: 'none',
         };
         toast.add({
@@ -440,18 +435,18 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
 
           <FormFieldWrap
             v-slot="{ field }"
-            :label="t('clients.remoteConfig.transportModeLabel')"
-            name="transportMode"
-            input-id="remote-config-transport-mode"
-            error-testid="remote-config-transport-mode-error"
+            :label="t('clients.remoteConfig.executionModeLabel')"
+            name="executionMode"
+            input-id="remote-config-execution-mode"
+            error-testid="remote-config-execution-mode-error"
           >
             <Select
-              id="remote-config-transport-mode"
-              :options="transportModeOptions"
+              id="remote-config-execution-mode"
+              :options="executionModeOptions"
               option-label="label"
               option-value="value"
               :aria-invalid="field?.invalid"
-              data-testid="remote-config-transport-mode-select"
+              data-testid="remote-config-execution-mode-select"
             />
           </FormFieldWrap>
 

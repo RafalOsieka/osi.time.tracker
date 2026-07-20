@@ -107,7 +107,6 @@ const config = {
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
   executionMode: 'client' as const,
-  transportMode: 'direct' as const,
   roundingRule: 'none' as const,
   requiredFieldDefaults: {},
   createdAt: '',

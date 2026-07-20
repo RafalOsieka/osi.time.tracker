@@ -83,9 +83,9 @@
       "systemTypeLabel": "Remote system",
       "baseUrlLabel": "Base URL",
       "baseUrlPlaceholder": "https://issues.example.com",
-      "transportModeLabel": "Search transport",
-      "transportModeDirect": "Direct (browser to tracker)",
-      "transportModeProxied": "Proxied (through this server)",
+      "executionModeLabel": "Execution mode",
+      "executionModeClient": "Client (browser to tracker)",
+      "executionModeServer": "Server (through this server)",
       "roundingRuleLabel": "Rounding rule",
       "roundingNone": "No rounding",
       "rounding15m": "Round up to 15 minutes",
@@ -293,7 +293,6 @@
     "remoteConfigBaseUrlRequired": "Base URL is required.",
     "remoteConfigBaseUrlInvalid": "Base URL must be a valid URL.",
     "remoteConfigExecutionModeRequired": "Execution mode is required.",
-    "remoteConfigTransportModeRequired": "Transport mode is required.",
     "remoteConfigRoundingRuleRequired": "Rounding rule is required.",
     "projectNameRequired": "Name is required.",
     "projectNameTooLong": "Name must be 100 characters or fewer.",
@@ -327,9 +326,9 @@
     "remoteConfigIdRequired": "A valid remote configuration id is required.",
     "remoteIssueIdRequired": "A valid remote issue id is required.",
     "remoteIssueSearchQueryRequired": "Enter a search query.",
-    "remoteProxySecretRequired": "An API key is required to search this tracker.",
-    "remoteProxyAuthRejected": "The tracker rejected the provided API key.",
-    "remoteProxyConnectionFailed": "The tracker could not be reached. Check its address and your network connection.",
+    "remoteServerModeSecretRequired": "An API key is required to search this tracker.",
+    "remoteServerModeAuthRejected": "The tracker rejected the provided API key.",
+    "remoteServerModeConnectionFailed": "The tracker could not be reached. Check its address and your network connection.",
     "remoteSyncDateRequired": "A date is required.",
     "remoteSyncDateInvalid": "Enter a valid date.",
     "remoteActivitiesFetchFailed": "Activities could not be loaded. Please try again.",
@@ -346,7 +345,7 @@
     "remoteAccountFetchFailed": "The remote account could not be resolved. Please try again.",
     "remoteTimeLogsFetchFailed": "Remote time logs could not be loaded. Please try again.",
     "remoteExportCreateFailed": "The remote time log could not be created. Please try again.",
-    "remoteProxyOriginRejected": "The request target is not allowed for this remote configuration."
+    "remoteServerModeOriginRejected": "The request target is not allowed for this remote configuration."
   },
   "errors": {
     "auth": {

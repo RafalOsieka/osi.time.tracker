@@ -103,7 +103,6 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
         systemType: 'openproject',
         baseUrl: OPENPROJECT_BASE_URL,
         executionMode: 'client',
-        transportMode: 'direct',
         roundingRule: 'up_15m',
       }),
     });
