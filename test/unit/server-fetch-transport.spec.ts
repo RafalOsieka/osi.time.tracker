@@ -31,4 +31,16 @@ describe('createServerFetchTransport', () => {
       }),
     ).rejects.toMatchObject({ messageKey: 'error.remoteServerModeOriginRejected' });
   });
+
+  it('rejects foreign origins before applying any caller-supplied headers', async () => {
+    const transport = createServerFetchTransport('https://op.example.com');
+
+    await expect(
+      transport.execute({
+        url: 'https://evil.example.com/api',
+        method: 'GET',
+        headers: { 'X-Redmine-API-Key': 'secret', Authorization: 'Basic abc' },
+      }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteServerModeOriginRejected' });
+  });
 });

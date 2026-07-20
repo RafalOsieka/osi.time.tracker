@@ -242,10 +242,16 @@ describe('TimerTaskGroup', () => {
     expect(link.attributes('title')).toContain('Fix login bug');
   });
 
-  it('renders a disabled pencil button with an explanation for a Redmine configuration', async () => {
+  it('shows an enabled picker for a Redmine configuration', async () => {
     const wrapper = await mount({ remoteConfig: redmineConfig });
-    const disabledButton = wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]');
-    expect(disabledButton.attributes('disabled')).toBeDefined();
-    expect(disabledButton.attributes('title')).toBe('timerView.remoteIssue.editDisabledRedmine');
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').text()).toBe(
+      'timerView.remoteIssue.unlinked',
+    );
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
+      true,
+    );
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]').exists()).toBe(
+      false,
+    );
   });
 });

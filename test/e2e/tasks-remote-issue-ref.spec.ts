@@ -243,20 +243,25 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     expect(body?.data?.messageKey).toBe('error.remoteIssueTaskNoConfig');
   });
 
-  it('rejects linking against a Redmine configuration', async () => {
+  it('links against a Redmine configuration and derives an issues URL', async () => {
     const { jar, token } = await loginAs('ralice@example.com', 'secret');
     const client = await createClient(jar, token, `Redmine Client ${Date.now()}`);
     const project = await createProject(jar, token, `Redmine Project ${Date.now()}`, client.id);
     await putRemoteConfig(jar, token, client.id, redmineConfig);
     const task = await createTaskViaEntry(jar, token, `Redmine Task ${Date.now()}`, project.id);
 
-    const res = await linkRef(jar, token, task.id, { remoteIssueId: '1', cachedTitle: 'x' });
-    expect(res.status).toBe(409);
+    const res = await linkRef(jar, token, task.id, {
+      remoteIssueId: '77',
+      cachedTitle: 'Redmine issue',
+    });
+    expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body?.data?.messageKey).toBe('error.remoteIssueConfigNotOpenProject');
+    expect(body.remoteIssueId).toBe('77');
+    expect(body.cachedTitle).toBe('Redmine issue');
+    expect(body.url).toBe('https://redmine.example.com/issues/77');
 
     const rows = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, task.id));
-    expect(rows).toHaveLength(0);
+    expect(rows).toHaveLength(1);
   });
 
   it('foreign/unknown task ids → 404 for both link and unlink', async () => {

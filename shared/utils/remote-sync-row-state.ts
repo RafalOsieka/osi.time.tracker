@@ -1,7 +1,13 @@
 import type { RemoteSyncRowState, RemoteSyncRowStateInput } from '../types/remote-sync-day';
+import type { RemoteSystemType } from '../types/remote-system-config';
 
-/** System types with an implemented adapter (only OpenProject, for now). */
-const IMPLEMENTED_SYSTEM_TYPES = new Set(['openproject']);
+/** System types with a registered adapter. */
+export const IMPLEMENTED_SYSTEM_TYPES = new Set<RemoteSystemType>(['openproject', 'redmine']);
+
+/** True when `systemType` has a registered remote adapter. */
+export function isImplementedRemoteSystemType(systemType: string): systemType is RemoteSystemType {
+  return IMPLEMENTED_SYSTEM_TYPES.has(systemType as RemoteSystemType);
+}
 
 /**
  * Pure, precedence-ordered mapping from a Task's resolvable Project/Client

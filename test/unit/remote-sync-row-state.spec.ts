@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { deriveRemoteSyncRowState } from '../../shared/utils/remote-sync-row-state';
+import {
+  deriveRemoteSyncRowState,
+  isImplementedRemoteSystemType,
+} from '../../shared/utils/remote-sync-row-state';
+
+describe('isImplementedRemoteSystemType', () => {
+  it('accepts openproject and redmine', () => {
+    expect(isImplementedRemoteSystemType('openproject')).toBe(true);
+    expect(isImplementedRemoteSystemType('redmine')).toBe(true);
+  });
+
+  it('rejects unknown system types', () => {
+    expect(isImplementedRemoteSystemType('jira')).toBe(false);
+  });
+});
 
 describe('deriveRemoteSyncRowState', () => {
   it('returns no_client when the Task has no Project', () => {
@@ -35,7 +49,7 @@ describe('deriveRemoteSyncRowState', () => {
     ).toBe('no_config');
   });
 
-  it('returns system_not_implemented for an unsupported system type', () => {
+  it('returns unlinked for a Redmine configuration without an issue ref', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
@@ -43,7 +57,7 @@ describe('deriveRemoteSyncRowState', () => {
         config: { systemType: 'redmine' },
         hasIssueRef: false,
       }),
-    ).toBe('system_not_implemented');
+    ).toBe('unlinked');
   });
 
   it('returns unlinked when the configuration is usable but there is no issue ref', () => {

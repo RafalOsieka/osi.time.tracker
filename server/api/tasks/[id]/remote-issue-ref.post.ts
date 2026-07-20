@@ -56,13 +56,6 @@ export default defineEventHandler(async (event): Promise<RemoteIssueRefDto> => {
     });
   }
 
-  if (config.systemType !== 'openproject') {
-    throw createError({
-      statusCode: 409,
-      data: { messageKey: 'error.remoteIssueConfigNotOpenProject' } satisfies ApiMessage,
-    });
-  }
-
   await upsertRemoteIssueRef(
     user.id,
     taskId!,

@@ -3,7 +3,10 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import { applyRoundingRule } from '~~/shared/utils/rounding';
-import { deriveRemoteSyncRowState } from '~~/shared/utils/remote-sync-row-state';
+import {
+  deriveRemoteSyncRowState,
+  isImplementedRemoteSystemType,
+} from '~~/shared/utils/remote-sync-row-state';
 import type {
   RemoteSyncConfigSurfaceDto,
   RemoteSyncDayDto,
@@ -398,7 +401,9 @@ watch(
     >();
     for (const row of list) {
       const issueId = issueRefFor(row)?.remoteIssueId;
-      if (!row.config || !issueId || row.config.systemType !== 'openproject') continue;
+      if (!row.config || !issueId || !isImplementedRemoteSystemType(row.config.systemType)) {
+        continue;
+      }
       const bucket = byConfig.get(row.config.id) ?? {
         config: row.config,
         issueIds: new Set<string>(),
@@ -540,6 +545,7 @@ async function runExport(rowsToExport: RemoteSyncDayRowDto[]) {
         messageKey: 'remoteSync.outcomeSuccess',
         messageParams: { remoteLogId: finalized.remoteLogId },
       };
+      await retryRemoteLogs(row);
     } catch {
       nextOutcomes[row.taskId] = {
         taskId: row.taskId,

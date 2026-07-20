@@ -1,43 +1,4 @@
-# remote-issue-linking Specification
-
-## Purpose
-TBD - created by archiving change remote-issue-linking. Update Purpose after archive.
-## Requirements
-### Requirement: REQ-TTR-106 Search OpenProject issues by configured transport
-
-For an owned Task whose Project's Client has an active OpenProject configuration, the system SHALL search OpenProject work packages using the execution mode selected by the configuration's `executionMode`. When `executionMode` is `client`, the browser SHALL query the configured OpenProject origin directly using the browser-held credential, and the credential SHALL NOT be transmitted to or persisted by the OSI server. When `executionMode` is `server`, the browser SHALL send the search and the per-request credential to the OSI server, which SHALL forward the request to the tracker and return the result; the OSI server SHALL NOT persist the credential. In both execution modes the user SHALL explicitly choose title-phrase or issue-ID search, enter a query, and submit it. Title search SHALL require at least three trimmed characters, match issue subjects, and return a fixed bounded result set. Issue-ID search SHALL require a non-empty valid OpenProject work-package ID and perform an exact lookup without applying the title minimum length. Both modes SHALL include open and closed issues, return the same adapter-neutral issue shape containing remote issue ID and title, and SHALL behave identically with respect to provider quirks and error classification.
-
-#### Scenario: Client execution-mode title search returns matching issues
-- **WHEN** the user selects title search, enters at least three trimmed characters, and submits the search for an eligible Task under a `client` configuration
-- **THEN** the browser SHALL query the configured OpenProject origin directly and show a bounded set of matching work packages regardless of status
-
-#### Scenario: Server execution-mode title search returns matching issues
-- **WHEN** the user submits a valid title search for an eligible Task under a `server` configuration
-- **THEN** the browser SHALL send the search to the OSI server, which forwards it to the tracker, and the picker SHALL show a bounded set of matching work packages regardless of status
-
-#### Scenario: Exact issue-ID search returns an issue
-- **WHEN** the user selects issue-ID search, enters a valid work-package ID, and submits the search under either execution mode
-- **THEN** the system SHALL retrieve that exact OpenProject work package via the configured execution mode and SHALL show it as a selectable result regardless of status
-
-#### Scenario: Invalid search input does not call the tracker
-- **WHEN** the user submits a title shorter than three trimmed characters or an empty or invalid issue ID
-- **THEN** the picker SHALL show a translated validation message and SHALL NOT send a remote request in either execution mode
-
-#### Scenario: New search supersedes an older response
-- **WHEN** an earlier remote request finishes after a newer search has been submitted
-- **THEN** the system SHALL ignore or cancel the stale response and SHALL display only results for the latest query
-
-#### Scenario: Client execution-mode credential remains browser-only
-- **WHEN** the browser searches OpenProject under a `client` configuration
-- **THEN** the credential SHALL be sent only to the configured OpenProject origin and SHALL NOT appear in any OSI API request, response, or persisted record
-
-#### Scenario: Server execution-mode credential is forwarded but not persisted
-- **WHEN** the browser searches OpenProject under a `server` configuration
-- **THEN** the credential SHALL be sent to the OSI server only for immediate upstream forwarding and SHALL NOT be persisted, logged, or returned by the server
-
-#### Scenario: Remote search fails
-- **WHEN** OpenProject rejects the credential, CORS blocks a client-mode request, or a client- or server-mode request otherwise fails
-- **THEN** the picker SHALL expose a translated accessible error state without changing the Task's existing reference
+## MODIFIED Requirements
 
 ### Requirement: REQ-TTR-107 Persist one remote issue reference per Task
 The system SHALL store at most one remote issue reference for a Task in a separate one-to-one record containing the owning user, Task, remote-system configuration provenance, remote issue ID as text, cached title, and timestamps. It SHALL NOT store a remote issue URL. For an active matching configuration, the system SHALL derive the issue URL from its normalized base URL and remote issue ID using the URL pattern of the configuration's `systemType` (e.g. OpenProject work-package URLs, Redmine issue URLs), resolved through a per-provider abstraction rather than conditional branching.
@@ -57,17 +18,6 @@ The system SHALL store at most one remote issue reference for a Task in a separa
 #### Scenario: Reference has no usable configuration
 - **WHEN** the reference's configuration is not active or available
 - **THEN** the system SHALL return its cached ID and title without a generated URL or remote-search capability
-
-### Requirement: REQ-TTR-108 Unlink a remote issue locally
-An authenticated user SHALL be able to unlink the remote issue reference from their own Task. Unlinking SHALL delete only the local reference and SHALL NOT call, update, or delete any remote issue.
-
-#### Scenario: Unlink an existing reference
-- **WHEN** the user unlinks their Task
-- **THEN** the system SHALL remove the local reference and leave the remote tracker unchanged
-
-#### Scenario: Unlink an already unlinked Task
-- **WHEN** the user requests unlinking for their Task with no reference
-- **THEN** the operation SHALL succeed idempotently and the Task SHALL remain unlinked
 
 ### Requirement: REQ-TTR-109 Remote issue linking is user-scoped and validated
 All local link and unlink endpoints SHALL require authentication, enforce CSRF protection for mutations, validate request bodies through shared boundary schemas, and scope Task lookup to the authenticated user. Linking SHALL derive the Client and active configuration from the owned Task's Project and SHALL reject project-less Tasks, missing configurations, foreign Tasks, and unknown Tasks without trusting client-supplied ownership or configuration identifiers. Any active configuration whose `systemType` has a registered adapter (OpenProject, Redmine) SHALL be eligible for linking.
@@ -118,4 +68,3 @@ For each Task whose Project and Client resolve to an active remote-system config
 #### Scenario: Link inline from the Remote Sync page
 - **WHEN** the user activates the inline link action on an unlinked Remote Sync row whose configuration is usable
 - **THEN** the same picker Popover SHALL open, and a successful selection SHALL persist the reference and flip that row to the manageable state in place
-

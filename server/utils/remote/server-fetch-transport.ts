@@ -4,22 +4,15 @@ import type {
   Transport,
 } from '../../../shared/types/remote-adapter';
 import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
-import { normalizeBaseUrl } from '../../../shared/remote/openproject/utils';
-
-/**
- * Builds the OpenProject Basic-auth token: username `apikey`, password the
- * per-request forwarded secret, per OpenProject's REST API v3 convention.
- */
-function encodeBasicAuth(secret: string): string {
-  return Buffer.from(`apikey:${secret}`, 'utf-8').toString('base64');
-}
+import { normalizeBaseUrl } from '../../../shared/utils/normalize-base-url';
 
 /**
  * `server` execution-mode transport (L4): forwards one request to the
  * caller's own configured tracker origin via `$fetch.raw`. Every request URL
  * (including followed pagination links) is checked against `allowedOrigin`;
  * a foreign origin is rejected without contacting it, so the server never
- * acts as an arbitrary-URL proxy.
+ * acts as an arbitrary-URL proxy. Auth headers are supplied by the provider
+ * client on each request.
  */
 export function createServerFetchTransport(baseUrl: string): Transport {
   const allowedOrigin = new URL(normalizeBaseUrl(baseUrl)).origin;
@@ -34,9 +27,7 @@ export function createServerFetchTransport(baseUrl: string): Transport {
           body: request.body as BodyInit | Record<string, unknown> | null | undefined,
           headers: {
             Accept: 'application/json',
-            ...(request.secret
-              ? { Authorization: `Basic ${encodeBasicAuth(request.secret)}` }
-              : {}),
+            ...request.headers,
           },
         });
         return { status: response.status, payload: response._data };

@@ -33,7 +33,9 @@ describe('OpenProjectClient', () => {
     expect(results).toEqual([{ remoteIssueId: '1', title: 'Fix bug' }]);
     const request = transport.requests[0]!;
     expect(request.method).toBe('GET');
-    expect(request.secret).toBe('secret-api-key');
+    expect(request.headers?.Authorization).toBe(
+      `Basic ${Buffer.from('apikey:secret-api-key', 'utf-8').toString('base64')}`,
+    );
     const url = new URL(request.url);
     expect(url.origin + url.pathname).toBe('https://op.example.com/api/v3/work_packages');
     expect(url.searchParams.get('pageSize')).toBe(String(OPENPROJECT_TITLE_SEARCH_MAX_RESULTS));
@@ -169,7 +171,9 @@ describe('OpenProjectClient', () => {
     const request = transport.requests[0]!;
     expect(request.method).toBe('POST');
     expect(request.url).toBe('https://op.example.com/api/v3/time_entries');
-    expect(request.secret).toBe('secret');
+    expect(request.headers?.Authorization).toBe(
+      `Basic ${Buffer.from('apikey:secret', 'utf-8').toString('base64')}`,
+    );
     expect(request.body).toEqual({
       spentOn: '2026-03-15',
       hours: 'PT30M',

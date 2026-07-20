@@ -5,11 +5,13 @@
 // behavior — this plugin performs no work of its own.
 import { applyRoundingRule } from '~~/shared/utils/rounding';
 import { deriveRemoteSyncRowState } from '~~/shared/utils/remote-sync-row-state';
-import { normalizeBaseUrl } from '~~/shared/remote/openproject/utils';
+import { normalizeBaseUrl } from '~~/shared/utils/normalize-base-url';
 import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import { RemoteAdapterError } from '~~/shared/types/remote-adapter';
 import { OpenProjectAdapter } from '~~/shared/remote/openproject/adapter';
 import { OpenProjectClient } from '~~/shared/remote/openproject/client';
+import { RedmineAdapter } from '~~/shared/remote/redmine/adapter';
+import { RedmineClient } from '~~/shared/remote/redmine/client';
 
 export default defineNuxtPlugin(() => {
   if (process.env.NODE_ENV === '__never__') {
@@ -26,5 +28,7 @@ export default defineNuxtPlugin(() => {
     void new RemoteAdapterError('');
     void OpenProjectAdapter;
     void OpenProjectClient;
+    void RedmineAdapter;
+    void RedmineClient;
   }
 });

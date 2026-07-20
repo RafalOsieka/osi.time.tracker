@@ -202,7 +202,6 @@
     "remoteIssue": {
       "unlinked": "(niepołączone)",
       "editLabel": "Połącz ze zdalnym zgłoszeniem",
-      "editDisabledRedmine": "Wyszukiwanie nie jest jeszcze dostępne dla Redmine.",
       "linkedTooltipPrefix": "Połączone z"
     }
   },
@@ -317,7 +316,6 @@
     "remoteIssueIdRequired": "Identyfikator zdalnego zgłoszenia jest wymagany.",
     "remoteIssueTitleRequired": "Tytuł zdalnego zgłoszenia jest wymagany.",
     "remoteIssueTaskNoConfig": "To zadanie nie ma aktywnej konfiguracji systemu zdalnego do połączenia.",
-    "remoteIssueConfigNotOpenProject": "Łączenie jest obsługiwane tylko dla konfiguracji OpenProject.",
     "taskMergeConflictingRemoteIssueRef": "Oba zadania są połączone z różnymi zdalnymi zgłoszeniami, więc nie można ich scalić.",
     "remoteIssueSearchTitleTooShort": "Wprowadź co najmniej 3 znaki, aby wyszukać.",
     "remoteIssueSearchIdInvalid": "Wprowadź prawidłowy identyfikator zgłoszenia.",

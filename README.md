@@ -138,8 +138,30 @@ OSI Time Tracker is designed to be self-hosted via Docker. A multi-stage product
 | `docker-compose.local-prod.yml`  | Build and run the production image against the dev database network.        |
 | `docker-compose.standalone.yml`  | Fully self-contained stack (database, migrator, web app) for daily hosting. |
 | `docker-compose.openproject.yml` | Opt-in local OpenProject instance for remote-integration development.       |
+| `docker-compose.redmine.yml`     | Opt-in local Redmine instance for remote-integration development.           |
 
 Database migrations (`pnpm db:migrate`) must be applied before the app serves traffic. The standalone stack runs the migration step automatically.
+
+### Local Redmine (development only)
+
+Opt-in stack for building and testing the Redmine adapter. **Never use in production.**
+
+```bash
+docker compose -f docker-compose.redmine.yml up -d    # start Redmine + its Postgres
+docker compose -f docker-compose.redmine.yml down     # stop (keeps volumes)
+docker compose -f docker-compose.redmine.yml down -v  # stop and wipe Redmine volumes only
+```
+
+- **URL:** `http://localhost:8091` (override with `REDMINE_PORT`)
+- **Default login:** `admin` / `admin` (forced password change on first login)
+- **First boot:** `REDMINE_LOAD_DEFAULT_DATA=true` seeds roles, issue statuses, workflows, and time-entry activities (Design/Development). Sample projects and issues are not seeded.
+
+One-time setup for adapter work:
+
+1. Log in and complete the forced password change.
+2. Enable the REST web service: **Administration → Settings → API** → **Enable REST web service** → Save.
+3. Create a sample project and a few issues.
+4. Copy an API access key from **My account → API access key** and send it as the `X-Redmine-API-Key` header.
 
 ### VPN internal DNS (proxied remote transport)
 

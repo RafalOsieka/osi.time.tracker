@@ -9,8 +9,11 @@ export interface RemoteRequest {
   method: 'GET' | 'POST';
   /** JSON body for `POST`/form endpoints; unused by `GET` requests. */
   body?: unknown;
-  /** Per-request credential, attached by the transport in exactly one place. */
-  secret?: string | null;
+  /**
+   * Provider-built request headers (e.g. auth). Transports merge these as-is
+   * and never construct provider-specific credentials themselves.
+   */
+  headers?: Record<string, string>;
 }
 
 /** A pure, transport-agnostic HTTP response description. */
