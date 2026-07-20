@@ -128,6 +128,7 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compos
 | `docker-compose.local-prod.yml`   | Build and run the production image against the dev database network.        |
 | `docker-compose.standalone.yml`   | Fully self-contained stack (database, migrator, web app) for daily hosting. |
 | `docker-compose.openproject.yml`  | Opt-in local OpenProject instance for remote-integration development.       |
+| `docker-compose.redmine.yml`      | Opt-in local Redmine instance for remote-integration development.           |
 
 - Production build output lives in `.output/`.
 - Migrations must be applied before serving traffic; the standalone stack runs the migration step automatically.

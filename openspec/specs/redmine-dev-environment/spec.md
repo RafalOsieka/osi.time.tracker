@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Defines requirements for a committed, reproducible local Redmine instance — provided via a dedicated, opt-in Docker Compose file with built-in default data — that developers can start on demand to build and test remote-tracker integration.
+
+## Requirements
 
 ### Requirement: REQ-TTR-406 Opt-in local Redmine compose file
 The project SHALL provide a dedicated `docker-compose.redmine.yml` that runs a
@@ -53,12 +57,14 @@ down does not affect other dev data.
   OpenProject dev volumes are untouched
 
 ### Requirement: REQ-TTR-410 Documented usage and manual setup steps
-The repository SHALL document, in `AGENTS.md`, how to start and stop the local
+The repository SHALL document, in `README.md`, how to start and stop the local
 Redmine instance and the one-time manual steps required for integration work:
 completing the forced admin password change, enabling the REST web service,
 creating a sample project with issues, and obtaining the API access key.
+`AGENTS.md` MAY mention the compose file only (e.g. in the Docker Compose table)
+without extended setup instructions.
 
 #### Scenario: Docs describe bring-up, teardown, and manual steps
-- **WHEN** a developer reads the "Docker Compose Files" section of `AGENTS.md`
+- **WHEN** a developer reads the Deployment section of `README.md`
 - **THEN** they find the start/stop commands and the steps to enable the REST API,
   create sample data, and obtain the API access key

@@ -1,0 +1,73 @@
+# Opt-in local Redmine development environment.
+# Not part of the default stack (`docker compose up -d`).
+# For local development only — never use in production.
+#
+# Start:  docker compose -f docker-compose.redmine.yml up -d
+# Stop:   docker compose -f docker-compose.redmine.yml down
+# Wipe:   docker compose -f docker-compose.redmine.yml down -v
+#
+# Default URL: http://localhost:8091 (override with REDMINE_PORT)
+# Default login: admin / admin (forced password change on first login)
+
+services:
+  redmine-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${REDMINE_DB_USERNAME:-redmine}
+      POSTGRES_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine}
+      POSTGRES_DB: ${REDMINE_DB_DATABASE:-redmine}
+    volumes:
+      - pg-redmine-dev:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U $${POSTGRES_USER:-redmine} -d $${POSTGRES_DB:-redmine}',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redmine:
+    image: redmine:6
+    restart: unless-stopped
+    depends_on:
+      redmine-db:
+        condition: service_healthy
+    environment:
+      REDMINE_DB_POSTGRES: redmine-db
+      REDMINE_DB_DATABASE: ${REDMINE_DB_DATABASE:-redmine}
+      REDMINE_DB_USERNAME: ${REDMINE_DB_USERNAME:-redmine}
+      REDMINE_DB_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine}
+      REDMINE_SECRET_KEY_BASE: ${REDMINE_SECRET_KEY_BASE:-change-me-to-a-random-64-character-development-secret-key-base}
+      # Official image has no built-in default-data flag; our entrypoint wrapper
+      # reads this and runs `rake redmine:load_default_data` on boot.
+      REDMINE_LOAD_DEFAULT_DATA: ${REDMINE_LOAD_DEFAULT_DATA:-true}
+      REDMINE_LANG: ${REDMINE_LANG:-en}
+    ports:
+      - '${REDMINE_PORT:-8091}:3000'
+    volumes:
+      - redmine-files-dev:/usr/src/redmine/files
+    # Wrap the stock entrypoint so first boot seeds roles, statuses, workflows,
+    # and time-entry activities (Design/Development) via load_default_data.
+    entrypoint: ['/bin/bash', '-ec']
+    command:
+      - |
+        if [ "$${REDMINE_LOAD_DEFAULT_DATA:-true}" = "true" ]; then
+          /docker-entrypoint.sh rake db:migrate
+          if ! REDMINE_LANG="$${REDMINE_LANG:-en}" /docker-entrypoint.sh rake redmine:load_default_data; then
+            echo "redmine: default data already present or load skipped; continuing."
+          fi
+        fi
+        exec /docker-entrypoint.sh rails server -b 0.0.0.0
+    healthcheck:
+      test: ['CMD-SHELL', 'bash -c ''exec 3<>/dev/tcp/127.0.0.1/3000''']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 2m
+
+volumes:
+  pg-redmine-dev:
+  redmine-files-dev:

@@ -8,7 +8,7 @@ The second remote-tracker adapter (Redmine) is next on the roadmap, and — exac
 - Enable Redmine's built-in default data on first boot (`REDMINE_LOAD_DEFAULT_DATA=true`) so roles, issue statuses, workflows, and time-entry activities (Design/Development) exist without manual configuration.
 - Map a non-conflicting host port (default `8091`, env-overridable) for plain-HTTP localhost access.
 - Persist Redmine data in dedicated named volumes, isolated from the app's Postgres volumes and from the OpenProject dev volumes.
-- Document usage in `AGENTS.md`: bring-up/tear-down commands plus the required one-time manual steps — admin password change, enabling the REST web service, creating a sample project with issues, and obtaining the API access key.
+- Document usage in `README.md`: bring-up/tear-down commands plus the required one-time manual steps — admin password change, enabling the REST web service, creating a sample project with issues, and obtaining the API access key. `AGENTS.md` only lists the compose file.
 
 ## Capabilities
 
@@ -21,6 +21,6 @@ The second remote-tracker adapter (Redmine) is next on the roadmap, and — exac
 ## Impact
 
 - **New file**: `docker-compose.redmine.yml` (kept separate from `docker-compose.yml`; not part of the default dev stack).
-- **Docs**: `AGENTS.md` (a "Local Redmine" subsection next to "Local OpenProject"); possibly `.env.example` for optional overrides (port, database password).
+- **Docs**: `README.md` (Local Redmine setup); `AGENTS.md` compose-file table row only; possibly `.env.example` for optional overrides (port, database password).
 - **No application code, schema, API, or dependency changes.** No CI changes (developer-invoked, not part of automated tests).
 - **Non-goals**: No Redmine adapter, client, or app API calls — that is the separate `add-redmine-adapter` change. No automated seed script (`rails runner` seeding deferred; default data + documented manual steps suffice for MVP). No changes to the OpenProject dev environment.
