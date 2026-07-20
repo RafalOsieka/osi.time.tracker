@@ -10,6 +10,8 @@ const dollarFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.fn();
 const confirmRequireMock = vi.hoisted(() => vi.fn());
 const createTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ remoteLogId: '9001' }));
+const fetchTimeLogsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const invalidateCachesMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
@@ -22,9 +24,9 @@ vi.mock('primevue/useconfirm', () => ({
 vi.mock('../../app/composables/useRemoteSyncClient', () => ({
   useRemoteSyncClient: () => ({
     resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
-    fetchTimeLogs: vi.fn().mockResolvedValue([]),
+    fetchTimeLogs: fetchTimeLogsMock,
     createTimeEntry: createTimeEntryMock,
-    invalidateCaches: vi.fn(),
+    invalidateCaches: invalidateCachesMock,
   }),
   mapRemoteSyncClientError: (err: unknown, fallback: string) => fallback,
 }));
@@ -184,6 +186,9 @@ describe('RemoteSync page', () => {
     confirmRequireMock.mockReset();
     createTimeEntryMock.mockReset();
     createTimeEntryMock.mockResolvedValue({ remoteLogId: '9001' });
+    fetchTimeLogsMock.mockReset();
+    fetchTimeLogsMock.mockResolvedValue([]);
+    invalidateCachesMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     installFakeLocalStorage();
   });
@@ -435,6 +440,57 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-state-task-5"]').text()).toBe(
       'remoteSync.state.manageable',
     );
+  });
+
+  it('fetches same-day remote logs for a linked Redmine row', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-redmine-logs',
+          taskName: 'Redmine Task',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 3600,
+          config: {
+            ...baseConfig,
+            id: 'config-redmine',
+            systemType: 'redmine',
+            baseUrl: 'https://rm.example.com',
+            executionMode: 'server',
+          },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
+          entries: [entry({ id: 'entry-redmine', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchTimeLogsMock.mockResolvedValue([
+      {
+        remoteLogId: '11',
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 3600,
+        activityId: '9',
+        activityName: 'Development',
+        comment: 'Redmine Task',
+        remoteUserId: '7',
+      },
+    ]);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 9, name: 'Development' }]));
+
+    const wrapper = await mount();
+
+    expect(fetchTimeLogsMock).toHaveBeenCalledWith({
+      spentOn: '2026-03-15',
+      workPackageIds: ['42'],
+    });
+    expect(wrapper.find('[data-testid="remote-sync-remote-logs-task-redmine-logs"]').exists()).toBe(
+      true,
+    );
+    expect(
+      wrapper.find('[data-testid="remote-sync-remote-logs-empty-task-redmine-logs"]').exists(),
+    ).toBe(false);
   });
 
   it('exports with the local task title as the OpenProject comment', async () => {

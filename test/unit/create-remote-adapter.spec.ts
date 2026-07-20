@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapter';
 import { OpenProjectAdapter } from '../../shared/remote/openproject/adapter';
+import { RedmineAdapter } from '../../shared/remote/redmine/adapter';
 import { ServerExecutionAdapter } from '../../app/utils/remote/server-execution-adapter';
 import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
 
@@ -22,12 +23,13 @@ describe('createRemoteAdapter', () => {
     expect(adapter).toBeInstanceOf(OpenProjectAdapter);
   });
 
+  it('selects the Redmine adapter for client execution mode', () => {
+    const adapter = createRemoteAdapter({ ...baseConfig, systemType: 'redmine' }, 'secret');
+    expect(adapter).toBeInstanceOf(RedmineAdapter);
+  });
+
   it('selects the server-execution adapter for server execution mode', () => {
     const adapter = createRemoteAdapter({ ...baseConfig, executionMode: 'server' }, 'secret');
     expect(adapter).toBeInstanceOf(ServerExecutionAdapter);
-  });
-
-  it('rejects an unimplemented system type in client execution mode', () => {
-    expect(() => createRemoteAdapter({ ...baseConfig, systemType: 'redmine' }, 'secret')).toThrow();
   });
 });

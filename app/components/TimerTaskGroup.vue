@@ -150,7 +150,6 @@ const countLabel = computed(() => {
 });
 
 const showRemoteIssueControl = computed(() => !!props.remoteConfig && !!props.group.taskId);
-const isRedmineConfig = computed(() => props.remoteConfig?.systemType === 'redmine');
 const remoteIssueRef = computed(() => props.group.remoteIssueRef);
 const remoteIssueTooltip = computed(() =>
   remoteIssueRef.value
@@ -291,22 +290,11 @@ async function unlinkRemoteIssue() {
         </span>
 
         <RemoteIssuePicker
-          v-if="!isRedmineConfig"
           :config="remoteConfig!"
           :current-ref="remoteIssueRef"
           :data-testid="`timer-group-remote-issue-picker-${group.key}`"
           @link="linkRemoteIssue"
           @unlink="unlinkRemoteIssue"
-        />
-        <Button
-          v-else
-          icon="pi pi-pencil"
-          text
-          rounded
-          disabled
-          :aria-label="t('timerView.remoteIssue.editLabel')"
-          :title="t('timerView.remoteIssue.editDisabledRedmine')"
-          :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
         />
       </template>
 

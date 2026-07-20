@@ -202,7 +202,6 @@
     "remoteIssue": {
       "unlinked": "(unlinked)",
       "editLabel": "Link remote issue",
-      "editDisabledRedmine": "Search is not available for Redmine yet.",
       "linkedTooltipPrefix": "Linked to"
     }
   },
@@ -317,7 +316,6 @@
     "remoteIssueIdRequired": "Remote issue id is required.",
     "remoteIssueTitleRequired": "Remote issue title is required.",
     "remoteIssueTaskNoConfig": "This task has no active remote system configuration to link against.",
-    "remoteIssueConfigNotOpenProject": "Linking is only supported for OpenProject configurations.",
     "taskMergeConflictingRemoteIssueRef": "Both tasks are linked to different remote issues, so they cannot be merged.",
     "remoteIssueSearchTitleTooShort": "Enter at least 3 characters to search.",
     "remoteIssueSearchIdInvalid": "Enter a valid issue id.",

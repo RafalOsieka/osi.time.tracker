@@ -1,19 +1,4 @@
 /**
- * Removes any trailing slash(es) so URL joining never produces a double
- * slash, regardless of how the configured base URL was entered.
- */
-export function normalizeBaseUrl(baseUrl: string): string {
-  return baseUrl.replace(/\/+$/, '');
-}
-
-/**
- * Derives a usable issue URL from a normalized base URL and remote issue id.
- */
-export function deriveIssueUrl(baseUrl: string, remoteIssueId: string): string {
-  return `${normalizeBaseUrl(baseUrl)}/work_packages/${encodeURIComponent(remoteIssueId)}`;
-}
-
-/**
  * Serializes whole seconds to an OpenProject ISO-8601 duration (`PT…H…M…S`).
  * Zero and negative inputs yield `PT0S`.
  */

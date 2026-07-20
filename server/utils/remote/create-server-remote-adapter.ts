@@ -1,4 +1,5 @@
 import { OpenProjectAdapter } from '../../../shared/remote/openproject/adapter';
+import { RedmineAdapter } from '../../../shared/remote/redmine/adapter';
 import type { RemoteTrackerAdapter } from '../../../shared/types/remote-adapter';
 import type { RemoteSystemType } from '../../../shared/types/remote-system-config';
 import { createServerFetchTransport } from './server-fetch-transport';
@@ -21,6 +22,8 @@ export function createServerRemoteAdapter(
         config.baseUrl,
         secret,
       );
+    case 'redmine':
+      return new RedmineAdapter(createServerFetchTransport(config.baseUrl), config.baseUrl, secret);
     default:
       throw { data: { data: { messageKey: 'remoteSync.state.systemNotImplemented' } } };
   }

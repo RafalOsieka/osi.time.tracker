@@ -2,18 +2,32 @@ import type { RemoteFieldOption } from '../../types/remote-field-option';
 import type { RemoteAccount } from '../../types/remote-account';
 import type { RemoteIssueSearchResult } from '../../types/remote-issue-ref';
 import type { Transport } from '../../types/remote-adapter';
-import {
-  hrefId,
-  normalizeBaseUrl,
-  parseOpenProjectDuration,
-  formatOpenProjectDuration,
-} from './utils';
+import { normalizeBaseUrl } from '../../utils/normalize-base-url';
+import { hrefId, parseOpenProjectDuration, formatOpenProjectDuration } from './utils';
 
 /** Fixed upper bound on title-search results, regardless of what the backend returns. */
 export const OPENPROJECT_TITLE_SEARCH_MAX_RESULTS = 25;
 
 /** Fixed upper bound on time-log pages fetched per `fetchTimeLogs` call. */
 export const OPENPROJECT_TIME_LOGS_MAX_PAGES = 50;
+
+/**
+ * Builds the OpenProject Basic-auth token: username `apikey`, password the
+ * secret, per OpenProject's REST API v3 convention.
+ */
+function encodeBasicAuth(secret: string): string {
+  if (typeof btoa === 'function') {
+    return btoa(`apikey:${secret}`);
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node fallback (SSR/test) has no `btoa` global on older runtimes.
+  return (globalThis as any).Buffer.from(`apikey:${secret}`, 'utf-8').toString('base64');
+}
+
+/** Builds the Authorization header map for one request, or `undefined` when no secret. */
+function authHeaders(secret: string | null): Record<string, string> | undefined {
+  if (!secret) return undefined;
+  return { Authorization: `Basic ${encodeBasicAuth(secret)}` };
+}
 
 export interface OpenProjectTimeLogEntry {
   remoteLogId: string;
@@ -109,8 +123,8 @@ export interface OpenProjectCreateTimeEntryInput {
 /**
  * L3: one method roughly equal to one OpenProject REST v3 endpoint. Folds in
  * the request-building/response-parsing logic previously duplicated across
- * `direct`/`proxied` composables and the server proxy, and applies Basic
- * auth (`apikey:<secret>`) in exactly one place. Speaks HTTP status +
+ * `direct`/`proxied` composables and the server proxy, and builds Basic auth
+ * headers (`apikey:<secret>`) in exactly one place. Speaks HTTP status +
  * OpenProject-shaped payloads; quirk interpretation lives in
  * `OpenProjectAdapter`, one layer up.
  */
@@ -132,7 +146,7 @@ export class OpenProjectClient {
     const { status, payload } = await this.transport.execute({
       url: `${this.base()}/api/v3/work_packages?${params.toString()}`,
       method: 'GET',
-      secret,
+      headers: authHeaders(secret),
     });
     return { status, results: parseTitleSearchResults(payload) };
   }
@@ -144,7 +158,7 @@ export class OpenProjectClient {
     const { status, payload } = await this.transport.execute({
       url: `${this.base()}/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}`,
       method: 'GET',
-      secret,
+      headers: authHeaders(secret),
     });
     return { status, result: parseIssueByIdResult(payload, status) };
   }
@@ -156,7 +170,7 @@ export class OpenProjectClient {
     const { status, payload } = await this.transport.execute({
       url: `${this.base()}/api/v3/time_entries/form`,
       method: 'POST',
-      secret,
+      headers: authHeaders(secret),
       body: {
         _links: {
           workPackage: { href: `/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}` },
@@ -172,7 +186,7 @@ export class OpenProjectClient {
     const { status, payload } = await this.transport.execute({
       url: `${this.base()}/api/v3/users/me`,
       method: 'GET',
-      secret,
+      headers: authHeaders(secret),
     });
     return { status, account: parseCurrentAccountResult(payload) };
   }
@@ -182,11 +196,11 @@ export class OpenProjectClient {
     secret: string | null,
   ): Promise<OpenProjectTimeLogsPageResult> {
     const request = input.nextPageUrl
-      ? { url: input.nextPageUrl, method: 'GET' as const, secret }
+      ? { url: input.nextPageUrl, method: 'GET' as const, headers: authHeaders(secret) }
       : {
           url: `${this.base()}/api/v3/time_entries?${this.buildTimeLogsQuery(input).toString()}`,
           method: 'GET' as const,
-          secret,
+          headers: authHeaders(secret),
         };
     const { status, payload } = await this.transport.execute(request);
     const parsed = parseTimeLogsPage(payload);
@@ -200,7 +214,7 @@ export class OpenProjectClient {
     const { status, payload } = await this.transport.execute({
       url: `${this.base()}/api/v3/time_entries`,
       method: 'POST',
-      secret,
+      headers: authHeaders(secret),
       body: {
         spentOn: input.spentOn,
         hours: formatOpenProjectDuration(input.durationSeconds),

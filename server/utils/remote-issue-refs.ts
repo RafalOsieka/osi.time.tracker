@@ -1,8 +1,9 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/index';
 import { tasks, projects, remoteSystemConfigs, remoteIssueRefs } from '../db/schema';
-import { deriveIssueUrl } from '../../shared/remote/openproject/utils';
+import { deriveIssueUrl } from '../../shared/remote/issue-url';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
+import type { RemoteSystemType } from '../../shared/types/remote-system-config';
 
 /**
  * Resolves the active (non-soft-deleted) remote-system configuration
@@ -135,6 +136,7 @@ export async function getRemoteIssueRefsForTasks(
     .select({
       ref: remoteIssueRefs,
       configBaseUrl: remoteSystemConfigs.baseUrl,
+      configSystemType: remoteSystemConfigs.systemType,
       configDeletedAt: remoteSystemConfigs.deletedAt,
     })
     .from(remoteIssueRefs)
@@ -142,10 +144,17 @@ export async function getRemoteIssueRefsForTasks(
     .where(and(eq(remoteIssueRefs.userId, userId), inArray(remoteIssueRefs.taskId, taskIds)));
 
   for (const row of rows) {
-    const isActive = row.configDeletedAt === null && row.configBaseUrl != null;
+    const isActive =
+      row.configDeletedAt === null && row.configBaseUrl != null && row.configSystemType != null;
     result.set(row.ref.taskId, {
       ...toDto(row.ref),
-      url: isActive ? deriveIssueUrl(row.configBaseUrl!, row.ref.remoteIssueId) : undefined,
+      url: isActive
+        ? deriveIssueUrl(
+            row.configSystemType as RemoteSystemType,
+            row.configBaseUrl!,
+            row.ref.remoteIssueId,
+          )
+        : undefined,
     });
   }
 

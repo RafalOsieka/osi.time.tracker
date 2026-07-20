@@ -5,22 +5,11 @@ import type {
 } from '../../../shared/types/remote-adapter';
 
 /**
- * Builds the OpenProject Basic-auth token: username `apikey`, password the
- * browser-held secret, per OpenProject's REST API v3 convention.
- */
-function encodeBasicAuth(secret: string): string {
-  if (typeof btoa === 'function') {
-    return btoa(`apikey:${secret}`);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node fallback (SSR/test) has no `btoa` global on older runtimes.
-  return (globalThis as any).Buffer.from(`apikey:${secret}`, 'utf-8').toString('base64');
-}
-
-/**
  * `client` execution-mode transport (L4): queries the configured tracker
  * origin directly from the browser using the browser-held credential.
  * Never uses `$fetch`/`$csrfFetch`, so the OSI session/CSRF material never
- * leaks to a third-party origin.
+ * leaks to a third-party origin. Auth headers are supplied by the provider
+ * client on each request.
  */
 export const clientFetchTransport: Transport = {
   async execute(request: RemoteRequest): Promise<RemoteResponse> {
@@ -29,7 +18,7 @@ export const clientFetchTransport: Transport = {
       headers: {
         Accept: 'application/json',
         ...(request.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...(request.secret ? { Authorization: `Basic ${encodeBasicAuth(request.secret)}` } : {}),
+        ...request.headers,
       },
       body: request.body !== undefined ? JSON.stringify(request.body) : undefined,
     });
