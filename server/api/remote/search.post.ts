@@ -12,7 +12,7 @@ import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * `server`-execution-mode title-search / exact issue-ID lookup (REQ-TTR-111).
+ * `server`-execution-mode title-search / exact issue-ID lookup (REQ-108).
  * The target base URL is always derived server-side from the authenticated
  * user's owned, stored configuration; only the two known adapter operations
  * are forwarded (no generic pass-through), delegating to the same provider

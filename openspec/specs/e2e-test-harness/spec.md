@@ -3,7 +3,7 @@
 ## Purpose
 Define how the end-to-end (e2e) test harness provisions, isolates, and tears down its runtime so spec files run reliably and in parallel. Each spec file runs against its own PostgreSQL database cloned from a single pre-migrated template, ensuring no cross-file state bleed. The harness boots a per-file Nuxt server (build-once mode by default, dev mode when `NUXT_TEST_DEV` is set), provides unified seeding and environment-availability guards (Docker/browser), bounds parallelism with a worker cap, and guarantees clean teardown of containers and server processes. It also covers the migrator spec running against fresh empty databases and the use of a portable `127.0.0.1` connection host.
 ## Requirements
-### Requirement: REQ-NFR-101 Per-file database isolation
+### Requirement: REQ-052 Per-file database isolation
 Each e2e spec file SHALL run against its own PostgreSQL database, cloned from a single pre-migrated template database, so that files do not share mutable state.
 
 #### Scenario: Spec provisions its own database
@@ -18,7 +18,7 @@ Each e2e spec file SHALL run against its own PostgreSQL database, cloned from a 
 - **WHEN** the template is migrated during global setup
 - **THEN** the migration pool MUST be closed before any clone so `CREATE DATABASE ... TEMPLATE` does not fail with an active-connection error
 
-### Requirement: REQ-NFR-102 Parallel execution with worker cap
+### Requirement: REQ-053 Parallel execution with worker cap
 The e2e project SHALL enable `fileParallelism: true` and SHALL cap the number of concurrently booted servers to a bounded worker count to prevent CPU thrash.
 
 #### Scenario: Files run in parallel
@@ -29,7 +29,7 @@ The e2e project SHALL enable `fileParallelism: true` and SHALL cap the number of
 - **WHEN** more spec files exist than the configured worker cap
 - **THEN** the number of simultaneously running Nuxt servers MUST NOT exceed the cap (e.g. `min(4, cpus/2)`)
 
-### Requirement: REQ-NFR-103 Two-mode server setup
+### Requirement: REQ-054 Two-mode server setup
 The harness SHALL boot a per-file Nuxt server isolated to that file's database, selecting build-once mode by default and dev mode when `NUXT_TEST_DEV` is set.
 
 #### Scenario: CI build-once mode
@@ -44,7 +44,7 @@ The harness SHALL boot a per-file Nuxt server isolated to that file's database, 
 - **WHEN** a server boots from the prebuilt output
 - **THEN** the per-file `DATABASE_URL` and shared `NUXT_SESSION_PASSWORD` MUST be passed via `setup({ env })` so the baked `runtimeConfig` is overridden at runtime
 
-### Requirement: REQ-NFR-104 Unified seeding and guards
+### Requirement: REQ-055 Unified seeding and guards
 The harness SHALL provide a single `seedUsers([...])` backed by one shared scrypt hasher and a single skip convention via `requireDocker()` / `requireBrowser()`.
 
 #### Scenario: Shared seeding
@@ -59,7 +59,7 @@ The harness SHALL provide a single `seedUsers([...])` backed by one shared scryp
 - **WHEN** no browser binary is available
 - **THEN** browser specs (`auth-ui`, `shell`, `i18n-login`) are skipped (not failed) via `requireBrowser()`
 
-### Requirement: REQ-NFR-105 Reliable teardown
+### Requirement: REQ-056 Reliable teardown
 After the run completes, the harness SHALL leave no lingering containers or server processes.
 
 #### Scenario: Container removed
@@ -74,14 +74,14 @@ After the run completes, the harness SHALL leave no lingering containers or serv
 - **WHEN** `prepareTemplate()` runs against a reused container
 - **THEN** leftover `osi_time_tracker_*` databases from previous runs are bulk-cleaned
 
-### Requirement: REQ-NFR-106 Migrator spec on empty database
+### Requirement: REQ-057 Migrator spec on empty database
 The migrator spec (`db.spec`) SHALL provision a fresh empty database (cloned from `template0`) per test rather than the migrated template.
 
 #### Scenario: Empty database per test
 - **WHEN** a `db.spec` test runs
 - **THEN** it provisions an empty database via `provisionEmptyDatabase()` and validates the migrator against it
 
-### Requirement: REQ-NFR-107 Portable connection host
+### Requirement: REQ-058 Portable connection host
 The harness SHALL use `127.0.0.1` rather than `host.docker.internal` for database URLs.
 
 #### Scenario: Portable URL

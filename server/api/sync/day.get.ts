@@ -24,7 +24,7 @@ import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * Returns the authenticated user's day-review aggregate (REQ-TTR-118/120/122):
+ * Returns the authenticated user's day-review aggregate (REQ-115/120/122):
  * one row per Task with entries that day, carrying completed entry details,
  * prior export provenance, the summed unrounded duration, the resolvable
  * Client configuration surface, and the remote issue reference when present,
@@ -222,7 +222,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
     }
     entry.totalSeconds += duration;
 
-    // Only completed entries are selectable for export (REQ-TTR-120).
+    // Only completed entries are selectable for export (REQ-117).
     if (row.stoppedAt) {
       entry.entries.push({
         id: row.entryId,

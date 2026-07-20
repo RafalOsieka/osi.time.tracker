@@ -33,7 +33,7 @@ export interface RemoteIssueSearchResult {
  * Request body accepted by the link endpoint. Only the remote issue id and
  * cached title are accepted from the client; Task ownership and the
  * Project -> Client -> active configuration provenance are derived
- * server-side (REQ-TTR-109), never accepted from the request body.
+ * server-side (REQ-106), never accepted from the request body.
  */
 export const linkRemoteIssueSchema = z.object({
   remoteIssueId: z
@@ -56,7 +56,7 @@ export type LinkRemoteIssueDto = z.infer<typeof linkRemoteIssueSchema>;
 
 /**
  * Request body accepted by the `proxied`-transport search endpoints
- * (REQ-TTR-111). The client identifies only the owned configuration and the
+ * (REQ-108). The client identifies only the owned configuration and the
  * search input; the server derives the target tracker base URL from the
  * authenticated user's owned stored configuration and never accepts a
  * target URL from the client.

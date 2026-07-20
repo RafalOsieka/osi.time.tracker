@@ -114,7 +114,7 @@ export default defineNuxtConfig({
       // Baseline Content-Security-Policy; tighten iteratively post-MVP.
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:'],
-        // Remote-issue-linking (REQ-TTR-106) performs a *browser-side* fetch
+        // Remote-issue-linking (REQ-103) performs a *browser-side* fetch
         // straight to each user's own configured OpenProject/Redmine base
         // URL (never proxied through the OSI server), so the exact origin
         // is not known at build time and cannot be enumerated per-request

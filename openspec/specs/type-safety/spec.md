@@ -5,7 +5,7 @@ Define how shapes exchanged across the client/server boundary are typed, validat
 
 ## Requirements
 
-### Requirement: REQ-NFR-010 Boundary shapes have a single source of truth
+### Requirement: REQ-155 Boundary shapes have a single source of truth
 Every shape exchanged across the client/server boundary SHALL be defined exactly once in a `shared/types/<entity>.ts` module that both the Nuxt app and the Nitro server import. Boundary types SHALL be decoupled from Drizzle table definitions (intentionally authored fields, not DB column mirrors). Inline/anonymous re-declaration of a boundary shape SHALL NOT be used.
 
 #### Scenario: Client consumes the shared contract
@@ -16,7 +16,7 @@ Every shape exchanged across the client/server boundary SHALL be defined exactly
 - **WHEN** a client API handler returns data
 - **THEN** the returned value conforms to the shared boundary type for that entity
 
-### Requirement: REQ-NFR-011 Request bodies are validated and typed from one zod schema
+### Requirement: REQ-156 Request bodies are validated and typed from one zod schema
 Request bodies SHALL be defined as a `zod` schema in the entity's `shared/types` module, and the request type SHALL be derived via `z.infer`. Handlers SHALL parse the incoming body through this schema, which MUST normalize input (e.g. trim strings) and strip unknown keys. Only `zod` SHALL be used; `drizzle-zod` SHALL NOT be introduced by this change.
 
 #### Scenario: Valid body is parsed, normalized, and stripped
@@ -27,14 +27,14 @@ Request bodies SHALL be defined as a `zod` schema in the entity's `shared/types`
 - **WHEN** a body fails schema validation (missing or over-length `name`)
 - **THEN** the handler does not perform the database operation and responds with a validation error
 
-### Requirement: REQ-NFR-012 Response DTOs are plain inferred types
+### Requirement: REQ-157 Response DTOs are plain inferred types
 Response DTOs SHALL be plain TypeScript types (inferred or explicit) and SHALL NOT be validated at runtime, as the server is trusted. Fields that serialize differently over JSON SHALL be typed as their serialized form (e.g. timestamps as `string`, never `Date`).
 
 #### Scenario: Timestamp typed as serialized form
 - **WHEN** the `ClientDto` exposes a creation timestamp
 - **THEN** the field is typed as `string`, matching the JSON the client actually receives
 
-### Requirement: REQ-NFR-013 ZodError maps to the locale-agnostic messageKey contract
+### Requirement: REQ-158 ZodError maps to the locale-agnostic messageKey contract
 Validation failures SHALL be translated into the existing `{ messageKey, params }` server contract via a shared translator (`mapZodError`). Message keys SHALL be authored directly in the schema's Zod messages (via `message` / `required_error` / `invalid_type_error`); the translator SHALL read the first issue, detect a dot-notation message key, and return it together with any extracted parameters (e.g. `min`, `max`, `expected`, `received`, and custom `params`). Issues whose message is not a recognizable message key SHALL fall back to a safe `errors.unexpected` key. Raw Zod (English) messages SHALL NOT be returned to the client.
 
 #### Scenario: Missing name maps to a message key
@@ -49,7 +49,7 @@ Validation failures SHALL be translated into the existing `{ messageKey, params 
 - **WHEN** a validation issue carries a message that is not a dot-notation message key
 - **THEN** the translator returns `{ messageKey: 'errors.unexpected' }`
 
-### Requirement: REQ-NFR-014 Explicit any is a lint error
+### Requirement: REQ-159 Explicit any is a lint error
 The lint configuration SHALL set `@typescript-eslint/no-explicit-any` to `error`, enforced by the existing `pnpm lint` gate. Use of `any` SHALL be permitted only via an explicit `// eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation carrying a justification. The `no-unsafe-*` rule family is out of scope for this change.
 
 #### Scenario: Explicit any fails lint

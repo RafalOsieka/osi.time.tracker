@@ -3,7 +3,7 @@
 ## Purpose
 TBD - created by archiving change remote-sync-page. Update Purpose after archive.
 ## Requirements
-### Requirement: REQ-TTR-114 Per-day Remote Sync page lists all of the day's tasks
+### Requirement: REQ-111 Per-day Remote Sync page lists all of the day's tasks
 
 The application SHALL provide a Remote Sync page for a specific day, reachable from each day header
 in the Timer view. The page SHALL list **all** Tasks that have time entries on that day, plus a
@@ -30,7 +30,7 @@ actions only for eligible linked tasks.
 - **THEN** the global guard SHALL redirect to `/login` with the page as the redirect target before
   any protected markup is sent
 
-### Requirement: REQ-TTR-115 Explicit per-row state with stated reason
+### Requirement: REQ-112 Explicit per-row state with stated reason
 
 Each task row on the Remote Sync page SHALL expose exactly one effective state: **read-only with a
 translated stated reason** when the Task has no Project or Client, the Client has no
@@ -66,7 +66,7 @@ remote-log context.
 - **THEN** its row SHALL be manageable and expose entry selection, duration, activity, and export
   controls
 
-### Requirement: REQ-TTR-116 Original and editable rounded durations
+### Requirement: REQ-113 Original and editable rounded durations
 
 Each task row SHALL display the **original duration**, calculated from all of that Task's entries for
 the day. Each manageable row SHALL additionally display the selected-entry total and a separately
@@ -101,7 +101,7 @@ until a successful export is finalized.
 - **WHEN** the user enters a value that cannot be normalized to a valid duration
 - **THEN** the field SHALL revert to the previous value without emitting a change
 
-### Requirement: REQ-TTR-117 Required remote fields with fetched options and pre-fill
+### Requirement: REQ-114 Required remote fields with fetched options and pre-fill
 
 For each otherwise manageable row, the Remote Sync page SHALL fetch project-scoped OpenProject
 time-entry activities once per resolved scope and expose them in a labeled select. The select SHALL
@@ -141,7 +141,7 @@ rows.
 - **THEN** affected rows SHALL show an accessible retry action and SHALL NOT be classified as having
   no activities
 
-### Requirement: REQ-TTR-118 Day-review data is aggregated server-side and user-scoped
+### Requirement: REQ-115 Day-review data is aggregated server-side and user-scoped
 
 The application SHALL provide an authenticated read endpoint that returns the day-review aggregate for a given date: per task with entries that day — task identity and name, project and client names, the summed original duration, the Client configuration surface needed for state derivation (system type, rounding rule, required-field defaults, transport mode, base URL, configuration id), and the remote issue reference (remote issue ID and cached title) when present — plus the untitled-entries total. All data SHALL be scoped to the authenticated user; durations SHALL be returned unrounded; timestamps SHALL be ISO strings; no credential material SHALL ever be included. Invalid dates SHALL be rejected with a `{ messageKey, params }` validation error.
 
@@ -161,7 +161,7 @@ The application SHALL provide an authenticated read endpoint that returns the da
 - **WHEN** the day review is returned for clients with remote configurations
 - **THEN** the payload SHALL include no API secret or credential material
 
-### Requirement: REQ-TTR-119 Remote Sync page accessibility and i18n
+### Requirement: REQ-116 Remote Sync page accessibility and i18n
 
 The Remote Sync page SHALL meet WCAG 2.1 AA: row states and reasons SHALL be conveyed in text (not color alone), duration and field controls SHALL have accessible labels, asynchronous option loading and errors SHALL be announced via live regions, and all interactions SHALL be keyboard operable. All user-facing strings SHALL come from the i18n catalogs with `en`/`pl` parity, and stable `data-testid` hooks SHALL be provided for rows, states, durations, and field controls.
 
@@ -173,7 +173,7 @@ The Remote Sync page SHALL meet WCAG 2.1 AA: row states and reasons SHALL be con
 - **WHEN** a keyboard user tabs through the page
 - **THEN** the day navigation, rounded-duration fields, activity selects, and inline link actions SHALL all be reachable and operable without a pointer
 
-### Requirement: REQ-TTR-120 Users select entries for export without local locking
+### Requirement: REQ-117 Users select entries for export without local locking
 
 The application SHALL list every completed local entry beneath its task with an individually
 operable selection control. Eligible entries SHALL be selected by default. A successful export SHALL
@@ -192,7 +192,7 @@ SHALL NOT lock its Task.
 - **WHEN** an export has been finalized successfully
 - **THEN** normal authorized entry and task mutations SHALL remain available
 
-### Requirement: REQ-TTR-121 Current-account remote logs provide same-day context
+### Requirement: REQ-118 Current-account remote logs provide same-day context
 
 The browser-orchestrated OpenProject client SHALL resolve the authenticated remote account and fetch
 that account's time logs for the selected local date and linked issues, following pagination. The
@@ -217,7 +217,7 @@ logs SHALL NOT alter selection, infer local-entry provenance, or block export.
 - **THEN** the row SHALL show an accessible retryable context error without misrepresenting that no
   logs exist or blocking an otherwise valid export
 
-### Requirement: REQ-TTR-122 Successful exports persist non-locking provenance and warn on repeats
+### Requirement: REQ-119 Successful exports persist non-locking provenance and warn on repeats
 
 For every remote log successfully created and locally finalized, the application SHALL persist a
 user-scoped append-only export record containing task, local date, remote issue and log IDs, exact
@@ -245,7 +245,7 @@ creation.
   date, or assigned to another task
 - **THEN** the endpoint SHALL reject the request without persisting partial provenance
 
-### Requirement: REQ-TTR-123 Export reports per-task outcomes without claiming strict idempotency
+### Requirement: REQ-120 Export reports per-task outcomes without claiming strict idempotency
 
 The page SHALL create at most one remote log for each included task in one batch action and SHALL
 display a success, failure, or uncertain-finalization outcome per task without hiding successful
@@ -271,7 +271,7 @@ that retry can duplicate the remote log.
 - **WHEN** the same finalized export operation is retried with its known remote log ID
 - **THEN** the application SHALL return the stored result without creating another remote log
 
-### Requirement: REQ-TTR-124 Browser orchestration supports direct and proxied client transport
+### Requirement: REQ-121 Browser orchestration supports direct and proxied client transport
 
 The browser SHALL orchestrate remote reads, one remote creation per included task, and local finalization regardless of execution mode. The remote client SHALL support sending remote requests directly from the browser (`client` execution mode) or through authenticated Nitro endpoints (`server` execution mode) selected by the remote-system configuration's `executionMode`. Both modes SHALL provide equivalent account resolution, activities, paginated time logs, time-entry creation, error classification, retry behavior, deduplication, per-task outcome isolation, and identical provider-quirk handling by delegating to the same provider adapter. In `server` execution mode Nitro SHALL authorize the local user, restrict requests to that user's configured remote origin, and SHALL NOT persist or log forwarded remote credentials.
 

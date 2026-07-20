@@ -22,7 +22,7 @@ const DeletePageStub = {
   template: '<button data-testid="delete-button" @click="onDelete">Delete</button>',
 };
 
-describe('REQ-NFR-032: single app-level confirm dialog', () => {
+describe('REQ-129: single app-level confirm dialog', () => {
   it('mounts exactly one ConfirmDialog in the default layout', async () => {
     const wrapper = await mountSuspended(DefaultLayout, {
       global: {

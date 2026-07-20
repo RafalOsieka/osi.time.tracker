@@ -3,7 +3,7 @@
 ## Purpose
 Define the application's page shell, layouts, and routing behavior. It activates Nuxt's file-based router with a minimal `app.vue` shell, a public `/login` page on the `auth` layout, and an authenticated home page on the `default` layout (with a logout control). A single private-by-default global middleware protects every route — pages are private unless they declare `public: true` — resolving server-side using the session cookie without browser-only APIs. This guarantees no login flash, safe handling of the `?redirect` target (rejecting open-redirect attempts), and preserved accessible route-change announcements.
 ## Requirements
-### Requirement: REQ-AUTH-006 File-based routing shell
+### Requirement: REQ-059 File-based routing shell
 The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL render only `<NuxtRouteAnnouncer />` and `<NuxtLayout><NuxtPage /></NuxtLayout>`, delegating all page content to files under `app/pages/`.
 
 #### Scenario: Router renders the matched page
@@ -14,7 +14,7 @@ The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL ren
 - **WHEN** a route change completes
 - **THEN** `<NuxtRouteAnnouncer />` SHALL announce the new route for assistive technologies
 
-### Requirement: REQ-AUTH-007 Public login page on the auth layout
+### Requirement: REQ-060 Public login page on the auth layout
 The application SHALL expose a `/login` page that renders the login form within the `auth` layout and is publicly accessible (declares `definePageMeta({ layout: 'auth', public: true })`). The page SHALL preserve the `login-form`, `username`, `password`, `login-button`, and `login-error` test hooks.
 
 #### Scenario: Unauthenticated visitor can view login
@@ -29,7 +29,7 @@ The application SHALL expose a `/login` page that renders the login form within 
 - **WHEN** login fails
 - **THEN** an error message SHALL be shown via the `login-error` hook and the user SHALL remain on `/login`
 
-### Requirement: REQ-AUTH-008 Authenticated home page on the default layout
+### Requirement: REQ-061 Authenticated home page on the default layout
 The application SHALL expose a `/` page that renders an authenticated welcome placeholder (greeting plus the signed-in user) within the `default` layout, preserving the `auth-status` test hook.
 
 #### Scenario: Authenticated user sees the welcome placeholder
@@ -40,7 +40,7 @@ The application SHALL expose a `/` page that renders an authenticated welcome pl
 - **WHEN** the `default` layout is rendered
 - **THEN** a logout control (`logout-button`) SHALL be present in the header, and triggering it SHALL clear the session and navigate to `/login`
 
-### Requirement: REQ-AUTH-009 Private-by-default navigation guard
+### Requirement: REQ-062 Private-by-default navigation guard
 A single global middleware SHALL protect every route. A page is private unless it declares `public: true`. The guard SHALL run during SSR using the session cookie and SHALL NOT use browser-only APIs.
 
 #### Scenario: Unauthenticated access to a private route redirects to login
@@ -59,7 +59,7 @@ A single global middleware SHALL protect every route. A page is private unless i
 - **WHEN** the `?redirect` value is absolute or protocol-relative (e.g. `//evil.com`) rather than a same-origin path starting with a single `/`
 - **THEN** the guard SHALL ignore it and use `/` instead
 
-### Requirement: REQ-NFR-015 No login flash and accessible routing
+### Requirement: REQ-063 No login flash and accessible routing
 Route protection SHALL resolve server-side so that protected markup is never painted for unauthenticated users (no login flash). The guard MUST NOT reference `window`, `localStorage`, or other browser-only globals, and route-change announcements SHALL be preserved.
 
 #### Scenario: No protected markup before redirect

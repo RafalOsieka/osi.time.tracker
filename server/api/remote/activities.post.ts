@@ -13,7 +13,7 @@ import type { ApiMessage } from '../../types/api-message';
 
 /**
  * `server`-execution-mode time-entry activities options request
- * (REQ-TTR-117), mirroring `/api/remote/search`: the target base URL is
+ * (REQ-114), mirroring `/api/remote/search`: the target base URL is
  * always derived server-side from the authenticated user's owned, stored
  * configuration.
  */

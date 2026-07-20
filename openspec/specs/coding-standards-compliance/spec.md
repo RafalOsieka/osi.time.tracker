@@ -5,7 +5,7 @@ Define concrete, checkable conformance rules derived from `CODING_STANDARDS.md` 
 
 ## Requirements
 
-### Requirement: REQ-NFR-020 Vue forms use the PrimeVue Form pattern
+### Requirement: REQ-035 Vue forms use the PrimeVue Form pattern
 Vue components that render a submittable form SHALL use the PrimeVue `Form` component together with `FormFieldWrap` for labeled fields, matching the pattern already established by `app/pages/settings.vue` and `app/components/RemoteIssuePicker.vue`. Native `<form>` and `<label>` elements SHALL NOT be used for this purpose.
 
 #### Scenario: Dialog form uses PrimeVue Form
@@ -16,14 +16,14 @@ Vue components that render a submittable form SHALL use the PrimeVue `Form` comp
 - **WHEN** the form is converted to the PrimeVue pattern
 - **THEN** the submit handler still fires on submission, all previously present `data-testid` attributes remain on the same logical elements, and no new validation behavior is introduced
 
-### Requirement: REQ-NFR-021 Lint-disable exceptions carry a justification
+### Requirement: REQ-036 Lint-disable exceptions carry a justification
 Every `// eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation SHALL be followed on the same line by a trailing comment (` -- <reason>`) explaining why the exception is unavoidable.
 
 #### Scenario: Justification comment is present
 - **WHEN** `test/e2e/support/seed.ts` declares `sharedHasher` with an `eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation
 - **THEN** the annotation includes a trailing `-- <reason>` comment explaining the exception
 
-### Requirement: REQ-NFR-022 Bug fixes are test-first
+### Requirement: REQ-037 Bug fixes are test-first
 Every bug fix SHALL be preceded by an automated regression test that reproduces the reported defect. The test SHALL be written and confirmed **failing** against the unfixed code before the fix is applied, and SHALL be confirmed **passing** after the fix. The reproduction test SHALL NOT be weakened, skipped, or deleted to force a green run, and it SHALL remain in the suite as a permanent regression guard. Trivial defects (e.g. typos, obvious single-line logic errors) MAY rely on a documented manual check instead of an automated test.
 
 #### Scenario: Failing repro precedes the fix

@@ -5,7 +5,7 @@ Define how authenticated users manage their own projects (the middle of the `Cli
 
 ## Requirements
 
-### Requirement: REQ-TTR-020 List own projects
+### Requirement: REQ-084 List own projects
 The system SHALL show the authenticated user only their own non-deleted projects, ordered by name, via `GET /api/projects`. The list SHALL exclude any project whose `deletedAt` is set and any project belonging to another user. The endpoint SHALL accept an optional `clientId` query parameter that further restricts results to that client, always additionally scoped by `userId`. Each returned project SHALL include the owning client's name (`clientName`) resolved via a join that does NOT filter on the client's `deletedAt`, so the name is present even when the client has been soft-deleted.
 
 #### Scenario: Response includes the client name
@@ -36,7 +36,7 @@ The system SHALL show the authenticated user only their own non-deleted projects
 - **WHEN** an authenticated user has no projects (overall or for the selected client filter)
 - **THEN** the Projects page SHALL render a dedicated empty state with a create call-to-action instead of an empty table
 
-### Requirement: REQ-TTR-021 Create a project
+### Requirement: REQ-085 Create a project
 The system SHALL allow an authenticated user to create a project with a `name` and a `clientId` via `POST /api/projects`. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user per client among non-deleted projects. The `clientId` SHALL reference a non-deleted client owned by the user. On success the created project SHALL be returned and a success Toast SHALL be shown.
 
 #### Scenario: Successful creation
@@ -63,7 +63,7 @@ The system SHALL allow an authenticated user to create a project with a `name` a
 - **WHEN** the submitted name matches only a soft-deleted project of the same user under the same client
 - **THEN** the system SHALL allow creation
 
-### Requirement: REQ-TTR-022 Edit a project
+### Requirement: REQ-086 Edit a project
 The system SHALL allow an authenticated user to update the `name` and `clientId` of their own project via `PATCH /api/projects/[id]`, applying the same validation as creation. Editing SHALL be scoped by `userId`. Client ownership and non-deleted validation SHALL only be enforced when the `clientId` is changed to a different client; when the `clientId` is unchanged from the project's current client, the system SHALL NOT validate that client's soft-delete status, so the project's `name` can still be edited after its client has been soft-deleted.
 
 #### Scenario: Successful edit
@@ -82,7 +82,7 @@ The system SHALL allow an authenticated user to update the `name` and `clientId`
 - **WHEN** an authenticated user updates the `name` of their own project without changing its `clientId`, and that project's current client has been soft-deleted
 - **THEN** the system SHALL allow the update and SHALL NOT reject it on account of the client's soft-delete status
 
-### Requirement: REQ-TTR-023 Soft-delete a project
+### Requirement: REQ-087 Soft-delete a project
 The system SHALL soft-delete a project via `DELETE /api/projects/[id]` by setting `deletedAt`, scoped by `userId`, and SHALL never hard-delete the row. Deletion SHALL be confirmed via a confirm dialog before it is performed.
 
 #### Scenario: Successful soft delete
@@ -93,7 +93,7 @@ The system SHALL soft-delete a project via `DELETE /api/projects/[id]` by settin
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
 
-### Requirement: REQ-TTR-024 Client relationship and ownership
+### Requirement: REQ-088 Client relationship and ownership
 Every project SHALL belong to exactly one client owned by the same user. On create, and on update when the `clientId` is changed to a different client, the system SHALL validate that the target `clientId` references a non-deleted client owned by the authenticated user; a foreign or unknown `clientId` SHALL resolve to HTTP 404 without confirming the client's existence. When an update leaves the `clientId` unchanged, the system SHALL NOT re-validate the existing client's ownership or soft-delete status, allowing edits to a project whose client was later soft-deleted.
 
 #### Scenario: Assigning a foreign client rejected
@@ -108,7 +108,7 @@ Every project SHALL belong to exactly one client owned by the same user. On crea
 - **WHEN** an authenticated user updates a project without changing its `clientId`
 - **THEN** the system SHALL NOT re-validate the existing client's ownership or soft-delete status and SHALL allow the update
 
-### Requirement: REQ-TTR-025 Strict cross-user isolation
+### Requirement: REQ-089 Strict cross-user isolation
 Every read and write SHALL be scoped by the authenticated user's id. A project id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence.
 
 #### Scenario: Foreign project id on read or write
@@ -119,7 +119,7 @@ Every read and write SHALL be scoped by the authenticated user's id. A project i
 - **WHEN** an authenticated user references a project id that does not exist
 - **THEN** the system SHALL respond with HTTP 404
 
-### Requirement: REQ-NFR-018 Authenticated and CSRF-guarded project endpoints
+### Requirement: REQ-090 Authenticated and CSRF-guarded project endpoints
 All project endpoints SHALL require authentication via `requireAuth`, and mutating endpoints (`POST`, `PATCH`, `DELETE`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast.
 
 #### Scenario: Unauthenticated request rejected
@@ -134,7 +134,7 @@ All project endpoints SHALL require authentication via `requireAuth`, and mutati
 - **WHEN** a mutation fails with an API error
 - **THEN** the client SHALL show a Toast translated from the returned `messageKey`
 
-### Requirement: REQ-NFR-019 Accessible, tokenized Projects UI
+### Requirement: REQ-091 Accessible, tokenized Projects UI
 The Projects page SHALL meet WCAG 2.1 AA: form fields including the Client select SHALL be labelled, the create/edit dialog and confirm dialog SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from PrimeVue theme tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
 
 #### Scenario: Inline field error is accessible
@@ -149,7 +149,7 @@ The Projects page SHALL meet WCAG 2.1 AA: form fields including the Client selec
 - **WHEN** new user-facing strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
-### Requirement: REQ-TTR-034 Client-side validation of the project form
+### Requirement: REQ-092 Client-side validation of the project form
 The project create/edit form SHALL validate input client-side using the shared `createProjectSchema` from `shared/types/project.ts` (via a PrimeVue Forms resolver) before any request is sent, replacing the manual pre-submit client check with the same `error.projectClientRequired` messageKey. Validation failures SHALL render the schema's messageKey translated via `t()` as an inline field error and SHALL prevent the request. Server-side validation SHALL remain unchanged and authoritative; server-only field errors (e.g. `error.projectNameDuplicate`) SHALL still render inline under the field after submission.
 
 #### Scenario: Empty name blocked client-side

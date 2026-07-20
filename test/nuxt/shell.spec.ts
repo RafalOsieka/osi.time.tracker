@@ -79,9 +79,9 @@ async function mountShell(overrideStubs: Record<string, unknown> = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// REQ-AUTH-010: Shell renders top bar + sidebar + page outlet, logout reachable
+// REQ-064: Shell renders top bar + sidebar + page outlet, logout reachable
 // ---------------------------------------------------------------------------
-describe('REQ-AUTH-010: shell regions', () => {
+describe('REQ-064: shell regions', () => {
   it('renders top bar, sidebar rail, and page content', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
@@ -101,9 +101,9 @@ describe('REQ-AUTH-010: shell regions', () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-AUTH-011: Sidebar lists all skeleton destinations
+// REQ-065: Sidebar lists all skeleton destinations
 // ---------------------------------------------------------------------------
-describe('REQ-AUTH-011: sidebar nav skeleton', () => {
+describe('REQ-065: sidebar nav skeleton', () => {
   it('sidebar lists all five destinations', async () => {
     const wrapper = await mountSuspended(AppSidebar, {
       global: {
@@ -127,9 +127,9 @@ describe('REQ-AUTH-011: sidebar nav skeleton', () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-AUTH-012: Desktop rail toggle + persisted state
+// REQ-066: Desktop rail toggle + persisted state
 // ---------------------------------------------------------------------------
-describe('REQ-AUTH-012: desktop rail toggle', () => {
+describe('REQ-066: desktop rail toggle', () => {
   it('rail renders and is present in the DOM', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="app-rail"]').exists()).toBe(true);
@@ -150,9 +150,9 @@ describe('REQ-AUTH-012: desktop rail toggle', () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-AUTH-013: Off-canvas drawer
+// REQ-067: Off-canvas drawer
 // ---------------------------------------------------------------------------
-describe('REQ-AUTH-013: off-canvas drawer', () => {
+describe('REQ-067: off-canvas drawer', () => {
   it('drawer is initially not visible', async () => {
     const wrapper = await mountShell();
     const drawer = wrapper.find('[data-testid="app-drawer"]');
@@ -161,9 +161,9 @@ describe('REQ-AUTH-013: off-canvas drawer', () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-AUTH-014: Very-small stacked layout
+// REQ-068: Very-small stacked layout
 // ---------------------------------------------------------------------------
-describe('REQ-AUTH-014: very-small stacked timer row', () => {
+describe('REQ-068: very-small stacked timer row', () => {
   it('stacked timer row element is present in the DOM', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="timer-region-stacked"]').exists()).toBe(true);
@@ -176,9 +176,9 @@ describe('REQ-AUTH-014: very-small stacked timer row', () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-AUTH-015: Utility controls behind a single menu
+// REQ-069: Utility controls behind a single menu
 // ---------------------------------------------------------------------------
-describe('REQ-AUTH-015: utility menu', () => {
+describe('REQ-069: utility menu', () => {
   it('utility menu button is rendered', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
@@ -201,9 +201,9 @@ describe('REQ-AUTH-015: utility menu', () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-NFR-020: Accessible shell navigation
+// REQ-071: Accessible shell navigation
 // ---------------------------------------------------------------------------
-describe('REQ-NFR-020: accessible shell navigation', () => {
+describe('REQ-071: accessible shell navigation', () => {
   it('sidebar has an aria-label for navigation', async () => {
     const wrapper = await mountSuspended(AppSidebar, {
       global: {

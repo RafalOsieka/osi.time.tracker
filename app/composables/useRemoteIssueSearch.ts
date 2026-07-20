@@ -17,7 +17,7 @@ export interface RemoteIssueSearchInput {
 
 /**
  * State-only issue search over the `RemoteTrackerAdapter` selected for
- * `config.executionMode` (REQ-TTR-106): loading/results/error state and
+ * `config.executionMode` (REQ-103): loading/results/error state and
  * stale-response suppression live here; all I/O and provider quirks are
  * delegated to the adapter, which behaves identically regardless of
  * execution mode.

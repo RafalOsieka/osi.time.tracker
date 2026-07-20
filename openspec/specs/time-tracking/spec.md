@@ -5,10 +5,10 @@ Define authenticated live time-entry tracking with a single running entry per us
 
 ## Requirements
 
-### Requirement: REQ-TTR-036 Start a live timer
-The system SHALL allow an authenticated user to start a live timer via `POST /api/time-entries`, creating a `TimeEntry` scoped to the user with `startedAt` set to the current server time and `stoppedAt` `null` (a running entry). The request MAY include an optional `title` (trimmed, length-bounded) and an optional `projectId`; both MAY be omitted or `null`. The title SHALL be resolved to a `taskId` server-side (see REQ-TTR-038); an empty or omitted title SHALL create an untitled running entry (`taskId = null`). On success the created `TimeEntry` SHALL be returned as a `TimeEntryDto` with timestamps serialized as strings.
+### Requirement: REQ-140 Start a live timer
+The system SHALL allow an authenticated user to start a live timer via `POST /api/time-entries`, creating a `TimeEntry` scoped to the user with `startedAt` set to the current server time and `stoppedAt` `null` (a running entry). The request MAY include an optional `title` (trimmed, length-bounded) and an optional `projectId`; both MAY be omitted or `null`. The title SHALL be resolved to a `taskId` server-side (see REQ-142); an empty or omitted title SHALL create an untitled running entry (`taskId = null`). On success the created `TimeEntry` SHALL be returned as a `TimeEntryDto` with timestamps serialized as strings.
 
-The same endpoint SHALL also support manual entry creation: the request MAY include an explicit `startedAt`/`stoppedAt` pair (both ISO 8601 instants; providing only one of the two SHALL be rejected). When the pair is provided, the system SHALL create an already-stopped entry with the given timestamps, subject to `startedAt <= stoppedAt` and `startedAt` not in the future (beyond a small clock-skew tolerance). Manual creation SHALL NOT affect any currently running entry (no stop-on-new-start), and title resolution (REQ-TTR-038) SHALL apply unchanged.
+The same endpoint SHALL also support manual entry creation: the request MAY include an explicit `startedAt`/`stoppedAt` pair (both ISO 8601 instants; providing only one of the two SHALL be rejected). When the pair is provided, the system SHALL create an already-stopped entry with the given timestamps, subject to `startedAt <= stoppedAt` and `startedAt` not in the future (beyond a small clock-skew tolerance). Manual creation SHALL NOT affect any currently running entry (no stop-on-new-start), and title resolution (REQ-142) SHALL apply unchanged.
 
 #### Scenario: Start with a title and project
 - **WHEN** an authenticated user posts a start request with a non-empty title and an owned `projectId`
@@ -34,7 +34,7 @@ The same endpoint SHALL also support manual entry creation: the request MAY incl
 - **WHEN** the request provides only one of `startedAt`/`stoppedAt`, or `stoppedAt` earlier than `startedAt`, or a `startedAt` in the future
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: REQ-TTR-037 At most one running entry per user
+### Requirement: REQ-141 At most one running entry per user
 The system SHALL guarantee that an authenticated user has at most one running `TimeEntry` (`stoppedAt IS NULL`) at any time, enforced by a partial unique index on `(userId) WHERE stoppedAt IS NULL`. When a user starts a new timer while another entry is running, the system SHALL first stop the currently running entry (setting its `stoppedAt` to the new entry's `startedAt`) and then create the new running entry, within a single transaction (Toggl stop-on-new-start behavior).
 
 #### Scenario: Starting a new timer stops the running one
@@ -45,7 +45,7 @@ The system SHALL guarantee that an authenticated user has at most one running `T
 - **WHEN** an authenticated user issues two start requests concurrently
 - **THEN** the partial unique index SHALL prevent two running entries and the system SHALL end with exactly one running entry
 
-### Requirement: REQ-TTR-038 Title binds an entry to a Task
+### Requirement: REQ-142 Title binds an entry to a Task
 The system SHALL treat a time entry's title as the name of the `Task` it points to; a `TimeEntry` SHALL carry no title column of its own. When a title is provided, the system SHALL resolve it to a `Task` within one transaction using the matching key `(userId, name, projectId)`, where `projectId = NULL` is a distinct scope. If a non-deleted task with that name exists in the given project scope, the entry SHALL bind to it; otherwise a new `Task` SHALL be created in that scope and the entry SHALL bind to it. A project-less title that matches an existing project-less task SHALL silently bind to it. An empty, whitespace-only, or omitted title SHALL leave `taskId` `null`.
 
 #### Scenario: New title creates a task
@@ -64,8 +64,8 @@ The system SHALL treat a time entry's title as the name of the `Task` it points 
 - **WHEN** the title is empty or whitespace-only
 - **THEN** the entry SHALL have `taskId` `null` and be shown as "(no task)"
 
-### Requirement: REQ-TTR-039 Stop or retitle a running entry
-The system SHALL allow an authenticated user to stop, retitle, and/or edit the timestamps of their own entry via `PATCH /api/time-entries/[id]`, addressed by its `uuidv7` `id` and scoped by `userId`. Setting `stoppedAt` (or requesting a stop) SHALL mark the entry as stopped. The request MAY include `startedAt` (ISO 8601 instant) to move the entry's start. Validation SHALL apply to the entry's effective post-patch state: `stoppedAt` SHALL be greater than or equal to `startedAt` for a stopped entry, and for an entry that remains running, `startedAt` SHALL NOT be in the future (beyond a small clock-skew tolerance). Overlap with the user's other entries SHALL be permitted. A provided `title` (with optional `projectId`) SHALL be re-resolved to a `taskId` using the same matching rules as REQ-TTR-038. The presence of the `projectId` field SHALL be significant when the task is re-resolved: **omitting** `projectId` SHALL preserve the entry's current project scope (the project of its current task, or project-less when it has none), while an explicit **`null`** SHALL resolve the entry into the project-less scope. The system SHALL NOT treat an absent `projectId` as an implicit `null`, so a title-only edit SHALL NOT re-home the entry into the no-project scope. A foreign or unknown entry id SHALL resolve to HTTP 404 without confirming existence. On success the updated `TimeEntryDto` SHALL be returned.
+### Requirement: REQ-143 Stop or retitle a running entry
+The system SHALL allow an authenticated user to stop, retitle, and/or edit the timestamps of their own entry via `PATCH /api/time-entries/[id]`, addressed by its `uuidv7` `id` and scoped by `userId`. Setting `stoppedAt` (or requesting a stop) SHALL mark the entry as stopped. The request MAY include `startedAt` (ISO 8601 instant) to move the entry's start. Validation SHALL apply to the entry's effective post-patch state: `stoppedAt` SHALL be greater than or equal to `startedAt` for a stopped entry, and for an entry that remains running, `startedAt` SHALL NOT be in the future (beyond a small clock-skew tolerance). Overlap with the user's other entries SHALL be permitted. A provided `title` (with optional `projectId`) SHALL be re-resolved to a `taskId` using the same matching rules as REQ-142. The presence of the `projectId` field SHALL be significant when the task is re-resolved: **omitting** `projectId` SHALL preserve the entry's current project scope (the project of its current task, or project-less when it has none), while an explicit **`null`** SHALL resolve the entry into the project-less scope. The system SHALL NOT treat an absent `projectId` as an implicit `null`, so a title-only edit SHALL NOT re-home the entry into the no-project scope. A foreign or unknown entry id SHALL resolve to HTTP 404 without confirming existence. On success the updated `TimeEntryDto` SHALL be returned.
 
 #### Scenario: Stop the running entry
 - **WHEN** an authenticated user patches their running entry with a stop request
@@ -111,7 +111,7 @@ The system SHALL allow an authenticated user to stop, retitle, and/or edit the t
 - **WHEN** an authenticated user patches an entry id owned by another user or that does not exist
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
 
-### Requirement: REQ-TTR-040 Read the running entry
+### Requirement: REQ-144 Read the running entry
 The system SHALL expose the authenticated user's current running entry via `GET /api/time-entries/running`, returning the single running `TimeEntryDto` (`stoppedAt` null) or `null` when none is running. The response SHALL be scoped strictly to the authenticated user.
 
 #### Scenario: Running entry returned
@@ -122,25 +122,25 @@ The system SHALL expose the authenticated user's current running entry via `GET 
 - **WHEN** an authenticated user with no running entry requests the running endpoint
 - **THEN** the system SHALL return `null`
 
-### Requirement: REQ-TTR-041 Duration derived from timestamps
+### Requirement: REQ-145 Duration derived from timestamps
 The system SHALL always derive a time entry's duration from `stoppedAt − startedAt`; a running entry's elapsed time SHALL be computed against the current time. The system SHALL NOT store a separate duration column.
 
 #### Scenario: Duration is computed, not stored
 - **WHEN** a stopped entry is displayed
 - **THEN** its duration SHALL be computed as `stoppedAt − startedAt` rather than read from a stored duration field
 
-### Requirement: REQ-NFR-026 Persistent running-timer indicator
+### Requirement: REQ-146 Persistent running-timer indicator
 The application shell SHALL display an always-visible running indicator whenever the authenticated user has a running entry, showing the running entry's title and its live-updating elapsed time. The running state SHALL be sourced from the server (`GET /api/time-entries/running`) so it survives page reloads and is consistent across devices.
 
 The timer widget's title input SHALL be bound to the running entry's title (`taskName`) whenever a timer is running (so the title remains visible after starting and after a reload). When the running entry is untitled (`taskName` is `null`), the title input SHALL be shown **blank** — it SHALL NOT show a placeholder and SHALL NOT show a "(no task)" label.
 
 While the initial running-entry fetch is in flight, the widget SHALL expose a `loading` state and SHALL disable the title input and the start/stop toggle until the fetch resolves, then reflect the server result; the widget SHALL NOT allow starting or editing against the pre-fetch idle state.
 
-The running title SHALL be editable in place: an edit SHALL be committed via `PATCH /api/time-entries/[id]` (REQ-TTR-039) on blur or on Enter, and SHALL NOT be committed per keystroke. Committing a blank (empty or whitespace-only) title SHALL detach the task by sending `title = null`, resulting in `taskId = null`.
+The running title SHALL be editable in place: an edit SHALL be committed via `PATCH /api/time-entries/[id]` (REQ-143) on blur or on Enter, and SHALL NOT be committed per keystroke. Committing a blank (empty or whitespace-only) title SHALL detach the task by sending `title = null`, resulting in `taskId = null`.
 
 Pressing Enter in the title input SHALL start the timer when the suggestion overlay is closed; when the suggestion overlay is open, Enter SHALL retain the autocomplete's default select/close behavior and SHALL NOT start the timer.
 
-While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the user's effective timezone (REQ-AUTH-017, user-settings). The time field SHALL be the shared smart time input (REQ-NFR-034, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field MAY offer a calendar picker, but a manually typed valid `yyyy-mm-dd` date (tolerating unpadded month/day, e.g. `2026-7-9`) SHALL be committed on blur or Enter rather than reverted; text that does not resolve to a valid date SHALL revert to the previous value. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-NFR-035) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-TTR-039); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
+While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the user's effective timezone (REQ-165, user-settings). The time field SHALL be the shared smart time input (REQ-131, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field MAY offer a calendar picker, but a manually typed valid `yyyy-mm-dd` date (tolerating unpadded month/day, e.g. `2026-7-9`) SHALL be committed on blur or Enter rather than reverted; text that does not resolve to a valid date SHALL revert to the previous value. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-168) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-143); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
 
 When a task edit affects the running entry (rename, project change, merge-on-collision, or bulk assignment binding the running entry to a task), the client SHALL re-fetch the running state (`GET /api/time-entries/running`) so the shell indicator reflects the updated title immediately.
 
@@ -218,7 +218,7 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 - **WHEN** new user-facing timer strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
-### Requirement: REQ-NFR-027 Authenticated and CSRF-guarded time-entry endpoints
+### Requirement: REQ-147 Authenticated and CSRF-guarded time-entry endpoints
 All time-entry endpoints SHALL require authentication via `requireAuth`, and mutating endpoints (`POST`, `PATCH`, `DELETE`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast. Every read and write SHALL be scoped by the authenticated user's id.
 
 #### Scenario: Unauthenticated request rejected
@@ -229,7 +229,7 @@ All time-entry endpoints SHALL require authentication via `requireAuth`, and mut
 - **WHEN** a mutating time-entry request is made without a valid CSRF token
 - **THEN** the system SHALL reject the request
 
-### Requirement: REQ-TTR-044 List time entries by instant range
+### Requirement: REQ-148 List time entries by instant range
 The system SHALL expose the authenticated user's time entries via `GET /api/time-entries` with required `from` and `to` query parameters (ISO 8601 instants). The response SHALL be a flat array of `TimeEntryDto` (including `taskId`, `taskName`, `projectId`, `projectName`, `clientName`, with parent names resolved via LEFT joins that do NOT filter on the parent's `deletedAt`) for entries whose `startedAt` falls within `[from, to)`, ordered by `startedAt` descending, scoped strictly to the authenticated user. A running entry (`stoppedAt` null) whose `startedAt` is in range SHALL be included. Invalid or missing `from`/`to`, or `from >= to`, SHALL be rejected with `{ messageKey, params }`. The server SHALL perform no timezone or day-boundary logic; callers convert their local day boundaries to instants.
 
 #### Scenario: Entries in range returned newest first
@@ -248,8 +248,8 @@ The system SHALL expose the authenticated user's time entries via `GET /api/time
 - **WHEN** another user has entries within the requested window
 - **THEN** those entries SHALL NOT appear in the response
 
-### Requirement: REQ-TTR-045 Bulk-assign untitled entries to a task
-The system SHALL allow an authenticated user to assign a set of their untitled time entries to a task in one atomic operation via `POST /api/time-entries/bulk-assign`, accepting `{ ids, title, projectId? }` where `ids` is a non-empty array of entry uuids, `title` is trimmed, non-empty, and length-bounded, and `projectId` is optional. Within a single transaction the system SHALL resolve the title to a `taskId` exactly once using the REQ-TTR-038 matching rules and set that `taskId` on every listed entry. Every listed entry MUST belong to the authenticated user and MUST currently be untitled (`taskId IS NULL`); otherwise the whole request SHALL fail with `{ messageKey, params }` (or HTTP 404 for foreign/unknown ids) and no entry SHALL be modified. On success the updated `TimeEntryDto`s SHALL be returned.
+### Requirement: REQ-149 Bulk-assign untitled entries to a task
+The system SHALL allow an authenticated user to assign a set of their untitled time entries to a task in one atomic operation via `POST /api/time-entries/bulk-assign`, accepting `{ ids, title, projectId? }` where `ids` is a non-empty array of entry uuids, `title` is trimmed, non-empty, and length-bounded, and `projectId` is optional. Within a single transaction the system SHALL resolve the title to a `taskId` exactly once using the REQ-142 matching rules and set that `taskId` on every listed entry. Every listed entry MUST belong to the authenticated user and MUST currently be untitled (`taskId IS NULL`); otherwise the whole request SHALL fail with `{ messageKey, params }` (or HTTP 404 for foreign/unknown ids) and no entry SHALL be modified. On success the updated `TimeEntryDto`s SHALL be returned.
 
 #### Scenario: Successful bulk assign
 - **WHEN** an authenticated user submits their own untitled entry ids with a valid title
@@ -263,12 +263,12 @@ The system SHALL allow an authenticated user to assign a set of their untitled t
 - **WHEN** the submitted title is empty or whitespace-only, or `ids` is empty
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: REQ-TTR-046 Timer view page
-The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-AUTH-017, user-settings; day boundaries computed via the timezone-aware utilities of REQ-NFR-035) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. The page SHALL initially load the most recent 7 days and provide a "load more" control that extends the window further back by the same step; days without entries SHALL NOT render empty groups. When the user has no entries at all, the page SHALL render a dedicated empty state pointing to the timer widget.
+### Requirement: REQ-150 Timer view page
+The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165, user-settings; day boundaries computed via the timezone-aware utilities of REQ-168) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. The page SHALL initially load the most recent 7 days and provide a "load more" control that extends the window further back by the same step; days without entries SHALL NOT render empty groups. When the user has no entries at all, the page SHALL render a dedicated empty state pointing to the timer widget.
 
-The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-NFR-034, shared-ui-components; the date is fixed by the day section). The form SHALL convert the entered wall-clock times to instants using the effective timezone (REQ-NFR-035) and submit them via `POST /api/time-entries` (REQ-TTR-036 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
+The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-131, shared-ui-components; the date is fixed by the day section). The form SHALL convert the entered wall-clock times to instants using the effective timezone (REQ-168) and submit them via `POST /api/time-entries` (REQ-140 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
 
-Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-NFR-034), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-TTR-039). Activating one of the row's inline editors SHALL cancel any other editor active in that row without committing, and the swapped-in input SHALL receive focus so editing starts with a single click. Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different day in the effective timezone, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-TTR-050); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
+Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-131), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-143). Activating one of the row's inline editors SHALL cancel any other editor active in that row without committing, and the swapped-in input SHALL receive focus so editing starts with a single click. Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different day in the effective timezone, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-151); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
 
 The page SHALL observe the shell's running-timer state: when the running entry stops (including a stop triggered from the top-bar widget or a stop-on-new-start), the page SHALL refresh its entry list so the finished entry appears in its day/task group immediately, without a manual reload.
 
@@ -338,7 +338,7 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 - **WHEN** the user changes their timezone setting while entries are displayed
 - **THEN** the page SHALL regroup the loaded entries under the day boundaries of the new timezone without requiring a reload
 
-### Requirement: REQ-TTR-050 Delete a time entry with task garbage collection
+### Requirement: REQ-151 Delete a time entry with task garbage collection
 The system SHALL allow an authenticated user to delete their own `TimeEntry` via `DELETE /api/time-entries/[id]`, addressed by its `uuidv7` `id` and scoped by `userId`. Within a single transaction the system SHALL delete the entry and, when the entry's `taskId` was non-null and no other time entry references that task afterwards, SHALL hard-delete the emptied `Task` (garbage collection). A foreign or unknown entry id SHALL resolve to HTTP 404 without confirming existence. On success the system SHALL respond with a success status and no entry data.
 
 #### Scenario: Delete an entry
@@ -357,8 +357,8 @@ The system SHALL allow an authenticated user to delete their own `TimeEntry` via
 - **WHEN** an authenticated user deletes an entry id owned by another user or that does not exist
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
 
-### Requirement: REQ-TTR-048 Continue a task from the timer view
-Each task group on the timer view SHALL offer a continue action that starts a new running entry via the existing `POST /api/time-entries`, passing the group's task name as `title` and the group's `projectId`. Stop-on-new-start (REQ-TTR-037) and title resolution (REQ-TTR-038) SHALL apply unchanged, and the shell's timer widget SHALL reflect the new running entry. The "(no task)" group SHALL NOT offer a continue action; instead it SHALL offer the bulk-assign action (REQ-TTR-045) that lets the user pick or type a task title (autocomplete over existing tasks) and assign all of the day's untitled entries at once.
+### Requirement: REQ-152 Continue a task from the timer view
+Each task group on the timer view SHALL offer a continue action that starts a new running entry via the existing `POST /api/time-entries`, passing the group's task name as `title` and the group's `projectId`. Stop-on-new-start (REQ-141) and title resolution (REQ-142) SHALL apply unchanged, and the shell's timer widget SHALL reflect the new running entry. The "(no task)" group SHALL NOT offer a continue action; instead it SHALL offer the bulk-assign action (REQ-149) that lets the user pick or type a task title (autocomplete over existing tasks) and assign all of the day's untitled entries at once.
 
 #### Scenario: Continue starts a timer for the task
 - **WHEN** the user activates continue on a task group
@@ -372,7 +372,7 @@ Each task group on the timer view SHALL offer a continue action that starts a ne
 - **WHEN** the user activates assign on a day's "(no task)" group and confirms a title
 - **THEN** all of that day's untitled entries SHALL be assigned via the bulk-assign endpoint and the page SHALL regroup them under the resolved task
 
-### Requirement: REQ-TTR-049 Mini task editor on the timer view
+### Requirement: REQ-153 Mini task editor on the timer view
 Each task group on the timer view SHALL allow inline (in-place) editing of the task, replacing any modal editor: the task name and the project SHALL each be editable directly in the group header, committed via `PATCH /api/tasks/[id]` (per the task-management capability, including its merge-on-collision behavior).
 
 The group title SHALL be an activatable control that swaps to a text input; the edit SHALL be committed on blur or Enter and cancelled on Escape. A committed name that is empty or whitespace-only SHALL silently revert to the previous name without sending a request (a task cannot be unnamed).
@@ -423,7 +423,7 @@ On success the page SHALL update the affected groups (including regrouping when 
 - **WHEN** the "(no task)" group is rendered
 - **THEN** it SHALL NOT offer inline title or project editing
 
-### Requirement: REQ-NFR-028 Accessible, localized, tokenized timer view
+### Requirement: REQ-154 Accessible, localized, tokenized timer view
 The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semantic headings/landmarks, expand/collapse controls SHALL be keyboard operable and expose their expanded state, action controls (continue, assign) SHALL be labelled, and the inline editors (group title, group project, entry fields, and the shared smart time inputs) SHALL be activatable buttons or labelled inputs with accessible names, keyboard operable including Escape to cancel, with the project select reachable and operable by keyboard. Interactive controls SHALL NOT be nested inside one another: a group header row that combines an expand/collapse action with inline edit triggers SHALL use a non-interactive layout container with the controls as siblings. The page SHALL prefer existing PrimeVue components — edit triggers and inline editors SHALL use PrimeVue `Button` and `InputText`/`Select` rather than native `<button>`/`<input>` elements — derive styling from theme tokens (no ad-hoc inline colors), format dates and durations via the active locale, and keep all user-facing strings (including the "(no project)" placeholder) in `en` and `pl` in parity. Server/network failures SHALL surface as a Toast translated from the `{ messageKey, params }` contract.
 
 #### Scenario: Group toggle is accessible

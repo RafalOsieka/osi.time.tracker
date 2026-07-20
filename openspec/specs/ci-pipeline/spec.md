@@ -3,7 +3,7 @@
 ## Purpose
 TBD - created by archiving change add-ci-pipeline. Update Purpose after archive.
 ## Requirements
-### Requirement: REQ-NFR-020 Pull-request and push CI triggers
+### Requirement: REQ-014 Pull-request and push CI triggers
 The system SHALL provide a GitHub Actions workflow that runs on pull requests targeting `main` and on pushes to `main`, executing on the free GitHub-hosted `ubuntu-latest` runner.
 
 #### Scenario: Workflow runs on a pull request to main
@@ -14,7 +14,7 @@ The system SHALL provide a GitHub Actions workflow that runs on pull requests ta
 - **WHEN** a commit is pushed to `main`
 - **THEN** the CI workflow SHALL run the same verify jobs
 
-### Requirement: REQ-NFR-021 Parallel verify jobs
+### Requirement: REQ-015 Parallel verify jobs
 The workflow SHALL run the verify checks as separate parallel jobs — `lint` (`pnpm lint`), `format` (`pnpm format:check`), `type-check` (`pnpm type-check`), `unit` (`pnpm test:unit`), `nuxt` (`pnpm test:nuxt`), and `build` (`pnpm build`) — so each appears as an independent status check.
 
 #### Scenario: All verify jobs pass
@@ -25,7 +25,7 @@ The workflow SHALL run the verify checks as separate parallel jobs — `lint` (`
 - **WHEN** any one of the verify jobs (e.g. `lint`) fails
 - **THEN** that job's status check SHALL be marked red while the other parallel jobs continue to run and report independently
 
-### Requirement: REQ-NFR-022 Lockfile-integrity install with caching
+### Requirement: REQ-016 Lockfile-integrity install with caching
 Each job SHALL install dependencies from the repository root using pnpm with `--frozen-lockfile`, and SHALL cache the pnpm store keyed on `pnpm-lock.yaml`.
 
 #### Scenario: Install succeeds with an in-sync lockfile
@@ -36,7 +36,7 @@ Each job SHALL install dependencies from the repository root using pnpm with `--
 - **WHEN** `pnpm-lock.yaml` is out of sync with `package.json`
 - **THEN** `pnpm install --frozen-lockfile` SHALL fail and the job SHALL report red
 
-### Requirement: REQ-NFR-023 Gated end-to-end job
+### Requirement: REQ-017 Gated end-to-end job
 The workflow SHALL provide an `e2e` job that runs `pnpm test:e2e` and declares `needs:` on all cheap verify jobs (`lint`, `format`, `type-check`, `unit`, `nuxt`, `build`), so the Dockerized Postgres e2e suite only starts after the cheap jobs pass. The job SHALL receive `NUXT_SESSION_PASSWORD` from repository secrets and rely on the existing harness to self-provision `postgres:18-alpine` via Docker.
 
 #### Scenario: e2e runs only after cheap jobs pass
@@ -47,14 +47,14 @@ The workflow SHALL provide an `e2e` job that runs `pnpm test:e2e` and declares `
 - **WHEN** any required upstream job fails
 - **THEN** the `e2e` job SHALL NOT run, avoiding the cost of spinning up Docker and Postgres
 
-### Requirement: REQ-NFR-024 Concurrency cancellation of superseded runs
+### Requirement: REQ-018 Concurrency cancellation of superseded runs
 The workflow SHALL define a `concurrency` group keyed on the ref with `cancel-in-progress: true` so a newer run on the same ref cancels an in-progress older run.
 
 #### Scenario: New push cancels the previous run
 - **WHEN** a new commit is pushed to a pull-request branch while a CI run for an earlier commit on the same ref is still in progress
 - **THEN** the in-progress run SHALL be cancelled and only the newest run continues
 
-### Requirement: REQ-NFR-025 Conventional-Commit PR-title lint
+### Requirement: REQ-019 Conventional-Commit PR-title lint
 The system SHALL provide a workflow that lints the pull-request title against the Conventional Commits specification, since squash-only merges make the PR title the commit that lands on `main`.
 
 #### Scenario: Valid Conventional-Commit title passes
@@ -65,28 +65,28 @@ The system SHALL provide a workflow that lints the pull-request title against th
 - **WHEN** a pull-request title does not follow Conventional Commits (e.g. `updated stuff`)
 - **THEN** the PR-title-lint check SHALL fail with a clear message and block merge via the ruleset
 
-### Requirement: REQ-NFR-026 Least-privilege and pinned actions
+### Requirement: REQ-020 Least-privilege and pinned actions
 The workflow SHALL declare a least-privilege `permissions:` block (default `contents: read`) and SHALL pin third-party marketplace actions to fixed versions; secrets such as `NUXT_SESSION_PASSWORD` MUST NOT be logged.
 
 #### Scenario: Default token permissions are restricted
 - **WHEN** the workflow runs
 - **THEN** the `GITHUB_TOKEN` SHALL be granted only the minimum permissions required (read-only by default)
 
-### Requirement: REQ-NFR-027 Automated dependency and action updates
+### Requirement: REQ-021 Automated dependency and action updates
 The system SHALL provide a Dependabot configuration covering the `npm` and `github-actions` ecosystems so dependencies and pinned actions are kept current automatically.
 
 #### Scenario: Dependabot opens update PRs
 - **WHEN** a tracked npm dependency or pinned GitHub Action has a newer version
 - **THEN** Dependabot SHALL open a pull request that is itself verified by the CI workflow
 
-### Requirement: REQ-NFR-028 Security scanning via CodeQL
+### Requirement: REQ-022 Security scanning via CodeQL
 The repository SHALL have CodeQL analysis enabled (via GitHub default setup) to provide free static security scanning of the JavaScript/TypeScript codebase.
 
 #### Scenario: CodeQL analyzes the codebase
 - **WHEN** CodeQL default setup is enabled and code is pushed
 - **THEN** CodeQL SHALL scan the codebase and report any findings in the Security tab
 
-### Requirement: REQ-NFR-029 Merge-blocking rules on main
+### Requirement: REQ-023 Merge-blocking rules on main
 Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL require a pull request before merging, require all CI status checks (`lint`, `format`, `type-check`, `unit`, `nuxt`, `build`, `e2e`, and the PR-title lint) to pass, require the branch to be up to date, require conversation resolution, and allow squash-only merges with linear history. Because rulesets are not repository files, this configuration SHALL be delivered as documented manual GitHub-UI setup instructions.
 
 #### Scenario: Merge blocked while a required check is red
@@ -101,7 +101,7 @@ Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL 
 - **WHEN** the maintainer follows the documented manual GitHub-UI guide
 - **THEN** the guide SHALL list the exact required check names and ruleset toggles, and note that a check is only selectable after it has run at least once
 
-### Requirement: REQ-NFR-030 Coverage measurement from unit and nuxt tests
+### Requirement: REQ-024 Coverage measurement from unit and nuxt tests
 The project SHALL support code-coverage collection via Vitest's `v8` provider (`@vitest/coverage-v8`), configured centrally in `vitest.config.ts`. Coverage SHALL be measured from the `unit` and `nuxt` test projects executed together in a single Vitest run exposed as the `test:coverage` script. Coverage sources SHALL be limited to first-party application code (`app/`, `server/`, `shared/`); test files, config, generated Nuxt output, and tooling SHALL be excluded. The `e2e` project SHALL NOT contribute to coverage. The run SHALL emit at least `lcov` (for upload), `json-summary`, and `text` reports into a git-ignored `coverage/` directory.
 
 #### Scenario: Coverage run produces an lcov report
@@ -116,7 +116,7 @@ The project SHALL support code-coverage collection via Vitest's `v8` provider (`
 - **WHEN** a coverage run writes to `coverage/`
 - **THEN** that directory SHALL be git-ignored and never committed
 
-### Requirement: REQ-NFR-031 Coverage reporting to GitHub via Codecov
+### Requirement: REQ-025 Coverage reporting to GitHub via Codecov
 The workflow SHALL provide a `coverage` job that runs `pnpm test:coverage` and uploads the resulting `lcov` report to Codecov using a version-pinned `codecov/codecov-action`, so that pull requests receive a coverage comment with diff coverage and the project exposes a coverage badge. For the public repository the upload MAY be tokenless; if a token is required it SHALL be supplied via a `CODECOV_TOKEN` repository secret and MUST NOT be logged. Uploading coverage SHALL NOT require the DB/e2e infrastructure.
 
 #### Scenario: Coverage uploaded on a pull request
@@ -131,8 +131,8 @@ The workflow SHALL provide a `coverage` job that runs `pnpm test:coverage` and u
 - **WHEN** a `CODECOV_TOKEN` secret is configured
 - **THEN** it SHALL be passed only to the upload action and MUST NOT appear in logs
 
-### Requirement: REQ-NFR-032 Report-only coverage policy
-Coverage SHALL be informational only and MUST NOT block merges: a `codecov.yml` SHALL configure the coverage status as `informational: true` (no failing threshold) to establish a baseline before any gating is introduced. The `coverage` job MAY run in parallel with the other verify jobs and SHALL NOT be added to the merge-blocking required checks (REQ-NFR-029) as part of this change.
+### Requirement: REQ-026 Report-only coverage policy
+Coverage SHALL be informational only and MUST NOT block merges: a `codecov.yml` SHALL configure the coverage status as `informational: true` (no failing threshold) to establish a baseline before any gating is introduced. The `coverage` job MAY run in parallel with the other verify jobs and SHALL NOT be added to the merge-blocking required checks (REQ-023) as part of this change.
 
 #### Scenario: Low coverage does not block merge
 - **WHEN** coverage decreases on a pull request

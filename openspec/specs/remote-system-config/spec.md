@@ -3,7 +3,7 @@
 ## Purpose
 TBD - created by archiving change add-remote-system-config. Update Purpose after archive.
 ## Requirements
-### Requirement: REQ-TTR-101 Configure a remote system on a Client
+### Requirement: REQ-122 Configure a remote system on a Client
 
 A user SHALL be able to create a `RemoteSystemConfig` for one of their own Clients, specifying `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`. `executionMode` SHALL accept `client` or `server` and SHALL default to `client` when omitted. `client` executes remote requests directly from the browser to the tracker; `server` routes remote requests through the OSI server, which forwards them to the tracker. The `transportMode` field SHALL no longer exist. Each Client SHALL have at most one `RemoteSystemConfig`. The full configuration except the API secret SHALL be stored in the database.
 
@@ -31,7 +31,7 @@ A user SHALL be able to create a `RemoteSystemConfig` for one of their own Clien
 - **WHEN** a user submits a `systemType` that is not `redmine` or `openproject`
 - **THEN** the system SHALL reject the request with a `{ messageKey, params }` validation error
 
-### Requirement: REQ-TTR-102 Client-side credentials are never persisted server-side
+### Requirement: REQ-123 Client-side credentials are never persisted server-side
 
 The API secret SHALL be entered and kept only in the user's browser and SHALL never be stored on the server; the persisted configuration and all API responses SHALL never contain the credential. In `client` execution mode the secret SHALL be sent only to the configured tracker origin. In `server` execution mode the secret MAY be transmitted to the OSI server per request solely for immediate upstream forwarding, but SHALL NOT be persisted, logged, or returned by the server.
 
@@ -51,7 +51,7 @@ The API secret SHALL be entered and kept only in the user's browser and SHALL ne
 - **WHEN** the browser forwards the secret to the OSI server for a `server` execution-mode request
 - **THEN** the server SHALL use it only for the immediate upstream request and SHALL NOT persist, log, or return it
 
-### Requirement: REQ-TTR-103 Default values for the remote system's required fields
+### Requirement: REQ-124 Default values for the remote system's required fields
 
 A user SHALL be able to store default values for the remote system's required fields as an adapter-agnostic key–value map (`requiredFieldDefaults`), so they can later pre-fill the Remote Sync page.
 
@@ -63,7 +63,7 @@ A user SHALL be able to store default values for the remote system's required fi
 - **WHEN** a user saves a configuration with no required-field defaults
 - **THEN** the system SHALL persist the configuration with an empty defaults map and SHALL NOT treat the absence as an error
 
-### Requirement: REQ-TTR-104 Edit and remove a Client's remote configuration
+### Requirement: REQ-125 Edit and remove a Client's remote configuration
 
 A user SHALL be able to edit and remove the remote configuration of a Client they own. Editing any configuration field, including `systemType` or normalized `baseUrl`, SHALL retain the configuration identity and existing Task remote issue references without remote validation, cleanup, or metadata migration. Removing a configuration SHALL soft-delete it, preserve existing Task references and their cached issue IDs and titles as historical data, and clear the browser-held secret. A preserved reference whose configuration is deleted SHALL be unavailable for remote queries and URL generation. Creating a later active configuration SHALL NOT automatically reassign preserved references to it.
 
@@ -87,7 +87,7 @@ A user SHALL be able to edit and remove the remote configuration of a Client the
 - **WHEN** the user creates a new active configuration after the prior configuration was removed
 - **THEN** the system SHALL NOT automatically rebind old Task references to the new configuration
 
-### Requirement: REQ-TTR-105 Remote configuration is isolated per user
+### Requirement: REQ-126 Remote configuration is isolated per user
 
 All remote-configuration reads and writes SHALL be scoped to the authenticated user; a user SHALL never read, edit, or delete a remote configuration belonging to another user, and mutating requests SHALL be guarded by authentication and CSRF.
 

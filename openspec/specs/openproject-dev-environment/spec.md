@@ -4,7 +4,7 @@ Defines requirements for a committed, reproducible local OpenProject instance â€
 
 ## Requirements
 
-### Requirement: REQ-TTR-401 Opt-in local OpenProject compose file
+### Requirement: REQ-078 Opt-in local OpenProject compose file
 The project SHALL provide a dedicated `docker-compose.openproject.yml` that runs a
 local OpenProject instance and is NOT part of the default development stack started
 by `docker compose up`.
@@ -18,7 +18,7 @@ by `docker compose up`.
 - **THEN** a local OpenProject instance starts and becomes reachable on the
   configured host port
 
-### Requirement: REQ-TTR-402 Demo data seeded on first boot
+### Requirement: REQ-079 Demo data seeded on first boot
 The OpenProject instance SHALL seed built-in demo data on first boot via
 `OPENPROJECT_DEMO__DATA=true`, so a sample project, work packages, and
 time-tracking activities exist without manual configuration.
@@ -28,7 +28,7 @@ time-tracking activities exist without manual configuration.
 - **THEN** at least one sample project with work packages and time-tracking
   activities is present and visible after logging in
 
-### Requirement: REQ-TTR-403 Local HTTP access without TLS
+### Requirement: REQ-080 Local HTTP access without TLS
 The instance SHALL be configured for plain-HTTP localhost access using
 `OPENPROJECT_HTTPS=false` and a fixed host name/port, so login and redirects work
 without TLS termination.
@@ -38,7 +38,7 @@ without TLS termination.
   with the default admin credentials
 - **THEN** authentication succeeds and no HTTPS redirect breaks the session
 
-### Requirement: REQ-TTR-404 Isolated persistent storage
+### Requirement: REQ-081 Isolated persistent storage
 The instance SHALL persist its data in dedicated named volumes separate from the
 application's Postgres volumes, so tearing it down does not affect app dev data.
 
@@ -46,7 +46,7 @@ application's Postgres volumes, so tearing it down does not affect app dev data.
 - **WHEN** a developer runs `docker compose -f docker-compose.openproject.yml down -v`
 - **THEN** only OpenProject's volumes are removed and `pg-osi-time-tracker` is untouched
 
-### Requirement: REQ-TTR-405 Documented usage
+### Requirement: REQ-082 Documented usage
 The repository SHALL document, in `AGENTS.md`, how to start and stop the local
 OpenProject instance and how to obtain an API key for later integration work.
 

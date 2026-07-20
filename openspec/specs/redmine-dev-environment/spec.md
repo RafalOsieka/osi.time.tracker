@@ -4,7 +4,7 @@ Defines requirements for a committed, reproducible local Redmine instance — pr
 
 ## Requirements
 
-### Requirement: REQ-TTR-406 Opt-in local Redmine compose file
+### Requirement: REQ-098 Opt-in local Redmine compose file
 The project SHALL provide a dedicated `docker-compose.redmine.yml` that runs a
 local Redmine instance (official image plus a dedicated PostgreSQL service) and is
 NOT part of the default development stack started by `docker compose up`.
@@ -18,7 +18,7 @@ NOT part of the default development stack started by `docker compose up`.
 - **THEN** a local Redmine instance starts and becomes reachable on the
   configured host port
 
-### Requirement: REQ-TTR-407 Default data seeded on first boot
+### Requirement: REQ-099 Default data seeded on first boot
 The Redmine instance SHALL seed built-in default data on first boot via
 `REDMINE_LOAD_DEFAULT_DATA=true`, so roles, issue statuses, workflows, and
 time-entry activities exist without manual configuration. Sample projects and
@@ -30,7 +30,7 @@ steps instead.
 - **THEN** default roles, issue statuses, and time-entry activities are present
   and visible after logging in
 
-### Requirement: REQ-TTR-408 Local HTTP access on a non-conflicting port
+### Requirement: REQ-100 Local HTTP access on a non-conflicting port
 The instance SHALL be reachable over plain HTTP on a fixed localhost port
 (default `8091`, overridable via `REDMINE_PORT`) that does not conflict with the
 default dev stack (PgAdmin) or the local OpenProject instance.
@@ -46,7 +46,7 @@ default dev stack (PgAdmin) or the local OpenProject instance.
   instance are all running with default ports
 - **THEN** no host-port conflict occurs
 
-### Requirement: REQ-TTR-409 Isolated persistent storage
+### Requirement: REQ-101 Isolated persistent storage
 The instance SHALL persist its data in dedicated named volumes separate from the
 application's Postgres volumes and from the OpenProject dev volumes, so tearing it
 down does not affect other dev data.
@@ -56,7 +56,7 @@ down does not affect other dev data.
 - **THEN** only Redmine's volumes are removed and `pg-osi-time-tracker` and the
   OpenProject dev volumes are untouched
 
-### Requirement: REQ-TTR-410 Documented usage and manual setup steps
+### Requirement: REQ-102 Documented usage and manual setup steps
 The repository SHALL document, in `README.md`, how to start and stop the local
 Redmine instance and the one-time manual steps required for integration work:
 completing the forced admin password change, enabling the REST web service,

@@ -5,10 +5,7 @@ schema: spec-driven
 
 rules:
   specs:
-    - "For every requirement, include a traceability code in the title: `### Requirement: REQ-<DOMAIN>-<NNN> Title`"
-    - "Keep standard OpenSpec headers: `### Requirement:` and `#### Scenario:`"
-    - "Domain prefixes: AUTH (authentication & identity), TTR (time tracking & reporting & remote integration), NFR (non-functional requirements)"
-    - Use an `## Open Questions` section for unresolved items tagged `[UNCONFIRMED]`; do not implement unconfirmed items
+    - "For every requirement, include a globally-unique traceability code in the title: `### Requirement: REQ-<NNN> Title`"
     - "Use RFC 2119 keywords: MUST/SHALL for absolute requirements, SHOULD for recommendations, MAY for optional"
     - Include error and edge-case scenarios, not just the happy path
     - Scope to MVP unless explicitly marked 🟡 V1.1 or later
