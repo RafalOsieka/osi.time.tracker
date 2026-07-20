@@ -1,9 +1,10 @@
 # user-settings Specification
 
 ## Purpose
-Define account-level user preferences — the effective display timezone and the week-start day — together with their persistence model, API, settings page, and the timezone-aware date-time foundation that renders all times and week groupings according to those preferences. Settings are scoped to the authenticated user, survive across devices and sessions, ride along in the session payload for first-render availability, and change the UI as a pure client-side re-render (the on-the-wire representation remains UTC ISO 8601 instants).
+Define account-level user preferences — the effective display timezone and the week-start day — together with their persistence model, API, settings page, and the timezone-aware date-time foundation that renders all times and week groupings according to those preferences. Settings are scoped to the authenticated user, survive across devices and sessions, ride along in the session payload for first-render availability, and change the UI as a pure client-side re-render (the on-the-wire representation remains UTC ISO 8601 instants). The settings API (REQ-166) follows the shared `api-endpoint-conventions` for authentication, CSRF, validation, and the error contract.
 
 ## Requirements
+
 ### Requirement: REQ-165 Account-persisted timezone and week-start settings
 The system SHALL persist two account-level settings on the user record: `timezone` (an IANA timezone identifier, nullable — `NULL` meaning "not yet chosen") and `weekStart` (`monday` or `sunday`, defaulting to `monday`). Settings SHALL be scoped strictly to the authenticated user and SHALL survive across devices and sessions. The effective timezone SHALL be the stored value when present, otherwise the browser-detected timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`); the system SHALL NOT silently persist the detected timezone — persistence happens only when the user saves it on the settings page. The settings SHALL be included in the session payload (`AuthUser` boundary type) so they are available on first render without an extra request.
 

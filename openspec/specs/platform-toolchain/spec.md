@@ -1,8 +1,14 @@
 # platform-toolchain Specification
 
 ## Purpose
-TBD - created by archiving change upgrade-nuxt-4-5. Update Purpose after archive.
+
+Define the baseline platform toolchain the application builds and runs on (the
+supported Nuxt/Vite/unhead versions) and the quality gates that must stay green,
+so toolchain upgrades preserve behavior, contracts, schema, and i18n without
+duplicate major dependency versions.
+
 ## Requirements
+
 ### Requirement: REQ-083 Application runs on Nuxt 4.5 with all quality gates green
 The application SHALL build and run on Nuxt `^4.5.0` (with `@nuxt/schema` at the matching version), using the default Vite builder on Vite 8 and unhead v3. The upgrade SHALL NOT change any user-facing behavior, API contract, database schema, or i18n catalog. All quality gates — `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, and `pnpm test:e2e` — SHALL pass on the upgraded dependency tree, and the dependency tree SHALL NOT contain duplicate major versions of unhead or unctx.
 

@@ -1,7 +1,7 @@
 # client-management Specification
 
 ## Purpose
-Define how authenticated users manage their own clients (the top of the `Client → Project → Task` hierarchy): listing, creating, renaming, and soft-deleting clients with strict per-user isolation, CSRF-guarded mutating endpoints, and an accessible, tokenized Clients UI.
+Define how authenticated users manage their own clients (the top of the `Client → Project → Task` hierarchy): listing, creating, renaming, and soft-deleting clients with an accessible, tokenized Clients UI. All client endpoints follow the shared `api-endpoint-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
 
 ## Requirements
 
@@ -71,21 +71,6 @@ Every read and write SHALL be scoped by the authenticated user's id. A client id
 #### Scenario: Unknown client id
 - **WHEN** an authenticated user references a client id that does not exist
 - **THEN** the system SHALL respond with HTTP 404
-
-### Requirement: REQ-032 Authenticated and CSRF-guarded client endpoints
-All client endpoints SHALL require authentication via `requireAuth`, and mutating endpoints (`POST`, `PATCH`, `DELETE`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast.
-
-#### Scenario: Unauthenticated request rejected
-- **WHEN** any client endpoint is called without a valid session
-- **THEN** the system SHALL respond with HTTP 401
-
-#### Scenario: Missing CSRF token rejected
-- **WHEN** a mutating client request is made without a valid CSRF token
-- **THEN** the system SHALL reject the request
-
-#### Scenario: Server failure surfaced
-- **WHEN** a mutation fails with an API error
-- **THEN** the client SHALL show a Toast translated from the returned `messageKey`
 
 ### Requirement: REQ-033 Accessible, tokenized Clients UI
 The Clients page SHALL meet WCAG 2.1 AA: form fields SHALL be labelled, the create/edit dialog and confirm dialog SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from PrimeVue theme tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.

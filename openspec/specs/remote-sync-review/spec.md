@@ -1,8 +1,15 @@
 # remote-sync-review Specification
 
 ## Purpose
-TBD - created by archiving change remote-sync-page. Update Purpose after archive.
+
+Define the per-day Remote Sync page that reviews a day's tasks and exports their
+time to the configured tracker: listing every task with entries that day, deriving
+each row's state and reason, computing original and editable rounded durations,
+fetching required remote fields, aggregating the review server-side, and
+orchestrating direct or proxied export with non-locking provenance.
+
 ## Requirements
+
 ### Requirement: REQ-111 Per-day Remote Sync page lists all of the day's tasks
 
 The application SHALL provide a Remote Sync page for a specific day, reachable from each day header

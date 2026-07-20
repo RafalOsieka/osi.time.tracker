@@ -1,7 +1,7 @@
 # time-tracking Specification
 
 ## Purpose
-Define authenticated live time-entry tracking with a single running entry per user, title-to-task resolution within project scope, stop/retitle behavior, server-backed running-entry reads, derived durations, a persistent shell indicator, and auth/CSRF guarantees.
+Define authenticated live time-entry tracking with a single running entry per user, title-to-task resolution within project scope, stop/retitle behavior, server-backed running-entry reads, derived durations, and a persistent shell indicator. All time-entry endpoints follow the shared `api-endpoint-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
 
 ## Requirements
 
@@ -217,17 +217,6 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 #### Scenario: Strings localized in parity
 - **WHEN** new user-facing timer strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
-
-### Requirement: REQ-147 Authenticated and CSRF-guarded time-entry endpoints
-All time-entry endpoints SHALL require authentication via `requireAuth`, and mutating endpoints (`POST`, `PATCH`, `DELETE`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast. Every read and write SHALL be scoped by the authenticated user's id.
-
-#### Scenario: Unauthenticated request rejected
-- **WHEN** any time-entry endpoint is called without a valid session
-- **THEN** the system SHALL respond with HTTP 401
-
-#### Scenario: Missing CSRF token rejected
-- **WHEN** a mutating time-entry request is made without a valid CSRF token
-- **THEN** the system SHALL reject the request
 
 ### Requirement: REQ-148 List time entries by instant range
 The system SHALL expose the authenticated user's time entries via `GET /api/time-entries` with required `from` and `to` query parameters (ISO 8601 instants). The response SHALL be a flat array of `TimeEntryDto` (including `taskId`, `taskName`, `projectId`, `projectName`, `clientName`, with parent names resolved via LEFT joins that do NOT filter on the parent's `deletedAt`) for entries whose `startedAt` falls within `[from, to)`, ordered by `startedAt` descending, scoped strictly to the authenticated user. A running entry (`stoppedAt` null) whose `startedAt` is in range SHALL be included. Invalid or missing `from`/`to`, or `from >= to`, SHALL be rejected with `{ messageKey, params }`. The server SHALL perform no timezone or day-boundary logic; callers convert their local day boundaries to instants.

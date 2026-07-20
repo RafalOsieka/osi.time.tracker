@@ -1,8 +1,15 @@
 # redmine-adapter Specification
 
 ## Purpose
-TBD - created by archiving change add-redmine-adapter. Update Purpose after archive.
+
+Define the Redmine implementation of the neutral remote-tracker adapter: issue
+title search and exact ID lookup, global activity options, current-account
+resolution, bounded same-day time-log fetch, and time-entry creation — speaking
+only adapter-neutral DTOs, authenticating via the Redmine API key header, and
+mapping upstream failures to the shared translated error contract.
+
 ## Requirements
+
 ### Requirement: REQ-093 Redmine adapter implements the neutral remote-tracker contract
 
 For a Client with an active Redmine configuration, the system SHALL provide a Redmine implementation of the neutral remote-tracker adapter supporting issue title search, exact issue-ID lookup, activity options, current-account resolution, same-day time-log fetch, and time-entry creation. The adapter SHALL speak only adapter-neutral DTOs, SHALL work identically under both `client` and `server` execution modes, and SHALL map upstream failures to the shared translated `{ messageKey, params }` error contract. Exact issue-ID lookups answered with an upstream 404 SHALL resolve to an empty (not-found) result rather than an error, matching the OpenProject convention.

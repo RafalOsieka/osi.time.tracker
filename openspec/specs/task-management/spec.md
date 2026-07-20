@@ -1,7 +1,7 @@
 # task-management Specification
 
 ## Purpose
-Define authenticated, user-scoped CRUD for Tasks (the leaf of the `Client → Project → Task` hierarchy), with an optional project assignment (project-less tasks allowed), task names unique within a user's project scope, project ownership validation when assigned, soft delete, strict cross-user isolation, implicit task creation/matching from time-entry titles, and an accessible PrimeVue Dialog-based UI. The `uuidv7` `id` is the API identifier.
+Define authenticated, user-scoped CRUD for Tasks (the leaf of the `Client → Project → Task` hierarchy), with an optional project assignment (project-less tasks allowed), task names unique within a user's project scope, project ownership validation when assigned, soft delete, implicit task creation/matching from time-entry titles, and an accessible PrimeVue Dialog-based UI. The `uuidv7` `id` is the API identifier. All task endpoints follow the shared `api-endpoint-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
 
 ## Requirements
 
@@ -147,18 +147,3 @@ Every read and write SHALL be scoped by the authenticated user's id. A task id b
 #### Scenario: Unknown task id
 - **WHEN** an authenticated user references a task id that does not exist
 - **THEN** the system SHALL respond with HTTP 404
-
-### Requirement: REQ-139 Authenticated and CSRF-guarded task endpoints
-All task endpoints SHALL require authentication via `requireAuth`, and the mutating endpoint (`PATCH`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast.
-
-#### Scenario: Unauthenticated request rejected
-- **WHEN** any task endpoint is called without a valid session
-- **THEN** the system SHALL respond with HTTP 401
-
-#### Scenario: Missing CSRF token rejected
-- **WHEN** a mutating task request is made without a valid CSRF token
-- **THEN** the system SHALL reject the request
-
-#### Scenario: Server failure surfaced
-- **WHEN** a mutation fails with an API error
-- **THEN** the client SHALL show a Toast translated from the returned `messageKey`

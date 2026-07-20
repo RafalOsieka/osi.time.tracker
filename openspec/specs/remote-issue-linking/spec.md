@@ -1,8 +1,15 @@
 # remote-issue-linking Specification
 
 ## Purpose
-TBD - created by archiving change remote-issue-linking. Update Purpose after archive.
+
+Define how a Task is linked to a single remote issue: searching the configured
+tracker (by title phrase or exact issue ID) under either execution mode, storing
+at most one adapter-neutral issue reference per Task, deriving its issue URL,
+unlinking locally, and presenting the reusable Timer-view issue picker. All rules
+are user-scoped and adapter-neutral.
+
 ## Requirements
+
 ### Requirement: REQ-103 Search OpenProject issues by configured transport
 
 For an owned Task whose Project's Client has an active OpenProject configuration, the system SHALL search OpenProject work packages using the execution mode selected by the configuration's `executionMode`. When `executionMode` is `client`, the browser SHALL query the configured OpenProject origin directly using the browser-held credential, and the credential SHALL NOT be transmitted to or persisted by the OSI server. When `executionMode` is `server`, the browser SHALL send the search and the per-request credential to the OSI server, which SHALL forward the request to the tracker and return the result; the OSI server SHALL NOT persist the credential. In both execution modes the user SHALL explicitly choose title-phrase or issue-ID search, enter a query, and submit it. Title search SHALL require at least three trimmed characters, match issue subjects, and return a fixed bounded result set. Issue-ID search SHALL require a non-empty valid OpenProject work-package ID and perform an exact lookup without applying the title minimum length. Both modes SHALL include open and closed issues, return the same adapter-neutral issue shape containing remote issue ID and title, and SHALL behave identically with respect to provider quirks and error classification.
