@@ -13,7 +13,7 @@ describe('createRemoteSystemConfigSchema', () => {
 
   it('parses a valid body', () => {
     const result = createRemoteSystemConfigSchema.parse(valid);
-    expect(result).toEqual({ ...valid, transportMode: 'direct' });
+    expect(result).toEqual(valid);
   });
 
   it('accepts optional requiredFieldDefaults', () => {
@@ -39,20 +39,26 @@ describe('createRemoteSystemConfigSchema', () => {
     expect(() => createRemoteSystemConfigSchema.parse({ ...valid, systemType: 'jira' })).toThrow();
   });
 
-  it('defaults transportMode to direct when omitted', () => {
-    const result = createRemoteSystemConfigSchema.parse(valid);
-    expect(result.transportMode).toBe('direct');
+  it('defaults executionMode to client when omitted', () => {
+    const { executionMode: _ignored, ...rest } = valid;
+    const result = createRemoteSystemConfigSchema.parse(rest);
+    expect(result.executionMode).toBe('client');
   });
 
-  it('accepts an explicit proxied transportMode', () => {
-    const result = createRemoteSystemConfigSchema.parse({ ...valid, transportMode: 'proxied' });
-    expect(result.transportMode).toBe('proxied');
+  it('accepts an explicit server executionMode', () => {
+    const result = createRemoteSystemConfigSchema.parse({ ...valid, executionMode: 'server' });
+    expect(result.executionMode).toBe('server');
   });
 
-  it('rejects an invalid transportMode', () => {
+  it('rejects an invalid executionMode', () => {
     expect(() =>
-      createRemoteSystemConfigSchema.parse({ ...valid, transportMode: 'tunneled' }),
+      createRemoteSystemConfigSchema.parse({ ...valid, executionMode: 'tunneled' }),
     ).toThrow();
+  });
+
+  it('no longer exposes a transportMode field', () => {
+    const result = createRemoteSystemConfigSchema.parse(valid);
+    expect((result as Record<string, unknown>).transportMode).toBeUndefined();
   });
 
   it('strips a secret field submitted alongside a valid body', () => {

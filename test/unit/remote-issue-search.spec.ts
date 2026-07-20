@@ -20,7 +20,6 @@ const config: RemoteSystemConfigDto = {
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',
-  transportMode: 'direct',
   roundingRule: 'none',
   requiredFieldDefaults: {},
   createdAt: '2024-01-01T00:00:00.000Z',
@@ -105,12 +104,12 @@ describe('useRemoteIssueSearch', () => {
     expect(errorKey.value).toBe('error.remoteIssueSearchFailed');
   });
 
-  it('maps a network failure to a translated error key', async () => {
+  it('maps a network failure to a translated connection-failure key', async () => {
     vi.mocked(fetch).mockRejectedValue(new Error('network down'));
     const { search, errorKey } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'anything' });
 
-    expect(errorKey.value).toBe('error.remoteIssueSearchFailed');
+    expect(errorKey.value).toBe('error.remoteServerModeConnectionFailed');
   });
 
   it('ignores a stale response that resolves after a newer request', async () => {

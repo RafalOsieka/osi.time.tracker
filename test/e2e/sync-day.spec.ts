@@ -98,7 +98,6 @@ describeSyncDay('sync day-review API integration', async () => {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
       executionMode: 'client',
-      transportMode: 'direct',
       roundingRule: 'none',
     });
 
@@ -123,6 +122,7 @@ describeSyncDay('sync day-review API integration', async () => {
     expect(row).toBeDefined();
     expect(row.config).not.toBeNull();
     expect(row.config.systemType).toBe('openproject');
+    expect(row.config.executionMode).toBe('client');
     expect(row.entries).toHaveLength(1);
     expect(row.entries[0].id).toBe(entry.id);
     expect(row.entries[0].durationSeconds).toBe(30 * 60);

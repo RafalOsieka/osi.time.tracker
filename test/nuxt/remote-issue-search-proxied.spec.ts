@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useRemoteIssueSearch } from '../../app/composables/useRemoteIssueSearch';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../shared/config/remote-secret';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 
@@ -31,8 +31,7 @@ const config = {
   clientId: 'client-1',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
-  executionMode: 'client' as const,
-  transportMode: 'proxied' as const,
+  executionMode: 'server' as const,
   roundingRule: 'none' as const,
   requiredFieldDefaults: {},
   createdAt: '',
@@ -61,7 +60,7 @@ describe('useRemoteIssueSearch (proxied transport)', () => {
     const [requestUrl, init] = csrfFetchMock.mock.calls[0]!;
     expect(requestUrl).toBe('/api/remote/search');
     expect(init.method).toBe('POST');
-    expect(init.headers[REMOTE_PROXY_SECRET_HEADER]).toBe('browser-held-secret');
+    expect(init.headers[REMOTE_SECRET_HEADER]).toBe('browser-held-secret');
     expect(init.body).toEqual({
       remoteSystemConfigId: 'config-1',
       mode: 'title',
@@ -77,18 +76,18 @@ describe('useRemoteIssueSearch (proxied transport)', () => {
     await search({ mode: 'title', query: 'login bug' });
 
     expect(csrfFetchMock).not.toHaveBeenCalled();
-    expect(errorKey.value).toBe('error.remoteProxySecretRequired');
+    expect(errorKey.value).toBe('error.remoteServerModeSecretRequired');
     expect(results.value).toEqual([]);
   });
 
-  it('maps a server-mapped error messageKey from the proxy route', async () => {
+  it('maps a server-mapped error messageKey from the server-execution endpoint', async () => {
     csrfFetchMock.mockRejectedValue({
-      data: { data: { messageKey: 'error.remoteProxyAuthRejected' } },
+      data: { data: { messageKey: 'error.remoteServerModeAuthRejected' } },
     });
     const { search, errorKey } = useRemoteIssueSearch(config);
 
     await search({ mode: 'title', query: 'login bug' });
 
-    expect(errorKey.value).toBe('error.remoteProxyAuthRejected');
+    expect(errorKey.value).toBe('error.remoteServerModeAuthRejected');
   });
 });

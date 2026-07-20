@@ -46,7 +46,6 @@ export default defineEventHandler(async (event): Promise<RemoteSystemConfigDto> 
     systemType: config.systemType,
     baseUrl: config.baseUrl,
     executionMode: config.executionMode,
-    transportMode: config.transportMode,
     roundingRule: config.roundingRule,
     requiredFieldDefaults: config.requiredFieldDefaults,
     createdAt: config.createdAt.toISOString(),

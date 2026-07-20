@@ -6,7 +6,6 @@ import type {
   RemoteSystemType,
   RemoteExecutionMode,
   RemoteRoundingRule,
-  RemoteTransportMode,
 } from '../../../shared/types/remote-system-config';
 
 export const remoteSystemConfigs = pgTable(
@@ -24,7 +23,6 @@ export const remoteSystemConfigs = pgTable(
     systemType: text('systemType').notNull().$type<RemoteSystemType>(),
     baseUrl: text('baseUrl').notNull(),
     executionMode: text('executionMode').notNull().$type<RemoteExecutionMode>(),
-    transportMode: text('transportMode').notNull().default('direct').$type<RemoteTransportMode>(),
     roundingRule: text('roundingRule').notNull().$type<RemoteRoundingRule>(),
     requiredFieldDefaults: jsonb('requiredFieldDefaults')
       .notNull()

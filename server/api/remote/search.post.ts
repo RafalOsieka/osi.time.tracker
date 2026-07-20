@@ -1,32 +1,32 @@
-import { and, eq, isNull } from 'drizzle-orm';
 import { ZodError } from 'zod';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
 import { proxiedRemoteIssueSearchSchema } from '../../../shared/types/remote-issue-ref';
 import type {
   ProxiedRemoteIssueSearchDto,
   ProxiedRemoteIssueSearchResponseDto,
 } from '../../../shared/types/remote-issue-ref';
-import { db } from '../../db/index';
-import { remoteSystemConfigs } from '../../db/schema';
-import { proxyOpenProjectSearch } from '../../utils/remote-issue-proxy';
+import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
+import { resolveOwnedRemoteConfig } from '../../utils/remote/resolve-owned-config';
+import { toApiError } from '../../utils/remote/adapter-error';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * Forwards a `proxied`-transport title-search or exact issue-ID lookup to
- * the caller's own configured tracker (REQ-TTR-111). The target base URL is
- * always derived server-side from the authenticated user's owned, stored
- * configuration; the client never supplies a target URL, and only the two
- * known adapter operations are forwarded (no generic pass-through).
+ * `server`-execution-mode title-search / exact issue-ID lookup (REQ-TTR-111).
+ * The target base URL is always derived server-side from the authenticated
+ * user's owned, stored configuration; only the two known adapter operations
+ * are forwarded (no generic pass-through), delegating to the same provider
+ * adapter used in `client` execution mode so quirks and error classification
+ * stay identical.
  */
 export default defineEventHandler(async (event): Promise<ProxiedRemoteIssueSearchResponseDto> => {
   const { user } = await requireAuth(event);
 
-  const secret = getRequestHeader(event, REMOTE_PROXY_SECRET_HEADER);
+  const secret = getRequestHeader(event, REMOTE_SECRET_HEADER);
   if (!secret) {
     throw createError({
       statusCode: 422,
-      data: { messageKey: 'error.remoteProxySecretRequired' } satisfies ApiMessage,
+      data: { messageKey: 'error.remoteServerModeSecretRequired' } satisfies ApiMessage,
     });
   }
 
@@ -59,28 +59,22 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteIssueSearc
     });
   }
 
-  // Resolve the owned, active configuration server-side; a foreign/unknown
-  // id is concealed as 404 without contacting any tracker.
-  const [config] = await db
-    .select({ id: remoteSystemConfigs.id, baseUrl: remoteSystemConfigs.baseUrl })
-    .from(remoteSystemConfigs)
-    .where(
-      and(
-        eq(remoteSystemConfigs.id, parsedBody.remoteSystemConfigId),
-        eq(remoteSystemConfigs.userId, user.id),
-        isNull(remoteSystemConfigs.deletedAt),
-      ),
-    )
-    .limit(1);
+  const config = await resolveOwnedRemoteConfig(user.id, parsedBody.remoteSystemConfigId);
+  const adapter = createServerRemoteAdapter(config, secret);
 
-  if (!config) {
-    throw createError({
-      statusCode: 404,
-      data: { messageKey: 'error.notFound' } satisfies ApiMessage,
-    });
+  try {
+    if (parsedBody.mode === 'id') {
+      const result = await adapter.getIssueById(value);
+      if (!result) {
+        throw createError({
+          statusCode: 404,
+          data: { messageKey: 'error.remoteIssueSearchNotFound' } satisfies ApiMessage,
+        });
+      }
+      return { results: [result] };
+    }
+    return { results: await adapter.searchIssues(value) };
+  } catch (err: unknown) {
+    return toApiError(err);
   }
-
-  const results = await proxyOpenProjectSearch(config.baseUrl, secret, parsedBody.mode, value);
-
-  return { results };
 });

@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/index';
 import { tasks, projects, remoteSystemConfigs, remoteIssueRefs } from '../db/schema';
-import { deriveIssueUrl } from '../../shared/utils/openproject-adapter';
+import { deriveIssueUrl } from '../../shared/remote/openproject/utils';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 
 /**

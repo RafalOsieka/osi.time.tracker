@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type {
+  RemoteExecutionMode,
   RemoteRoundingRule,
   RemoteSystemType,
-  RemoteTransportMode,
 } from './remote-system-config';
 
 /**
@@ -36,7 +36,7 @@ export interface RemoteSyncConfigSurfaceDto {
   id: string;
   systemType: RemoteSystemType;
   baseUrl: string;
-  transportMode: RemoteTransportMode;
+  executionMode: RemoteExecutionMode;
   roundingRule: RemoteRoundingRule;
   requiredFieldDefaults: Record<string, string>;
 }

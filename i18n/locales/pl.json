@@ -83,9 +83,9 @@
       "systemTypeLabel": "System zdalny",
       "baseUrlLabel": "Adres URL bazowy",
       "baseUrlPlaceholder": "https://issues.example.com",
-      "transportModeLabel": "Transport wyszukiwania",
-      "transportModeDirect": "Bezpośredni (przeglądarka do systemu)",
-      "transportModeProxied": "Przez proxy (przez ten serwer)",
+      "executionModeLabel": "Tryb wykonania",
+      "executionModeClient": "Klient (przeglądarka -> zdalny system)",
+      "executionModeServer": "Serwer (przeglądarka -> serwer -> zdalny system)",
       "roundingRuleLabel": "Reguła zaokrąglania",
       "roundingNone": "Bez zaokrąglania",
       "rounding15m": "Zaokrąglaj do 15 minut",
@@ -293,7 +293,6 @@
     "remoteConfigBaseUrlRequired": "Adres URL bazowy jest wymagany.",
     "remoteConfigBaseUrlInvalid": "Adres URL bazowy musi być prawidłowym adresem URL.",
     "remoteConfigExecutionModeRequired": "Tryb wykonania jest wymagany.",
-    "remoteConfigTransportModeRequired": "Transport wyszukiwania jest wymagany.",
     "remoteConfigRoundingRuleRequired": "Reguła zaokrąglania jest wymagana.",
     "projectNameRequired": "Nazwa jest wymagana.",
     "projectNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
@@ -327,9 +326,9 @@
     "remoteConfigIdRequired": "Wymagany jest prawidłowy identyfikator konfiguracji zdalnej.",
     "remoteIssueIdRequired": "Wymagany jest prawidłowy identyfikator zdalnego zgłoszenia.",
     "remoteIssueSearchQueryRequired": "Wprowadź zapytanie wyszukiwania.",
-    "remoteProxySecretRequired": "Klucz API jest wymagany do wyszukiwania w tym systemie.",
-    "remoteProxyAuthRejected": "System zdalny odrzucił podany klucz API.",
-    "remoteProxyConnectionFailed": "Nie udało się połączyć z systemem zdalnym. Sprawdź jego adres i połączenie sieciowe.",
+    "remoteServerModeSecretRequired": "Klucz API jest wymagany do wyszukiwania w tym systemie.",
+    "remoteServerModeAuthRejected": "System zdalny odrzucił podany klucz API.",
+    "remoteServerModeConnectionFailed": "Nie udało się połączyć z systemem zdalnym. Sprawdź jego adres i połączenie sieciowe.",
     "remoteSyncDateRequired": "Data jest wymagana.",
     "remoteSyncDateInvalid": "Wprowadź prawidłową datę.",
     "remoteActivitiesFetchFailed": "Nie udało się wczytać czynności. Spróbuj ponownie.",
@@ -346,7 +345,7 @@
     "remoteAccountFetchFailed": "Nie udało się ustalić konta zdalnego. Spróbuj ponownie.",
     "remoteTimeLogsFetchFailed": "Nie udało się wczytać zdalnych wpisów czasu. Spróbuj ponownie.",
     "remoteExportCreateFailed": "Nie udało się utworzyć zdalnego wpisu czasu. Spróbuj ponownie.",
-    "remoteProxyOriginRejected": "Cel żądania nie jest dozwolony dla tej konfiguracji zdalnej."
+    "remoteServerModeOriginRejected": "Cel żądania nie jest dozwolony dla tej konfiguracji zdalnej."
   },
   "errors": {
     "auth": {

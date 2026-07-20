@@ -16,14 +16,11 @@ import type {
   RemoteTimeLogDto,
 } from '~~/shared/types/remote-export';
 import type { RemoteSystemConfigDto } from '~~/shared/types/remote-system-config';
-import type { AdapterFieldOption } from '~~/shared/utils/openproject-adapter';
+import type { RemoteFieldOption } from '~~/shared/types/remote-field-option';
 import { formatDuration } from '~/utils/formatDuration';
 import { normalizeDurationInput } from '~/utils/normalizeDurationInput';
 import { useRemoteActivities } from '~/composables/useRemoteActivities';
-import {
-  mapOpenProjectClientError,
-  useOpenProjectClient,
-} from '~/composables/useOpenProjectClient';
+import { mapRemoteSyncClientError, useRemoteSyncClient } from '~/composables/useRemoteSyncClient';
 import { extractMessageKey } from '~/utils/extractMessageKey';
 
 const route = useRoute();
@@ -121,7 +118,7 @@ function selectedSecondsFor(row: RemoteSyncDayRowDto): number {
 
 // --- Activities ---
 interface ActivitiesState {
-  options: AdapterFieldOption[];
+  options: RemoteFieldOption[];
   loading: boolean;
   errorKey: string | null;
   loaded: boolean;
@@ -142,8 +139,7 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigD
     clientId: '',
     systemType: config.systemType,
     baseUrl: config.baseUrl,
-    executionMode: 'client',
-    transportMode: config.transportMode,
+    executionMode: config.executionMode,
     roundingRule: config.roundingRule,
     requiredFieldDefaults: config.requiredFieldDefaults,
     createdAt: '',
@@ -345,12 +341,12 @@ interface RemoteLogsState {
 }
 
 const remoteLogsByConfig = ref<Record<string, RemoteLogsState>>({});
-const clientByConfigId = new Map<string, ReturnType<typeof useOpenProjectClient>>();
+const clientByConfigId = new Map<string, ReturnType<typeof useRemoteSyncClient>>();
 
 function clientFor(config: RemoteSyncConfigSurfaceDto) {
   let client = clientByConfigId.get(config.id);
   if (!client) {
-    client = useOpenProjectClient(toPickerConfig(config));
+    client = useRemoteSyncClient(toPickerConfig(config));
     clientByConfigId.set(config.id, client);
   }
   return client;
@@ -386,7 +382,7 @@ async function ensureRemoteLogsLoaded(
       [key]: {
         logs: [],
         loading: false,
-        errorKey: mapOpenProjectClientError(err, 'error.remoteTimeLogsFetchFailed'),
+        errorKey: mapRemoteSyncClientError(err, 'error.remoteTimeLogsFetchFailed'),
         loaded: true,
       },
     };
@@ -518,7 +514,7 @@ async function runExport(rowsToExport: RemoteSyncDayRowDto[]) {
       nextOutcomes[row.taskId] = {
         taskId: row.taskId,
         status: 'remote_failure',
-        messageKey: mapOpenProjectClientError(err, 'remoteSync.outcomeRemoteFailure'),
+        messageKey: mapRemoteSyncClientError(err, 'remoteSync.outcomeRemoteFailure'),
       };
       continue;
     }

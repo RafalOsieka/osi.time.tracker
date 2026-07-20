@@ -1,28 +1,28 @@
-import { and, eq, isNull } from 'drizzle-orm';
 import { ZodError } from 'zod';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
 import {
   proxiedRemoteAccountSchema,
   type ProxiedRemoteAccountDto,
   type ProxiedRemoteAccountResponseDto,
 } from '../../../shared/types/remote-export';
-import { db } from '../../db/index';
-import { remoteSystemConfigs } from '../../db/schema';
-import { proxyOpenProjectCurrentAccount } from '../../utils/remote-issue-proxy';
+import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
+import { resolveOwnedRemoteConfig } from '../../utils/remote/resolve-owned-config';
+import { toApiError } from '../../utils/remote/adapter-error';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * Proxied current-account resolution against the caller's configured tracker.
+ * `server`-execution-mode current-account resolution against the caller's
+ * configured tracker.
  */
 export default defineEventHandler(async (event): Promise<ProxiedRemoteAccountResponseDto> => {
   const { user } = await requireAuth(event);
 
-  const secret = getRequestHeader(event, REMOTE_PROXY_SECRET_HEADER);
+  const secret = getRequestHeader(event, REMOTE_SECRET_HEADER);
   if (!secret) {
     throw createError({
       statusCode: 422,
-      data: { messageKey: 'error.remoteProxySecretRequired' } satisfies ApiMessage,
+      data: { messageKey: 'error.remoteServerModeSecretRequired' } satisfies ApiMessage,
     });
   }
 
@@ -40,24 +40,12 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteAccountRes
     throw err;
   }
 
-  const [config] = await db
-    .select({ id: remoteSystemConfigs.id, baseUrl: remoteSystemConfigs.baseUrl })
-    .from(remoteSystemConfigs)
-    .where(
-      and(
-        eq(remoteSystemConfigs.id, parsedBody.remoteSystemConfigId),
-        eq(remoteSystemConfigs.userId, user.id),
-        isNull(remoteSystemConfigs.deletedAt),
-      ),
-    )
-    .limit(1);
+  const config = await resolveOwnedRemoteConfig(user.id, parsedBody.remoteSystemConfigId);
+  const adapter = createServerRemoteAdapter(config, secret);
 
-  if (!config) {
-    throw createError({
-      statusCode: 404,
-      data: { messageKey: 'error.notFound' } satisfies ApiMessage,
-    });
+  try {
+    return await adapter.getCurrentAccount();
+  } catch (err: unknown) {
+    return toApiError(err);
   }
-
-  return proxyOpenProjectCurrentAccount(config.baseUrl, secret);
 });

@@ -58,7 +58,6 @@ export default defineEventHandler(async (event): Promise<RemoteSystemConfigDto> 
     systemType: parsedBody.systemType,
     baseUrl: parsedBody.baseUrl,
     executionMode: parsedBody.executionMode,
-    transportMode: parsedBody.transportMode,
     roundingRule: parsedBody.roundingRule,
     requiredFieldDefaults: parsedBody.requiredFieldDefaults ?? {},
   };
@@ -87,7 +86,6 @@ export default defineEventHandler(async (event): Promise<RemoteSystemConfigDto> 
     systemType: saved.systemType,
     baseUrl: saved.baseUrl,
     executionMode: saved.executionMode,
-    transportMode: saved.transportMode,
     roundingRule: saved.roundingRule,
     requiredFieldDefaults: saved.requiredFieldDefaults,
     createdAt: saved.createdAt.toISOString(),

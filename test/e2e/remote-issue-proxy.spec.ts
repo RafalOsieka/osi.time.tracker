@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { url } from '@nuxt/test-utils/e2e';
-import { REMOTE_PROXY_SECRET_HEADER } from '../../shared/config/remote-proxy';
+import { REMOTE_SECRET_HEADER } from '../../shared/config/remote-secret';
 import { CookieJar, primeCsrf } from './support/auth';
 import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
@@ -48,8 +48,7 @@ async function createProxiedConfig(
     body: JSON.stringify({
       systemType: 'openproject',
       baseUrl,
-      executionMode: 'client',
-      transportMode: 'proxied',
+      executionMode: 'server',
       roundingRule: 'none',
     }),
   });
@@ -126,7 +125,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
     });
@@ -141,7 +140,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'ab' }),
     });
@@ -162,7 +161,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
     });
     expect(missingSecretRes.status).toBe(422);
     expect((await missingSecretRes.json())?.data?.messageKey).toBe(
-      'error.remoteProxySecretRequired',
+      'error.remoteServerModeSecretRequired',
     );
   });
 
@@ -179,7 +178,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'id', query: '42' }),
     });
@@ -193,7 +192,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'id', query: '999' }),
     });
@@ -207,7 +206,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': bob.token,
         cookie: bob.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'id', query: '42' }),
     });
@@ -230,7 +229,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': anonToken,
         cookie: anonJar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
     });
@@ -242,7 +241,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
       headers: {
         'content-type': 'application/json',
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
     });
@@ -255,7 +254,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': bob.token,
         cookie: bob.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
     });
@@ -274,13 +273,13 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: secret,
+        [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(res.status).toBe(502);
     const body = await res.json();
-    expect(body?.data?.messageKey).toBe('error.remoteProxyAuthRejected');
+    expect(body?.data?.messageKey).toBe('error.remoteServerModeAuthRejected');
     expect(JSON.stringify(body)).not.toContain(secret);
 
     // Connection failure (unreachable tracker) maps to the connection messageKey
@@ -301,7 +300,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'content-type': 'application/json',
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
-        [REMOTE_PROXY_SECRET_HEADER]: 'good-secret',
+        [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({
         remoteSystemConfigId: unreachableConfig.id,
@@ -310,6 +309,6 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
       }),
     });
     expect(connRes.status).toBe(502);
-    expect((await connRes.json())?.data?.messageKey).toBe('error.remoteProxyConnectionFailed');
+    expect((await connRes.json())?.data?.messageKey).toBe('error.remoteServerModeConnectionFailed');
   });
 });

@@ -5,8 +5,11 @@
 // behavior — this plugin performs no work of its own.
 import { applyRoundingRule } from '~~/shared/utils/rounding';
 import { deriveRemoteSyncRowState } from '~~/shared/utils/remote-sync-row-state';
-import { buildTimeEntryActivitiesRequest } from '~~/shared/utils/openproject-adapter';
-import { REMOTE_PROXY_SECRET_HEADER } from '~~/shared/config/remote-proxy';
+import { normalizeBaseUrl } from '~~/shared/remote/openproject/utils';
+import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
+import { RemoteAdapterError } from '~~/shared/types/remote-adapter';
+import { OpenProjectAdapter } from '~~/shared/remote/openproject/adapter';
+import { OpenProjectClient } from '~~/shared/remote/openproject/client';
 
 export default defineNuxtPlugin(() => {
   if (process.env.NODE_ENV === '__never__') {
@@ -18,7 +21,10 @@ export default defineNuxtPlugin(() => {
       config: null,
       hasIssueRef: false,
     });
-    buildTimeEntryActivitiesRequest('', '');
-    void REMOTE_PROXY_SECRET_HEADER;
+    normalizeBaseUrl('');
+    void REMOTE_SECRET_HEADER;
+    void new RemoteAdapterError('');
+    void OpenProjectAdapter;
+    void OpenProjectClient;
   }
 });

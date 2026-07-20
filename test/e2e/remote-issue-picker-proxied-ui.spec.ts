@@ -95,8 +95,7 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
       body: JSON.stringify({
         systemType: 'openproject',
         baseUrl: tracker.baseUrl,
-        executionMode: 'client',
-        transportMode: 'proxied',
+        executionMode: 'server',
         roundingRule: 'none',
       }),
     });

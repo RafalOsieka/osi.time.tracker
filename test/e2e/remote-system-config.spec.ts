@@ -158,49 +158,50 @@ describeRemoteConfig('remote system config API integration', async () => {
     expect(updated.secret).toBeUndefined();
   });
 
-  // 2.2 transportMode
-  it('2.2 upsert accepts direct/proxied, defaults to direct, rejects invalid mode', async () => {
+  // 2.2 executionMode
+  it('2.2 upsert accepts client/server, defaults to client, rejects invalid mode', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Transport Client');
+    const client = await createClient(alice.jar, alice.token, 'Execution Mode Client');
 
     const putHeaders = {
       'content-type': 'application/json',
       'csrf-token': alice.token,
       cookie: alice.jar.header(),
     };
+    const { executionMode: _omitted, ...configWithoutExecutionMode } = validConfig;
 
-    // Omitted transportMode defaults to direct
+    // Omitted executionMode defaults to client
     const defaultRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
       method: 'PUT',
       headers: putHeaders,
-      body: JSON.stringify(validConfig),
+      body: JSON.stringify(configWithoutExecutionMode),
     });
     expect(defaultRes.status).toBe(200);
-    expect((await defaultRes.json()).transportMode).toBe('direct');
+    expect((await defaultRes.json()).executionMode).toBe('client');
 
-    // Explicit proxied
-    const proxiedRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+    // Explicit server
+    const serverRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
       method: 'PUT',
       headers: putHeaders,
-      body: JSON.stringify({ ...validConfig, transportMode: 'proxied' }),
+      body: JSON.stringify({ ...validConfig, executionMode: 'server' }),
     });
-    expect(proxiedRes.status).toBe(200);
-    expect((await proxiedRes.json()).transportMode).toBe('proxied');
+    expect(serverRes.status).toBe(200);
+    expect((await serverRes.json()).executionMode).toBe('server');
 
-    // Explicit direct
-    const directRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+    // Explicit client
+    const clientRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
       method: 'PUT',
       headers: putHeaders,
-      body: JSON.stringify({ ...validConfig, transportMode: 'direct' }),
+      body: JSON.stringify({ ...validConfig, executionMode: 'client' }),
     });
-    expect(directRes.status).toBe(200);
-    expect((await directRes.json()).transportMode).toBe('direct');
+    expect(clientRes.status).toBe(200);
+    expect((await clientRes.json()).executionMode).toBe('client');
 
     // Invalid mode rejected
     const invalidRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
       method: 'PUT',
       headers: putHeaders,
-      body: JSON.stringify({ ...validConfig, transportMode: 'tunneled' }),
+      body: JSON.stringify({ ...validConfig, executionMode: 'tunneled' }),
     });
     expect(invalidRes.status).toBe(422);
     const invalidBody = await invalidRes.json();
