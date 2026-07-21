@@ -70,7 +70,7 @@
   "license": "MIT",
   "engines": {
     "node": ">=24",
-    "pnpm": ">=11"
+    "pnpm": "^11"
   },
   "devEngines": {
     "packageManager": {
