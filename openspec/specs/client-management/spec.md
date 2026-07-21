@@ -1,11 +1,11 @@
 # client-management Specification
 
 ## Purpose
-Define how authenticated users manage their own clients (the top of the `Client → Project → Task` hierarchy): listing, creating, renaming, and soft-deleting clients with strict per-user isolation, CSRF-guarded mutating endpoints, and an accessible, tokenized Clients UI.
+Define how authenticated users manage their own clients (the top of the `Client → Project → Task` hierarchy): listing, creating, renaming, and soft-deleting clients with an accessible, tokenized Clients UI. All client endpoints follow the shared `api-endpoint-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
 
 ## Requirements
 
-### Requirement: REQ-TTR-010 List own clients
+### Requirement: REQ-027 List own clients
 The system SHALL show the authenticated user only their own non-deleted clients, ordered by name, via `GET /api/clients`. The list SHALL exclude any client whose `deletedAt` is set and any client belonging to another user.
 
 #### Scenario: User sees only their own clients
@@ -20,7 +20,7 @@ The system SHALL show the authenticated user only their own non-deleted clients,
 - **WHEN** an authenticated user has no clients
 - **THEN** the Clients page SHALL render a dedicated empty state with a create call-to-action instead of an empty table
 
-### Requirement: REQ-TTR-011 Create a client
+### Requirement: REQ-028 Create a client
 The system SHALL allow an authenticated user to create a client with a `name` via `POST /api/clients`. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user among non-deleted clients. On success the created client SHALL be returned and a success Toast SHALL be shown.
 
 #### Scenario: Successful creation
@@ -39,7 +39,7 @@ The system SHALL allow an authenticated user to create a client with a `name` vi
 - **WHEN** the submitted name matches only a soft-deleted client of the same user
 - **THEN** the system SHALL allow creation
 
-### Requirement: REQ-TTR-012 Edit a client name
+### Requirement: REQ-029 Edit a client name
 The system SHALL allow an authenticated user to update the `name` of their own client via `PATCH /api/clients/[id]`, applying the same validation as creation. Editing SHALL be scoped by `userId`.
 
 #### Scenario: Successful rename
@@ -50,7 +50,7 @@ The system SHALL allow an authenticated user to update the `name` of their own c
 - **WHEN** the new name matches another non-deleted client of the same user
 - **THEN** the system SHALL reject the request with `messageKey: 'error.clientNameDuplicate'` rendered inline
 
-### Requirement: REQ-TTR-013 Soft-delete a client
+### Requirement: REQ-030 Soft-delete a client
 The system SHALL soft-delete a client via `DELETE /api/clients/[id]` by setting `deletedAt`, scoped by `userId`, and SHALL never hard-delete the row. Deletion SHALL be confirmed via a confirm dialog before it is performed.
 
 #### Scenario: Successful soft delete
@@ -61,7 +61,7 @@ The system SHALL soft-delete a client via `DELETE /api/clients/[id]` by setting 
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
 
-### Requirement: REQ-TTR-014 Strict cross-user isolation
+### Requirement: REQ-031 Strict cross-user isolation
 Every read and write SHALL be scoped by the authenticated user's id. A client id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence.
 
 #### Scenario: Foreign client id on read or write
@@ -72,22 +72,7 @@ Every read and write SHALL be scoped by the authenticated user's id. A client id
 - **WHEN** an authenticated user references a client id that does not exist
 - **THEN** the system SHALL respond with HTTP 404
 
-### Requirement: REQ-NFR-016 Authenticated and CSRF-guarded client endpoints
-All client endpoints SHALL require authentication via `requireAuth`, and mutating endpoints (`POST`, `PATCH`, `DELETE`) SHALL be CSRF-protected; client-side mutations SHALL use `$csrfFetch` / `useCsrfFetch`. API errors SHALL use the `{ messageKey, params }` contract translated client-side via `t()`; server/network failures SHALL surface as a Toast.
-
-#### Scenario: Unauthenticated request rejected
-- **WHEN** any client endpoint is called without a valid session
-- **THEN** the system SHALL respond with HTTP 401
-
-#### Scenario: Missing CSRF token rejected
-- **WHEN** a mutating client request is made without a valid CSRF token
-- **THEN** the system SHALL reject the request
-
-#### Scenario: Server failure surfaced
-- **WHEN** a mutation fails with an API error
-- **THEN** the client SHALL show a Toast translated from the returned `messageKey`
-
-### Requirement: REQ-NFR-017 Accessible, tokenized Clients UI
+### Requirement: REQ-033 Accessible, tokenized Clients UI
 The Clients page SHALL meet WCAG 2.1 AA: form fields SHALL be labelled, the create/edit dialog and confirm dialog SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from PrimeVue theme tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
 
 #### Scenario: Inline field error is accessible
@@ -98,7 +83,7 @@ The Clients page SHALL meet WCAG 2.1 AA: form fields SHALL be labelled, the crea
 - **WHEN** new user-facing strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
-### Requirement: REQ-TTR-033 Client-side validation of the client form
+### Requirement: REQ-034 Client-side validation of the client form
 The client create/edit form SHALL validate input client-side using the shared `createClientSchema` from `shared/types/client.ts` (via a PrimeVue Forms resolver) before any request is sent. Validation failures SHALL render the schema's messageKey translated via `t()` as an inline field error and SHALL prevent the request. Server-side validation SHALL remain unchanged and authoritative; server-only field errors (e.g. `error.clientNameDuplicate`) SHALL still render inline under the field after submission.
 
 #### Scenario: Empty name blocked client-side

@@ -17,7 +17,7 @@ import { timeEntries } from './time-entries';
 /**
  * One append-only record per successfully finalized remote time log.
  * There is intentionally no task/day or entry uniqueness constraint: later
- * and intentional repeat exports are valid (REQ-TTR-122).
+ * and intentional repeat exports are valid (REQ-119).
  */
 export const remoteExports = pgTable(
   'remote_exports',

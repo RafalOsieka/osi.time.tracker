@@ -12,7 +12,7 @@ const isoDateSchema = z
 
 /**
  * Request body for local finalization after the browser successfully created
- * a remote time log (REQ-TTR-122 / REQ-TTR-123).
+ * a remote time log (REQ-119 / REQ-120).
  */
 export const finalizeRemoteExportSchema = z.object({
   taskId: z
@@ -72,7 +72,7 @@ export interface FinalizeRemoteExportResultDto {
 
 /**
  * A single same-day remote time log shown as informational context beside a
- * linked task (REQ-TTR-121). Never used to infer local provenance.
+ * linked task (REQ-118). Never used to infer local provenance.
  */
 export interface RemoteTimeLogDto {
   remoteLogId: string;
@@ -88,7 +88,7 @@ export interface RemoteTimeLogDto {
   remoteUserId: string | null;
 }
 
-/** Per-task outcome of one browser-orchestrated export batch (REQ-TTR-123). */
+/** Per-task outcome of one browser-orchestrated export batch (REQ-120). */
 export const remoteExportOutcomeStatusSchema = z.enum([
   'success',
   'remote_failure',

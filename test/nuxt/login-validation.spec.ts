@@ -20,7 +20,7 @@ const ButtonStub = {
   props: ['label', 'loading'],
 };
 
-describe('REQ-AUTH-007: login client-side validation', () => {
+describe('REQ-013: login client-side validation', () => {
   it('blocks submission and does not call login when credentials are empty', async () => {
     const wrapper = await mountSuspended(LoginPage, {
       global: {

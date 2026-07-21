@@ -7,7 +7,7 @@ import { useRemoteConfigSecret } from './useRemoteConfigSecret';
 
 /**
  * Fetches the time-entry activity options for a given remote configuration,
- * project-scoped by the linked work package `remoteIssueId` (REQ-TTR-117),
+ * project-scoped by the linked work package `remoteIssueId` (REQ-114),
  * via the `RemoteTrackerAdapter` selected for `config.executionMode`. The
  * 403 -> empty-options quirk is handled once, inside the adapter.
  */

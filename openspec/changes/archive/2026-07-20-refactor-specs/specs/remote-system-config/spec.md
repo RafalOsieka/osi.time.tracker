@@ -1,9 +1,6 @@
-# remote-issue-proxy Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change add-proxied-remote-transport. Update Purpose after archive.
-## Requirements
-### Requirement: REQ-TTR-111 Proxy remote issue search through the OSI server
+### Requirement: REQ-108 Proxy remote issue search through the OSI server
 
 For a remote-system configuration whose `executionMode` is `server`, the system SHALL expose authenticated, user-scoped OSI server endpoints that forward title-phrase search and exact issue-ID lookup to the configured tracker and return the adapter-neutral issue shape. The client SHALL identify only the owned configuration and search input; the server SHALL derive the target tracker base URL from the authenticated user's owned stored configuration and SHALL NOT accept a target URL from the client. The endpoints SHALL forward exactly the known adapter operations, SHALL NOT act as a generic HTTP pass-through, and SHALL delegate to the same provider adapter used in `client` execution mode so quirks and error classification stay identical. Title search SHALL require at least three trimmed characters and return a fixed bounded result set; issue-ID search SHALL require a non-empty valid work-package ID and perform an exact lookup; both SHALL include open and closed issues.
 
@@ -27,7 +24,7 @@ For a remote-system configuration whose `executionMode` is `server`, the system 
 - **WHEN** a request targets any operation other than the defined adapter operations
 - **THEN** the server SHALL reject it and SHALL NOT forward an arbitrary request to the tracker
 
-### Requirement: REQ-TTR-112 Forwarded proxy credential is never persisted
+### Requirement: REQ-109 Forwarded proxy credential is never persisted
 
 For `server` execution-mode requests the browser SHALL send the tracker API secret per request in a dedicated request header, and the OSI server SHALL use it only to authorize the single upstream call. The server SHALL NOT persist, log, serialize, or return the forwarded secret, and SHALL NOT place it in any error payload. Server-execution endpoints SHALL require a valid session and CSRF protection for mutations and SHALL scope configuration lookup to the authenticated user.
 
@@ -43,7 +40,7 @@ For `server` execution-mode requests the browser SHALL send the tracker API secr
 - **WHEN** a server execution-mode request lacks a valid session, lacks CSRF for a mutation, or references a configuration the user does not own
 - **THEN** the server SHALL reject it without contacting the tracker and without disclosing the configuration
 
-### Requirement: REQ-TTR-113 Proxy failures map to the translated error contract
+### Requirement: REQ-110 Proxy failures map to the translated error contract
 
 The server-execution endpoints SHALL translate upstream outcomes into distinct `{ messageKey, params }` errors mirroring the client execution-mode error states: rejected credential, connection failure or timeout, and not-found. The server SHALL NOT return raw upstream status text or response bodies to the client, so the picker renders equivalent translated states regardless of execution mode.
 

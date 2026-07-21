@@ -47,7 +47,7 @@ export interface RemoteSyncIssueRefDto {
   cachedTitle: string;
 }
 
-/** One completed local time entry under a day-review task row (REQ-TTR-120). */
+/** One completed local time entry under a day-review task row (REQ-117). */
 export interface RemoteSyncDayEntryDto {
   id: string;
   startedAt: string;
@@ -59,7 +59,7 @@ export interface RemoteSyncDayEntryDto {
 
 /**
  * Append-only provenance for one successfully finalized remote log on this
- * task/day (REQ-TTR-122). Multiple records per task/day are allowed.
+ * task/day (REQ-119). Multiple records per task/day are allowed.
  */
 export interface RemoteSyncExportProvenanceDto {
   exportId: string;
