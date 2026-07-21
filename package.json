@@ -68,10 +68,14 @@
     "url": "git+https://github.com/RafalOsieka/osi.time.tracker.git"
   },
   "license": "MIT",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=11"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "^11.11.0",
+      "version": "^11.15.1",
       "onFail": "download"
     }
   }
