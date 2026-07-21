@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import type { MenuItem } from 'primevue/menuitem';
 import { useI18n } from 'vue-i18n';
-import type { ColorModePreference } from '~/utils/color-mode';
+import type { DropdownMenuItem } from '@nuxt/ui';
 
-const { t, locale, availableLocales } = useI18n();
-const { preference, setPreference } = useColorMode();
+type ColorModePreference = 'light' | 'dark' | 'system';
+
+const { t, locale, availableLocales, setLocale } = useI18n();
+const colorMode = useColorMode();
 const { logout, user } = useAuth();
 
 const avatarLabel = computed(() => {
@@ -25,125 +26,67 @@ async function onLogout() {
   }
 }
 
-const localeOptions = computed(() =>
-  availableLocales.map((code) => ({ value: code, label: t(`locale.${code}`) })),
-);
-
-const themeOptions = computed<Array<{ value: ColorModePreference; label: string }>>(() => [
-  { value: 'light', label: t('theme.light') },
-  { value: 'dark', label: t('theme.dark') },
-  { value: 'system', label: t('theme.system') },
+const items = computed<DropdownMenuItem[][]>(() => [
+  [
+    {
+      label: t('utilityMenu.locale'),
+      type: 'label',
+    },
+    ...availableLocales.map((code) => ({
+      label: t(`locale.${code}`),
+      type: 'checkbox' as const,
+      checked: locale.value === code,
+      onSelect: () => {
+        void setLocale(code);
+      },
+    })),
+  ],
+  [
+    {
+      label: t('utilityMenu.theme'),
+      type: 'label',
+    },
+    ...(
+      [
+        { value: 'light', label: t('theme.light') },
+        { value: 'dark', label: t('theme.dark') },
+        { value: 'system', label: t('theme.system') },
+      ] as Array<{ value: ColorModePreference; label: string }>
+    ).map((option) => ({
+      label: option.label,
+      type: 'checkbox' as const,
+      checked: colorMode.preference === option.value,
+      onSelect: () => {
+        colorMode.preference = option.value;
+      },
+    })),
+  ],
+  [
+    {
+      label: t('utilityMenu.logout'),
+      icon: 'i-lucide-log-out',
+      color: 'error' as const,
+      disabled: pending.value,
+      onSelect: () => {
+        void onLogout();
+      },
+      kbds: undefined,
+    },
+  ],
 ]);
-
-const selectedLocale = computed({
-  get: () => locale.value,
-  set: (val) => {
-    locale.value = val;
-  },
-});
-
-const selectedTheme = computed<ColorModePreference>({
-  get: () => preference.value,
-  set: (val) => setPreference(val),
-});
-
-const menu = useTemplateRef('menu');
-const menuItems = computed<MenuItem[]>(() => [
-  { key: 'locale' },
-  { key: 'theme' },
-  { separator: true },
-  {
-    label: t('utilityMenu.logout'),
-    command: onLogout,
-  },
-]);
-
-function toggleMenu(event: Event) {
-  menu.value?.toggle(event);
-}
 </script>
 
 <template>
-  <Avatar
-    :label="avatarLabel"
-    shape="circle"
-    class="app-utility-menu__avatar"
-    :aria-label="t('utilityMenu.label')"
-    data-testid="utility-menu-button"
-    role="button"
-    tabindex="0"
-    @click="toggleMenu"
-    @keydown.enter.space.prevent="toggleMenu"
-  />
-  <Menu ref="menu" :model="menuItems" popup data-testid="utility-menu">
-    <template #item="{ item }">
-      <div v-if="item.key === 'locale'" class="app-utility-menu__select-row">
-        <label for="utility-locale-select" class="app-utility-menu__select-label">
-          {{ t('utilityMenu.locale') }}
-        </label>
-        <Select
-          id="utility-locale-select"
-          v-model="selectedLocale"
-          :options="localeOptions"
-          option-label="label"
-          option-value="value"
-          class="app-utility-menu__select"
-          size="small"
-          @click.stop
-        />
-      </div>
-      <div v-else-if="item.key === 'theme'" class="app-utility-menu__select-row">
-        <label for="utility-theme-select" class="app-utility-menu__select-label">
-          {{ t('utilityMenu.theme') }}
-        </label>
-        <Select
-          id="utility-theme-select"
-          v-model="selectedTheme"
-          :options="themeOptions"
-          option-label="label"
-          option-value="value"
-          class="app-utility-menu__select"
-          size="small"
-          @click.stop
-        />
-      </div>
-      <a
-        v-else
-        class="p-menu-item-link"
-        role="menuitem"
-        tabindex="0"
-        @click="item.command?.({ originalEvent: $event, item })"
-        @keydown.enter.space.prevent="item.command?.({ originalEvent: $event, item })"
-      >
-        <span class="p-menu-item-label">{{ item.label }}</span>
-      </a>
-    </template>
-  </Menu>
+  <UDropdownMenu :items="items" :content="{ align: 'end' }" data-testid="utility-menu">
+    <UButton
+      color="primary"
+      variant="solid"
+      class="rounded-full"
+      square
+      :aria-label="t('utilityMenu.label')"
+      data-testid="utility-menu-button"
+    >
+      {{ avatarLabel }}
+    </UButton>
+  </UDropdownMenu>
 </template>
-
-<style scoped>
-.app-utility-menu__avatar {
-  cursor: pointer;
-  background-color: var(--p-primary-color);
-  color: var(--p-primary-contrast-color);
-}
-
-.app-utility-menu__select-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-}
-
-.app-utility-menu__select-label {
-  flex-shrink: 0;
-  font-size: 0.875rem;
-  color: var(--p-text-color);
-  min-width: 4rem;
-}
-
-.app-utility-menu__select {
-  flex: 1;
-  font-size: 0.875rem;
-}
-</style>

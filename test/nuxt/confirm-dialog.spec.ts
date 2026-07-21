@@ -1,59 +1,47 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import DefaultLayout from '../../app/layouts/default.vue';
+import ConfirmModal from '../../app/components/ConfirmModal.vue';
 
-const ConfirmDialogStub = { template: '<div data-testid="confirm-dialog" />' };
-const AppTimerStub = { template: '<div data-testid="app-timer" />' };
+const confirmMock = vi.fn(async (_options?: unknown) => true);
 
-const confirmRequireMock = vi.fn();
-vi.mock('primevue/useconfirm', () => ({
-  useConfirm: () => ({ require: confirmRequireMock }),
+vi.mock('../../app/composables/useAppConfirm', () => ({
+  useAppConfirm: () => confirmMock,
 }));
 
-// A minimal page that triggers a confirmation exactly like clients/projects/tasks do,
-// reaching the layout-level dialog via the shared useConfirm() composable.
-const DeletePageStub = {
-  setup() {
-    function onDelete() {
-      confirmRequireMock({ header: 'Delete client', message: 'Are you sure?', accept: () => {} });
-    }
-    return { onDelete };
-  },
-  template: '<button data-testid="delete-button" @click="onDelete">Delete</button>',
-};
-
-describe('REQ-129: single app-level confirm dialog', () => {
-  it('mounts exactly one ConfirmDialog in the default layout', async () => {
-    const wrapper = await mountSuspended(DefaultLayout, {
+describe('REQ-129: shared confirm overlay', () => {
+  it('renders ConfirmModal accept/reject actions', async () => {
+    const wrapper = await mountSuspended(ConfirmModal, {
+      props: {
+        title: 'Delete client',
+        description: 'Are you sure?',
+        confirmLabel: 'Delete',
+        cancelLabel: 'Cancel',
+      },
       global: {
         stubs: {
-          ConfirmDialog: ConfirmDialogStub,
-          AppTimer: AppTimerStub,
-          NuxtPage: { template: '<div data-testid="app-content" />' },
+          UModal: {
+            template: '<div data-testid="confirm-modal"><slot name="footer" /></div>',
+          },
+          UButton: {
+            props: ['label'],
+            emits: ['click'],
+            template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ label }}</button>',
+          },
         },
       },
     });
 
-    expect(wrapper.findAllComponents(ConfirmDialogStub)).toHaveLength(1);
+    expect(wrapper.find('[data-testid="confirm-modal"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="confirm-accept"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="confirm-reject"]').exists()).toBe(true);
   });
 
-  it('a page delete action requests confirmation through the shared confirm service', async () => {
-    const wrapper = await mountSuspended(DefaultLayout, {
-      global: {
-        stubs: {
-          ConfirmDialog: ConfirmDialogStub,
-          AppTimer: AppTimerStub,
-          NuxtPage: DeletePageStub,
-        },
-      },
+  it('resolves confirmation through the shared helper', async () => {
+    const confirmed = await confirmMock({
+      title: 'Delete client',
+      description: 'Are you sure?',
     });
-
-    // Exactly one dialog instance exists in the whole layout+page tree.
-    expect(wrapper.findAllComponents(ConfirmDialogStub)).toHaveLength(1);
-
-    await wrapper.find('[data-testid="delete-button"]').trigger('click');
-    expect(confirmRequireMock).toHaveBeenCalledWith(
-      expect.objectContaining({ header: 'Delete client' }),
-    );
+    expect(confirmed).toBe(true);
+    expect(confirmMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Delete client' }));
   });
 });

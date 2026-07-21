@@ -9,23 +9,13 @@ const emit = defineEmits<{ create: [] }>();
 </script>
 
 <template>
-  <div class="empty-state" :data-testid="testid">
-    <p>{{ message }}</p>
-    <Button
+  <div class="flex flex-col items-center gap-4 p-8" :data-testid="testid">
+    <p class="text-muted">{{ message }}</p>
+    <UButton
       :label="ctaLabel"
-      icon="pi pi-plus"
+      icon="i-lucide-plus"
       data-testid="empty-state-cta"
       @click="emit('create')"
     />
   </div>
 </template>
-
-<style scoped>
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding: 2rem;
-}
-</style>

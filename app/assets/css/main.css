@@ -1,3 +1,6 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
 :root {
   /* Very-small timer-stack breakpoint. Matches runtimeConfig.public.timerStackBreakpoint (480 px).
      Override via CSS to tune without a config change. */

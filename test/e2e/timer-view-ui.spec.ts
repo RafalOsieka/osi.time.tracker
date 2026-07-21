@@ -20,8 +20,11 @@ describeTimerViewUI('timer view UI flow', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -90,7 +93,12 @@ describeTimerViewUI('timer view UI flow', async () => {
     // --- Bulk-assign action ---
     await page.click(`${untitledGroupSelector} [data-testid^="timer-group-bulk-assign-"]`);
     await page.waitForSelector('[data-testid="bulk-assign-dialog"]');
-    await page.fill('[data-testid="bulk-assign-name-input"] input', 'Bulk Assigned Task');
+    await page
+      .locator(
+        '[data-testid="bulk-assign-name-input"] input, [data-testid="bulk-assign-name-input"]',
+      )
+      .first()
+      .fill('Bulk Assigned Task');
     await page.click('[data-testid="bulk-assign-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="bulk-assign-dialog"]', { state: 'hidden' });
     await page.waitForFunction(() => document.body.textContent?.includes('Bulk Assigned Task'));
@@ -127,7 +135,12 @@ describeTimerViewUI('timer view UI flow', async () => {
   });
 
   it('load more extends the visible window to include older entries', async () => {
-    // Insert an entry older than the default 7-day window directly via the DB.
+    // Ensure the default window is non-empty (so the footer load-more control renders)
+    // and insert an entry older than that window via the DB.
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const recent = await startEntry(jar, token, { title: 'Load More Anchor' });
+    await stopEntry(jar, token, recent.id);
+
     const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
     try {
       const [user] = await db
@@ -136,7 +149,9 @@ describeTimerViewUI('timer view UI flow', async () => {
         .where(eq(users.email, 'timerviewui@example.com'));
       if (!user) throw new Error('seeded user not found');
 
-      const oldStart = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+      // Far enough back that week-aligned 7- and 14-day windows may still exclude it
+      // depending on the weekday the suite runs; the loop below loads until it appears.
+      const oldStart = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
       const oldStop = new Date(oldStart.getTime() + 30 * 60 * 1000);
       await db.insert(timeEntries).values({
         userId: user.id,
@@ -150,11 +165,21 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(() => document.body.textContent?.includes('Load More Anchor'));
 
-    // Not visible within the default 7-day window.
+    // Not visible within the default week-aligned window.
     const beforeCount = await page.locator('[data-testid^="timer-day-"]').count();
 
-    await page.click('[data-testid="timer-view-load-more"]');
+    // Week-aligned windows expand by full weeks; one click is not always enough.
+    const loadMore = page.locator(
+      '[data-testid="timer-view-load-more"], [data-testid="empty-state-cta"]',
+    );
+    for (let i = 0; i < 4; i++) {
+      const count = await page.locator('[data-testid^="timer-day-"]').count();
+      if (count > beforeCount) break;
+      await loadMore.first().click();
+      await page.waitForTimeout(500);
+    }
     await page.waitForFunction(
       (prev) => document.querySelectorAll('[data-testid^="timer-day-"]').length > prev,
       beforeCount,
@@ -172,9 +197,18 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click(addButtonSelector);
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
-    await page.fill('[data-testid="add-entry-title-input"] input', 'Manual Add Entry Task');
-    await page.fill('[data-testid="add-entry-start-input"]', '08:00');
-    await page.fill('[data-testid="add-entry-end-input"]', '09:00');
+    await page
+      .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
+      .first()
+      .fill('Manual Add Entry Task');
+    await page
+      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
+      .first()
+      .fill('08:00');
+    await page
+      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
+      .first()
+      .fill('09:00');
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
@@ -192,9 +226,18 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click(addButtonSelector);
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
-    await page.fill('[data-testid="add-entry-title-input"] input', 'Inverted Range Task');
-    await page.fill('[data-testid="add-entry-start-input"]', '10:00');
-    await page.fill('[data-testid="add-entry-end-input"]', '09:00');
+    await page
+      .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
+      .first()
+      .fill('Inverted Range Task');
+    await page
+      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
+      .first()
+      .fill('10:00');
+    await page
+      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
+      .first()
+      .fill('09:00');
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
 
     await page.waitForSelector('[data-testid="add-entry-range-error"]');
@@ -237,13 +280,12 @@ describeTimerViewUI('timer view UI flow', async () => {
       })
       .first();
 
-    // The "(no project)" placeholder is an activatable button; one click swaps in
-    // the project select with its option list already open.
+    // The "(no project)" placeholder is an activatable button; click it, then open the select.
     await group
       .locator('[data-testid^="timer-group-project-"]:not([data-testid*="project-select"])')
       .click();
-    const option = page.locator('.p-select-option', { hasText: 'Inline Assign Project' }).first();
-    await option.click();
+    await group.locator('[data-testid^="timer-group-project-select-"]').click();
+    await page.getByRole('option', { name: 'Inline Assign Project' }).click();
 
     await page.waitForFunction(() =>
       document
@@ -262,7 +304,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
     // Start a timer from the top-bar widget.
-    await page.fill('[data-testid="timer-title-input"] input', 'Topbar Stop Task');
+    await page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first()
+      .fill('Topbar Stop Task');
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
       () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
@@ -332,7 +377,7 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     // --- Delete with confirmation ---
     await page.click(`[data-testid="timer-entry-delete-${seeded.id}"]`);
-    await page.click('.p-confirmdialog-accept-button');
+    await page.click('[data-testid="confirm-accept"]');
     await page.waitForSelector(entrySelector, { state: 'detached' });
 
     await page.close();

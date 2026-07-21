@@ -1,75 +1,72 @@
 <script setup lang="ts">
-import type { MenuItem } from 'primevue/menuitem';
 import { useI18n } from 'vue-i18n';
+import type { NavigationMenuItem } from '@nuxt/ui';
 
 const { t } = useI18n();
 const route = useRoute();
 
-const props = withDefaults(defineProps<{ iconOnly?: boolean }>(), { iconOnly: false });
+const props = withDefaults(defineProps<{ collapsed?: boolean; iconOnly?: boolean }>(), {
+  collapsed: false,
+  iconOnly: false,
+});
 
-const navItems = computed<MenuItem[]>(() => [
-  { label: t('nav.timer'), route: '/', icon: 'pi pi-stopwatch', key: 'timer' },
-  { label: t('nav.clients'), route: '/clients', icon: 'pi pi-users', key: 'clients' },
-  { label: t('nav.projects'), route: '/projects', icon: 'pi pi-briefcase', key: 'projects' },
-  { label: t('nav.reports'), route: '/reports', icon: 'pi pi-chart-bar', key: 'reports' },
-  { label: t('nav.settings'), route: '/settings', icon: 'pi pi-cog', key: 'settings' },
+const isCollapsed = computed(() => props.collapsed || props.iconOnly);
+
+const navItems = computed<NavigationMenuItem[]>(() => [
+  {
+    label: t('nav.timer'),
+    to: '/',
+    icon: 'i-lucide-timer',
+    active: route.path === '/',
+    exact: true,
+    // Custom attrs for stable e2e/nuxt selectors
+    ui: undefined,
+  },
+  {
+    label: t('nav.clients'),
+    to: '/clients',
+    icon: 'i-lucide-users',
+    active: route.path.startsWith('/clients'),
+  },
+  {
+    label: t('nav.projects'),
+    to: '/projects',
+    icon: 'i-lucide-briefcase',
+    active: route.path.startsWith('/projects'),
+  },
+  {
+    label: t('nav.reports'),
+    to: '/reports',
+    icon: 'i-lucide-chart-column',
+    active: route.path.startsWith('/reports'),
+  },
+  {
+    label: t('nav.settings'),
+    to: '/settings',
+    icon: 'i-lucide-settings',
+    active: route.path.startsWith('/settings'),
+  },
 ]);
-
-function isActive(to: string) {
-  return route.path === to;
-}
 </script>
 
 <template>
-  <Menu
-    :model="navItems"
-    class="app-sidebar__menu"
-    aria-label="Main navigation"
-    data-testid="app-sidebar"
-  >
-    <template #item="{ item, props: itemProps }">
-      <NuxtLink
-        v-tooltip.right="props.iconOnly ? item.label : undefined"
-        :to="item.route"
-        v-bind="itemProps.action"
-        :aria-current="isActive(item.route) ? 'page' : undefined"
-        :data-testid="`nav-link-${item.key}`"
-        :class="{ 'app-sidebar__link--active': isActive(item.route) }"
-      >
-        <i :class="item.icon" aria-hidden="true" />
-        <span v-if="!props.iconOnly">{{ item.label }}</span>
-      </NuxtLink>
-    </template>
-  </Menu>
+  <nav aria-label="Main navigation" data-testid="app-sidebar" class="w-full">
+    <UNavigationMenu
+      :collapsed="isCollapsed"
+      :items="navItems"
+      orientation="vertical"
+      class="w-full"
+    >
+      <template #item="{ item }">
+        <!-- Content only: UNavigationMenu already renders the link from item.to -->
+        <span
+          class="flex items-center gap-2 w-full"
+          :data-testid="`nav-link-${String(item.to === '/' ? 'timer' : String(item.to).replace(/^\//, ''))}`"
+        >
+          <UIcon v-if="item.icon" :name="String(item.icon)" class="size-5 shrink-0" />
+          <span v-if="!isCollapsed">{{ item.label }}</span>
+        </span>
+      </template>
+    </UNavigationMenu>
+  </nav>
 </template>
-
-<style>
-.app-sidebar__menu {
-  width: 100%;
-  height: 100%;
-  background: transparent;
-}
-
-.app-sidebar__menu.p-menu {
-  min-width: 0;
-  border-width: 0;
-}
-
-.app-sidebar__menu .p-menu-item-content a {
-  height: 2.5rem;
-}
-
-.app-sidebar__menu .p-menu-item-content a span {
-  white-space: nowrap;
-}
-
-.app-sidebar__link--active {
-  background-color: var(--p-primary-50, #ecfeff);
-  color: var(--p-primary-color);
-  font-weight: 600;
-}
-
-.dark .app-sidebar__link--active {
-  background-color: var(--p-primary-950, #083344);
-}
-</style>

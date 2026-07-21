@@ -1,24 +1,28 @@
 <script setup lang="ts">
+import * as locales from '@nuxt/ui/locale';
 import { useI18n } from 'vue-i18n';
-import { resolveEffectiveMode } from '~/utils/color-mode';
-
-const { preference } = useColorMode();
-const systemPrefersDark = useRequestHeader('sec-ch-prefers-color-scheme') === 'dark';
-const initialEffectiveMode = resolveEffectiveMode(preference.value ?? 'system', systemPrefersDark);
 
 const { locale } = useI18n();
+
+const uiLocale = computed(() => {
+  const code = locale.value as keyof typeof locales;
+  return locales[code] ?? locales.en;
+});
+
 useHead({
   htmlAttrs: {
     lang: locale,
-    class: initialEffectiveMode === 'dark' ? 'dark' : undefined,
+    dir: computed(() => uiLocale.value.dir),
   },
   link: [{ rel: 'stylesheet', href: 'https://rsms.me/inter/inter.css' }],
 });
 </script>
 
 <template>
-  <NuxtRouteAnnouncer />
-  <NuxtLayout>
-    <NuxtPage />
-  </NuxtLayout>
+  <UApp :locale="uiLocale">
+    <NuxtRouteAnnouncer />
+    <NuxtLayout>
+      <NuxtPage />
+    </NuxtLayout>
+  </UApp>
 </template>

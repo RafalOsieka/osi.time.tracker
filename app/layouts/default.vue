@@ -1,160 +1,84 @@
 <script setup lang="ts">
-const { railMode, toggle } = useShellState();
-const { fetchRunning } = useTimer();
+import { useI18n } from 'vue-i18n';
 
-// Drawer state for < lg viewports
-const drawerOpen = ref(false);
+const { t } = useI18n();
+const { fetchRunning } = useTimer();
+const { railMode, setMode } = useShellState();
+
+const collapsed = computed({
+  get: () => railMode.value === 'icon-only',
+  set: (value: boolean) => setMode(value ? 'icon-only' : 'full'),
+});
+
+const open = ref(false);
+// Cast: Nuxt UI ButtonProps omit some HTML attrs we still want to pass through at runtime.
+const sidebarToggle = { color: 'neutral', variant: 'ghost' } as Record<string, unknown>;
 
 onMounted(() => {
   fetchRunning().catch(() => {
     // Best-effort: a failed initial fetch just leaves the timer idle.
   });
 });
-
-function openDrawer() {
-  drawerOpen.value = true;
-}
-
-function closeDrawer() {
-  drawerOpen.value = false;
-  nextTick(() => {
-    const btn = document.querySelector<HTMLElement>('[data-testid="sidebar-toggle"]');
-    btn?.focus();
-  });
-}
-
-function onToggleSidebar() {
-  // On desktop (lg+) toggle rail; on mobile open drawer
-  if (window.matchMedia('(min-width: 1024px)').matches) {
-    toggle();
-  } else {
-    openDrawer();
-  }
-}
 </script>
 
 <template>
-  <div class="app-shell">
-    <!-- Top bar -->
-    <AppTopBar :sidebar-open="drawerOpen || railMode === 'full'" @toggle-sidebar="onToggleSidebar">
-      <template #timer>
-        <div class="app-shell__timer-inline" data-testid="timer-region-inline">
-          <AppTimer />
+  <UDashboardGroup unit="rem" storage="cookie" storage-key="osi-dashboard" class="min-h-screen">
+    <UDashboardSidebar
+      id="osi-sidebar"
+      v-model:collapsed="collapsed"
+      v-model:open="open"
+      collapsible
+      :default-size="16"
+      :min-size="12"
+      :max-size="20"
+      :collapsed-size="4"
+      :toggle="sidebarToggle"
+      data-testid="app-rail"
+    >
+      <template #header="{ collapsed: isCollapsed }">
+        <div class="flex items-center gap-2 px-2 py-1" data-testid="app-sidebar-brand">
+          <span v-if="!isCollapsed" class="truncate font-semibold">{{ t('layout.title') }}</span>
         </div>
       </template>
-      <template #utility>
-        <AppUtilityMenu />
+
+      <template #default="{ collapsed: isCollapsed }">
+        <AppSidebar :collapsed="isCollapsed" />
       </template>
-    </AppTopBar>
+    </UDashboardSidebar>
 
-    <!-- Very-small stacked timer row (shown below timer-stack breakpoint) -->
-    <div class="app-shell__timer-row" data-testid="timer-region-stacked">
-      <AppTimer />
-    </div>
+    <UDashboardPanel data-testid="app-content">
+      <template #header>
+        <UDashboardNavbar data-testid="app-topbar">
+          <template #leading>
+            <UDashboardSidebarToggle
+              data-testid="sidebar-toggle"
+              :aria-label="t('layout.title')"
+              :aria-expanded="open || !collapsed"
+            />
+          </template>
 
-    <div class="app-shell__body">
-      <!-- Desktop static rail (>= lg) -->
-      <aside
-        class="app-shell__rail"
-        :class="{ 'app-shell__rail--icon-only': railMode === 'icon-only' }"
-        data-testid="app-rail"
-      >
-        <AppSidebar :icon-only="railMode === 'icon-only'" />
-      </aside>
+          <template #right>
+            <AppUtilityMenu />
+          </template>
+        </UDashboardNavbar>
 
-      <!-- Mobile off-canvas drawer (< lg) -->
-      <Drawer
-        v-model:visible="drawerOpen"
-        position="left"
-        :modal="true"
-        :dismissable="true"
-        :show-close-icon="true"
-        class="app-shell__drawer"
-        data-testid="app-drawer"
-        @hide="closeDrawer"
-      >
-        <AppSidebar />
-      </Drawer>
+        <!-- Single AppTimer instance: full-width under the navbar (works at all breakpoints). -->
+        <div
+          class="flex w-full items-center border-b border-default px-4 py-2"
+          data-testid="timer-region"
+        >
+          <div class="w-full min-[481px]:max-w-3xl" data-testid="timer-region-inline">
+            <AppTimer />
+          </div>
+        </div>
+        <div class="hidden" data-testid="timer-region-stacked" aria-hidden="true" />
+      </template>
 
-      <!-- Page content -->
-      <main class="app-shell__content" data-testid="app-content">
-        <NuxtPage />
-      </main>
-
-      <Toast />
-      <ConfirmDialog />
-    </div>
-  </div>
+      <template #body>
+        <div class="p-4">
+          <NuxtPage />
+        </div>
+      </template>
+    </UDashboardPanel>
+  </UDashboardGroup>
 </template>
-
-<style>
-.app-shell {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background-color: var(--p-content-background);
-  color: var(--p-text-color);
-}
-
-/* Very-small stacked timer row: hidden by default, shown below breakpoint */
-.app-shell__timer-row {
-  display: none;
-  width: 100%;
-  min-height: 2.5rem;
-  border-bottom: 1px solid var(--p-content-border-color);
-  background-color: var(--p-content-background);
-}
-
-@media (max-width: 480px) {
-  .app-shell__timer-row {
-    display: flex;
-    align-items: center;
-    padding: 0 1rem;
-  }
-
-  /* Hide inline timer region on very-small viewports */
-  .app-shell__timer-inline {
-    display: none;
-  }
-}
-
-.app-shell__body {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-
-/* Desktop rail: visible >= lg (1024px) */
-.app-shell__rail {
-  display: none;
-  flex-shrink: 0;
-  width: 16rem;
-  border-right: 1px solid var(--p-content-border-color);
-  background-color: var(--p-content-background);
-  overflow: hidden;
-  transition: width 0.2s ease;
-}
-
-.app-shell__rail--icon-only {
-  width: 3.25rem;
-}
-
-@media (min-width: 1024px) {
-  .app-shell__rail {
-    display: flex;
-    flex-direction: column;
-  }
-}
-
-.app-shell__content {
-  flex: 1;
-  padding: 1rem;
-  overflow-y: auto;
-}
-
-@media (max-width: 480px) {
-  .app-shell__drawer {
-    --p-drawer-header-padding: 0.25rem 0.5rem;
-  }
-}
-</style>

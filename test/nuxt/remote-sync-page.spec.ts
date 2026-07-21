@@ -8,7 +8,9 @@ import type { RemoteSyncDayDto, RemoteSyncDayEntryDto } from '../../shared/types
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const dollarFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.fn();
-const confirmRequireMock = vi.hoisted(() => vi.fn());
+const confirmMock = vi.hoisted(() => vi.fn(async () => true));
+const toastSuccessMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 const createTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ remoteLogId: '9001' }));
 const fetchTimeLogsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 const invalidateCachesMock = vi.hoisted(() => vi.fn());
@@ -17,10 +19,6 @@ vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return { ...actual, $fetch: Object.assign(csrfFetchMock, { create: () => csrfFetchMock }) };
 });
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }));
-vi.mock('primevue/useconfirm', () => ({
-  useConfirm: () => ({ require: confirmRequireMock }),
-}));
 vi.mock('../../app/composables/useRemoteSyncClient', () => ({
   useRemoteSyncClient: () => ({
     resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
@@ -33,6 +31,14 @@ vi.mock('../../app/composables/useRemoteSyncClient', () => ({
 
 mockNuxtImport('useRoute', () => () => ({ params: { date: '2026-03-15' } }));
 mockNuxtImport('$fetch', () => dollarFetchMock);
+mockNuxtImport('useAppConfirm', () => () => confirmMock);
+mockNuxtImport('useAppToast', () => () => ({
+  success: toastSuccessMock,
+  error: toastErrorMock,
+}));
+mockNuxtImport('useUserSettings', () => () => ({
+  effective: { value: { timeZone: 'UTC', weekStart: 'monday' } },
+}));
 
 let dayData: RemoteSyncDayDto;
 
@@ -79,12 +85,12 @@ const InputTextStub = {
 };
 const SelectStub = {
   template: `
-    <select v-bind="$attrs" :value="modelValue" @change="$emit('update:modelValue', $event.target.value || null)">
+    <select v-bind="$attrs" :value="modelValue ?? ''" @change="$emit('update:modelValue', $event.target.value || null)">
       <option value="">(none)</option>
-      <option v-for="option in options" :key="option.id" :value="option.id">{{ option.name }}</option>
+      <option v-for="option in items || []" :key="option.id" :value="option.id">{{ option.name }}</option>
     </select>
   `,
-  props: ['modelValue', 'options', 'optionLabel', 'optionValue', 'showClear', 'placeholder'],
+  props: ['modelValue', 'items', 'labelKey', 'valueKey', 'placeholder'],
   emits: ['update:modelValue'],
 };
 const CheckboxStub = {
@@ -107,10 +113,10 @@ const RemoteIssuePickerStub = {
 };
 
 const stubs = {
-  InputText: InputTextStub,
-  Select: SelectStub,
-  Checkbox: CheckboxStub,
-  Button: ButtonStub,
+  UInput: InputTextStub,
+  USelect: SelectStub,
+  UCheckbox: CheckboxStub,
+  UButton: ButtonStub,
   RemoteIssuePicker: RemoteIssuePickerStub,
 };
 
@@ -183,7 +189,8 @@ describe('RemoteSync page', () => {
     csrfFetchMock.mockReset();
     dollarFetchMock.mockReset();
     fetchMock.mockReset();
-    confirmRequireMock.mockReset();
+    confirmMock.mockReset();
+    confirmMock.mockResolvedValue(true);
     createTimeEntryMock.mockReset();
     createTimeEntryMock.mockResolvedValue({ remoteLogId: '9001' });
     fetchTimeLogsMock.mockReset();
@@ -191,6 +198,12 @@ describe('RemoteSync page', () => {
     invalidateCachesMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     installFakeLocalStorage();
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+    } catch {
+      // ignore
+    }
   });
 
   it('renders a read-only row with its reason for a task with no client', async () => {

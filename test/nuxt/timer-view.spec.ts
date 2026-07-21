@@ -84,8 +84,12 @@ const ButtonStub = {
   emits: ['click'],
 };
 const DialogStub = {
-  template: '<div v-if="visible" data-testid="dialog"><slot /></div>',
-  props: ['visible'],
+  template: '<div v-if="open !== false" data-testid="dialog"><slot name="body" /><slot /></div>',
+  props: {
+    open: { type: Boolean, default: true },
+    title: { type: String, default: '' },
+  },
+  emits: ['update:open'],
 };
 const TimerTaskGroupStub = {
   name: 'TimerTaskGroup',
@@ -113,12 +117,12 @@ const TimerTaskGroupStub = {
 };
 
 const commonStubs = {
-  Button: ButtonStub,
+  UButton: ButtonStub,
   TimerBulkAssignDialog: { template: '<div />' },
   TimerAddEntryDialog: { template: '<div />' },
   TimerEntryRow: { template: '<div />', props: ['entry', 'now'] },
   TimerTaskGroup: TimerTaskGroupStub,
-  Dialog: DialogStub,
+  UModal: DialogStub,
 };
 
 function entry(overrides: Partial<Entry>): Entry {

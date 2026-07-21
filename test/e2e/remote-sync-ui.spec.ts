@@ -58,8 +58,11 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
   async function loginPage(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;

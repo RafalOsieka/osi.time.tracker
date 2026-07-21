@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
-import { zodResolver } from '@primevue/forms/resolvers/zod';
-import type { FormSubmitEvent } from '@primevue/forms';
+import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
 import { extractMessageKey } from '~/utils/extractMessageKey';
 
@@ -11,18 +9,17 @@ const { t } = useI18n();
 const { login } = useAuth();
 const route = useRoute();
 
-const resolver = zodResolver(loginSchema);
-const initialValues = { email: '', password: '' };
+const state = reactive({ email: '', password: '' });
 const error = ref('');
 const pending = ref(false);
+const clientErrorKey = ref('');
 
-async function onSubmit({ valid, values }: FormSubmitEvent) {
-  if (!valid) return;
-
+async function onSubmit(event: FormSubmitEvent<typeof state>) {
   error.value = '';
+  clientErrorKey.value = '';
   pending.value = true;
   try {
-    await login({ email: values.email, password: values.password });
+    await login({ email: event.data.email, password: event.data.password });
     const target = sanitizeRedirect(route.query.redirect);
     await navigateTo(target);
   } catch (err) {
@@ -31,69 +28,69 @@ async function onSubmit({ valid, values }: FormSubmitEvent) {
     pending.value = false;
   }
 }
+
+function onError(event: FormErrorEvent) {
+  const first = event.errors[0]?.message;
+  clientErrorKey.value = typeof first === 'string' ? first : '';
+}
+
+const showError = computed(() => Boolean(error.value || clientErrorKey.value));
+const errorText = computed(
+  () => error.value || (clientErrorKey.value ? t(clientErrorKey.value) : ''),
+);
 </script>
 
 <template>
-  <Card data-testid="login-card">
-    <template #content>
-      <Form
-        v-slot="$form"
-        :resolver="resolver"
-        :initial-values="initialValues"
-        data-testid="login-form"
-        class="login-form"
-        @submit="onSubmit"
-      >
-        <label for="email">{{ t('auth.emailLabel') }}</label>
-        <InputText
+  <UCard data-testid="login-card">
+    <UForm
+      :schema="loginSchema"
+      :state="state"
+      class="grid gap-3"
+      data-testid="login-form"
+      @submit="onSubmit"
+      @error="onError"
+    >
+      <UFormField :label="t('auth.emailLabel')" name="email" :ui="{ error: 'sr-only' }">
+        <UInput
           id="email"
-          name="email"
-          data-testid="email"
+          v-model="state.email"
+          type="email"
           autocomplete="email"
-          :aria-invalid="!!($form.email?.invalid || error)"
-          :aria-describedby="$form.email?.invalid || error ? 'login-error' : undefined"
+          data-testid="email"
+          :aria-invalid="showError || undefined"
+          :aria-describedby="showError ? 'login-error' : undefined"
         />
-        <label for="password">{{ t('auth.passwordLabel') }}</label>
-        <Password
-          input-id="password"
-          name="password"
+      </UFormField>
+
+      <UFormField :label="t('auth.passwordLabel')" name="password" :ui="{ error: 'sr-only' }">
+        <UInput
+          id="password"
+          v-model="state.password"
+          type="password"
+          autocomplete="current-password"
           data-testid="password"
-          :feedback="false"
-          toggle-mask
-          fluid
-          :aria-invalid="!!($form.password?.invalid || error)"
-          :aria-describedby="$form.password?.invalid || error ? 'login-error' : undefined"
+          :aria-invalid="showError || undefined"
+          :aria-describedby="showError ? 'login-error' : undefined"
         />
-        <Button
-          type="submit"
-          data-testid="login-button"
-          :label="t('auth.loginButton')"
-          :loading="pending"
-        />
-        <Message
-          v-if="$form.email?.invalid || $form.password?.invalid || error"
-          id="login-error"
-          severity="error"
-          size="small"
-          variant="simple"
-          role="alert"
-          data-testid="login-error"
-          class="login-error"
-        >
-          {{ error || t($form.email?.error?.message ?? $form.password?.error?.message) }}
-        </Message>
-      </Form>
-    </template>
-  </Card>
+      </UFormField>
+
+      <UButton
+        type="submit"
+        block
+        data-testid="login-button"
+        :label="t('auth.loginButton')"
+        :loading="pending"
+      />
+
+      <p
+        v-if="showError"
+        id="login-error"
+        role="alert"
+        data-testid="login-error"
+        class="text-error text-sm"
+      >
+        {{ errorText }}
+      </p>
+    </UForm>
+  </UCard>
 </template>
-
-<style scoped>
-.login-form {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.login-error {
-  color: var(--p-form-field-invalid-color);
-}
-</style>

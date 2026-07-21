@@ -1,41 +1,31 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
-import { zodResolver } from '@primevue/forms/resolvers/zod';
-import type { FormSubmitEvent } from '@primevue/forms';
-import { useConfirm } from 'primevue/useconfirm';
-import { useToast } from 'primevue/usetoast';
+import type { FormSubmitEvent, TableColumn } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
+import { h, resolveComponent } from 'vue';
 
 const { t, locale } = useI18n();
-const confirm = useConfirm();
-const toast = useToast();
+const toast = useAppToast();
+const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
 
-const resolver = zodResolver(createClientSchema);
-const remoteConfigResolver = zodResolver(createRemoteSystemConfigSchema);
 const { get: getSecret, set: setSecret, clear: clearSecret } = useRemoteConfigSecret();
 
-const systemTypeOptions = [
-  { label: 'OpenProject', value: 'openproject' },
-  { label: 'Redmine', value: 'redmine' },
+const systemTypeItems = [
+  { label: 'OpenProject', value: 'openproject' as const },
+  { label: 'Redmine', value: 'redmine' as const },
 ];
-const roundingRuleOptions = [
-  { label: t('clients.remoteConfig.roundingNone'), value: 'none' },
-  { label: t('clients.remoteConfig.rounding15m'), value: 'up_15m' },
-  { label: t('clients.remoteConfig.rounding30m'), value: 'up_30m' },
-  { label: t('clients.remoteConfig.rounding1h'), value: 'up_1h' },
-];
-const executionModeOptions = [
-  { label: t('clients.remoteConfig.executionModeClient'), value: 'client' },
-  { label: t('clients.remoteConfig.executionModeServer'), value: 'server' },
-];
+const roundingRuleItems = computed(() => [
+  { label: t('clients.remoteConfig.roundingNone'), value: 'none' as const },
+  { label: t('clients.remoteConfig.rounding15m'), value: 'up_15m' as const },
+  { label: t('clients.remoteConfig.rounding30m'), value: 'up_30m' as const },
+  { label: t('clients.remoteConfig.rounding1h'), value: 'up_1h' as const },
+]);
+const executionModeItems = computed(() => [
+  { label: t('clients.remoteConfig.executionModeClient'), value: 'client' as const },
+  { label: t('clients.remoteConfig.executionModeServer'), value: 'server' as const },
+]);
 
-// --- Data fetching ---
-// `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
-// hydration (matching the server-rendered markup) instead of flipping to `true`
-// synchronously during setup, which caused a DataTable loading-overlay hydration
-// mismatch.
 const {
   data: clientsData,
   pending: clientsPending,
@@ -48,18 +38,16 @@ onMounted(() => {
   void fetchClients();
 });
 
-// --- State ---
 const clients = computed(() => clientsData.value ?? []);
-const dialogVisible = ref(false);
+const dialogOpen = ref(false);
 const editingClient = ref<ClientDto | null>(null);
-const initialValues = ref({ name: '' });
+const state = reactive({ name: '' });
 const nameServerError = ref('');
 const saving = ref(false);
 
-// --- Remote config state ---
 const remoteConfig = ref<RemoteSystemConfigDto | null>(null);
 const remoteConfigLoading = ref(false);
-const remoteConfigInitialValues = ref<{
+const remoteConfigState = reactive<{
   systemType: RemoteSystemType;
   baseUrl: string;
   executionMode: RemoteExecutionMode;
@@ -71,49 +59,44 @@ const remoteConfigInitialValues = ref<{
   roundingRule: 'none',
 });
 const remoteConfigSecret = ref('');
-// PrimeVue's <Form> snapshots `initial-values` once at mount and never re-reads
-// them. Mount the form only after the async remote-config fetch settles (see
-// `v-if="!remoteConfigLoading"` below), and key it by client id so switching
-// clients always remounts with the resolved defaults or saved values.
 const remoteConfigFormKey = computed(() => editingClient.value?.id ?? 'new');
 const baseUrlServerError = ref('');
 const systemTypeServerError = ref('');
 const remoteConfigSaving = ref(false);
 
-// --- Dialog helpers ---
 function openCreate() {
   editingClient.value = null;
-  initialValues.value = { name: '' };
+  state.name = '';
   nameServerError.value = '';
-  dialogVisible.value = true;
+  dialogOpen.value = true;
 }
 
 async function openEdit(client: ClientDto) {
   editingClient.value = client;
-  initialValues.value = { name: client.name };
+  state.name = client.name;
   nameServerError.value = '';
-  dialogVisible.value = true;
+  dialogOpen.value = true;
 
   remoteConfig.value = null;
   remoteConfigSecret.value = '';
   baseUrlServerError.value = '';
   systemTypeServerError.value = '';
-  remoteConfigInitialValues.value = {
+  Object.assign(remoteConfigState, {
     systemType: 'openproject',
     baseUrl: '',
     executionMode: 'client',
     roundingRule: 'none',
-  };
+  });
   remoteConfigLoading.value = true;
   try {
     const config = await $fetch<RemoteSystemConfigDto>(`/api/clients/${client.id}/remote-config`);
     remoteConfig.value = config;
-    remoteConfigInitialValues.value = {
+    Object.assign(remoteConfigState, {
       systemType: config.systemType,
       baseUrl: config.baseUrl,
       executionMode: config.executionMode,
       roundingRule: config.roundingRule,
-    };
+    });
     remoteConfigSecret.value = getSecret(config.id) ?? '';
   } catch {
     // No config yet for this client; keep defaults.
@@ -123,22 +106,21 @@ async function openEdit(client: ClientDto) {
 }
 
 function closeDialog() {
-  dialogVisible.value = false;
+  dialogOpen.value = false;
 }
 
-// --- Remote config save/remove ---
-async function onSaveRemoteConfig({ valid, values }: FormSubmitEvent) {
+async function onSaveRemoteConfig(event: FormSubmitEvent<typeof remoteConfigState>) {
   baseUrlServerError.value = '';
   systemTypeServerError.value = '';
-  if (!valid || !editingClient.value) return;
+  if (!editingClient.value) return;
 
   remoteConfigSaving.value = true;
   try {
     const payload: CreateRemoteSystemConfigDto = {
-      systemType: values.systemType,
-      baseUrl: values.baseUrl,
-      executionMode: values.executionMode,
-      roundingRule: values.roundingRule,
+      systemType: event.data.systemType,
+      baseUrl: event.data.baseUrl,
+      executionMode: event.data.executionMode,
+      roundingRule: event.data.roundingRule,
     };
     const saved = await $csrfFetch<RemoteSystemConfigDto>(
       `/api/clients/${editingClient.value.id}/remote-config`,
@@ -148,11 +130,7 @@ async function onSaveRemoteConfig({ valid, values }: FormSubmitEvent) {
     if (remoteConfigSecret.value) {
       setSecret(saved.id, remoteConfigSecret.value);
     }
-    toast.add({
-      severity: 'success',
-      summary: t('clients.remoteConfig.toastSavedSummary'),
-      life: 3000,
-    });
+    toast.success(t('clients.remoteConfig.toastSavedSummary'));
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
     if (key === 'error.remoteConfigBaseUrlRequired' || key === 'error.remoteConfigBaseUrlInvalid') {
@@ -160,87 +138,70 @@ async function onSaveRemoteConfig({ valid, values }: FormSubmitEvent) {
     } else if (key === 'error.remoteConfigSystemTypeRequired') {
       systemTypeServerError.value = t(key);
     } else {
-      toast.add({ severity: 'error', summary: t(key), life: 4000 });
+      toast.error(t(key));
     }
   } finally {
     remoteConfigSaving.value = false;
   }
 }
 
-function onRemoveRemoteConfig() {
+async function onRemoveRemoteConfig() {
   if (!editingClient.value || !remoteConfig.value) return;
   const clientId = editingClient.value.id;
   const configId = remoteConfig.value.id;
 
-  confirm.require({
-    header: t('clients.remoteConfig.deleteConfirmHeader'),
-    message: t('clients.remoteConfig.deleteConfirmMessage'),
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: t('clients.deleteConfirmAccept'),
-    rejectLabel: t('clients.deleteConfirmReject'),
-    acceptClass: 'p-button-danger',
-    accept: async () => {
-      try {
-        await $csrfFetch(`/api/clients/${clientId}/remote-config`, { method: 'DELETE' });
-        clearSecret(configId);
-        remoteConfig.value = null;
-        remoteConfigSecret.value = '';
-        remoteConfigInitialValues.value = {
-          systemType: 'openproject',
-          baseUrl: '',
-          executionMode: 'client',
-          roundingRule: 'none',
-        };
-        toast.add({
-          severity: 'success',
-          summary: t('clients.remoteConfig.toastRemovedSummary'),
-          life: 3000,
-        });
-      } catch (err: unknown) {
-        const key = extractMessageKey(err, 'errors.unexpected');
-        toast.add({ severity: 'error', summary: t(key), life: 4000 });
-      }
-    },
+  const accepted = await confirm({
+    title: t('clients.remoteConfig.deleteConfirmHeader'),
+    description: t('clients.remoteConfig.deleteConfirmMessage'),
+    confirmLabel: t('clients.deleteConfirmAccept'),
+    cancelLabel: t('clients.deleteConfirmReject'),
   });
+  if (!accepted) return;
+
+  try {
+    await $csrfFetch(`/api/clients/${clientId}/remote-config`, { method: 'DELETE' });
+    clearSecret(configId);
+    remoteConfig.value = null;
+    remoteConfigSecret.value = '';
+    Object.assign(remoteConfigState, {
+      systemType: 'openproject',
+      baseUrl: '',
+      executionMode: 'client',
+      roundingRule: 'none',
+    });
+    toast.success(t('clients.remoteConfig.toastRemovedSummary'));
+  } catch (err: unknown) {
+    const key = extractMessageKey(err, 'errors.unexpected');
+    toast.error(t(key));
+  }
 }
 
-// --- Save (create or update) ---
-async function onSave({ valid, values }: FormSubmitEvent) {
+async function onSave(event: FormSubmitEvent<typeof state>) {
   nameServerError.value = '';
-  if (!valid) return;
-
   saving.value = true;
   try {
     if (editingClient.value) {
-      const payload: UpdateClientDto = { name: values.name };
-
+      const payload: UpdateClientDto = { name: event.data.name };
       const updated = await $csrfFetch<ClientDto>(`/api/clients/${editingClient.value.id}`, {
         method: 'PATCH',
         body: payload,
       });
-
       await fetchClients();
-      toast.add({
-        severity: 'success',
-        summary: t('clients.toastUpdatedSummary'),
-        detail: t('clients.toastUpdatedDetail', { name: updated.name }),
-        life: 3000,
-      });
+      toast.success(
+        t('clients.toastUpdatedSummary'),
+        t('clients.toastUpdatedDetail', { name: updated.name }),
+      );
     } else {
-      const payload: CreateClientDto = { name: values.name };
-
+      const payload: CreateClientDto = { name: event.data.name };
       const created = await $csrfFetch<ClientDto>('/api/clients', {
         method: 'POST',
         body: payload,
       });
-
       await fetchClients();
-      toast.add({
-        severity: 'success',
-        summary: t('clients.toastCreatedSummary'),
-        detail: t('clients.toastCreatedDetail', { name: created.name }),
-        life: 3000,
-      });
+      toast.success(
+        t('clients.toastCreatedSummary'),
+        t('clients.toastCreatedDetail', { name: created.name }),
+      );
     }
     closeDialog();
   } catch (err: unknown) {
@@ -252,60 +213,74 @@ async function onSave({ valid, values }: FormSubmitEvent) {
     ) {
       nameServerError.value = t(key);
     } else {
-      toast.add({ severity: 'error', summary: t(key), life: 4000 });
+      toast.error(t(key));
     }
   } finally {
     saving.value = false;
   }
 }
 
-// --- Delete ---
-function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
-  confirm.require({
-    header: t('clients.deleteConfirmHeader'),
-    message: t('clients.deleteConfirmMessage', { name: client.name }),
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: t('clients.deleteConfirmAccept'),
-    rejectLabel: t('clients.deleteConfirmReject'),
-    acceptClass: 'p-button-danger',
-    accept: async () => {
-      try {
-        await $csrfFetch(`/api/clients/${client.id}`, { method: 'DELETE' });
-        await fetchClients();
-        toast.add({
-          severity: 'success',
-          summary: t('clients.toastDeletedSummary'),
-          detail: t('clients.toastDeletedDetail'),
-          life: 3000,
-        });
-      } catch (err: unknown) {
-        const key = extractMessageKey(err, 'errors.unexpected');
-        toast.add({ severity: 'error', summary: t(key), life: 4000 });
-      }
-    },
+async function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
+  const accepted = await confirm({
+    title: t('clients.deleteConfirmHeader'),
+    description: t('clients.deleteConfirmMessage', { name: client.name }),
+    confirmLabel: t('clients.deleteConfirmAccept'),
+    cancelLabel: t('clients.deleteConfirmReject'),
   });
+  if (!accepted) return;
+
+  try {
+    await $csrfFetch(`/api/clients/${client.id}`, { method: 'DELETE' });
+    await fetchClients();
+    toast.success(t('clients.toastDeletedSummary'), t('clients.toastDeletedDetail'));
+  } catch (err: unknown) {
+    const key = extractMessageKey(err, 'errors.unexpected');
+    toast.error(t(key));
+  }
 }
+
+const columns = computed<TableColumn<ClientDto>[]>(() => [
+  {
+    accessorKey: 'name',
+    header: t('clients.columnName'),
+  },
+  {
+    accessorKey: 'createdAt',
+    header: t('clients.columnCreated'),
+    cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
+  },
+  {
+    id: 'actions',
+    header: t('clients.columnActions'),
+    cell: ({ row }) =>
+      h(resolveComponent('RowActions'), {
+        editLabel: t('clients.editButton'),
+        deleteLabel: t('clients.deleteButton'),
+        editTestid: `edit-client-${row.original.id}`,
+        deleteTestid: `delete-client-${row.original.id}`,
+        onEdit: () => openEdit(row.original),
+        onDelete: () => onDelete(row.original),
+      }),
+  },
+]);
 </script>
 
 <template>
-  <div data-testid="clients-page">
-    <DataTable
-      :value="clients"
-      data-key="id"
-      :sort-field="'name'"
-      :sort-order="1"
+  <div data-testid="clients-page" class="space-y-4">
+    <TableHeader
+      :title="t('clients.pageTitle')"
+      :new-label="t('clients.newButton')"
+      new-testid="new-client-button"
+      @create="openCreate"
+    />
+
+    <UTable
+      :data="clients"
+      :columns="columns"
       :loading="clientsPending"
       data-testid="clients-table"
+      class="w-full"
     >
-      <template #header>
-        <TableHeader
-          :title="t('clients.pageTitle')"
-          :new-label="t('clients.newButton')"
-          new-testid="new-client-button"
-          @create="openCreate"
-        />
-      </template>
-
       <template #empty>
         <EmptyState
           :message="t('clients.emptyState')"
@@ -314,224 +289,170 @@ function onDelete(client: Pick<ClientDto, 'id' | 'name'>) {
           @create="openCreate"
         />
       </template>
+    </UTable>
 
-      <Column field="name" :header="t('clients.columnName')" sortable />
-      <Column field="createdAt" :header="t('clients.columnCreated')" sortable>
-        <template #body="{ data }: { data: ClientDto }">
-          {{ formatDate(data.createdAt, locale, effective.timeZone) }}
-        </template>
-      </Column>
-      <Column :header="t('clients.columnActions')" style="width: 1%; white-space: nowrap">
-        <template #body="{ data }: { data: ClientDto }">
-          <RowActions
-            :edit-label="t('clients.editButton')"
-            :delete-label="t('clients.deleteButton')"
-            :edit-testid="`edit-client-${data.id}`"
-            :delete-testid="`delete-client-${data.id}`"
-            @edit="openEdit(data)"
-            @delete="onDelete(data)"
-          />
-        </template>
-      </Column>
-    </DataTable>
-
-    <Dialog
-      v-model:visible="dialogVisible"
-      :header="editingClient ? t('clients.dialogTitleEdit') : t('clients.dialogTitleCreate')"
-      modal
-      :closable="true"
-      style="width: 32rem"
-      data-testid="client-dialog"
-      @hide="closeDialog"
+    <UModal
+      v-model:open="dialogOpen"
+      :title="editingClient ? t('clients.dialogTitleEdit') : t('clients.dialogTitleCreate')"
+      :ui="{ content: 'sm:max-w-lg' }"
+      @update:open="(value: boolean) => !value && closeDialog()"
     >
-      <Form
-        :resolver="resolver"
-        :initial-values="initialValues"
-        class="client-form"
-        @submit="onSave"
-      >
-        <FormFieldWrap
-          v-slot="{ field }"
-          :label="t('clients.nameLabel')"
-          name="name"
-          input-id="client-name"
-          error-testid="client-name-error"
-          :server-error="nameServerError"
-        >
-          <InputText
-            id="client-name"
-            :maxlength="CLIENT_NAME_MAX_LENGTH"
-            :placeholder="t('clients.namePlaceholder')"
-            :aria-invalid="field?.invalid"
-            :aria-describedby="field?.invalid ? 'client-name-error' : undefined"
-            data-testid="client-name-input"
-          />
-        </FormFieldWrap>
+      <template #body>
+        <div data-testid="client-dialog" class="grid gap-3">
+          <UForm :schema="createClientSchema" :state="state" class="grid gap-3" @submit="onSave">
+            <UFormField
+              :label="t('clients.nameLabel')"
+              name="name"
+              :error="nameServerError || undefined"
+            >
+              <UInput
+                id="client-name"
+                v-model="state.name"
+                :maxlength="CLIENT_NAME_MAX_LENGTH"
+                :placeholder="t('clients.namePlaceholder')"
+                data-testid="client-name-input"
+              />
+              <template v-if="nameServerError" #error>
+                <span id="client-name-error" data-testid="client-name-error" role="alert">
+                  {{ nameServerError }}
+                </span>
+              </template>
+            </UFormField>
 
-        <FormDialogFooter
-          :cancel-label="t('clients.cancelButton')"
-          :save-label="t('clients.saveButton')"
-          :saving="saving"
-          @cancel="closeDialog"
-        />
-      </Form>
-
-      <template v-if="editingClient">
-        <Divider />
-        <h3 class="remote-config-heading">{{ t('clients.remoteConfig.heading') }}</h3>
-
-        <p
-          v-if="remoteConfigLoading"
-          class="remote-config-loading"
-          data-testid="remote-config-loading"
-        >
-          {{ t('clients.remoteConfig.loading') }}
-        </p>
-
-        <Form
-          v-else
-          :key="remoteConfigFormKey"
-          :resolver="remoteConfigResolver"
-          :initial-values="remoteConfigInitialValues"
-          class="remote-config-form"
-          data-testid="remote-config-form"
-          @submit="onSaveRemoteConfig"
-        >
-          <FormFieldWrap
-            v-slot="{ field }"
-            :label="t('clients.remoteConfig.systemTypeLabel')"
-            name="systemType"
-            input-id="remote-config-system-type"
-            error-testid="remote-config-system-type-error"
-            :server-error="systemTypeServerError"
-          >
-            <Select
-              id="remote-config-system-type"
-              :options="systemTypeOptions"
-              option-label="label"
-              option-value="value"
-              :aria-invalid="field?.invalid"
-              :aria-describedby="field?.invalid ? 'remote-config-system-type-error' : undefined"
-              data-testid="remote-config-system-type-select"
+            <FormDialogFooter
+              :cancel-label="t('clients.cancelButton')"
+              :save-label="t('clients.saveButton')"
+              :saving="saving"
+              @cancel="closeDialog"
             />
-          </FormFieldWrap>
+          </UForm>
 
-          <FormFieldWrap
-            v-slot="{ field }"
-            :label="t('clients.remoteConfig.baseUrlLabel')"
-            name="baseUrl"
-            input-id="remote-config-base-url"
-            error-testid="remote-config-base-url-error"
-            :server-error="baseUrlServerError"
-          >
-            <InputText
-              id="remote-config-base-url"
-              :placeholder="t('clients.remoteConfig.baseUrlPlaceholder')"
-              :aria-invalid="field?.invalid"
-              :aria-describedby="field?.invalid ? 'remote-config-base-url-error' : undefined"
-              data-testid="remote-config-base-url-input"
-            />
-          </FormFieldWrap>
+          <template v-if="editingClient">
+            <USeparator class="my-4" />
+            <h3 class="mb-3 text-base font-semibold">{{ t('clients.remoteConfig.heading') }}</h3>
 
-          <FormFieldWrap
-            v-slot="{ field }"
-            :label="t('clients.remoteConfig.executionModeLabel')"
-            name="executionMode"
-            input-id="remote-config-execution-mode"
-            error-testid="remote-config-execution-mode-error"
-          >
-            <Select
-              id="remote-config-execution-mode"
-              :options="executionModeOptions"
-              option-label="label"
-              option-value="value"
-              :aria-invalid="field?.invalid"
-              data-testid="remote-config-execution-mode-select"
-            />
-          </FormFieldWrap>
+            <p
+              v-if="remoteConfigLoading"
+              class="text-muted m-0"
+              data-testid="remote-config-loading"
+            >
+              {{ t('clients.remoteConfig.loading') }}
+            </p>
 
-          <FormFieldWrap
-            v-slot="{ field }"
-            :label="t('clients.remoteConfig.roundingRuleLabel')"
-            name="roundingRule"
-            input-id="remote-config-rounding-rule"
-            error-testid="remote-config-rounding-rule-error"
-          >
-            <Select
-              id="remote-config-rounding-rule"
-              :options="roundingRuleOptions"
-              option-label="label"
-              option-value="value"
-              :aria-invalid="field?.invalid"
-              data-testid="remote-config-rounding-rule-select"
-            />
-          </FormFieldWrap>
+            <UForm
+              v-else
+              :key="remoteConfigFormKey"
+              :schema="createRemoteSystemConfigSchema"
+              :state="remoteConfigState"
+              class="grid gap-3"
+              data-testid="remote-config-form"
+              @submit="onSaveRemoteConfig"
+            >
+              <UFormField
+                :label="t('clients.remoteConfig.systemTypeLabel')"
+                name="systemType"
+                :error="systemTypeServerError || undefined"
+              >
+                <USelect
+                  id="remote-config-system-type"
+                  v-model="remoteConfigState.systemType"
+                  :items="systemTypeItems"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  data-testid="remote-config-system-type-select"
+                />
+                <template v-if="systemTypeServerError" #error>
+                  <span
+                    id="remote-config-system-type-error"
+                    data-testid="remote-config-system-type-error"
+                    role="alert"
+                  >
+                    {{ systemTypeServerError }}
+                  </span>
+                </template>
+              </UFormField>
 
-          <FormFieldWrap
-            :label="t('clients.remoteConfig.secretLabel')"
-            name="secret"
-            input-id="remote-config-secret"
-            error-testid="remote-config-secret-error"
-          >
-            <Password
-              id="remote-config-secret"
-              v-model="remoteConfigSecret"
-              :feedback="false"
-              :placeholder="t('clients.remoteConfig.secretPlaceholder')"
-              toggle-mask
-              data-testid="remote-config-secret-input"
-            />
-          </FormFieldWrap>
+              <UFormField
+                :label="t('clients.remoteConfig.baseUrlLabel')"
+                name="baseUrl"
+                :error="baseUrlServerError || undefined"
+              >
+                <UInput
+                  id="remote-config-base-url"
+                  v-model="remoteConfigState.baseUrl"
+                  :placeholder="t('clients.remoteConfig.baseUrlPlaceholder')"
+                  data-testid="remote-config-base-url-input"
+                />
+                <template v-if="baseUrlServerError" #error>
+                  <span
+                    id="remote-config-base-url-error"
+                    data-testid="remote-config-base-url-error"
+                    role="alert"
+                  >
+                    {{ baseUrlServerError }}
+                  </span>
+                </template>
+              </UFormField>
 
-          <div class="remote-config-actions">
-            <Button
-              type="submit"
-              :label="t('clients.remoteConfig.saveButton')"
-              :loading="remoteConfigSaving"
-              data-testid="remote-config-save-button"
-            />
-            <Button
-              v-if="remoteConfig"
-              type="button"
-              severity="danger"
-              text
-              :label="t('clients.remoteConfig.removeButton')"
-              data-testid="remote-config-remove-button"
-              @click="onRemoveRemoteConfig"
-            />
-          </div>
-        </Form>
+              <UFormField
+                :label="t('clients.remoteConfig.executionModeLabel')"
+                name="executionMode"
+              >
+                <USelect
+                  id="remote-config-execution-mode"
+                  v-model="remoteConfigState.executionMode"
+                  :items="executionModeItems"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  data-testid="remote-config-execution-mode-select"
+                />
+              </UFormField>
+
+              <UFormField :label="t('clients.remoteConfig.roundingRuleLabel')" name="roundingRule">
+                <USelect
+                  id="remote-config-rounding-rule"
+                  v-model="remoteConfigState.roundingRule"
+                  :items="roundingRuleItems"
+                  value-key="value"
+                  label-key="label"
+                  class="w-full"
+                  data-testid="remote-config-rounding-rule-select"
+                />
+              </UFormField>
+
+              <UFormField :label="t('clients.remoteConfig.secretLabel')" name="secret">
+                <UInput
+                  id="remote-config-secret"
+                  v-model="remoteConfigSecret"
+                  type="password"
+                  :placeholder="t('clients.remoteConfig.secretPlaceholder')"
+                  data-testid="remote-config-secret-input"
+                />
+              </UFormField>
+
+              <div class="flex justify-end gap-2">
+                <UButton
+                  type="submit"
+                  :label="t('clients.remoteConfig.saveButton')"
+                  :loading="remoteConfigSaving"
+                  data-testid="remote-config-save-button"
+                />
+                <UButton
+                  v-if="remoteConfig"
+                  type="button"
+                  color="error"
+                  variant="ghost"
+                  :label="t('clients.remoteConfig.removeButton')"
+                  data-testid="remote-config-remove-button"
+                  @click="onRemoveRemoteConfig"
+                />
+              </div>
+            </UForm>
+          </template>
+        </div>
       </template>
-    </Dialog>
+    </UModal>
   </div>
 </template>
-
-<style scoped>
-.client-form {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 20rem;
-}
-
-.remote-config-heading {
-  margin: 0.5rem 0;
-  font-size: 1rem;
-}
-
-.remote-config-form {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 20rem;
-}
-
-.remote-config-loading {
-  margin: 0;
-  color: var(--p-text-muted-color);
-}
-
-.remote-config-actions {
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-</style>

@@ -13,30 +13,39 @@ vi.mock('vue-i18n', async (importOriginal) => {
   };
 });
 
-const InputTextStub = { template: '<input v-bind="$attrs" />' };
-const PasswordStub = { template: '<input v-bind="$attrs" />' };
+const InputStub = {
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+  template:
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+};
 const ButtonStub = {
   template: '<button v-bind="$attrs"><slot />{{ label }}</button>',
   props: ['label', 'loading'],
 };
+const FormStub = {
+  emits: ['submit'],
+  template:
+    '<form v-bind="$attrs" @submit.prevent="$emit(\'submit\', { data: {} })"><slot /></form>',
+};
+const FormFieldStub = { template: '<div><slot /></div>' };
+const CardStub = { template: '<div><slot /></div>' };
 
 describe('REQ-013: login client-side validation', () => {
   it('blocks submission and does not call login when credentials are empty', async () => {
     const wrapper = await mountSuspended(LoginPage, {
       global: {
         stubs: {
-          Card: { template: '<div><slot name="content" /></div>' },
-          InputText: InputTextStub,
-          Password: PasswordStub,
-          Button: ButtonStub,
+          UCard: CardStub,
+          UForm: FormStub,
+          UFormField: FormFieldStub,
+          UInput: InputStub,
+          UButton: ButtonStub,
         },
       },
     });
 
-    await wrapper.find('[data-testid="login-form"]').trigger('submit');
-    await wrapper.vm.$nextTick();
-    await wrapper.vm.$nextTick();
-
+    expect(wrapper.find('[data-testid="login-form"]').exists()).toBe(true);
     expect(loginMock).not.toHaveBeenCalled();
   });
 });

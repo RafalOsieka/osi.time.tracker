@@ -41,16 +41,23 @@ describe('layout selection per page', () => {
 
 describe('preserved test hooks', () => {
   it('login page keeps its form testids', async () => {
-    // Stub the PrimeVue inputs: this isolated mount has no `$primevue` config,
-    // and we only assert that the test hooks (data-testid) survive the move.
-    const inputStub = { template: '<input />' };
+    const inputStub = {
+      props: ['modelValue'],
+      template: '<input v-bind="$attrs" />',
+    };
     const wrapper = await mountSuspended(LoginPage, {
       global: {
         stubs: {
-          Card: { template: '<div data-testid="card"><slot name="content" /></div>' },
-          InputText: inputStub,
-          Password: inputStub,
-          Button: { template: '<button><slot />{{ label }}</button>', props: ['label'] },
+          UCard: { template: '<div data-testid="login-card"><slot /></div>' },
+          UForm: {
+            template: '<form data-testid="login-form" v-bind="$attrs"><slot /></form>',
+          },
+          UFormField: { template: '<div><slot /></div>' },
+          UInput: inputStub,
+          UButton: {
+            template: '<button v-bind="$attrs"><slot />{{ label }}</button>',
+            props: ['label'],
+          },
         },
       },
     });
@@ -78,19 +85,24 @@ describe('preserved test hooks', () => {
     const wrapper = await mountSuspended(DefaultLayout, {
       global: {
         stubs: {
-          AppTopBar: {
-            template: '<header data-testid="app-topbar"><slot name="utility" /></header>',
-            props: ['sidebarOpen'],
+          UDashboardGroup: { template: '<div><slot /></div>' },
+          UDashboardSidebar: {
+            template: '<aside data-testid="app-rail"><slot /><slot name="header" /></aside>',
           },
-          AppSidebar: { template: '<nav />' },
+          UDashboardPanel: {
+            template:
+              '<div data-testid="app-content"><slot name="header" /><slot name="body" /></div>',
+          },
+          UDashboardNavbar: {
+            template:
+              '<header data-testid="app-topbar"><slot name="right" /><slot name="center" /></header>',
+          },
+          UDashboardSidebarToggle: { template: '<button data-testid="sidebar-toggle" />' },
+          AppSidebar: { template: '<nav data-testid="app-sidebar" />' },
           AppTimer: { template: '<div data-testid="app-timer" />' },
           AppUtilityMenu: {
             template:
               '<div data-testid="utility-menu-button"><a data-testid="logout-button">Log out</a></div>',
-          },
-          Drawer: {
-            template: '<div><slot /></div>',
-            props: ['visible', 'modal', 'dismissable', 'showCloseIcon', 'position'],
           },
           NuxtPage: { template: '<div data-testid="slotted">content</div>' },
         },

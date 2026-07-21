@@ -34,8 +34,11 @@ describeProjectsUI('projects UI flow', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -46,13 +49,16 @@ describeProjectsUI('projects UI flow', async () => {
     const clientB = await createClientViaApi('UI Client B ' + Date.now());
 
     const page = await loginAs('projectsui@example.com');
-    await page.click('[data-testid="app-sidebar"] a[href="/projects"]');
+    await page.click('[data-testid="app-sidebar"] [data-testid="nav-link-projects"]');
     await page.waitForSelector('[data-testid="projects-page"]');
 
     // Create a project under Client A
     await page.click('[data-testid="new-project-button"]');
     await page.waitForSelector('[data-testid="project-dialog"]');
-    await page.fill('[data-testid="project-name-input"]', 'UI Project One');
+    await page
+      .locator('[data-testid="project-name-input"] input, [data-testid="project-name-input"]')
+      .first()
+      .fill('UI Project One');
     await page.click('[data-testid="project-client-select"]');
     await page.getByRole('option', { name: clientA.name }).click();
     await page.click('[data-testid="save-button"]');
@@ -69,15 +75,19 @@ describeProjectsUI('projects UI flow', async () => {
       'UI Project One',
     );
 
-    // Clear the filter to see all projects again
-    await page.click('[data-testid="project-client-filter"] .p-select-clear-icon');
+    // Clear the filter by selecting Client A so the project is visible again
+    await page.click('[data-testid="project-client-filter"]');
+    await page.getByRole('option', { name: clientA.name }).click();
     await page.waitForFunction(() => document.body.textContent?.includes('UI Project One'));
 
     // Edit the project
     const row = page.locator('tr', { hasText: 'UI Project One' });
     await row.locator('[data-testid^="edit-project-"]').click();
     await page.waitForSelector('[data-testid="project-dialog"]');
-    await page.fill('[data-testid="project-name-input"]', 'UI Project Renamed');
+    await page
+      .locator('[data-testid="project-name-input"] input, [data-testid="project-name-input"]')
+      .first()
+      .fill('UI Project Renamed');
     await page.click('[data-testid="save-button"]');
     await page.waitForSelector('[data-testid="project-dialog"]', { state: 'hidden' });
     await page.waitForFunction(() => document.body.textContent?.includes('UI Project Renamed'));
@@ -85,7 +95,7 @@ describeProjectsUI('projects UI flow', async () => {
     // Delete the project
     const renamedRow = page.locator('tr', { hasText: 'UI Project Renamed' });
     await renamedRow.locator('[data-testid^="delete-project-"]').click();
-    await page.getByRole('button', { name: /yes/i }).click();
+    await page.locator('[data-testid="confirm-accept"]').click();
     await page.waitForFunction(() => !document.body.textContent?.includes('UI Project Renamed'));
     expect(await page.textContent('[data-testid="projects-table"]')).not.toContain(
       'UI Project Renamed',
