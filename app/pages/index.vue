@@ -130,6 +130,9 @@ async function onContinue(group: { taskName: string | null; projectId: string | 
 
 function loadMore() {
   windowDays.value += LOAD_MORE_DAYS;
+  // Explicit refresh: watching a computed object source can miss updates depending on
+  // Nuxt/Vue timing; keep the watch as a belt-and-suspenders path.
+  void refreshEntries();
 }
 
 // --- Bulk assign ---
@@ -194,10 +197,10 @@ async function onEntryDeleted() {
             <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
               {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
             </span>
-            <Button
+            <UButton
               :label="t('timerView.addEntry.buttonLabel')"
-              icon="pi pi-plus"
-              text
+              icon="i-lucide-plus"
+              variant="ghost"
               :data-testid="`timer-day-add-entry-${day.dayKey}`"
               @click="openAddEntry(day.dayKey)"
             />
@@ -230,9 +233,9 @@ async function onEntryDeleted() {
         </div>
 
         <div class="timer-view__load-more">
-          <Button
+          <UButton
             :label="t('timerView.loadMore')"
-            text
+            variant="ghost"
             data-testid="timer-view-load-more"
             @click="loadMore"
           />
@@ -283,18 +286,18 @@ async function onEntryDeleted() {
   align-items: baseline;
   font-weight: 600;
   padding-bottom: 0.25rem;
-  border-bottom: 2px solid var(--p-content-border-color);
+  border-bottom: 2px solid var(--ui-border);
 }
 
 .timer-day__total {
   font-family: monospace;
   font-weight: 400;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .timer-day__remote-sync-link {
   font-size: 0.875rem;
-  color: var(--p-primary-color);
+  color: var(--ui-primary);
   text-decoration: none;
 }
 

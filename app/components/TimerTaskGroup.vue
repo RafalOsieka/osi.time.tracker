@@ -3,7 +3,6 @@ import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
 import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
-import { useToast } from 'primevue/usetoast';
 import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
 
 const props = withDefaults(
@@ -29,7 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const toast = useToast();
+const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
@@ -38,14 +37,11 @@ const isUntitled = computed(() => props.group.key === UNTITLED_GROUP_KEY);
 const editingTitle = ref(false);
 const titleValue = ref('');
 const editingProject = ref(false);
-const projectValue = ref<string | null>(null);
-const projectSelect = ref<{ show: () => void; hide: () => void }>();
-
+const projectValue = ref<string | undefined>(undefined);
 watch(
   () => props.activeEditorKey,
   (activeKey) => {
     if (activeKey === props.editorKey) return;
-    projectSelect.value?.hide();
     editingTitle.value = false;
     editingProject.value = false;
   },
@@ -76,7 +72,6 @@ const projectSelectOptions = computed(() => {
 
 async function beginTitleEdit() {
   emit('editing-started');
-  projectSelect.value?.hide();
   editingProject.value = false;
   titleValue.value = props.group.taskName ?? '';
   editingTitle.value = true;
@@ -99,39 +94,29 @@ async function commitTitle() {
     await $csrfFetch(`/api/tasks/${props.group.taskId}`, { method: 'PATCH', body: { name } });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
 async function beginProjectEdit() {
   emit('editing-started');
   editingTitle.value = false;
-  projectValue.value = props.group.projectId;
+  projectValue.value = props.group.projectId ?? undefined;
   editingProject.value = true;
-  await nextTick();
-  projectSelect.value?.show();
 }
 
-async function commitProject(value: string | null) {
+async function commitProject(value: string | null | undefined) {
   if (!editingProject.value || !props.group.taskId) return;
   editingProject.value = false;
   if (value === props.group.projectId) return;
   try {
     await $csrfFetch(`/api/tasks/${props.group.taskId}`, {
       method: 'PATCH',
-      body: { name: props.group.taskName, projectId: value },
+      body: { name: props.group.taskName, projectId: value ?? null },
     });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -166,11 +151,7 @@ async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: st
     });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -180,11 +161,7 @@ async function unlinkRemoteIssue() {
     await $csrfFetch(`/api/tasks/${props.group.taskId}/remote-issue-ref`, { method: 'DELETE' });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 </script>
@@ -193,17 +170,17 @@ async function unlinkRemoteIssue() {
   <div class="timer-group" :data-testid="`timer-group-${group.key}`">
     <div class="timer-group__row">
       <div class="timer-group__toggle">
-        <Button
-          :icon="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-          text
-          rounded
+        <UButton
+          :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+          variant="ghost"
+          square
           :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
           :aria-expanded="expanded"
           :aria-controls="entriesId"
           :data-testid="`timer-group-toggle-${group.key}`"
           @click="expanded = !expanded"
         />
-        <InputText
+        <UInput
           v-if="editingTitle"
           v-model="titleValue"
           class="timer-group__title-input"
@@ -214,35 +191,32 @@ async function unlinkRemoteIssue() {
           @keydown.enter="commitTitle"
           @keydown.esc="cancelTitleEdit"
         />
-        <Button
+        <UButton
           v-else-if="!isUntitled"
           class="timer-group__inline-button timer-group__name"
-          text
+          variant="ghost"
           :label="group.taskName ?? ''"
           :aria-label="t('timerView.editLabel')"
           :data-testid="`timer-group-title-${group.key}`"
           @click.stop="beginTitleEdit"
         />
         <span v-else class="timer-group__name">{{ t('timerView.noTask') }}</span>
-        <Select
+        <USelect
           v-if="editingProject"
-          ref="projectSelect"
           v-model="projectValue"
-          :options="projectSelectOptions"
-          option-label="name"
-          option-value="id"
-          show-clear
+          :items="projectSelectOptions"
+          label-key="name"
+          value-key="id"
           class="timer-group__project-select"
           :style="{ width: projectSelectWidth }"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-select-${group.key}`"
           @update:model-value="commitProject"
-          @hide="commitProject(projectValue)"
         />
-        <Button
+        <UButton
           v-else-if="!isUntitled"
           class="timer-group__inline-button timer-group__context"
-          text
+          variant="ghost"
           :label="contextLabel ?? t('timerView.noProject')"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-${group.key}`"
@@ -261,13 +235,12 @@ async function unlinkRemoteIssue() {
       </span>
 
       <template v-if="showRemoteIssueControl">
-        <Button
+        <UButton
           v-if="remoteIssueRef && remoteIssueRef.url"
-          as="a"
-          :href="remoteIssueRef.url"
+          :to="remoteIssueRef.url"
           target="_blank"
-          rel="noopener noreferrer"
-          text
+          external
+          variant="ghost"
           :label="`#${remoteIssueRef.remoteIssueId}`"
           :title="remoteIssueTooltip"
           class="timer-group__remote-issue-link"
@@ -298,20 +271,20 @@ async function unlinkRemoteIssue() {
         />
       </template>
 
-      <Button
+      <UButton
         v-if="!isUntitled"
-        icon="pi pi-play"
-        text
-        rounded
+        icon="i-lucide-play"
+        variant="ghost"
+        square
         :aria-label="t('timerView.continueLabel')"
         :data-testid="`timer-group-continue-${group.key}`"
         @click="emit('continue')"
       />
-      <Button
+      <UButton
         v-else
         :label="t('timerView.bulkAssign.buttonLabel')"
-        icon="pi pi-tag"
-        text
+        icon="i-lucide-tag"
+        variant="ghost"
         :data-testid="`timer-group-bulk-assign-${group.key}`"
         @click="emit('bulk-assign')"
       />
@@ -338,7 +311,7 @@ async function unlinkRemoteIssue() {
 
 <style scoped>
 .timer-group {
-  border-bottom: 1px solid var(--p-content-border-color);
+  border-bottom: 1px solid var(--ui-border);
   padding: 0.5rem 0;
 }
 
@@ -358,17 +331,17 @@ async function unlinkRemoteIssue() {
 }
 
 .timer-group__context {
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
   font-size: 0.875rem;
 }
 
 .timer-group__count {
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
   font-size: 0.875rem;
 }
 
 .timer-group__live {
-  color: var(--p-primary-color);
+  color: var(--ui-primary);
   font-weight: 600;
   font-size: 0.875rem;
 }
@@ -392,13 +365,13 @@ async function unlinkRemoteIssue() {
 .timer-group__remote-issue-link {
   font-family: monospace;
   font-size: 0.875rem;
-  color: var(--p-primary-color);
+  color: var(--ui-primary);
   text-decoration: none;
 }
 
 .timer-group__remote-issue-unlinked {
   font-size: 0.875rem;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .timer-group__project-select {

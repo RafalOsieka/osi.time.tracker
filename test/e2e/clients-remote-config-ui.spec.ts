@@ -17,8 +17,11 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -26,14 +29,17 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
 
   it('5.4 creates, edits, and removes a remote config through the form; secret never sent; survives reload', async () => {
     const page = await loginAs('remoteconfigui@example.com');
-    await page.click('[data-testid="app-sidebar"] a[href="/clients"]');
+    await page.click('[data-testid="app-sidebar"] [data-testid="nav-link-clients"]');
     await page.waitForSelector('[data-testid="clients-page"]');
 
     // Create a client to attach the remote config to
     const clientName = 'Remote Config Client ' + Date.now();
     await page.click('[data-testid="new-client-button"]');
     await page.waitForSelector('[data-testid="client-dialog"]');
-    await page.fill('[data-testid="client-name-input"]', clientName);
+    await page
+      .locator('[data-testid="client-name-input"] input, [data-testid="client-name-input"]')
+      .first()
+      .fill(clientName);
     await page.click('[data-testid="save-button"]');
     await page.waitForSelector('[data-testid="client-dialog"]', { state: 'hidden' });
     await page.waitForFunction((name) => document.body.textContent?.includes(name), clientName);
@@ -54,8 +60,18 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
       }
     });
 
-    await page.fill('[data-testid="remote-config-base-url-input"]', 'https://redmine.example.com');
-    await page.fill('[data-testid="remote-config-secret-input"] input', 'super-secret-api-key');
+    await page
+      .locator(
+        '[data-testid="remote-config-base-url-input"] input, [data-testid="remote-config-base-url-input"]',
+      )
+      .first()
+      .fill('https://redmine.example.com');
+    await page
+      .locator(
+        '[data-testid="remote-config-secret-input"] input, [data-testid="remote-config-secret-input"]',
+      )
+      .first()
+      .fill('super-secret-api-key');
 
     // Pick a non-default system type (default is OpenProject) so reopening the
     // dialog must reflect the *saved* value rather than the default. This guards
@@ -83,7 +99,7 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
     expect(await page.inputValue('[data-testid="remote-config-base-url-input"]')).toBe(
       'https://redmine.example.com',
     );
-    expect(await page.inputValue('[data-testid="remote-config-secret-input"] input')).toBe(
+    expect(await page.inputValue('[data-testid="remote-config-secret-input"]')).toBe(
       'super-secret-api-key',
     );
 

@@ -3,11 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 /**
  * Unit tests for locale-driven side effects:
  * - html[lang] is set to the active locale (app.vue useHead logic)
- * - PrimeVue activeLocale tracks the app locale (primevue-i18n-sync plugin logic)
- *
- * These tests exercise the logic in isolation without a full Nuxt runtime.
+ * - Nuxt UI locale tracks the app locale via UApp binding
  */
-
 describe('html lang binding', () => {
   it('passes the active locale ref to useHead htmlAttrs', () => {
     const headCalls: Array<{ htmlAttrs?: { lang: unknown } }> = [];
@@ -15,7 +12,6 @@ describe('html lang binding', () => {
       headCalls.push(opts);
     });
 
-    // Simulate what app.vue does
     const locale = { value: 'en' };
     useHeadMock({ htmlAttrs: { lang: locale } });
 
@@ -24,22 +20,18 @@ describe('html lang binding', () => {
   });
 });
 
-describe('PrimeVue locale sync', () => {
-  it('sets activeLocale on primevue config when locale changes', () => {
-    const config: Record<string, unknown> = { locale: {} };
-    const primevue = { config };
+describe('Nuxt UI locale binding', () => {
+  it('maps app locale codes to Nuxt UI locale objects', () => {
+    const locales = {
+      en: { code: 'en', name: 'English' },
+      pl: { code: 'pl', name: 'Polski' },
+    } as const;
 
-    function syncLocale(newLocale: string) {
-      if (primevue.config) {
-        primevue.config.locale = { ...(primevue.config.locale as Record<string, unknown>) };
-        primevue.config.activeLocale = newLocale;
-      }
+    function resolveUiLocale(code: keyof typeof locales) {
+      return locales[code] ?? locales.en;
     }
 
-    syncLocale('en');
-    expect(primevue.config.activeLocale).toBe('en');
-
-    syncLocale('pl');
-    expect(primevue.config.activeLocale).toBe('pl');
+    expect(resolveUiLocale('en').code).toBe('en');
+    expect(resolveUiLocale('pl').code).toBe('pl');
   });
 });

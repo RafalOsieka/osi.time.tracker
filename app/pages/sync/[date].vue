@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { useToast } from 'primevue/usetoast';
-import { useConfirm } from 'primevue/useconfirm';
 import { applyRoundingRule } from '~~/shared/utils/rounding';
 import {
   deriveRemoteSyncRowState,
@@ -28,8 +26,8 @@ import { extractMessageKey } from '~/utils/extractMessageKey';
 
 const route = useRoute();
 const { t, locale } = useI18n();
-const toast = useToast();
-const confirm = useConfirm();
+const toast = useAppToast();
+const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
 
@@ -313,19 +311,19 @@ function activitiesFor(row: RemoteSyncDayRowDto): ActivitiesState {
   );
 }
 
-function selectedActivity(row: RemoteSyncDayRowDto): string | null {
+function selectedActivity(row: RemoteSyncDayRowDto): string | undefined {
   const explicit = activitySelections.value[row.taskId];
-  if (explicit !== undefined) return explicit;
+  if (explicit !== undefined) return explicit ?? undefined;
   const options = activitiesFor(row).options;
   const previous = row.exports[0]?.requiredFieldValues?.activity;
   if (previous && options.some((option) => option.id === previous)) return previous;
   const defaultId = row.config?.requiredFieldDefaults?.activity;
   const match = defaultId ? options.find((option) => option.id === defaultId) : undefined;
-  return match ? match.id : null;
+  return match ? match.id : undefined;
 }
 
-function onActivityChange(row: RemoteSyncDayRowDto, value: string | null) {
-  activitySelections.value = { ...activitySelections.value, [row.taskId]: value };
+function onActivityChange(row: RemoteSyncDayRowDto, value: string | null | undefined) {
+  activitySelections.value = { ...activitySelections.value, [row.taskId]: value ?? null };
 }
 
 async function retryActivities(row: RemoteSyncDayRowDto) {
@@ -471,11 +469,7 @@ async function linkRemoteIssue(
       void ensureRemoteLogsLoaded(row.config, [payload.remoteIssueId], true);
     }
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -573,17 +567,19 @@ function startExport() {
   );
 
   if (repeatTasks.length > 0) {
-    confirm.require({
-      header: t('remoteSync.repeatConfirmHeader'),
-      message: t('remoteSync.repeatConfirmMessage', {
-        tasks: repeatTasks.map((row) => row.taskName).join(', '),
-      }),
-      acceptLabel: t('remoteSync.repeatConfirmAccept'),
-      rejectLabel: t('remoteSync.repeatConfirmReject'),
-      accept: () => {
-        void runExport(candidates);
-      },
-    });
+    void (async () => {
+      const accepted = await confirm({
+        title: t('remoteSync.repeatConfirmHeader'),
+        description: t('remoteSync.repeatConfirmMessage', {
+          tasks: repeatTasks.map((row) => row.taskName).join(', '),
+        }),
+        confirmLabel: t('remoteSync.repeatConfirmAccept'),
+        cancelLabel: t('remoteSync.repeatConfirmReject'),
+      });
+      if (accepted) {
+        await runExport(candidates);
+      }
+    })();
     return;
   }
 
@@ -616,7 +612,7 @@ function formatEntryStart(iso: string): string {
           {{ t('remoteSync.dayTotal', { duration: formatDuration(totalSeconds) }) }}
         </p>
       </div>
-      <Button
+      <UButton
         :label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
         :disabled="exporting || pushableRows().length === 0"
         data-testid="remote-sync-export-button"
@@ -658,7 +654,7 @@ function formatEntryStart(iso: string): string {
             <label :for="`remote-sync-rounded-${row.taskId}`" class="remote-sync__field-label">
               {{ t('remoteSync.roundedDurationLabel') }}
             </label>
-            <InputText
+            <UInput
               :id="`remote-sync-rounded-${row.taskId}`"
               :model-value="displayedRoundedInput(row)"
               :data-testid="`remote-sync-rounded-duration-${row.taskId}`"
@@ -666,10 +662,10 @@ function formatEntryStart(iso: string): string {
               @blur="commitRounded(row)"
               @keydown.enter="commitRounded(row)"
             />
-            <Button
+            <UButton
               v-if="row.taskId in roundedOverrides"
-              text
-              size="small"
+              variant="ghost"
+              size="sm"
               :label="t('remoteSync.resetDuration')"
               :data-testid="`remote-sync-reset-duration-${row.taskId}`"
               @click="resetRounded(row)"
@@ -700,16 +696,17 @@ function formatEntryStart(iso: string): string {
             class="remote-sync__entry"
             :data-testid="`remote-sync-entry-${entry.id}`"
           >
-            <Checkbox
+            <UCheckbox
               :model-value="isEntrySelected(row, entry.id)"
-              binary
               :input-id="`remote-sync-entry-check-${entry.id}`"
               :disabled="stateFor(row) !== 'manageable' && stateFor(row) !== 'activity_loading'"
               :aria-label="
                 t('remoteSync.entrySelectLabel', { start: formatEntryStart(entry.startedAt) })
               "
               :data-testid="`remote-sync-entry-check-${entry.id}`"
-              @update:model-value="(checked: boolean) => toggleEntry(row, entry.id, checked)"
+              @update:model-value="
+                (checked: boolean | 'indeterminate') => toggleEntry(row, entry.id, checked === true)
+              "
             />
             <label :for="`remote-sync-entry-check-${entry.id}`">
               {{
@@ -753,9 +750,9 @@ function formatEntryStart(iso: string): string {
             <span role="alert" :data-testid="`remote-sync-activity-error-${row.taskId}`">
               {{ t('remoteSync.activityFetchError') }}
             </span>
-            <Button
-              text
-              size="small"
+            <UButton
+              variant="ghost"
+              size="sm"
               :label="t('remoteSync.activityRetry')"
               :data-testid="`remote-sync-activity-retry-${row.taskId}`"
               @click="retryActivities(row)"
@@ -768,17 +765,16 @@ function formatEntryStart(iso: string): string {
           >
             {{ t('remoteSync.noActivityReason') }}
           </span>
-          <Select
+          <USelect
             v-else
             :id="`remote-sync-activity-${row.taskId}`"
             :model-value="selectedActivity(row)"
-            :options="activitiesFor(row).options"
-            option-label="name"
-            option-value="id"
+            :items="activitiesFor(row).options"
+            label-key="name"
+            value-key="id"
             :placeholder="t('remoteSync.activityEmptyOption')"
-            show-clear
             :data-testid="`remote-sync-activity-select-${row.taskId}`"
-            @update:model-value="(value: string | null) => onActivityChange(row, value)"
+            @update:model-value="(value: string | undefined) => onActivityChange(row, value)"
           />
         </div>
 
@@ -800,9 +796,9 @@ function formatEntryStart(iso: string): string {
             <span role="alert" :data-testid="`remote-sync-remote-logs-error-${row.taskId}`">
               {{ t('remoteSync.remoteLogsError') }}
             </span>
-            <Button
-              text
-              size="small"
+            <UButton
+              variant="ghost"
+              size="sm"
               :label="t('remoteSync.remoteLogsRetry')"
               :data-testid="`remote-sync-remote-logs-retry-${row.taskId}`"
               @click="retryRemoteLogs(row)"
@@ -886,11 +882,11 @@ function formatEntryStart(iso: string): string {
 
 .remote-sync__total {
   font-family: monospace;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .remote-sync__empty {
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .remote-sync__rows {
@@ -902,7 +898,7 @@ function formatEntryStart(iso: string): string {
   display: grid;
   gap: 0.5rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid var(--p-content-border-color);
+  border-bottom: 1px solid var(--ui-border);
 }
 
 .remote-sync__row-header {
@@ -914,7 +910,7 @@ function formatEntryStart(iso: string): string {
 
 .remote-sync__state {
   font-weight: 400;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .remote-sync__durations,
@@ -947,18 +943,18 @@ function formatEntryStart(iso: string): string {
 .remote-sync__badge {
   margin-left: 0.35rem;
   font-size: 0.75rem;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .remote-sync__field-label {
   font-size: 0.875rem;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .remote-sync__hint,
 .remote-sync__outcome {
   font-size: 0.875rem;
-  color: var(--p-text-muted-color);
+  color: var(--ui-text-muted);
 }
 
 .remote-sync__remote-log-list {

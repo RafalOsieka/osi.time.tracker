@@ -15,8 +15,11 @@ describeShell('authenticated shell navigation', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     await page.waitForSelector('[data-testid="app-sidebar"]');
@@ -32,17 +35,17 @@ describeShell('authenticated shell navigation', async () => {
   it('sidebar lists all skeleton destinations', async () => {
     const page = await loginAs('shell@example.com');
     const nav = page.locator('[data-testid="app-sidebar"]');
-    expect(await nav.locator('a[href="/"]').isVisible()).toBe(true);
-    expect(await nav.locator('a[href="/clients"]').isVisible()).toBe(true);
-    expect(await nav.locator('a[href="/projects"]').isVisible()).toBe(true);
-    expect(await nav.locator('a[href="/tasks"]').count()).toBe(0);
-    expect(await nav.locator('a[href="/reports"]').isVisible()).toBe(true);
-    expect(await nav.locator('a[href="/settings"]').isVisible()).toBe(true);
+    expect(await nav.locator('[data-testid="nav-link-timer"]').isVisible()).toBe(true);
+    expect(await nav.locator('[data-testid="nav-link-clients"]').isVisible()).toBe(true);
+    expect(await nav.locator('[data-testid="nav-link-projects"]').isVisible()).toBe(true);
+    expect(await nav.locator('[data-testid="nav-link-tasks"]').count()).toBe(0);
+    expect(await nav.locator('[data-testid="nav-link-reports"]').isVisible()).toBe(true);
+    expect(await nav.locator('[data-testid="nav-link-settings"]').isVisible()).toBe(true);
   });
 
   it('navigating to an unbuilt destination shows a placeholder page', async () => {
     const page = await loginAs('shell@example.com');
-    await page.click('[data-testid="app-sidebar"] a[href="/reports"]');
+    await page.click('[data-testid="app-sidebar"] [data-testid="nav-link-reports"]');
     await page.waitForSelector('[data-testid="placeholder-page-reports"]');
     expect(await page.locator('[data-testid="placeholder-page-reports"]').isVisible()).toBe(true);
   });

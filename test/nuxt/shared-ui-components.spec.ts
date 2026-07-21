@@ -1,19 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { Form } from '@primevue/forms';
 import TableHeader from '../../app/components/TableHeader.vue';
 import EmptyState from '../../app/components/EmptyState.vue';
 import RowActions from '../../app/components/RowActions.vue';
-import FormFieldWrap from '../../app/components/FormFieldWrap.vue';
 import TimeInput from '../../app/components/TimeInput.vue';
 
 const ButtonStub = {
   props: ['label', 'icon', 'ariaLabel'],
   emits: ['click'],
   template:
-    '<button v-bind="$attrs" :aria-label="ariaLabel" @click="$emit(\'click\')">{{ label }}</button>',
+    '<button v-bind="$attrs" :aria-label="ariaLabel || $attrs[\'aria-label\']" @click="$emit(\'click\')">{{ label }}</button>',
 };
-const InputTextStub = {
+const InputStub = {
   template:
     '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   props: ['modelValue', 'inputmode'],
@@ -24,7 +22,7 @@ describe('TableHeader', () => {
   it('renders the title and New button, and emits create on click', async () => {
     const wrapper = await mountSuspended(TableHeader, {
       props: { title: 'Clients', newLabel: 'New client', newTestid: 'new-client-button' },
-      global: { stubs: { Button: ButtonStub } },
+      global: { stubs: { UButton: ButtonStub } },
     });
 
     expect(wrapper.text()).toContain('Clients');
@@ -40,7 +38,7 @@ describe('EmptyState', () => {
   it('renders the message and CTA, and emits create on click', async () => {
     const wrapper = await mountSuspended(EmptyState, {
       props: { message: 'No clients yet', ctaLabel: 'Add one', testid: 'clients-empty-state' },
-      global: { stubs: { Button: ButtonStub } },
+      global: { stubs: { UButton: ButtonStub } },
     });
 
     expect(wrapper.find('[data-testid="clients-empty-state"]').exists()).toBe(true);
@@ -62,7 +60,7 @@ describe('RowActions', () => {
         editTestid: 'edit-client-1',
         deleteTestid: 'delete-client-1',
       },
-      global: { stubs: { Button: ButtonStub } },
+      global: { stubs: { UButton: ButtonStub } },
     });
 
     const editButton = wrapper.find('[data-testid="edit-client-1"]');
@@ -78,52 +76,11 @@ describe('RowActions', () => {
   });
 });
 
-describe('FormFieldWrap', () => {
-  it('shows no error for a valid field', async () => {
-    const wrapper = await mountSuspended(
-      {
-        components: { Form, FormFieldWrap },
-        template: `
-          <Form :initial-values="{ name: 'Acme' }">
-            <FormFieldWrap label="Name" name="name" error-testid="name-error">
-              <input data-testid="name-input" />
-            </FormFieldWrap>
-          </Form>
-        `,
-      },
-      {},
-    );
-
-    expect(wrapper.find('[data-testid="name-error"]').exists()).toBe(false);
-  });
-
-  it('associates and announces the error when a serverError is supplied', async () => {
-    const wrapper = await mountSuspended(
-      {
-        components: { Form, FormFieldWrap },
-        template: `
-          <Form :initial-values="{ name: '' }">
-            <FormFieldWrap label="Name" name="name" error-testid="name-error" server-error="Name is required">
-              <input data-testid="name-input" />
-            </FormFieldWrap>
-          </Form>
-        `,
-      },
-      {},
-    );
-
-    const error = wrapper.find('[data-testid="name-error"]');
-    expect(error.exists()).toBe(true);
-    expect(error.attributes('role')).toBe('alert');
-    expect(error.text()).toContain('Name is required');
-  });
-});
-
 describe('TimeInput', () => {
   function mount(modelValue = '08:00') {
     return mountSuspended(TimeInput, {
       props: { modelValue, label: 'Start time', testid: 'time-input' },
-      global: { stubs: { InputText: InputTextStub } },
+      global: { stubs: { UInput: InputStub } },
     });
   }
 

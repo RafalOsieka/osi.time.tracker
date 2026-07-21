@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
-import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
-import { useToast } from 'primevue/usetoast';
 
 const props = defineProps<{
   visible: boolean;
@@ -13,11 +10,17 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:visible': [boolean]; assigned: [] }>();
 
 const { t } = useI18n();
-const toast = useToast();
+const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 
+const open = computed({
+  get: () => props.visible,
+  set: (value: boolean) => emit('update:visible', value),
+});
+
 const title = ref('');
-const projectId = ref<string | null>(null);
+const searchTerm = ref('');
+const projectId = ref<string | undefined>(undefined);
 const suggestions = ref<TaskDto[]>([]);
 const nameError = ref('');
 const saving = ref(false);
@@ -27,24 +30,29 @@ watch(
   (visible) => {
     if (visible) {
       title.value = '';
-      projectId.value = null;
+      searchTerm.value = '';
+      projectId.value = undefined;
       nameError.value = '';
     }
   },
 );
 
-async function search(event: AutoCompleteCompleteEvent) {
-  const query = typeof event.query === 'string' ? event.query : '';
+async function search(query: string) {
   suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
 }
 
+watch(searchTerm, (query) => {
+  void search(query ?? '');
+});
+
 function onSelectSuggestion(task: TaskDto) {
   title.value = task.name;
-  projectId.value = task.projectId;
+  searchTerm.value = task.name;
+  projectId.value = task.projectId ?? undefined;
 }
 
 function close() {
-  emit('update:visible', false);
+  open.value = false;
 }
 
 async function onSave() {
@@ -58,102 +66,86 @@ async function onSave() {
   try {
     await $csrfFetch('/api/time-entries/bulk-assign', {
       method: 'POST',
-      body: { ids: props.ids, title: trimmed, projectId: projectId.value },
+      body: { ids: props.ids, title: trimmed, projectId: projectId.value ?? null },
     });
-    toast.add({
-      severity: 'success',
-      summary: t('timerView.bulkAssign.toastSuccessSummary'),
-      detail: t('timerView.bulkAssign.toastSuccessDetail', { name: trimmed }),
-      life: 3000,
-    });
+    toast.success(
+      t('timerView.bulkAssign.toastSuccessSummary'),
+      t('timerView.bulkAssign.toastSuccessDetail', { name: trimmed }),
+    );
     close();
     emit('assigned');
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
-    toast.add({ severity: 'error', summary: t(key), life: 4000 });
+    toast.error(t(key));
   } finally {
     saving.value = false;
   }
 }
+
+// Autocomplete mode wants a free-form string model; cast items so the prop types accept it.
+const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
-  <Dialog
-    :visible="visible"
-    :header="t('timerView.bulkAssign.dialogTitle')"
-    modal
-    closable
-    data-testid="bulk-assign-dialog"
-    @update:visible="emit('update:visible', $event)"
-  >
-    <Form class="bulk-assign-form" @submit="onSave">
-      <FormFieldWrap
-        :label="t('timerView.bulkAssign.nameLabel')"
-        name="title"
-        input-id="bulk-assign-name"
-        error-testid="bulk-assign-name-error"
-      >
-        <AutoComplete
-          v-model="title"
-          input-id="bulk-assign-name"
-          :suggestions="suggestions"
-          option-label="name"
-          :placeholder="t('timerView.bulkAssign.namePlaceholder')"
-          :aria-invalid="!!nameError"
-          :aria-describedby="nameError ? 'bulk-assign-name-error' : undefined"
-          data-testid="bulk-assign-name-input"
-          @complete="search"
-          @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+  <UModal v-model:open="open" :title="t('timerView.bulkAssign.dialogTitle')">
+    <template #body>
+      <form data-testid="bulk-assign-dialog" class="grid min-w-80 gap-3" @submit.prevent="onSave">
+        <div class="grid gap-1">
+          <label for="bulk-assign-name">{{ t('timerView.bulkAssign.nameLabel') }}</label>
+          <UInputMenu
+            id="bulk-assign-name"
+            v-model="title"
+            v-model:search-term="searchTerm"
+            :items="titleMenuItems"
+            mode="autocomplete"
+            ignore-filter
+            :placeholder="t('timerView.bulkAssign.namePlaceholder')"
+            :aria-invalid="!!nameError || undefined"
+            :aria-describedby="nameError ? 'bulk-assign-name-error' : undefined"
+            data-testid="bulk-assign-name-input"
+          >
+            <template #item-label="{ item }">
+              <button
+                type="button"
+                class="w-full text-left"
+                @click="onSelectSuggestion(item as unknown as TaskDto)"
+              >
+                {{ (item as unknown as TaskDto).name }}
+              </button>
+            </template>
+          </UInputMenu>
+        </div>
+        <p
+          v-if="nameError"
+          id="bulk-assign-name-error"
+          class="m-0 text-sm text-error"
+          role="alert"
+          data-testid="bulk-assign-name-error"
         >
-          <template #option="{ option }: { option: TaskDto }">
-            {{ option.name }}
-          </template>
-        </AutoComplete>
-      </FormFieldWrap>
-      <Message
-        v-if="nameError"
-        id="bulk-assign-name-error"
-        severity="error"
-        size="small"
-        variant="simple"
-        role="alert"
-        data-testid="bulk-assign-name-error"
-      >
-        {{ nameError }}
-      </Message>
+          {{ nameError }}
+        </p>
 
-      <FormFieldWrap
-        :label="t('timerView.bulkAssign.projectLabel')"
-        name="projectId"
-        input-id="bulk-assign-project"
-        error-testid="bulk-assign-project-error"
-      >
-        <Select
-          id="bulk-assign-project"
-          v-model="projectId"
-          :options="projectOptions"
-          option-label="name"
-          option-value="id"
-          show-clear
-          :placeholder="t('timerView.bulkAssign.projectPlaceholder')"
-          data-testid="bulk-assign-project-select"
+        <div class="grid gap-1">
+          <label for="bulk-assign-project">{{ t('timerView.bulkAssign.projectLabel') }}</label>
+          <USelect
+            id="bulk-assign-project"
+            v-model="projectId"
+            :items="projectOptions"
+            value-key="id"
+            label-key="name"
+            :placeholder="t('timerView.bulkAssign.projectPlaceholder')"
+            class="w-full"
+            data-testid="bulk-assign-project-select"
+          />
+        </div>
+
+        <FormDialogFooter
+          :cancel-label="t('timerView.bulkAssign.cancelButton')"
+          :save-label="t('timerView.bulkAssign.saveButton')"
+          :saving="saving"
+          @cancel="close"
         />
-      </FormFieldWrap>
-
-      <FormDialogFooter
-        :cancel-label="t('timerView.bulkAssign.cancelButton')"
-        :save-label="t('timerView.bulkAssign.saveButton')"
-        :saving="saving"
-        @cancel="close"
-      />
-    </Form>
-  </Dialog>
+      </form>
+    </template>
+  </UModal>
 </template>
-
-<style scoped>
-.bulk-assign-form {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 20rem;
-}
-</style>

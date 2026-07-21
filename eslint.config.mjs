@@ -20,12 +20,39 @@ export default withNuxt()
   .append(vueA11y.configs['flat/recommended']) // Accessibility rules (before Prettier)
   .append({
     rules: {
-      // PrimeVue InputText and Password render native inputs; declare them as control components
-      // so label-has-for can verify label association without inline disables.
+      // Nuxt UI form controls (and residual PrimeVue inputs still being migrated) render
+      // native inputs; declare them as control components so label-has-for can verify
+      // label association without inline disables.
       'vuejs-accessibility/label-has-for': [
         'error',
         {
-          controlComponents: ['InputText', 'Password'],
+          controlComponents: [
+            // Nuxt UI
+            'UInput',
+            'UTextarea',
+            'USelect',
+            'USelectMenu',
+            'UInputMenu',
+            'UInputNumber',
+            'UInputDate',
+            'UInputTime',
+            'UInputTags',
+            'UPinInput',
+            'UCheckbox',
+            'UCheckboxGroup',
+            'URadioGroup',
+            'USwitch',
+            'USlider',
+            'UFileUpload',
+            // Residual PrimeVue (removed once pages finish migrating)
+            'InputText',
+            'Password',
+            'Textarea',
+            'Select',
+            'AutoComplete',
+            'InputNumber',
+            'DatePicker',
+          ],
           required: { some: ['nesting', 'id'] },
         },
       ],

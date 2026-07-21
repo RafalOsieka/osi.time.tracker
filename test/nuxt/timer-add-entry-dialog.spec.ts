@@ -1,10 +1,13 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
 import { combineLocalDateAndTime } from '../../app/utils/timerViewGrouping';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
+const fetchMock = vi.hoisted(() => vi.fn());
+const toastSuccessMock = vi.hoisted(() => vi.fn());
+const toastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
@@ -14,20 +17,33 @@ vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return { ...actual, useI18n: () => ({ t: (key: string) => key }) };
 });
-vi.mock('primevue/usetoast', () => ({ useToast: () => ({ add: vi.fn() }) }));
 
-const DialogStub = { template: '<div v-if="visible"><slot /></div>', props: ['visible'] };
-const AutoCompleteStub = {
+mockNuxtImport('$fetch', () => fetchMock);
+mockNuxtImport('useAppToast', () => () => ({
+  success: toastSuccessMock,
+  error: toastErrorMock,
+}));
+
+const ModalStub = {
+  props: {
+    open: { type: Boolean, default: true },
+    title: { type: String, default: '' },
+  },
+  emits: ['update:open'],
   template:
-    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
-  props: ['modelValue', 'suggestions', 'optionLabel', 'placeholder', 'inputId'],
-  emits: ['update:modelValue', 'complete', 'item-select'],
+    '<div v-if="open !== false" data-testid="add-entry-dialog"><slot name="body" /><slot /></div>',
 };
-const InputTextStub = {
+const InputMenuStub = {
   template:
-    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'update:searchTerm\', $event.target.value)" />',
+  props: ['modelValue', 'searchTerm', 'items', 'placeholder', 'mode'],
+  emits: ['update:modelValue', 'update:searchTerm'],
+};
+const InputStub = {
+  template:
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" />',
   props: ['modelValue', 'inputmode'],
-  emits: ['update:modelValue'],
+  emits: ['update:modelValue', 'blur', 'keydown'],
 };
 
 function mount() {
@@ -35,18 +51,31 @@ function mount() {
     props: { visible: true, date: new Date(2024, 2, 15), timeZone: 'UTC' },
     global: {
       stubs: {
-        Dialog: DialogStub,
-        AutoComplete: AutoCompleteStub,
-        InputText: InputTextStub,
-        Message: { template: '<div v-bind="$attrs"><slot /></div>' },
-        FormDialogFooter: { template: '<div />' },
+        UModal: ModalStub,
+        UInputMenu: InputMenuStub,
+        UInput: InputStub,
+        UAlert: { template: '<div v-bind="$attrs"><slot /></div>' },
+        FormDialogFooter: {
+          template: '<div><button type="submit" data-testid="save-button">save</button></div>',
+        },
       },
     },
   });
 }
 
 describe('TimerAddEntryDialog', () => {
-  beforeEach(() => csrfFetchMock.mockReset());
+  beforeEach(() => {
+    csrfFetchMock.mockReset();
+    fetchMock.mockReset();
+    fetchMock.mockResolvedValue([]);
+    vi.stubGlobal('$fetch', fetchMock);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+    } catch {
+      // ignore
+    }
+  });
 
   it('submits converted local instants and emits the created entry', async () => {
     const created = { id: 'entry-1' };

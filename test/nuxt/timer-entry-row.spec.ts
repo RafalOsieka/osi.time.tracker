@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TimerEntryRow from '../../app/components/TimerEntryRow.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
+const confirmMock = vi.hoisted(() => vi.fn(async () => true));
+const toastErrorMock = vi.hoisted(() => vi.fn());
 
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
@@ -26,30 +28,27 @@ vi.mock('vue-i18n', async (importOriginal) => {
   };
 });
 
-const toastAddMock = vi.fn();
-vi.mock('primevue/usetoast', () => ({
-  useToast: () => ({ add: toastAddMock }),
-}));
-
-const confirmRequireMock = vi.fn();
-vi.mock('primevue/useconfirm', () => ({
-  useConfirm: () => ({ require: confirmRequireMock }),
+mockNuxtImport('useAppConfirm', () => () => confirmMock);
+mockNuxtImport('useAppToast', () => () => ({
+  success: vi.fn(),
+  error: toastErrorMock,
 }));
 
 const ButtonStub = {
-  template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot /></button>',
+  template: '<button v-bind="$attrs" @click="$emit(\'click\')"><slot />{{ label }}</button>',
+  props: ['label', 'icon', 'variant', 'color', 'loading', 'square'],
   emits: ['click'],
 };
-const InputTextStub = {
+const InputStub = {
   template:
-    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown.enter\', $event)" @keydown.esc="$emit(\'keydown.esc\', $event)" />',
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" @keydown.esc="$emit(\'keydown\', $event)" />',
   props: ['modelValue', 'type', 'inputmode'],
-  emits: ['update:modelValue', 'blur', 'keydown.enter', 'keydown.esc'],
+  emits: ['update:modelValue', 'blur', 'keydown'],
 };
 
 const commonStubs = {
-  Button: ButtonStub,
-  InputText: InputTextStub,
+  UButton: ButtonStub,
+  UInput: InputStub,
 };
 
 function makeEntry(overrides: Partial<TimeEntryDto> = {}): TimeEntryDto {
@@ -69,6 +68,13 @@ function makeEntry(overrides: Partial<TimeEntryDto> = {}): TimeEntryDto {
 describe('TimerEntryRow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    confirmMock.mockResolvedValue(true);
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+    } catch {
+      // ignore
+    }
   });
 
   it('commits a title edit on blur and calls PATCH', async () => {
@@ -80,6 +86,7 @@ describe('TimerEntryRow', () => {
     });
 
     await wrapper.find('[data-testid="timer-entry-title-entry-1"]').trigger('click');
+    await flushPromises();
     const input = wrapper.find('[data-testid="timer-entry-title-input-entry-1"]');
     await input.setValue('Renamed');
     await input.trigger('blur');
@@ -98,6 +105,7 @@ describe('TimerEntryRow', () => {
     });
 
     await wrapper.find('[data-testid="timer-entry-title-entry-1"]').trigger('click');
+    await flushPromises();
     const input = wrapper.find('[data-testid="timer-entry-title-input-entry-1"]');
     await input.setValue('Should not be sent');
     await input.trigger('keydown', { key: 'Escape' });
@@ -115,6 +123,7 @@ describe('TimerEntryRow', () => {
     });
 
     await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
+    await flushPromises();
     const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
     await input.setValue('901');
     await input.trigger('keydown', { key: 'Enter' });
@@ -136,22 +145,17 @@ describe('TimerEntryRow', () => {
     });
 
     await wrapper.find('[data-testid="timer-entry-stop-entry-1"]').trigger('click');
-    const input = wrapper.find('[data-testid="timer-entry-stop-input-entry-1"]');
+    await flushPromises();
+    const input = wrapper.find<HTMLInputElement>('[data-testid="timer-entry-stop-input-entry-1"]');
     await input.setValue('59');
     await input.trigger('blur');
     await flushPromises();
 
     expect(csrfFetchMock).not.toHaveBeenCalled();
-    expect(
-      wrapper.find<HTMLInputElement>('[data-testid="timer-entry-stop-input-entry-1"]').element
-        .value,
-    ).toBe('10:00');
+    expect(input.element.value).toBe('10:00');
   });
 
   it('shows a confirmation before deleting and calls DELETE on accept', async () => {
-    confirmRequireMock.mockImplementation((opts: { accept: () => void }) => {
-      opts.accept();
-    });
     csrfFetchMock.mockResolvedValue({ success: true });
 
     const wrapper = await mountSuspended(TimerEntryRow, {
@@ -162,7 +166,7 @@ describe('TimerEntryRow', () => {
     await wrapper.find('[data-testid="timer-entry-delete-entry-1"]').trigger('click');
     await flushPromises();
 
-    expect(confirmRequireMock).toHaveBeenCalled();
+    expect(confirmMock).toHaveBeenCalled();
     expect(csrfFetchMock).toHaveBeenCalledWith(
       '/api/time-entries/entry-1',
       expect.objectContaining({ method: 'DELETE' }),

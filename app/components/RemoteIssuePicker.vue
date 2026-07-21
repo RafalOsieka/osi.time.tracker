@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
 import { useI18n } from 'vue-i18n';
 import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
 import type {
@@ -22,13 +21,13 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
 
-const popover = ref<{ toggle: (event: Event) => void; hide: () => void }>();
+const open = ref(false);
 const mode = ref<RemoteIssueSearchMode>('title');
 const query = ref('');
-const firstField = ref<{ $el?: HTMLElement } | HTMLElement>();
+const firstField = ref<HTMLElement | null>(null);
 let triggerElement: HTMLElement | null = null;
 
-const modeOptions = computed(() => [
+const modeItems = computed(() => [
   { label: t('remoteIssuePicker.modeTitle'), value: 'title' as RemoteIssueSearchMode },
   { label: t('remoteIssuePicker.modeId'), value: 'id' as RemoteIssueSearchMode },
 ]);
@@ -45,17 +44,15 @@ const statusMessage = computed(() => {
   return t('remoteIssuePicker.emptyResults');
 });
 
-async function open(event: Event) {
+async function onOpen(event: Event) {
   triggerElement = event.currentTarget as HTMLElement;
-  popover.value?.toggle(event);
+  open.value = true;
   await nextTick();
-  const el = firstField.value as { $el?: HTMLElement } | undefined;
-  const rootEl = el && '$el' in el ? el.$el : (el as unknown as HTMLElement | undefined);
-  const focusable = rootEl?.querySelector?.<HTMLElement>('button, input, [tabindex]');
-  (focusable ?? rootEl)?.focus?.();
+  firstField.value?.focus?.();
 }
 
-function onHide() {
+function onClose() {
+  open.value = false;
   triggerElement?.focus();
 }
 
@@ -65,118 +62,91 @@ async function submit() {
 
 function selectResult(result: RemoteIssueSearchResult) {
   emit('link', { remoteIssueId: result.remoteIssueId, cachedTitle: result.title });
-  popover.value?.hide();
-}
-
-function onResultSelect(remoteIssueId: string | null) {
-  if (!remoteIssueId) return;
-  const result = results.value.find((r) => r.remoteIssueId === remoteIssueId);
-  if (result) selectResult(result);
+  onClose();
 }
 
 function unlink() {
   emit('unlink');
-  popover.value?.hide();
+  onClose();
 }
 </script>
 
 <template>
-  <span class="remote-issue-picker">
-    <Button
-      icon="pi pi-pencil"
-      text
-      rounded
-      :aria-label="t('timerView.remoteIssue.editLabel')"
-      data-testid="remote-issue-picker-trigger"
-      @click="open"
-    />
-    <Popover ref="popover" @hide="onHide">
-      <Form class="remote-issue-picker__form" @submit="submit">
-        <FormFieldWrap
-          :label="t('remoteIssuePicker.modeLabel')"
-          name="mode"
-          input-id="remote-issue-mode"
-          error-testid="remote-issue-picker-mode-error"
-        >
-          <SelectButton
-            id="remote-issue-mode"
-            ref="firstField"
-            v-model="mode"
-            :allow-empty="false"
-            :options="modeOptions"
-            option-label="label"
-            option-value="value"
-            data-testid="remote-issue-picker-mode"
-          />
-        </FormFieldWrap>
-        <FormFieldWrap
-          :label="t('remoteIssuePicker.queryLabel')"
-          name="query"
-          input-id="remote-issue-query"
-          error-testid="remote-issue-picker-query-error"
-        >
-          <InputText
-            id="remote-issue-query"
-            v-model="query"
-            :placeholder="t('remoteIssuePicker.queryPlaceholder')"
-            data-testid="remote-issue-picker-query"
-          />
-        </FormFieldWrap>
-        <Button
-          type="submit"
-          :label="t('remoteIssuePicker.submitButton')"
-          data-testid="remote-issue-picker-submit"
-        />
-      </Form>
-
-      <p class="remote-issue-picker__status" role="status" aria-live="polite">
-        {{ statusMessage }}
-      </p>
-
-      <Listbox
-        v-if="results.length > 0"
-        class="remote-issue-picker__results"
-        :options="results"
-        option-label="title"
-        option-value="remoteIssueId"
-        :aria-label="t('remoteIssuePicker.resultsLabel')"
-        list-style="max-height: 12rem"
-        data-testid="remote-issue-picker-results"
-        @update:model-value="onResultSelect"
-      >
-        <template #option="{ option }">
-          <span :data-testid="`remote-issue-picker-result-${option.remoteIssueId}`">
-            #{{ option.remoteIssueId }} {{ option.title }}
-          </span>
-        </template>
-      </Listbox>
-
-      <Button
-        v-if="currentRef"
-        text
-        severity="danger"
-        :label="t('remoteIssuePicker.unlinkButton')"
-        data-testid="remote-issue-picker-unlink"
-        @click="unlink"
+  <span class="inline-flex">
+    <UPopover v-model:open="open">
+      <UButton
+        icon="i-lucide-pencil"
+        color="neutral"
+        variant="ghost"
+        square
+        :aria-label="t('timerView.remoteIssue.editLabel')"
+        data-testid="remote-issue-picker-trigger"
+        @click="onOpen"
       />
-    </Popover>
+      <template #content>
+        <div class="grid min-w-64 gap-3 p-3">
+          <form class="grid gap-3" @submit.prevent="submit">
+            <div class="grid gap-1">
+              <label for="remote-issue-mode">{{ t('remoteIssuePicker.modeLabel') }}</label>
+              <URadioGroup
+                id="remote-issue-mode"
+                ref="firstField"
+                v-model="mode"
+                :items="modeItems"
+                orientation="horizontal"
+                value-key="value"
+                label-key="label"
+                data-testid="remote-issue-picker-mode"
+              />
+            </div>
+            <div class="grid gap-1">
+              <label for="remote-issue-query">{{ t('remoteIssuePicker.queryLabel') }}</label>
+              <UInput
+                id="remote-issue-query"
+                v-model="query"
+                :placeholder="t('remoteIssuePicker.queryPlaceholder')"
+                data-testid="remote-issue-picker-query"
+              />
+            </div>
+            <UButton
+              type="submit"
+              :label="t('remoteIssuePicker.submitButton')"
+              data-testid="remote-issue-picker-submit"
+            />
+          </form>
+
+          <p class="m-0 text-sm text-muted" role="status" aria-live="polite">
+            {{ statusMessage }}
+          </p>
+
+          <ul
+            v-if="results.length > 0"
+            class="m-0 max-h-48 list-none overflow-auto p-0"
+            :aria-label="t('remoteIssuePicker.resultsLabel')"
+            data-testid="remote-issue-picker-results"
+          >
+            <li v-for="result in results" :key="result.remoteIssueId">
+              <button
+                type="button"
+                class="w-full rounded px-2 py-1 text-left hover:bg-elevated"
+                :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
+                @click="selectResult(result)"
+              >
+                #{{ result.remoteIssueId }} {{ result.title }}
+              </button>
+            </li>
+          </ul>
+
+          <UButton
+            v-if="currentRef"
+            color="error"
+            variant="ghost"
+            :label="t('remoteIssuePicker.unlinkButton')"
+            data-testid="remote-issue-picker-unlink"
+            @click="unlink"
+          />
+        </div>
+      </template>
+    </UPopover>
   </span>
 </template>
-
-<style scoped>
-.remote-issue-picker__form {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 16rem;
-}
-
-.remote-issue-picker__status {
-  margin: 0.5rem 0;
-  font-size: 0.875rem;
-  color: var(--p-text-muted-color);
-}
-
-.remote-issue-picker__results {
-  margin: 0 0 0.5rem;
-}
-</style>

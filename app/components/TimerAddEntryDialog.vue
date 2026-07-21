@@ -1,8 +1,5 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
-import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
-import { useToast } from 'primevue/usetoast';
 import { combineLocalDateAndTime } from '~/utils/timerViewGrouping';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
@@ -15,13 +12,19 @@ const props = defineProps<{
 const emit = defineEmits<{ 'update:visible': [boolean]; added: [TimeEntryDto] }>();
 
 const { t } = useI18n();
-const toast = useToast();
+const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
+
+const open = computed({
+  get: () => props.visible,
+  set: (value: boolean) => emit('update:visible', value),
+});
 
 const title = ref('');
 const startTime = ref('09:00');
 const endTime = ref('10:00');
 const suggestions = ref<TaskDto[]>([]);
+const searchTerm = ref('');
 const rangeError = ref('');
 const saving = ref(false);
 
@@ -30,6 +33,7 @@ watch(
   (visible) => {
     if (visible) {
       title.value = '';
+      searchTerm.value = '';
       startTime.value = '09:00';
       endTime.value = '10:00';
       rangeError.value = '';
@@ -37,17 +41,21 @@ watch(
   },
 );
 
-async function search(event: AutoCompleteCompleteEvent) {
-  const query = typeof event.query === 'string' ? event.query : '';
+async function search(query: string) {
   suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
 }
 
+watch(searchTerm, (query) => {
+  void search(query ?? '');
+});
+
 function onSelectSuggestion(task: TaskDto) {
   title.value = task.name;
+  searchTerm.value = task.name;
 }
 
 function close() {
-  emit('update:visible', false);
+  open.value = false;
 }
 
 async function onSave() {
@@ -69,121 +77,92 @@ async function onSave() {
       method: 'POST',
       body: { title: trimmed || null, startedAt, stoppedAt },
     });
-    toast.add({
-      severity: 'success',
-      summary: t('timerView.addEntry.toastSuccessSummary'),
-      life: 3000,
-    });
+    toast.success(t('timerView.addEntry.toastSuccessSummary'));
     close();
     emit('added', created);
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
-    toast.add({ severity: 'error', summary: t(key), life: 4000 });
+    toast.error(t(key));
   } finally {
     saving.value = false;
   }
 }
+
+// Autocomplete mode wants a free-form string model; cast items so the prop types accept it.
+const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
-  <Dialog
-    :visible="visible"
-    :header="t('timerView.addEntry.dialogTitle')"
-    modal
-    closable
-    data-testid="add-entry-dialog"
-    @update:visible="emit('update:visible', $event)"
-  >
-    <Form class="add-entry-form" @submit="onSave">
-      <FormFieldWrap
-        :label="t('timerView.addEntry.titleLabel')"
-        name="title"
-        input-id="add-entry-title"
-        error-testid="add-entry-title-error"
-      >
-        <AutoComplete
-          v-model="title"
-          input-id="add-entry-title"
-          :suggestions="suggestions"
-          option-label="name"
-          :placeholder="t('timerView.addEntry.titlePlaceholder')"
-          data-testid="add-entry-title-input"
-          @complete="search"
-          @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+  <UModal v-model:open="open" :title="t('timerView.addEntry.dialogTitle')">
+    <template #body>
+      <form data-testid="add-entry-dialog" class="grid min-w-80 gap-3" @submit.prevent="onSave">
+        <div class="grid gap-1">
+          <label for="add-entry-title">{{ t('timerView.addEntry.titleLabel') }}</label>
+          <UInputMenu
+            id="add-entry-title"
+            v-model="title"
+            v-model:search-term="searchTerm"
+            :items="titleMenuItems"
+            mode="autocomplete"
+            ignore-filter
+            :placeholder="t('timerView.addEntry.titlePlaceholder')"
+            data-testid="add-entry-title-input"
+          >
+            <template #item-label="{ item }">
+              <button
+                type="button"
+                class="w-full text-left"
+                @click="onSelectSuggestion(item as unknown as TaskDto)"
+              >
+                {{ (item as unknown as TaskDto).name }}
+              </button>
+            </template>
+          </UInputMenu>
+        </div>
+
+        <div class="grid gap-1">
+          <label for="add-entry-start-time">{{ t('timerView.addEntry.startLabel') }}</label>
+          <TimeInput
+            id="add-entry-start-time"
+            v-model="startTime"
+            :label="t('timerView.addEntry.startLabel')"
+            :compact="false"
+            :invalid="!!rangeError"
+            :describedby="rangeError ? 'add-entry-range-error' : undefined"
+            testid="add-entry-start-input"
+          />
+        </div>
+
+        <div class="grid gap-1">
+          <label for="add-entry-end-time">{{ t('timerView.addEntry.endLabel') }}</label>
+          <TimeInput
+            id="add-entry-end-time"
+            v-model="endTime"
+            :label="t('timerView.addEntry.endLabel')"
+            :compact="false"
+            :invalid="!!rangeError"
+            :describedby="rangeError ? 'add-entry-range-error' : undefined"
+            testid="add-entry-end-input"
+          />
+        </div>
+
+        <p
+          v-if="rangeError"
+          id="add-entry-range-error"
+          class="m-0 text-sm text-error"
+          role="alert"
+          data-testid="add-entry-range-error"
         >
-          <template #option="{ option }: { option: TaskDto }">
-            {{ option.name }}
-          </template>
-        </AutoComplete>
-      </FormFieldWrap>
+          {{ rangeError }}
+        </p>
 
-      <FormFieldWrap
-        class="add-entry-form__time-field"
-        :label="t('timerView.addEntry.startLabel')"
-        name="startTime"
-        input-id="add-entry-start-time"
-        error-testid="add-entry-start-time-error"
-      >
-        <TimeInput
-          id="add-entry-start-time"
-          v-model="startTime"
-          :label="t('timerView.addEntry.startLabel')"
-          :compact="false"
-          :aria-invalid="!!rangeError"
-          :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
-          testid="add-entry-start-input"
+        <FormDialogFooter
+          :cancel-label="t('timerView.addEntry.cancelButton')"
+          :save-label="t('timerView.addEntry.saveButton')"
+          :saving="saving"
+          @cancel="close"
         />
-      </FormFieldWrap>
-
-      <FormFieldWrap
-        class="add-entry-form__time-field"
-        :label="t('timerView.addEntry.endLabel')"
-        name="endTime"
-        input-id="add-entry-end-time"
-        error-testid="add-entry-end-time-error"
-      >
-        <TimeInput
-          id="add-entry-end-time"
-          v-model="endTime"
-          :label="t('timerView.addEntry.endLabel')"
-          :compact="false"
-          :aria-invalid="!!rangeError"
-          :aria-describedby="rangeError ? 'add-entry-range-error' : undefined"
-          testid="add-entry-end-input"
-        />
-      </FormFieldWrap>
-
-      <Message
-        v-if="rangeError"
-        id="add-entry-range-error"
-        severity="error"
-        size="small"
-        variant="simple"
-        role="alert"
-        data-testid="add-entry-range-error"
-      >
-        {{ rangeError }}
-      </Message>
-
-      <FormDialogFooter
-        :cancel-label="t('timerView.addEntry.cancelButton')"
-        :save-label="t('timerView.addEntry.saveButton')"
-        :saving="saving"
-        @cancel="close"
-      />
-    </Form>
-  </Dialog>
+      </form>
+    </template>
+  </UModal>
 </template>
-
-<style scoped>
-.add-entry-form {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 20rem;
-}
-
-.add-entry-form__time-field {
-  display: grid;
-  gap: 0.375rem;
-}
-</style>

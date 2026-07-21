@@ -18,8 +18,14 @@ describeAuthUI('authentication UI flow', async () => {
   it('5.1 login flow logs the user in and the UI reflects it', async () => {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.fill('[data-testid="email"]', 'alice@example.com');
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page
+      .locator('[data-testid="email"] input, [data-testid="email"]')
+      .first()
+      .fill('alice@example.com');
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
 
     await page.waitForSelector('[data-testid="timer-view-page"]');
@@ -30,8 +36,14 @@ describeAuthUI('authentication UI flow', async () => {
   it('5.2 logout flow logs the user out and the UI reflects it', async () => {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.fill('[data-testid="email"]', 'bob@example.com');
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page
+      .locator('[data-testid="email"] input, [data-testid="email"]')
+      .first()
+      .fill('bob@example.com');
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 

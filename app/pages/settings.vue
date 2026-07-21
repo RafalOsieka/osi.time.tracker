@@ -1,18 +1,26 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
 import { useI18n } from 'vue-i18n';
+
 const { t } = useI18n();
 const { settings, detectedTimeZone, save } = useUserSettings();
-const timezone = ref(settings.value.timezone ?? detectedTimeZone);
-const weekStart = ref(settings.value.weekStart);
+
+const state = reactive({
+  timezone: settings.value.timezone ?? detectedTimeZone,
+  weekStart: settings.value.weekStart as 'monday' | 'sunday',
+});
 const saving = ref(false);
 const saved = ref(false);
 const error = ref('');
-const timezones = Intl.supportedValuesOf('timeZone').map((value) => ({ label: value, value }));
+
+const timezones = Intl.supportedValuesOf('timeZone');
+const weekStartItems = computed(() => [
+  { label: t('settings.monday'), value: 'monday' as const },
+  { label: t('settings.sunday'), value: 'sunday' as const },
+]);
 
 watch(settings, (value) => {
-  timezone.value = value.timezone ?? detectedTimeZone;
-  weekStart.value = value.weekStart;
+  state.timezone = value.timezone ?? detectedTimeZone;
+  state.weekStart = value.weekStart;
 });
 
 async function submit() {
@@ -20,7 +28,7 @@ async function submit() {
   saved.value = false;
   error.value = '';
   try {
-    await save({ timezone: timezone.value, weekStart: weekStart.value });
+    await save({ timezone: state.timezone, weekStart: state.weekStart });
     saved.value = true;
   } catch {
     error.value = t('settings.saveError');
@@ -31,58 +39,60 @@ async function submit() {
 </script>
 
 <template>
-  <div data-testid="page-settings">
-    <h1>{{ t('nav.settings') }}</h1>
-    <Form class="settings-form" @submit="submit">
-      <FormFieldWrap
-        v-slot="{ field }"
+  <div data-testid="page-settings" class="mx-auto max-w-xl space-y-4">
+    <h1 class="text-2xl font-semibold">{{ t('nav.settings') }}</h1>
+    <UForm :state="state" class="grid gap-4" @submit="submit">
+      <UFormField
         :label="t('settings.timezone')"
         name="timezone"
-        input-id="settings-timezone"
-        error-testid="settings-timezone-error"
+        data-testid="settings-timezone-field"
       >
-        <Select
+        <USelectMenu
           id="settings-timezone"
-          v-model="timezone"
-          :options="timezones"
-          option-label="label"
-          option-value="value"
-          filter
+          v-model="state.timezone"
+          :items="timezones"
+          searchable
           class="w-full"
-          :aria-invalid="field?.invalid"
-          :aria-describedby="field?.invalid ? 'settings-timezone-error' : undefined"
+          data-testid="settings-timezone"
         />
-        <small v-if="!settings.timezone">
+        <template v-if="!settings.timezone" #hint>
           {{ t('settings.detectedTimezone', { timezone: detectedTimeZone }) }}
-        </small>
-      </FormFieldWrap>
-      <FormFieldWrap
-        v-slot="{ field }"
+        </template>
+      </UFormField>
+
+      <UFormField
         :label="t('settings.weekStart')"
         name="weekStart"
-        input-id="settings-week-start"
-        error-testid="settings-week-start-error"
+        data-testid="settings-week-start-field"
       >
-        <SelectButton
+        <URadioGroup
           id="settings-week-start"
-          v-model="weekStart"
-          :options="['monday', 'sunday']"
-          :allow-empty="false"
-          :option-label="(value: string) => t(`settings.${value}`)"
-          :aria-invalid="field?.invalid"
-          :aria-describedby="field?.invalid ? 'settings-week-start-error' : undefined"
+          v-model="state.weekStart"
+          :items="weekStartItems"
+          orientation="horizontal"
+          data-testid="settings-week-start"
+          value-key="value"
+          label-key="label"
         />
-      </FormFieldWrap>
-      <Button type="submit" :label="t('settings.save')" :loading="saving" />
-      <Message v-if="saved" severity="success">{{ t('settings.saved') }}</Message>
-      <Message v-if="error" severity="error">{{ error }}</Message>
-    </Form>
+      </UFormField>
+
+      <div class="flex items-center gap-3">
+        <UButton type="submit" :label="t('settings.save')" :loading="saving" />
+        <UAlert
+          v-if="saved"
+          color="success"
+          variant="subtle"
+          :title="t('settings.saved')"
+          data-testid="settings-saved-message"
+        />
+        <UAlert
+          v-if="error"
+          color="error"
+          variant="subtle"
+          :title="error"
+          data-testid="settings-error-message"
+        />
+      </div>
+    </UForm>
   </div>
 </template>
-
-<style scoped>
-.settings-form {
-  display: grid;
-  gap: 1rem;
-}
-</style>

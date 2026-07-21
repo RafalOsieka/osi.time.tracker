@@ -51,10 +51,11 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Order blocks as `<script setup>`, then `<template>`, then `<style scoped>`.
 - Declare props and emits with typed generics (`defineProps<{ ... }>()`, `defineEmits<{ ... }>()`).
 - Use `ref`/`computed` for reactive state; keep event handlers as named functions.
-- Prefer existing PrimeVue components (form fields, buttons, inputs, overlays) over native `<input>`, `<select>`, `<button>`, and `<form>` elements. Reserve native elements for semantic structure or lightweight wrappers.
+- Prefer existing Nuxt UI components (`UButton`, `UInput`, `UForm`/`UFormField`, `UTable`, `UModal`, `UDashboard*`, etc.) over native form controls. Reserve native elements for semantic structure or lightweight wrappers.
 - Keep all user-facing text in the i18n catalogs and render it via `t(...)`; never hard-code display strings in templates or scripts.
 - Provide accessibility affordances: `aria-label`, `role`, and `aria-live` where appropriate, and use stable `data-testid` hooks for testable elements.
-- Scope component styles with `<style scoped>` and use BEM-style class names (`block__element`). Prefer theme tokens (CSS custom properties) over hard-coded colors.
+- Prefer Tailwind utility classes and Nuxt UI `--ui-*` design tokens for layout/color. Icons use the Lucide set (`i-lucide-*`). Keep residual `<style scoped>` only when utilities are insufficient.
+- Forms use `UForm` with a shared zod `:schema` and labelled `UFormField`s. Confirmations use `useAppConfirm()` (`useOverlay` + `ConfirmModal`), not per-page dialog instances.
 
 ## 5. Server / API Conventions
 
@@ -79,7 +80,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Every human-readable date/time format call (`Intl.DateTimeFormat`, `Date#toLocaleDateString`/`toLocaleTimeString`, and any wrapper such as `formatDate`) MUST pass an explicit `timeZone` option derived from the effective setting. Omitting `timeZone` silently falls back to the runtime's local timezone and will render the wrong day/time for users whose saved timezone differs.
 - Utilities that accept a `timeZone` parameter (e.g. `app/utils/dateTime.ts`, `app/utils/timerViewGrouping.ts`) may default it to the browser-detected timezone for convenience, but every call site with access to a signed-in user's settings MUST pass the effective timezone explicitly rather than relying on the default.
 - UTC ISO 8601 instants remain the only on-the-wire representation; the server performs no timezone-aware rendering, only timezone-aware bucketing/boundary math when explicitly given the user's timezone (see `server/utils/day-boundary.ts`).
-- Interop with PrimeVue `DatePicker` (which consumes browser-local `Date` objects) is confined to the dedicated adapter pair (`toPickerDate`/`fromPickerDate` in `app/utils/dateTime.ts`); no other code should construct dates from browser-local getters.
+- Interop with browser-local `Date` objects (e.g. date inputs) is confined to the dedicated adapter pair (`toPickerDate`/`fromPickerDate` in `app/utils/dateTime.ts`); no other code should construct dates from browser-local getters.
 
 ## 8. Comments & Documentation
 

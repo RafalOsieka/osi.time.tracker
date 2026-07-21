@@ -1,43 +1,9 @@
-import { definePreset } from '@primeuix/themes';
-import Aura from '@primeuix/themes/aura';
 import { PROD_LOGIN_RATE_LIMIT, E2E_LOGIN_RATE_LIMIT } from './shared/config/rate-limit';
-
-const CustomAuraTheme = definePreset(Aura, {
-  semantic: {
-    primary: {
-      50: '{cyan.50}',
-      100: '{cyan.100}',
-      200: '{cyan.200}',
-      300: '{cyan.300}',
-      400: '{cyan.400}',
-      500: '{cyan.500}',
-      600: '{cyan.600}',
-      700: '{cyan.700}',
-      800: '{cyan.800}',
-      900: '{cyan.900}',
-      950: '{cyan.950}',
-    },
-    colorScheme: {
-      light: {
-        primary: {
-          color: '{primary.700}',
-          contrastColor: '#ffffff',
-        },
-      },
-      dark: {
-        primary: {
-          color: '{primary.300}',
-          contrastColor: '{surface.950}',
-        },
-      },
-    },
-  },
-});
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: [
-    '@primevue/nuxt-module',
+    '@nuxt/ui',
     '@nuxt/test-utils/module',
     '@nuxt/eslint',
     'nuxt-auth-utils',
@@ -62,7 +28,13 @@ export default defineNuxtConfig({
       redirectOn: 'root',
     },
   },
-  css: ['primeicons/primeicons.css', '~/assets/css/main.css'],
+  css: ['~/assets/css/main.css'],
+  // Bundled with @nuxt/ui; classSuffix '' (`.dark`) is set by the UI module.
+  // Default preference is system so OS prefers-color-scheme is honored until overridden.
+  colorMode: {
+    preference: 'system',
+    fallback: 'light',
+  },
   compatibilityDate: '2025-07-15',
   devtools: { enabled: process.env.IS_E2E !== 'true' },
   routeRules: {
@@ -127,23 +99,13 @@ export default defineNuxtConfig({
       },
     },
   },
-  primevue: {
-    options: {
-      theme: {
-        preset: CustomAuraTheme,
-        options: {
-          darkModeSelector: '.dark',
-        },
-      },
-    },
-  },
   vite: {
     server: {
       // Disable HMR in E2E tests to avoid flakiness when running against the dev server.
       hmr: process.env.IS_E2E === 'true' ? false : undefined,
     },
     optimizeDeps: {
-      include: ['@primevue/forms', '@primevue/forms/resolvers/zod', 'temporal-polyfill', 'zod'],
+      include: ['temporal-polyfill', 'zod'],
     },
   },
   typescript: {

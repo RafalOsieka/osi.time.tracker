@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import type { AutoCompleteCompleteEvent } from 'primevue/autocomplete';
 import { useI18n } from 'vue-i18n';
 import { instantToZoned, wallClockToInstant, toPickerDate, fromPickerDate } from '~/utils/dateTime';
 
@@ -10,11 +9,12 @@ const { effective } = useUserSettings();
 const title = ref('');
 const editedTitle = ref('');
 const suggestions = ref<TaskDto[]>([]);
+const searchTerm = ref('');
 const starting = ref(false);
 const stopping = ref(false);
 const overlayOpen = ref(false);
 
-const startEditorPopover = ref();
+const startEditorOpen = ref(false);
 const startDate = ref<Date | null>(null);
 const startDateText = ref('');
 const startTime = ref<string | null>(null);
@@ -28,6 +28,7 @@ watch(
   () => running.value?.taskName ?? null,
   (taskName) => {
     editedTitle.value = taskName ?? '';
+    searchTerm.value = taskName ?? '';
   },
   { immediate: true },
 );
@@ -40,6 +41,7 @@ const displayedTitle = computed({
     } else {
       title.value = value;
     }
+    searchTerm.value = value;
   },
 });
 
@@ -61,17 +63,22 @@ function suggestionLabel(task: TaskDto): string {
   return `${task.name} (${context})`;
 }
 
-async function search(event: AutoCompleteCompleteEvent) {
-  const query = typeof event.query === 'string' ? event.query : '';
+async function search(query: string) {
   suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
 }
+
+watch(searchTerm, (query) => {
+  void search(query ?? '');
+});
 
 function onSelectSuggestion(task: TaskDto) {
   if (isRunning.value) {
     editedTitle.value = task.name;
+    searchTerm.value = task.name;
     void updateTitle(task.name);
   } else {
     title.value = task.name;
+    searchTerm.value = task.name;
   }
 }
 
@@ -88,6 +95,7 @@ async function onToggle() {
     try {
       await start(title.value || undefined, undefined);
       title.value = '';
+      searchTerm.value = '';
     } finally {
       starting.value = false;
     }
@@ -109,14 +117,14 @@ async function onEnter() {
   }
 }
 
-function openStartEditor(event: Event) {
+function openStartEditor() {
   if (!running.value) return;
   const current = instantToZoned(running.value.startedAt, effective.value.timeZone);
   startDateText.value = current.toPlainDate().toString();
   startDate.value = toPickerDate(startDateText.value, effective.value.timeZone);
   startTime.value = `${String(current.hour).padStart(2, '0')}:${String(current.minute).padStart(2, '0')}`;
   startEditorError.value = '';
-  startEditorPopover.value?.toggle(event);
+  startEditorOpen.value = true;
 }
 
 function commitStartDateText() {
@@ -133,11 +141,6 @@ function commitStartDateText() {
   } catch {
     startDateText.value = '';
   }
-}
-
-function onStartDateInput(event: Event) {
-  const target = event.target as HTMLInputElement;
-  if (target?.value !== undefined) startDateText.value = target.value;
 }
 
 function combineStartedAt(): string | null {
@@ -159,51 +162,60 @@ async function onSaveStartedAt() {
   savingStartedAt.value = true;
   try {
     await updateStartedAt(combined);
-    startEditorPopover.value?.hide();
+    startEditorOpen.value = false;
   } catch (err: unknown) {
     startEditorError.value = t(extractMessageKey(err, 'errors.unexpected'));
   } finally {
     savingStartedAt.value = false;
   }
 }
+
+// Autocomplete mode wants a free-form string model; cast items so the prop types accept it.
+const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
-  <div class="app-timer" data-testid="app-timer">
-    <AutoComplete
+  <div class="flex items-center gap-2" data-testid="app-timer">
+    <UInputMenu
       v-model="displayedTitle"
-      :suggestions="suggestions"
-      option-label="name"
+      v-model:search-term="searchTerm"
+      :items="titleMenuItems"
       :disabled="isLoading"
       :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
       :aria-label="t('timer.titleLabel')"
-      input-id="timer-title"
+      mode="autocomplete"
+      ignore-filter
+      class="min-w-40"
       data-testid="timer-title-input"
-      @complete="search"
-      @item-select="(e: { value: TaskDto }) => onSelectSuggestion(e.value)"
+      @update:open="(value: boolean) => (overlayOpen = value)"
       @blur="onBlur"
       @keydown.enter="onEnter"
-      @before-show="overlayOpen = true"
-      @hide="overlayOpen = false"
     >
-      <template #option="{ option }: { option: TaskDto }">
-        {{ suggestionLabel(option) }}
+      <template #item-label="{ item }">
+        <button
+          type="button"
+          class="w-full text-left"
+          @click="onSelectSuggestion(item as unknown as TaskDto)"
+        >
+          {{ suggestionLabel(item as unknown as TaskDto) }}
+        </button>
       </template>
-    </AutoComplete>
+    </UInputMenu>
 
-    <Button
+    <UButton
       v-if="isRunning"
-      class="app-timer__elapsed app-timer__elapsed-trigger"
-      text
-      :label="elapsedLabel"
+      color="neutral"
+      variant="link"
+      class="min-w-[4.5rem] font-mono"
       role="timer"
+      :label="elapsedLabel"
       :aria-label="t('timer.editStartLabel')"
       data-testid="timer-elapsed"
       @click="openStartEditor"
     />
     <span
       v-else
-      class="app-timer__elapsed"
+      class="min-w-[4.5rem] font-mono text-default"
       role="timer"
       :aria-label="t('timer.elapsedLabel')"
       data-testid="timer-elapsed"
@@ -211,60 +223,72 @@ async function onSaveStartedAt() {
       {{ elapsedLabel }}
     </span>
 
-    <Popover ref="startEditorPopover" data-testid="timer-start-editor-popover">
-      <div class="timer-start-editor">
-        <div class="timer-start-editor__field">
-          <label for="timer-start-editor-date">{{ t('timer.startEditor.dateLabel') }}</label>
-          <DatePicker
-            v-model="startDate"
-            input-id="timer-start-editor-date"
-            date-format="yy-mm-dd"
-            show-icon
-            data-testid="timer-start-editor-date-input"
-            @input="onStartDateInput"
-            @blur="commitStartDateText"
-            @keydown.enter.prevent="commitStartDateText"
-          />
+    <UPopover v-model:open="startEditorOpen">
+      <span class="sr-only">{{ t('timer.editStartLabel') }}</span>
+      <template #content>
+        <div class="grid min-w-64 gap-3 p-3" data-testid="timer-start-editor-popover">
+          <div class="grid gap-1">
+            <label for="timer-start-editor-date">{{ t('timer.startEditor.dateLabel') }}</label>
+            <UInput
+              id="timer-start-editor-date"
+              v-model="startDateText"
+              type="date"
+              data-testid="timer-start-editor-date-input"
+              @blur="commitStartDateText"
+              @keydown.enter.prevent="commitStartDateText"
+              @change="
+                () => {
+                  if (startDateText) {
+                    try {
+                      startDate = toPickerDate(startDateText, effective.timeZone);
+                    } catch {
+                      /* ignore invalid */
+                    }
+                  }
+                }
+              "
+            />
+          </div>
+          <div class="grid gap-1">
+            <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
+            <TimeInput
+              id="timer-start-editor-time"
+              v-model="startTime"
+              :label="t('timer.startEditor.timeLabel')"
+              :compact="false"
+              testid="timer-start-editor-time-input"
+            />
+          </div>
+          <p
+            v-if="startEditorError"
+            class="m-0 text-error"
+            role="alert"
+            data-testid="timer-start-editor-error"
+          >
+            {{ startEditorError }}
+          </p>
+          <div class="flex justify-end gap-2">
+            <UButton
+              color="neutral"
+              variant="ghost"
+              :label="t('timer.startEditor.cancelButton')"
+              data-testid="timer-start-editor-cancel-button"
+              @click="startEditorOpen = false"
+            />
+            <UButton
+              :label="t('timer.startEditor.saveButton')"
+              :loading="savingStartedAt"
+              data-testid="timer-start-editor-save-button"
+              @click="onSaveStartedAt"
+            />
+          </div>
         </div>
-        <div class="timer-start-editor__field">
-          <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
-          <TimeInput
-            id="timer-start-editor-time"
-            v-model="startTime"
-            :label="t('timer.startEditor.timeLabel')"
-            :compact="false"
-            testid="timer-start-editor-time-input"
-          />
-        </div>
-        <p
-          v-if="startEditorError"
-          class="timer-start-editor__error"
-          role="alert"
-          data-testid="timer-start-editor-error"
-        >
-          {{ startEditorError }}
-        </p>
-        <div class="timer-start-editor__actions">
-          <Button
-            :label="t('timer.startEditor.cancelButton')"
-            severity="secondary"
-            text
-            data-testid="timer-start-editor-cancel-button"
-            @click="startEditorPopover?.hide()"
-          />
-          <Button
-            :label="t('timer.startEditor.saveButton')"
-            :loading="savingStartedAt"
-            data-testid="timer-start-editor-save-button"
-            @click="onSaveStartedAt"
-          />
-        </div>
-      </div>
-    </Popover>
+      </template>
+    </UPopover>
 
-    <Button
+    <UButton
       :label="isRunning ? t('timer.stop') : t('timer.start')"
-      :severity="isRunning ? 'danger' : 'primary'"
+      :color="isRunning ? 'error' : 'primary'"
       :loading="starting || stopping"
       :disabled="isLoading"
       :aria-pressed="isRunning"
@@ -273,47 +297,3 @@ async function onSaveStartedAt() {
     />
   </div>
 </template>
-
-<style scoped>
-.app-timer {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.app-timer__elapsed {
-  min-width: 4.5rem;
-  font-family: monospace;
-  color: var(--p-text-color);
-}
-
-.app-timer__elapsed-trigger {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  text-align: left;
-}
-
-.timer-start-editor {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 16rem;
-}
-
-.timer-start-editor__field {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.timer-start-editor__error {
-  color: var(--p-red-500);
-  margin: 0;
-}
-
-.timer-start-editor__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-}
-</style>
