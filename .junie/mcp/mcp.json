@@ -12,6 +12,9 @@
         },
         "Nuxt": {
             "url": "https://nuxt.com/mcp"
+        },
+        "NuxtUI": {
+            "url": "https://ui.nuxt.com/mcp"
         }
     }
 }
