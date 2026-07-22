@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@primeuix/themes": "^2.0.3",
-    "@primevue/forms": "^4.5.5",
+    "@primevue/forms": "^5.0.0",
     "drizzle-orm": "^0.45.2",
     "nuxt": "^4.5.0",
     "nuxt-auth-utils": "^0.5.29",
