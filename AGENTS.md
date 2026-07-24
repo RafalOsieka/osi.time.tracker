@@ -12,7 +12,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 ### Tech stack
 
 - **Frontend / SSR:** Nuxt 4, Vue 3 (`<script setup lang="ts">`), Vue Router, TypeScript.
-- **UI:** PrimeVue 4 (Aura theme) + PrimeIcons; `@primevue/forms`.
+- **UI:** Nuxt UI v4 (Tailwind v4 utilities, Lucide icons) + `@nuxtjs/color-mode`.
 - **Backend / API:** Nitro server routes under `server/api`.
 - **Database:** PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver.
 - **Auth & security:** `nuxt-auth-utils` (sealed cookie sessions), `nuxt-security` (CSRF, rate limiting, CSP).
@@ -91,7 +91,7 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 - **Formatting:** 2-space indentation, single quotes, semicolons, trailing commas on multi-line literals, ~100-char lines, UTF-8 with a trailing newline. Let Prettier/ESLint own whitespace.
 - **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`).
 - **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.
-- **UI:** prefer existing PrimeVue components over native elements; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA; scope styles with BEM-style class names and theme tokens.
+- **UI:** prefer existing Nuxt UI components (`UButton`, `UForm`/`UFormField`, `UTable`, `UModal`, dashboard shell) over native elements; style with Tailwind utilities and `--ui-*` tokens; icons use `i-lucide-*`; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA.
 - **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with a single zod schema and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract. Never return rendered text — clients translate `messageKey`. Access the database only through the shared lazy client; emit timestamps as ISO strings.
 - **Boundary types:** define each cross-boundary shape once in `shared/types`, decoupled from the DB schema; derive input types with `z.infer<typeof schema>`.
 

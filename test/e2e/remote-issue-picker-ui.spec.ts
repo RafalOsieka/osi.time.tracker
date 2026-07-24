@@ -6,7 +6,6 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
-
 const describeRemoteIssuePickerUI = requireBrowser();
 
 const OPENPROJECT_BASE_URL = 'https://op.remote-issue-picker-ui.example.com';
@@ -90,8 +89,11 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
   async function loginAsInBrowser(email: string): Promise<Page> {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -144,7 +146,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
   }
 
   it('6.1 searches by title, links, replaces, and unlinks a remote issue reference', async () => {
-    await setupClientAndTask('Title');
+    const { taskId } = await setupClientAndTask('Title');
     const page = await loginAsInBrowser('remoteissuepickerui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
@@ -158,24 +160,24 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
       },
     });
 
-    // Locate the newly created task's row via its title.
+    // Locate the newly created task's row via its task id.
     await page.reload();
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() => document.body.textContent?.includes('Title Task'));
+    await page.waitForSelector(`[data-testid="timer-group-${taskId}"]`);
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'Title Task',
-      })
-      .first();
-    const groupTestId = await group.getAttribute('data-testid');
-    const groupKey = groupTestId!.replace('timer-group-', '');
+    const groupKey = taskId;
+    const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
 
     // Explicit submission: typing alone must not trigger a search.
-    await page.fill('[data-testid="remote-issue-picker-query"]', 'Fir');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('Fir');
     await page.waitForTimeout(200);
     expect(await page.locator('[data-testid="remote-issue-picker-results"]').count()).toBe(0);
 
@@ -208,7 +210,12 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     });
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
-    await page.fill('[data-testid="remote-issue-picker-query"]', 'Sec');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('Sec');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-222"]');
     await page.click('[data-testid="remote-issue-picker-result-222"]');
@@ -234,13 +241,10 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     const { taskId } = await setupClientAndTask('IdSearch');
     const page = await loginAsInBrowser('remoteissuepickerui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() => document.body.textContent?.includes('IdSearch Task'));
+    await page.waitForSelector(`[data-testid="timer-group-${taskId}"]`);
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'IdSearch Task',
-      })
-      .first();
+    const groupKey = taskId;
+    const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     // --- Exact-ID search success ---
     await mockOpenProject(page, {
@@ -249,10 +253,16 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-mode"]');
     await page
-      .locator('[data-testid="remote-issue-picker-mode"] button', { hasText: /id/i })
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /id/i })
       .click();
 
-    await page.fill('[data-testid="remote-issue-picker-query"]', '999');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('999');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-999"]');
     await page.click('[data-testid="remote-issue-picker-result-999"]');
@@ -267,7 +277,12 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     });
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
-    await page.fill('[data-testid="remote-issue-picker-query"]', '');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForFunction(() => document.body.textContent?.includes('Enter a valid issue id'));
     expect(networkCalled).toBe(false);
@@ -275,7 +290,12 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     // --- ID not found ---
     await page.unroute(`${OPENPROJECT_BASE_URL}/api/v3/work_packages**`);
     await mockOpenProject(page, { onById: () => ({ status: 404, body: {} }) });
-    await page.fill('[data-testid="remote-issue-picker-query"]', '12345');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('12345');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForFunction(() =>
       document.body.textContent?.includes('No issue was found with that id'),
@@ -301,9 +321,15 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
       onSearch: () => ({ status: 200, body: workPackagesPayload(oversized) }),
     });
     await page
-      .locator('[data-testid="remote-issue-picker-mode"] button', { hasText: /title/i })
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /title/i })
       .click();
-    await page.fill('[data-testid="remote-issue-picker-query"]', 'Bounded');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('Bounded');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-results"]');
     const resultCount = await page

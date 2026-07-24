@@ -58,7 +58,7 @@ function cancel() {
 </script>
 
 <template>
-  <InputText
+  <UInput
     :id="id"
     v-model="inputValue"
     inputmode="numeric"

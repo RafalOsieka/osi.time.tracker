@@ -1,11 +1,11 @@
 # frontend-shell Specification
 
 ## Purpose
-Define the global authenticated application shell rendered by the `default` layout — a top bar and a left sidebar wrapping the page outlet — together with its responsive behavior, navigation skeleton, accessibility guarantees, and tokenized styling. The shell exposes named regions for brand, primary navigation, a reserved running-timer region, a utility menu (locale, theme, user/logout), and the page content. It adapts across a desktop collapsible rail with persisted SSR-safe state, an off-canvas drawer below the `lg` breakpoint, and a very-small stacked layout with a full-width timer row, while meeting WCAG 2.1 AA for its navigation chrome and deriving all styling from PrimeVue theme tokens.
+Define the global authenticated application shell rendered by the `default` layout — a top bar and a left sidebar wrapping the page outlet — together with its responsive behavior, navigation skeleton, accessibility guarantees, and tokenized styling. The shell exposes named regions for brand, primary navigation, a reserved running-timer region (centered in the top bar), a utility menu (locale, theme, user/logout), and the page content. It adapts across a desktop collapsible rail with persisted SSR-safe state and an off-canvas drawer below the `lg` breakpoint, while meeting WCAG 2.1 AA for its navigation chrome and deriving all styling from Tailwind utilities and Nuxt UI `--ui-*` design tokens.
 
 ## Requirements
 ### Requirement: REQ-064 Authenticated shell regions and slots
-The `default` layout SHALL render a global authenticated shell composed of two regions — a **top bar** and a **left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a reserved running-timer region, a utility menu (locale, theme, user/logout), and the page content (`<NuxtPage />`). The logout control (`logout-button`) from REQ-061 SHALL remain available within the utility menu on every authenticated route.
+The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar) and a **left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a reserved running-timer region, a utility menu (locale, theme, user/logout), and the page content (`<NuxtPage />`). The logout control (`logout-button`) from REQ-061 SHALL remain available within the utility menu on every authenticated route.
 
 #### Scenario: Shell renders on an authenticated route
 - **WHEN** an authenticated user navigates to any page using the `default` layout
@@ -35,10 +35,10 @@ The sidebar SHALL present the v1 destination skeleton — Timer, Clients, Projec
 - **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
 
 ### Requirement: REQ-066 Desktop collapsible rail with persisted state
-On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static rail that the user can toggle between a full (labelled) state and an icon-only state using the `☰` control. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed).
+On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static rail that the user can toggle between a full (labelled) state and an icon-only (collapsed) state, using `UDashboardSidebar`'s built-in `collapsible` behavior and its toggle control. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed).
 
 #### Scenario: User collapses the rail
-- **WHEN** a desktop user activates the `☰` control while the rail is full
+- **WHEN** a desktop user activates the collapse control while the rail is full
 - **THEN** the rail SHALL collapse to icon-only and the navigation SHALL remain operable
 
 #### Scenario: Rail state survives reload
@@ -46,26 +46,26 @@ On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a sta
 - **THEN** the rail SHALL render in the icon-only state on first paint without flashing the full state
 
 ### Requirement: REQ-067 Off-canvas drawer below the lg breakpoint
-On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented as an off-canvas drawer opened by the `☰` control, with a scrim, focus trapping while open, and dismissal via `Escape` or scrim activation. The reserved timer region SHALL remain present and inline within the top bar at this tier.
+On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented as an off-canvas drawer (the `UDashboardSidebar` mobile slideover) opened by the `UDashboardNavbar` menu toggle control (mobile-only), with a scrim, focus trapping while open, and dismissal via `Escape` or scrim activation. The reserved timer region SHALL remain present and centered within the top bar at this tier.
 
 #### Scenario: Drawer opens and traps focus
-- **WHEN** a user below the `lg` breakpoint activates `☰`
+- **WHEN** a user below the `lg` breakpoint activates the menu toggle
 - **THEN** the sidebar SHALL open as a drawer with a scrim and keyboard focus SHALL be trapped within it
 
 #### Scenario: Drawer closes on Escape
 - **WHEN** the drawer is open and the user presses `Escape`
-- **THEN** the drawer SHALL close and focus SHALL return to the `☰` control
+- **THEN** the drawer SHALL close and focus SHALL return to the menu toggle control
 
-### Requirement: REQ-068 Very-small stacked layout with full-width timer row
-Below a **configurable** very-small threshold (distinct from the `lg` breakpoint, with a sensible default tunable without a spec change) the top bar SHALL contain only the brand, the `☰` control, and the utility menu. The reserved timer region SHALL move to its own full-width row directly beneath the top bar, and the page content SHALL stack below that row — never beside the timer region.
+### Requirement: REQ-068 Top bar hosts centered timer and right-side utility menu
+The top bar (`UDashboardNavbar`) SHALL always host the reserved timer region in its center at every viewport width (a single instance — no separate stacked row beneath the bar). The utility menu SHALL render in the top bar's right region. The mobile sidebar toggle SHALL appear in the top bar on viewports below `lg` and SHALL NOT appear on desktop.
 
-#### Scenario: Timer drops to its own row
-- **WHEN** the viewport is narrower than the configurable very-small threshold
-- **THEN** the reserved timer region SHALL occupy a dedicated full-width row beneath the top bar, with page content stacked below it
+#### Scenario: Timer stays centered in the top bar
+- **WHEN** the shell is rendered at any viewport width
+- **THEN** the reserved timer region SHALL render centered within the top bar rather than in a row beneath it
 
-#### Scenario: Timer stays inline above the threshold
-- **WHEN** the viewport is at or above the configurable very-small threshold
-- **THEN** the reserved timer region SHALL render inline within the top bar row
+#### Scenario: Utility menu is on the top bar right
+- **WHEN** the shell is rendered
+- **THEN** the utility menu SHALL render in the top bar's right region
 
 ### Requirement: REQ-069 Collapsed utility cluster
 At every responsive tier the locale, theme, and user/logout controls SHALL be collapsed into a single utility menu rather than rendered as loose top-bar controls. All control labels SHALL come from the i18n catalogs with `en`/`pl` parity.
@@ -75,15 +75,15 @@ At every responsive tier the locale, theme, and user/logout controls SHALL be co
 - **THEN** the locale, theme, and user/logout controls SHALL be reachable through a single utility menu
 
 ### Requirement: REQ-070 Reserved timer region hosts the live timer widget
-The shell's reserved running-timer region SHALL host the live timer widget instead of a placeholder, at every responsive tier where the region is present — inline within the top bar (desktop and above the very-small threshold) and in the dedicated full-width stacked row below the very-small threshold. The widget SHALL provide a title input (autocomplete over existing tasks) and a start/stop control, and SHALL display the running entry's title and live elapsed time whenever a timer is running (the persistent running indicator). The widget SHALL derive styling from PrimeVue theme tokens, meet WCAG 2.1 AA (labelled, keyboard-operable controls), and source all user-facing strings from the i18n catalogs with `en`/`pl` parity.
+The shell's reserved running-timer region SHALL host the live timer widget instead of a placeholder, centered in the `UDashboardNavbar` at every viewport width (a single instance — no separate stacked row). The navbar right slot SHALL host the utility menu. The widget SHALL provide a title input (autocomplete over existing tasks) and a start/stop control, and SHALL display the running entry's title and live elapsed time whenever a timer is running (the persistent running indicator). The widget SHALL derive styling from Tailwind utilities and Nuxt UI `--ui-*` design tokens, meet WCAG 2.1 AA (labelled, keyboard-operable controls), and source all user-facing strings from the i18n catalogs with `en`/`pl` parity.
 
-#### Scenario: Timer widget renders inline in the top bar
-- **WHEN** an authenticated user views the shell at or above the very-small threshold
-- **THEN** the reserved timer region SHALL render the live timer widget inline within the top bar rather than a placeholder
+#### Scenario: Timer widget renders centered in the top bar
+- **WHEN** an authenticated user views the shell at any viewport width
+- **THEN** the reserved timer region SHALL render the live timer widget centered within the top bar rather than a placeholder or a row beneath it
 
-#### Scenario: Timer widget renders in the stacked row
-- **WHEN** the viewport is narrower than the very-small threshold
-- **THEN** the live timer widget SHALL render in the dedicated full-width row beneath the top bar
+#### Scenario: Utility menu renders on the top bar right
+- **WHEN** the shell is rendered
+- **THEN** the utility menu SHALL render in the top bar's right region
 
 #### Scenario: Running indicator shown while a timer runs
 - **WHEN** the authenticated user has a running entry
@@ -91,22 +91,26 @@ The shell's reserved running-timer region SHALL host the live timer widget inste
 
 #### Scenario: Widget controls are accessible
 - **WHEN** the timer widget is rendered
-- **THEN** its title input and start/stop control SHALL be labelled, keyboard operable, and styled from PrimeVue theme tokens
+- **THEN** its title input and start/stop control SHALL be labelled, keyboard operable, and styled from Nuxt UI design tokens
 
 ### Requirement: REQ-071 Accessible shell navigation
-The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be a `<nav>` landmark, the link matching the current route SHALL expose `aria-current="page"`, and the `☰` toggle SHALL expose `aria-expanded` reflecting the sidebar/drawer state. The shell SHALL be fully operable by keyboard.
+The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be a `<nav>` landmark with an accessible name (`aria-label`), and its links SHALL be rendered natively by `UNavigationMenu` from the `navItems` definition (icon + label) rather than through a custom per-item slot. Each navigation link SHALL be addressable by its destination `href` (e.g. `a[href="/clients"]`) for test and automation hooks, the link matching the current route SHALL expose `aria-current="page"`, and the menu toggle SHALL expose `aria-expanded` reflecting the sidebar/drawer state. The shell SHALL be fully operable by keyboard.
 
 #### Scenario: Current route is indicated
 - **WHEN** the user is on a route represented in the sidebar
 - **THEN** the corresponding navigation link SHALL expose `aria-current="page"`
 
 #### Scenario: Toggle exposes expanded state
-- **WHEN** the sidebar/drawer is opened or collapsed via the `☰` control
+- **WHEN** the sidebar/drawer is opened or collapsed via the menu toggle
 - **THEN** the control's `aria-expanded` value SHALL reflect the current open/expanded state
 
+#### Scenario: Links are rendered natively and addressable by href
+- **WHEN** the sidebar navigation is rendered
+- **THEN** each destination SHALL render as a single native `UNavigationMenu` link (icon + label) with no custom per-item slot, and SHALL be selectable by its `href` (e.g. `[data-testid="app-sidebar"] a[href="/"]` for Timer)
+
 ### Requirement: REQ-072 Tokenized shell styling
-The shell SHALL be styled using PrimeVue theme tokens, replacing the ad-hoc inline styles currently in `default.vue`. Brand accent usage SHALL rely on the existing `primary` token (per project theming guidelines) rather than inline colors.
+The shell SHALL be styled using Tailwind utilities and Nuxt UI `--ui-*` design tokens, with no ad-hoc inline `style` attributes in `default.vue`. Brand accent usage SHALL rely on the configured `primary` color (per REQ-160) rather than inline colors or raw hex values.
 
 #### Scenario: No inline ad-hoc styling in the shell
 - **WHEN** the shell is implemented
-- **THEN** its layout and color SHALL derive from PrimeVue theme tokens and not from ad-hoc inline `style` attributes
+- **THEN** its layout and color SHALL derive from Tailwind utilities and Nuxt UI design tokens and not from ad-hoc inline `style` attributes

@@ -37,8 +37,11 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -62,7 +65,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     await page.evaluate(
       ({ dateValue }) => {
         const input = document.querySelector<HTMLInputElement>(
-          '[data-testid="timer-start-editor-date-input"] input',
+          '[data-testid="timer-start-editor-date-input"]',
         );
         if (!input) throw new Error('date input not found');
         input.value = dateValue;
@@ -131,7 +134,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     await page.evaluate(
       ({ dateValue }) => {
         const input = document.querySelector<HTMLInputElement>(
-          '[data-testid="timer-start-editor-date-input"] input',
+          '[data-testid="timer-start-editor-date-input"]',
         );
         if (!input) throw new Error('date input not found');
         input.value = dateValue;

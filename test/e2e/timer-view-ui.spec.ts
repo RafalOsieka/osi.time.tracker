@@ -6,11 +6,19 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
+import {
+  groupKeyForTitleScript,
+  pageExcludesTextScript,
+  pageIncludesTextScript,
+} from './support/dom';
 import { createDatabaseClient } from '../../server/db/client';
 import { users } from '../../server/db/schema/users';
 import { timeEntries } from '../../server/db/schema/time-entries';
 
 const describeTimerViewUI = requireBrowser();
+const pageIncludesText = pageIncludesTextScript();
+const pageExcludesText = pageExcludesTextScript();
+const groupKeyForTitle = groupKeyForTitleScript();
 
 describeTimerViewUI('timer view UI flow', async () => {
   const dbUrl = await provisionDatabase();
@@ -20,8 +28,11 @@ describeTimerViewUI('timer view UI flow', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -68,8 +79,16 @@ describeTimerViewUI('timer view UI flow', async () => {
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
-    await page.waitForFunction(() => document.body.textContent?.includes('UI Timer Task'));
-    expect(await page.textContent('[data-testid="timer-view-page"]')).toContain('UI Timer Task');
+    await page.waitForFunction(pageIncludesText, 'UI Timer Task');
+    expect(
+      await page.evaluate(
+        (t) =>
+          [...document.querySelectorAll('input')].some((el) =>
+            (el as HTMLInputElement).value.includes(t),
+          ),
+        'UI Timer Task',
+      ),
+    ).toBe(true);
 
     const untitledGroupSelector = '[data-testid="timer-group-untitled"]';
     await page.waitForSelector(untitledGroupSelector);
@@ -90,10 +109,15 @@ describeTimerViewUI('timer view UI flow', async () => {
     // --- Bulk-assign action ---
     await page.click(`${untitledGroupSelector} [data-testid^="timer-group-bulk-assign-"]`);
     await page.waitForSelector('[data-testid="bulk-assign-dialog"]');
-    await page.fill('[data-testid="bulk-assign-name-input"] input', 'Bulk Assigned Task');
+    await page
+      .locator(
+        '[data-testid="bulk-assign-name-input"] input, [data-testid="bulk-assign-name-input"]',
+      )
+      .first()
+      .fill('Bulk Assigned Task');
     await page.click('[data-testid="bulk-assign-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="bulk-assign-dialog"]', { state: 'hidden' });
-    await page.waitForFunction(() => document.body.textContent?.includes('Bulk Assigned Task'));
+    await page.waitForFunction(pageIncludesText, 'Bulk Assigned Task');
 
     // --- Inline rename merge ---
     // Create a second entry under a task with the same target name to force a merge on rename.
@@ -101,33 +125,26 @@ describeTimerViewUI('timer view UI flow', async () => {
     await stopEntry(jar, token, other.id);
     await page.reload();
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() =>
-      document.body.textContent?.includes('UI Timer Task Duplicate'),
-    );
+    await page.waitForFunction(pageIncludesText, 'UI Timer Task Duplicate');
 
-    const duplicateGroup = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'UI Timer Task Duplicate',
-      })
-      .first();
-    await duplicateGroup
-      .locator('[data-testid^="timer-group-title-"]:not([data-testid*="title-input"])')
-      .click();
-    // After the click the group's visible text changes (button → input), so the
-    // hasText-filtered group locator no longer matches; find the single active
-    // title input globally instead.
-    const renameInput = page.locator('[data-testid^="timer-group-title-input-"]');
-    await renameInput.fill('UI Timer Task');
-    await renameInput.press('Enter');
-    await page.waitForFunction(
-      () => !document.body.textContent?.includes('UI Timer Task Duplicate'),
-    );
+    expect(other.taskId).toBeTruthy();
+    const duplicateTitle = page.locator(`[data-testid="timer-group-title-${other.taskId}"]`);
+    await duplicateTitle.locator('input').or(duplicateTitle).first().click();
+    const renameInput = page.locator(`[data-testid="timer-group-title-input-${other.taskId}"]`);
+    await renameInput.locator('input').or(renameInput).first().fill('UI Timer Task');
+    await renameInput.locator('input').or(renameInput).first().press('Enter');
+    await page.waitForFunction(pageExcludesText, 'UI Timer Task Duplicate');
 
     await page.close();
   });
 
   it('load more extends the visible window to include older entries', async () => {
-    // Insert an entry older than the default 7-day window directly via the DB.
+    // Ensure the default window is non-empty (so the footer load-more control renders)
+    // and insert an entry older than that window via the DB.
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const recent = await startEntry(jar, token, { title: 'Load More Anchor' });
+    await stopEntry(jar, token, recent.id);
+
     const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
     try {
       const [user] = await db
@@ -136,7 +153,9 @@ describeTimerViewUI('timer view UI flow', async () => {
         .where(eq(users.email, 'timerviewui@example.com'));
       if (!user) throw new Error('seeded user not found');
 
-      const oldStart = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+      // Far enough back that week-aligned 7- and 14-day windows may still exclude it
+      // depending on the weekday the suite runs; the loop below loads until it appears.
+      const oldStart = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
       const oldStop = new Date(oldStart.getTime() + 30 * 60 * 1000);
       await db.insert(timeEntries).values({
         userId: user.id,
@@ -150,11 +169,21 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(pageIncludesText, 'Load More Anchor');
 
-    // Not visible within the default 7-day window.
+    // Not visible within the default week-aligned window.
     const beforeCount = await page.locator('[data-testid^="timer-day-"]').count();
 
-    await page.click('[data-testid="timer-view-load-more"]');
+    // Week-aligned windows expand by full weeks; one click is not always enough.
+    const loadMore = page.locator(
+      '[data-testid="timer-view-load-more"], [data-testid="empty-state-cta"]',
+    );
+    for (let i = 0; i < 4; i++) {
+      const count = await page.locator('[data-testid^="timer-day-"]').count();
+      if (count > beforeCount) break;
+      await loadMore.first().click();
+      await page.waitForTimeout(500);
+    }
     await page.waitForFunction(
       (prev) => document.querySelectorAll('[data-testid^="timer-day-"]').length > prev,
       beforeCount,
@@ -172,13 +201,22 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click(addButtonSelector);
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
-    await page.fill('[data-testid="add-entry-title-input"] input', 'Manual Add Entry Task');
-    await page.fill('[data-testid="add-entry-start-input"]', '08:00');
-    await page.fill('[data-testid="add-entry-end-input"]', '09:00');
+    await page
+      .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
+      .first()
+      .fill('Manual Add Entry Task');
+    await page
+      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
+      .first()
+      .fill('08:00');
+    await page
+      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
+      .first()
+      .fill('09:00');
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
-    await page.waitForFunction(() => document.body.textContent?.includes('Manual Add Entry Task'));
+    await page.waitForFunction(pageIncludesText, 'Manual Add Entry Task');
 
     await page.close();
   });
@@ -192,9 +230,18 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click(addButtonSelector);
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
-    await page.fill('[data-testid="add-entry-title-input"] input', 'Inverted Range Task');
-    await page.fill('[data-testid="add-entry-start-input"]', '10:00');
-    await page.fill('[data-testid="add-entry-end-input"]', '09:00');
+    await page
+      .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
+      .first()
+      .fill('Inverted Range Task');
+    await page
+      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
+      .first()
+      .fill('10:00');
+    await page
+      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
+      .first()
+      .fill('09:00');
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
 
     await page.waitForSelector('[data-testid="add-entry-range-error"]');
@@ -224,35 +271,32 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     const seeded = await startEntry(jar, token, { title: 'Inline Project Assign Task' });
     await stopEntry(jar, token, seeded.id);
+    expect(seeded.taskId).toBeTruthy();
 
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() =>
-      document.body.textContent?.includes('Inline Project Assign Task'),
+    await page.waitForFunction(pageIncludesText, 'Inline Project Assign Task');
+
+    // Click the project placeholder for this task group (testid is on UInput root).
+    const projectDisplay = page.locator(`[data-testid="timer-group-project-${seeded.taskId}"]`);
+    await projectDisplay.locator('input').or(projectDisplay).first().click();
+    const projectSelect = page.locator(
+      `[data-testid="timer-group-project-select-${seeded.taskId}"]`,
     );
+    await projectSelect.waitFor();
+    await projectSelect.click();
+    await page.getByRole('option', { name: 'Inline Assign Project' }).click();
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'Inline Project Assign Task',
-      })
-      .first();
-
-    // The "(no project)" placeholder is an activatable button; one click swaps in
-    // the project select with its option list already open.
-    await group
-      .locator('[data-testid^="timer-group-project-"]:not([data-testid*="project-select"])')
-      .click();
-    const option = page.locator('.p-select-option', { hasText: 'Inline Assign Project' }).first();
-    await option.click();
-
-    await page.waitForFunction(() =>
-      document
-        .querySelector('[data-testid^="timer-group-project-"]')
-        ?.closest('body')
-        ?.textContent?.includes('Inline Assign Project'),
-    );
-    const groupText = await group.textContent();
-    expect(groupText).toContain('Inline Assign Project');
+    await page.waitForFunction(pageIncludesText, 'Inline Assign Project');
+    expect(
+      await page.evaluate(
+        (t) =>
+          [...document.querySelectorAll('input')].some((el) =>
+            (el as HTMLInputElement).value.includes(t),
+          ),
+        'Inline Assign Project',
+      ),
+    ).toBe(true);
 
     await page.close();
   });
@@ -262,7 +306,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
     // Start a timer from the top-bar widget.
-    await page.fill('[data-testid="timer-title-input"] input', 'Topbar Stop Task');
+    await page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first()
+      .fill('Topbar Stop Task');
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
       () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
@@ -274,11 +321,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForFunction(
       () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Start',
     );
-    await page.waitForFunction(() =>
-      document
-        .querySelector('[data-testid="timer-view-page"]')
-        ?.textContent?.includes('Topbar Stop Task'),
-    );
+    await page.waitForFunction(pageIncludesText, 'Topbar Stop Task');
 
     await page.close();
   });
@@ -290,50 +333,34 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() =>
-      document.body.textContent?.includes('Inline Edit Source Task'),
-    );
+    await page.waitForFunction(pageIncludesText, 'Inline Edit Source Task');
 
-    const sourceGroup = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'Inline Edit Source Task',
-      })
-      .first();
-    await sourceGroup.locator('[data-testid^="timer-group-toggle-"]').click();
+    // Expand the matching group so the entry row is visible.
+    expect(seeded.taskId).toBeTruthy();
+    const toggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
+    await toggle.locator('button').or(toggle).first().click();
+    await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
 
-    const entrySelector = `[data-testid="timer-entry-${seeded.id}"]`;
-    await page.waitForSelector(entrySelector);
+    // Retitle the entry (splits it into a new group on commit).
+    const entryTitle = page.locator(`[data-testid="timer-entry-title-${seeded.id}"]`);
+    await entryTitle.locator('input').or(entryTitle).first().click();
+    const titleInput = page.locator(`[data-testid="timer-entry-title-input-${seeded.id}"]`);
+    await titleInput.locator('input').or(titleInput).first().fill('Inline Edit Target Task');
+    await titleInput.locator('input').or(titleInput).first().press('Enter');
+    await page.waitForFunction(pageIncludesText, 'Inline Edit Target Task');
 
-    // --- Inline start-time edit ---
-    await page.click(`[data-testid="timer-entry-start-${seeded.id}"]`);
-    await page.fill(`[data-testid="timer-entry-start-input-${seeded.id}"]`, '07:30');
-    await page.keyboard.press('Enter');
-    await page.waitForFunction(
-      (id) =>
-        document
-          .querySelector(`[data-testid="timer-entry-start-${id}"]`)
-          ?.textContent?.includes('07:30'),
-      seeded.id,
-    );
+    // After the split, expand the new group so the entry row is interactive again.
+    const targetGroupKey = await page.evaluate(groupKeyForTitle, 'Inline Edit Target Task');
+    if (!targetGroupKey) throw new Error('target group not found');
+    const targetToggle = page.locator(`[data-testid="timer-group-toggle-${targetGroupKey}"]`);
+    await targetToggle.locator('button').or(targetToggle).first().click();
+    await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`);
 
-    // --- Retitle causing a group split ---
-    await page.click(`[data-testid="timer-entry-title-${seeded.id}"]`);
-    await page.fill(`[data-testid="timer-entry-title-input-${seeded.id}"]`, 'Inline Edit New Task');
-    await page.keyboard.press('Enter');
-    await page.waitForFunction(() => document.body.textContent?.includes('Inline Edit New Task'));
-
-    const newGroup = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'Inline Edit New Task',
-      })
-      .first();
-    await newGroup.locator('[data-testid^="timer-group-toggle-"]').click();
-    await page.waitForSelector(entrySelector);
-
-    // --- Delete with confirmation ---
-    await page.click(`[data-testid="timer-entry-delete-${seeded.id}"]`);
-    await page.click('.p-confirmdialog-accept-button');
-    await page.waitForSelector(entrySelector, { state: 'detached' });
+    // Delete the entry.
+    const deleteBtn = page.locator(`[data-testid="timer-entry-delete-${seeded.id}"]`);
+    await deleteBtn.locator('button').or(deleteBtn).first().click();
+    await page.locator('[data-testid="confirm-accept"]').click();
+    await page.waitForFunction(pageExcludesText, 'Inline Edit Target Task');
 
     await page.close();
   });

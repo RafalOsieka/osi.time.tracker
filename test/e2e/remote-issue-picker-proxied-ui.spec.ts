@@ -8,6 +8,10 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
+import { groupKeyForTitleScript, pageIncludesTextScript } from './support/dom';
+
+const pageIncludesText = pageIncludesTextScript();
+const groupKeyForTitle = groupKeyForTitleScript();
 
 const describeRemoteIssuePickerProxiedUI = requireBrowser();
 
@@ -125,8 +129,11 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
   async function loginAsInBrowser(email: string): Promise<Page> {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -148,20 +155,21 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     });
 
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction((text) => document.body.textContent?.includes(text), label);
+    await page.waitForFunction(pageIncludesText, label);
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: label,
-      })
-      .first();
-    const groupTestId = await group.getAttribute('data-testid');
-    const groupKey = groupTestId!.replace('timer-group-', '');
+    const groupKey = await page.evaluate(groupKeyForTitle, label);
+    if (!groupKey) throw new Error('group not found for label');
+    const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     // --- Title search through the proxy ---
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
-    await page.fill('[data-testid="remote-issue-picker-query"]', 'Proxied');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('Proxied');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-333"]');
     await page.click('[data-testid="remote-issue-picker-result-333"]');
@@ -175,9 +183,15 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-mode"]');
     await page
-      .locator('[data-testid="remote-issue-picker-mode"] button', { hasText: /id/i })
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /id/i })
       .click();
-    await page.fill('[data-testid="remote-issue-picker-query"]', '777');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('777');
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-777"]');
     await page.click('[data-testid="remote-issue-picker-result-777"]');

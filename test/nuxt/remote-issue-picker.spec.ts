@@ -26,69 +26,45 @@ function installFakeLocalStorage() {
 
 const ButtonStub = {
   template:
-    '<button v-bind="$attrs" :aria-label="ariaLabel" :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>',
-  props: ['label', 'ariaLabel', 'icon', 'text', 'rounded', 'severity', 'disabled'],
+    '<button v-bind="$attrs" :type="type || \'button\'" :aria-label="ariaLabel || $attrs[\'aria-label\']" :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>',
+  props: ['label', 'ariaLabel', 'icon', 'variant', 'color', 'square', 'disabled', 'type'],
   emits: ['click'],
 };
-const InputTextStub = {
+const InputStub = {
   template:
     '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   props: ['modelValue'],
   emits: ['update:modelValue'],
 };
-const SelectButtonStub = {
+const RadioGroupStub = {
   template: `
     <div>
       <button
-        v-for="option in options"
-        :key="option[optionValue]"
+        v-for="option in items"
+        :key="option.value"
         type="button"
-        :aria-pressed="modelValue === option[optionValue]"
-        @click="$emit('update:modelValue', option[optionValue])"
-      >{{ option[optionLabel] }}</button>
+        :aria-pressed="modelValue === option.value"
+        @click="$emit('update:modelValue', option.value)"
+      >{{ option.label }}</button>
     </div>
   `,
-  props: ['modelValue', 'options', 'optionLabel', 'optionValue', 'allowEmpty'],
-  emits: ['update:modelValue'],
-};
-const ListboxStub = {
-  template: `
-    <ul>
-      <li
-        v-for="option in options"
-        :key="option[optionValue]"
-        tabindex="0"
-        @click="$emit('update:modelValue', option[optionValue])"
-        @keydown.enter="$emit('update:modelValue', option[optionValue])"
-      >
-        <slot name="option" :option="option" />
-      </li>
-    </ul>
-  `,
-  props: ['options', 'optionLabel', 'optionValue', 'ariaLabel', 'listStyle'],
+  props: ['modelValue', 'items', 'orientation', 'valueKey', 'labelKey'],
   emits: ['update:modelValue'],
 };
 const PopoverStub = {
-  template: '<div v-if="visible" data-testid="popover-content"><slot /></div>',
-  data(): { visible: boolean } {
-    return { visible: false };
+  props: {
+    open: { type: Boolean, default: false },
   },
-  methods: {
-    toggle(this: { visible: boolean }) {
-      this.visible = !this.visible;
-    },
-    hide(this: { visible: boolean }) {
-      this.visible = false;
-    },
-  },
+  emits: ['update:open'],
+  template:
+    '<div><slot /><div v-if="open" data-testid="popover-content"><slot name="content" /></div></div>',
 };
 
 const stubs = {
-  Button: ButtonStub,
-  InputText: InputTextStub,
-  SelectButton: SelectButtonStub,
-  Listbox: ListboxStub,
-  Popover: PopoverStub,
+  UButton: ButtonStub,
+  UInput: InputStub,
+  URadioGroup: RadioGroupStub,
+  UPopover: PopoverStub,
 };
 
 function testI18n() {
@@ -134,8 +110,9 @@ describe('RemoteIssuePicker', () => {
     });
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
     await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('login bug');
-    await wrapper.find('[data-testid="remote-issue-picker-submit"]').trigger('submit');
+    await wrapper.find('form').trigger('submit');
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -156,12 +133,13 @@ describe('RemoteIssuePicker', () => {
     });
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
     await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('anything');
-    await wrapper.find('[data-testid="remote-issue-picker-submit"]').trigger('submit');
+    await wrapper.find('form').trigger('submit');
     await flushPromises();
 
     const result = wrapper.find('[data-testid="remote-issue-picker-result-7"]');
-    await result.trigger('keydown', { key: 'Enter' });
+    await result.trigger('click');
     expect(wrapper.emitted('link')).toEqual([
       [{ remoteIssueId: '7', cachedTitle: 'Closed issue' }],
     ]);
@@ -170,8 +148,9 @@ describe('RemoteIssuePicker', () => {
   it('does not call fetch for a too-short title query and shows a validation message', async () => {
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
     await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('ab');
-    await wrapper.find('[data-testid="remote-issue-picker-submit"]').trigger('submit');
+    await wrapper.find('form').trigger('submit');
     await flushPromises();
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -198,8 +177,9 @@ describe('RemoteIssuePicker', () => {
       },
     });
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
     await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('nothing here');
-    await wrapper.find('[data-testid="remote-issue-picker-submit"]').trigger('submit');
+    await wrapper.find('form').trigger('submit');
     await flushPromises();
 
     expect(wrapper.text()).toContain('remoteIssuePicker.emptyResults');

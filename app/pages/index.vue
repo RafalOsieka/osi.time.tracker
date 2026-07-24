@@ -130,6 +130,9 @@ async function onContinue(group: { taskName: string | null; projectId: string | 
 
 function loadMore() {
   windowDays.value += LOAD_MORE_DAYS;
+  // Explicit refresh: watching a computed object source can miss updates depending on
+  // Nuxt/Vue timing; keep the watch as a belt-and-suspenders path.
+  void refreshEntries();
 }
 
 // --- Bulk assign ---
@@ -170,8 +173,8 @@ async function onEntryDeleted() {
 </script>
 
 <template>
-  <section class="timer-view" data-testid="timer-view-page">
-    <h2 class="timer-view__title">{{ t('timerView.pageTitle') }}</h2>
+  <section class="grid gap-6" data-testid="timer-view-page">
+    <h2 class="text-2xl font-semibold">{{ t('timerView.pageTitle') }}</h2>
 
     <ClientOnly>
       <EmptyState
@@ -182,28 +185,33 @@ async function onEntryDeleted() {
         @create="loadMore"
       />
 
-      <div v-else class="timer-view__days">
+      <div v-else class="grid gap-6">
         <div
           v-for="day in days"
           :key="day.dayKey"
-          class="timer-day"
+          class="grid gap-1"
           :data-testid="`timer-day-${day.dayKey}`"
         >
-          <div class="timer-day__heading">
-            <span class="timer-day__date">{{ dayHeading(day.dayKey) }}</span>
-            <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
+          <div
+            class="flex items-baseline justify-between border-b-2 border-default pb-1 font-semibold"
+          >
+            <span>{{ dayHeading(day.dayKey) }}</span>
+            <span
+              class="font-mono font-normal text-muted"
+              :data-testid="`timer-day-total-${day.dayKey}`"
+            >
               {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
             </span>
-            <Button
+            <UButton
               :label="t('timerView.addEntry.buttonLabel')"
-              icon="pi pi-plus"
-              text
+              icon="i-lucide-plus"
+              variant="ghost"
               :data-testid="`timer-day-add-entry-${day.dayKey}`"
               @click="openAddEntry(day.dayKey)"
             />
             <NuxtLink
               :to="`/sync/${day.dayKey}`"
-              class="timer-day__remote-sync-link"
+              class="text-sm text-primary no-underline"
               :data-testid="`timer-day-remote-sync-${day.dayKey}`"
             >
               {{ t('timerView.remoteSyncAction') }}
@@ -229,10 +237,10 @@ async function onEntryDeleted() {
           />
         </div>
 
-        <div class="timer-view__load-more">
-          <Button
+        <div class="flex justify-center">
+          <UButton
             :label="t('timerView.loadMore')"
-            text
+            variant="ghost"
             data-testid="timer-view-load-more"
             @click="loadMore"
           />
@@ -255,51 +263,3 @@ async function onEntryDeleted() {
     />
   </section>
 </template>
-
-<style scoped>
-.timer-view {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.timer-view__title {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.timer-view__days {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.timer-day {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.timer-day__heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-weight: 600;
-  padding-bottom: 0.25rem;
-  border-bottom: 2px solid var(--p-content-border-color);
-}
-
-.timer-day__total {
-  font-family: monospace;
-  font-weight: 400;
-  color: var(--p-text-muted-color);
-}
-
-.timer-day__remote-sync-link {
-  font-size: 0.875rem;
-  color: var(--p-primary-color);
-  text-decoration: none;
-}
-
-.timer-view__load-more {
-  display: flex;
-  justify-content: center;
-}
-</style>

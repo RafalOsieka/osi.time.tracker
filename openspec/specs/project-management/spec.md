@@ -70,8 +70,8 @@ The system SHALL allow an authenticated user to update the `name` and `clientId`
 - **WHEN** an authenticated user submits a valid new name and an owned `clientId` for their own project
 - **THEN** the system SHALL update the project, return it (including the resolved `clientName`), and the row SHALL reflect the change
 
-#### Scenario: Edit dialog shows a soft-deleted client
-- **WHEN** an authenticated user opens the edit dialog for a project whose owning client has been soft-deleted (and is therefore absent from the active client list)
+#### Scenario: Edit modal shows a soft-deleted client
+- **WHEN** an authenticated user opens the edit modal for a project whose owning client has been soft-deleted (and is therefore absent from the active client list)
 - **THEN** the Client select SHALL be seeded with the project's `clientId`/`clientName` so the correct client is displayed and pre-selected
 
 #### Scenario: Edit to a duplicate name per client rejected
@@ -120,14 +120,14 @@ Every read and write SHALL be scoped by the authenticated user's id. A project i
 - **THEN** the system SHALL respond with HTTP 404
 
 ### Requirement: REQ-091 Accessible, tokenized Projects UI
-The Projects page SHALL meet WCAG 2.1 AA: form fields including the Client select SHALL be labelled, the create/edit dialog and confirm dialog SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from PrimeVue theme tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
+The Projects page SHALL meet WCAG 2.1 AA: form fields including the Client select SHALL be labelled, the create/edit modal and confirm modal SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from Tailwind utilities and Nuxt UI `--ui-*` design tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
 
 #### Scenario: Inline field error is accessible
 - **WHEN** a field validation error is shown
 - **THEN** the field SHALL expose `aria-invalid` and reference the error via `aria-describedby`
 
 #### Scenario: Client select is labelled
-- **WHEN** the create/edit dialog renders the Client select
+- **WHEN** the create/edit modal renders the Client select
 - **THEN** the select SHALL have an associated label and be keyboard operable
 
 #### Scenario: Strings localized in parity
@@ -135,7 +135,7 @@ The Projects page SHALL meet WCAG 2.1 AA: form fields including the Client selec
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
 ### Requirement: REQ-092 Client-side validation of the project form
-The project create/edit form SHALL validate input client-side using the shared `createProjectSchema` from `shared/types/project.ts` (via a PrimeVue Forms resolver) before any request is sent, replacing the manual pre-submit client check with the same `error.projectClientRequired` messageKey. Validation failures SHALL render the schema's messageKey translated via `t()` as an inline field error and SHALL prevent the request. Server-side validation SHALL remain unchanged and authoritative; server-only field errors (e.g. `error.projectNameDuplicate`) SHALL still render inline under the field after submission.
+The project create/edit form SHALL validate input client-side using the shared `createProjectSchema` from `shared/types/project.ts` (bound directly to Nuxt UI's `UForm` `:schema`) before any request is sent, replacing the manual pre-submit client check with the same `error.projectClientRequired` messageKey. Validation failures SHALL render the schema's messageKey translated via `t()` as an inline field error and SHALL prevent the request. Server-side validation SHALL remain unchanged and authoritative; server-only field errors (e.g. `error.projectNameDuplicate`) SHALL still render inline under the field after submission.
 
 #### Scenario: Empty name blocked client-side
 - **WHEN** the user submits the project form with an empty or whitespace-only name

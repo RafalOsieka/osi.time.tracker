@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { useToast } from 'primevue/usetoast';
-import { useConfirm } from 'primevue/useconfirm';
 import { entryDurationSeconds, isoToLocalTime, localDayKey } from '~/utils/timerViewGrouping';
 import { wallClockToInstant } from '~/utils/dateTime';
 import { formatDuration, formatTime } from '~/utils/formatDuration';
@@ -19,8 +17,8 @@ const props = withDefaults(
 const emit = defineEmits<{ changed: []; deleted: [] }>();
 
 const { t, locale } = useI18n();
-const toast = useToast();
-const confirm = useConfirm();
+const toast = useAppToast();
+const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 
 const editingField = ref<'title' | 'start' | 'stop' | null>(null);
@@ -33,6 +31,8 @@ const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
 const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 1}ch`);
+const titleDisplayValue = computed(() => props.entry.taskName ?? t('timerView.noTask'));
+const titleDisplayWidth = computed(() => `${Math.max(titleDisplayValue.value.length, 8) + 1}ch`);
 
 async function startEditTitle() {
   editingField.value = null;
@@ -86,7 +86,7 @@ async function commitTitle() {
     }
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
-    toast.add({ severity: 'error', summary: t(key), life: 4000 });
+    toast.error(t(key));
     titleValue.value = props.entry.taskName ?? '';
   }
 }
@@ -109,7 +109,7 @@ async function commitStart() {
     emit('changed');
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
-    toast.add({ severity: 'error', summary: t(key), life: 4000 });
+    toast.error(t(key));
     startValue.value = isoToLocalTime(props.entry.startedAt, props.timeZone);
   }
 }
@@ -128,78 +128,83 @@ async function commitStop() {
     emit('changed');
   } catch (err: unknown) {
     const key = extractMessageKey(err, 'errors.unexpected');
-    toast.add({ severity: 'error', summary: t(key), life: 4000 });
+    toast.error(t(key));
     stopValue.value = props.entry.stoppedAt
       ? isoToLocalTime(props.entry.stoppedAt, props.timeZone)
       : '';
   }
 }
 
-function onDelete() {
-  confirm.require({
-    header: t('timerView.entryRow.deleteConfirmHeader'),
-    message: t('timerView.entryRow.deleteConfirmMessage'),
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: t('timerView.entryRow.deleteConfirmAccept'),
-    rejectLabel: t('timerView.entryRow.deleteConfirmReject'),
-    acceptClass: 'p-button-danger',
-    accept: async () => {
-      deleting.value = true;
-      try {
-        await $csrfFetch(`/api/time-entries/${props.entry.id}`, { method: 'DELETE' });
-        emit('deleted');
-      } catch (err: unknown) {
-        const key = extractMessageKey(err, 'errors.unexpected');
-        toast.add({ severity: 'error', summary: t(key), life: 4000 });
-      } finally {
-        deleting.value = false;
-      }
-    },
+async function onDelete() {
+  const accepted = await confirm({
+    title: t('timerView.entryRow.deleteConfirmHeader'),
+    description: t('timerView.entryRow.deleteConfirmMessage'),
+    confirmLabel: t('timerView.entryRow.deleteConfirmAccept'),
+    cancelLabel: t('timerView.entryRow.deleteConfirmReject'),
   });
+  if (!accepted) return;
+  deleting.value = true;
+  try {
+    await $csrfFetch(`/api/time-entries/${props.entry.id}`, { method: 'DELETE' });
+    emit('deleted');
+  } catch (err: unknown) {
+    const key = extractMessageKey(err, 'errors.unexpected');
+    toast.error(t(key));
+  } finally {
+    deleting.value = false;
+  }
 }
 </script>
 
 <template>
-  <div class="timer-entry" :data-testid="`timer-entry-${entry.id}`">
-    <span class="timer-entry__title">
-      <InputText
+  <div
+    class="flex items-center justify-between gap-4 text-sm text-muted"
+    :data-testid="`timer-entry-${entry.id}`"
+  >
+    <span class="min-w-0 flex-1">
+      <UInput
         v-if="editingField === 'title'"
         v-model="titleValue"
         type="text"
+        variant="ghost"
         :aria-label="t('timerView.entryRow.titleLabel')"
-        class="timer-entry__input timer-entry__title-input"
+        class="max-w-full"
         :style="{ width: titleInputWidth }"
         :data-testid="`timer-entry-title-input-${entry.id}`"
         @blur="commitTitle"
         @keydown.enter="commitTitle"
         @keydown.esc="cancelEdit"
       />
-      <Button
+      <UInput
         v-else
-        class="timer-entry__edit-trigger"
-        text
-        :label="entry.taskName ?? t('timerView.noTask')"
+        :model-value="titleDisplayValue"
+        type="text"
+        variant="none"
+        readonly
         :aria-label="t('timerView.entryRow.titleLabel')"
+        class="max-w-full cursor-pointer"
+        :style="{ width: titleDisplayWidth }"
         :data-testid="`timer-entry-title-${entry.id}`"
+        @focus="startEditTitle"
         @click="startEditTitle"
       />
     </span>
 
-    <span class="timer-entry__range">
+    <span class="flex items-center gap-1.5">
       <template v-if="editingField === 'start'">
         <TimeInput
           v-model="startValue"
           :label="t('timerView.entryRow.startLabel')"
-          class="timer-entry__input"
           :testid="`timer-entry-start-input-${entry.id}`"
           @commit="commitStart"
           @cancel="cancelEdit"
         />
       </template>
-      <Button
+      <UButton
         v-else
-        class="timer-entry__edit-trigger"
-        text
+        variant="link"
+        color="neutral"
+        class="px-0"
         :label="formatTime(entry.startedAt, locale, timeZone)"
         :aria-label="t('timerView.entryRow.startLabel')"
         :data-testid="`timer-entry-start-${entry.id}`"
@@ -213,16 +218,16 @@ function onDelete() {
           <TimeInput
             v-model="stopValue"
             :label="t('timerView.entryRow.stopLabel')"
-            class="timer-entry__input"
             :testid="`timer-entry-stop-input-${entry.id}`"
             @commit="commitStop"
             @cancel="cancelEdit"
           />
         </template>
-        <Button
+        <UButton
           v-else
-          class="timer-entry__edit-trigger"
-          text
+          variant="link"
+          color="neutral"
+          class="px-0"
           :label="formatTime(entry.stoppedAt, locale, timeZone)"
           :aria-label="t('timerView.entryRow.stopLabel')"
           :data-testid="`timer-entry-stop-${entry.id}`"
@@ -232,13 +237,13 @@ function onDelete() {
       <span v-else>{{ t('timerView.entryRow.nowLabel') }}</span>
     </span>
 
-    <span class="timer-entry__duration">{{ durationLabel }}</span>
+    <span class="min-w-[4.5rem] text-right font-mono">{{ durationLabel }}</span>
 
-    <Button
-      icon="pi pi-trash"
-      text
-      rounded
-      severity="danger"
+    <UButton
+      icon="i-lucide-trash-2"
+      variant="ghost"
+      square
+      color="error"
       :aria-label="t('timerView.entryRow.deleteLabel')"
       :loading="deleting"
       :data-testid="`timer-entry-delete-${entry.id}`"
@@ -246,55 +251,3 @@ function onDelete() {
     />
   </div>
 </template>
-
-<style scoped>
-.timer-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--p-text-muted-color);
-}
-
-.timer-entry__title {
-  flex: 1;
-}
-
-.timer-entry__range {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.timer-entry__duration {
-  font-family: monospace;
-  min-width: 4.5rem;
-  text-align: right;
-}
-
-.timer-entry__edit-trigger {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  padding: 0;
-}
-
-.timer-entry__edit-trigger:hover {
-  text-decoration: underline;
-}
-
-.timer-entry__input {
-  font: inherit;
-  color: inherit;
-  border: 1px solid var(--p-content-border-color);
-  border-radius: 4px;
-  padding: 0.125rem 0.25rem;
-}
-
-.timer-entry__title-input {
-  max-width: 100%;
-}
-</style>

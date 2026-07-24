@@ -44,8 +44,11 @@ describeSettingsUI('user settings UI flow', async () => {
   async function loginAs(email: string) {
     const page = await createPage('/');
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.fill('[data-testid="email"]', email);
-    await page.fill('[data-testid="password"] input', 'secret');
+    await page.locator('[data-testid="email"] input, [data-testid="email"]').first().fill(email);
+    await page
+      .locator('[data-testid="password"] input, [data-testid="password"]')
+      .first()
+      .fill('secret');
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="app-topbar"]');
     return page;
@@ -97,7 +100,7 @@ describeSettingsUI('user settings UI flow', async () => {
     await weekStartGroup.getByText('Sunday').click();
 
     await page.click('button:has-text("Save settings")');
-    await page.waitForSelector('.p-message-success');
+    await page.waitForSelector('[data-testid="settings-saved-message"]');
 
     // --- Persistence across reload ---
     await page.reload();
@@ -106,8 +109,11 @@ describeSettingsUI('user settings UI flow', async () => {
       .poll(() => page.locator('#settings-timezone').textContent())
       .toContain(SHIFTED_TIME_ZONE);
     expect(
-      await page.locator('#settings-week-start button:has-text("Sunday")').getAttribute('class'),
-    ).toContain('p-togglebutton-checked');
+      await page
+        .locator('#settings-week-start')
+        .getByRole('radio', { name: /sunday/i })
+        .getAttribute('aria-checked'),
+    ).toBe('true');
 
     // --- The timer view regroups the same data under the new timezone,
     // purely client-side (no data refetch) ---

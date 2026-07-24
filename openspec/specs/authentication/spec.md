@@ -109,7 +109,7 @@ The system SHALL seed an initial user from the `BOOTSTRAP_USER_EMAIL` and `BOOTS
 - **THEN** the system SHALL skip seeding without error
 
 ### Requirement: REQ-013 Client-side validation of the login form
-The login form SHALL validate credentials client-side using the shared `loginSchema` from `shared/types/auth.ts` (via a PrimeVue Forms resolver) before submitting, so empty email or password is caught without a request using the same `errors.auth.credentialsRequired` messageKey the server returns. Server-side verification SHALL remain unchanged and authoritative; a failed server login SHALL render the translated form-level error announced to assistive technology, with both inputs marked `aria-invalid` and associated via `aria-describedby`.
+The login form SHALL validate credentials client-side using the shared `loginSchema` from `shared/types/auth.ts` (bound directly to Nuxt UI's `UForm` `:schema`) before submitting, so empty email or password is caught without a request using the same `errors.auth.credentialsRequired` messageKey the server returns. Server-side verification SHALL remain unchanged and authoritative; a failed server login SHALL render the translated form-level error announced to assistive technology, with both inputs marked `aria-invalid` and associated via `aria-describedby`.
 
 #### Scenario: Empty credentials blocked client-side
 - **WHEN** the user submits the login form with an empty email or password

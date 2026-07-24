@@ -3,7 +3,6 @@ import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
 import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
-import { useToast } from 'primevue/usetoast';
 import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
 
 const props = withDefaults(
@@ -29,7 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const toast = useToast();
+const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
@@ -38,14 +37,11 @@ const isUntitled = computed(() => props.group.key === UNTITLED_GROUP_KEY);
 const editingTitle = ref(false);
 const titleValue = ref('');
 const editingProject = ref(false);
-const projectValue = ref<string | null>(null);
-const projectSelect = ref<{ show: () => void; hide: () => void }>();
-
+const projectValue = ref<string | undefined>(undefined);
 watch(
   () => props.activeEditorKey,
   (activeKey) => {
     if (activeKey === props.editorKey) return;
-    projectSelect.value?.hide();
     editingTitle.value = false;
     editingProject.value = false;
   },
@@ -76,7 +72,6 @@ const projectSelectOptions = computed(() => {
 
 async function beginTitleEdit() {
   emit('editing-started');
-  projectSelect.value?.hide();
   editingProject.value = false;
   titleValue.value = props.group.taskName ?? '';
   editingTitle.value = true;
@@ -99,48 +94,44 @@ async function commitTitle() {
     await $csrfFetch(`/api/tasks/${props.group.taskId}`, { method: 'PATCH', body: { name } });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
 async function beginProjectEdit() {
   emit('editing-started');
   editingTitle.value = false;
-  projectValue.value = props.group.projectId;
+  projectValue.value = props.group.projectId ?? undefined;
   editingProject.value = true;
-  await nextTick();
-  projectSelect.value?.show();
 }
 
-async function commitProject(value: string | null) {
+async function commitProject(value: string | null | undefined) {
   if (!editingProject.value || !props.group.taskId) return;
   editingProject.value = false;
   if (value === props.group.projectId) return;
   try {
     await $csrfFetch(`/api/tasks/${props.group.taskId}`, {
       method: 'PATCH',
-      body: { name: props.group.taskName, projectId: value },
+      body: { name: props.group.taskName, projectId: value ?? null },
     });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
 const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 3}ch`);
+const titleDisplayValue = computed(() => props.group.taskName ?? '');
+const titleDisplayWidth = computed(() => `${Math.max(titleDisplayValue.value.length, 8) + 3}ch`);
+const projectDisplayValue = computed(() => contextLabel.value ?? t('timerView.noProject'));
 const projectSelectWidth = computed(() => {
   const selected = projectSelectOptions.value.find((p) => p.id === projectValue.value);
   const label = selected ? selected.name : t('timerView.noProject');
-  return `${Math.max(label.length, 8) + 4}ch`;
+  return `${Math.ceil(Math.max(label.length, projectDisplayValue.value.length, 8) + 4)}ch`;
 });
+const projectDisplayWidth = computed(
+  () => `${Math.max(projectDisplayValue.value.length, 8) + 4}ch`,
+);
 
 const countLabel = computed(() => {
   const count = props.group.entries.length;
@@ -166,11 +157,7 @@ async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: st
     });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -180,33 +167,33 @@ async function unlinkRemoteIssue() {
     await $csrfFetch(`/api/tasks/${props.group.taskId}/remote-issue-ref`, { method: 'DELETE' });
     emit('entry-changed');
   } catch (err: unknown) {
-    toast.add({
-      severity: 'error',
-      summary: t(extractMessageKey(err, 'errors.unexpected')),
-      life: 4000,
-    });
+    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 </script>
 
 <template>
-  <div class="timer-group" :data-testid="`timer-group-${group.key}`">
-    <div class="timer-group__row">
-      <div class="timer-group__toggle">
-        <Button
-          :icon="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-right'"
-          text
-          rounded
+  <div class="border-b border-default py-2" :data-testid="`timer-group-${group.key}`">
+    <div class="flex items-center gap-3">
+      <div
+        class="timer-group__toggle flex min-w-0 flex-1 items-center gap-2 text-left"
+        data-testid="timer-group-header-controls"
+      >
+        <UButton
+          :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+          variant="ghost"
+          square
           :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
           :aria-expanded="expanded"
           :aria-controls="entriesId"
           :data-testid="`timer-group-toggle-${group.key}`"
           @click="expanded = !expanded"
         />
-        <InputText
+        <UInput
           v-if="editingTitle"
           v-model="titleValue"
-          class="timer-group__title-input"
+          variant="ghost"
+          class="max-w-full"
           :style="{ width: titleInputWidth }"
           :aria-label="t('timerView.editLabel')"
           :data-testid="`timer-group-title-input-${group.key}`"
@@ -214,76 +201,85 @@ async function unlinkRemoteIssue() {
           @keydown.enter="commitTitle"
           @keydown.esc="cancelTitleEdit"
         />
-        <Button
+        <UInput
           v-else-if="!isUntitled"
-          class="timer-group__inline-button timer-group__name"
-          text
-          :label="group.taskName ?? ''"
+          :model-value="titleDisplayValue"
+          variant="none"
+          readonly
+          class="max-w-full cursor-pointer font-medium"
+          :style="{ width: titleDisplayWidth }"
           :aria-label="t('timerView.editLabel')"
           :data-testid="`timer-group-title-${group.key}`"
+          @focus="beginTitleEdit"
           @click.stop="beginTitleEdit"
         />
-        <span v-else class="timer-group__name">{{ t('timerView.noTask') }}</span>
-        <Select
+        <span v-else class="font-medium">{{ t('timerView.noTask') }}</span>
+        <USelect
           v-if="editingProject"
-          ref="projectSelect"
           v-model="projectValue"
-          :options="projectSelectOptions"
-          option-label="name"
-          option-value="id"
-          show-clear
-          class="timer-group__project-select"
+          :items="projectSelectOptions"
+          label-key="name"
+          value-key="id"
+          class="max-w-full"
           :style="{ width: projectSelectWidth }"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-select-${group.key}`"
           @update:model-value="commitProject"
-          @hide="commitProject(projectValue)"
         />
-        <Button
+        <UInput
           v-else-if="!isUntitled"
-          class="timer-group__inline-button timer-group__context"
-          text
-          :label="contextLabel ?? t('timerView.noProject')"
+          :model-value="projectDisplayValue"
+          variant="none"
+          readonly
+          class="max-w-full cursor-pointer text-sm text-muted"
+          :style="{ width: projectDisplayWidth }"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-${group.key}`"
+          @focus="beginProjectEdit"
           @click.stop="beginProjectEdit"
         />
       </div>
 
-      <span class="timer-group__count">{{ countLabel }}</span>
+      <span class="text-sm text-muted">{{ countLabel }}</span>
 
-      <span v-if="isLive" class="timer-group__live" :data-testid="`timer-group-live-${group.key}`">
+      <span
+        v-if="isLive"
+        class="text-sm font-semibold text-primary"
+        :data-testid="`timer-group-live-${group.key}`"
+      >
         {{ t('timerView.liveLabel') }}
       </span>
 
-      <span class="timer-group__total" :data-testid="`timer-group-total-${group.key}`">
+      <span
+        class="min-w-[4.5rem] text-right font-mono"
+        :data-testid="`timer-group-total-${group.key}`"
+      >
         {{ formatDuration(group.totalSeconds) }}
       </span>
 
       <template v-if="showRemoteIssueControl">
-        <Button
+        <UButton
           v-if="remoteIssueRef && remoteIssueRef.url"
-          as="a"
-          :href="remoteIssueRef.url"
+          :to="remoteIssueRef.url"
           target="_blank"
-          rel="noopener noreferrer"
-          text
+          external
+          variant="link"
+          class="font-mono text-sm"
           :label="`#${remoteIssueRef.remoteIssueId}`"
           :title="remoteIssueTooltip"
-          class="timer-group__remote-issue-link"
           :data-testid="`timer-group-remote-issue-link-${group.key}`"
         />
         <span
           v-else-if="remoteIssueRef"
           :title="remoteIssueTooltip"
-          class="timer-group__remote-issue-link"
+          class="font-mono text-sm text-primary"
           :data-testid="`timer-group-remote-issue-cached-${group.key}`"
         >
           #{{ remoteIssueRef.remoteIssueId }}
         </span>
         <span
           v-else
-          class="timer-group__remote-issue-unlinked"
+          class="text-sm text-muted"
           :data-testid="`timer-group-remote-issue-unlinked-${group.key}`"
         >
           {{ t('timerView.remoteIssue.unlinked') }}
@@ -298,20 +294,20 @@ async function unlinkRemoteIssue() {
         />
       </template>
 
-      <Button
+      <UButton
         v-if="!isUntitled"
-        icon="pi pi-play"
-        text
-        rounded
+        icon="i-lucide-play"
+        variant="ghost"
+        square
         :aria-label="t('timerView.continueLabel')"
         :data-testid="`timer-group-continue-${group.key}`"
         @click="emit('continue')"
       />
-      <Button
+      <UButton
         v-else
         :label="t('timerView.bulkAssign.buttonLabel')"
-        icon="pi pi-tag"
-        text
+        icon="i-lucide-tag"
+        variant="ghost"
         :data-testid="`timer-group-bulk-assign-${group.key}`"
         @click="emit('bulk-assign')"
       />
@@ -320,7 +316,7 @@ async function unlinkRemoteIssue() {
     <div
       v-if="expanded"
       :id="entriesId"
-      class="timer-group__entries"
+      class="grid gap-1 py-2 pr-0 pl-7"
       :data-testid="`timer-group-entries-${group.key}`"
     >
       <TimerEntryRow
@@ -335,73 +331,3 @@ async function unlinkRemoteIssue() {
     </div>
   </div>
 </template>
-
-<style scoped>
-.timer-group {
-  border-bottom: 1px solid var(--p-content-border-color);
-  padding: 0.5rem 0;
-}
-
-.timer-group__row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.timer-group__toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  text-align: left;
-  color: inherit;
-}
-
-.timer-group__context {
-  color: var(--p-text-muted-color);
-  font-size: 0.875rem;
-}
-
-.timer-group__count {
-  color: var(--p-text-muted-color);
-  font-size: 0.875rem;
-}
-
-.timer-group__live {
-  color: var(--p-primary-color);
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.timer-group__total {
-  font-family: monospace;
-  min-width: 4.5rem;
-  text-align: right;
-}
-
-.timer-group__entries {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.5rem 0 0.25rem 1.75rem;
-}
-
-.timer-group__title-input {
-  max-width: 100%;
-}
-
-.timer-group__remote-issue-link {
-  font-family: monospace;
-  font-size: 0.875rem;
-  color: var(--p-primary-color);
-  text-decoration: none;
-}
-
-.timer-group__remote-issue-unlinked {
-  font-size: 0.875rem;
-  color: var(--p-text-muted-color);
-}
-
-.timer-group__project-select {
-  max-width: 100%;
-}
-</style>

@@ -1,24 +1,14 @@
 <script setup lang="ts">
-import { Form } from '@primevue/forms';
-import { zodResolver } from '@primevue/forms/resolvers/zod';
-import type { FormSubmitEvent } from '@primevue/forms';
-import { useConfirm } from 'primevue/useconfirm';
-import { useToast } from 'primevue/usetoast';
+import type { FormSubmitEvent, TableColumn } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
+import { h, resolveComponent } from 'vue';
 
 const { t, locale } = useI18n();
-const confirm = useConfirm();
-const toast = useToast();
+const toast = useAppToast();
+const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
 
-const resolver = zodResolver(createProjectSchema);
-
-// --- Data fetching ---
-// `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
-// hydration (matching the server-rendered markup) instead of flipping to `true`
-// synchronously during setup, which caused a DataTable/Select loading hydration
-// mismatch.
 const {
   data: clientsData,
   pending: clientsPending,
@@ -36,7 +26,7 @@ const clientOptions = computed(() => {
   return [...active, ...missing];
 });
 
-const clientFilter = ref<string | null>(null);
+const clientFilter = ref<string | undefined>(undefined);
 
 const {
   data: projectsData,
@@ -55,79 +45,77 @@ onMounted(() => {
   void fetchProjects();
 });
 
-// --- State ---
 const projects = computed(() => projectsData.value ?? []);
-const dialogVisible = ref(false);
+const dialogOpen = ref(false);
 const editingProject = ref<ProjectDto | null>(null);
-const initialValues = ref<{ name: string; clientId: string | null }>({ name: '', clientId: null });
+const state = reactive<{ name: string; clientId: string | undefined }>({
+  name: '',
+  clientId: undefined,
+});
 const nameServerError = ref('');
 const clientServerError = ref('');
 const saving = ref(false);
 
-// --- Dialog helpers ---
 function openCreate() {
   editingProject.value = null;
-  initialValues.value = { name: '', clientId: clientFilter.value };
+  state.name = '';
+  state.clientId = clientFilter.value;
   nameServerError.value = '';
   clientServerError.value = '';
-  dialogVisible.value = true;
+  dialogOpen.value = true;
 }
 
 function openEdit(project: ProjectDto) {
   editingProject.value = project;
-  initialValues.value = { name: project.name, clientId: project.clientId };
+  state.name = project.name;
+  state.clientId = project.clientId;
   nameServerError.value = '';
   clientServerError.value = '';
   if (!clientOptions.value.some((c) => c.id === project.clientId)) {
     extraClientOptions.value = [{ id: project.clientId, name: project.clientName, createdAt: '' }];
   }
-  dialogVisible.value = true;
+  dialogOpen.value = true;
 }
 
 function closeDialog() {
-  dialogVisible.value = false;
+  dialogOpen.value = false;
 }
 
 defineExpose({ openEdit });
 
-// --- Save (create or update) ---
-async function onSave({ valid, values }: FormSubmitEvent) {
+async function onSave(event: FormSubmitEvent<typeof state>) {
   nameServerError.value = '';
   clientServerError.value = '';
-  if (!valid) return;
-
   saving.value = true;
   try {
     if (editingProject.value) {
-      const payload: UpdateProjectDto = { name: values.name, clientId: values.clientId };
-
+      const payload: UpdateProjectDto = {
+        name: event.data.name,
+        clientId: event.data.clientId as string,
+      };
       const updated = await $csrfFetch<ProjectDto>(`/api/projects/${editingProject.value.id}`, {
         method: 'PATCH',
         body: payload,
       });
-
       await fetchProjects();
-      toast.add({
-        severity: 'success',
-        summary: t('projects.toastUpdatedSummary'),
-        detail: t('projects.toastUpdatedDetail', { name: updated.name }),
-        life: 3000,
-      });
+      toast.success(
+        t('projects.toastUpdatedSummary'),
+        t('projects.toastUpdatedDetail', { name: updated.name }),
+      );
     } else {
-      const payload: CreateProjectDto = { name: values.name, clientId: values.clientId };
-
+      const payload: CreateProjectDto = {
+        name: event.data.name,
+        clientId: event.data.clientId as string,
+      };
       const created = await $csrfFetch<ProjectDto>('/api/projects', {
         method: 'POST',
         body: payload,
       });
-
       await fetchProjects();
-      toast.add({
-        severity: 'success',
-        summary: t('projects.toastCreatedSummary'),
-        detail: t('projects.toastCreatedDetail', { name: created.name }),
-        life: 3000,
-      });
+      toast.success(
+        t('projects.toastCreatedSummary'),
+        t('projects.toastCreatedDetail', { name: created.name }),
+      );
     }
     closeDialog();
   } catch (err: unknown) {
@@ -141,75 +129,97 @@ async function onSave({ valid, values }: FormSubmitEvent) {
     } else if (key === 'error.projectClientRequired') {
       clientServerError.value = t(key);
     } else {
-      toast.add({ severity: 'error', summary: t(key), life: 4000 });
+      toast.error(t(key));
     }
   } finally {
     saving.value = false;
   }
 }
 
-// --- Delete ---
-function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
-  confirm.require({
-    header: t('projects.deleteConfirmHeader'),
-    message: t('projects.deleteConfirmMessage', { name: project.name }),
-    icon: 'pi pi-exclamation-triangle',
-    acceptLabel: t('projects.deleteConfirmAccept'),
-    rejectLabel: t('projects.deleteConfirmReject'),
-    acceptClass: 'p-button-danger',
-    accept: async () => {
-      try {
-        await $csrfFetch(`/api/projects/${project.id}`, { method: 'DELETE' });
-        await fetchProjects();
-        toast.add({
-          severity: 'success',
-          summary: t('projects.toastDeletedSummary'),
-          detail: t('projects.toastDeletedDetail'),
-          life: 3000,
-        });
-      } catch (err: unknown) {
-        const key = extractMessageKey(err, 'errors.unexpected');
-        toast.add({ severity: 'error', summary: t(key), life: 4000 });
-      }
-    },
+async function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
+  const accepted = await confirm({
+    title: t('projects.deleteConfirmHeader'),
+    description: t('projects.deleteConfirmMessage', { name: project.name }),
+    confirmLabel: t('projects.deleteConfirmAccept'),
+    cancelLabel: t('projects.deleteConfirmReject'),
   });
+  if (!accepted) return;
+
+  try {
+    await $csrfFetch(`/api/projects/${project.id}`, { method: 'DELETE' });
+    await fetchProjects();
+    toast.success(t('projects.toastDeletedSummary'), t('projects.toastDeletedDetail'));
+  } catch (err: unknown) {
+    const key = extractMessageKey(err, 'errors.unexpected');
+    toast.error(t(key));
+  }
 }
+
+const columns = computed<TableColumn<ProjectDto>[]>(() => [
+  {
+    accessorKey: 'name',
+    header: t('projects.columnName'),
+  },
+  {
+    id: 'client',
+    header: t('projects.columnClient'),
+    cell: ({ row }) => row.original.clientName,
+  },
+  {
+    accessorKey: 'createdAt',
+    header: t('projects.columnCreated'),
+    cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
+  },
+  {
+    id: 'actions',
+    header: t('projects.columnActions'),
+    cell: ({ row }) =>
+      h(resolveComponent('RowActions'), {
+        editLabel: t('projects.editButton'),
+        deleteLabel: t('projects.deleteButton'),
+        editTestid: `edit-project-${row.original.id}`,
+        deleteTestid: `delete-project-${row.original.id}`,
+        onEdit: () => openEdit(row.original),
+        onDelete: () => onDelete(row.original),
+      }),
+  },
+]);
 </script>
 
 <template>
-  <div data-testid="projects-page">
-    <div class="projects-filter">
-      <label for="project-client-filter">{{ t('projects.clientFilterLabel') }}</label>
-      <Select
+  <div data-testid="projects-page" class="space-y-4">
+    <div class="flex items-center gap-2">
+      <label for="project-client-filter" class="text-sm">
+        {{ t('projects.clientFilterLabel') }}
+      </label>
+      <USelect
         id="project-client-filter"
         v-model="clientFilter"
-        :options="clientOptions"
-        option-label="name"
-        option-value="id"
-        show-clear
+        :items="clientOptions"
+        value-key="id"
+        label-key="name"
         :placeholder="t('projects.clientFilterAll')"
         :loading="clientsPending"
+        clearable
+        class="min-w-48"
         data-testid="project-client-filter"
       />
     </div>
 
-    <DataTable
-      :value="projects"
-      data-key="id"
-      :sort-field="'name'"
-      :sort-order="1"
+    <TableHeader
+      :title="t('projects.pageTitle')"
+      :new-label="t('projects.newButton')"
+      new-testid="new-project-button"
+      @create="openCreate"
+    />
+
+    <UTable
+      :data="projects"
+      :columns="columns"
       :loading="projectsPending"
       data-testid="projects-table"
+      class="w-full"
     >
-      <template #header>
-        <TableHeader
-          :title="t('projects.pageTitle')"
-          :new-label="t('projects.newButton')"
-          new-testid="new-project-button"
-          @create="openCreate"
-        />
-      </template>
-
       <template #empty>
         <EmptyState
           :message="t('projects.emptyState')"
@@ -218,106 +228,71 @@ function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
           @create="openCreate"
         />
       </template>
+    </UTable>
 
-      <Column field="name" :header="t('projects.columnName')" sortable />
-      <Column :header="t('projects.columnClient')">
-        <template #body="{ data }: { data: ProjectDto }">
-          {{ data.clientName }}
-        </template>
-      </Column>
-      <Column field="createdAt" :header="t('projects.columnCreated')" sortable>
-        <template #body="{ data }: { data: ProjectDto }">
-          {{ formatDate(data.createdAt, locale, effective.timeZone) }}
-        </template>
-      </Column>
-      <Column :header="t('projects.columnActions')" style="width: 1%; white-space: nowrap">
-        <template #body="{ data }: { data: ProjectDto }">
-          <RowActions
-            :edit-label="t('projects.editButton')"
-            :delete-label="t('projects.deleteButton')"
-            :edit-testid="`edit-project-${data.id}`"
-            :delete-testid="`delete-project-${data.id}`"
-            @edit="openEdit(data)"
-            @delete="onDelete(data)"
-          />
-        </template>
-      </Column>
-    </DataTable>
-
-    <Dialog
-      v-model:visible="dialogVisible"
-      :header="editingProject ? t('projects.dialogTitleEdit') : t('projects.dialogTitleCreate')"
-      modal
-      :closable="true"
-      data-testid="project-dialog"
-      @hide="closeDialog"
+    <UModal
+      v-model:open="dialogOpen"
+      :title="editingProject ? t('projects.dialogTitleEdit') : t('projects.dialogTitleCreate')"
+      @update:open="(value: boolean) => !value && closeDialog()"
     >
-      <Form
-        :resolver="resolver"
-        :initial-values="initialValues"
-        class="project-form"
-        @submit="onSave"
-      >
-        <FormFieldWrap
-          v-slot="{ field }"
-          :label="t('projects.nameLabel')"
-          name="name"
-          input-id="project-name"
-          error-testid="project-name-error"
-          :server-error="nameServerError"
-        >
-          <InputText
-            id="project-name"
-            :maxlength="PROJECT_NAME_MAX_LENGTH"
-            :placeholder="t('projects.namePlaceholder')"
-            :aria-invalid="field?.invalid"
-            :aria-describedby="field?.invalid ? 'project-name-error' : undefined"
-            data-testid="project-name-input"
-          />
-        </FormFieldWrap>
+      <template #body>
+        <div data-testid="project-dialog">
+          <UForm
+            :schema="createProjectSchema"
+            :state="state"
+            class="grid min-w-80 gap-3"
+            @submit="onSave"
+          >
+            <UFormField
+              :label="t('projects.nameLabel')"
+              name="name"
+              :error="nameServerError || undefined"
+            >
+              <UInput
+                id="project-name"
+                v-model="state.name"
+                :maxlength="PROJECT_NAME_MAX_LENGTH"
+                :placeholder="t('projects.namePlaceholder')"
+                data-testid="project-name-input"
+              />
+              <template v-if="nameServerError" #error>
+                <span id="project-name-error" data-testid="project-name-error" role="alert">
+                  {{ nameServerError }}
+                </span>
+              </template>
+            </UFormField>
 
-        <FormFieldWrap
-          v-slot="{ field }"
-          :label="t('projects.clientLabel')"
-          name="clientId"
-          input-id="project-client"
-          error-testid="project-client-error"
-          :server-error="clientServerError"
-        >
-          <Select
-            id="project-client"
-            :options="clientOptions"
-            option-label="name"
-            option-value="id"
-            :placeholder="t('projects.clientPlaceholder')"
-            :aria-invalid="field?.invalid"
-            :aria-describedby="field?.invalid ? 'project-client-error' : undefined"
-            data-testid="project-client-select"
-          />
-        </FormFieldWrap>
+            <UFormField
+              :label="t('projects.clientLabel')"
+              name="clientId"
+              :error="clientServerError || undefined"
+            >
+              <USelect
+                id="project-client"
+                v-model="state.clientId"
+                :items="clientOptions"
+                value-key="id"
+                label-key="name"
+                :placeholder="t('projects.clientPlaceholder')"
+                class="w-full"
+                data-testid="project-client-select"
+              />
+              <template v-if="clientServerError" #error>
+                <span id="project-client-error" data-testid="project-client-error" role="alert">
+                  {{ clientServerError }}
+                </span>
+              </template>
+            </UFormField>
 
-        <FormDialogFooter
-          :cancel-label="t('projects.cancelButton')"
-          :save-label="t('projects.saveButton')"
-          :saving="saving"
-          @cancel="closeDialog"
-        />
-      </Form>
-    </Dialog>
+            <FormDialogFooter
+              :cancel-label="t('projects.cancelButton')"
+              :save-label="t('projects.saveButton')"
+              :saving="saving"
+              @cancel="closeDialog"
+            />
+          </UForm>
+        </div>
+      </template>
+    </UModal>
   </div>
 </template>
-
-<style scoped>
-.projects-filter {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
-}
-
-.project-form {
-  display: grid;
-  gap: 0.75rem;
-  min-width: 20rem;
-}
-</style>
