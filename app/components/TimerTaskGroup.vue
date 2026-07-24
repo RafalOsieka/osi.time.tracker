@@ -121,11 +121,17 @@ async function commitProject(value: string | null | undefined) {
 }
 
 const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 3}ch`);
+const titleDisplayValue = computed(() => props.group.taskName ?? '');
+const titleDisplayWidth = computed(() => `${Math.max(titleDisplayValue.value.length, 8) + 3}ch`);
+const projectDisplayValue = computed(() => contextLabel.value ?? t('timerView.noProject'));
 const projectSelectWidth = computed(() => {
   const selected = projectSelectOptions.value.find((p) => p.id === projectValue.value);
   const label = selected ? selected.name : t('timerView.noProject');
   return `${Math.max(label.length, 8) + 4}ch`;
 });
+const projectDisplayWidth = computed(
+  () => `${Math.max(projectDisplayValue.value.length, 8) + 4}ch`,
+);
 
 const countLabel = computed(() => {
   const count = props.group.entries.length;
@@ -167,9 +173,12 @@ async function unlinkRemoteIssue() {
 </script>
 
 <template>
-  <div class="timer-group" :data-testid="`timer-group-${group.key}`">
-    <div class="timer-group__row">
-      <div class="timer-group__toggle">
+  <div class="border-b border-default py-2" :data-testid="`timer-group-${group.key}`">
+    <div class="flex items-center gap-3">
+      <div
+        class="timer-group__toggle flex min-w-0 flex-1 items-center gap-2 text-left"
+        data-testid="timer-group-header-controls"
+      >
         <UButton
           :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
           variant="ghost"
@@ -183,7 +192,8 @@ async function unlinkRemoteIssue() {
         <UInput
           v-if="editingTitle"
           v-model="titleValue"
-          class="timer-group__title-input"
+          variant="ghost"
+          class="max-w-full"
           :style="{ width: titleInputWidth }"
           :aria-label="t('timerView.editLabel')"
           :data-testid="`timer-group-title-input-${group.key}`"
@@ -191,46 +201,59 @@ async function unlinkRemoteIssue() {
           @keydown.enter="commitTitle"
           @keydown.esc="cancelTitleEdit"
         />
-        <UButton
+        <UInput
           v-else-if="!isUntitled"
-          class="timer-group__inline-button timer-group__name"
-          variant="ghost"
-          :label="group.taskName ?? ''"
+          :model-value="titleDisplayValue"
+          variant="none"
+          readonly
+          class="max-w-full cursor-pointer font-medium"
+          :style="{ width: titleDisplayWidth }"
           :aria-label="t('timerView.editLabel')"
           :data-testid="`timer-group-title-${group.key}`"
+          @focus="beginTitleEdit"
           @click.stop="beginTitleEdit"
         />
-        <span v-else class="timer-group__name">{{ t('timerView.noTask') }}</span>
+        <span v-else class="font-medium">{{ t('timerView.noTask') }}</span>
         <USelect
           v-if="editingProject"
           v-model="projectValue"
           :items="projectSelectOptions"
           label-key="name"
           value-key="id"
-          class="timer-group__project-select"
+          class="max-w-full"
           :style="{ width: projectSelectWidth }"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-select-${group.key}`"
           @update:model-value="commitProject"
         />
-        <UButton
+        <UInput
           v-else-if="!isUntitled"
-          class="timer-group__inline-button timer-group__context"
-          variant="ghost"
-          :label="contextLabel ?? t('timerView.noProject')"
+          :model-value="projectDisplayValue"
+          variant="none"
+          readonly
+          class="max-w-full cursor-pointer text-sm text-muted"
+          :style="{ width: projectDisplayWidth }"
           :aria-label="t('timerView.editor.projectLabel')"
           :data-testid="`timer-group-project-${group.key}`"
+          @focus="beginProjectEdit"
           @click.stop="beginProjectEdit"
         />
       </div>
 
-      <span class="timer-group__count">{{ countLabel }}</span>
+      <span class="text-sm text-muted">{{ countLabel }}</span>
 
-      <span v-if="isLive" class="timer-group__live" :data-testid="`timer-group-live-${group.key}`">
+      <span
+        v-if="isLive"
+        class="text-sm font-semibold text-primary"
+        :data-testid="`timer-group-live-${group.key}`"
+      >
         {{ t('timerView.liveLabel') }}
       </span>
 
-      <span class="timer-group__total" :data-testid="`timer-group-total-${group.key}`">
+      <span
+        class="min-w-[4.5rem] text-right font-mono"
+        :data-testid="`timer-group-total-${group.key}`"
+      >
         {{ formatDuration(group.totalSeconds) }}
       </span>
 
@@ -240,23 +263,23 @@ async function unlinkRemoteIssue() {
           :to="remoteIssueRef.url"
           target="_blank"
           external
-          variant="ghost"
+          variant="link"
+          class="font-mono text-sm"
           :label="`#${remoteIssueRef.remoteIssueId}`"
           :title="remoteIssueTooltip"
-          class="timer-group__remote-issue-link"
           :data-testid="`timer-group-remote-issue-link-${group.key}`"
         />
         <span
           v-else-if="remoteIssueRef"
           :title="remoteIssueTooltip"
-          class="timer-group__remote-issue-link"
+          class="font-mono text-sm text-primary"
           :data-testid="`timer-group-remote-issue-cached-${group.key}`"
         >
           #{{ remoteIssueRef.remoteIssueId }}
         </span>
         <span
           v-else
-          class="timer-group__remote-issue-unlinked"
+          class="text-sm text-muted"
           :data-testid="`timer-group-remote-issue-unlinked-${group.key}`"
         >
           {{ t('timerView.remoteIssue.unlinked') }}
@@ -293,7 +316,7 @@ async function unlinkRemoteIssue() {
     <div
       v-if="expanded"
       :id="entriesId"
-      class="timer-group__entries"
+      class="grid gap-1 py-2 pr-0 pl-7"
       :data-testid="`timer-group-entries-${group.key}`"
     >
       <TimerEntryRow
@@ -308,73 +331,3 @@ async function unlinkRemoteIssue() {
     </div>
   </div>
 </template>
-
-<style scoped>
-.timer-group {
-  border-bottom: 1px solid var(--ui-border);
-  padding: 0.5rem 0;
-}
-
-.timer-group__row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.timer-group__toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  text-align: left;
-  color: inherit;
-}
-
-.timer-group__context {
-  color: var(--ui-text-muted);
-  font-size: 0.875rem;
-}
-
-.timer-group__count {
-  color: var(--ui-text-muted);
-  font-size: 0.875rem;
-}
-
-.timer-group__live {
-  color: var(--ui-primary);
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-.timer-group__total {
-  font-family: monospace;
-  min-width: 4.5rem;
-  text-align: right;
-}
-
-.timer-group__entries {
-  display: grid;
-  gap: 0.25rem;
-  padding: 0.5rem 0 0.25rem 1.75rem;
-}
-
-.timer-group__title-input {
-  max-width: 100%;
-}
-
-.timer-group__remote-issue-link {
-  font-family: monospace;
-  font-size: 0.875rem;
-  color: var(--ui-primary);
-  text-decoration: none;
-}
-
-.timer-group__remote-issue-unlinked {
-  font-size: 0.875rem;
-  color: var(--ui-text-muted);
-}
-
-.timer-group__project-select {
-  max-width: 100%;
-}
-</style>

@@ -19,8 +19,6 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     icon: 'i-lucide-timer',
     active: route.path === '/',
     exact: true,
-    // Custom attrs for stable e2e/nuxt selectors
-    ui: undefined,
   },
   {
     label: t('nav.clients'),
@@ -56,17 +54,6 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       :items="navItems"
       orientation="vertical"
       class="w-full"
-    >
-      <template #item="{ item }">
-        <!-- Content only: UNavigationMenu already renders the link from item.to -->
-        <span
-          class="flex items-center gap-2 w-full"
-          :data-testid="`nav-link-${String(item.to === '/' ? 'timer' : String(item.to).replace(/^\//, ''))}`"
-        >
-          <UIcon v-if="item.icon" :name="String(item.icon)" class="size-5 shrink-0" />
-          <span v-if="!isCollapsed">{{ item.label }}</span>
-        </span>
-      </template>
-    </UNavigationMenu>
+    />
   </nav>
 </template>

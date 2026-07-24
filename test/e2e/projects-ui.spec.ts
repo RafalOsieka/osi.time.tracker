@@ -49,7 +49,7 @@ describeProjectsUI('projects UI flow', async () => {
     const clientB = await createClientViaApi('UI Client B ' + Date.now());
 
     const page = await loginAs('projectsui@example.com');
-    await page.click('[data-testid="app-sidebar"] [data-testid="nav-link-projects"]');
+    await page.click('[data-testid="app-sidebar"] a[href="/projects"]');
     await page.waitForSelector('[data-testid="projects-page"]');
 
     // Create a project under Client A

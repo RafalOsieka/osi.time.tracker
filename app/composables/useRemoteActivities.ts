@@ -5,35 +5,103 @@ import type { RemoteFieldOption } from '../../shared/types/remote-field-option';
 import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
 import { useRemoteConfigSecret } from './useRemoteConfigSecret';
 
+export interface RemoteActivitiesState {
+  options: RemoteFieldOption[];
+  loading: boolean;
+  errorKey: string | null;
+  loaded: boolean;
+}
+
+const EMPTY_ACTIVITIES_STATE: RemoteActivitiesState = {
+  options: [],
+  loading: false,
+  errorKey: null,
+  loaded: false,
+};
+
+function scopeKeyFor(configId: string, remoteIssueId: string): string {
+  return `${configId}:${remoteIssueId}`;
+}
+
 /**
- * Fetches the time-entry activity options for a given remote configuration,
- * project-scoped by the linked work package `remoteIssueId` (REQ-114),
- * via the `RemoteTrackerAdapter` selected for `config.executionMode`. The
- * 403 -> empty-options quirk is handled once, inside the adapter.
+ * Scope-keyed remote activity options loader (configId + remoteIssueId).
+ * Owns cache, in-flight dedupe, ensureLoaded/retry, and selectors.
  */
-export function useRemoteActivities(config: RemoteSystemConfigDto) {
+export function useRemoteActivities() {
   const { get: getSecret } = useRemoteConfigSecret();
+  const activitiesByScopeKey = ref<Record<string, RemoteActivitiesState>>({});
+  const activitiesInFlight = new Map<string, Promise<void>>();
 
-  const options = ref<RemoteFieldOption[]>([]);
-  const loading = ref(false);
-  const errorKey = ref<string | null>(null);
+  async function ensureLoaded(
+    config: RemoteSystemConfigDto,
+    remoteIssueId: string,
+    force = false,
+  ): Promise<void> {
+    const scopeKey = scopeKeyFor(config.id, remoteIssueId);
+    if (!force && activitiesByScopeKey.value[scopeKey]?.loaded) return;
+    if (!force) {
+      const inflight = activitiesInFlight.get(scopeKey);
+      if (inflight) {
+        await inflight;
+        return;
+      }
+    }
 
-  async function fetchOptions(remoteIssueId: string): Promise<void> {
-    loading.value = true;
-    errorKey.value = null;
+    const run = (async () => {
+      activitiesByScopeKey.value = {
+        ...activitiesByScopeKey.value,
+        [scopeKey]: { options: [], loading: true, errorKey: null, loaded: false },
+      };
 
-    const secret = getSecret(config.id);
-    const adapter = createRemoteAdapter(config, secret);
+      const secret = getSecret(config.id);
+      const adapter = createRemoteAdapter(config, secret);
+      try {
+        const options = await adapter.getActivityOptions(remoteIssueId);
+        activitiesByScopeKey.value = {
+          ...activitiesByScopeKey.value,
+          [scopeKey]: {
+            options,
+            loading: false,
+            errorKey: null,
+            loaded: true,
+          },
+        };
+      } catch (err: unknown) {
+        activitiesByScopeKey.value = {
+          ...activitiesByScopeKey.value,
+          [scopeKey]: {
+            options: [],
+            loading: false,
+            errorKey: extractRemoteErrorKey(err, 'error.remoteActivitiesFetchFailed'),
+            loaded: true,
+          },
+        };
+      }
+    })();
 
+    activitiesInFlight.set(scopeKey, run);
     try {
-      options.value = await adapter.getActivityOptions(remoteIssueId);
-    } catch (err: unknown) {
-      options.value = [];
-      errorKey.value = extractRemoteErrorKey(err, 'error.remoteActivitiesFetchFailed');
+      await run;
     } finally {
-      loading.value = false;
+      activitiesInFlight.delete(scopeKey);
     }
   }
 
-  return { fetchOptions, options, loading, errorKey };
+  async function retry(config: RemoteSystemConfigDto, remoteIssueId: string): Promise<void> {
+    await ensureLoaded(config, remoteIssueId, true);
+  }
+
+  function stateFor(configId: string | null | undefined, remoteIssueId: string | null | undefined) {
+    if (!configId || !remoteIssueId) return EMPTY_ACTIVITIES_STATE;
+    return (
+      activitiesByScopeKey.value[scopeKeyFor(configId, remoteIssueId)] ?? EMPTY_ACTIVITIES_STATE
+    );
+  }
+
+  return {
+    ensureLoaded,
+    retry,
+    stateFor,
+    activitiesByScopeKey,
+  };
 }

@@ -6,7 +6,6 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
-
 const describeRemoteIssuePickerUI = requireBrowser();
 
 const OPENPROJECT_BASE_URL = 'https://op.remote-issue-picker-ui.example.com';
@@ -147,7 +146,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
   }
 
   it('6.1 searches by title, links, replaces, and unlinks a remote issue reference', async () => {
-    await setupClientAndTask('Title');
+    const { taskId } = await setupClientAndTask('Title');
     const page = await loginAsInBrowser('remoteissuepickerui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
@@ -161,18 +160,13 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
       },
     });
 
-    // Locate the newly created task's row via its title.
+    // Locate the newly created task's row via its task id.
     await page.reload();
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() => document.body.textContent?.includes('Title Task'));
+    await page.waitForSelector(`[data-testid="timer-group-${taskId}"]`);
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'Title Task',
-      })
-      .first();
-    const groupTestId = await group.getAttribute('data-testid');
-    const groupKey = groupTestId!.replace('timer-group-', '');
+    const groupKey = taskId;
+    const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
@@ -247,13 +241,10 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     const { taskId } = await setupClientAndTask('IdSearch');
     const page = await loginAsInBrowser('remoteissuepickerui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() => document.body.textContent?.includes('IdSearch Task'));
+    await page.waitForSelector(`[data-testid="timer-group-${taskId}"]`);
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: 'IdSearch Task',
-      })
-      .first();
+    const groupKey = taskId;
+    const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     // --- Exact-ID search success ---
     await mockOpenProject(page, {

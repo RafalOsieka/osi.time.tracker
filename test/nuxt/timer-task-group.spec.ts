@@ -206,9 +206,10 @@ describe('TimerTaskGroup', () => {
     const noProject = await mount({
       group: { ...group(), projectId: null, projectName: null, clientName: null },
     });
-    expect(noProject.find('[data-testid="timer-group-project-task-1"]').text()).toBe(
-      'timerView.noProject',
-    );
+    expect(
+      (noProject.find('[data-testid="timer-group-project-task-1"]').element as HTMLInputElement)
+        .value,
+    ).toBe('timerView.noProject');
   });
 
   it('keeps header controls as sibling buttons and closes a previous group editor', async () => {
@@ -224,8 +225,10 @@ describe('TimerTaskGroup', () => {
       `,
     };
     const wrapper = await mountSuspended(Host, { global: { plugins: [testI18n()], stubs } });
-    const firstHeader = wrapper.findAll('.timer-group__toggle')[0]!;
-    expect(firstHeader.findAll('button').length).toBeGreaterThanOrEqual(3);
+    const firstHeader = wrapper.findAll('[data-testid="timer-group-header-controls"]')[0]!;
+    expect(firstHeader.findAll('button').length).toBeGreaterThanOrEqual(1);
+    expect(firstHeader.find('[data-testid="timer-group-title-task-a"]').exists()).toBe(true);
+    expect(firstHeader.find('[data-testid="timer-group-project-task-a"]').exists()).toBe(true);
     expect(firstHeader.find('button button').exists()).toBe(false);
 
     await wrapper.find('[data-testid="timer-group-title-task-a"]').trigger('click');

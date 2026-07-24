@@ -31,6 +31,8 @@ const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
 const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 1}ch`);
+const titleDisplayValue = computed(() => props.entry.taskName ?? t('timerView.noTask'));
+const titleDisplayWidth = computed(() => `${Math.max(titleDisplayValue.value.length, 8) + 1}ch`);
 
 async function startEditTitle() {
   editingField.value = null;
@@ -155,37 +157,44 @@ async function onDelete() {
 </script>
 
 <template>
-  <div class="timer-entry" :data-testid="`timer-entry-${entry.id}`">
-    <span class="timer-entry__title">
+  <div
+    class="flex items-center justify-between gap-4 text-sm text-muted"
+    :data-testid="`timer-entry-${entry.id}`"
+  >
+    <span class="min-w-0 flex-1">
       <UInput
         v-if="editingField === 'title'"
         v-model="titleValue"
         type="text"
+        variant="ghost"
         :aria-label="t('timerView.entryRow.titleLabel')"
-        class="timer-entry__input timer-entry__title-input"
+        class="max-w-full"
         :style="{ width: titleInputWidth }"
         :data-testid="`timer-entry-title-input-${entry.id}`"
         @blur="commitTitle"
         @keydown.enter="commitTitle"
         @keydown.esc="cancelEdit"
       />
-      <UButton
+      <UInput
         v-else
-        class="timer-entry__edit-trigger"
-        variant="ghost"
-        :label="entry.taskName ?? t('timerView.noTask')"
+        :model-value="titleDisplayValue"
+        type="text"
+        variant="none"
+        readonly
         :aria-label="t('timerView.entryRow.titleLabel')"
+        class="max-w-full cursor-pointer"
+        :style="{ width: titleDisplayWidth }"
         :data-testid="`timer-entry-title-${entry.id}`"
+        @focus="startEditTitle"
         @click="startEditTitle"
       />
     </span>
 
-    <span class="timer-entry__range">
+    <span class="flex items-center gap-1.5">
       <template v-if="editingField === 'start'">
         <TimeInput
           v-model="startValue"
           :label="t('timerView.entryRow.startLabel')"
-          class="timer-entry__input"
           :testid="`timer-entry-start-input-${entry.id}`"
           @commit="commitStart"
           @cancel="cancelEdit"
@@ -193,8 +202,9 @@ async function onDelete() {
       </template>
       <UButton
         v-else
-        class="timer-entry__edit-trigger"
-        variant="ghost"
+        variant="link"
+        color="neutral"
+        class="px-0"
         :label="formatTime(entry.startedAt, locale, timeZone)"
         :aria-label="t('timerView.entryRow.startLabel')"
         :data-testid="`timer-entry-start-${entry.id}`"
@@ -208,7 +218,6 @@ async function onDelete() {
           <TimeInput
             v-model="stopValue"
             :label="t('timerView.entryRow.stopLabel')"
-            class="timer-entry__input"
             :testid="`timer-entry-stop-input-${entry.id}`"
             @commit="commitStop"
             @cancel="cancelEdit"
@@ -216,8 +225,9 @@ async function onDelete() {
         </template>
         <UButton
           v-else
-          class="timer-entry__edit-trigger"
-          variant="ghost"
+          variant="link"
+          color="neutral"
+          class="px-0"
           :label="formatTime(entry.stoppedAt, locale, timeZone)"
           :aria-label="t('timerView.entryRow.stopLabel')"
           :data-testid="`timer-entry-stop-${entry.id}`"
@@ -227,7 +237,7 @@ async function onDelete() {
       <span v-else>{{ t('timerView.entryRow.nowLabel') }}</span>
     </span>
 
-    <span class="timer-entry__duration">{{ durationLabel }}</span>
+    <span class="min-w-[4.5rem] text-right font-mono">{{ durationLabel }}</span>
 
     <UButton
       icon="i-lucide-trash-2"
@@ -241,55 +251,3 @@ async function onDelete() {
     />
   </div>
 </template>
-
-<style scoped>
-.timer-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.875rem;
-  color: var(--ui-text-muted);
-}
-
-.timer-entry__title {
-  flex: 1;
-}
-
-.timer-entry__range {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-.timer-entry__duration {
-  font-family: monospace;
-  min-width: 4.5rem;
-  text-align: right;
-}
-
-.timer-entry__edit-trigger {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font: inherit;
-  color: inherit;
-  padding: 0;
-}
-
-.timer-entry__edit-trigger:hover {
-  text-decoration: underline;
-}
-
-.timer-entry__input {
-  font: inherit;
-  color: inherit;
-  border: 1px solid var(--ui-border);
-  border-radius: 4px;
-  padding: 0.125rem 0.25rem;
-}
-
-.timer-entry__title-input {
-  max-width: 100%;
-}
-</style>

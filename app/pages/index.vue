@@ -173,8 +173,8 @@ async function onEntryDeleted() {
 </script>
 
 <template>
-  <section class="timer-view" data-testid="timer-view-page">
-    <h2 class="timer-view__title">{{ t('timerView.pageTitle') }}</h2>
+  <section class="grid gap-6" data-testid="timer-view-page">
+    <h2 class="text-2xl font-semibold">{{ t('timerView.pageTitle') }}</h2>
 
     <ClientOnly>
       <EmptyState
@@ -185,16 +185,21 @@ async function onEntryDeleted() {
         @create="loadMore"
       />
 
-      <div v-else class="timer-view__days">
+      <div v-else class="grid gap-6">
         <div
           v-for="day in days"
           :key="day.dayKey"
-          class="timer-day"
+          class="grid gap-1"
           :data-testid="`timer-day-${day.dayKey}`"
         >
-          <div class="timer-day__heading">
-            <span class="timer-day__date">{{ dayHeading(day.dayKey) }}</span>
-            <span class="timer-day__total" :data-testid="`timer-day-total-${day.dayKey}`">
+          <div
+            class="flex items-baseline justify-between border-b-2 border-default pb-1 font-semibold"
+          >
+            <span>{{ dayHeading(day.dayKey) }}</span>
+            <span
+              class="font-mono font-normal text-muted"
+              :data-testid="`timer-day-total-${day.dayKey}`"
+            >
               {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
             </span>
             <UButton
@@ -206,7 +211,7 @@ async function onEntryDeleted() {
             />
             <NuxtLink
               :to="`/sync/${day.dayKey}`"
-              class="timer-day__remote-sync-link"
+              class="text-sm text-primary no-underline"
               :data-testid="`timer-day-remote-sync-${day.dayKey}`"
             >
               {{ t('timerView.remoteSyncAction') }}
@@ -232,7 +237,7 @@ async function onEntryDeleted() {
           />
         </div>
 
-        <div class="timer-view__load-more">
+        <div class="flex justify-center">
           <UButton
             :label="t('timerView.loadMore')"
             variant="ghost"
@@ -258,51 +263,3 @@ async function onEntryDeleted() {
     />
   </section>
 </template>
-
-<style scoped>
-.timer-view {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.timer-view__title {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.timer-view__days {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.timer-day {
-  display: grid;
-  gap: 0.25rem;
-}
-
-.timer-day__heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-weight: 600;
-  padding-bottom: 0.25rem;
-  border-bottom: 2px solid var(--ui-border);
-}
-
-.timer-day__total {
-  font-family: monospace;
-  font-weight: 400;
-  color: var(--ui-text-muted);
-}
-
-.timer-day__remote-sync-link {
-  font-size: 0.875rem;
-  color: var(--ui-primary);
-  text-decoration: none;
-}
-
-.timer-view__load-more {
-  display: flex;
-  justify-content: center;
-}
-</style>

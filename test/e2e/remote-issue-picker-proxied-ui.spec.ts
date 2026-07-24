@@ -8,6 +8,10 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
+import { groupKeyForTitleScript, pageIncludesTextScript } from './support/dom';
+
+const pageIncludesText = pageIncludesTextScript();
+const groupKeyForTitle = groupKeyForTitleScript();
 
 const describeRemoteIssuePickerProxiedUI = requireBrowser();
 
@@ -151,15 +155,11 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     });
 
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction((text) => document.body.textContent?.includes(text), label);
+    await page.waitForFunction(pageIncludesText, label);
 
-    const group = page
-      .locator('[data-testid^="timer-group-"]:not([data-testid="timer-group-untitled"])', {
-        hasText: label,
-      })
-      .first();
-    const groupTestId = await group.getAttribute('data-testid');
-    const groupKey = groupTestId!.replace('timer-group-', '');
+    const groupKey = await page.evaluate(groupKeyForTitle, label);
+    if (!groupKey) throw new Error('group not found for label');
+    const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     // --- Title search through the proxy ---
     await group.locator('[data-testid="remote-issue-picker-trigger"]').click();

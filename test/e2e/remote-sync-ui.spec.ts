@@ -6,8 +6,10 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
+import { pageIncludesTextScript } from './support/dom';
 
 const describeRemoteSyncUI = requireBrowser();
+const pageIncludesText = pageIncludesTextScript();
 
 const OPENPROJECT_BASE_URL = 'https://op.remote-sync-ui.example.com';
 
@@ -134,11 +136,11 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const page = await loginPage('remotesyncui@example.com');
     await mockOpenProjectActivities(page);
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction((t) => document.body.textContent?.includes(t), title);
+    await page.waitForFunction(pageIncludesText, title);
 
     await page.click(`[data-testid="timer-day-remote-sync-${dayKey}"]`);
     await page.waitForSelector('[data-testid="remote-sync-page"]');
-    await page.waitForFunction((t) => document.body.textContent?.includes(t), title);
+    await page.waitForFunction(pageIncludesText, title);
 
     const rowSelector = `[data-testid="remote-sync-row-${entry.taskId}"]`;
     await page.waitForSelector(rowSelector);
@@ -148,7 +150,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     // Edit the rounded duration inline once activities make the row manageable.
     const roundedSelector = `[data-testid="remote-sync-rounded-duration-${entry.taskId}"]`;
     await page.waitForSelector(roundedSelector);
-    await page.fill(roundedSelector, '00:00:00');
+    await page.locator(`${roundedSelector} input, ${roundedSelector}`).first().fill('00:00:00');
     await page.keyboard.press('Tab');
     await page.waitForSelector(`[data-testid="remote-sync-excluded-hint-${entry.taskId}"]`);
 

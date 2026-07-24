@@ -29,7 +29,7 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
 
   it('5.4 creates, edits, and removes a remote config through the form; secret never sent; survives reload', async () => {
     const page = await loginAs('remoteconfigui@example.com');
-    await page.click('[data-testid="app-sidebar"] [data-testid="nav-link-clients"]');
+    await page.click('[data-testid="app-sidebar"] a[href="/clients"]');
     await page.waitForSelector('[data-testid="clients-page"]');
 
     // Create a client to attach the remote config to

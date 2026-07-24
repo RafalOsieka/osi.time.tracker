@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { applyRoundingRule } from '~~/shared/utils/rounding';
 import {
   deriveRemoteSyncRowState,
   isImplementedRemoteSystemType,
@@ -11,17 +10,12 @@ import type {
   RemoteSyncDayRowDto,
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
-import type {
-  FinalizeRemoteExportResultDto,
-  RemoteExportTaskOutcomeDto,
-  RemoteTimeLogDto,
-} from '~~/shared/types/remote-export';
 import type { RemoteSystemConfigDto } from '~~/shared/types/remote-system-config';
-import type { RemoteFieldOption } from '~~/shared/types/remote-field-option';
 import { formatDuration } from '~/utils/formatDuration';
-import { normalizeDurationInput } from '~/utils/normalizeDurationInput';
 import { useRemoteActivities } from '~/composables/useRemoteActivities';
-import { mapRemoteSyncClientError, useRemoteSyncClient } from '~/composables/useRemoteSyncClient';
+import { useRemoteDayLogs } from '~/composables/useRemoteDayLogs';
+import { useRoundedDurations } from '~/composables/useRoundedDurations';
+import { useSyncExport } from '~/composables/useSyncExport';
 import { extractMessageKey } from '~/utils/extractMessageKey';
 
 const route = useRoute();
@@ -63,13 +57,63 @@ function dayHeading(): string {
   });
 }
 
-// --- Local, page-only state ---
-const roundedOverrides = ref<Record<string, number>>({});
+function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigDto {
+  return {
+    id: config.id,
+    clientId: '',
+    systemType: config.systemType,
+    baseUrl: config.baseUrl,
+    executionMode: config.executionMode,
+    roundingRule: config.roundingRule,
+    requiredFieldDefaults: config.requiredFieldDefaults,
+    createdAt: '',
+    updatedAt: '',
+  };
+}
+
+// --- Local page orchestration state ---
 const activitySelections = ref<Record<string, string | null>>({});
 const localIssueRefs = ref<Record<string, { remoteIssueId: string; cachedTitle: string }>>({});
 const selectedEntryIds = ref<Record<string, string[]>>({});
-const outcomes = ref<Record<string, RemoteExportTaskOutcomeDto>>({});
-const exporting = ref(false);
+
+const {
+  ensureLoaded: ensureActivitiesLoaded,
+  retry: retryActivitiesLoaded,
+  stateFor: activitiesStateFor,
+} = useRemoteActivities();
+
+const {
+  ensureLoaded: ensureRemoteLogsLoaded,
+  retry: retryRemoteLogsLoaded,
+  logsFor: remoteLogsStateFor,
+  clientFor,
+} = useRemoteDayLogs(date);
+
+const {
+  computedSeconds: roundedComputedSeconds,
+  displayedInput: roundedDisplayedInput,
+  setInput: setRoundedInput,
+  commit: commitRoundedDuration,
+  reset: resetRoundedDuration,
+  hasOverride: hasRoundedOverride,
+} = useRoundedDurations();
+
+const {
+  outcomes,
+  isRunning: exporting,
+  runExport,
+} = useSyncExport({
+  createTimeEntry: (config, input) => clientFor(config).createTimeEntry(input),
+  finalizeExport: (body) =>
+    $csrfFetch('/api/sync/export', {
+      method: 'POST',
+      body,
+    }),
+  onTaskFinalized: async (row) => {
+    await retryRemoteLogs(row);
+  },
+  refresh,
+});
 
 function issueRefFor(row: RemoteSyncDayRowDto) {
   return localIssueRefs.value[row.taskId] ?? row.issueRef ?? null;
@@ -117,37 +161,6 @@ function selectedSecondsFor(row: RemoteSyncDayRowDto): number {
     .reduce((sum, entry) => sum + entry.durationSeconds, 0);
 }
 
-// --- Activities ---
-interface ActivitiesState {
-  options: RemoteFieldOption[];
-  loading: boolean;
-  errorKey: string | null;
-  loaded: boolean;
-}
-
-const activitiesByScopeKey = ref<Record<string, ActivitiesState>>({});
-const activitiesInFlight = new Map<string, Promise<void>>();
-
-function activitiesScopeKeyFor(row: RemoteSyncDayRowDto): string | null {
-  const remoteIssueId = issueRefFor(row)?.remoteIssueId;
-  if (!row.config || !remoteIssueId) return null;
-  return `${row.config.id}:${remoteIssueId}`;
-}
-
-function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigDto {
-  return {
-    id: config.id,
-    clientId: '',
-    systemType: config.systemType,
-    baseUrl: config.baseUrl,
-    executionMode: config.executionMode,
-    roundingRule: config.roundingRule,
-    requiredFieldDefaults: config.requiredFieldDefaults,
-    createdAt: '',
-    updatedAt: '',
-  };
-}
-
 function activityStatusFor(
   row: RemoteSyncDayRowDto,
 ): 'loading' | 'error' | 'empty' | 'available' | undefined {
@@ -192,89 +205,27 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
 }
 
 function roundedSecondsFor(row: RemoteSyncDayRowDto): number {
-  if (row.taskId in roundedOverrides.value) {
-    return roundedOverrides.value[row.taskId]!;
-  }
-  return applyRoundingRule(selectedSecondsFor(row), row.config!.roundingRule);
+  return roundedComputedSeconds(row.taskId, selectedSecondsFor(row), row.config!.roundingRule);
 }
-
-function roundedInputFor(row: RemoteSyncDayRowDto): string {
-  return formatDuration(roundedSecondsFor(row));
-}
-
-const roundedInputText = ref<Record<string, string>>({});
 
 function displayedRoundedInput(row: RemoteSyncDayRowDto): string {
-  return roundedInputText.value[row.taskId] ?? roundedInputFor(row);
+  return roundedDisplayedInput(row.taskId, selectedSecondsFor(row), row.config!.roundingRule);
 }
 
 function onRoundedInputChange(row: RemoteSyncDayRowDto, value: string | undefined) {
-  roundedInputText.value = { ...roundedInputText.value, [row.taskId]: value ?? '' };
+  setRoundedInput(row.taskId, value);
 }
 
 function commitRounded(row: RemoteSyncDayRowDto) {
-  const raw = displayedRoundedInput(row);
-  const seconds = normalizeDurationInput(raw);
-  if (seconds === null) {
-    roundedInputText.value = { ...roundedInputText.value, [row.taskId]: roundedInputFor(row) };
-    return;
-  }
-  roundedOverrides.value = { ...roundedOverrides.value, [row.taskId]: seconds };
-  roundedInputText.value = { ...roundedInputText.value, [row.taskId]: formatDuration(seconds) };
+  commitRoundedDuration(row.taskId, selectedSecondsFor(row), row.config!.roundingRule);
 }
 
 function resetRounded(row: RemoteSyncDayRowDto) {
-  roundedOverrides.value = Object.fromEntries(
-    Object.entries(roundedOverrides.value).filter(([taskId]) => taskId !== row.taskId),
-  );
-  roundedInputText.value = Object.fromEntries(
-    Object.entries(roundedInputText.value).filter(([taskId]) => taskId !== row.taskId),
-  );
+  resetRoundedDuration(row.taskId);
 }
 
 function isExcluded(row: RemoteSyncDayRowDto): boolean {
   return selectedIdsFor(row).length === 0 || roundedSecondsFor(row) === 0;
-}
-
-async function ensureActivitiesLoaded(
-  config: RemoteSyncConfigSurfaceDto,
-  remoteIssueId: string,
-  scopeKey: string,
-  force = false,
-) {
-  if (!force && activitiesByScopeKey.value[scopeKey]?.loaded) return;
-  if (!force) {
-    const inflight = activitiesInFlight.get(scopeKey);
-    if (inflight) {
-      await inflight;
-      return;
-    }
-  }
-
-  const run = (async () => {
-    activitiesByScopeKey.value = {
-      ...activitiesByScopeKey.value,
-      [scopeKey]: { options: [], loading: true, errorKey: null, loaded: false },
-    };
-    const { fetchOptions, options, errorKey } = useRemoteActivities(toPickerConfig(config));
-    await fetchOptions(remoteIssueId);
-    activitiesByScopeKey.value = {
-      ...activitiesByScopeKey.value,
-      [scopeKey]: {
-        options: options.value,
-        loading: false,
-        errorKey: errorKey.value,
-        loaded: true,
-      },
-    };
-  })();
-
-  activitiesInFlight.set(scopeKey, run);
-  try {
-    await run;
-  } finally {
-    activitiesInFlight.delete(scopeKey);
-  }
 }
 
 watch(
@@ -282,8 +233,7 @@ watch(
   (list) => {
     for (const row of list) {
       const remoteIssueId = issueRefFor(row)?.remoteIssueId;
-      const scopeKey = activitiesScopeKeyFor(row);
-      if (row.config && remoteIssueId && scopeKey) {
+      if (row.config && remoteIssueId) {
         const staticState = deriveRemoteSyncRowState({
           hasProject: !!row.projectName,
           hasClient: !!row.clientName,
@@ -291,7 +241,7 @@ watch(
           hasIssueRef: true,
         });
         if (staticState === 'manageable') {
-          void ensureActivitiesLoaded(row.config, remoteIssueId, scopeKey);
+          void ensureActivitiesLoaded(toPickerConfig(row.config), remoteIssueId);
         }
       }
     }
@@ -299,16 +249,8 @@ watch(
   { immediate: true },
 );
 
-function activitiesFor(row: RemoteSyncDayRowDto): ActivitiesState {
-  const scopeKey = activitiesScopeKeyFor(row);
-  return (
-    (scopeKey ? activitiesByScopeKey.value[scopeKey] : undefined) ?? {
-      options: [],
-      loading: false,
-      errorKey: null,
-      loaded: false,
-    }
-  );
+function activitiesFor(row: RemoteSyncDayRowDto) {
+  return activitiesStateFor(row.config?.id, issueRefFor(row)?.remoteIssueId);
 }
 
 function selectedActivity(row: RemoteSyncDayRowDto): string | undefined {
@@ -328,66 +270,8 @@ function onActivityChange(row: RemoteSyncDayRowDto, value: string | null | undef
 
 async function retryActivities(row: RemoteSyncDayRowDto) {
   const remoteIssueId = issueRefFor(row)?.remoteIssueId;
-  const scopeKey = activitiesScopeKeyFor(row);
-  if (!row.config || !remoteIssueId || !scopeKey) return;
-  await ensureActivitiesLoaded(row.config, remoteIssueId, scopeKey, true);
-}
-
-// --- Remote log context ---
-interface RemoteLogsState {
-  logs: RemoteTimeLogDto[];
-  loading: boolean;
-  errorKey: string | null;
-  loaded: boolean;
-}
-
-const remoteLogsByConfig = ref<Record<string, RemoteLogsState>>({});
-const clientByConfigId = new Map<string, ReturnType<typeof useRemoteSyncClient>>();
-
-function clientFor(config: RemoteSyncConfigSurfaceDto) {
-  let client = clientByConfigId.get(config.id);
-  if (!client) {
-    client = useRemoteSyncClient(toPickerConfig(config));
-    clientByConfigId.set(config.id, client);
-  }
-  return client;
-}
-
-function remoteLogsKey(configId: string, spentOn: string, workPackageIds: string[]): string {
-  return `${configId}:${spentOn}:${[...workPackageIds].sort().join(',')}`;
-}
-
-async function ensureRemoteLogsLoaded(
-  config: RemoteSyncConfigSurfaceDto,
-  workPackageIds: string[],
-  force = false,
-) {
-  const key = remoteLogsKey(config.id, date.value, workPackageIds);
-  if (!force && remoteLogsByConfig.value[key]?.loaded) return;
-  remoteLogsByConfig.value = {
-    ...remoteLogsByConfig.value,
-    [key]: { logs: [], loading: true, errorKey: null, loaded: false },
-  };
-  try {
-    const logs = await clientFor(config).fetchTimeLogs({
-      spentOn: date.value,
-      workPackageIds,
-    });
-    remoteLogsByConfig.value = {
-      ...remoteLogsByConfig.value,
-      [key]: { logs, loading: false, errorKey: null, loaded: true },
-    };
-  } catch (err: unknown) {
-    remoteLogsByConfig.value = {
-      ...remoteLogsByConfig.value,
-      [key]: {
-        logs: [],
-        loading: false,
-        errorKey: mapRemoteSyncClientError(err, 'error.remoteTimeLogsFetchFailed'),
-        loaded: true,
-      },
-    };
-  }
+  if (!row.config || !remoteIssueId) return;
+  await retryActivitiesLoaded(toPickerConfig(row.config), remoteIssueId);
 }
 
 watch(
@@ -410,36 +294,14 @@ watch(
       byConfig.set(row.config.id, bucket);
     }
     for (const bucket of byConfig.values()) {
-      void ensureRemoteLogsLoaded(bucket.config, [...bucket.issueIds]);
+      void ensureRemoteLogsLoaded(toPickerConfig(bucket.config), [...bucket.issueIds]);
     }
   },
   { immediate: true },
 );
 
-function remoteLogsFor(row: RemoteSyncDayRowDto): RemoteLogsState {
-  const issueId = issueRefFor(row)?.remoteIssueId;
-  if (!row.config || !issueId) {
-    return { logs: [], loading: false, errorKey: null, loaded: false };
-  }
-  // Logs are fetched per config+all issues; filter to this issue for display.
-  const matchingKeys = Object.keys(remoteLogsByConfig.value).filter((key) =>
-    key.startsWith(`${row.config!.id}:${date.value}:`),
-  );
-  const states = matchingKeys.map((key) => remoteLogsByConfig.value[key]!);
-  if (states.some((state) => state.loading)) {
-    return { logs: [], loading: true, errorKey: null, loaded: false };
-  }
-  const errorState = states.find((state) => state.errorKey);
-  if (errorState) {
-    return {
-      logs: [],
-      loading: false,
-      errorKey: errorState.errorKey,
-      loaded: true,
-    };
-  }
-  const logs = states.flatMap((state) => state.logs).filter((log) => log.remoteIssueId === issueId);
-  return { logs, loading: false, errorKey: null, loaded: states.length > 0 };
+function remoteLogsFor(row: RemoteSyncDayRowDto) {
+  return remoteLogsStateFor(row.config?.id, issueRefFor(row)?.remoteIssueId);
 }
 
 async function retryRemoteLogs(row: RemoteSyncDayRowDto) {
@@ -448,11 +310,9 @@ async function retryRemoteLogs(row: RemoteSyncDayRowDto) {
     .filter((candidate) => candidate.config?.id === row.config?.id)
     .map((candidate) => issueRefFor(candidate)?.remoteIssueId)
     .filter((id): id is string => !!id);
-  clientFor(row.config).invalidateCaches();
-  await ensureRemoteLogsLoaded(row.config, [...new Set(issueIds)], true);
+  await retryRemoteLogsLoaded(toPickerConfig(row.config), [...new Set(issueIds)]);
 }
 
-// --- Inline linking ---
 async function linkRemoteIssue(
   row: RemoteSyncDayRowDto,
   payload: { remoteIssueId: string; cachedTitle: string },
@@ -464,96 +324,20 @@ async function linkRemoteIssue(
     });
     localIssueRefs.value = { ...localIssueRefs.value, [row.taskId]: payload };
     if (row.config) {
-      const scopeKey = `${row.config.id}:${payload.remoteIssueId}`;
-      void ensureActivitiesLoaded(row.config, payload.remoteIssueId, scopeKey);
-      void ensureRemoteLogsLoaded(row.config, [payload.remoteIssueId], true);
+      void ensureActivitiesLoaded(toPickerConfig(row.config), payload.remoteIssueId);
+      void ensureRemoteLogsLoaded(toPickerConfig(row.config), [payload.remoteIssueId], true);
     }
   } catch (err: unknown) {
     toast.error(t(extractMessageKey(err, 'errors.unexpected')));
   }
 }
 
-// --- Export orchestration ---
 function isPushable(row: RemoteSyncDayRowDto): boolean {
   return stateFor(row) === 'manageable' && !isExcluded(row) && !!selectedActivity(row);
 }
 
 function pushableRows(): RemoteSyncDayRowDto[] {
   return rows.value.filter((row) => isPushable(row));
-}
-
-async function runExport(rowsToExport: RemoteSyncDayRowDto[]) {
-  exporting.value = true;
-  const nextOutcomes = { ...outcomes.value };
-
-  for (const row of rowsToExport) {
-    const activityId = selectedActivity(row);
-    const issueRef = issueRefFor(row);
-    if (!row.config || !activityId || !issueRef) {
-      nextOutcomes[row.taskId] = {
-        taskId: row.taskId,
-        status: 'excluded',
-        messageKey: 'remoteSync.outcomeExcluded',
-      };
-      continue;
-    }
-
-    let remoteLogId: string | undefined;
-    try {
-      const created = await clientFor(row.config).createTimeEntry({
-        remoteIssueId: issueRef.remoteIssueId,
-        spentOn: date.value,
-        durationSeconds: roundedSecondsFor(row),
-        activityId,
-        // OpenProject stores the free-text note on the time log as `comment`.
-        comment: row.taskName,
-      });
-      remoteLogId = created.remoteLogId;
-    } catch (err: unknown) {
-      nextOutcomes[row.taskId] = {
-        taskId: row.taskId,
-        status: 'remote_failure',
-        messageKey: mapRemoteSyncClientError(err, 'remoteSync.outcomeRemoteFailure'),
-      };
-      continue;
-    }
-
-    try {
-      const finalized = await $csrfFetch<FinalizeRemoteExportResultDto>('/api/sync/export', {
-        method: 'POST',
-        body: {
-          taskId: row.taskId,
-          localDate: date.value,
-          remoteIssueId: issueRef.remoteIssueId,
-          remoteLogId,
-          exportDurationSeconds: roundedSecondsFor(row),
-          requiredFieldValues: { activity: activityId },
-          entryIds: selectedIdsFor(row),
-        },
-      });
-      nextOutcomes[row.taskId] = {
-        taskId: row.taskId,
-        status: 'success',
-        remoteLogId: finalized.remoteLogId,
-        exportId: finalized.exportId,
-        messageKey: 'remoteSync.outcomeSuccess',
-        messageParams: { remoteLogId: finalized.remoteLogId },
-      };
-      await retryRemoteLogs(row);
-    } catch {
-      nextOutcomes[row.taskId] = {
-        taskId: row.taskId,
-        status: 'uncertain_finalization',
-        remoteLogId,
-        messageKey: 'remoteSync.outcomeUncertain',
-      };
-      await retryRemoteLogs(row);
-    }
-  }
-
-  outcomes.value = nextOutcomes;
-  exporting.value = false;
-  await refresh();
 }
 
 function startExport() {
@@ -566,6 +350,20 @@ function startExport() {
     ),
   );
 
+  const launch = async () => {
+    await runExport(
+      candidates.map((row) => ({
+        row,
+        config: toPickerConfig(row.config!),
+        remoteIssueId: issueRefFor(row)!.remoteIssueId,
+        activityId: selectedActivity(row)!,
+        durationSeconds: roundedSecondsFor(row),
+        entryIds: selectedIdsFor(row),
+        spentOn: date.value,
+      })),
+    );
+  };
+
   if (repeatTasks.length > 0) {
     void (async () => {
       const accepted = await confirm({
@@ -577,13 +375,13 @@ function startExport() {
         cancelLabel: t('remoteSync.repeatConfirmReject'),
       });
       if (accepted) {
-        await runExport(candidates);
+        await launch();
       }
     })();
     return;
   }
 
-  void runExport(candidates);
+  void launch();
 }
 
 function outcomeText(row: RemoteSyncDayRowDto): string | null {
@@ -602,13 +400,13 @@ function formatEntryStart(iso: string): string {
 </script>
 
 <template>
-  <section class="remote-sync" data-testid="remote-sync-page">
-    <div class="remote-sync__header">
+  <section class="grid gap-5" data-testid="remote-sync-page">
+    <div class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <h2 class="remote-sync__title" data-testid="remote-sync-heading">
+        <h2 class="text-2xl font-semibold" data-testid="remote-sync-heading">
           {{ t('remoteSync.pageTitle', { date: dayHeading() }) }}
         </h2>
-        <p class="remote-sync__total" data-testid="remote-sync-day-total">
+        <p class="font-mono text-muted" data-testid="remote-sync-day-total">
           {{ t('remoteSync.dayTotal', { duration: formatDuration(totalSeconds) }) }}
         </p>
       </div>
@@ -620,28 +418,28 @@ function formatEntryStart(iso: string): string {
       />
     </div>
 
-    <p v-if="isEmpty" class="remote-sync__empty" data-testid="remote-sync-empty-state">
+    <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">
       {{ t('remoteSync.emptyState') }}
     </p>
 
-    <div v-else class="remote-sync__rows" role="list">
+    <div v-else class="grid gap-4" role="list">
       <div
         v-for="row in rows"
         :key="row.taskId"
-        class="remote-sync__row"
+        class="grid gap-2 border-b border-default py-3"
         role="listitem"
         :data-testid="`remote-sync-row-${row.taskId}`"
       >
-        <div class="remote-sync__row-header">
-          <span class="remote-sync__task-name" :data-testid="`remote-sync-task-name-${row.taskId}`">
+        <div class="flex justify-between gap-4 font-semibold">
+          <span :data-testid="`remote-sync-task-name-${row.taskId}`">
             {{ row.taskName }}
           </span>
-          <span class="remote-sync__state" :data-testid="`remote-sync-state-${row.taskId}`">
+          <span class="font-normal text-muted" :data-testid="`remote-sync-state-${row.taskId}`">
             {{ reasonKeyFor(row) }}
           </span>
         </div>
 
-        <div class="remote-sync__durations">
+        <div class="flex flex-wrap items-center gap-3">
           <span :data-testid="`remote-sync-original-duration-${row.taskId}`">
             {{ t('remoteSync.originalDurationLabel') }}: {{ formatDuration(row.totalSeconds) }}
           </span>
@@ -651,7 +449,7 @@ function formatEntryStart(iso: string): string {
               {{ t('remoteSync.selectedDurationLabel') }}:
               {{ formatDuration(selectedSecondsFor(row)) }}
             </span>
-            <label :for="`remote-sync-rounded-${row.taskId}`" class="remote-sync__field-label">
+            <label :for="`remote-sync-rounded-${row.taskId}`" class="text-sm text-muted">
               {{ t('remoteSync.roundedDurationLabel') }}
             </label>
             <UInput
@@ -663,7 +461,7 @@ function formatEntryStart(iso: string): string {
               @keydown.enter="commitRounded(row)"
             />
             <UButton
-              v-if="row.taskId in roundedOverrides"
+              v-if="hasRoundedOverride(row.taskId)"
               variant="ghost"
               size="sm"
               :label="t('remoteSync.resetDuration')"
@@ -672,7 +470,7 @@ function formatEntryStart(iso: string): string {
             />
             <span
               v-if="isExcluded(row)"
-              class="remote-sync__hint"
+              class="text-sm text-muted"
               :data-testid="`remote-sync-excluded-hint-${row.taskId}`"
             >
               {{
@@ -686,14 +484,14 @@ function formatEntryStart(iso: string): string {
 
         <div
           v-if="row.entries.length > 0"
-          class="remote-sync__entries"
+          class="flex flex-col flex-wrap items-start gap-3"
           :data-testid="`remote-sync-entries-${row.taskId}`"
         >
-          <p class="remote-sync__section-title">{{ t('remoteSync.entriesHeading') }}</p>
+          <p class="m-0 font-semibold">{{ t('remoteSync.entriesHeading') }}</p>
           <div
             v-for="entry in row.entries"
             :key="entry.id"
-            class="remote-sync__entry"
+            class="flex items-center gap-2"
             :data-testid="`remote-sync-entry-${entry.id}`"
           >
             <UCheckbox
@@ -717,7 +515,7 @@ function formatEntryStart(iso: string): string {
               }}
               <span
                 v-if="entry.previouslyExported"
-                class="remote-sync__badge"
+                class="ml-1.5 text-xs text-muted"
                 :data-testid="`remote-sync-entry-exported-${entry.id}`"
               >
                 {{ t('remoteSync.entryPreviouslyExported') }}
@@ -733,7 +531,7 @@ function formatEntryStart(iso: string): string {
             stateFor(row) === 'activity_error' ||
             stateFor(row) === 'no_activity'
           "
-          class="remote-sync__activity"
+          class="flex flex-wrap items-center gap-3"
         >
           <label :for="`remote-sync-activity-${row.taskId}`">
             {{ t('remoteSync.activityLabel') }}
@@ -780,10 +578,10 @@ function formatEntryStart(iso: string): string {
 
         <div
           v-if="issueRefFor(row) && row.config"
-          class="remote-sync__remote-logs"
+          class="flex flex-col flex-wrap items-start gap-3"
           :data-testid="`remote-sync-remote-logs-${row.taskId}`"
         >
-          <p class="remote-sync__section-title">{{ t('remoteSync.remoteLogsHeading') }}</p>
+          <p class="m-0 font-semibold">{{ t('remoteSync.remoteLogsHeading') }}</p>
           <span
             v-if="remoteLogsFor(row).loading"
             role="status"
@@ -810,7 +608,7 @@ function formatEntryStart(iso: string): string {
           >
             {{ t('remoteSync.remoteLogsEmpty') }}
           </p>
-          <ul v-else class="remote-sync__remote-log-list">
+          <ul v-else class="m-0 pl-5">
             <li
               v-for="log in remoteLogsFor(row).logs"
               :key="log.remoteLogId"
@@ -829,7 +627,7 @@ function formatEntryStart(iso: string): string {
 
         <p
           v-if="outcomeText(row)"
-          class="remote-sync__outcome"
+          class="text-sm text-muted"
           role="status"
           aria-live="polite"
           :data-testid="`remote-sync-outcome-${row.taskId}`"
@@ -848,11 +646,11 @@ function formatEntryStart(iso: string): string {
 
       <div
         v-if="untitledTotal > 0"
-        class="remote-sync__row remote-sync__row--untitled"
+        class="grid gap-2 border-b border-default py-3"
         role="listitem"
         data-testid="remote-sync-untitled-row"
       >
-        <span class="remote-sync__task-name">{{ t('remoteSync.untitledBucketLabel') }}</span>
+        <span class="font-semibold">{{ t('remoteSync.untitledBucketLabel') }}</span>
         <span data-testid="remote-sync-untitled-duration">
           {{ t('remoteSync.originalDurationLabel') }}: {{ formatDuration(untitledTotal) }}
         </span>
@@ -860,105 +658,3 @@ function formatEntryStart(iso: string): string {
     </div>
   </section>
 </template>
-
-<style scoped>
-.remote-sync {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.remote-sync__header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.remote-sync__title {
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.remote-sync__total {
-  font-family: monospace;
-  color: var(--ui-text-muted);
-}
-
-.remote-sync__empty {
-  color: var(--ui-text-muted);
-}
-
-.remote-sync__rows {
-  display: grid;
-  gap: 1rem;
-}
-
-.remote-sync__row {
-  display: grid;
-  gap: 0.5rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid var(--ui-border);
-}
-
-.remote-sync__row-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-weight: 600;
-}
-
-.remote-sync__state {
-  font-weight: 400;
-  color: var(--ui-text-muted);
-}
-
-.remote-sync__durations,
-.remote-sync__activity,
-.remote-sync__remote-logs,
-.remote-sync__entries {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.remote-sync__entries,
-.remote-sync__remote-logs {
-  align-items: flex-start;
-  flex-direction: column;
-}
-
-.remote-sync__section-title {
-  font-weight: 600;
-  margin: 0;
-}
-
-.remote-sync__entry {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.remote-sync__badge {
-  margin-left: 0.35rem;
-  font-size: 0.75rem;
-  color: var(--ui-text-muted);
-}
-
-.remote-sync__field-label {
-  font-size: 0.875rem;
-  color: var(--ui-text-muted);
-}
-
-.remote-sync__hint,
-.remote-sync__outcome {
-  font-size: 0.875rem;
-  color: var(--ui-text-muted);
-}
-
-.remote-sync__remote-log-list {
-  margin: 0;
-  padding-left: 1.25rem;
-}
-</style>
