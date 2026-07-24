@@ -175,7 +175,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
-  <div class="flex items-center gap-2" data-testid="app-timer">
+  <div class="flex w-full min-w-0 items-center gap-2" data-testid="app-timer">
     <UInputMenu
       v-model="displayedTitle"
       v-model:search-term="searchTerm"
@@ -185,7 +185,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
       :aria-label="t('timer.titleLabel')"
       mode="autocomplete"
       ignore-filter
-      class="min-w-40"
+      class="min-w-0 flex-1"
       data-testid="timer-title-input"
       @update:open="(value: boolean) => (overlayOpen = value)"
       @blur="onBlur"

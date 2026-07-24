@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { describe, expect, it } from 'vitest';
+import { mountSuspended } from '@nuxt/test-utils/runtime';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AppSidebar from '../../app/components/AppSidebar.vue';
 import AppUtilityMenu from '../../app/components/AppUtilityMenu.vue';
@@ -7,8 +7,8 @@ import AppUtilityMenu from '../../app/components/AppUtilityMenu.vue';
 const topBarStub = {
   template:
     '<header data-testid="app-topbar">' +
-    '<button data-testid="sidebar-toggle" :aria-expanded="\'true\'" />' +
-    '<div data-testid="timer-region"><div data-testid="timer-region-inline"><slot /></div></div>' +
+    '<button data-testid="sidebar-toggle" aria-expanded="true" />' +
+    '<slot />' +
     '<slot name="right" />' +
     '</header>',
 };
@@ -34,17 +34,6 @@ const utilityMenuStub = {
 
 const appTimerStub = { template: '<div data-testid="app-timer" />' };
 
-const { railModeState, setModeMock } = vi.hoisted(() => ({
-  railModeState: { value: 'full' as 'full' | 'icon-only', __v_isRef: true },
-  setModeMock: vi.fn(),
-}));
-
-mockNuxtImport('useShellState', () => () => ({
-  railMode: railModeState,
-  toggle: vi.fn(),
-  setMode: setModeMock,
-}));
-
 async function mountShell(overrideStubs: Record<string, unknown> = {}) {
   return mountSuspended(DefaultLayout, {
     global: {
@@ -53,7 +42,7 @@ async function mountShell(overrideStubs: Record<string, unknown> = {}) {
         UDashboardSidebar: {
           props: ['collapsed', 'open'],
           template:
-            '<aside data-testid="app-rail" :data-collapsed="collapsed"><slot name="header" :collapsed="collapsed" /><slot :collapsed="collapsed" /></aside>',
+            '<aside data-testid="app-sidebar" :data-collapsed="collapsed"><slot name="header" :collapsed="collapsed" /><slot :collapsed="collapsed" /></aside>',
         },
         UDashboardPanel: {
           template:
@@ -77,7 +66,7 @@ describe('REQ-064: shell regions', () => {
   it('renders top bar, sidebar rail, and page content', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="app-rail"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="app-sidebar"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="app-content"]').exists()).toBe(true);
   });
 
@@ -127,12 +116,12 @@ describe('REQ-065: sidebar nav skeleton', () => {
 describe('REQ-066: desktop rail toggle', () => {
   it('rail renders and is present in the DOM', async () => {
     const wrapper = await mountShell();
-    expect(wrapper.find('[data-testid="app-rail"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="app-sidebar"]').exists()).toBe(true);
   });
 
-  it('rail collapsed binding follows shell state', () => {
-    const railMode = { value: 'icon-only' as const };
-    expect(railMode.value === 'icon-only').toBe(true);
+  it('rail starts expanded (collapsed owned by UDashboard storage)', async () => {
+    const wrapper = await mountShell();
+    expect(wrapper.find('[data-testid="app-sidebar"]').attributes('data-collapsed')).toBe('false');
   });
 });
 
@@ -140,19 +129,23 @@ describe('REQ-067: off-canvas drawer', () => {
   it('sidebar open state starts closed', async () => {
     const wrapper = await mountShell();
     // Drawer is owned by UDashboardSidebar; open starts false via layout state.
-    expect(wrapper.find('[data-testid="app-rail"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="app-sidebar"]').exists()).toBe(true);
   });
 });
 
-describe('REQ-068: very-small stacked timer row', () => {
-  it('stacked timer row element is present in the DOM', async () => {
+describe('REQ-068/070: timer lives in the navbar', () => {
+  it('inline timer region is mounted inside the top bar', async () => {
     const wrapper = await mountShell();
-    expect(wrapper.find('[data-testid="timer-region-stacked"]').exists()).toBe(true);
+    const topbar = wrapper.find('[data-testid="app-topbar"]');
+    expect(topbar.exists()).toBe(true);
+    expect(topbar.find('[data-testid="timer-region-inline"]').exists()).toBe(true);
+    expect(topbar.find('[data-testid="app-timer"]').exists()).toBe(true);
   });
 
-  it('inline timer region element is present in the DOM', async () => {
+  it('utility menu stays on the right of the top bar', async () => {
     const wrapper = await mountShell();
-    expect(wrapper.find('[data-testid="timer-region-inline"]').exists()).toBe(true);
+    const topbar = wrapper.find('[data-testid="app-topbar"]');
+    expect(topbar.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
   });
 });
 

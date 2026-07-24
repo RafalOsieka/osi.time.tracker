@@ -52,12 +52,6 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Server-only. Override at runtime with NUXT_DATABASE_URL or DATABASE_URL.
     databaseUrl: process.env.DATABASE_URL ?? '',
-    public: {
-      // Very-small "timer-stack" breakpoint (px). Below this width the timer
-      // region drops to its own full-width row. Distinct from the lg (1024 px)
-      // rail→drawer threshold. Override at runtime with NUXT_PUBLIC_TIMER_STACK_BREAKPOINT.
-      timerStackBreakpoint: 480,
-    },
     // Server-side session settings consumed by nuxt-auth-utils.
     // The sealing secret is provided via NUXT_SESSION_PASSWORD (32+ chars).
     session: {

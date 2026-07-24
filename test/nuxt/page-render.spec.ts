@@ -87,15 +87,14 @@ describe('preserved test hooks', () => {
         stubs: {
           UDashboardGroup: { template: '<div><slot /></div>' },
           UDashboardSidebar: {
-            template: '<aside data-testid="app-rail"><slot /><slot name="header" /></aside>',
+            template: '<aside data-testid="app-sidebar"><slot /><slot name="header" /></aside>',
           },
           UDashboardPanel: {
             template:
               '<div data-testid="app-content"><slot name="header" /><slot name="body" /></div>',
           },
           UDashboardNavbar: {
-            template:
-              '<header data-testid="app-topbar"><slot name="right" /><slot name="center" /></header>',
+            template: '<header data-testid="app-topbar"><slot /><slot name="right" /></header>',
           },
           UDashboardSidebarToggle: { template: '<button data-testid="sidebar-toggle" />' },
           AppSidebar: { template: '<nav data-testid="app-sidebar" />' },

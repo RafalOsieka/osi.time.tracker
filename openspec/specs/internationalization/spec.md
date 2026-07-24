@@ -1,7 +1,7 @@
 # internationalization Specification
 
 ## Purpose
-Define the project-wide internationalization standard: how the application provides multi-locale UI through `@nuxtjs/i18n`, how the active locale is resolved and persisted, how document and PrimeVue locales stay in sync, the key-based server message contract, and the lint gate that forbids hardcoded UI strings. This standard applies to all current and future UI under `app/` and message-bearing server responses.
+Define the project-wide internationalization standard: how the application provides multi-locale UI through `@nuxtjs/i18n`, how the active locale is resolved and persisted, how document and Nuxt UI locales stay in sync, the key-based server message contract, and the lint gate that forbids hardcoded UI strings. This standard applies to all current and future UI under `app/` and message-bearing server responses.
 
 ## Requirements
 
@@ -43,16 +43,16 @@ The application SHALL resolve the active locale using the precedence chain **loc
 - **WHEN** the active locale is determined or changed
 - **THEN** the locale cookie SHALL be written with `SameSite=Lax` and `Secure` in production so the choice survives subsequent requests
 
-### Requirement: REQ-075 Document language and PrimeVue locale synchronization
-The application SHALL set the document root `lang` attribute to the active locale, and SHALL keep PrimeVue's component locale in sync with the active application locale so component-provided labels reflect the same language.
+### Requirement: REQ-075 Document language and Nuxt UI locale synchronization
+The application SHALL set the document root `lang` attribute to the active locale, and SHALL keep Nuxt UI's component locale in sync with the active application locale so component-provided labels reflect the same language. Nuxt UI ships `en` and `pl` locale messages; the active locale SHALL be bound from `@nuxtjs/i18n` (e.g. via `UApp`'s `locale` prop / `app.config.ts`) so no separate PrimeVue locale-sync plugin is required.
 
 #### Scenario: html lang reflects active locale
 - **WHEN** the active locale is `pl`
 - **THEN** the rendered document SHALL expose `<html lang="pl">`, and `<html lang="en">` when the active locale is `en`
 
-#### Scenario: PrimeVue locale tracks the app locale
+#### Scenario: Nuxt UI locale tracks the app locale
 - **WHEN** the active application locale changes
-- **THEN** PrimeVue's locale configuration SHALL be updated to the same locale
+- **THEN** Nuxt UI's locale configuration SHALL be updated to the same locale so its built-in component labels render in that language
 
 ### Requirement: REQ-076 Key-based server message contract
 Server API responses that convey user-facing messages (including errors from `server/api/auth/*`) SHALL carry a stable translation key in a `messageKey` field and MAY include a `params` object of interpolation values. The server SHALL NOT return rendered, locale-specific user-facing text for these messages, and the client SHALL translate the `messageKey` (with any `params`) using the active locale. Server-referenced keys SHALL reside under the reserved `errors.*` namespace.

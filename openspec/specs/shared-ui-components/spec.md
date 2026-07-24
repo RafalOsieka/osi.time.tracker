@@ -1,42 +1,32 @@
 # shared-ui-components Specification
 
 ## Purpose
-Define the reusable, presentational UI building blocks shared across list/detail pages (table header, empty state, row actions, form-field wrapper, app-level confirm dialog, and locale-aware date formatting) so pages stay consistent, accessible, and free of duplicated markup/CSS.
+Define the reusable, presentational UI building blocks shared across list/detail pages (table header, empty state, row actions, app-level confirm dialog, and locale-aware date formatting) so pages stay consistent, accessible, and free of duplicated markup/CSS.
 
 ## Requirements
 
 ### Requirement: REQ-127 Shared table template components
-The application SHALL provide reusable presentational components for the recurring DataTable page sections: a table header (page title plus "New" button), an empty state (message plus create call-to-action), and row actions (edit and delete icon buttons). Each component SHALL receive all user-facing labels and `data-testid` values via props so pages keep their existing test and i18n contracts, and SHALL emit events (`create`, `edit`, `delete`) rather than performing any data access itself. Pages SHALL keep full ownership of their `DataTable`/`Column` markup; the components SHALL NOT wrap `DataTable`.
+The application SHALL provide reusable presentational components for the recurring list-page sections: a table header (page title plus "New" button), an empty state (message plus create call-to-action), and row actions (edit and delete icon buttons). Each component SHALL receive all user-facing labels and `data-testid` values via props so pages keep their existing test and i18n contracts, and SHALL emit events (`create`, `edit`, `delete`) rather than performing any data access itself. Pages SHALL keep full ownership of their `UTable` markup and column definitions; the components SHALL NOT wrap `UTable`.
 
 #### Scenario: Header rendered from props
-- **WHEN** a page slots the table header component into its DataTable `#header` template with a title, button label, and testid
+- **WHEN** a page renders the table header component above its `UTable` with a title, button label, and testid
 - **THEN** the header SHALL render the title and the "New" button with the supplied `data-testid`, and activating the button SHALL emit `create`
 
 #### Scenario: Empty state rendered from props
-- **WHEN** a list is empty and the empty-state component is slotted into the DataTable `#empty` template
+- **WHEN** a list is empty and the empty-state component is rendered in the `UTable` empty slot
 - **THEN** it SHALL render the supplied message and a CTA button with the supplied `data-testid`, and activating the CTA SHALL emit `create`
 
 #### Scenario: Row actions are accessible
 - **WHEN** the row-actions component renders for a row
 - **THEN** the edit and delete buttons SHALL expose the supplied accessible names via `aria-label` and the supplied per-row `data-testid` values, and activating them SHALL emit `edit` / `delete`
 
-### Requirement: REQ-128 Shared form field wrapper with accessible errors
-The application SHALL provide a form-field wrapper component used inside PrimeVue Forms (`@primevue/forms`) that renders a visible `<label>` associated with the field, the input via a default slot, and the field's validation error via a PrimeVue `Message` (severity `error`). The error SHALL carry a caller-supplied `data-testid`, SHALL be announced to assistive technology (`role="alert"` or live region), and the invalid input SHALL expose `aria-invalid` and reference the error via `aria-describedby`. Error text SHALL be produced by translating the schema's messageKey via `t()` at render time.
-
-#### Scenario: Field error is associated and announced
-- **WHEN** a field fails validation
-- **THEN** the error message SHALL render with the supplied `data-testid`, be announced via a live region, and the input SHALL expose `aria-invalid` with `aria-describedby` referencing the error
-
-#### Scenario: Valid field shows no error
-- **WHEN** a field passes validation
-- **THEN** no error message SHALL be rendered and the input SHALL NOT be marked invalid
 
 ### Requirement: REQ-129 Single app-level confirm dialog
-The application SHALL mount exactly one `<ConfirmDialog />` in the default layout; pages SHALL NOT mount their own instances and SHALL trigger confirmation via the `useConfirm` service with page-specific copy.
+The application SHALL provide a single shared confirmation pattern built on Nuxt UI's `useOverlay()` and a small in-house `ConfirmModal` component; pages SHALL NOT mount their own per-page confirm instances and SHALL trigger confirmation via the shared overlay with page-specific copy, receiving the user's accept/reject decision as a resolved promise.
 
-#### Scenario: Page delete uses the shared dialog
+#### Scenario: Page delete uses the shared confirm
 - **WHEN** a user activates a delete action on any list page
-- **THEN** the layout-level confirm dialog SHALL open with that page's header, message, and accept/reject labels, and no duplicate dialog instance SHALL exist
+- **THEN** the shared `ConfirmModal` SHALL open via `useOverlay()` with that page's header, message, and accept/reject labels, and deletion SHALL proceed only when the returned promise resolves as confirmed
 
 ### Requirement: REQ-130 Locale-aware shared date formatting
 The application SHALL provide a single shared date-formatting utility for rendering ISO timestamp strings in tables, formatted according to the active i18n locale rather than only the browser default.
@@ -50,7 +40,7 @@ The application SHALL provide a single shared date-formatting utility for render
 - **THEN** it SHALL return an empty string rather than rendering "Invalid Date"
 
 ### Requirement: REQ-131 Shared smart time input component
-The application SHALL provide a reusable time-input component with an `HH:mm` string model (nullable) backed by a PrimeVue `InputText` (numeric input mode) and a pure, unit-testable normalization function that forgivingly parses keyboard input into a valid `HH:mm` value. The parser SHALL apply these deterministic rules:
+The application SHALL provide a reusable time-input component with an `HH:mm` string model (nullable) backed by a Nuxt UI `UInput` (numeric input mode) and a pure, unit-testable normalization function that forgivingly parses keyboard input into a valid `HH:mm` value. The parser SHALL apply these deterministic rules:
 
 - one digit `H` → `0H:00` (e.g. `9` → `09:00`);
 - two digits forming a valid hour (`00`–`23`) → that hour with `:00` (e.g. `23` → `23:00`);
@@ -84,13 +74,3 @@ The component SHALL commit the normalized value on blur or Enter and cancel on E
 - **WHEN** the user presses Escape while editing
 - **THEN** the field SHALL revert to the previous value and the model SHALL NOT update
 
-### Requirement: REQ-035 Vue forms use the PrimeVue Form pattern
-Vue components that render a submittable form SHALL use the PrimeVue `Form` component together with `FormFieldWrap` for labeled fields, matching the pattern already established by `app/pages/settings.vue` and `app/components/RemoteIssuePicker.vue`. Native `<form>` and `<label>` elements SHALL NOT be used for this purpose.
-
-#### Scenario: Dialog form uses PrimeVue Form
-- **WHEN** `TimerAddEntryDialog.vue` or `TimerBulkAssignDialog.vue` renders its submittable form
-- **THEN** it wraps its fields in a PrimeVue `Form` component and labels them via `FormFieldWrap`, with no native `<form>` or `<label>` element present
-
-#### Scenario: Existing behavior and hooks are preserved
-- **WHEN** the form is converted to the PrimeVue pattern
-- **THEN** the submit handler still fires on submission, all previously present `data-testid` attributes remain on the same logical elements, and no new validation behavior is introduced
