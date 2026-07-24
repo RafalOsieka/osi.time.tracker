@@ -127,7 +127,7 @@ const projectDisplayValue = computed(() => contextLabel.value ?? t('timerView.no
 const projectSelectWidth = computed(() => {
   const selected = projectSelectOptions.value.find((p) => p.id === projectValue.value);
   const label = selected ? selected.name : t('timerView.noProject');
-  return `${Math.max(label.length, 8) + 4}ch`;
+  return `${Math.ceil(Math.max(label.length, projectDisplayValue.value.length, 8) + 4)}ch`;
 });
 const projectDisplayWidth = computed(
   () => `${Math.max(projectDisplayValue.value.length, 8) + 4}ch`,
