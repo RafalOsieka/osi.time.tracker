@@ -43,7 +43,7 @@
     "@nuxtjs/i18n": "^10.4.1",
     "@types/node": "^25.9.5",
     "@typescript-eslint/parser": "^8.64.0",
-    "@vitest/coverage-v8": "4.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "@vue/test-utils": "^2.4.11",
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
