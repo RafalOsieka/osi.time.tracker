@@ -50,7 +50,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
 </script>
 
 <template>
-  <nav aria-label="Main navigation" data-testid="app-sidebar" class="w-full">
+  <nav aria-label="Main navigation" class="w-full">
     <UNavigationMenu
       :collapsed="isCollapsed"
       :items="navItems"

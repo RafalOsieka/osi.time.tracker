@@ -40,10 +40,11 @@ describe('theme UI and SSR head wiring', () => {
     expect(useHeadMock).toHaveBeenCalled();
     const headArg = useHeadMock.mock.calls[0]?.[0] as {
       htmlAttrs: { lang: { value: string }; dir?: unknown };
-      link: Array<{ rel: string; href: string }>;
+      link?: Array<{ rel: string; href: string }>;
     };
     expect(headArg.htmlAttrs.lang).toBe(localeState);
-    expect(headArg.link).toEqual([{ rel: 'stylesheet', href: 'https://rsms.me/inter/inter.css' }]);
+    // No manual font <link>; typography uses Nuxt UI / Tailwind defaults.
+    expect(headArg.link).toBeUndefined();
     // UApp is present either as our stub or the real Nuxt UI root wrapper.
     expect(
       wrapper.find('[data-testid="u-app"]').exists() || wrapper.html().includes('UApp') || true,

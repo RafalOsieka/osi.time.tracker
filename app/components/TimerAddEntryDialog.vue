@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FormErrorEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
 import { combineLocalDateAndTime } from '~/utils/timerViewGrouping';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
@@ -20,9 +21,11 @@ const open = computed({
   set: (value: boolean) => emit('update:visible', value),
 });
 
-const title = ref('');
-const startTime = ref('09:00');
-const endTime = ref('10:00');
+const state = reactive({
+  title: '',
+  startTime: '09:00',
+  endTime: '10:00',
+});
 const suggestions = ref<TaskDto[]>([]);
 const searchTerm = ref('');
 const rangeError = ref('');
@@ -32,10 +35,10 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      title.value = '';
+      state.title = '';
       searchTerm.value = '';
-      startTime.value = '09:00';
-      endTime.value = '10:00';
+      state.startTime = '09:00';
+      state.endTime = '10:00';
       rangeError.value = '';
     }
   },
@@ -50,7 +53,7 @@ watch(searchTerm, (query) => {
 });
 
 function onSelectSuggestion(task: TaskDto) {
-  title.value = task.name;
+  state.title = task.name;
   searchTerm.value = task.name;
 }
 
@@ -58,21 +61,27 @@ function close() {
   open.value = false;
 }
 
+function onError(event: FormErrorEvent) {
+  const range = event.errors.find(
+    (error) => error.name === 'endTime' || error.name === 'startTime',
+  );
+  if (range && typeof range.message === 'string') {
+    rangeError.value = t(range.message);
+    return;
+  }
+  rangeError.value = '';
+}
+
 async function onSave() {
   if (!props.date) return;
   rangeError.value = '';
 
-  const startedAt = combineLocalDateAndTime(props.date, startTime.value, props.timeZone);
-  const stoppedAt = combineLocalDateAndTime(props.date, endTime.value, props.timeZone);
-
-  if (new Date(startedAt).getTime() > new Date(stoppedAt).getTime()) {
-    rangeError.value = t('timerView.addEntry.rangeError');
-    return;
-  }
+  const startedAt = combineLocalDateAndTime(props.date, state.startTime, props.timeZone);
+  const stoppedAt = combineLocalDateAndTime(props.date, state.endTime, props.timeZone);
 
   saving.value = true;
   try {
-    const trimmed = title.value.trim();
+    const trimmed = state.title.trim();
     const created = await $csrfFetch<TimeEntryDto>('/api/time-entries', {
       method: 'POST',
       body: { title: trimmed || null, startedAt, stoppedAt },
@@ -95,12 +104,19 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 <template>
   <UModal v-model:open="open" :title="t('timerView.addEntry.dialogTitle')">
     <template #body>
-      <form data-testid="add-entry-dialog" class="grid min-w-80 gap-3" @submit.prevent="onSave">
+      <UForm
+        :schema="timerAddEntryFormSchema"
+        :state="state"
+        data-testid="add-entry-dialog"
+        class="grid min-w-80 gap-3"
+        @submit="onSave"
+        @error="onError"
+      >
         <div class="grid gap-1">
           <label for="add-entry-title">{{ t('timerView.addEntry.titleLabel') }}</label>
           <UInputMenu
             id="add-entry-title"
-            v-model="title"
+            v-model="state.title"
             v-model:search-term="searchTerm"
             :items="titleMenuItems"
             mode="autocomplete"
@@ -109,13 +125,16 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
             data-testid="add-entry-title-input"
           >
             <template #item-label="{ item }">
-              <button
+              <UButton
                 type="button"
-                class="w-full text-left"
+                color="neutral"
+                variant="ghost"
+                block
+                class="justify-start"
                 @click="onSelectSuggestion(item as unknown as TaskDto)"
               >
                 {{ (item as unknown as TaskDto).name }}
-              </button>
+              </UButton>
             </template>
           </UInputMenu>
         </div>
@@ -124,7 +143,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
           <label for="add-entry-start-time">{{ t('timerView.addEntry.startLabel') }}</label>
           <TimeInput
             id="add-entry-start-time"
-            v-model="startTime"
+            v-model="state.startTime"
             :label="t('timerView.addEntry.startLabel')"
             :compact="false"
             :invalid="!!rangeError"
@@ -137,7 +156,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
           <label for="add-entry-end-time">{{ t('timerView.addEntry.endLabel') }}</label>
           <TimeInput
             id="add-entry-end-time"
-            v-model="endTime"
+            v-model="state.endTime"
             :label="t('timerView.addEntry.endLabel')"
             :compact="false"
             :invalid="!!rangeError"
@@ -162,7 +181,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
           :saving="saving"
           @cancel="close"
         />
-      </form>
+      </UForm>
     </template>
   </UModal>
 </template>

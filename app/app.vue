@@ -14,7 +14,6 @@ useHead({
     lang: locale,
     dir: computed(() => uiLocale.value.dir),
   },
-  link: [{ rel: 'stylesheet', href: 'https://rsms.me/inter/inter.css' }],
 });
 </script>
 

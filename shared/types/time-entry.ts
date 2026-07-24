@@ -131,3 +131,48 @@ export const bulkAssignSchema = z.object({
 });
 
 export type BulkAssignDto = z.infer<typeof bulkAssignSchema>;
+
+const hhMmTimeSchema = z
+  .string({
+    required_error: 'error.timeEntryStartedAtInvalid',
+    invalid_type_error: 'error.timeEntryStartedAtInvalid',
+  })
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'error.timeEntryStartedAtInvalid' });
+
+/**
+ * Client-side form schema for the timer add-entry dialog (local HH:mm range).
+ */
+export const timerAddEntryFormSchema = z
+  .object({
+    title: z
+      .string({ invalid_type_error: 'error.timeEntryTitleInvalid' })
+      .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' }),
+    startTime: hhMmTimeSchema,
+    endTime: hhMmTimeSchema,
+  })
+  .refine((value) => value.startTime <= value.endTime, {
+    message: 'timerView.addEntry.rangeError',
+    path: ['endTime'],
+  });
+
+export type TimerAddEntryFormDto = z.infer<typeof timerAddEntryFormSchema>;
+
+/**
+ * Client-side form schema for the timer bulk-assign dialog.
+ */
+export const timerBulkAssignFormSchema = z.object({
+  title: z
+    .string({
+      required_error: 'timerView.bulkAssign.nameRequiredError',
+      invalid_type_error: 'timerView.bulkAssign.nameRequiredError',
+    })
+    .trim()
+    .min(1, { message: 'timerView.bulkAssign.nameRequiredError' })
+    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' }),
+  projectId: z
+    .string({ invalid_type_error: 'error.timeEntryProjectInvalid' })
+    .uuid({ message: 'error.timeEntryProjectInvalid' })
+    .nullish(),
+});
+
+export type TimerBulkAssignFormDto = z.infer<typeof timerBulkAssignFormSchema>;

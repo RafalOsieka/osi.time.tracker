@@ -22,8 +22,10 @@ const { t } = useI18n();
 const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
 
 const open = ref(false);
-const mode = ref<RemoteIssueSearchMode>('title');
-const query = ref('');
+const state = reactive({
+  mode: 'title' as RemoteIssueSearchMode,
+  query: '',
+});
 const firstField = ref<HTMLElement | null>(null);
 let triggerElement: HTMLElement | null = null;
 
@@ -57,7 +59,7 @@ function onClose() {
 }
 
 async function submit() {
-  await search({ mode: mode.value, query: query.value });
+  await search({ mode: state.mode, query: state.query });
 }
 
 function selectResult(result: RemoteIssueSearchResult) {
@@ -85,13 +87,18 @@ function unlink() {
       />
       <template #content>
         <div class="grid min-w-64 gap-3 p-3">
-          <form class="grid gap-3" @submit.prevent="submit">
+          <UForm
+            :schema="remoteIssuePickerFormSchema"
+            :state="state"
+            class="grid gap-3"
+            @submit="submit"
+          >
             <div class="grid gap-1">
               <label for="remote-issue-mode">{{ t('remoteIssuePicker.modeLabel') }}</label>
               <URadioGroup
                 id="remote-issue-mode"
                 ref="firstField"
-                v-model="mode"
+                v-model="state.mode"
                 :items="modeItems"
                 orientation="horizontal"
                 value-key="value"
@@ -103,7 +110,7 @@ function unlink() {
               <label for="remote-issue-query">{{ t('remoteIssuePicker.queryLabel') }}</label>
               <UInput
                 id="remote-issue-query"
-                v-model="query"
+                v-model="state.query"
                 :placeholder="t('remoteIssuePicker.queryPlaceholder')"
                 data-testid="remote-issue-picker-query"
               />
@@ -113,7 +120,7 @@ function unlink() {
               :label="t('remoteIssuePicker.submitButton')"
               data-testid="remote-issue-picker-submit"
             />
-          </form>
+          </UForm>
 
           <p class="m-0 text-sm text-muted" role="status" aria-live="polite">
             {{ statusMessage }}
@@ -126,14 +133,16 @@ function unlink() {
             data-testid="remote-issue-picker-results"
           >
             <li v-for="result in results" :key="result.remoteIssueId">
-              <button
+              <UButton
                 type="button"
-                class="w-full rounded px-2 py-1 text-left hover:bg-elevated"
+                color="neutral"
+                variant="ghost"
+                block
+                class="justify-start"
+                :label="`#${result.remoteIssueId} ${result.title}`"
                 :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
                 @click="selectResult(result)"
-              >
-                #{{ result.remoteIssueId }} {{ result.title }}
-              </button>
+              />
             </li>
           </ul>
 

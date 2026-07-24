@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FormErrorEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
 
 const props = defineProps<{
@@ -18,9 +19,11 @@ const open = computed({
   set: (value: boolean) => emit('update:visible', value),
 });
 
-const title = ref('');
+const state = reactive({
+  title: '',
+  projectId: undefined as string | undefined,
+});
 const searchTerm = ref('');
-const projectId = ref<string | undefined>(undefined);
 const suggestions = ref<TaskDto[]>([]);
 const nameError = ref('');
 const saving = ref(false);
@@ -29,9 +32,9 @@ watch(
   () => props.visible,
   (visible) => {
     if (visible) {
-      title.value = '';
+      state.title = '';
       searchTerm.value = '';
-      projectId.value = undefined;
+      state.projectId = undefined;
       nameError.value = '';
     }
   },
@@ -46,27 +49,28 @@ watch(searchTerm, (query) => {
 });
 
 function onSelectSuggestion(task: TaskDto) {
-  title.value = task.name;
+  state.title = task.name;
   searchTerm.value = task.name;
-  projectId.value = task.projectId ?? undefined;
+  state.projectId = task.projectId ?? undefined;
 }
 
 function close() {
   open.value = false;
 }
 
+function onError(event: FormErrorEvent) {
+  const err = event.errors.find((error) => error.name === 'title');
+  nameError.value = err && typeof err.message === 'string' ? t(err.message) : '';
+}
+
 async function onSave() {
-  const trimmed = title.value.trim();
-  if (!trimmed) {
-    nameError.value = t('timerView.bulkAssign.nameRequiredError');
-    return;
-  }
+  const trimmed = state.title.trim();
   nameError.value = '';
   saving.value = true;
   try {
     await $csrfFetch('/api/time-entries/bulk-assign', {
       method: 'POST',
-      body: { ids: props.ids, title: trimmed, projectId: projectId.value ?? null },
+      body: { ids: props.ids, title: trimmed, projectId: state.projectId ?? null },
     });
     toast.success(
       t('timerView.bulkAssign.toastSuccessSummary'),
@@ -89,12 +93,19 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 <template>
   <UModal v-model:open="open" :title="t('timerView.bulkAssign.dialogTitle')">
     <template #body>
-      <form data-testid="bulk-assign-dialog" class="grid min-w-80 gap-3" @submit.prevent="onSave">
+      <UForm
+        :schema="timerBulkAssignFormSchema"
+        :state="state"
+        data-testid="bulk-assign-dialog"
+        class="grid min-w-80 gap-3"
+        @submit="onSave"
+        @error="onError"
+      >
         <div class="grid gap-1">
           <label for="bulk-assign-name">{{ t('timerView.bulkAssign.nameLabel') }}</label>
           <UInputMenu
             id="bulk-assign-name"
-            v-model="title"
+            v-model="state.title"
             v-model:search-term="searchTerm"
             :items="titleMenuItems"
             mode="autocomplete"
@@ -105,13 +116,16 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
             data-testid="bulk-assign-name-input"
           >
             <template #item-label="{ item }">
-              <button
+              <UButton
                 type="button"
-                class="w-full text-left"
+                color="neutral"
+                variant="ghost"
+                block
+                class="justify-start"
                 @click="onSelectSuggestion(item as unknown as TaskDto)"
               >
                 {{ (item as unknown as TaskDto).name }}
-              </button>
+              </UButton>
             </template>
           </UInputMenu>
         </div>
@@ -129,7 +143,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
           <label for="bulk-assign-project">{{ t('timerView.bulkAssign.projectLabel') }}</label>
           <USelect
             id="bulk-assign-project"
-            v-model="projectId"
+            v-model="state.projectId"
             :items="projectOptions"
             value-key="id"
             label-key="name"
@@ -145,7 +159,7 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
           :saving="saving"
           @cancel="close"
         />
-      </form>
+      </UForm>
     </template>
   </UModal>
 </template>

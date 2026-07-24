@@ -12,6 +12,20 @@ export const remoteIssueSearchModeSchema = z.enum(['title', 'id'], {
 export type RemoteIssueSearchMode = z.infer<typeof remoteIssueSearchModeSchema>;
 
 /**
+ * Client-side form schema for the remote issue picker popover (mode + query).
+ * Business validation (e.g. title min length) stays in the search composable.
+ */
+export const remoteIssuePickerFormSchema = z.object({
+  mode: remoteIssueSearchModeSchema,
+  query: z.string({
+    required_error: 'error.remoteIssueSearchQueryRequired',
+    invalid_type_error: 'error.remoteIssueSearchQueryRequired',
+  }),
+});
+
+export type RemoteIssuePickerFormDto = z.infer<typeof remoteIssuePickerFormSchema>;
+
+/**
  * Adapter-neutral search query: `title` mode carries a trimmed phrase,
  * `id` mode carries the exact remote issue id.
  */
