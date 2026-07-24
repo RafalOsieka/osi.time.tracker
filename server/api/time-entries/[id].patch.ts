@@ -75,7 +75,20 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
 
   const updated = await db.transaction(async (tx) => {
     let taskId = existing.taskId;
-    if (parsedBody.title !== undefined || parsedBody.projectId !== undefined) {
+    if (parsedBody.taskId !== undefined && parsedBody.taskId !== null) {
+      const [ownedTask] = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(eq(tasks.id, parsedBody.taskId), eq(tasks.userId, user.id)))
+        .limit(1);
+      if (!ownedTask) {
+        throw createError({
+          statusCode: 404,
+          data: { messageKey: 'error.notFound' } satisfies ApiMessage,
+        });
+      }
+      taskId = ownedTask.id;
+    } else if (parsedBody.title !== undefined || parsedBody.projectId !== undefined) {
       let title = parsedBody.title;
       let projectId = parsedBody.projectId;
       if (existing.taskId && (title === undefined || projectId === undefined)) {

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { instantToZoned, wallClockToInstant, toPickerDate, fromPickerDate } from '~/utils/dateTime';
+import { formatTaskSuggestionLabel } from '~/utils/taskSuggestionLabel';
+import type { TaskDto } from '../../shared/types/task';
 
 const { t } = useI18n();
 const { running, elapsedSeconds, loading, start, stop, updateTitle, updateStartedAt } = useTimer();
@@ -8,6 +10,8 @@ const { effective } = useUserSettings();
 
 const title = ref('');
 const editedTitle = ref('');
+const selectedTaskId = ref<string | null>(null);
+const selectedTaskName = ref<string | null>(null);
 const suggestions = ref<TaskDto[]>([]);
 const searchTerm = ref('');
 const starting = ref(false);
@@ -29,21 +33,30 @@ watch(
   (taskName) => {
     editedTitle.value = taskName ?? '';
     searchTerm.value = taskName ?? '';
+    selectedTaskId.value = running.value?.taskId ?? null;
+    selectedTaskName.value = taskName;
   },
   { immediate: true },
 );
 
-const displayedTitle = computed({
-  get: () => (isRunning.value ? editedTitle.value : title.value),
-  set: (value: string) => {
-    if (isRunning.value) {
-      editedTitle.value = value;
-    } else {
-      title.value = value;
-    }
-    searchTerm.value = value;
-  },
-});
+const displayedTitle = computed(() => (isRunning.value ? editedTitle.value : title.value));
+
+/**
+ * Menu items use a string `name` as the model value (autocomplete mode
+ * stringifies objects to "[object Object]"). `onSelect` captures the
+ * concrete task id before the model update lands.
+ */
+const menuItems = computed(() =>
+  suggestions.value.map((task) => ({
+    id: task.id,
+    name: task.name,
+    label: formatTaskSuggestionLabel(task, t('timer.noTask')),
+    onSelect: () => {
+      selectedTaskId.value = task.id;
+      selectedTaskName.value = task.name;
+    },
+  })),
+);
 
 const elapsedLabel = computed(() => {
   const total = elapsedSeconds.value;
@@ -54,15 +67,6 @@ const elapsedLabel = computed(() => {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 });
 
-function suggestionLabel(task: TaskDto): string {
-  const context = task.projectName
-    ? task.clientName
-      ? `${task.projectName} · ${task.clientName}`
-      : task.projectName
-    : t('timer.noTask');
-  return `${task.name} (${context})`;
-}
-
 async function search(query: string) {
   suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
 }
@@ -71,15 +75,55 @@ watch(searchTerm, (query) => {
   void search(query ?? '');
 });
 
-function onSelectSuggestion(task: TaskDto) {
+function applyFreeformTitle(text: string) {
+  selectedTaskId.value = null;
+  selectedTaskName.value = null;
   if (isRunning.value) {
-    editedTitle.value = task.name;
-    searchTerm.value = task.name;
-    void updateTitle(task.name);
+    editedTitle.value = text;
   } else {
-    title.value = task.name;
-    searchTerm.value = task.name;
+    title.value = text;
   }
+  searchTerm.value = text;
+}
+
+function applySelectedTitle(name: string, taskId: string) {
+  selectedTaskId.value = taskId;
+  selectedTaskName.value = name;
+  if (isRunning.value) {
+    editedTitle.value = name;
+  } else {
+    title.value = name;
+  }
+  searchTerm.value = name;
+}
+
+function onTitleModelUpdate(value: string | { name?: string; id?: string } | null | undefined) {
+  // Autocomplete + value-key="name" yields the task name string. Object
+  // payloads are still handled defensively (e.g. tests / future UI changes).
+  if (value && typeof value === 'object') {
+    const name = typeof value.name === 'string' ? value.name : '';
+    const taskId = typeof value.id === 'string' ? value.id : selectedTaskId.value;
+    if (taskId && name) {
+      applySelectedTitle(name, taskId);
+      if (isRunning.value) {
+        void updateTitle(name, taskId);
+      }
+      return;
+    }
+  }
+
+  const text = typeof value === 'string' ? value : '';
+
+  // Selection path: item onSelect already stashed the task id for this name.
+  if (selectedTaskId.value && selectedTaskName.value === text) {
+    applySelectedTitle(text, selectedTaskId.value);
+    if (isRunning.value) {
+      void updateTitle(text, selectedTaskId.value);
+    }
+    return;
+  }
+
+  applyFreeformTitle(text);
 }
 
 async function onToggle() {
@@ -93,9 +137,10 @@ async function onToggle() {
   } else {
     starting.value = true;
     try {
-      await start(title.value || undefined, undefined);
+      await start(title.value || undefined, undefined, selectedTaskId.value);
       title.value = '';
       searchTerm.value = '';
+      selectedTaskId.value = null;
     } finally {
       starting.value = false;
     }
@@ -104,14 +149,14 @@ async function onToggle() {
 
 async function onBlur() {
   if (isRunning.value) {
-    await updateTitle(editedTitle.value);
+    await updateTitle(editedTitle.value, selectedTaskId.value);
   }
 }
 
 async function onEnter() {
   if (overlayOpen.value) return;
   if (isRunning.value) {
-    await updateTitle(editedTitle.value);
+    await updateTitle(editedTitle.value, selectedTaskId.value);
   } else if (!loading.value) {
     await onToggle();
   }
@@ -169,17 +214,16 @@ async function onSaveStartedAt() {
     savingStartedAt.value = false;
   }
 }
-
-// Autocomplete mode wants a free-form string model; cast items so the prop types accept it.
-const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
   <div class="flex w-full min-w-0 items-center gap-2" data-testid="app-timer">
     <UInputMenu
-      v-model="displayedTitle"
       v-model:search-term="searchTerm"
-      :items="titleMenuItems"
+      :model-value="displayedTitle"
+      :items="menuItems"
+      value-key="name"
+      label-key="label"
       :disabled="isLoading"
       :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
       :aria-label="t('timer.titleLabel')"
@@ -187,44 +231,23 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
       ignore-filter
       class="min-w-0 flex-1"
       data-testid="timer-title-input"
+      @update:model-value="onTitleModelUpdate"
       @update:open="(value: boolean) => (overlayOpen = value)"
       @blur="onBlur"
       @keydown.enter="onEnter"
-    >
-      <template #item-label="{ item }">
-        <button
-          type="button"
-          class="w-full text-left"
-          @click="onSelectSuggestion(item as unknown as TaskDto)"
-        >
-          {{ suggestionLabel(item as unknown as TaskDto) }}
-        </button>
-      </template>
-    </UInputMenu>
-
-    <UButton
-      v-if="isRunning"
-      color="neutral"
-      variant="link"
-      class="min-w-[4.5rem] font-mono"
-      role="timer"
-      :label="elapsedLabel"
-      :aria-label="t('timer.editStartLabel')"
-      data-testid="timer-elapsed"
-      @click="openStartEditor"
     />
-    <span
-      v-else
-      class="min-w-[4.5rem] font-mono text-default"
-      role="timer"
-      :aria-label="t('timer.elapsedLabel')"
-      data-testid="timer-elapsed"
-    >
-      {{ elapsedLabel }}
-    </span>
 
-    <UPopover v-model:open="startEditorOpen">
-      <span class="sr-only">{{ t('timer.editStartLabel') }}</span>
+    <UPopover v-if="isRunning" v-model:open="startEditorOpen">
+      <UButton
+        color="neutral"
+        variant="link"
+        class="min-w-[4.5rem] font-mono"
+        role="timer"
+        :label="elapsedLabel"
+        :aria-label="t('timer.editStartLabel')"
+        data-testid="timer-elapsed"
+        @click="openStartEditor"
+      />
       <template #content>
         <div class="grid min-w-64 gap-3 p-3" data-testid="timer-start-editor-popover">
           <div class="grid gap-1">
@@ -285,6 +308,15 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
         </div>
       </template>
     </UPopover>
+    <span
+      v-else
+      class="min-w-[4.5rem] font-mono text-default"
+      role="timer"
+      :aria-label="t('timer.elapsedLabel')"
+      data-testid="timer-elapsed"
+    >
+      {{ elapsedLabel }}
+    </span>
 
     <UButton
       :label="isRunning ? t('timer.stop') : t('timer.start')"

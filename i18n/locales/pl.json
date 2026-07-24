@@ -304,6 +304,7 @@
     "timeEntryTitleInvalid": "Wprowadź prawidłowy tytuł.",
     "timeEntryTitleTooLong": "Tytuł może mieć maksymalnie 200 znaków.",
     "timeEntryProjectInvalid": "Wybierz prawidłowy projekt.",
+    "timeEntryTaskInvalid": "Wybierz prawidłowe zadanie.",
     "timeEntryStoppedAtInvalid": "Wprowadź prawidłowy czas zakończenia.",
     "timeEntryStoppedBeforeStarted": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia.",
     "timeEntryStartedAtInvalid": "Wprowadź prawidłowy czas rozpoczęcia.",

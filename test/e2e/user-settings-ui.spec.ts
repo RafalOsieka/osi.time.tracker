@@ -5,8 +5,10 @@ import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { CookieJar, primeCsrf } from './support/auth';
+import { pageIncludesTextScript } from './support/dom';
 
 const describeSettingsUI = requireBrowser();
+const pageIncludesText = pageIncludesTextScript();
 
 // `Pacific/Pago_Pago` (UTC-11) and `Pacific/Kiritimati` (UTC+14) are both
 // supported IANA zones with a combined offset spread of 25 hours, so any
@@ -23,6 +25,20 @@ function dayKeyIn(date: Date, timeZone: string): string {
     day: '2-digit',
   }).format(date);
 }
+
+function dayIncludesTitleScript(): (args: { dayKey: string; title: string }) => boolean {
+  return ({ dayKey, title }) => {
+    const day = document.querySelector(`[data-testid="timer-day-${dayKey}"]`);
+    if (!day) return false;
+    if (day.textContent?.includes(title)) return true;
+    for (const el of day.querySelectorAll('input, textarea')) {
+      if ((el as HTMLInputElement).value?.includes(title)) return true;
+    }
+    return false;
+  };
+}
+
+const dayIncludesTitle = dayIncludesTitleScript();
 
 describeSettingsUI('user settings UI flow', async () => {
   const dbUrl = await provisionDatabase();
@@ -71,7 +87,7 @@ describeSettingsUI('user settings UI flow', async () => {
     const stoppedAt = new Date(startedAt.getTime() + 15 * 60 * 1000);
     const baselineDayKey = dayKeyIn(startedAt, BASELINE_TIME_ZONE);
 
-    await fetch(url('/api/time-entries'), {
+    const createRes = await fetch(url('/api/time-entries'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({
@@ -80,14 +96,18 @@ describeSettingsUI('user settings UI flow', async () => {
         stoppedAt: stoppedAt.toISOString(),
       }),
     });
+    expect(createRes.status).toBe(200);
 
     const page = await loginAs('settingsui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() => document.body.textContent?.includes('Settings UI Task'));
+    await page.waitForFunction(pageIncludesText, 'Settings UI Task');
     await page.waitForSelector(`[data-testid="timer-day-${baselineDayKey}"]`);
-    expect(await page.textContent(`[data-testid="timer-day-${baselineDayKey}"]`)).toContain(
-      'Settings UI Task',
-    );
+    expect(
+      await page.evaluate(dayIncludesTitle, {
+        dayKey: baselineDayKey,
+        title: 'Settings UI Task',
+      }),
+    ).toBe(true);
 
     // --- Navigate to the settings page and change timezone + week start ---
     await page.click('a[href="/settings"]');
@@ -119,16 +139,19 @@ describeSettingsUI('user settings UI flow', async () => {
     // purely client-side (no data refetch) ---
     await page.goto(url('/'));
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(() => document.body.textContent?.includes('Settings UI Task'));
+    await page.waitForFunction(pageIncludesText, 'Settings UI Task');
 
     // The entry has moved out of its previous day bucket...
     const stillInBaselineDay = await page
       .locator(`[data-testid="timer-day-${baselineDayKey}"]`)
       .count();
     if (stillInBaselineDay > 0) {
-      expect(await page.textContent(`[data-testid="timer-day-${baselineDayKey}"]`)).not.toContain(
-        'Settings UI Task',
-      );
+      expect(
+        await page.evaluate(dayIncludesTitle, {
+          dayKey: baselineDayKey,
+          title: 'Settings UI Task',
+        }),
+      ).toBe(false);
     }
 
     // ...and re-appears grouped under the day computed for the new timezone
@@ -139,9 +162,12 @@ describeSettingsUI('user settings UI flow', async () => {
       await page.click('[data-testid="timer-view-load-more"]');
     }
     await page.waitForSelector(`[data-testid="timer-day-${shiftedDayKey}"]`);
-    expect(await page.textContent(`[data-testid="timer-day-${shiftedDayKey}"]`)).toContain(
-      'Settings UI Task',
-    );
+    expect(
+      await page.evaluate(dayIncludesTitle, {
+        dayKey: shiftedDayKey,
+        title: 'Settings UI Task',
+      }),
+    ).toBe(true);
 
     await page.close();
   });

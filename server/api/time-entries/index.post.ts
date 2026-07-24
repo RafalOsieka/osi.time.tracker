@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { startTimeEntrySchema } from '../../../shared/types/time-entry';
 import type { StartTimeEntryDto, TimeEntryDto } from '../../../shared/types/time-entry';
 import { db } from '../../db/index';
-import { timeEntries } from '../../db/schema';
+import { timeEntries, tasks } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
@@ -38,7 +38,23 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
         .where(and(eq(timeEntries.userId, user.id), isNull(timeEntries.stoppedAt)));
     }
 
-    const taskId = await resolveTaskId(tx, user.id, parsedBody.title, parsedBody.projectId);
+    let taskId: string | null;
+    if (parsedBody.taskId) {
+      const [ownedTask] = await tx
+        .select({ id: tasks.id })
+        .from(tasks)
+        .where(and(eq(tasks.id, parsedBody.taskId), eq(tasks.userId, user.id)))
+        .limit(1);
+      if (!ownedTask) {
+        throw createError({
+          statusCode: 404,
+          data: { messageKey: 'error.notFound' } satisfies ApiMessage,
+        });
+      }
+      taskId = ownedTask.id;
+    } else {
+      taskId = await resolveTaskId(tx, user.id, parsedBody.title, parsedBody.projectId);
+    }
 
     const [row] = await tx
       .insert(timeEntries)

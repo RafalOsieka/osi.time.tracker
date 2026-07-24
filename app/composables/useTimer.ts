@@ -51,10 +51,21 @@ export function useTimer() {
     }
   }
 
-  async function start(title?: string | null, projectId?: string | null): Promise<void> {
+  async function start(
+    title?: string | null,
+    projectId?: string | null,
+    taskId?: string | null,
+  ): Promise<void> {
+    const body: { title?: string | null; projectId?: string | null; taskId?: string | null } = {};
+    if (taskId) {
+      body.taskId = taskId;
+    } else {
+      body.title = title;
+      body.projectId = projectId;
+    }
     const entry = await $csrfFetch<TimeEntryDto>('/api/time-entries', {
       method: 'POST',
-      body: { title, projectId },
+      body,
     });
     running.value = entry;
     startTicker();
@@ -71,12 +82,17 @@ export function useTimer() {
     elapsedSeconds.value = 0;
   }
 
-  async function updateTitle(title: string | null): Promise<void> {
+  async function updateTitle(title: string | null, taskId?: string | null): Promise<void> {
     if (!running.value) return;
-    const normalized = title && title.trim().length > 0 ? title : null;
+    const body: { title?: string | null; taskId?: string } = {};
+    if (taskId) {
+      body.taskId = taskId;
+    } else {
+      body.title = title && title.trim().length > 0 ? title : null;
+    }
     const entry = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${running.value.id}`, {
       method: 'PATCH',
-      body: { title: normalized },
+      body,
     });
     running.value = entry;
   }

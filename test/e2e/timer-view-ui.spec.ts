@@ -326,6 +326,101 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
+  it('starting from a suggestion binds the picked task project and survives reload', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const clientRes = await fetch(url('/api/clients'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Suggestion Client ' + Date.now() }),
+    });
+    const client = await clientRes.json();
+    const projectRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Suggestion Project', clientId: client.id }),
+    });
+    const project = await projectRes.json();
+    const seedTitle = 'Suggestion Source Task ' + Date.now();
+    const seeded = await startEntry(jar, token, { title: seedTitle, projectId: project.id });
+    await stopEntry(jar, token, seeded.id);
+
+    // Start bound to the seeded task id (what the top-bar sends after a
+    // suggestion pick), then verify the timer page reflects project context
+    // and survives reload.
+    const startRes = await fetch(url('/api/time-entries'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ taskId: seeded.taskId }),
+    });
+    expect(startRes.status).toBe(200);
+    const started = await startRes.json();
+    expect(started.taskId).toBe(seeded.taskId);
+    expect(started.projectId).toBe(project.id);
+    expect(started.taskName).toBe(seedTitle);
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+    );
+    await page.waitForFunction(pageIncludesText, seedTitle);
+    await page.waitForFunction(pageIncludesText, 'Suggestion Project');
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+    );
+    await page.waitForFunction(pageIncludesText, seedTitle);
+    await page.waitForFunction(pageIncludesText, 'Suggestion Project');
+
+    await stopEntry(jar, token, started.id);
+    await page.close();
+  });
+
+  it('renaming a multi-day task group moves only that day entries', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const title = 'Multi Day Rename Source ' + Date.now();
+    const olderStart = new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString();
+    const olderStop = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+    const older = await startEntry(jar, token, {
+      title,
+      startedAt: olderStart,
+      stoppedAt: olderStop,
+    });
+    const newer = await startEntry(jar, token, { title });
+    await stopEntry(jar, token, newer.id);
+    expect(older.taskId).toBe(newer.taskId);
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(pageIncludesText, title);
+
+    const todayTitle = page.locator(`[data-testid="timer-group-title-${newer.taskId}"]`);
+    await todayTitle.locator('input').or(todayTitle).first().click();
+    const renameInput = page.locator(`[data-testid="timer-group-title-input-${newer.taskId}"]`);
+    const renamed = 'Multi Day Rename Target ' + Date.now();
+    await renameInput.locator('input').or(renameInput).first().fill(renamed);
+    await renameInput.locator('input').or(renameInput).first().press('Enter');
+    await page.waitForFunction(pageIncludesText, renamed);
+
+    const from = new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString();
+    const to = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const rows = await (
+      await fetch(
+        url(`/api/time-entries?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+        { headers: { cookie: jar.header() } },
+      )
+    ).json();
+    const olderRow = rows.find((r: { id: string }) => r.id === older.id);
+    const newerRow = rows.find((r: { id: string }) => r.id === newer.id);
+    expect(olderRow.taskName).toBe(title);
+    expect(newerRow.taskName).toBe(renamed);
+    expect(newerRow.taskId).not.toBe(olderRow.taskId);
+
+    await page.close();
+  });
+
   it('edits an entry inline, retitles it to split into another group, and deletes it', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
     const seeded = await startEntry(jar, token, { title: 'Inline Edit Source Task' });

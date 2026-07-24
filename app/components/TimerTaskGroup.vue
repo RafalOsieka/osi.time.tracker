@@ -90,8 +90,13 @@ async function commitTitle() {
   editingTitle.value = false;
   const name = titleValue.value.trim();
   if (!name || name === props.group.taskName) return;
+  const ids = props.group.entries.map((entry) => entry.id);
+  if (ids.length === 0) return;
   try {
-    await $csrfFetch(`/api/tasks/${props.group.taskId}`, { method: 'PATCH', body: { name } });
+    await $csrfFetch('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids, name },
+    });
     emit('entry-changed');
   } catch (err: unknown) {
     toast.error(t(extractMessageKey(err, 'errors.unexpected')));
@@ -109,10 +114,12 @@ async function commitProject(value: string | null | undefined) {
   if (!editingProject.value || !props.group.taskId) return;
   editingProject.value = false;
   if (value === props.group.projectId) return;
+  const ids = props.group.entries.map((entry) => entry.id);
+  if (ids.length === 0) return;
   try {
-    await $csrfFetch(`/api/tasks/${props.group.taskId}`, {
-      method: 'PATCH',
-      body: { name: props.group.taskName, projectId: value ?? null },
+    await $csrfFetch('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids, projectId: value ?? null },
     });
     emit('entry-changed');
   } catch (err: unknown) {

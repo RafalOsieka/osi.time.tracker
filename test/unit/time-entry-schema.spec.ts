@@ -4,6 +4,7 @@ import {
   updateTimeEntrySchema,
   listTimeEntriesQuerySchema,
   bulkAssignSchema,
+  reassignTimeEntriesSchema,
   TIME_ENTRY_TITLE_MAX_LENGTH,
 } from '../../shared/types/time-entry';
 
@@ -39,6 +40,15 @@ describe('startTimeEntrySchema', () => {
 
   it('rejects an invalid projectId', () => {
     expect(() => startTimeEntrySchema.parse({ projectId: 'not-a-uuid' })).toThrow();
+  });
+
+  it('accepts a valid taskId', () => {
+    const result = startTimeEntrySchema.parse({ taskId: validProjectId });
+    expect(result.taskId).toBe(validProjectId);
+  });
+
+  it('rejects an invalid taskId', () => {
+    expect(() => startTimeEntrySchema.parse({ taskId: 'not-a-uuid' })).toThrow();
   });
 
   it('accepts a valid startedAt/stoppedAt pair', () => {
@@ -105,6 +115,15 @@ describe('updateTimeEntrySchema', () => {
 
   it('rejects a non-ISO startedAt', () => {
     expect(() => updateTimeEntrySchema.parse({ startedAt: 'not-a-date' })).toThrow();
+  });
+
+  it('accepts a valid taskId', () => {
+    const result = updateTimeEntrySchema.parse({ taskId: validProjectId });
+    expect(result.taskId).toBe(validProjectId);
+  });
+
+  it('rejects an invalid taskId', () => {
+    expect(() => updateTimeEntrySchema.parse({ taskId: 'not-a-uuid' })).toThrow();
   });
 });
 
@@ -173,6 +192,52 @@ describe('bulkAssignSchema', () => {
   it('rejects an invalid projectId', () => {
     expect(() =>
       bulkAssignSchema.parse({ ids: [validId], title: 'Title', projectId: 'not-a-uuid' }),
+    ).toThrow();
+  });
+});
+
+describe('reassignTimeEntriesSchema', () => {
+  const validId = '018f2f8a-1234-7abc-8def-123456789abc';
+  const validProjectId2 = '018f2f8a-4321-7abc-8def-123456789abc';
+
+  it('accepts ids with an optional name and projectId', () => {
+    const result = reassignTimeEntriesSchema.parse({
+      ids: [validId],
+      name: '  Renamed  ',
+      projectId: validProjectId2,
+    });
+    expect(result.ids).toEqual([validId]);
+    expect(result.name).toBe('Renamed');
+    expect(result.projectId).toBe(validProjectId2);
+  });
+
+  it('accepts ids only (name and projectId omitted)', () => {
+    const result = reassignTimeEntriesSchema.parse({ ids: [validId] });
+    expect(result.name).toBeUndefined();
+    expect(result.projectId).toBeUndefined();
+  });
+
+  it('accepts an explicit null projectId', () => {
+    const result = reassignTimeEntriesSchema.parse({ ids: [validId], projectId: null });
+    expect(result.projectId).toBeNull();
+  });
+
+  it('rejects an empty ids array', () => {
+    expect(() => reassignTimeEntriesSchema.parse({ ids: [], name: 'Name' })).toThrow();
+  });
+
+  it('rejects a non-uuid id', () => {
+    expect(() => reassignTimeEntriesSchema.parse({ ids: ['not-a-uuid'] })).toThrow();
+  });
+
+  it('rejects an empty name when provided', () => {
+    expect(() => reassignTimeEntriesSchema.parse({ ids: [validId], name: '' })).toThrow();
+    expect(() => reassignTimeEntriesSchema.parse({ ids: [validId], name: '   ' })).toThrow();
+  });
+
+  it('rejects an invalid projectId', () => {
+    expect(() =>
+      reassignTimeEntriesSchema.parse({ ids: [validId], projectId: 'not-a-uuid' }),
     ).toThrow();
   });
 });
