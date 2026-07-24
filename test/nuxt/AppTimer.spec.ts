@@ -241,7 +241,7 @@ describe('AppTimer', () => {
     await input.setValue('Renamed Task');
     await input.trigger('blur');
 
-    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task');
+    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task', null);
   });
 
   it('commits an edited running title via updateTitle on Enter', async () => {
@@ -255,7 +255,7 @@ describe('AppTimer', () => {
     await input.setValue('Renamed Task');
     await input.trigger('keydown.enter');
 
-    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task');
+    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task', null);
     expect(stopMock).not.toHaveBeenCalled();
   });
 
@@ -270,7 +270,104 @@ describe('AppTimer', () => {
     await input.setValue('');
     await input.trigger('blur');
 
-    expect(updateTitleMock).toHaveBeenCalledWith('');
+    expect(updateTitleMock).toHaveBeenCalledWith('', null);
+  });
+
+  it('selecting a suggestion fires once, sends taskId, and never sets [object Object]', async () => {
+    fetchMock.mockResolvedValue([
+      {
+        id: 'task-42',
+        name: 'Linked Task',
+        projectId: 'project-1',
+        projectName: 'Project One',
+        clientName: 'Acme',
+        createdAt: '',
+        remoteIssueRef: {
+          id: 'ref-1',
+          taskId: 'task-42',
+          userId: 'user-1',
+          remoteSystemConfigId: 'cfg-1',
+          remoteIssueId: '99',
+          cachedTitle: 'Linked Task',
+          createdAt: '',
+          updatedAt: '',
+        },
+      },
+    ]);
+
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    // Trigger suggestion fetch via search-term, then simulate the real
+    // select sequence: item onSelect (stash id) + model update (name string).
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
+    await flushPromises();
+
+    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
+      id: string;
+      name: string;
+      label: string;
+      onSelect: () => void;
+    }>;
+    expect(items).toHaveLength(1);
+    expect(items[0]?.label).toContain('Linked Task');
+    expect(items[0]?.label).toContain('#99');
+    items[0]!.onSelect();
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
+    await flushPromises();
+
+    expect(startMock).not.toHaveBeenCalled();
+    expect(updateTitleMock).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="timer-title-input"]').attributes('value')).toBe(
+      'Linked Task',
+    );
+    expect(wrapper.text()).not.toContain('[object Object]');
+    expect(items[0]?.label).not.toContain('[object Object]');
+
+    await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+    await flushPromises();
+
+    expect(startMock).toHaveBeenCalledTimes(1);
+    expect(startMock).toHaveBeenCalledWith('Linked Task', undefined, 'task-42');
+  });
+
+  it('selecting a suggestion while running patches with taskId exactly once', async () => {
+    runningState.value = runningEntry('My Task');
+    fetchMock.mockResolvedValue([
+      {
+        id: 'task-99',
+        name: 'Other Task',
+        projectId: null,
+        projectName: null,
+        clientName: null,
+        createdAt: '',
+      },
+    ]);
+
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Other');
+    await flushPromises();
+
+    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
+      id: string;
+      name: string;
+      onSelect: () => void;
+    }>;
+    expect(items).toHaveLength(1);
+    items[0]!.onSelect();
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Other Task');
+    await flushPromises();
+
+    expect(updateTitleMock).toHaveBeenCalledTimes(1);
+    expect(updateTitleMock).toHaveBeenCalledWith('Other Task', 'task-99');
+    expect(wrapper.find('[data-testid="timer-title-input"]').attributes('value')).toBe(
+      'Other Task',
+    );
+    expect(wrapper.text()).not.toContain('[object Object]');
   });
 
   describe('start-time editor popover', () => {

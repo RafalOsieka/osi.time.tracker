@@ -588,6 +588,188 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(delRes.status).toBe(200);
   });
 
+  it('start bound to an explicit owned taskId binds that task', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'TE TaskId Client ' + Date.now());
+    const project = await createProject(jar, token, 'TE TaskId Project ' + Date.now(), client.id);
+    const seeded = await (
+      await startEntry(jar, token, { title: 'Owned Task ' + Date.now(), projectId: project.id })
+    ).json();
+    await patchEntry(jar, token, seeded.id, { stoppedAt: new Date().toISOString() });
+
+    const res = await startEntry(jar, token, { taskId: seeded.taskId, title: 'ignored title' });
+    expect(res.status).toBe(200);
+    const created = await res.json();
+    expect(created.taskId).toBe(seeded.taskId);
+    expect(created.taskName).toBe(seeded.taskName);
+    expect(created.projectId).toBe(project.id);
+
+    await patchEntry(jar, token, created.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('start/patch with foreign or unknown taskId returns 404', async () => {
+    const alice = await loginAs('talice@example.com', 'secret');
+    const bob = await loginAs('tbob@example.com', 'secret');
+    const bobEntry = await (
+      await startEntry(bob.jar, bob.token, { title: 'Bob TaskId ' + Date.now() })
+    ).json();
+    await patchEntry(bob.jar, bob.token, bobEntry.id, { stoppedAt: new Date().toISOString() });
+
+    const foreignStart = await startEntry(alice.jar, alice.token, { taskId: bobEntry.taskId });
+    expect(foreignStart.status).toBe(404);
+
+    const unknownStart = await startEntry(alice.jar, alice.token, {
+      taskId: '00000000-0000-0000-0000-000000000000',
+    });
+    expect(unknownStart.status).toBe(404);
+
+    const aliceEntry = await (
+      await startEntry(alice.jar, alice.token, { title: 'Patch Me' })
+    ).json();
+    const foreignPatch = await patchEntry(alice.jar, alice.token, aliceEntry.id, {
+      taskId: bobEntry.taskId,
+    });
+    expect(foreignPatch.status).toBe(404);
+
+    const unknownPatch = await patchEntry(alice.jar, alice.token, aliceEntry.id, {
+      taskId: '00000000-0000-0000-0000-000000000000',
+    });
+    expect(unknownPatch.status).toBe(404);
+
+    const owned = await (
+      await startEntry(alice.jar, alice.token, {
+        title: 'Owned Patch Target ' + Date.now(),
+        startedAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+        stoppedAt: new Date(Date.now() - 3_600_000).toISOString(),
+      })
+    ).json();
+    const bound = await patchEntry(alice.jar, alice.token, aliceEntry.id, { taskId: owned.taskId });
+    expect(bound.status).toBe(200);
+    expect((await bound.json()).taskId).toBe(owned.taskId);
+
+    await patchEntry(alice.jar, alice.token, aliceEntry.id, {
+      stoppedAt: new Date().toISOString(),
+    });
+  });
+
+  async function reassign(
+    jar: CookieJar,
+    token: string,
+    body: Record<string, unknown>,
+  ): Promise<Response> {
+    return fetch(url('/api/time-entries/reassign'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('reassign renames one day entries and leaves other days intact', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const title = 'Multi Day Task ' + Date.now();
+    const day1Start = new Date(Date.now() - 26 * 3_600_000).toISOString();
+    const day1Stop = new Date(Date.now() - 25 * 3_600_000).toISOString();
+    const day2Start = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const day2Stop = new Date(Date.now() - 3_600_000).toISOString();
+
+    const older = await (
+      await startEntry(jar, token, { title, startedAt: day1Start, stoppedAt: day1Stop })
+    ).json();
+    const newer = await (
+      await startEntry(jar, token, { title, startedAt: day2Start, stoppedAt: day2Stop })
+    ).json();
+    expect(older.taskId).toBe(newer.taskId);
+
+    const newName = 'Renamed Day Task ' + Date.now();
+    const res = await reassign(jar, token, { ids: [newer.id], name: newName });
+    expect(res.status).toBe(200);
+    const updated = await res.json();
+    expect(updated).toHaveLength(1);
+    expect(updated[0].taskName).toBe(newName);
+    expect(updated[0].taskId).not.toBe(older.taskId);
+
+    const from = new Date(Date.now() - 30 * 3_600_000).toISOString();
+    const to = new Date().toISOString();
+    const rows = await (await listEntries(jar, from, to)).json();
+    const olderRow = rows.find((r: { id: string }) => r.id === older.id);
+    const newerRow = rows.find((r: { id: string }) => r.id === newer.id);
+    expect(olderRow.taskName).toBe(title);
+    expect(olderRow.taskId).toBe(older.taskId);
+    expect(newerRow.taskName).toBe(newName);
+  });
+
+  it('reassign garbage-collects the source task when emptied', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const title = 'GC Source Task ' + Date.now();
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const entry = await (await startEntry(jar, token, { title, startedAt, stoppedAt })).json();
+    const sourceTaskId = entry.taskId;
+
+    const res = await reassign(jar, token, { ids: [entry.id], name: 'GC Target ' + Date.now() });
+    expect(res.status).toBe(200);
+
+    // Recreating the original title should mint a fresh task id (source was GC'd).
+    const recreated = await (await startEntry(jar, token, { title, startedAt, stoppedAt })).json();
+    expect(recreated.taskId).not.toBe(sourceTaskId);
+  });
+
+  it('reassign projectId-only change moves entries within a new project scope', async () => {
+    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    const client = await createClient(jar, token, 'Reassign Client ' + Date.now());
+    const projectA = await createProject(jar, token, 'Reassign A ' + Date.now(), client.id);
+    const projectB = await createProject(jar, token, 'Reassign B ' + Date.now(), client.id);
+    const title = 'Project Move Task ' + Date.now();
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const entry = await (
+      await startEntry(jar, token, { title, projectId: projectA.id, startedAt, stoppedAt })
+    ).json();
+
+    const res = await reassign(jar, token, { ids: [entry.id], projectId: projectB.id });
+    expect(res.status).toBe(200);
+    const [updated] = await res.json();
+    expect(updated.taskName).toBe(title);
+    expect(updated.projectId).toBe(projectB.id);
+  });
+
+  it('reassign is atomic: foreign or unknown id → 404 and nothing modified', async () => {
+    const alice = await loginAs('talice@example.com', 'secret');
+    const bob = await loginAs('tbob@example.com', 'secret');
+    const title = 'Atomic Reassign ' + Date.now();
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const aliceEntry = await (
+      await startEntry(alice.jar, alice.token, { title, startedAt, stoppedAt })
+    ).json();
+    const bobEntry = await (
+      await startEntry(bob.jar, bob.token, {
+        title: 'Bob Atomic',
+        startedAt,
+        stoppedAt,
+      })
+    ).json();
+
+    const foreignRes = await reassign(alice.jar, alice.token, {
+      ids: [aliceEntry.id, bobEntry.id],
+      name: 'Should Not Apply',
+    });
+    expect(foreignRes.status).toBe(404);
+
+    const unknownRes = await reassign(alice.jar, alice.token, {
+      ids: [aliceEntry.id, '00000000-0000-0000-0000-000000000000'],
+      name: 'Should Not Apply',
+    });
+    expect(unknownRes.status).toBe(404);
+
+    const from = new Date(Date.now() - 3 * 3_600_000).toISOString();
+    const to = new Date().toISOString();
+    const rows = await (await listEntries(alice.jar, from, to)).json();
+    const found = rows.find((r: { id: string }) => r.id === aliceEntry.id);
+    expect(found.taskName).toBe(title);
+    expect(found.taskId).toBe(aliceEntry.taskId);
+  });
+
   it('delete: 404 for foreign/unknown id, 401 unauthenticated', async () => {
     const alice = await loginAs('talice@example.com', 'secret');
     const bob = await loginAs('tbob@example.com', 'secret');

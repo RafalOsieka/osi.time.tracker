@@ -104,7 +104,18 @@ function group(key = 'task-1') {
     clientName: 'Acme',
     date: '2024-03-15',
     totalSeconds: 3600,
-    entries: [],
+    entries: [
+      {
+        id: 'entry-1',
+        taskId: 'task-1',
+        taskName: 'Build feature',
+        projectId: 'project-gone',
+        projectName: 'Archived project',
+        clientName: 'Acme',
+        startedAt: '2024-03-15T09:00:00.000Z',
+        stoppedAt: '2024-03-15T10:00:00.000Z',
+      },
+    ],
   };
 }
 
@@ -143,9 +154,9 @@ describe('TimerTaskGroup', () => {
     await title.trigger('blur');
     await flushPromises();
 
-    expect(csrfFetchMock).toHaveBeenCalledWith('/api/tasks/task-1', {
-      method: 'PATCH',
-      body: { name: 'Ship feature' },
+    expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids: ['entry-1'], name: 'Ship feature' },
     });
     expect(wrapper.emitted('entry-changed')).toHaveLength(1);
 
@@ -189,18 +200,18 @@ describe('TimerTaskGroup', () => {
     await select.setValue('project-2');
     await flushPromises();
 
-    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/tasks/task-1', {
-      method: 'PATCH',
-      body: { name: 'Build feature', projectId: 'project-2' },
+    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids: ['entry-1'], projectId: 'project-2' },
     });
 
     await wrapper.find('[data-testid="timer-group-project-task-1"]').trigger('click');
     await flushPromises();
     await wrapper.find('[data-testid="timer-group-project-select-task-1"]').setValue('');
     await flushPromises();
-    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/tasks/task-1', {
-      method: 'PATCH',
-      body: { name: 'Build feature', projectId: null },
+    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids: ['entry-1'], projectId: null },
     });
 
     const noProject = await mount({
