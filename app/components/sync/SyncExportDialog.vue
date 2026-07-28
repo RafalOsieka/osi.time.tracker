@@ -118,6 +118,12 @@ const uncertain = computed(() =>
 const notAttempted = computed(() =>
   props.included.filter((row) => props.progress[row.taskId] === 'not_attempted'),
 );
+const inProgress = computed(() =>
+  props.included.filter((row) => {
+    const status = props.progress[row.taskId];
+    return status === 'queued' || status === 'creating' || status === 'finalizing';
+  }),
+);
 </script>
 
 <template>
@@ -232,6 +238,23 @@ const notAttempted = computed(() =>
         </template>
 
         <template v-else>
+          <section v-if="inProgress.length" data-testid="remote-sync-export-group-in-progress">
+            <h3 class="mb-2 font-semibold">
+              {{ t('remoteSync.exportDialog.groupInProgress') }}
+            </h3>
+            <ul class="m-0 grid gap-2 p-0">
+              <li
+                v-for="item in inProgress"
+                :key="item.taskId"
+                class="list-none rounded-md border border-default p-2 text-sm"
+                :data-testid="`remote-sync-export-result-${item.taskId}`"
+              >
+                <span class="font-semibold">{{ item.taskName }}</span>
+                {{ t('remoteSync.emptyCell') }} {{ statusLabel(progress[item.taskId]) }}
+              </li>
+            </ul>
+          </section>
+
           <section v-if="succeeded.length" data-testid="remote-sync-export-group-succeeded">
             <h3 class="mb-2 font-semibold text-success">
               {{ t('remoteSync.exportDialog.groupSucceeded') }}

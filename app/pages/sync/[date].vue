@@ -99,6 +99,7 @@ const selectedEntryIds = ref<Record<string, string[]>>({});
 const expanded = ref<true | Record<string, boolean>>({});
 const dismissedDuplicates = ref<Record<string, boolean>>({});
 const exportComments = ref<Record<string, string>>({});
+const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const exportDialogPhase = ref<ExportDialogPhase>('review');
 
@@ -159,6 +160,7 @@ watch(date, () => {
   expanded.value = {};
   dismissedDuplicates.value = {};
   exportComments.value = {};
+  editingToSendTaskId.value = null;
   roundedOverrides.value = {};
   roundedInputText.value = {};
   exportDialogOpen.value = false;
@@ -261,6 +263,24 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
   }
 }
 
+/** Skip copy for the export dialog — includes exclusion/activity gaps, not only row state. */
+function skipReasonFor(row: RemoteSyncDayRowDto): string {
+  if (stateFor(row) !== 'manageable') {
+    return reasonKeyFor(row);
+  }
+  const exclusion = excludedReason(row);
+  if (exclusion === 'none') {
+    return t('remoteSync.excludedNoSelection');
+  }
+  if (exclusion === 'zero') {
+    return t('remoteSync.roundedDurationHint');
+  }
+  if (!selectedActivity(row)) {
+    return t('remoteSync.activityEmptyOption');
+  }
+  return reasonKeyFor(row);
+}
+
 function stateIconFor(row: RemoteSyncDayRowDto): string {
   switch (stateFor(row)) {
     case 'no_client':
@@ -337,6 +357,36 @@ function commitRounded(row: RemoteSyncDayRowDto) {
 
 function resetRounded(row: RemoteSyncDayRowDto) {
   resetRoundedDuration(row.taskId);
+}
+
+async function startEditToSend(row: RemoteSyncDayRowDto) {
+  if (!canManageEntries(row) || !row.config) return;
+  editingToSendTaskId.value = row.taskId;
+  await nextTick();
+  const input = document.querySelector<HTMLInputElement>(
+    `[data-testid="remote-sync-to-send-input-${row.taskId}"]`,
+  );
+  input?.focus();
+  input?.select();
+}
+
+function commitEditToSend(row: RemoteSyncDayRowDto) {
+  if (editingToSendTaskId.value !== row.taskId) return;
+  commitRounded(row);
+  editingToSendTaskId.value = null;
+}
+
+function cancelEditToSend(row: RemoteSyncDayRowDto) {
+  if (editingToSendTaskId.value !== row.taskId) return;
+  if (row.config) {
+    setRoundedInput(
+      row.taskId,
+      formatDuration(
+        roundedComputedSeconds(row.taskId, selectedSecondsFor(row), row.config.roundingRule),
+      ),
+    );
+  }
+  editingToSendTaskId.value = null;
 }
 
 function roundingSuggestionsFor(row: RemoteSyncDayRowDto) {
@@ -644,7 +694,7 @@ const exportSkippedRows = computed(() =>
     .map((row) => ({
       taskId: row.taskId,
       taskName: row.taskName,
-      reason: reasonKeyFor(row),
+      reason: skipReasonFor(row),
     })),
 );
 
@@ -1008,19 +1058,50 @@ const columns = computed<TableColumn<SyncTableRow>[]>(() => [
       <template #duration-cell="{ row: tableRow }">
         <template v-if="tableRow.original.kind === 'task'">
           <div
-            class="font-mono text-sm"
+            class="flex flex-wrap items-center gap-1 font-mono text-sm"
             :data-testid="`remote-sync-row-duration-${taskOf(tableRow.original).taskId}`"
           >
-            <span>
-              {{
-                t('remoteSync.trackedToSend', {
-                  tracked: formatDuration(trackedSecondsFor(taskOf(tableRow.original))),
-                  toSend: formatDuration(toSendSecondsFor(taskOf(tableRow.original))),
-                })
-              }}
+            <span :data-testid="`remote-sync-tracked-${taskOf(tableRow.original).taskId}`">
+              {{ formatDuration(trackedSecondsFor(taskOf(tableRow.original))) }}
+            </span>
+            <span aria-hidden="true">{{ t('remoteSync.trackedToSendArrow') }}</span>
+            <template v-if="canManageEntries(taskOf(tableRow.original))">
+              <UInput
+                v-if="editingToSendTaskId === taskOf(tableRow.original).taskId"
+                :id="`remote-sync-to-send-${taskOf(tableRow.original).taskId}`"
+                :model-value="displayedRoundedInput(taskOf(tableRow.original))"
+                size="sm"
+                class="w-24 font-mono"
+                :aria-label="t('remoteSync.roundedDurationLabel')"
+                :data-testid="`remote-sync-to-send-input-${taskOf(tableRow.original).taskId}`"
+                @update:model-value="
+                  (value: string | undefined) =>
+                    onRoundedInputChange(taskOf(tableRow.original), value)
+                "
+                @blur="commitEditToSend(taskOf(tableRow.original))"
+                @keydown.enter.prevent="commitEditToSend(taskOf(tableRow.original))"
+                @keydown.esc.prevent="cancelEditToSend(taskOf(tableRow.original))"
+              />
+              <UButton
+                v-else
+                variant="link"
+                color="neutral"
+                size="sm"
+                class="h-auto min-h-0 px-0 py-0 font-mono text-sm font-normal"
+                :label="formatDuration(toSendSecondsFor(taskOf(tableRow.original)))"
+                :aria-label="t('remoteSync.editToSend')"
+                :data-testid="`remote-sync-to-send-${taskOf(tableRow.original).taskId}`"
+                @click="startEditToSend(taskOf(tableRow.original))"
+              />
+            </template>
+            <span
+              v-else
+              :data-testid="`remote-sync-to-send-${taskOf(tableRow.original).taskId}`"
+            >
+              {{ formatDuration(toSendSecondsFor(taskOf(tableRow.original))) }}
             </span>
             <span
-              class="ml-1 text-muted"
+              class="text-muted"
               :data-testid="`remote-sync-row-delta-${taskOf(tableRow.original).taskId}`"
             >
               ({{ formatSignedDuration(rowDeltaSeconds(taskOf(tableRow.original))) }})
@@ -1115,21 +1196,5 @@ const columns = computed<TableColumn<SyncTableRow>[]>(() => [
       @close="closeExportDialog"
       @retry="onExportRetry"
     />
-
-    <div
-      v-if="!isEmpty"
-      class="flex flex-wrap items-center gap-3 border-t border-default pt-3 font-mono text-sm"
-      data-testid="remote-sync-footer-totals"
-    >
-      <span data-testid="remote-sync-footer-day">
-        {{ t('remoteSync.dayTotalLabel') }}: {{ formatDuration(dayTotalsSafe.dayTotal) }}
-      </span>
-      <span data-testid="remote-sync-footer-tracked">
-        {{ t('remoteSync.trackedLabel') }}: {{ formatDuration(dayTotalsSafe.tracked) }}
-      </span>
-      <span data-testid="remote-sync-footer-to-send">
-        {{ t('remoteSync.toSendLabel') }}: {{ formatDuration(dayTotalsSafe.toSend) }}
-      </span>
-    </div>
   </section>
 </template>

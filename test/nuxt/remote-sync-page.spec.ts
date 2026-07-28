@@ -79,7 +79,7 @@ function installFakeLocalStorage() {
 
 const InputTextStub = {
   template:
-    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\', $event)" @keydown.enter="$emit(\'keydown\', $event)" />',
+    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\', $event)" @keydown="$emit(\'keydown\', $event)" />',
   props: ['modelValue'],
   emits: ['update:modelValue', 'blur', 'keydown'],
 };
@@ -303,6 +303,51 @@ describe('RemoteSync page', () => {
     await roundedInput.trigger('blur');
     await flushPromises();
     expect(wrapper.find('[data-testid="remote-sync-excluded-hint-task-2"]').exists()).toBe(true);
+  });
+
+  it('lets manageable rows edit to-send inline without expanding', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-inline',
+          taskName: 'Inline Edit Task',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 50 * 60,
+          config: { ...baseConfig, requiredFieldDefaults: { activity: '1' } },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Fix bug' },
+          entries: [entry({ id: 'entry-inline' })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    const toSendButton = wrapper.find('[data-testid="remote-sync-to-send-task-inline"]');
+    expect(toSendButton.exists()).toBe(true);
+    expect(toSendButton.text()).toContain('01:00:00');
+    expect(wrapper.find('[data-testid="remote-sync-tracked-task-inline"]').text()).toContain(
+      '00:50:00',
+    );
+
+    await toSendButton.trigger('click');
+    await flushPromises();
+    const inlineInput = wrapper.find('[data-testid="remote-sync-to-send-input-task-inline"]');
+    expect(inlineInput.exists()).toBe(true);
+    expect((inlineInput.element as HTMLInputElement).value).toBe('01:00:00');
+
+    await inlineInput.setValue('00:45:00');
+    await inlineInput.trigger('blur');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-sync-to-send-input-task-inline"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.find('[data-testid="remote-sync-to-send-task-inline"]').text()).toContain(
+      '00:45:00',
+    );
+    expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('00:45:00');
   });
 
   it('pre-selects the activity matching requiredFieldDefaults', async () => {

@@ -192,6 +192,61 @@ describe('useSyncExport', () => {
     );
   });
 
+  it('clears known remote log ids and prior outcomes at the start of each runExport', async () => {
+    const createTimeEntry = vi
+      .fn()
+      .mockResolvedValueOnce({ remoteLogId: 'old-log' })
+      .mockResolvedValueOnce({ remoteLogId: 'new-log' });
+    const finalizeExport = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('db down'))
+      .mockResolvedValueOnce({ remoteLogId: 'new-log', exportId: 'exp-2' });
+    const { runExport, outcomes, progress } = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+    });
+
+    await runExport([taskInput('task-reuse', { entryIds: ['e1'] })]);
+    expect(outcomes.value['task-reuse']?.status).toBe('uncertain_finalization');
+    expect(progress.value['task-reuse']).toBe('uncertain');
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
+
+    await runExport([taskInput('task-reuse', { entryIds: ['e1'] })]);
+    expect(createTimeEntry).toHaveBeenCalledTimes(2);
+    expect(finalizeExport).toHaveBeenCalledTimes(2);
+    expect(finalizeExport.mock.calls[1]?.[0]?.remoteLogId).toBe('new-log');
+    expect(outcomes.value['task-reuse']?.status).toBe('success');
+    expect(progress.value['task-reuse']).toBe('done');
+  });
+
+  it('does not mark a report-phase retry as queued before the attempt starts', async () => {
+    let resolveFinalize!: (value: { remoteLogId: string; exportId: string }) => void;
+    const finalizeGate = new Promise<{ remoteLogId: string; exportId: string }>((resolve) => {
+      resolveFinalize = resolve;
+    });
+    const createTimeEntry = vi.fn().mockResolvedValue({ remoteLogId: 'retry-log' });
+    const finalizeExport = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('db down'))
+      .mockImplementationOnce(() => finalizeGate);
+    const { runExport, retryTask, progress } = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+    });
+
+    await runExport([taskInput('task-retry', { entryIds: ['e-r'] })]);
+    expect(progress.value['task-retry']).toBe('uncertain');
+
+    const retryPromise = retryTask('task-retry');
+    await Promise.resolve();
+    expect(progress.value['task-retry']).not.toBe('queued');
+    expect(['creating', 'finalizing']).toContain(progress.value['task-retry']);
+
+    resolveFinalize({ remoteLogId: 'retry-log', exportId: 'exp-r' });
+    await retryPromise;
+    expect(progress.value['task-retry']).toBe('done');
+  });
+
   it('does not re-send other tasks when one is retried', async () => {
     const createTimeEntry = vi
       .fn()

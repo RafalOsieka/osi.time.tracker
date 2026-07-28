@@ -179,12 +179,16 @@ export function useSyncExport(options: {
     stopRequested.value = false;
     lastBatch.value = tasks;
     totalCount.value = tasks.length;
+    // Fresh batch: never reuse remote log ids / outcomes from a prior export on this page.
+    // In-batch uncertain retries keep ids via retryTask only.
+    knownRemoteLogIds.value = {};
+    outcomes.value = {};
 
     const initialProgress: Record<string, SyncExportProgressStatus> = {};
     for (const task of tasks) {
       initialProgress[task.row.taskId] = 'queued';
     }
-    progress.value = { ...progress.value, ...initialProgress };
+    progress.value = initialProgress;
 
     for (const task of tasks) {
       if (stopRequested.value) {
@@ -210,7 +214,9 @@ export function useSyncExport(options: {
 
     isRunning.value = true;
     stopRequested.value = false;
-    setProgress(taskId, 'queued');
+    // Do not flip to `queued` here: report-phase groups only list terminal statuses, so
+    // a queued marker would hide the row until the attempt finishes. runSingleTask sets
+    // creating/finalizing immediately; the dialog keeps those visible as in-progress.
     await runSingleTask(task);
     isRunning.value = false;
     await options.refresh?.();
