@@ -12,6 +12,7 @@ describe('finalizeRemoteExportSchema', () => {
     exportDurationSeconds: 3600,
     requiredFieldValues: { activity: '1' },
     entryIds: ['01900000-0000-7000-8000-0000000000aa'],
+    exportRequestKey: 'er1|task|2026-03-15|entry|3600',
   };
 
   it('parses a valid finalization body', () => {

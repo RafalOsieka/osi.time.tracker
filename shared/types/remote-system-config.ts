@@ -19,12 +19,32 @@ export const remoteExecutionModeSchema = z.enum(['client', 'server'], {
 
 export type RemoteExecutionMode = z.infer<typeof remoteExecutionModeSchema>;
 
-export const remoteRoundingRuleSchema = z.enum(['none', 'up_15m', 'up_30m', 'up_1h'], {
-  required_error: 'error.remoteConfigRoundingRuleRequired',
-  invalid_type_error: 'error.remoteConfigRoundingRuleRequired',
-});
+/**
+ * Client-level export rounding rule. `none` passes the total through;
+ * `up_*` always rounds up to the next increment; `nearest_*` rounds to the
+ * closest increment (half-up at the midpoint). Stored as plain text —
+ * widening the enum needs no migration.
+ */
+export const remoteRoundingRuleSchema = z.enum(
+  ['none', 'up_15m', 'up_30m', 'up_1h', 'nearest_15m', 'nearest_30m', 'nearest_1h'],
+  {
+    required_error: 'error.remoteConfigRoundingRuleRequired',
+    invalid_type_error: 'error.remoteConfigRoundingRuleRequired',
+  },
+);
 
 export type RemoteRoundingRule = z.infer<typeof remoteRoundingRuleSchema>;
+
+/** Stable display order for configuration selects: passthrough → up → nearest. */
+export const REMOTE_ROUNDING_RULE_ORDER: readonly RemoteRoundingRule[] = [
+  'none',
+  'up_15m',
+  'up_30m',
+  'up_1h',
+  'nearest_15m',
+  'nearest_30m',
+  'nearest_1h',
+] as const;
 
 export const createRemoteSystemConfigSchema = z.object({
   systemType: remoteSystemTypeSchema,

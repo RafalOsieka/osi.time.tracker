@@ -1,5 +1,9 @@
 import { ref } from 'vue';
-import { applyRoundingRule } from '../../shared/utils/rounding';
+import {
+  applyRoundingRule,
+  roundingSuggestionsFor,
+  type RoundingSuggestion,
+} from '../../shared/utils/rounding';
 import type { RemoteRoundingRule } from '../../shared/types/remote-system-config';
 import { formatDuration } from '../utils/formatDuration';
 import { normalizeDurationInput } from '../utils/normalizeDurationInput';
@@ -53,6 +57,16 @@ export function useRoundedDurations() {
     inputText.value = { ...inputText.value, [taskId]: formatDuration(seconds) };
   }
 
+  /**
+   * Sets an explicit per-task export-duration override (used by one-tap
+   * rounding suggestions and any other non-typed entry point).
+   */
+  function applyOverride(taskId: string, seconds: number): void {
+    const safe = Math.max(0, Math.floor(seconds));
+    overrides.value = { ...overrides.value, [taskId]: safe };
+    inputText.value = { ...inputText.value, [taskId]: formatDuration(safe) };
+  }
+
   function reset(taskId: string) {
     overrides.value = Object.fromEntries(
       Object.entries(overrides.value).filter(([id]) => id !== taskId),
@@ -66,6 +80,19 @@ export function useRoundedDurations() {
     return taskId in overrides.value;
   }
 
+  /**
+   * One-tap alternatives for the editable export duration (REQ-222).
+   * Pure derivation from selected total + rule; `taskId` is accepted so
+   * call sites stay consistent with the rest of this composable.
+   */
+  function suggestionsFor(
+    _taskId: string,
+    selectedSeconds: number,
+    rule: RemoteRoundingRule,
+  ): RoundingSuggestion[] {
+    return roundingSuggestionsFor(selectedSeconds, rule);
+  }
+
   return {
     overrides,
     inputText,
@@ -73,7 +100,9 @@ export function useRoundedDurations() {
     displayedInput,
     setInput,
     commit,
+    applyOverride,
     reset,
     hasOverride,
+    suggestionsFor,
   };
 }

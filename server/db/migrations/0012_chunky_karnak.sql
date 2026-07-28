@@ -1,0 +1,2 @@
+ALTER TABLE "remote_exports" ADD COLUMN "exportRequestKey" text;--> statement-breakpoint
+CREATE UNIQUE INDEX "remote_exports_userId_exportRequestKey_uidx" ON "remote_exports" USING btree ("userId","exportRequestKey") WHERE "remote_exports"."exportRequestKey" is not null;

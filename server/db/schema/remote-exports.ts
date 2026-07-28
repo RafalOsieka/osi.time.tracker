@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   index,
+  uniqueIndex,
   primaryKey,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -18,6 +19,8 @@ import { timeEntries } from './time-entries';
  * One append-only record per successfully finalized remote time log.
  * There is intentionally no task/day or entry uniqueness constraint: later
  * and intentional repeat exports are valid (REQ-119).
+ * `exportRequestKey` is unique per user when present so retries reconcile
+ * to the same logical export (REQ-233).
  */
 export const remoteExports = pgTable(
   'remote_exports',
@@ -43,6 +46,11 @@ export const remoteExports = pgTable(
       .notNull()
       .default({})
       .$type<Record<string, string>>(),
+    /**
+     * Client-generated idempotency key for this logical export attempt.
+     * Nullable so legacy records remain valid; unique per user when set.
+     */
+    exportRequestKey: text('exportRequestKey'),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -55,6 +63,9 @@ export const remoteExports = pgTable(
       table.localDate,
     ),
     index('remote_exports_remoteLogId_idx').on(table.remoteLogId),
+    uniqueIndex('remote_exports_userId_exportRequestKey_uidx')
+      .on(table.userId, table.exportRequestKey)
+      .where(sql`${table.exportRequestKey} is not null`),
   ],
 );
 

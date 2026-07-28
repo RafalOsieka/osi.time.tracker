@@ -51,6 +51,17 @@ export const finalizeRemoteExportSchema = z.object({
         .uuid({ message: 'error.remoteExportEntryIdsInvalid' }),
     )
     .min(1, { message: 'error.remoteExportEntryIdsInvalid' }),
+  /** Client-generated idempotency key for this logical export attempt (REQ-233). */
+  exportRequestKey: z
+    .string({
+      required_error: 'error.remoteExportRequestKeyRequired',
+      invalid_type_error: 'error.remoteExportRequestKeyRequired',
+    })
+    .trim()
+    .min(1, { message: 'error.remoteExportRequestKeyRequired' })
+    .max(256, { message: 'error.remoteExportRequestKeyInvalid' }),
+  /** Optional free-text comment that was submitted with the remote log. */
+  comment: z.string().optional(),
 });
 
 export type FinalizeRemoteExportDto = z.infer<typeof finalizeRemoteExportSchema>;
@@ -65,6 +76,7 @@ export interface FinalizeRemoteExportResultDto {
   exportDurationSeconds: number;
   requiredFieldValues: Record<string, string>;
   entryIds: string[];
+  exportRequestKey: string | null;
   createdAt: string;
   /** True when an existing finalized record for this remote log was returned. */
   replayed: boolean;

@@ -15,12 +15,12 @@ const systemTypeItems = [
   { label: 'OpenProject', value: 'openproject' as const },
   { label: 'Redmine', value: 'redmine' as const },
 ];
-const roundingRuleItems = computed(() => [
-  { label: t('clients.remoteConfig.roundingNone'), value: 'none' as const },
-  { label: t('clients.remoteConfig.rounding15m'), value: 'up_15m' as const },
-  { label: t('clients.remoteConfig.rounding30m'), value: 'up_30m' as const },
-  { label: t('clients.remoteConfig.rounding1h'), value: 'up_1h' as const },
-]);
+const roundingRuleItems = computed(() =>
+  REMOTE_ROUNDING_RULE_ORDER.map((value) => ({
+    label: t(`remoteSystemConfig.roundingRule.${value}`),
+    value,
+  })),
+);
 const executionModeItems = computed(() => [
   { label: t('clients.remoteConfig.executionModeClient'), value: 'client' as const },
   { label: t('clients.remoteConfig.executionModeServer'), value: 'server' as const },

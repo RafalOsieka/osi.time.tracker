@@ -158,6 +158,33 @@ describeRemoteConfig('remote system config API integration', async () => {
     expect(updated.secret).toBeUndefined();
   });
 
+  it('accepts nearest_30m and rejects an unknown rounding rule with 422', async () => {
+    const alice = await loginAs('alice@example.com', 'secret');
+    const client = await createClient(alice.jar, alice.token, 'Nearest Rule Client');
+    const putHeaders = {
+      'content-type': 'application/json',
+      'csrf-token': alice.token,
+      cookie: alice.jar.header(),
+    };
+
+    const okRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+      method: 'PUT',
+      headers: putHeaders,
+      body: JSON.stringify({ ...validConfig, roundingRule: 'nearest_30m' }),
+    });
+    expect(okRes.status).toBe(200);
+    expect((await okRes.json()).roundingRule).toBe('nearest_30m');
+
+    const invalidRes = await fetch(url(`/api/clients/${client.id}/remote-config`), {
+      method: 'PUT',
+      headers: putHeaders,
+      body: JSON.stringify({ ...validConfig, roundingRule: 'bankers_15m' }),
+    });
+    expect(invalidRes.status).toBe(422);
+    const invalidBody = await invalidRes.json();
+    expect(invalidBody?.data?.messageKey).toBeTruthy();
+  });
+
   // 2.2 executionMode
   it('2.2 upsert accepts client/server, defaults to client, rejects invalid mode', async () => {
     const alice = await loginAs('alice@example.com', 'secret');

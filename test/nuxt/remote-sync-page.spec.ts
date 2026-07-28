@@ -107,9 +107,27 @@ const ButtonStub = {
 };
 const RemoteIssuePickerStub = {
   template:
-    "<button data-testid=\"picker-stub\" @click=\"$emit('link', { remoteIssueId: '9', cachedTitle: 'Stub Issue' })\" />",
+    "<button v-bind=\"$attrs\" @click=\"$emit('link', { remoteIssueId: '9', cachedTitle: 'Stub Issue' })\" />",
   props: ['config'],
   emits: ['link'],
+  inheritAttrs: false,
+};
+const BadgeStub = {
+  template: '<span v-bind="$attrs">{{ label }}<slot /></span>',
+  props: ['label', 'color', 'variant', 'icon'],
+};
+const PopoverStub = {
+  template: '<div><slot /><slot name="content" /></div>',
+};
+const IconStub = {
+  template: '<span v-bind="$attrs" />',
+  props: ['name'],
+};
+const ModalStub = {
+  template:
+    '<div v-if="open" v-bind="$attrs"><slot /><slot name="body" /><slot name="footer" /></div>',
+  props: ['open', 'title', 'dismissible', 'close', 'ui'],
+  emits: ['update:open'],
 };
 
 const stubs = {
@@ -117,6 +135,10 @@ const stubs = {
   USelect: SelectStub,
   UCheckbox: CheckboxStub,
   UButton: ButtonStub,
+  UBadge: BadgeStub,
+  UPopover: PopoverStub,
+  UIcon: IconStub,
+  UModal: ModalStub,
   RemoteIssuePicker: RemoteIssuePickerStub,
 };
 
@@ -184,6 +206,13 @@ async function mount() {
   return wrapper;
 }
 
+async function expandRow(wrapper: Awaited<ReturnType<typeof mount>>, taskId: string) {
+  const toggle = wrapper.find(`[data-testid="remote-sync-expand-${taskId}"]`);
+  expect(toggle.exists()).toBe(true);
+  await toggle.trigger('click');
+  await flushPromises();
+}
+
 describe('RemoteSync page', () => {
   beforeEach(() => {
     csrfFetchMock.mockReset();
@@ -228,6 +257,7 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
       'remoteSync.state.noClient',
     );
+    await expandRow(wrapper, 'task-1');
     expect(wrapper.find('[data-testid="remote-sync-original-duration-task-1"]').exists()).toBe(
       true,
     );
@@ -256,6 +286,7 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
     const wrapper = await mount();
+    await expandRow(wrapper, 'task-2');
     expect(
       (wrapper.find('[data-testid="remote-sync-entry-check-entry-2"]').element as HTMLInputElement)
         .checked,
@@ -493,6 +524,7 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 9, name: 'Development' }]));
 
     const wrapper = await mount();
+    await expandRow(wrapper, 'task-redmine-logs');
 
     expect(fetchTimeLogsMock).toHaveBeenCalledWith({
       spentOn: '2026-03-15',
@@ -504,6 +536,12 @@ describe('RemoteSync page', () => {
     expect(
       wrapper.find('[data-testid="remote-sync-remote-logs-empty-task-redmine-logs"]').exists(),
     ).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-remote-log-comment-11"]').text()).toContain(
+      'Redmine Task',
+    );
+    expect(
+      wrapper.find('[data-testid="remote-sync-duplicate-warning-task-redmine-logs"]').exists(),
+    ).toBe(true);
   });
 
   it('exports with the local task title as the OpenProject comment', async () => {
@@ -537,6 +575,11 @@ describe('RemoteSync page', () => {
 
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(true);
+    expect(createTimeEntryMock).not.toHaveBeenCalled();
+    await wrapper.find('[data-testid="remote-sync-export-confirm"]').trigger('click');
+    await flushPromises();
     await flushPromises();
 
     expect(createTimeEntryMock).toHaveBeenCalledWith(
@@ -577,5 +620,85 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-untitled-duration"]').text()).toContain(
       '00:15:00',
     );
+  });
+
+  it('shows reconciling day summary chips including blocked and untitled time', async () => {
+    dayData = makeDay({
+      untitledTotalSeconds: 300,
+      rows: [
+        {
+          taskId: 'task-sum-ok',
+          taskName: 'Ready',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-sum', requiredFieldDefaults: { activity: '1' } },
+          issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'e-sum-ok', durationSeconds: 3600 })],
+          exports: [],
+        },
+        {
+          taskId: 'task-sum-blocked',
+          taskName: 'Blocked',
+          projectName: null,
+          clientName: null,
+          totalSeconds: 600,
+          config: null,
+          issueRef: null,
+          entries: [entry({ id: 'e-sum-blocked', durationSeconds: 600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    expect(wrapper.find('[data-testid="remote-sync-total-day"]').text()).toContain('01:15:00');
+    expect(wrapper.find('[data-testid="remote-sync-total-tracked"]').text()).toContain('01:00:00');
+    expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('01:00:00');
+    expect(wrapper.find('[data-testid="remote-sync-total-blocked"]').text()).toContain('00:10:00');
+    expect(wrapper.find('[data-testid="remote-sync-total-untitled"]').text()).toContain('00:05:00');
+    expect(wrapper.find('[data-testid="remote-sync-state-task-sum-blocked"]').text()).toContain(
+      'remoteSync.state.noClient',
+    );
+  });
+
+  it('shows a no-comment placeholder for remote logs without comments', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-comment',
+          taskName: 'Comment Task',
+          projectName: 'Project',
+          clientName: 'Client',
+          totalSeconds: 1800,
+          config: { ...baseConfig, id: 'config-comment', requiredFieldDefaults: { activity: '1' } },
+          issueRef: { remoteIssueId: '55', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-comment', durationSeconds: 1800 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchTimeLogsMock.mockResolvedValue([
+      {
+        remoteLogId: 'log-empty-comment',
+        remoteIssueId: '55',
+        spentOn: '2026-03-15',
+        durationSeconds: 900,
+        activityId: '1',
+        activityName: 'Dev',
+        comment: null,
+        remoteUserId: '7',
+      },
+    ]);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await expandRow(wrapper, 'task-comment');
+    expect(
+      wrapper.find('[data-testid="remote-sync-remote-log-comment-log-empty-comment"]').text(),
+    ).toBe('remoteSync.remoteLogNoComment');
   });
 });

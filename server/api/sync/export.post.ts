@@ -44,6 +44,51 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     });
   }
 
+  async function toResult(
+    record: typeof remoteExports.$inferSelect,
+    entryIdsOverride?: string[],
+    replayed = false,
+  ): Promise<FinalizeRemoteExportResultDto> {
+    const links =
+      entryIdsOverride ??
+      (
+        await db
+          .select({ entryId: remoteExportEntries.entryId })
+          .from(remoteExportEntries)
+          .where(eq(remoteExportEntries.exportId, record.id))
+      ).map((link) => link.entryId);
+
+    return {
+      exportId: record.id,
+      taskId: record.taskId,
+      localDate: String(record.localDate),
+      remoteIssueId: record.remoteIssueId,
+      remoteLogId: record.remoteLogId,
+      exportDurationSeconds: record.exportDurationSeconds,
+      requiredFieldValues: record.requiredFieldValues ?? {},
+      entryIds: links,
+      exportRequestKey: record.exportRequestKey ?? null,
+      createdAt: record.createdAt.toISOString(),
+      replayed,
+    };
+  }
+
+  // Key-based reconciliation: identical logical export already stored (REQ-233).
+  const [byKey] = await db
+    .select()
+    .from(remoteExports)
+    .where(
+      and(
+        eq(remoteExports.userId, user.id),
+        eq(remoteExports.exportRequestKey, parsed.exportRequestKey),
+      ),
+    )
+    .limit(1);
+
+  if (byKey) {
+    return toResult(byKey, undefined, true);
+  }
+
   // Known-result replay: never recreate provenance for an already-finalized remote log.
   const [existing] = await db
     .select()
@@ -54,23 +99,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     .limit(1);
 
   if (existing) {
-    const links = await db
-      .select({ entryId: remoteExportEntries.entryId })
-      .from(remoteExportEntries)
-      .where(eq(remoteExportEntries.exportId, existing.id));
-
-    return {
-      exportId: existing.id,
-      taskId: existing.taskId,
-      localDate: String(existing.localDate),
-      remoteIssueId: existing.remoteIssueId,
-      remoteLogId: existing.remoteLogId,
-      exportDurationSeconds: existing.exportDurationSeconds,
-      requiredFieldValues: existing.requiredFieldValues ?? {},
-      entryIds: links.map((link) => link.entryId),
-      createdAt: existing.createdAt.toISOString(),
-      replayed: true,
-    };
+    return toResult(existing, undefined, true);
   }
 
   const [task] = await db
@@ -152,6 +181,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
         remoteLogId: parsed.remoteLogId,
         exportDurationSeconds: parsed.exportDurationSeconds,
         requiredFieldValues: parsed.requiredFieldValues,
+        exportRequestKey: parsed.exportRequestKey,
       })
       .returning();
 
@@ -173,16 +203,5 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     return inserted;
   });
 
-  return {
-    exportId: result.id,
-    taskId: result.taskId,
-    localDate: String(result.localDate),
-    remoteIssueId: result.remoteIssueId,
-    remoteLogId: result.remoteLogId,
-    exportDurationSeconds: result.exportDurationSeconds,
-    requiredFieldValues: result.requiredFieldValues ?? {},
-    entryIds: uniqueEntryIds,
-    createdAt: result.createdAt.toISOString(),
-    replayed: false,
-  };
+  return toResult(result, uniqueEntryIds, false);
 });

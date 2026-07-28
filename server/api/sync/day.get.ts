@@ -7,6 +7,11 @@ import type {
   RemoteSyncDayQuery,
   RemoteSyncExportProvenanceDto,
 } from '../../../shared/types/remote-sync-day';
+import type {
+  RemoteExecutionMode,
+  RemoteRoundingRule,
+  RemoteSystemType,
+} from '../../../shared/types/remote-system-config';
 import { db } from '../../db/index';
 import {
   timeEntries,
@@ -86,10 +91,10 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
     string,
     {
       id: string;
-      systemType: 'redmine' | 'openproject';
+      systemType: RemoteSystemType;
       baseUrl: string;
-      executionMode: 'client' | 'server';
-      roundingRule: 'none' | 'up_15m' | 'up_30m' | 'up_1h';
+      executionMode: RemoteExecutionMode;
+      roundingRule: RemoteRoundingRule;
       requiredFieldDefaults: Record<string, string>;
     }
   >();

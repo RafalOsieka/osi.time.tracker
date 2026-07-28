@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import type { TableColumn } from '@nuxt/ui';
 import {
   deriveRemoteSyncRowState,
   isImplementedRemoteSystemType,
 } from '~~/shared/utils/remote-sync-row-state';
+import { computeRemoteSyncDayTotals } from '~~/shared/utils/remote-sync-day-totals';
+import { findDuplicateRemoteLog } from '~~/shared/utils/find-duplicate-remote-log';
 import type {
   RemoteSyncConfigSurfaceDto,
   RemoteSyncDayDto,
@@ -11,19 +14,29 @@ import type {
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
 import type { RemoteSystemConfigDto } from '~~/shared/types/remote-system-config';
-import { formatDuration } from '~/utils/formatDuration';
+import { formatDuration, formatSignedDuration } from '~/utils/formatDuration';
 import { useRemoteActivities } from '~/composables/useRemoteActivities';
 import { useRemoteDayLogs } from '~/composables/useRemoteDayLogs';
 import { useRoundedDurations } from '~/composables/useRoundedDurations';
 import { useSyncExport } from '~/composables/useSyncExport';
+import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
 import { extractMessageKey } from '~/utils/extractMessageKey';
 
+type ExportDialogPhase = 'review' | 'running' | 'report';
+
+type SyncTableRow =
+  | { kind: 'task'; task: RemoteSyncDayRowDto; blockedGroup: boolean }
+  | { kind: 'untitled'; totalSeconds: number };
+
 const route = useRoute();
+const router = useRouter();
 const { t, locale } = useI18n();
 const toast = useAppToast();
-const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
+// Forwards the incoming request cookies during SSR so the day aggregate is
+// authenticated the same way as browser navigations (plain $fetch is not).
+const requestFetch = useRequestFetch();
 
 const date = computed(() => String(route.params.date));
 
@@ -34,27 +47,35 @@ const {
   refresh,
 } = useAsyncData<RemoteSyncDayDto>(
   () => `sync-day-${date.value}`,
-  () => $fetch<RemoteSyncDayDto>('/api/sync/day', { query: { date: date.value } }),
+  () =>
+    requestFetch<RemoteSyncDayDto>('/api/sync/day', {
+      query: { date: date.value },
+    }),
   { watch: [date] },
 );
 
 const rows = computed(() => data.value?.rows ?? []);
 const untitledTotal = computed(() => data.value?.untitledTotalSeconds ?? 0);
-const totalSeconds = computed(
-  () => rows.value.reduce((sum, row) => sum + row.totalSeconds, 0) + untitledTotal.value,
-);
 const isEmpty = computed(
   () => !pending.value && !fetchError.value && rows.value.length === 0 && untitledTotal.value === 0,
 );
 
-function dayHeading(): string {
-  return new Date(`${date.value}T12:00:00Z`).toLocaleDateString(locale.value, {
+/**
+ * Locale-aware day heading. Computed only on the client so Node vs browser
+ * `toLocaleDateString` ICU differences cannot hydrate-mismatch the page.
+ */
+const dayHeadingText = ref(date.value);
+function refreshDayHeading() {
+  dayHeadingText.value = new Date(`${date.value}T12:00:00Z`).toLocaleDateString(locale.value, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     timeZone: effective.value.timeZone,
   });
+}
+if (import.meta.client) {
+  watch([date, locale, () => effective.value.timeZone], refreshDayHeading, { immediate: true });
 }
 
 function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigDto {
@@ -75,6 +96,11 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigD
 const activitySelections = ref<Record<string, string | null>>({});
 const localIssueRefs = ref<Record<string, { remoteIssueId: string; cachedTitle: string }>>({});
 const selectedEntryIds = ref<Record<string, string[]>>({});
+const expanded = ref<true | Record<string, boolean>>({});
+const dismissedDuplicates = ref<Record<string, boolean>>({});
+const exportComments = ref<Record<string, string>>({});
+const exportDialogOpen = ref(false);
+const exportDialogPhase = ref<ExportDialogPhase>('review');
 
 const {
   ensureLoaded: ensureActivitiesLoaded,
@@ -94,14 +120,23 @@ const {
   displayedInput: roundedDisplayedInput,
   setInput: setRoundedInput,
   commit: commitRoundedDuration,
+  applyOverride: applyRoundedOverride,
   reset: resetRoundedDuration,
   hasOverride: hasRoundedOverride,
+  suggestionsFor: roundingSuggestionsForTask,
+  overrides: roundedOverrides,
+  inputText: roundedInputText,
 } = useRoundedDurations();
 
 const {
   outcomes,
+  progress: exportProgress,
   isRunning: exporting,
+  completedCount: exportCompletedCount,
+  totalCount: exportTotalCount,
   runExport,
+  requestStop,
+  retryTask,
 } = useSyncExport({
   createTimeEntry: (config, input) => clientFor(config).createTimeEntry(input),
   finalizeExport: (body) =>
@@ -112,7 +147,22 @@ const {
   onTaskFinalized: async (row) => {
     await retryRemoteLogs(row);
   },
-  refresh,
+  refresh: async () => {
+    // Refresh is triggered on report close / retry completion, not mid-batch.
+  },
+});
+
+watch(date, () => {
+  activitySelections.value = {};
+  localIssueRefs.value = {};
+  selectedEntryIds.value = {};
+  expanded.value = {};
+  dismissedDuplicates.value = {};
+  exportComments.value = {};
+  roundedOverrides.value = {};
+  roundedInputText.value = {};
+  exportDialogOpen.value = false;
+  exportDialogPhase.value = 'review';
 });
 
 function issueRefFor(row: RemoteSyncDayRowDto) {
@@ -143,15 +193,22 @@ function selectedIdsFor(row: RemoteSyncDayRowDto): string[] {
   return selectedEntryIds.value[row.taskId] ?? [];
 }
 
-function isEntrySelected(row: RemoteSyncDayRowDto, entryId: string): boolean {
-  return selectedIdsFor(row).includes(entryId);
-}
-
 function toggleEntry(row: RemoteSyncDayRowDto, entryId: string, checked: boolean) {
   const current = new Set(selectedIdsFor(row));
   if (checked) current.add(entryId);
   else current.delete(entryId);
   selectedEntryIds.value = { ...selectedEntryIds.value, [row.taskId]: [...current] };
+}
+
+function selectAllEntries(row: RemoteSyncDayRowDto) {
+  selectedEntryIds.value = {
+    ...selectedEntryIds.value,
+    [row.taskId]: row.entries.map((entry) => entry.id),
+  };
+}
+
+function deselectAllEntries(row: RemoteSyncDayRowDto) {
+  selectedEntryIds.value = { ...selectedEntryIds.value, [row.taskId]: [] };
 }
 
 function selectedSecondsFor(row: RemoteSyncDayRowDto): number {
@@ -204,12 +261,69 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
   }
 }
 
+function stateIconFor(row: RemoteSyncDayRowDto): string {
+  switch (stateFor(row)) {
+    case 'no_client':
+      return 'i-lucide-user-x';
+    case 'no_config':
+      return 'i-lucide-settings';
+    case 'system_not_implemented':
+      return 'i-lucide-ban';
+    case 'unlinked':
+      return 'i-lucide-link-2-off';
+    case 'activity_loading':
+      return 'i-lucide-loader-circle';
+    case 'activity_error':
+      return 'i-lucide-triangle-alert';
+    case 'no_activity':
+      return 'i-lucide-circle-off';
+    default:
+      return 'i-lucide-check';
+  }
+}
+
+function stateBadgeColor(row: RemoteSyncDayRowDto): 'success' | 'warning' | 'error' | 'neutral' {
+  switch (stateFor(row)) {
+    case 'manageable':
+      return 'success';
+    case 'activity_loading':
+    case 'unlinked':
+      return 'warning';
+    case 'activity_error':
+    case 'no_activity':
+    case 'no_client':
+    case 'no_config':
+    case 'system_not_implemented':
+      return 'error';
+    default:
+      return 'neutral';
+  }
+}
+
+function canManageEntries(row: RemoteSyncDayRowDto): boolean {
+  const state = stateFor(row);
+  return state === 'manageable' || state === 'activity_loading';
+}
+
+function isActionableRow(row: RemoteSyncDayRowDto): boolean {
+  const state = stateFor(row);
+  return (
+    state === 'manageable' ||
+    state === 'activity_loading' ||
+    state === 'activity_error' ||
+    state === 'no_activity' ||
+    state === 'unlinked'
+  );
+}
+
 function roundedSecondsFor(row: RemoteSyncDayRowDto): number {
-  return roundedComputedSeconds(row.taskId, selectedSecondsFor(row), row.config!.roundingRule);
+  if (!row.config) return selectedSecondsFor(row);
+  return roundedComputedSeconds(row.taskId, selectedSecondsFor(row), row.config.roundingRule);
 }
 
 function displayedRoundedInput(row: RemoteSyncDayRowDto): string {
-  return roundedDisplayedInput(row.taskId, selectedSecondsFor(row), row.config!.roundingRule);
+  if (!row.config) return formatDuration(selectedSecondsFor(row));
+  return roundedDisplayedInput(row.taskId, selectedSecondsFor(row), row.config.roundingRule);
 }
 
 function onRoundedInputChange(row: RemoteSyncDayRowDto, value: string | undefined) {
@@ -217,15 +331,30 @@ function onRoundedInputChange(row: RemoteSyncDayRowDto, value: string | undefine
 }
 
 function commitRounded(row: RemoteSyncDayRowDto) {
-  commitRoundedDuration(row.taskId, selectedSecondsFor(row), row.config!.roundingRule);
+  if (!row.config) return;
+  commitRoundedDuration(row.taskId, selectedSecondsFor(row), row.config.roundingRule);
 }
 
 function resetRounded(row: RemoteSyncDayRowDto) {
   resetRoundedDuration(row.taskId);
 }
 
+function roundingSuggestionsFor(row: RemoteSyncDayRowDto) {
+  if (!row.config) return [];
+  return roundingSuggestionsForTask(row.taskId, selectedSecondsFor(row), row.config.roundingRule);
+}
+
+function applyRoundingSuggestion(row: RemoteSyncDayRowDto, seconds: number) {
+  applyRoundedOverride(row.taskId, seconds);
+}
+
 function isExcluded(row: RemoteSyncDayRowDto): boolean {
   return selectedIdsFor(row).length === 0 || roundedSecondsFor(row) === 0;
+}
+
+function excludedReason(row: RemoteSyncDayRowDto): 'none' | 'zero' | null {
+  if (!isExcluded(row)) return null;
+  return selectedIdsFor(row).length === 0 ? 'none' : 'zero';
 }
 
 watch(
@@ -340,54 +469,224 @@ function pushableRows(): RemoteSyncDayRowDto[] {
   return rows.value.filter((row) => isPushable(row));
 }
 
-function startExport() {
-  const candidates = pushableRows();
-  if (candidates.length === 0) return;
-
-  const repeatTasks = candidates.filter((row) =>
-    selectedIdsFor(row).some(
-      (id) => row.entries.find((entry) => entry.id === id)?.previouslyExported,
-    ),
-  );
-
-  const launch = async () => {
-    await runExport(
-      candidates.map((row) => ({
-        row,
-        config: toPickerConfig(row.config!),
-        remoteIssueId: issueRefFor(row)!.remoteIssueId,
-        activityId: selectedActivity(row)!,
-        durationSeconds: roundedSecondsFor(row),
-        entryIds: selectedIdsFor(row),
-        spentOn: date.value,
-      })),
-    );
-  };
-
-  if (repeatTasks.length > 0) {
-    void (async () => {
-      const accepted = await confirm({
-        title: t('remoteSync.repeatConfirmHeader'),
-        description: t('remoteSync.repeatConfirmMessage', {
-          tasks: repeatTasks.map((row) => row.taskName).join(', '),
-        }),
-        confirmLabel: t('remoteSync.repeatConfirmAccept'),
-        cancelLabel: t('remoteSync.repeatConfirmReject'),
-      });
-      if (accepted) {
-        await launch();
-      }
-    })();
-    return;
-  }
-
-  void launch();
+function exportableRows(): RemoteSyncDayRowDto[] {
+  return rows.value.filter((row) => canManageEntries(row) || stateFor(row) === 'manageable');
 }
 
-function outcomeText(row: RemoteSyncDayRowDto): string | null {
-  const outcome = outcomes.value[row.taskId];
-  if (!outcome?.messageKey) return null;
-  return t(outcome.messageKey, outcome.messageParams ?? {});
+function includeAllTasks() {
+  const next = { ...selectedEntryIds.value };
+  for (const row of rows.value) {
+    if (!canManageEntries(row) && stateFor(row) !== 'manageable') continue;
+    next[row.taskId] = row.entries.map((entry) => entry.id);
+  }
+  selectedEntryIds.value = next;
+}
+
+function excludeAllTasks() {
+  const next = { ...selectedEntryIds.value };
+  for (const row of rows.value) {
+    if (!canManageEntries(row) && stateFor(row) !== 'manageable') continue;
+    next[row.taskId] = [];
+  }
+  selectedEntryIds.value = next;
+}
+
+function toggleRowInclusion(row: RemoteSyncDayRowDto, checked: boolean) {
+  if (!canManageEntries(row) && stateFor(row) !== 'manageable') return;
+  if (checked) selectAllEntries(row);
+  else deselectAllEntries(row);
+}
+
+function inclusionModel(row: RemoteSyncDayRowDto): boolean | 'indeterminate' {
+  const selected = selectedIdsFor(row);
+  if (selected.length === 0) return false;
+  if (selected.length === row.entries.length) return true;
+  return 'indeterminate';
+}
+
+const dayTotalsSafe = computed(() =>
+  computeRemoteSyncDayTotals(
+    rows.value.map((row) => {
+      const selected = selectedSecondsFor(row);
+      const pushable = isPushable(row);
+      const included =
+        selectedIdsFor(row).length > 0 && !(canManageEntries(row) && roundedSecondsFor(row) === 0);
+      return {
+        totalSeconds: row.totalSeconds,
+        selectedSeconds: selected,
+        exportSeconds: pushable ? roundedSecondsFor(row) : 0,
+        isPushable: pushable,
+        isIncluded: included,
+      };
+    }),
+    untitledTotal.value,
+  ),
+);
+
+function trackedSecondsFor(row: RemoteSyncDayRowDto): number {
+  return selectedSecondsFor(row);
+}
+
+function toSendSecondsFor(row: RemoteSyncDayRowDto): number {
+  if (!canManageEntries(row) && stateFor(row) !== 'manageable') return 0;
+  if (isExcluded(row)) return 0;
+  return roundedSecondsFor(row);
+}
+
+function rowDeltaSeconds(row: RemoteSyncDayRowDto): number {
+  return toSendSecondsFor(row) - trackedSecondsFor(row);
+}
+
+function duplicateLogFor(row: RemoteSyncDayRowDto) {
+  const logsState = remoteLogsFor(row);
+  if (!logsState.loaded || logsState.loading || logsState.errorKey) return null;
+  if (!issueRefFor(row) || !row.config) return null;
+  return findDuplicateRemoteLog(roundedSecondsFor(row), logsState.logs);
+}
+
+function ensureDefaultComment(row: RemoteSyncDayRowDto) {
+  if (row.taskId in exportComments.value) return;
+  const logs = remoteLogsFor(row).logs;
+  exportComments.value = {
+    ...exportComments.value,
+    [row.taskId]: resolveDefaultExportComment(
+      row.taskName,
+      logs.map((log) => log.comment),
+    ),
+  };
+}
+
+watch(
+  rows,
+  (list) => {
+    for (const row of list) {
+      ensureDefaultComment(row);
+    }
+  },
+  { immediate: true },
+);
+
+// Re-apply default when remote logs first load and the user has not edited.
+watch(
+  () =>
+    rows.value.map((row) => ({
+      taskId: row.taskId,
+      loaded: remoteLogsFor(row).loaded,
+      comments: remoteLogsFor(row)
+        .logs.map((log) => log.comment)
+        .join('\0'),
+    })),
+  () => {
+    for (const row of rows.value) {
+      const logsState = remoteLogsFor(row);
+      if (!logsState.loaded) continue;
+      const current = exportComments.value[row.taskId];
+      // Only fill when still at the bare task-name default (no user edit / no prior log default).
+      if (current === undefined || current === row.taskName) {
+        const next = resolveDefaultExportComment(
+          row.taskName,
+          logsState.logs.map((log) => log.comment),
+        );
+        if (next !== current) {
+          exportComments.value = { ...exportComments.value, [row.taskId]: next };
+        }
+      }
+    }
+  },
+  { deep: true },
+);
+
+function commentFor(row: RemoteSyncDayRowDto): string {
+  ensureDefaultComment(row);
+  return exportComments.value[row.taskId] ?? row.taskName;
+}
+
+function setComment(row: RemoteSyncDayRowDto, value: string | undefined) {
+  exportComments.value = { ...exportComments.value, [row.taskId]: value ?? '' };
+}
+
+function activityLabelFor(row: RemoteSyncDayRowDto): string {
+  const id = selectedActivity(row);
+  const match = activitiesFor(row).options.find((option) => option.id === id);
+  return match?.name ?? id ?? t('remoteSync.activityEmptyOption');
+}
+
+function isRepeatRow(row: RemoteSyncDayRowDto): boolean {
+  return selectedIdsFor(row).some(
+    (id) => row.entries.find((entry) => entry.id === id)?.previouslyExported,
+  );
+}
+
+const exportIncludedRows = computed(() =>
+  pushableRows().map((row) => {
+    const issue = issueRefFor(row);
+    return {
+      taskId: row.taskId,
+      taskName: row.taskName,
+      issueLabel: issue
+        ? `${issue.cachedTitle} (#${issue.remoteIssueId})`
+        : t('remoteSync.emptyCell'),
+      activityLabel: activityLabelFor(row),
+      trackedSeconds: trackedSecondsFor(row),
+      toSendSeconds: toSendSecondsFor(row),
+      comment: resolveExportComment(commentFor(row), row.taskName),
+      isRepeat: isRepeatRow(row),
+      isDuplicate: !!duplicateLogFor(row),
+      baseUrl: row.config?.baseUrl ?? null,
+      row,
+    };
+  }),
+);
+
+const exportSkippedRows = computed(() =>
+  rows.value
+    .filter((row) => !isPushable(row))
+    .map((row) => ({
+      taskId: row.taskId,
+      taskName: row.taskName,
+      reason: reasonKeyFor(row),
+    })),
+);
+
+function openExportDialog() {
+  if (pushableRows().length === 0) return;
+  exportDialogPhase.value = 'review';
+  exportDialogOpen.value = true;
+}
+
+async function confirmExportDialog() {
+  const candidates = pushableRows();
+  if (candidates.length === 0) return;
+  exportDialogPhase.value = 'running';
+  await runExport(
+    candidates.map((row) => ({
+      row,
+      config: toPickerConfig(row.config!),
+      remoteIssueId: issueRefFor(row)!.remoteIssueId,
+      activityId: selectedActivity(row)!,
+      durationSeconds: roundedSecondsFor(row),
+      entryIds: selectedIdsFor(row),
+      spentOn: date.value,
+      comment: commentFor(row),
+    })),
+  );
+  exportDialogPhase.value = 'report';
+}
+
+function cancelExportDialog() {
+  if (exportDialogPhase.value === 'running') return;
+  exportDialogOpen.value = false;
+  exportDialogPhase.value = 'review';
+}
+
+async function closeExportDialog() {
+  exportDialogOpen.value = false;
+  exportDialogPhase.value = 'review';
+  await refresh();
+}
+
+async function onExportRetry(taskId: string) {
+  await retryTask(taskId);
 }
 
 function formatEntryStart(iso: string): string {
@@ -397,264 +696,440 @@ function formatEntryStart(iso: string): string {
     timeZone: effective.value.timeZone,
   });
 }
+
+function navigateToDate(iso: string) {
+  if (iso === date.value) return;
+  void router.push(`/sync/${iso}`);
+}
+
+const timeZone = computed(() => effective.value.timeZone);
+
+const tableRows = computed<SyncTableRow[]>(() => {
+  const actionable: SyncTableRow[] = [];
+  const blocked: SyncTableRow[] = [];
+  for (const task of rows.value) {
+    if (isActionableRow(task)) {
+      actionable.push({ kind: 'task', task, blockedGroup: false });
+    } else {
+      blocked.push({ kind: 'task', task, blockedGroup: true });
+    }
+  }
+  const result = [...actionable, ...blocked];
+  if (untitledTotal.value > 0) {
+    result.push({ kind: 'untitled', totalSeconds: untitledTotal.value });
+  }
+  return result;
+});
+
+function rowId(row: SyncTableRow): string {
+  return row.kind === 'task' ? row.task.taskId : 'untitled';
+}
+
+/** Narrow a table row to its task payload (template event handlers lose the discriminant). */
+function taskOf(row: SyncTableRow): RemoteSyncDayRowDto {
+  if (row.kind !== 'task') {
+    throw new Error('Expected a task row');
+  }
+  return row.task;
+}
+
+function isExpanded(taskId: string): boolean {
+  if (expanded.value === true) return true;
+  if (!expanded.value || typeof expanded.value !== 'object') return false;
+  return !!expanded.value[taskId];
+}
+
+function toggleExpanded(taskId: string) {
+  if (expanded.value === true) {
+    expanded.value = { [taskId]: false };
+    return;
+  }
+  const current = { ...(expanded.value as Record<string, boolean>) };
+  current[taskId] = !current[taskId];
+  expanded.value = current;
+}
+
+const columns = computed<TableColumn<SyncTableRow>[]>(() => [
+  { id: 'expand', header: '' },
+  { id: 'include', header: t('remoteSync.columnInclude') },
+  { id: 'task', header: t('remoteSync.columnTask') },
+  { id: 'issue', header: t('remoteSync.columnIssue') },
+  { id: 'activity', header: t('remoteSync.columnActivity') },
+  { id: 'duration', header: t('remoteSync.columnDuration') },
+  { id: 'state', header: t('remoteSync.columnState') },
+]);
 </script>
 
 <template>
   <section class="grid gap-5" data-testid="remote-sync-page">
     <div class="flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <h2 class="text-2xl font-semibold" data-testid="remote-sync-heading">
-          {{ t('remoteSync.pageTitle', { date: dayHeading() }) }}
-        </h2>
-        <p class="font-mono text-muted" data-testid="remote-sync-day-total">
-          {{ t('remoteSync.dayTotal', { duration: formatDuration(totalSeconds) }) }}
-        </p>
-      </div>
-      <UButton
-        :label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
-        :disabled="exporting || pushableRows().length === 0"
-        data-testid="remote-sync-export-button"
-        @click="startExport"
+      <SyncDayHeader
+        :date="date"
+        :time-zone="timeZone"
+        :heading="dayHeadingText"
+        @navigate="navigateToDate"
       />
+      <div class="flex flex-wrap items-center gap-2">
+        <UButton
+          variant="ghost"
+          size="sm"
+          :label="t('remoteSync.includeAllTasks')"
+          data-testid="remote-sync-include-all"
+          :disabled="exportableRows().length === 0"
+          @click="includeAllTasks"
+        />
+        <UButton
+          variant="ghost"
+          size="sm"
+          :label="t('remoteSync.excludeAllTasks')"
+          data-testid="remote-sync-exclude-all"
+          :disabled="exportableRows().length === 0"
+          @click="excludeAllTasks"
+        />
+        <UButton
+          :label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
+          :disabled="exporting || pushableRows().length === 0"
+          data-testid="remote-sync-export-button"
+          @click="openExportDialog"
+        />
+      </div>
+    </div>
+
+    <div
+      class="flex flex-wrap items-center gap-2"
+      data-testid="remote-sync-summaries"
+      aria-live="polite"
+    >
+      <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-day">
+        {{ t('remoteSync.dayTotalLabel') }}: {{ formatDuration(dayTotalsSafe.dayTotal) }}
+      </UBadge>
+      <!-- keep legacy day-total hook for existing tests -->
+      <span class="sr-only" data-testid="remote-sync-day-total">
+        {{ t('remoteSync.dayTotal', { duration: formatDuration(dayTotalsSafe.dayTotal) }) }}
+      </span>
+      <UBadge color="primary" variant="subtle" data-testid="remote-sync-total-tracked">
+        {{ t('remoteSync.trackedLabel') }}: {{ formatDuration(dayTotalsSafe.tracked) }}
+      </UBadge>
+      <UBadge color="success" variant="subtle" data-testid="remote-sync-total-to-send">
+        {{ t('remoteSync.toSendLabel') }}: {{ formatDuration(dayTotalsSafe.toSend) }}
+      </UBadge>
+      <UBadge color="neutral" variant="outline" data-testid="remote-sync-total-delta">
+        {{ t('remoteSync.deltaLabel') }}: {{ formatSignedDuration(dayTotalsSafe.delta) }}
+      </UBadge>
+      <UBadge
+        v-if="dayTotalsSafe.blocked > 0"
+        color="warning"
+        variant="subtle"
+        data-testid="remote-sync-total-blocked"
+      >
+        {{ t('remoteSync.blockedLabel') }}: {{ formatDuration(dayTotalsSafe.blocked) }}
+      </UBadge>
+      <UBadge
+        v-if="dayTotalsSafe.excluded > 0"
+        color="neutral"
+        variant="subtle"
+        data-testid="remote-sync-total-excluded"
+      >
+        {{ t('remoteSync.excludedLabel') }}: {{ formatDuration(dayTotalsSafe.excluded) }}
+      </UBadge>
+      <UBadge
+        v-if="dayTotalsSafe.untitled > 0"
+        color="neutral"
+        variant="subtle"
+        data-testid="remote-sync-total-untitled"
+      >
+        {{ t('remoteSync.untitledLabel') }}: {{ formatDuration(dayTotalsSafe.untitled) }}
+      </UBadge>
     </div>
 
     <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">
       {{ t('remoteSync.emptyState') }}
     </p>
 
-    <div v-else class="grid gap-4" role="list">
-      <div
-        v-for="row in rows"
-        :key="row.taskId"
-        class="grid gap-2 border-b border-default py-3"
-        role="listitem"
-        :data-testid="`remote-sync-row-${row.taskId}`"
-      >
-        <div class="flex justify-between gap-4 font-semibold">
-          <span :data-testid="`remote-sync-task-name-${row.taskId}`">
-            {{ row.taskName }}
-          </span>
-          <span class="font-normal text-muted" :data-testid="`remote-sync-state-${row.taskId}`">
-            {{ reasonKeyFor(row) }}
-          </span>
-        </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <span :data-testid="`remote-sync-original-duration-${row.taskId}`">
-            {{ t('remoteSync.originalDurationLabel') }}: {{ formatDuration(row.totalSeconds) }}
-          </span>
-
-          <template v-if="stateFor(row) === 'manageable' || stateFor(row) === 'activity_loading'">
-            <span :data-testid="`remote-sync-selected-duration-${row.taskId}`">
-              {{ t('remoteSync.selectedDurationLabel') }}:
-              {{ formatDuration(selectedSecondsFor(row)) }}
-            </span>
-            <label :for="`remote-sync-rounded-${row.taskId}`" class="text-sm text-muted">
-              {{ t('remoteSync.roundedDurationLabel') }}
-            </label>
-            <UInput
-              :id="`remote-sync-rounded-${row.taskId}`"
-              :model-value="displayedRoundedInput(row)"
-              :data-testid="`remote-sync-rounded-duration-${row.taskId}`"
-              @update:model-value="(value: string | undefined) => onRoundedInputChange(row, value)"
-              @blur="commitRounded(row)"
-              @keydown.enter="commitRounded(row)"
-            />
-            <UButton
-              v-if="hasRoundedOverride(row.taskId)"
-              variant="ghost"
-              size="sm"
-              :label="t('remoteSync.resetDuration')"
-              :data-testid="`remote-sync-reset-duration-${row.taskId}`"
-              @click="resetRounded(row)"
-            />
-            <span
-              v-if="isExcluded(row)"
-              class="text-sm text-muted"
-              :data-testid="`remote-sync-excluded-hint-${row.taskId}`"
-            >
-              {{
-                selectedIdsFor(row).length === 0
-                  ? t('remoteSync.excludedNoSelection')
-                  : t('remoteSync.roundedDurationHint')
-              }}
-            </span>
-          </template>
-        </div>
-
-        <div
-          v-if="row.entries.length > 0"
-          class="flex flex-col flex-wrap items-start gap-3"
-          :data-testid="`remote-sync-entries-${row.taskId}`"
-        >
-          <p class="m-0 font-semibold">{{ t('remoteSync.entriesHeading') }}</p>
-          <div
-            v-for="entry in row.entries"
-            :key="entry.id"
-            class="flex items-center gap-2"
-            :data-testid="`remote-sync-entry-${entry.id}`"
-          >
-            <UCheckbox
-              :model-value="isEntrySelected(row, entry.id)"
-              :input-id="`remote-sync-entry-check-${entry.id}`"
-              :disabled="stateFor(row) !== 'manageable' && stateFor(row) !== 'activity_loading'"
-              :aria-label="
-                t('remoteSync.entrySelectLabel', { start: formatEntryStart(entry.startedAt) })
-              "
-              :data-testid="`remote-sync-entry-check-${entry.id}`"
-              @update:model-value="
-                (checked: boolean | 'indeterminate') => toggleEntry(row, entry.id, checked === true)
-              "
-            />
-            <label :for="`remote-sync-entry-check-${entry.id}`">
-              {{
-                t('remoteSync.entrySummary', {
-                  start: formatEntryStart(entry.startedAt),
-                  duration: formatDuration(entry.durationSeconds),
-                })
-              }}
-              <span
-                v-if="entry.previouslyExported"
-                class="ml-1.5 text-xs text-muted"
-                :data-testid="`remote-sync-entry-exported-${entry.id}`"
-              >
-                {{ t('remoteSync.entryPreviouslyExported') }}
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div
-          v-if="
-            stateFor(row) === 'manageable' ||
-            stateFor(row) === 'activity_loading' ||
-            stateFor(row) === 'activity_error' ||
-            stateFor(row) === 'no_activity'
+    <UTable
+      v-else
+      v-model:expanded="expanded"
+      :data="tableRows"
+      :columns="columns"
+      :loading="pending"
+      :get-row-id="rowId"
+      :expanded-options="{
+        getRowCanExpand: (tableRow) => tableRow.original.kind === 'task',
+      }"
+      data-testid="remote-sync-table"
+      class="w-full"
+    >
+      <template #expand-cell="{ row: tableRow }">
+        <UButton
+          v-if="tableRow.original.kind === 'task'"
+          :icon="
+            isExpanded(taskOf(tableRow.original).taskId)
+              ? 'i-lucide-chevron-down'
+              : 'i-lucide-chevron-right'
           "
-          class="flex flex-wrap items-center gap-3"
-        >
-          <label :for="`remote-sync-activity-${row.taskId}`">
-            {{ t('remoteSync.activityLabel') }}
-          </label>
-          <span
-            v-if="activitiesFor(row).loading || !activitiesFor(row).loaded"
-            role="status"
-            aria-live="polite"
-            :data-testid="`remote-sync-activity-loading-${row.taskId}`"
-          >
-            {{ t('remoteSync.activityLoading') }}
-          </span>
-          <template v-else-if="activitiesFor(row).errorKey">
-            <span role="alert" :data-testid="`remote-sync-activity-error-${row.taskId}`">
-              {{ t('remoteSync.activityFetchError') }}
-            </span>
-            <UButton
-              variant="ghost"
-              size="sm"
-              :label="t('remoteSync.activityRetry')"
-              :data-testid="`remote-sync-activity-retry-${row.taskId}`"
-              @click="retryActivities(row)"
-            />
-          </template>
-          <span
-            v-else-if="stateFor(row) === 'no_activity'"
-            role="status"
-            :data-testid="`remote-sync-no-activity-${row.taskId}`"
-          >
-            {{ t('remoteSync.noActivityReason') }}
-          </span>
-          <USelect
-            v-else
-            :id="`remote-sync-activity-${row.taskId}`"
-            :model-value="selectedActivity(row)"
-            :items="activitiesFor(row).options"
-            label-key="name"
-            value-key="id"
-            :placeholder="t('remoteSync.activityEmptyOption')"
-            :data-testid="`remote-sync-activity-select-${row.taskId}`"
-            @update:model-value="(value: string | undefined) => onActivityChange(row, value)"
-          />
-        </div>
+          variant="ghost"
+          square
+          size="xs"
+          :aria-expanded="isExpanded(taskOf(tableRow.original).taskId)"
+          :aria-controls="`remote-sync-detail-${taskOf(tableRow.original).taskId}`"
+          :aria-label="
+            isExpanded(taskOf(tableRow.original).taskId)
+              ? t('remoteSync.collapseRow')
+              : t('remoteSync.expandRow')
+          "
+          :data-testid="`remote-sync-expand-${taskOf(tableRow.original).taskId}`"
+          @click="toggleExpanded(taskOf(tableRow.original).taskId)"
+        />
+      </template>
 
-        <div
-          v-if="issueRefFor(row) && row.config"
-          class="flex flex-col flex-wrap items-start gap-3"
-          :data-testid="`remote-sync-remote-logs-${row.taskId}`"
-        >
-          <p class="m-0 font-semibold">{{ t('remoteSync.remoteLogsHeading') }}</p>
+      <template #include-cell="{ row: tableRow }">
+        <template v-if="tableRow.original.kind === 'task'">
+          <UCheckbox
+            :model-value="inclusionModel(taskOf(tableRow.original))"
+            :disabled="
+              !canManageEntries(taskOf(tableRow.original)) &&
+              stateFor(taskOf(tableRow.original)) !== 'manageable'
+            "
+            :aria-label="t('remoteSync.columnInclude')"
+            :data-testid="`remote-sync-include-${taskOf(tableRow.original).taskId}`"
+            @update:model-value="
+              (checked: boolean | 'indeterminate') =>
+                toggleRowInclusion(taskOf(tableRow.original), checked === true)
+            "
+          />
+        </template>
+      </template>
+
+      <template #task-cell="{ row: tableRow }">
+        <template v-if="tableRow.original.kind === 'task'">
           <span
-            v-if="remoteLogsFor(row).loading"
-            role="status"
-            aria-live="polite"
-            :data-testid="`remote-sync-remote-logs-loading-${row.taskId}`"
+            class="font-semibold"
+            :data-testid="`remote-sync-row-${taskOf(tableRow.original).taskId}`"
           >
-            {{ t('remoteSync.remoteLogsLoading') }}
-          </span>
-          <template v-else-if="remoteLogsFor(row).errorKey">
-            <span role="alert" :data-testid="`remote-sync-remote-logs-error-${row.taskId}`">
-              {{ t('remoteSync.remoteLogsError') }}
+            <span :data-testid="`remote-sync-task-name-${taskOf(tableRow.original).taskId}`">
+              {{ taskOf(tableRow.original).taskName }}
             </span>
-            <UButton
-              variant="ghost"
-              size="sm"
-              :label="t('remoteSync.remoteLogsRetry')"
-              :data-testid="`remote-sync-remote-logs-retry-${row.taskId}`"
-              @click="retryRemoteLogs(row)"
-            />
-          </template>
-          <p
-            v-else-if="remoteLogsFor(row).logs.length === 0"
-            :data-testid="`remote-sync-remote-logs-empty-${row.taskId}`"
+          </span>
+        </template>
+        <template v-else>
+          <span class="font-semibold" data-testid="remote-sync-untitled-row">
+            {{ t('remoteSync.untitledBucketLabel') }}
+          </span>
+        </template>
+      </template>
+
+      <template #issue-cell="{ row: tableRow }">
+        <template v-if="tableRow.original.kind === 'task'">
+          <span
+            v-if="issueRefFor(taskOf(tableRow.original))"
+            class="text-sm"
+            :data-testid="`remote-sync-issue-${taskOf(tableRow.original).taskId}`"
           >
-            {{ t('remoteSync.remoteLogsEmpty') }}
-          </p>
-          <ul v-else class="m-0 pl-5">
-            <li
-              v-for="log in remoteLogsFor(row).logs"
-              :key="log.remoteLogId"
-              :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
+            {{ issueRefFor(taskOf(tableRow.original))?.cachedTitle }}
+            <span class="text-muted">
+              (#{{ issueRefFor(taskOf(tableRow.original))?.remoteIssueId }})
+            </span>
+          </span>
+          <RemoteIssuePicker
+            v-else-if="
+              stateFor(taskOf(tableRow.original)) === 'unlinked' && taskOf(tableRow.original).config
+            "
+            :config="toPickerConfig(taskOf(tableRow.original).config!)"
+            :data-testid="`remote-sync-link-${taskOf(tableRow.original).taskId}`"
+            @link="(payload) => linkRemoteIssue(taskOf(tableRow.original), payload)"
+          />
+          <span v-else class="text-muted">{{ t('remoteSync.emptyCell') }}</span>
+        </template>
+      </template>
+
+      <template #activity-cell="{ row: tableRow }">
+        <template v-if="tableRow.original.kind === 'task'">
+          <div
+            v-if="
+              stateFor(taskOf(tableRow.original)) === 'manageable' ||
+              stateFor(taskOf(tableRow.original)) === 'activity_loading' ||
+              stateFor(taskOf(tableRow.original)) === 'activity_error' ||
+              stateFor(taskOf(tableRow.original)) === 'no_activity'
+            "
+            class="flex min-w-40 flex-wrap items-center gap-2"
+          >
+            <span
+              v-if="
+                activitiesFor(taskOf(tableRow.original)).loading ||
+                !activitiesFor(taskOf(tableRow.original)).loaded
+              "
+              role="status"
+              aria-live="polite"
+              :data-testid="`remote-sync-activity-loading-${taskOf(tableRow.original).taskId}`"
             >
+              {{ t('remoteSync.activityLoading') }}
+            </span>
+            <template v-else-if="activitiesFor(taskOf(tableRow.original)).errorKey">
+              <span
+                role="alert"
+                :data-testid="`remote-sync-activity-error-${taskOf(tableRow.original).taskId}`"
+              >
+                {{ t('remoteSync.activityFetchError') }}
+              </span>
+              <UButton
+                variant="ghost"
+                size="xs"
+                :label="t('remoteSync.activityRetry')"
+                :data-testid="`remote-sync-activity-retry-${taskOf(tableRow.original).taskId}`"
+                @click="retryActivities(taskOf(tableRow.original))"
+              />
+            </template>
+            <span
+              v-else-if="stateFor(taskOf(tableRow.original)) === 'no_activity'"
+              role="status"
+              :data-testid="`remote-sync-no-activity-${taskOf(tableRow.original).taskId}`"
+            >
+              {{ t('remoteSync.noActivityReason') }}
+            </span>
+            <USelect
+              v-else
+              :id="`remote-sync-activity-${taskOf(tableRow.original).taskId}`"
+              :model-value="selectedActivity(taskOf(tableRow.original))"
+              :items="activitiesFor(taskOf(tableRow.original)).options"
+              label-key="name"
+              value-key="id"
+              :placeholder="t('remoteSync.activityEmptyOption')"
+              :aria-label="t('remoteSync.activityLabel')"
+              :data-testid="`remote-sync-activity-select-${taskOf(tableRow.original).taskId}`"
+              @update:model-value="
+                (value: string | undefined) => onActivityChange(taskOf(tableRow.original), value)
+              "
+            />
+          </div>
+          <span v-else class="text-muted">{{ t('remoteSync.emptyCell') }}</span>
+        </template>
+      </template>
+
+      <template #duration-cell="{ row: tableRow }">
+        <template v-if="tableRow.original.kind === 'task'">
+          <div
+            class="font-mono text-sm"
+            :data-testid="`remote-sync-row-duration-${taskOf(tableRow.original).taskId}`"
+          >
+            <span>
               {{
-                t('remoteSync.remoteLogItem', {
-                  duration: formatDuration(log.durationSeconds),
-                  activity: log.activityName ?? '—',
-                  id: log.remoteLogId,
+                t('remoteSync.trackedToSend', {
+                  tracked: formatDuration(trackedSecondsFor(taskOf(tableRow.original))),
+                  toSend: formatDuration(toSendSecondsFor(taskOf(tableRow.original))),
                 })
               }}
-            </li>
-          </ul>
-        </div>
+            </span>
+            <span
+              class="ml-1 text-muted"
+              :data-testid="`remote-sync-row-delta-${taskOf(tableRow.original).taskId}`"
+            >
+              ({{ formatSignedDuration(rowDeltaSeconds(taskOf(tableRow.original))) }})
+            </span>
+          </div>
+        </template>
+        <template v-else>
+          <span class="font-mono text-sm" data-testid="remote-sync-untitled-duration">
+            {{ formatDuration(tableRow.original.totalSeconds) }}
+          </span>
+        </template>
+      </template>
 
-        <p
-          v-if="outcomeText(row)"
-          class="text-sm text-muted"
-          role="status"
-          aria-live="polite"
-          :data-testid="`remote-sync-outcome-${row.taskId}`"
-          :data-outcome-status="outcomes[row.taskId]?.status"
-        >
-          {{ outcomeText(row) }}
-        </p>
+      <template #state-cell="{ row: tableRow }">
+        <template v-if="tableRow.original.kind === 'task'">
+          <UBadge
+            :color="stateBadgeColor(taskOf(tableRow.original))"
+            variant="subtle"
+            :icon="stateIconFor(taskOf(tableRow.original))"
+            :data-testid="`remote-sync-state-${taskOf(tableRow.original).taskId}`"
+          >
+            {{ reasonKeyFor(taskOf(tableRow.original)) }}
+          </UBadge>
+        </template>
+      </template>
 
-        <RemoteIssuePicker
-          v-if="stateFor(row) === 'unlinked' && row.config"
-          :config="toPickerConfig(row.config)"
-          :data-testid="`remote-sync-link-${row.taskId}`"
-          @link="(payload) => linkRemoteIssue(row, payload)"
+      <template #expanded="{ row: tableRow }">
+        <SyncRowDetail
+          v-if="tableRow.original.kind === 'task'"
+          :row="taskOf(tableRow.original)"
+          :entries="taskOf(tableRow.original).entries"
+          :can-manage-entries="canManageEntries(taskOf(tableRow.original))"
+          :selected-entry-ids="selectedIdsFor(taskOf(tableRow.original))"
+          :tracked-seconds="trackedSecondsFor(taskOf(tableRow.original))"
+          :to-send-seconds="toSendSecondsFor(taskOf(tableRow.original))"
+          :delta-seconds="rowDeltaSeconds(taskOf(tableRow.original))"
+          :rounded-input="displayedRoundedInput(taskOf(tableRow.original))"
+          :has-override="hasRoundedOverride(taskOf(tableRow.original).taskId)"
+          :is-excluded="isExcluded(taskOf(tableRow.original))"
+          :excluded-reason="excludedReason(taskOf(tableRow.original))"
+          :rounding-suggestions="roundingSuggestionsFor(taskOf(tableRow.original))"
+          :show-remote-logs="
+            !!issueRefFor(taskOf(tableRow.original)) && !!taskOf(tableRow.original).config
+          "
+          :remote-logs="remoteLogsFor(taskOf(tableRow.original)).logs"
+          :remote-logs-loading="remoteLogsFor(taskOf(tableRow.original)).loading"
+          :remote-logs-error-key="remoteLogsFor(taskOf(tableRow.original)).errorKey"
+          :remote-logs-loaded="remoteLogsFor(taskOf(tableRow.original)).loaded"
+          :duplicate-log="duplicateLogFor(taskOf(tableRow.original))"
+          :duplicate-dismissed="!!dismissedDuplicates[taskOf(tableRow.original).taskId]"
+          :comment="commentFor(taskOf(tableRow.original))"
+          :format-entry-start="formatEntryStart"
+          @toggle-entry="
+            (entryId, checked) => toggleEntry(taskOf(tableRow.original), entryId, checked)
+          "
+          @select-all-entries="selectAllEntries(taskOf(tableRow.original))"
+          @deselect-all-entries="deselectAllEntries(taskOf(tableRow.original))"
+          @rounded-input="(value) => onRoundedInputChange(taskOf(tableRow.original), value)"
+          @commit-rounded="commitRounded(taskOf(tableRow.original))"
+          @reset-rounded="resetRounded(taskOf(tableRow.original))"
+          @apply-suggestion="
+            (seconds) => applyRoundingSuggestion(taskOf(tableRow.original), seconds)
+          "
+          @retry-remote-logs="retryRemoteLogs(taskOf(tableRow.original))"
+          @dismiss-duplicate="
+            dismissedDuplicates = {
+              ...dismissedDuplicates,
+              [taskOf(tableRow.original).taskId]: true,
+            }
+          "
+          @comment-input="(value) => setComment(taskOf(tableRow.original), value)"
         />
-      </div>
+      </template>
+    </UTable>
 
-      <div
-        v-if="untitledTotal > 0"
-        class="grid gap-2 border-b border-default py-3"
-        role="listitem"
-        data-testid="remote-sync-untitled-row"
-      >
-        <span class="font-semibold">{{ t('remoteSync.untitledBucketLabel') }}</span>
-        <span data-testid="remote-sync-untitled-duration">
-          {{ t('remoteSync.originalDurationLabel') }}: {{ formatDuration(untitledTotal) }}
-        </span>
-      </div>
+    <SyncExportDialog
+      v-model:open="exportDialogOpen"
+      :phase="exportDialogPhase"
+      :included="exportIncludedRows"
+      :skipped="exportSkippedRows"
+      :day-total-seconds="dayTotalsSafe.dayTotal"
+      :tracked-seconds="dayTotalsSafe.tracked"
+      :to-send-seconds="dayTotalsSafe.toSend"
+      :progress="exportProgress"
+      :outcomes="outcomes"
+      :completed-count="exportCompletedCount"
+      :total-count="exportTotalCount"
+      :is-running="exporting"
+      @confirm="confirmExportDialog"
+      @cancel="cancelExportDialog"
+      @stop="requestStop"
+      @close="closeExportDialog"
+      @retry="onExportRetry"
+    />
+
+    <div
+      v-if="!isEmpty"
+      class="flex flex-wrap items-center gap-3 border-t border-default pt-3 font-mono text-sm"
+      data-testid="remote-sync-footer-totals"
+    >
+      <span data-testid="remote-sync-footer-day">
+        {{ t('remoteSync.dayTotalLabel') }}: {{ formatDuration(dayTotalsSafe.dayTotal) }}
+      </span>
+      <span data-testid="remote-sync-footer-tracked">
+        {{ t('remoteSync.trackedLabel') }}: {{ formatDuration(dayTotalsSafe.tracked) }}
+      </span>
+      <span data-testid="remote-sync-footer-to-send">
+        {{ t('remoteSync.toSendLabel') }}: {{ formatDuration(dayTotalsSafe.toSend) }}
+      </span>
     </div>
   </section>
 </template>

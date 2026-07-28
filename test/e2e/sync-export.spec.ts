@@ -135,25 +135,38 @@ describeSyncExport('sync export finalization API', async () => {
     return { date, entry, client, project };
   }
 
-  it('finalizes a successful export and records provenance', async () => {
+  function withKey(body: Record<string, unknown>, key: string) {
+    return { ...body, exportRequestKey: key };
+  }
+
+  it('finalizes a successful export and records provenance with the request key', async () => {
     const { jar, token } = await loginAs('exportalice@example.com', 'secret');
     const { date, entry } = await seedLinkedTask(jar, token, String(Date.now()));
+    const key = `er1|${entry.taskId}|${date}|${entry.id}|1800`;
 
-    const res = await finalize(jar, token, {
-      taskId: entry.taskId,
-      localDate: date,
-      remoteIssueId: '42',
-      remoteLogId: `log-${Date.now()}`,
-      exportDurationSeconds: 1800,
-      requiredFieldValues: { activity: '1' },
-      entryIds: [entry.id],
-    });
+    const res = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId: `log-${Date.now()}`,
+          exportDurationSeconds: 1800,
+          requiredFieldValues: { activity: '1' },
+          entryIds: [entry.id],
+        },
+        key,
+      ),
+    );
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.replayed).toBe(false);
     expect(body.entryIds).toEqual([entry.id]);
     expect(body.exportDurationSeconds).toBe(1800);
     expect(body.requiredFieldValues).toEqual({ activity: '1' });
+    expect(body.exportRequestKey).toBe(key);
 
     const day = await (
       await fetch(url(`/api/sync/day?date=${date}`), { headers: { cookie: jar.header() } })
@@ -163,34 +176,165 @@ describeSyncExport('sync export finalization API', async () => {
     expect(row.entries[0].previouslyExported).toBe(true);
     expect(row.exports).toHaveLength(1);
     expect(row.exports[0].remoteLogId).toBe(body.remoteLogId);
+
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
+    try {
+      const rows = await db.select().from(remoteExports).where(eq(remoteExports.id, body.exportId));
+      expect(rows[0]?.exportRequestKey).toBe(key);
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
+  it('reconciles repeated finalization with the same request key', async () => {
+    const { jar, token } = await loginAs('exportalice@example.com', 'secret');
+    const { date, entry } = await seedLinkedTask(jar, token, `key-replay-${Date.now()}`);
+    const key = `er1|same-key|${Date.now()}`;
+    const remoteLogId = `key-log-${Date.now()}`;
+
+    const first = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId,
+          exportDurationSeconds: 1800,
+          requiredFieldValues: { activity: '1' },
+          entryIds: [entry.id],
+        },
+        key,
+      ),
+    );
+    expect(first.status).toBe(200);
+    const firstBody = await first.json();
+
+    const second = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId: `other-${Date.now()}`,
+          exportDurationSeconds: 9999,
+          requiredFieldValues: { activity: '9' },
+          entryIds: [entry.id],
+        },
+        key,
+      ),
+    );
+    expect(second.status).toBe(200);
+    const secondBody = await second.json();
+    expect(secondBody.replayed).toBe(true);
+    expect(secondBody.exportId).toBe(firstBody.exportId);
+    expect(secondBody.remoteLogId).toBe(remoteLogId);
+    expect(secondBody.exportDurationSeconds).toBe(1800);
+
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
+    try {
+      const rows = await db
+        .select()
+        .from(remoteExports)
+        .where(eq(remoteExports.exportRequestKey, key));
+      expect(rows).toHaveLength(1);
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
+  it('creates a separate record when the request key differs', async () => {
+    const { jar, token } = await loginAs('exportalice@example.com', 'secret');
+    const { date, entry } = await seedLinkedTask(jar, token, `key-diff-${Date.now()}`);
+    const stamp = Date.now();
+
+    const first = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId: `first-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [entry.id],
+        },
+        `er1|diff-a|${stamp}`,
+      ),
+    );
+    expect(first.status).toBe(200);
+
+    const second = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId: `second-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [entry.id],
+        },
+        `er1|diff-b|${stamp}`,
+      ),
+    );
+    expect(second.status).toBe(200);
+    const body = await second.json();
+    expect(body.replayed).toBe(false);
+
+    const day = await (
+      await fetch(url(`/api/sync/day?date=${date}`), { headers: { cookie: jar.header() } })
+    ).json();
+    const row = day.rows.find((r: { taskId: string }) => r.taskId === entry.taskId);
+    expect(row.exports).toHaveLength(2);
   });
 
   it('replays a known finalized remote log without creating another row', async () => {
     const { jar, token } = await loginAs('exportalice@example.com', 'secret');
     const { date, entry } = await seedLinkedTask(jar, token, `replay-${Date.now()}`);
     const remoteLogId = `replay-log-${Date.now()}`;
+    const stamp = Date.now();
 
-    const first = await finalize(jar, token, {
-      taskId: entry.taskId,
-      localDate: date,
-      remoteIssueId: '42',
-      remoteLogId,
-      exportDurationSeconds: 1800,
-      requiredFieldValues: { activity: '1' },
-      entryIds: [entry.id],
-    });
+    const first = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId,
+          exportDurationSeconds: 1800,
+          requiredFieldValues: { activity: '1' },
+          entryIds: [entry.id],
+        },
+        `er1|replay-a|${stamp}`,
+      ),
+    );
     expect(first.status).toBe(200);
     const firstBody = await first.json();
 
-    const second = await finalize(jar, token, {
-      taskId: entry.taskId,
-      localDate: date,
-      remoteIssueId: '42',
-      remoteLogId,
-      exportDurationSeconds: 9999,
-      requiredFieldValues: { activity: '9' },
-      entryIds: [entry.id],
-    });
+    const second = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId,
+          exportDurationSeconds: 9999,
+          requiredFieldValues: { activity: '9' },
+          entryIds: [entry.id],
+        },
+        `er1|replay-b|${stamp}`,
+      ),
+    );
     expect(second.status).toBe(200);
     const secondBody = await second.json();
     expect(secondBody.replayed).toBe(true);
@@ -212,25 +356,40 @@ describeSyncExport('sync export finalization API', async () => {
   it('allows an intentional repeat export with a new remote log id', async () => {
     const { jar, token } = await loginAs('exportalice@example.com', 'secret');
     const { date, entry } = await seedLinkedTask(jar, token, `repeat-${Date.now()}`);
+    const stamp = Date.now();
 
-    const first = await finalize(jar, token, {
-      taskId: entry.taskId,
-      localDate: date,
-      remoteIssueId: '42',
-      remoteLogId: `first-${Date.now()}`,
-      exportDurationSeconds: 1800,
-      entryIds: [entry.id],
-    });
+    const first = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId: `first-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [entry.id],
+        },
+        `er1|repeat-a|${stamp}`,
+      ),
+    );
     expect(first.status).toBe(200);
 
-    const second = await finalize(jar, token, {
-      taskId: entry.taskId,
-      localDate: date,
-      remoteIssueId: '42',
-      remoteLogId: `second-${Date.now()}`,
-      exportDurationSeconds: 1800,
-      entryIds: [entry.id],
-    });
+    const second = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          taskId: entry.taskId,
+          localDate: date,
+          remoteIssueId: '42',
+          remoteLogId: `second-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [entry.id],
+        },
+        `er1|repeat-b|${stamp}`,
+      ),
+    );
     expect(second.status).toBe(200);
     const body = await second.json();
     expect(body.replayed).toBe(false);
@@ -248,45 +407,74 @@ describeSyncExport('sync export finalization API', async () => {
     const seeded = await seedLinkedTask(alice.jar, alice.token, `reject-${Date.now()}`);
 
     const bobSeed = await seedLinkedTask(bob.jar, bob.token, `bob-${Date.now()}`);
+    const stamp = Date.now();
 
-    const foreign = await finalize(alice.jar, alice.token, {
-      taskId: seeded.entry.taskId,
-      localDate: seeded.date,
-      remoteIssueId: '42',
-      remoteLogId: `foreign-${Date.now()}`,
-      exportDurationSeconds: 1800,
-      entryIds: [bobSeed.entry.id],
-    });
+    const foreign = await finalize(
+      alice.jar,
+      alice.token,
+      withKey(
+        {
+          taskId: seeded.entry.taskId,
+          localDate: seeded.date,
+          remoteIssueId: '42',
+          remoteLogId: `foreign-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [bobSeed.entry.id],
+        },
+        `er1|foreign|${stamp}`,
+      ),
+    );
     expect(foreign.status).toBe(422);
 
-    const wrongIssue = await finalize(alice.jar, alice.token, {
-      taskId: seeded.entry.taskId,
-      localDate: seeded.date,
-      remoteIssueId: '999',
-      remoteLogId: `wrong-issue-${Date.now()}`,
-      exportDurationSeconds: 1800,
-      entryIds: [seeded.entry.id],
-    });
+    const wrongIssue = await finalize(
+      alice.jar,
+      alice.token,
+      withKey(
+        {
+          taskId: seeded.entry.taskId,
+          localDate: seeded.date,
+          remoteIssueId: '999',
+          remoteLogId: `wrong-issue-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [seeded.entry.id],
+        },
+        `er1|wrong-issue|${stamp}`,
+      ),
+    );
     expect(wrongIssue.status).toBe(422);
 
-    const wrongDay = await finalize(alice.jar, alice.token, {
-      taskId: seeded.entry.taskId,
-      localDate: '2026-04-02',
-      remoteIssueId: '42',
-      remoteLogId: `wrong-day-${Date.now()}`,
-      exportDurationSeconds: 1800,
-      entryIds: [seeded.entry.id],
-    });
+    const wrongDay = await finalize(
+      alice.jar,
+      alice.token,
+      withKey(
+        {
+          taskId: seeded.entry.taskId,
+          localDate: '2026-04-02',
+          remoteIssueId: '42',
+          remoteLogId: `wrong-day-${stamp}`,
+          exportDurationSeconds: 1800,
+          entryIds: [seeded.entry.id],
+        },
+        `er1|wrong-day|${stamp}`,
+      ),
+    );
     expect(wrongDay.status).toBe(422);
 
-    const invalid = await finalize(alice.jar, alice.token, {
-      taskId: seeded.entry.taskId,
-      localDate: seeded.date,
-      remoteIssueId: '42',
-      remoteLogId: `invalid-${Date.now()}`,
-      exportDurationSeconds: 0,
-      entryIds: [seeded.entry.id],
-    });
+    const invalid = await finalize(
+      alice.jar,
+      alice.token,
+      withKey(
+        {
+          taskId: seeded.entry.taskId,
+          localDate: seeded.date,
+          remoteIssueId: '42',
+          remoteLogId: `invalid-${stamp}`,
+          exportDurationSeconds: 0,
+          entryIds: [seeded.entry.id],
+        },
+        `er1|invalid|${stamp}`,
+      ),
+    );
     expect(invalid.status).toBe(422);
 
     const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
@@ -319,6 +507,7 @@ describeSyncExport('sync export finalization API', async () => {
       remoteLogId: '1',
       exportDurationSeconds: 60,
       entryIds: ['01900000-0000-7000-8000-0000000000aa'],
+      exportRequestKey: 'er1|auth|test',
     });
     expect(res.status).toBe(401);
   });
