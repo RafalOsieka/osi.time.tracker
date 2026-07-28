@@ -14,7 +14,7 @@
 
 ## 3. Expandable table layout
 
-- [x] 3.1 Replace the flat list in `app/pages/sync/[date].vue` with a `UTable` of collapsed summary rows (inclusion control, task name, issue, activity select, tracked → to send, state badge) plus a footer repeating the three totals
+- [x] 3.1 Replace the flat list in `app/pages/sync/[date].vue` with a `UTable` of collapsed summary rows (inclusion control, task name, issue, activity select, tracked → to send, state badge); day totals remain in the page header only (no table footer)
 - [x] 3.2 Extract a `SyncRowDetail` component for the expanded region (entry selection list, editable export duration with reset, remote-log context) and render it through the table's expanded slot
 - [x] 3.3 Group non-exportable rows apart from exportable rows and render the untitled bucket as a non-selectable table row
 - [x] 3.4 Re-attach every pre-existing `data-testid` to its equivalent element and add the new hooks for expansion, totals, bulk actions and warnings

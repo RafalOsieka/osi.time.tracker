@@ -116,6 +116,11 @@ const BadgeStub = {
   template: '<span v-bind="$attrs">{{ label }}<slot /></span>',
   props: ['label', 'color', 'variant', 'icon'],
 };
+const TooltipStub = {
+  name: 'UTooltip',
+  template: '<div v-bind="$attrs" :data-tooltip-text="text"><slot /></div>',
+  props: ['text', 'content', 'ui', 'arrow', 'portal'],
+};
 const PopoverStub = {
   template: '<div><slot /><slot name="content" /></div>',
 };
@@ -136,6 +141,7 @@ const stubs = {
   UCheckbox: CheckboxStub,
   UButton: ButtonStub,
   UBadge: BadgeStub,
+  UTooltip: TooltipStub,
   UPopover: PopoverStub,
   UIcon: IconStub,
   UModal: ModalStub,
@@ -706,6 +712,20 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-total-untitled"]').text()).toContain('00:05:00');
     expect(wrapper.find('[data-testid="remote-sync-state-task-sum-blocked"]').text()).toContain(
       'remoteSync.state.noClient',
+    );
+
+    const tooltipTexts = wrapper
+      .findAll('[data-tooltip-text]')
+      .map((node) => node.attributes('data-tooltip-text') ?? '');
+    expect(tooltipTexts).toEqual(
+      expect.arrayContaining([
+        'remoteSync.dayTotalTooltip',
+        'remoteSync.trackedTooltip',
+        'remoteSync.toSendTooltip',
+        'remoteSync.deltaTooltip',
+        'remoteSync.blockedTooltip',
+        'remoteSync.untitledTooltip',
+      ]),
     );
   });
 

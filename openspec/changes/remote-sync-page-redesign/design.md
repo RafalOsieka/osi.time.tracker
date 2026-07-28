@@ -12,7 +12,7 @@ day total 07:12                         day total 07:12 · tracked 06:30 · to s
                                         ⚠ 00:45 blocked · 00:20 untitled
 row: name + state text                  UTable: ☑ | task | issue | activity | tracked → to send | state badge
      entries, rounded, activity,          └ expanded: entries (all/none) · export duration · comment · remote logs
-     remote logs, outcome                footer: the same three totals
+     remote logs, outcome                (no footer totals — already shown above the table)
 ```
 
 ## Goals / Non-Goals
@@ -33,7 +33,7 @@ row: name + state text                  UTable: ☑ | task | issue | activity | 
 ## Decisions
 
 **1. `UTable` with expandable rows, not `UAccordion`.**
-Alternative considered: `UAccordion` with a rich body per row — more readable per task, but it cannot align durations into columns, so scanning "which task sends what" stays impossible. `UTable` gives aligned numeric columns, a header select-all, a footer for totals and an `#expanded` slot for the detail body. Trade-off: the summary line must stay short, so the activity select and the state badge are the only interactive controls in the collapsed row; everything else moves into the expansion.
+Alternative considered: `UAccordion` with a rich body per row — more readable per task, but it cannot align durations into columns, so scanning "which task sends what" stays impossible. `UTable` gives aligned numeric columns, a header select-all and an `#expanded` slot for the detail body. Day totals stay in the page header only (not a table footer) to avoid duplicating the same three summaries. Trade-off: the summary line must stay short, so the activity select and the state badge are the only interactive controls in the collapsed row; everything else moves into the expansion.
 
 **2. Three totals, each with a single unambiguous definition.**
 

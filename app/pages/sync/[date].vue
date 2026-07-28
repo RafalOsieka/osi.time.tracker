@@ -103,6 +103,12 @@ const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const exportDialogPhase = ref<ExportDialogPhase>('review');
 
+/** Allow multi-line explanations on dense summary chips (default tooltip is single-line). */
+const summaryTooltipUi = {
+  content: 'h-auto max-w-xs px-2.5 py-1.5',
+  text: 'whitespace-normal text-pretty',
+};
+
 const {
   ensureLoaded: ensureActivitiesLoaded,
   retry: retryActivitiesLoaded,
@@ -850,46 +856,90 @@ const columns = computed<TableColumn<SyncTableRow>[]>(() => [
       data-testid="remote-sync-summaries"
       aria-live="polite"
     >
-      <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-day">
-        {{ t('remoteSync.dayTotalLabel') }}: {{ formatDuration(dayTotalsSafe.dayTotal) }}
-      </UBadge>
+      <UTooltip
+        :text="t('remoteSync.dayTotalTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
+      >
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-day">
+            {{ t('remoteSync.dayTotalLabel') }}: {{ formatDuration(dayTotalsSafe.dayTotal) }}
+          </UBadge>
+        </span>
+      </UTooltip>
       <!-- keep legacy day-total hook for existing tests -->
       <span class="sr-only" data-testid="remote-sync-day-total">
         {{ t('remoteSync.dayTotal', { duration: formatDuration(dayTotalsSafe.dayTotal) }) }}
       </span>
-      <UBadge color="primary" variant="subtle" data-testid="remote-sync-total-tracked">
-        {{ t('remoteSync.trackedLabel') }}: {{ formatDuration(dayTotalsSafe.tracked) }}
-      </UBadge>
-      <UBadge color="success" variant="subtle" data-testid="remote-sync-total-to-send">
-        {{ t('remoteSync.toSendLabel') }}: {{ formatDuration(dayTotalsSafe.toSend) }}
-      </UBadge>
-      <UBadge color="neutral" variant="outline" data-testid="remote-sync-total-delta">
-        {{ t('remoteSync.deltaLabel') }}: {{ formatSignedDuration(dayTotalsSafe.delta) }}
-      </UBadge>
-      <UBadge
+      <UTooltip
+        :text="t('remoteSync.trackedTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
+      >
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="primary" variant="subtle" data-testid="remote-sync-total-tracked">
+            {{ t('remoteSync.trackedLabel') }}: {{ formatDuration(dayTotalsSafe.tracked) }}
+          </UBadge>
+        </span>
+      </UTooltip>
+      <UTooltip
+        :text="t('remoteSync.toSendTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
+      >
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="success" variant="subtle" data-testid="remote-sync-total-to-send">
+            {{ t('remoteSync.toSendLabel') }}: {{ formatDuration(dayTotalsSafe.toSend) }}
+          </UBadge>
+        </span>
+      </UTooltip>
+      <UTooltip
+        :text="t('remoteSync.deltaTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
+      >
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="neutral" variant="outline" data-testid="remote-sync-total-delta">
+            {{ t('remoteSync.deltaLabel') }}: {{ formatSignedDuration(dayTotalsSafe.delta) }}
+          </UBadge>
+        </span>
+      </UTooltip>
+      <UTooltip
         v-if="dayTotalsSafe.blocked > 0"
-        color="warning"
-        variant="subtle"
-        data-testid="remote-sync-total-blocked"
+        :text="t('remoteSync.blockedTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
       >
-        {{ t('remoteSync.blockedLabel') }}: {{ formatDuration(dayTotalsSafe.blocked) }}
-      </UBadge>
-      <UBadge
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="warning" variant="subtle" data-testid="remote-sync-total-blocked">
+            {{ t('remoteSync.blockedLabel') }}: {{ formatDuration(dayTotalsSafe.blocked) }}
+          </UBadge>
+        </span>
+      </UTooltip>
+      <UTooltip
         v-if="dayTotalsSafe.excluded > 0"
-        color="neutral"
-        variant="subtle"
-        data-testid="remote-sync-total-excluded"
+        :text="t('remoteSync.excludedTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
       >
-        {{ t('remoteSync.excludedLabel') }}: {{ formatDuration(dayTotalsSafe.excluded) }}
-      </UBadge>
-      <UBadge
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-excluded">
+            {{ t('remoteSync.excludedLabel') }}: {{ formatDuration(dayTotalsSafe.excluded) }}
+          </UBadge>
+        </span>
+      </UTooltip>
+      <UTooltip
         v-if="dayTotalsSafe.untitled > 0"
-        color="neutral"
-        variant="subtle"
-        data-testid="remote-sync-total-untitled"
+        :text="t('remoteSync.untitledTooltip')"
+        :content="{ side: 'bottom' }"
+        :ui="summaryTooltipUi"
       >
-        {{ t('remoteSync.untitledLabel') }}: {{ formatDuration(dayTotalsSafe.untitled) }}
-      </UBadge>
+        <span tabindex="0" class="inline-flex">
+          <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-untitled">
+            {{ t('remoteSync.untitledLabel') }}: {{ formatDuration(dayTotalsSafe.untitled) }}
+          </UBadge>
+        </span>
+      </UTooltip>
     </div>
 
     <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">

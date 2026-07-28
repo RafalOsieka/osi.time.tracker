@@ -7,7 +7,7 @@ The Remote Sync page renders every task fully expanded in one flat list: a ten-t
 - Replace the flat list with a dense expandable table: one summary line per task (selection, name, issue, activity, tracked → to send, state) and the entries, export duration, and remote logs inside the expanded row.
 - Add day navigation on the page itself — previous/next day plus a free calendar jump — instead of routing through the Timer view.
 - Show **three** day-level summaries side by side: **day total** (all time tracked that day), **tracked** (the selected entries behind the export), and **to send** (what will actually be pushed after rounding and overrides), with the tracked → to-send delta and badges for blocked, excluded and untitled time.
-- Render each task's tracked → to-send pair with its own delta hint, and repeat all three totals in the table footer.
+- Render each task's tracked → to-send pair with its own delta hint. Day-level totals appear once above the table (not repeated in a footer).
 - Convey row state as an icon **plus** text badge, and group the day's rows so blocked rows are visually separated from ready ones.
 - Display the comment of every fetched remote log next to its duration and activity.
 - Warn (never block) when a linked issue already has a remote log for that day with the same duration — a possible duplicate.
@@ -34,7 +34,7 @@ _None._
 
 ## Impact
 
-- `app/pages/sync/[date].vue` — rewritten as an expandable `UTable` with a page header and footer totals.
+- `app/pages/sync/[date].vue` — rewritten as an expandable `UTable` with page-header day totals (no table footer).
 - New presentational components under `app/components/sync/` for the row body and the summary header.
 - `app/composables/useRemoteDayLogs.ts` — expose the already-parsed `comment`; derive duplicate candidates.
 - New pure helpers in `shared/utils/` for the three day totals and duplicate detection (unit-testable).
