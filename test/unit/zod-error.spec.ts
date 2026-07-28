@@ -6,9 +6,8 @@ describe('mapZodError', () => {
   it('maps missing name (invalid_type) to error.clientNameRequired', () => {
     const schema = z.object({
       name: z.string({
-        required_error: 'error.clientNameRequired',
-        invalid_type_error: 'error.clientNameRequired',
-      }),
+          error: (issue) => issue.input === undefined ? 'error.clientNameRequired' : 'error.clientNameRequired'
+    }),
     });
     const result = schema.safeParse({});
     expect(result.success).toBe(false);
@@ -23,7 +22,9 @@ describe('mapZodError', () => {
 
   it('maps empty name (too_small) to error.clientNameRequired', () => {
     const schema = z.object({
-      name: z.string().min(1, { message: 'error.clientNameRequired' }),
+      name: z.string().min(1, {
+          error: 'error.clientNameRequired'
+    }),
     });
     const result = schema.safeParse({ name: '' });
     expect(result.success).toBe(false);
@@ -38,7 +39,9 @@ describe('mapZodError', () => {
 
   it('maps too long name (too_big) to error.clientNameTooLong with params', () => {
     const schema = z.object({
-      name: z.string().max(5, { message: 'error.clientNameTooLong' }),
+      name: z.string().max(5, {
+          error: 'error.clientNameTooLong'
+    }),
     });
     const result = schema.safeParse({ name: 'abcdef' });
     expect(result.success).toBe(false);

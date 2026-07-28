@@ -1,8 +1,8 @@
 ## 1. Dependency bump & baseline
 
-- [ ] 1.1 Record the pre-migration baseline: count `error.*` message keys in `shared/types`, and list every occurrence of the nil UUID `00000000-0000-0000-0000-000000000000` in `test/`, classified as "unknown id" or "malformed id"
-- [ ] 1.2 Bump `zod` to `^4` in `package.json`, run `pnpm install`, and verify no second major of `zod` is reachable from application code
-- [ ] 1.3 Confirm `@nuxt/ui@4` resolves its zod peer without warnings and record the resolved version in the change notes
+- [x] 1.1 Record the pre-migration baseline: count `error.*` message keys in `shared/types`, and list every occurrence of the nil UUID `00000000-0000-0000-0000-000000000000` in `test/`, classified as "unknown id" or "malformed id"
+- [x] 1.2 Bump `zod` to `^4` in `package.json`, run `pnpm install`, and verify no second major of `zod` is reachable from application code
+- [x] 1.3 Confirm `@nuxt/ui@4` resolves its zod peer without warnings and record the resolved version in the change notes
 
 ## 2. Automated migration (codemod)
 
