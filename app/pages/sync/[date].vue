@@ -1144,10 +1144,7 @@ const columns = computed<TableColumn<SyncTableRow>[]>(() => [
                 @click="startEditToSend(taskOf(tableRow.original))"
               />
             </template>
-            <span
-              v-else
-              :data-testid="`remote-sync-to-send-${taskOf(tableRow.original).taskId}`"
-            >
+            <span v-else :data-testid="`remote-sync-to-send-${taskOf(tableRow.original).taskId}`">
               {{ formatDuration(toSendSecondsFor(taskOf(tableRow.original))) }}
             </span>
             <span

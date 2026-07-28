@@ -414,14 +414,16 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.click('[data-testid="remote-sync-pick-date"]');
     await page.waitForSelector('[data-testid="remote-sync-calendar"]');
     // Drive the native date input directly so Nuxt UI's wrapper cannot swallow events.
-    await page.locator('[data-testid="remote-sync-calendar"] input[type="date"]').evaluate((el, value) => {
-      const input = el as HTMLInputElement;
-      const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-      proto?.set?.call(input, value);
-      input.dispatchEvent(new Event('input', { bubbles: true }));
-      input.dispatchEvent(new Event('change', { bubbles: true }));
-      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    }, next);
+    await page
+      .locator('[data-testid="remote-sync-calendar"] input[type="date"]')
+      .evaluate((el, value) => {
+        const input = el as HTMLInputElement;
+        const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+        proto?.set?.call(input, value);
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      }, next);
     await page.waitForURL(`**/sync/${next}`);
     await page.waitForSelector('[data-testid="remote-sync-empty-state"]');
 
