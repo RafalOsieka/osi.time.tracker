@@ -8,6 +8,13 @@ export function formatDuration(totalSeconds: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
+/** Formats a signed duration delta as `+HH:MM:SS` / `−HH:MM:SS` / `00:00:00`. */
+export function formatSignedDuration(deltaSeconds: number): string {
+  if (deltaSeconds === 0) return formatDuration(0);
+  const sign = deltaSeconds > 0 ? '+' : '−';
+  return `${sign}${formatDuration(Math.abs(deltaSeconds))}`;
+}
+
 /** Formats an ISO timestamp as a locale-aware time (HH:MM). */
 export function formatTime(
   iso: string,

@@ -115,4 +115,48 @@ describeRemoteConfigUI('client remote config UI flow', async () => {
     await page.waitForSelector('[data-testid="client-dialog"]');
     expect(await page.locator('[data-testid="remote-config-remove-button"]').count()).toBe(0);
   });
+
+  it('saves nearest_15m rounding and reloads the persisted selection', async () => {
+    const page = await loginAs('remoteconfigui@example.com');
+    await page.click('[data-testid="app-sidebar"] a[href="/clients"]');
+    await page.waitForSelector('[data-testid="clients-page"]');
+
+    const clientName = 'Nearest Rounding Client ' + Date.now();
+    await page.click('[data-testid="new-client-button"]');
+    await page.waitForSelector('[data-testid="client-dialog"]');
+    await page
+      .locator('[data-testid="client-name-input"] input, [data-testid="client-name-input"]')
+      .first()
+      .fill(clientName);
+    await page.click('[data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="client-dialog"]', { state: 'hidden' });
+    await page.waitForFunction((name) => document.body.textContent?.includes(name), clientName);
+
+    const row = page.locator('tr', { hasText: clientName });
+    await row.locator('[data-testid^="edit-client-"]').click();
+    await page.waitForSelector('[data-testid="remote-config-form"]');
+
+    await page
+      .locator(
+        '[data-testid="remote-config-base-url-input"] input, [data-testid="remote-config-base-url-input"]',
+      )
+      .first()
+      .fill('https://op.nearest.example.com');
+    await page.click('[data-testid="remote-config-rounding-rule-select"]');
+    await page.getByRole('option', { name: /Nearest 15 minutes|Najbliższe 15 minut/i }).click();
+    await page.click('[data-testid="remote-config-save-button"]');
+    await page.waitForSelector('[data-testid="remote-config-remove-button"]');
+
+    await page.click('[data-testid="cancel-button"]');
+    await page.waitForSelector('[data-testid="client-dialog"]', { state: 'hidden' });
+    await row.locator('[data-testid^="edit-client-"]').click();
+    await page.waitForSelector('[data-testid="remote-config-remove-button"]');
+
+    const savedRule = await page
+      .locator('[data-testid="remote-config-rounding-rule-select"]')
+      .textContent();
+    expect(savedRule).toMatch(/Nearest 15 minutes|Najbliższe 15 minut/i);
+
+    await page.close();
+  });
 });

@@ -81,4 +81,17 @@ describe('createRemoteSystemConfigSchema', () => {
       expect(mapped.messageKey).toBe('error.remoteConfigBaseUrlInvalid');
     }
   });
+
+  it('accepts nearest_* rounding rules', () => {
+    for (const roundingRule of ['nearest_15m', 'nearest_30m', 'nearest_1h'] as const) {
+      const result = createRemoteSystemConfigSchema.parse({ ...valid, roundingRule });
+      expect(result.roundingRule).toBe(roundingRule);
+    }
+  });
+
+  it('rejects an unknown rounding rule', () => {
+    expect(() =>
+      createRemoteSystemConfigSchema.parse({ ...valid, roundingRule: 'bankers_15m' }),
+    ).toThrow(ZodError);
+  });
 });
