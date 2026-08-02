@@ -9,30 +9,18 @@ export const TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS = 60_000;
 export const startTimeEntrySchema = z
   .object({
     title: z
-      .string({ invalid_type_error: 'error.timeEntryTitleInvalid' })
+      .string({ error: 'error.timeEntryTitleInvalid' })
       .trim()
-      .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' })
+      .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' })
       .nullish(),
-    projectId: z
-      .string({ invalid_type_error: 'error.timeEntryProjectInvalid' })
-      .uuid({ message: 'error.timeEntryProjectInvalid' })
-      .nullish(),
-    taskId: z
-      .string({ invalid_type_error: 'error.timeEntryTaskInvalid' })
-      .uuid({ message: 'error.timeEntryTaskInvalid' })
-      .nullish(),
-    startedAt: z
-      .string({ invalid_type_error: 'error.timeEntryStartedAtInvalid' })
-      .datetime({ message: 'error.timeEntryStartedAtInvalid' })
-      .nullish(),
-    stoppedAt: z
-      .string({ invalid_type_error: 'error.timeEntryStoppedAtInvalid' })
-      .datetime({ message: 'error.timeEntryStoppedAtInvalid' })
-      .nullish(),
+    projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
+    taskId: z.uuid({ error: 'error.timeEntryTaskInvalid' }).nullish(),
+    startedAt: z.iso.datetime({ offset: true, error: 'error.timeEntryStartedAtInvalid' }).nullish(),
+    stoppedAt: z.iso.datetime({ offset: true, error: 'error.timeEntryStoppedAtInvalid' }).nullish(),
   })
   .refine((value) => (value.startedAt == null) === (value.stoppedAt == null), {
-    message: 'error.timeEntryManualPairIncomplete',
     path: ['startedAt'],
+    error: 'error.timeEntryManualPairIncomplete',
   })
   .refine(
     (value) =>
@@ -40,8 +28,8 @@ export const startTimeEntrySchema = z
       value.stoppedAt == null ||
       new Date(value.startedAt).getTime() <= new Date(value.stoppedAt).getTime(),
     {
-      message: 'error.timeEntryStartAfterStop',
       path: ['startedAt'],
+      error: 'error.timeEntryStartAfterStop',
     },
   )
   .refine(
@@ -49,35 +37,23 @@ export const startTimeEntrySchema = z
       value.startedAt == null ||
       new Date(value.startedAt).getTime() <= Date.now() + TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS,
     {
-      message: 'error.timeEntryStartedAtInFuture',
       path: ['startedAt'],
+      error: 'error.timeEntryStartedAtInFuture',
     },
   );
 
 export type StartTimeEntryDto = z.infer<typeof startTimeEntrySchema>;
 
 export const updateTimeEntrySchema = z.object({
-  startedAt: z
-    .string({ invalid_type_error: 'error.timeEntryStartedAtInvalid' })
-    .datetime({ message: 'error.timeEntryStartedAtInvalid' })
-    .nullish(),
-  stoppedAt: z
-    .string({ invalid_type_error: 'error.timeEntryStoppedAtInvalid' })
-    .datetime({ message: 'error.timeEntryStoppedAtInvalid' })
-    .nullish(),
+  startedAt: z.iso.datetime({ offset: true, error: 'error.timeEntryStartedAtInvalid' }).nullish(),
+  stoppedAt: z.iso.datetime({ offset: true, error: 'error.timeEntryStoppedAtInvalid' }).nullish(),
   title: z
-    .string({ invalid_type_error: 'error.timeEntryTitleInvalid' })
+    .string({ error: 'error.timeEntryTitleInvalid' })
     .trim()
-    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' })
+    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' })
     .nullish(),
-  projectId: z
-    .string({ invalid_type_error: 'error.timeEntryProjectInvalid' })
-    .uuid({ message: 'error.timeEntryProjectInvalid' })
-    .nullish(),
-  taskId: z
-    .string({ invalid_type_error: 'error.timeEntryTaskInvalid' })
-    .uuid({ message: 'error.timeEntryTaskInvalid' })
-    .nullish(),
+  projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
+  taskId: z.uuid({ error: 'error.timeEntryTaskInvalid' }).nullish(),
 });
 
 export type UpdateTimeEntryDto = z.infer<typeof updateTimeEntrySchema>;
@@ -96,78 +72,48 @@ export interface TimeEntryDto {
 
 export const listTimeEntriesQuerySchema = z
   .object({
-    from: z
-      .string({
-        required_error: 'error.timeEntryRangeInvalid',
-        invalid_type_error: 'error.timeEntryRangeInvalid',
-      })
-      .datetime({ message: 'error.timeEntryRangeInvalid' }),
-    to: z
-      .string({
-        required_error: 'error.timeEntryRangeInvalid',
-        invalid_type_error: 'error.timeEntryRangeInvalid',
-      })
-      .datetime({ message: 'error.timeEntryRangeInvalid' }),
+    from: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }),
+    to: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }),
   })
   .refine((value) => new Date(value.from).getTime() < new Date(value.to).getTime(), {
-    message: 'error.timeEntryRangeInvalid',
     path: ['from'],
+    error: 'error.timeEntryRangeInvalid',
   });
 
 export type ListTimeEntriesQuery = z.infer<typeof listTimeEntriesQuerySchema>;
 
 export const bulkAssignSchema = z.object({
   ids: z
-    .array(
-      z.string({ invalid_type_error: 'error.timeEntryIdsInvalid' }).uuid({
-        message: 'error.timeEntryIdsInvalid',
-      }),
-    )
-    .min(1, { message: 'error.timeEntryIdsInvalid' }),
+    .array(z.uuid({ error: 'error.timeEntryIdsInvalid' }))
+    .min(1, { error: 'error.timeEntryIdsInvalid' }),
   title: z
-    .string({
-      required_error: 'error.timeEntryTitleInvalid',
-      invalid_type_error: 'error.timeEntryTitleInvalid',
-    })
+    .string({ error: 'error.timeEntryTitleInvalid' })
     .trim()
-    .min(1, { message: 'error.timeEntryTitleInvalid' })
-    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' }),
-  projectId: z
-    .string({ invalid_type_error: 'error.timeEntryProjectInvalid' })
-    .uuid({ message: 'error.timeEntryProjectInvalid' })
-    .nullish(),
+    .min(1, { error: 'error.timeEntryTitleInvalid' })
+    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' }),
+  projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
 });
 
 export type BulkAssignDto = z.infer<typeof bulkAssignSchema>;
 
 export const reassignTimeEntriesSchema = z.object({
   ids: z
-    .array(
-      z.string({ invalid_type_error: 'error.timeEntryIdsInvalid' }).uuid({
-        message: 'error.timeEntryIdsInvalid',
-      }),
-    )
-    .min(1, { message: 'error.timeEntryIdsInvalid' }),
+    .array(z.uuid({ error: 'error.timeEntryIdsInvalid' }))
+    .min(1, { error: 'error.timeEntryIdsInvalid' }),
   name: z
-    .string({ invalid_type_error: 'error.timeEntryTitleInvalid' })
+    .string({ error: 'error.timeEntryTitleInvalid' })
     .trim()
-    .min(1, { message: 'error.timeEntryTitleInvalid' })
-    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' })
+    .min(1, { error: 'error.timeEntryTitleInvalid' })
+    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' })
     .optional(),
-  projectId: z
-    .string({ invalid_type_error: 'error.timeEntryProjectInvalid' })
-    .uuid({ message: 'error.timeEntryProjectInvalid' })
-    .nullish(),
+  projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
 });
 
 export type ReassignTimeEntriesDto = z.infer<typeof reassignTimeEntriesSchema>;
 
 const hhMmTimeSchema = z
-  .string({
-    required_error: 'error.timeEntryStartedAtInvalid',
-    invalid_type_error: 'error.timeEntryStartedAtInvalid',
-  })
-  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: 'error.timeEntryStartedAtInvalid' });
+  .string({ error: 'error.timeEntryStartedAtInvalid' })
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'error.timeEntryStartedAtInvalid' });
 
 /**
  * Client-side form schema for the timer add-entry dialog (local HH:mm range).
@@ -175,14 +121,14 @@ const hhMmTimeSchema = z
 export const timerAddEntryFormSchema = z
   .object({
     title: z
-      .string({ invalid_type_error: 'error.timeEntryTitleInvalid' })
-      .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' }),
+      .string({ error: 'error.timeEntryTitleInvalid' })
+      .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' }),
     startTime: hhMmTimeSchema,
     endTime: hhMmTimeSchema,
   })
   .refine((value) => value.startTime <= value.endTime, {
-    message: 'timerView.addEntry.rangeError',
     path: ['endTime'],
+    error: 'timerView.addEntry.rangeError',
   });
 
 export type TimerAddEntryFormDto = z.infer<typeof timerAddEntryFormSchema>;
@@ -192,17 +138,11 @@ export type TimerAddEntryFormDto = z.infer<typeof timerAddEntryFormSchema>;
  */
 export const timerBulkAssignFormSchema = z.object({
   title: z
-    .string({
-      required_error: 'timerView.bulkAssign.nameRequiredError',
-      invalid_type_error: 'timerView.bulkAssign.nameRequiredError',
-    })
+    .string({ error: 'timerView.bulkAssign.nameRequiredError' })
     .trim()
-    .min(1, { message: 'timerView.bulkAssign.nameRequiredError' })
-    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { message: 'error.timeEntryTitleTooLong' }),
-  projectId: z
-    .string({ invalid_type_error: 'error.timeEntryProjectInvalid' })
-    .uuid({ message: 'error.timeEntryProjectInvalid' })
-    .nullish(),
+    .min(1, { error: 'timerView.bulkAssign.nameRequiredError' })
+    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' }),
+  projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
 });
 
 export type TimerBulkAssignFormDto = z.infer<typeof timerBulkAssignFormSchema>;

@@ -6,6 +6,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { UNKNOWN_ID } from './support/fixtures';
 import { createDatabaseClient } from '../../server/db/client';
 import { remoteIssueRefs, remoteSystemConfigs, timeEntries, tasks } from '../../server/db/schema';
 
@@ -269,7 +270,7 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     const bob = await loginAs('rbob@example.com', 'secret');
     const bobTask = await createTaskViaEntry(bob.jar, bob.token, `Bob Task ${Date.now()}`);
 
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const missing = await linkRef(alice.jar, alice.token, fakeId, {
       remoteIssueId: '1',
       cachedTitle: 'x',

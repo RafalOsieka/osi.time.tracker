@@ -64,8 +64,9 @@ describe('updateTaskSchema', () => {
       const mapped = mapZodError(result.error);
       expect(mapped).toEqual({
         messageKey: 'error.taskNameRequired',
-        params: { expected: 'string', received: 'undefined' },
+        params: { expected: 'string' },
       });
+      expect(mapped.params).not.toHaveProperty('received');
     }
   });
 

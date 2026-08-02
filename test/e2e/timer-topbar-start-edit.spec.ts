@@ -88,12 +88,14 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     }
     await page.waitForSelector('[data-testid="timer-start-editor-popover"]', { state: 'hidden' });
 
-    // The elapsed ticker rebases to > 24h (yesterday 08:30) while staying running.
+    // The elapsed ticker rebases to yesterday 08:30 while staying running.
+    // Require at least 12h so the assertion holds even when the suite runs
+    // shortly after local midnight (yesterday 08:30 is then only ~16h ago).
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="timer-elapsed"]');
       if (!el?.textContent) return false;
       const hours = Number(el.textContent.split(':')[0]);
-      return Number.isFinite(hours) && hours >= 24;
+      return Number.isFinite(hours) && hours >= 12;
     });
 
     const runningRes = await fetch(url('/api/time-entries/running'), {

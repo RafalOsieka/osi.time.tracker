@@ -8,6 +8,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { UNKNOWN_ID } from './support/fixtures';
 
 const describeRemoteActivitiesProxy = requireDocker();
 
@@ -212,7 +213,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({
-        remoteSystemConfigId: '00000000-0000-0000-0000-000000000000',
+        remoteSystemConfigId: UNKNOWN_ID,
         remoteIssueId: '42',
       }),
     });

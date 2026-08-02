@@ -5,6 +5,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { UNKNOWN_ID } from './support/fixtures';
 
 const describeTasks = requireDocker();
 
@@ -248,7 +249,7 @@ describeTasks('tasks API integration', async () => {
     const bob = await loginAs('tbob@example.com', 'secret');
     const bobTask = await createTaskViaEntry(bob.jar, bob.token, 'Bob Task ' + Date.now());
 
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const notFound = await patchTask(alice.jar, alice.token, fakeId, { name: 'Ghost' });
     expect(notFound.status).toBe(404);
 

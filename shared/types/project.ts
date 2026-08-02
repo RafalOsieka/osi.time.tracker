@@ -4,19 +4,11 @@ export const PROJECT_NAME_MAX_LENGTH = 100;
 
 export const createProjectSchema = z.object({
   name: z
-    .string({
-      required_error: 'error.projectNameRequired',
-      invalid_type_error: 'error.projectNameRequired',
-    })
+    .string({ error: 'error.projectNameRequired' })
     .trim()
-    .min(1, { message: 'error.projectNameRequired' })
-    .max(PROJECT_NAME_MAX_LENGTH, { message: 'error.projectNameTooLong' }),
-  clientId: z
-    .string({
-      required_error: 'error.projectClientRequired',
-      invalid_type_error: 'error.projectClientRequired',
-    })
-    .uuid({ message: 'error.projectClientRequired' }),
+    .min(1, { error: 'error.projectNameRequired' })
+    .max(PROJECT_NAME_MAX_LENGTH, { error: 'error.projectNameTooLong' }),
+  clientId: z.uuid({ error: 'error.projectClientRequired' }),
 });
 
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;

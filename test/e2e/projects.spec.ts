@@ -5,6 +5,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { MALFORMED_ID, UNKNOWN_ID } from './support/fixtures';
 
 const describeProjects = requireDocker();
 
@@ -84,7 +85,7 @@ describeProjects('projects API integration', async () => {
     expect(filteredRows[0].name).toBe('Zebra Project');
 
     // Foreign/unknown clientId filter → empty list
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const foreignFiltered = await fetch(url(`/api/projects?clientId=${fakeId}`), {
       headers: { cookie: jar.header() },
     });
@@ -177,7 +178,7 @@ describeProjects('projects API integration', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
     const bob = await loginAs('bob@example.com', 'secret');
     const bobClient = await createClient(bob.jar, bob.token, 'Bob Client ' + Date.now());
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
 
     // Create with unknown clientId → 404
     const unknownRes = await fetch(url('/api/projects'), {
@@ -190,6 +191,20 @@ describeProjects('projects API integration', async () => {
       body: JSON.stringify({ name: 'Ghost Project', clientId: fakeId }),
     });
     expect(unknownRes.status).toBe(404);
+
+    // Malformed clientId in body → 422 with messageKey (REQ-172)
+    const malformedRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': alice.token,
+        cookie: alice.jar.header(),
+      },
+      body: JSON.stringify({ name: 'Bad Id Project', clientId: MALFORMED_ID }),
+    });
+    expect(malformedRes.status).toBe(422);
+    const malformedBody = await malformedRes.json();
+    expect(malformedBody?.data?.messageKey).toBe('error.projectClientRequired');
 
     // Create with foreign (Bob's) clientId → 404
     const foreignRes = await fetch(url('/api/projects'), {
@@ -253,7 +268,7 @@ describeProjects('projects API integration', async () => {
     expect(patched.clientId).toBe(clientC.id);
 
     // Foreign/unknown id → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const notFound = await fetch(url(`/api/projects/${fakeId}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -377,7 +392,7 @@ describeProjects('projects API integration', async () => {
     expect(again.status).toBe(404);
 
     // Foreign id → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const notFound = await fetch(url(`/api/projects/${fakeId}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },

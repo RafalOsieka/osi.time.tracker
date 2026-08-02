@@ -16,7 +16,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 - **Backend / API:** Nitro server routes under `server/api`.
 - **Database:** PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver.
 - **Auth & security:** `nuxt-auth-utils` (sealed cookie sessions), `nuxt-security` (CSRF, rate limiting, CSP).
-- **Validation:** `zod` — single source of truth for boundary types.
+- **Validation:** `zod` `^4` — single source of truth for boundary types.
 - **i18n:** `@nuxtjs/i18n` with `en` and `pl` catalogs kept in strict parity.
 - **Testing:** Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`.
 - **Tooling:** pnpm, ESLint, Prettier, Docker Compose.
@@ -92,8 +92,8 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 - **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`).
 - **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.
 - **UI:** prefer existing Nuxt UI components (`UButton`, `UForm`/`UFormField`, `UTable`, `UModal`, dashboard shell) over native elements; style with Tailwind utilities and `--ui-*` tokens; icons use `i-lucide-*`; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA.
-- **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with a single zod schema and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract. Never return rendered text — clients translate `messageKey`. Access the database only through the shared lazy client; emit timestamps as ISO strings.
-- **Boundary types:** define each cross-boundary shape once in `shared/types`, decoupled from the DB schema; derive input types with `z.infer<typeof schema>`.
+- **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with a single zod schema and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract (`params` may include `min`/`max`/`expected`/custom fields — never `received`). Never return rendered text — clients translate `messageKey`. Access the database only through the shared lazy client; emit timestamps as ISO strings.
+- **Boundary types:** define each cross-boundary shape once in `shared/types`, decoupled from the DB schema; derive input types with `z.infer<typeof schema>`. Use the unified zod 4 `error` option and `z.uuid()` / `z.url()` / `z.iso.datetime()` for identifier and format fields.
 
 ### Linting & formatting
 

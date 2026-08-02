@@ -25,9 +25,6 @@ export function mapZodError(error: ZodError): ApiMessage {
   if ('expected' in issue) {
     params.expected = issue.expected;
   }
-  if ('received' in issue) {
-    params.received = issue.received;
-  }
 
   // Merge custom parameters if present
   if ('params' in issue && typeof issue.params === 'object' && issue.params !== null) {

@@ -62,6 +62,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Export a single `defineEventHandler` per route file and annotate its return type with the response DTO.
 - Protect private endpoints by resolving the authenticated user through the shared auth helper before any other work.
 - Validate request bodies with a single `zod` schema; on `ZodError`, map the error to the `{ messageKey, params }` contract and throw a `422` `createError`.
+- The shared mapper keeps `min`, `max`, `expected`, and custom `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).
 - Never return rendered text from the server. Error and message payloads use a translation `messageKey` (plus optional `params`) that the client translates.
 - Access the database exclusively through the shared lazy client; never instantiate raw drivers.
 - Serialize boundary values in their JSON form — timestamps are emitted as ISO strings, not `Date` objects.
@@ -71,6 +72,8 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Define every shape crossing the client/server boundary exactly once in a shared types module, decoupled from the database schema.
 - Co-locate the request `zod` schema, its inferred input type, and the response DTO type; derive input types with `z.infer<typeof schema>`.
 - Express validation messages as translation keys (e.g. `error.entityNameRequired`) rather than human-readable sentences.
+- Use zod 4's unified `error` option (a string key, or a function returning one) on schemas and checks. Do **not** use the removed `required_error` / `invalid_type_error` options or the deprecated `message` option.
+- Prefer top-level format constructors for identifier and format fields: `z.uuid()` (RFC-strict — not `z.guid()`), `z.url()`, and `z.iso.datetime()`. Do not chain the deprecated `.uuid()` / `.url()` / `.datetime()` methods off `z.string()`.
 - Keep shared limits and magic values as exported `UPPER_SNAKE_CASE` constants and reference them in both the schema and the code that enforces them.
 
 ## 7. Date/Time & Timezone Handling

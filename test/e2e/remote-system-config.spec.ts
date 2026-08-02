@@ -232,9 +232,9 @@ describeRemoteConfig('remote system config API integration', async () => {
     });
     expect(invalidRes.status).toBe(422);
     const invalidBody = await invalidRes.json();
-    // An invalid enum *value* (not a missing/wrong-typed field) falls back to the
-    // generic messageKey, matching the existing systemType enum-invalid behavior.
-    expect(invalidBody?.data?.messageKey).toBe('errors.unexpected');
+    // Zod 4's unified `error` option covers invalid enum values as well as missing
+    // ones, so the domain key is returned instead of the generic fallback.
+    expect(invalidBody?.data?.messageKey).toBe('error.remoteConfigExecutionModeRequired');
   });
 
   // 3.6 DELETE

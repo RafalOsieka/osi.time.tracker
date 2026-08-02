@@ -5,6 +5,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { UNKNOWN_ID } from './support/fixtures';
 
 const describeTimeEntries = requireDocker();
 
@@ -192,7 +193,7 @@ describeTimeEntries('time-entries API integration', async () => {
     const bob = await loginAs('tbob@example.com', 'secret');
     const bobEntry = await (await startEntry(bob.jar, bob.token, { title: 'Bob Entry' })).json();
 
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const unknownRes = await patchEntry(alice.jar, alice.token, fakeId, {
       stoppedAt: new Date().toISOString(),
     });
@@ -225,7 +226,7 @@ describeTimeEntries('time-entries API integration', async () => {
     expect((await startEntry(anonJar, anonToken, { title: 'Nope' })).status).toBe(401);
     expect(
       (
-        await patchEntry(anonJar, anonToken, '00000000-0000-0000-0000-000000000000', {
+        await patchEntry(anonJar, anonToken, UNKNOWN_ID, {
           stoppedAt: new Date().toISOString(),
         })
       ).status,
@@ -349,7 +350,7 @@ describeTimeEntries('time-entries API integration', async () => {
 
     // Unknown id
     const unknownRes = await bulkAssign(alice.jar, alice.token, {
-      ids: [untitled.id, '00000000-0000-0000-0000-000000000000'],
+      ids: [untitled.id, UNKNOWN_ID],
       title: 'Should Not Apply',
     });
     expect(unknownRes.status).toBeGreaterThanOrEqual(400);
@@ -489,7 +490,7 @@ describeTimeEntries('time-entries API integration', async () => {
     const bobEntry = await (await startEntry(bob.jar, bob.token, { title: 'Bob Entry' })).json();
     const foreignRes = await patchEntry(jar, token, bobEntry.id, { startedAt: pastStart });
     expect(foreignRes.status).toBe(404);
-    const unknownRes = await patchEntry(jar, token, '00000000-0000-0000-0000-000000000000', {
+    const unknownRes = await patchEntry(jar, token, UNKNOWN_ID, {
       startedAt: pastStart,
     });
     expect(unknownRes.status).toBe(404);
@@ -619,7 +620,7 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(foreignStart.status).toBe(404);
 
     const unknownStart = await startEntry(alice.jar, alice.token, {
-      taskId: '00000000-0000-0000-0000-000000000000',
+      taskId: UNKNOWN_ID,
     });
     expect(unknownStart.status).toBe(404);
 
@@ -632,7 +633,7 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(foreignPatch.status).toBe(404);
 
     const unknownPatch = await patchEntry(alice.jar, alice.token, aliceEntry.id, {
-      taskId: '00000000-0000-0000-0000-000000000000',
+      taskId: UNKNOWN_ID,
     });
     expect(unknownPatch.status).toBe(404);
 
@@ -757,7 +758,7 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(foreignRes.status).toBe(404);
 
     const unknownRes = await reassign(alice.jar, alice.token, {
-      ids: [aliceEntry.id, '00000000-0000-0000-0000-000000000000'],
+      ids: [aliceEntry.id, UNKNOWN_ID],
       name: 'Should Not Apply',
     });
     expect(unknownRes.status).toBe(404);
@@ -779,11 +780,7 @@ describeTimeEntries('time-entries API integration', async () => {
     const foreignRes = await deleteEntry(alice.jar, alice.token, bobEntry.id);
     expect(foreignRes.status).toBe(404);
 
-    const unknownRes = await deleteEntry(
-      alice.jar,
-      alice.token,
-      '00000000-0000-0000-0000-000000000000',
-    );
+    const unknownRes = await deleteEntry(alice.jar, alice.token, UNKNOWN_ID);
     expect(unknownRes.status).toBe(404);
 
     const anonJar = new CookieJar();

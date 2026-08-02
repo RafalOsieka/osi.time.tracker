@@ -4,13 +4,10 @@ export const CLIENT_NAME_MAX_LENGTH = 100;
 
 export const createClientSchema = z.object({
   name: z
-    .string({
-      required_error: 'error.clientNameRequired',
-      invalid_type_error: 'error.clientNameRequired',
-    })
+    .string({ error: 'error.clientNameRequired' })
     .trim()
-    .min(1, { message: 'error.clientNameRequired' })
-    .max(CLIENT_NAME_MAX_LENGTH, { message: 'error.clientNameTooLong' }),
+    .min(1, { error: 'error.clientNameRequired' })
+    .max(CLIENT_NAME_MAX_LENGTH, { error: 'error.clientNameTooLong' }),
 });
 
 export type CreateClientDto = z.infer<typeof createClientSchema>;
