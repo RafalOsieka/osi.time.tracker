@@ -158,6 +158,10 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       body: JSON.stringify({ remoteIssueId: '123', cachedTitle: 'Linked Issue' }),
     });
 
+    // User timezone is UTC (set above). Near local midnight the browser zone and
+    // the saved UTC zone disagree on the calendar day, so open the sync page
+    // with the UTC day key used by GET /api/sync/day (same pattern as the other
+    // cases in this file) after confirming the entry is visible on Timer view.
     const dayKey = startedAt.slice(0, 10);
 
     const page = await loginPage('remotesyncui@example.com');
@@ -165,15 +169,24 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await mockOpenProjectActivities(page);
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, title);
-
-    await page.click(`[data-testid="timer-day-remote-sync-${dayKey}"]`);
-    await page.waitForSelector('[data-testid="remote-sync-page"]');
-    await page.waitForFunction(pageIncludesText, title);
+    await openSyncDay(page, dayKey, title);
 
     const rowSelector = `[data-testid="remote-sync-row-${entry.taskId}"]`;
     await page.waitForSelector(rowSelector);
     const stateText = await page.textContent(`[data-testid="remote-sync-state-${entry.taskId}"]`);
     expect(stateText).toBeTruthy();
+
+    // Activities must resolve before the expanded detail exposes duration controls.
+    const activitySelect = `[data-testid="remote-sync-activity-select-${entry.taskId}"]`;
+    const activityError = `[data-testid="remote-sync-activity-error-${entry.taskId}"]`;
+    await page.waitForFunction(
+      ({ select, error }) => !!(document.querySelector(select) || document.querySelector(error)),
+      { select: activitySelect, error: activityError },
+    );
+    if ((await page.locator(activityError).count()) > 0) {
+      await page.click(`[data-testid="remote-sync-activity-retry-${entry.taskId}"]`);
+      await page.waitForSelector(activitySelect);
+    }
 
     // Expand the row so detail controls (rounded duration, entries) are available.
     await page.click(`[data-testid="remote-sync-expand-${entry.taskId}"]`);

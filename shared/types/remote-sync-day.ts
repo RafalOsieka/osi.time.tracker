@@ -94,14 +94,10 @@ export interface RemoteSyncDayDto {
 
 export const remoteSyncDayQuerySchema = z.object({
   date: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteSyncDateRequired' : 'error.remoteSyncDateRequired'
-    })
-    .regex(/^\d{4}-\d{2}-\d{2}$/, {
-        error: 'error.remoteSyncDateInvalid'
-    })
+    .string({ error: 'error.remoteSyncDateRequired' })
+    .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'error.remoteSyncDateInvalid' })
     .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()), {
-        error: 'error.remoteSyncDateInvalid'
+      error: 'error.remoteSyncDateInvalid',
     }),
 });
 

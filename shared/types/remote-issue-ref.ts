@@ -5,7 +5,7 @@ import { z } from 'zod';
  * bounded title-phrase search, `id` performs an exact-issue lookup.
  */
 export const remoteIssueSearchModeSchema = z.enum(['title', 'id'], {
-    error: (issue) => issue.input === undefined ? 'error.remoteIssueSearchModeRequired' : 'error.remoteIssueSearchModeRequired'
+  error: 'error.remoteIssueSearchModeRequired',
 });
 
 export type RemoteIssueSearchMode = z.infer<typeof remoteIssueSearchModeSchema>;
@@ -16,9 +16,7 @@ export type RemoteIssueSearchMode = z.infer<typeof remoteIssueSearchModeSchema>;
  */
 export const remoteIssuePickerFormSchema = z.object({
   mode: remoteIssueSearchModeSchema,
-  query: z.string({
-      error: (issue) => issue.input === undefined ? 'error.remoteIssueSearchQueryRequired' : 'error.remoteIssueSearchQueryRequired'
-}),
+  query: z.string({ error: 'error.remoteIssueSearchQueryRequired' }),
 });
 
 export type RemoteIssuePickerFormDto = z.infer<typeof remoteIssuePickerFormSchema>;
@@ -49,21 +47,13 @@ export interface RemoteIssueSearchResult {
  */
 export const linkRemoteIssueSchema = z.object({
   remoteIssueId: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteIssueIdRequired' : 'error.remoteIssueIdRequired'
-    })
+    .string({ error: 'error.remoteIssueIdRequired' })
     .trim()
-    .min(1, {
-        error: 'error.remoteIssueIdRequired'
-    }),
+    .min(1, { error: 'error.remoteIssueIdRequired' }),
   cachedTitle: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteIssueTitleRequired' : 'error.remoteIssueTitleRequired'
-    })
+    .string({ error: 'error.remoteIssueTitleRequired' })
     .trim()
-    .min(1, {
-        error: 'error.remoteIssueTitleRequired'
-    }),
+    .min(1, { error: 'error.remoteIssueTitleRequired' }),
 });
 
 export type LinkRemoteIssueDto = z.infer<typeof linkRemoteIssueSchema>;
@@ -76,18 +66,12 @@ export type LinkRemoteIssueDto = z.infer<typeof linkRemoteIssueSchema>;
  * target URL from the client.
  */
 export const proxiedRemoteIssueSearchSchema = z.object({
-  remoteSystemConfigId: z.uuid({
-            error: 'error.remoteConfigIdRequired'
-        }),
+  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
   mode: remoteIssueSearchModeSchema,
   query: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteIssueSearchQueryRequired' : 'error.remoteIssueSearchQueryRequired'
-    })
+    .string({ error: 'error.remoteIssueSearchQueryRequired' })
     .trim()
-    .min(1, {
-        error: 'error.remoteIssueSearchQueryRequired'
-    }),
+    .min(1, { error: 'error.remoteIssueSearchQueryRequired' }),
 });
 
 export type ProxiedRemoteIssueSearchDto = z.infer<typeof proxiedRemoteIssueSearchSchema>;

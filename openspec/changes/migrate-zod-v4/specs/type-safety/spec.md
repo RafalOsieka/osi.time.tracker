@@ -37,7 +37,7 @@ constructors `z.uuid()`, `z.url()`, and `z.iso.datetime()` rather than the depre
 `z.uuid()` (RFC-strict), not the permissive `z.guid()`.
 
 #### Scenario: Identifier field rejects a non-RFC UUID
-- **WHEN** a request body supplies a syntactically UUID-shaped identifier whose version or variant nibbles are invalid (e.g. the nil UUID)
+- **WHEN** a request body supplies a syntactically UUID-shaped identifier whose version or variant nibbles are invalid (e.g. `00000000-0000-0000-0000-000000000001`; note: the RFC nil/max sentinels are accepted by `z.uuid()`)
 - **THEN** the schema SHALL reject it as a validation failure
 
 #### Scenario: Identifier field accepts a UUIDv7

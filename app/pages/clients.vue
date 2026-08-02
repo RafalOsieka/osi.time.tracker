@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FormSubmitEvent, TableColumn } from '@nuxt/ui';
+import type { FormErrorEvent, FormSubmitEvent, TableColumn } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
 import { h, resolveComponent } from 'vue';
 
@@ -107,6 +107,19 @@ async function openEdit(client: ClientDto) {
 
 function closeDialog() {
   dialogOpen.value = false;
+}
+
+function onRemoteConfigError(event: FormErrorEvent) {
+  baseUrlServerError.value = '';
+  systemTypeServerError.value = '';
+  for (const err of event.errors) {
+    if (typeof err.message !== 'string') continue;
+    if (err.name === 'baseUrl') {
+      baseUrlServerError.value = t(err.message);
+    } else if (err.name === 'systemType') {
+      systemTypeServerError.value = t(err.message);
+    }
+  }
 }
 
 async function onSaveRemoteConfig(event: FormSubmitEvent<typeof remoteConfigState>) {
@@ -347,6 +360,7 @@ const columns = computed<TableColumn<ClientDto>[]>(() => [
               class="grid gap-3"
               data-testid="remote-config-form"
               @submit="onSaveRemoteConfig"
+              @error="onRemoteConfigError"
             >
               <UFormField
                 :label="t('clients.remoteConfig.systemTypeLabel')"

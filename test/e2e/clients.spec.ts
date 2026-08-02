@@ -5,6 +5,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { UNKNOWN_ID } from './support/fixtures';
 
 const describeClients = requireDocker();
 
@@ -144,7 +145,7 @@ describeClients('clients API integration', async () => {
     expect(patched.name).toBe('Patched Name');
 
     // Foreign/unknown id → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const notFound = await fetch(url(`/api/clients/${fakeId}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -184,7 +185,7 @@ describeClients('clients API integration', async () => {
     expect(again.status).toBe(404);
 
     // Foreign id → 404
-    const fakeId = '00000000-0000-0000-0000-000000000000';
+    const fakeId = UNKNOWN_ID;
     const notFound = await fetch(url(`/api/clients/${fakeId}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },

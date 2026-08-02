@@ -8,6 +8,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
+import { UNKNOWN_ID } from './support/fixtures';
 
 const describeRemoteExportProxy = requireDocker();
 
@@ -233,7 +234,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         cookie: user.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: '00000000-0000-0000-0000-000000000000' }),
+      body: JSON.stringify({ remoteSystemConfigId: UNKNOWN_ID }),
     });
     expect(unknown.status).toBe(404);
   });

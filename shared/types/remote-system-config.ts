@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const remoteSystemTypeSchema = z.enum(['redmine', 'openproject'], {
-    error: (issue) => issue.input === undefined ? 'error.remoteConfigSystemTypeRequired' : 'error.remoteConfigSystemTypeRequired'
+  error: 'error.remoteConfigSystemTypeRequired',
 });
 
 export type RemoteSystemType = z.infer<typeof remoteSystemTypeSchema>;
@@ -12,7 +12,7 @@ export type RemoteSystemType = z.infer<typeof remoteSystemTypeSchema>;
  * the OSI server, which forwards them to the tracker (no CORS involved).
  */
 export const remoteExecutionModeSchema = z.enum(['client', 'server'], {
-    error: (issue) => issue.input === undefined ? 'error.remoteConfigExecutionModeRequired' : 'error.remoteConfigExecutionModeRequired'
+  error: 'error.remoteConfigExecutionModeRequired',
 });
 
 export type RemoteExecutionMode = z.infer<typeof remoteExecutionModeSchema>;
@@ -26,8 +26,8 @@ export type RemoteExecutionMode = z.infer<typeof remoteExecutionModeSchema>;
 export const remoteRoundingRuleSchema = z.enum(
   ['none', 'up_15m', 'up_30m', 'up_1h', 'nearest_15m', 'nearest_30m', 'nearest_1h'],
   {
-      error: (issue) => issue.input === undefined ? 'error.remoteConfigRoundingRuleRequired' : 'error.remoteConfigRoundingRuleRequired'
-},
+    error: 'error.remoteConfigRoundingRuleRequired',
+  },
 );
 
 export type RemoteRoundingRule = z.infer<typeof remoteRoundingRuleSchema>;
@@ -45,10 +45,14 @@ export const REMOTE_ROUNDING_RULE_ORDER: readonly RemoteRoundingRule[] = [
 
 export const createRemoteSystemConfigSchema = z.object({
   systemType: remoteSystemTypeSchema,
-  baseUrl: z.url({
-          error: 'error.remoteConfigBaseUrlInvalid'
-      })
-      .trim(),
+  baseUrl: z
+    .url({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'error.remoteConfigBaseUrlRequired'
+          : 'error.remoteConfigBaseUrlInvalid',
+    })
+    .trim(),
   executionMode: remoteExecutionModeSchema.default('client'),
   roundingRule: remoteRoundingRuleSchema,
   requiredFieldDefaults: z.record(z.string(), z.string()).optional(),

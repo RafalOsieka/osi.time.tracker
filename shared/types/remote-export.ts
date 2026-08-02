@@ -1,15 +1,11 @@
 import { z } from 'zod';
 
 const isoDateSchema = z
-  .string({
-      error: (issue) => issue.input === undefined ? 'error.remoteSyncDateRequired' : 'error.remoteSyncDateRequired'
-})
-  .regex(/^\d{4}-\d{2}-\d{2}$/, {
-      error: 'error.remoteSyncDateInvalid'
-})
+  .string({ error: 'error.remoteSyncDateRequired' })
+  .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'error.remoteSyncDateInvalid' })
   .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()), {
-      error: 'error.remoteSyncDateInvalid'
-});
+    error: 'error.remoteSyncDateInvalid',
+  });
 
 /**
  * Request body for local finalization after the browser successfully created
@@ -17,53 +13,38 @@ const isoDateSchema = z
  */
 export const finalizeRemoteExportSchema = z.object({
   taskId: z.uuid({
-            error: 'error.remoteExportTaskIdInvalid'
-        }),
+    error: (issue) =>
+      issue.input === undefined
+        ? 'error.remoteExportTaskIdRequired'
+        : 'error.remoteExportTaskIdInvalid',
+  }),
   localDate: isoDateSchema,
   remoteIssueId: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteExportRemoteIssueIdRequired' : 'error.remoteExportRemoteIssueIdRequired'
-    })
+    .string({ error: 'error.remoteExportRemoteIssueIdRequired' })
     .trim()
-    .min(1, {
-        error: 'error.remoteExportRemoteIssueIdRequired'
-    }),
+    .min(1, { error: 'error.remoteExportRemoteIssueIdRequired' }),
   remoteLogId: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteExportRemoteLogIdRequired' : 'error.remoteExportRemoteLogIdRequired'
-    })
+    .string({ error: 'error.remoteExportRemoteLogIdRequired' })
     .trim()
-    .min(1, {
-        error: 'error.remoteExportRemoteLogIdRequired'
-    }),
-  exportDurationSeconds: z.int({
-          error: 'error.remoteExportDurationInvalid'
-      })
-    .positive({
-        error: 'error.remoteExportDurationInvalid'
-    }),
+    .min(1, { error: 'error.remoteExportRemoteLogIdRequired' }),
+  exportDurationSeconds: z
+    .int({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'error.remoteExportDurationRequired'
+          : 'error.remoteExportDurationInvalid',
+    })
+    .positive({ error: 'error.remoteExportDurationInvalid' }),
   requiredFieldValues: z.record(z.string(), z.string()).default({}),
   entryIds: z
-    .array(
-      z.uuid({
-                    error: 'error.remoteExportEntryIdsInvalid'
-                }),
-    )
-    .min(1, {
-        error: 'error.remoteExportEntryIdsInvalid'
-    }),
+    .array(z.uuid({ error: 'error.remoteExportEntryIdsInvalid' }))
+    .min(1, { error: 'error.remoteExportEntryIdsInvalid' }),
   /** Client-generated idempotency key for this logical export attempt (REQ-233). */
   exportRequestKey: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteExportRequestKeyRequired' : 'error.remoteExportRequestKeyRequired'
-    })
+    .string({ error: 'error.remoteExportRequestKeyRequired' })
     .trim()
-    .min(1, {
-        error: 'error.remoteExportRequestKeyRequired'
-    })
-    .max(256, {
-        error: 'error.remoteExportRequestKeyInvalid'
-    }),
+    .min(1, { error: 'error.remoteExportRequestKeyRequired' })
+    .max(256, { error: 'error.remoteExportRequestKeyInvalid' }),
   /** Optional free-text comment that was submitted with the remote log. */
   comment: z.string().optional(),
 });
@@ -126,9 +107,7 @@ export interface RemoteExportTaskOutcomeDto {
 
 /** Proxied current-account resolution body. */
 export const proxiedRemoteAccountSchema = z.object({
-  remoteSystemConfigId: z.uuid({
-            error: 'error.remoteConfigIdRequired'
-        }),
+  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
 });
 
 export type ProxiedRemoteAccountDto = z.infer<typeof proxiedRemoteAccountSchema>;
@@ -140,23 +119,15 @@ export interface ProxiedRemoteAccountResponseDto {
 
 /** Proxied same-day time-log context body. */
 export const proxiedRemoteTimeLogsSchema = z.object({
-  remoteSystemConfigId: z.uuid({
-            error: 'error.remoteConfigIdRequired'
-        }),
+  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
   spentOn: isoDateSchema,
   workPackageIds: z
     .array(
       z
-        .string({
-            error: (issue) => issue.input === undefined ? undefined : 'error.remoteIssueIdRequired'
-        })
-        .min(1, {
-            error: 'error.remoteIssueIdRequired'
-        }),
+        .string({ error: 'error.remoteIssueIdRequired' })
+        .min(1, { error: 'error.remoteIssueIdRequired' }),
     )
-    .min(1, {
-        error: 'error.remoteIssueIdRequired'
-    }),
+    .min(1, { error: 'error.remoteIssueIdRequired' }),
   userId: z.string().min(1).optional(),
 });
 
@@ -168,30 +139,17 @@ export interface ProxiedRemoteTimeLogsResponseDto {
 
 /** Proxied create-time-entry body. */
 export const proxiedRemoteCreateTimeEntrySchema = z.object({
-  remoteSystemConfigId: z.uuid({
-            error: 'error.remoteConfigIdRequired'
-        }),
+  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
   remoteIssueId: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteIssueIdRequired' : 'error.remoteIssueIdRequired'
-    })
-    .min(1, {
-        error: 'error.remoteIssueIdRequired'
-    }),
+    .string({ error: 'error.remoteIssueIdRequired' })
+    .min(1, { error: 'error.remoteIssueIdRequired' }),
   spentOn: isoDateSchema,
-  durationSeconds: z.int({
-          error: 'error.remoteExportDurationInvalid'
-      })
-    .positive({
-        error: 'error.remoteExportDurationInvalid'
-    }),
+  durationSeconds: z
+    .int({ error: 'error.remoteExportDurationInvalid' })
+    .positive({ error: 'error.remoteExportDurationInvalid' }),
   activityId: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteExportActivityRequired' : 'error.remoteExportActivityRequired'
-    })
-    .min(1, {
-        error: 'error.remoteExportActivityRequired'
-    }),
+    .string({ error: 'error.remoteExportActivityRequired' })
+    .min(1, { error: 'error.remoteExportActivityRequired' }),
   comment: z.string().optional(),
 });
 

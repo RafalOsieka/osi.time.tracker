@@ -12,5 +12,5 @@ with HTTP 422 and the `{ messageKey, params }` contract before any data access o
 - **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal whether the resource exists
 
 #### Scenario: Malformed id in a request body
-- **WHEN** an authenticated user submits a body whose identifier field is not a valid RFC UUID (e.g. the nil UUID or arbitrary text)
+- **WHEN** an authenticated user submits a body whose identifier field is not a valid RFC UUID (e.g. an invalid version/variant nibble such as `00000000-0000-0000-0000-000000000001`, or arbitrary text)
 - **THEN** the system SHALL respond with HTTP 422 with a `{ messageKey, params }` body and SHALL perform no data access

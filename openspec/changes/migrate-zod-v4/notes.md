@@ -79,3 +79,11 @@ All current occurrences are **unknown id** fixtures (expect `404`). None are del
 - `@nuxt/ui@4.10.0` resolves `zod@4.4.3` as peer — no peer dependency warnings during `pnpm install`.
 - Install output: `- zod 3.25.76` / `+ zod 4.4.3`.
 
+## Zod 4.4 `z.uuid()` note
+
+Zod 4.4's `z.uuid()` pattern **accepts** the RFC nil and max sentinels
+(`00000000-…` / `ffffffff-…`) while still rejecting other invalid version/variant
+nibbles (e.g. `00000000-0000-0000-0000-000000000001`). The change design assumed
+nil would fail validation; implementation uses a non-nil malformed fixture for
+422 cases and a valid UUIDv7 constant for unknown-id 404 cases.
+

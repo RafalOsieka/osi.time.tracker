@@ -8,16 +8,10 @@ import type { RemoteFieldOption } from './remote-field-option';
  * server-side.
  */
 export const proxiedRemoteActivitiesSchema = z.object({
-  remoteSystemConfigId: z.uuid({
-            error: 'error.remoteConfigIdRequired'
-        }),
+  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
   remoteIssueId: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.remoteIssueIdRequired' : 'error.remoteIssueIdRequired'
-    })
-    .min(1, {
-        error: 'error.remoteIssueIdRequired'
-    }),
+    .string({ error: 'error.remoteIssueIdRequired' })
+    .min(1, { error: 'error.remoteIssueIdRequired' }),
 });
 
 export type ProxiedRemoteActivitiesDto = z.infer<typeof proxiedRemoteActivitiesSchema>;

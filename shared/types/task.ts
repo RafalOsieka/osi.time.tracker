@@ -5,20 +5,11 @@ export const TASK_NAME_MAX_LENGTH = 100;
 
 export const updateTaskSchema = z.object({
   name: z
-    .string({
-        error: (issue) => issue.input === undefined ? 'error.taskNameRequired' : 'error.taskNameRequired'
-    })
+    .string({ error: 'error.taskNameRequired' })
     .trim()
-    .min(1, {
-        error: 'error.taskNameRequired'
-    })
-    .max(TASK_NAME_MAX_LENGTH, {
-        error: 'error.taskNameTooLong'
-    }),
-  projectId: z.uuid({
-          error: 'error.taskProjectInvalid'
-      })
-    .nullish(),
+    .min(1, { error: 'error.taskNameRequired' })
+    .max(TASK_NAME_MAX_LENGTH, { error: 'error.taskNameTooLong' }),
+  projectId: z.uuid({ error: 'error.taskProjectInvalid' }).nullish(),
 });
 
 export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;

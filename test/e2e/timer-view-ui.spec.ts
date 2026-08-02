@@ -205,14 +205,16 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
       .first()
       .fill('Manual Add Entry Task');
+    // Use a range that is always in the past on the current local day, including
+    // when the suite runs shortly after midnight (08:00–09:00 would be "future").
     await page
       .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
       .first()
-      .fill('08:00');
+      .fill('00:00');
     await page
       .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
       .first()
-      .fill('09:00');
+      .fill('00:01');
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
