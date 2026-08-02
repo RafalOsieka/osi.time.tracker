@@ -41,7 +41,7 @@
     "@nuxt/schema": "^4.5.1",
     "@nuxt/test-utils": "^4.1.0",
     "@nuxtjs/i18n": "^10.6.0",
-    "@types/node": "^25.9.5",
+    "@types/node": "^26.1.2",
     "@typescript-eslint/parser": "^8.65.0",
     "@vitest/coverage-v8": "4.1.10",
     "@vue/test-utils": "^2.4.11",
