@@ -502,12 +502,20 @@ async function linkRemoteIssue(
   row: RemoteSyncDayRowDto,
   payload: { remoteIssueId: string; cachedTitle: string },
 ) {
+  const ids = row.entries.map((entry) => entry.id);
+  if (ids.length === 0) return;
   try {
-    await $csrfFetch(`/api/tasks/${row.taskId}/remote-issue-ref`, {
+    // Day-scoped: move this date's entries onto the find-or-create linked task.
+    await $csrfFetch('/api/time-entries/reassign', {
       method: 'POST',
-      body: payload,
+      body: {
+        ids,
+        remoteIssueId: payload.remoteIssueId,
+        cachedTitle: payload.cachedTitle,
+      },
     });
-    localIssueRefs.value = { ...localIssueRefs.value, [row.taskId]: payload };
+    // Refresh so the row key (taskId) and issue ref flip in place after the move.
+    await refresh();
     if (row.config) {
       void ensureActivitiesLoaded(toPickerConfig(row.config), payload.remoteIssueId);
       void ensureRemoteLogsLoaded(toPickerConfig(row.config), [payload.remoteIssueId], true);

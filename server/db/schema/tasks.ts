@@ -1,7 +1,8 @@
-import { pgTable, uuid, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, index, uniqueIndex, unique } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { projects } from './projects';
+import { remoteSystemConfigs } from './remote-system-configs';
 
 export const tasks = pgTable(
   'tasks',
@@ -14,13 +15,29 @@ export const tasks = pgTable(
       .references(() => users.id),
     projectId: uuid('projectId').references(() => projects.id),
     name: text('name').notNull(),
+    /**
+     * Inline remote issue reference (formerly `remote_issue_refs`).
+     * `remoteIssueId IS NULL` means the task is unlinked; when set, the
+     * configuration provenance and cached title are required by application
+     * logic and form part of the uniqueness key (REQ-136 / REQ-237).
+     */
+    remoteSystemConfigId: uuid('remoteSystemConfigId').references(() => remoteSystemConfigs.id),
+    remoteIssueId: text('remoteIssueId'),
+    remoteIssueCachedTitle: text('remoteIssueCachedTitle'),
+    remoteIssueCreatedAt: timestamp('remoteIssueCreatedAt', { withTimezone: true }),
+    remoteIssueUpdatedAt: timestamp('remoteIssueUpdatedAt', { withTimezone: true }),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex('tasks_userId_projectId_name_unique').on(table.userId, table.projectId, table.name),
-    uniqueIndex('tasks_userId_name_unique')
-      .on(table.userId, table.name)
+    // NULLS NOT DISTINCT so at most one unlinked task exists per
+    // (userId, projectId, name); different remote issues may share a name.
+    unique('tasks_userId_projectId_name_remoteIssueId_unique')
+      .on(table.userId, table.projectId, table.name, table.remoteIssueId)
+      .nullsNotDistinct(),
+    // Project-less scope keeps a matching partial unique index.
+    uniqueIndex('tasks_userId_name_remoteIssueId_unique')
+      .on(table.userId, table.name, table.remoteIssueId)
       .where(sql`${table.projectId} IS NULL`),
     index('tasks_userId_projectId_idx').on(table.userId, table.projectId),
   ],

@@ -99,18 +99,46 @@ export const bulkAssignSchema = z.object({
 
 export type BulkAssignDto = z.infer<typeof bulkAssignSchema>;
 
-export const reassignTimeEntriesSchema = z.object({
-  ids: z
-    .array(z.uuid({ error: 'error.timeEntryIdsInvalid' }))
-    .min(1, { error: 'error.timeEntryIdsInvalid' }),
-  name: z
-    .string({ error: 'error.timeEntryTitleInvalid' })
-    .trim()
-    .min(1, { error: 'error.timeEntryTitleInvalid' })
-    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' })
-    .optional(),
-  projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
-});
+export const reassignTimeEntriesSchema = z
+  .object({
+    ids: z
+      .array(z.uuid({ error: 'error.timeEntryIdsInvalid' }))
+      .min(1, { error: 'error.timeEntryIdsInvalid' }),
+    name: z
+      .string({ error: 'error.timeEntryTitleInvalid' })
+      .trim()
+      .min(1, { error: 'error.timeEntryTitleInvalid' })
+      .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' })
+      .optional(),
+    projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
+    /**
+     * Three-way presence (mirrors `projectId`): omitted keeps the source
+     * task's remote issue, explicit `null` targets the unlinked twin, and a
+     * non-empty string targets the task carrying that remote issue.
+     */
+    remoteIssueId: z
+      .string({ error: 'error.remoteIssueIdRequired' })
+      .trim()
+      .min(1, { error: 'error.remoteIssueIdRequired' })
+      .nullish(),
+    /**
+     * Cached issue title used when creating a newly linked target task.
+     * Required when `remoteIssueId` is a non-null value.
+     */
+    cachedTitle: z
+      .string({ error: 'error.remoteIssueTitleRequired' })
+      .trim()
+      .min(1, { error: 'error.remoteIssueTitleRequired' })
+      .optional(),
+  })
+  .refine(
+    (value) =>
+      value.remoteIssueId == null || value.remoteIssueId === undefined || !!value.cachedTitle,
+    {
+      path: ['cachedTitle'],
+      error: 'error.remoteIssueTitleRequired',
+    },
+  );
 
 export type ReassignTimeEntriesDto = z.infer<typeof reassignTimeEntriesSchema>;
 

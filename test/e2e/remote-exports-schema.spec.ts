@@ -135,10 +135,12 @@ describeDb('remote exports schema', () => {
       // time_entries.taskId has no ON DELETE CASCADE, so clear remaining entries first.
       await db.delete(timeEntries).where(eq(timeEntries.taskId, task.id));
 
-      // Deleting the task cascades remaining exports.
+      // Deleting the task SETs NULL on remaining exports (provenance survives GC).
       await db.delete(tasks).where(eq(tasks.id, task.id));
       const exportsAfterTaskDelete = await db.select().from(remoteExports);
-      expect(exportsAfterTaskDelete).toHaveLength(0);
+      expect(exportsAfterTaskDelete).toHaveLength(1);
+      expect(exportsAfterTaskDelete[0]!.id).toBe(export2.id);
+      expect(exportsAfterTaskDelete[0]!.taskId).toBeNull();
     } finally {
       await sql.end({ timeout: 5 });
     }

@@ -202,8 +202,9 @@
     },
     "remoteIssue": {
       "unlinked": "(unlinked)",
-      "editLabel": "Link remote issue",
-      "linkedTooltipPrefix": "Linked to"
+      "editLabel": "Link remote issue for this day",
+      "linkedTooltipPrefix": "Linked to",
+      "unlinkLabel": "Unlink remote issue for this day"
     }
   },
   "timer": {
@@ -416,7 +417,6 @@
     "remoteIssueIdRequired": "Remote issue id is required.",
     "remoteIssueTitleRequired": "Remote issue title is required.",
     "remoteIssueTaskNoConfig": "This task has no active remote system configuration to link against.",
-    "taskMergeConflictingRemoteIssueRef": "Both tasks are linked to different remote issues, so they cannot be merged.",
     "remoteIssueSearchTitleTooShort": "Enter at least 3 characters to search.",
     "remoteIssueSearchIdInvalid": "Enter a valid issue id.",
     "remoteIssueSearchNotFound": "No issue was found with that id.",

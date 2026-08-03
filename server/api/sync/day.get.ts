@@ -170,6 +170,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
         entryIds: exportEntryIds.get(row.exportId) ?? [],
         createdAt: row.createdAt.toISOString(),
       };
+      if (!row.taskId) continue;
       const list = exportsByTaskId.get(row.taskId) ?? [];
       list.push(provenance);
       exportsByTaskId.set(row.taskId, list);

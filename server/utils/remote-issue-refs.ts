@@ -1,9 +1,19 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/index';
-import { tasks, projects, remoteSystemConfigs, remoteIssueRefs } from '../db/schema';
+import { tasks, projects, remoteSystemConfigs } from '../db/schema';
 import { deriveIssueUrl } from '../../shared/remote/issue-url';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 import type { RemoteSystemType } from '../../shared/types/remote-system-config';
+
+type TaskRefRow = {
+  id: string;
+  userId: string;
+  remoteSystemConfigId: string | null;
+  remoteIssueId: string | null;
+  remoteIssueCachedTitle: string | null;
+  remoteIssueCreatedAt: Date | null;
+  remoteIssueUpdatedAt: Date | null;
+};
 
 /**
  * Resolves the active (non-soft-deleted) remote-system configuration
@@ -26,12 +36,22 @@ export async function resolveActiveConfigForTask(
     return null;
   }
 
+  return resolveActiveConfigForProject(userId, task.projectId);
+}
+
+/**
+ * Resolves the active remote-system configuration for an owned, non-deleted
+ * project through its Client chain. Used by day-scoped reassignment when the
+ * target project is known without a task id yet.
+ */
+export async function resolveActiveConfigForProject(
+  userId: string,
+  projectId: string,
+): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
   const [project] = await db
     .select({ id: projects.id, clientId: projects.clientId })
     .from(projects)
-    .where(
-      and(eq(projects.id, task.projectId), eq(projects.userId, userId), isNull(projects.deletedAt)),
-    )
+    .where(and(eq(projects.id, projectId), eq(projects.userId, userId), isNull(projects.deletedAt)))
     .limit(1);
 
   if (!project) {
@@ -58,50 +78,44 @@ export async function resolveActiveConfigForTask(
 }
 
 /**
- * Persists or replaces the one-to-one remote issue reference for a Task,
- * overwriting `remoteSystemConfigId`, `remoteIssueId`, and `cachedTitle`.
+ * Builds a `RemoteIssueRefDto` from an inline task-row reference, or `null`
+ * when the task is unlinked. `url` is included only when the reference's
+ * configuration is currently active (non-soft-deleted).
  */
-export async function upsertRemoteIssueRef(
-  userId: string,
-  taskId: string,
-  remoteSystemConfigId: string,
-  remoteIssueId: string,
-  cachedTitle: string,
-): Promise<RemoteIssueRefDto> {
-  const [existing] = await db
-    .select({ id: remoteIssueRefs.id })
-    .from(remoteIssueRefs)
-    .where(and(eq(remoteIssueRefs.taskId, taskId), eq(remoteIssueRefs.userId, userId)))
-    .limit(1);
-
-  const values = { remoteSystemConfigId, remoteIssueId, cachedTitle };
-
-  const [saved] = existing
-    ? await db
-        .update(remoteIssueRefs)
-        .set({ ...values, updatedAt: new Date() })
-        .where(eq(remoteIssueRefs.id, existing.id))
-        .returning()
-    : await db
-        .insert(remoteIssueRefs)
-        .values({ taskId, userId, ...values })
-        .returning();
-
-  if (!saved) {
-    throw new Error('Failed to persist remote issue reference');
+export function taskRowToRemoteIssueRefDto(
+  row: TaskRefRow,
+  config?: {
+    baseUrl: string | null;
+    systemType: string | null;
+    deletedAt: Date | null;
+  } | null,
+): RemoteIssueRefDto | null {
+  if (
+    !row.remoteIssueId ||
+    !row.remoteSystemConfigId ||
+    !row.remoteIssueCachedTitle ||
+    !row.remoteIssueCreatedAt ||
+    !row.remoteIssueUpdatedAt
+  ) {
+    return null;
   }
 
-  return toDto(saved);
-}
+  const isActive =
+    !!config && config.deletedAt === null && config.baseUrl != null && config.systemType != null;
 
-/**
- * Idempotently removes the reference for a Task scoped to `userId`.
- * Unlinking a Task with no reference is a no-op.
- */
-export async function unlinkRemoteIssueRef(userId: string, taskId: string): Promise<void> {
-  await db
-    .delete(remoteIssueRefs)
-    .where(and(eq(remoteIssueRefs.taskId, taskId), eq(remoteIssueRefs.userId, userId)));
+  return {
+    id: row.id,
+    taskId: row.id,
+    userId: row.userId,
+    remoteSystemConfigId: row.remoteSystemConfigId,
+    remoteIssueId: row.remoteIssueId,
+    cachedTitle: row.remoteIssueCachedTitle,
+    url: isActive
+      ? deriveIssueUrl(config.systemType as RemoteSystemType, config.baseUrl!, row.remoteIssueId)
+      : undefined,
+    createdAt: row.remoteIssueCreatedAt.toISOString(),
+    updatedAt: row.remoteIssueUpdatedAt.toISOString(),
+  };
 }
 
 /**
@@ -134,42 +148,31 @@ export async function getRemoteIssueRefsForTasks(
 
   const rows = await db
     .select({
-      ref: remoteIssueRefs,
+      id: tasks.id,
+      userId: tasks.userId,
+      remoteSystemConfigId: tasks.remoteSystemConfigId,
+      remoteIssueId: tasks.remoteIssueId,
+      remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
+      remoteIssueCreatedAt: tasks.remoteIssueCreatedAt,
+      remoteIssueUpdatedAt: tasks.remoteIssueUpdatedAt,
       configBaseUrl: remoteSystemConfigs.baseUrl,
       configSystemType: remoteSystemConfigs.systemType,
       configDeletedAt: remoteSystemConfigs.deletedAt,
     })
-    .from(remoteIssueRefs)
-    .leftJoin(remoteSystemConfigs, eq(remoteIssueRefs.remoteSystemConfigId, remoteSystemConfigs.id))
-    .where(and(eq(remoteIssueRefs.userId, userId), inArray(remoteIssueRefs.taskId, taskIds)));
+    .from(tasks)
+    .leftJoin(remoteSystemConfigs, eq(tasks.remoteSystemConfigId, remoteSystemConfigs.id))
+    .where(and(eq(tasks.userId, userId), inArray(tasks.id, taskIds)));
 
   for (const row of rows) {
-    const isActive =
-      row.configDeletedAt === null && row.configBaseUrl != null && row.configSystemType != null;
-    result.set(row.ref.taskId, {
-      ...toDto(row.ref),
-      url: isActive
-        ? deriveIssueUrl(
-            row.configSystemType as RemoteSystemType,
-            row.configBaseUrl!,
-            row.ref.remoteIssueId,
-          )
-        : undefined,
+    const dto = taskRowToRemoteIssueRefDto(row, {
+      baseUrl: row.configBaseUrl,
+      systemType: row.configSystemType,
+      deletedAt: row.configDeletedAt,
     });
+    if (dto) {
+      result.set(row.id, dto);
+    }
   }
 
   return result;
-}
-
-function toDto(row: typeof remoteIssueRefs.$inferSelect): RemoteIssueRefDto {
-  return {
-    id: row.id,
-    taskId: row.taskId,
-    userId: row.userId,
-    remoteSystemConfigId: row.remoteSystemConfigId,
-    remoteIssueId: row.remoteIssueId,
-    cachedTitle: row.cachedTitle,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-  };
 }

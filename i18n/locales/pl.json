@@ -202,8 +202,9 @@
     },
     "remoteIssue": {
       "unlinked": "(niepołączone)",
-      "editLabel": "Połącz ze zdalnym zgłoszeniem",
-      "linkedTooltipPrefix": "Połączone z"
+      "editLabel": "Połącz ze zdalnym zgłoszeniem na ten dzień",
+      "linkedTooltipPrefix": "Połączone z",
+      "unlinkLabel": "Odłącz zdalne zgłoszenie na ten dzień"
     }
   },
   "timer": {
@@ -416,7 +417,6 @@
     "remoteIssueIdRequired": "Identyfikator zdalnego zgłoszenia jest wymagany.",
     "remoteIssueTitleRequired": "Tytuł zdalnego zgłoszenia jest wymagany.",
     "remoteIssueTaskNoConfig": "To zadanie nie ma aktywnej konfiguracji systemu zdalnego do połączenia.",
-    "taskMergeConflictingRemoteIssueRef": "Oba zadania są połączone z różnymi zdalnymi zgłoszeniami, więc nie można ich scalić.",
     "remoteIssueSearchTitleTooShort": "Wprowadź co najmniej 3 znaki, aby wyszukać.",
     "remoteIssueSearchIdInvalid": "Wprowadź prawidłowy identyfikator zgłoszenia.",
     "remoteIssueSearchNotFound": "Nie znaleziono zgłoszenia o tym identyfikatorze.",

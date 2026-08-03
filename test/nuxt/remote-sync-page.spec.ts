@@ -516,8 +516,37 @@ describe('RemoteSync page', () => {
         },
       ],
     });
-    dollarFetchMock.mockResolvedValue(dayData);
-    csrfFetchMock.mockResolvedValue({});
+    dollarFetchMock.mockImplementation(async () => dayData);
+    csrfFetchMock.mockImplementation(async (path: string) => {
+      if (path === '/api/time-entries/reassign') {
+        dayData = makeDay({
+          rows: [
+            {
+              taskId: 'task-5-linked',
+              taskName: 'Unlinked Task',
+              projectName: 'Project',
+              clientName: 'Client',
+              totalSeconds: 1200,
+              config: { ...baseConfig, id: 'config-5' },
+              issueRef: { remoteIssueId: '9', cachedTitle: 'Stub Issue' },
+              entries: [entry({ id: 'entry-5', durationSeconds: 1200 })],
+              exports: [],
+            },
+          ],
+        });
+        return [
+          {
+            id: 'entry-5',
+            taskId: 'task-5-linked',
+            remoteIssueRef: {
+              remoteIssueId: '9',
+              cachedTitle: 'Stub Issue',
+            },
+          },
+        ];
+      }
+      return {};
+    });
     fetchMock.mockResolvedValue(activitiesPayload());
 
     const wrapper = await mount();
@@ -528,11 +557,15 @@ describe('RemoteSync page', () => {
     await flushPromises();
     await flushPromises();
 
-    expect(csrfFetchMock).toHaveBeenCalledWith('/api/tasks/task-5/remote-issue-ref', {
+    expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries/reassign', {
       method: 'POST',
-      body: { remoteIssueId: '9', cachedTitle: 'Stub Issue' },
+      body: {
+        ids: ['entry-5'],
+        remoteIssueId: '9',
+        cachedTitle: 'Stub Issue',
+      },
     });
-    expect(wrapper.find('[data-testid="remote-sync-state-task-5"]').text()).toBe(
+    expect(wrapper.find('[data-testid="remote-sync-state-task-5-linked"]').text()).toBe(
       'remoteSync.state.manageable',
     );
   });

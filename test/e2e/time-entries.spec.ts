@@ -105,6 +105,7 @@ describeTimeEntries('time-entries API integration', async () => {
     { email: 'talice@example.com', displayName: 'Alice' },
     { email: 'tbob@example.com', displayName: 'Bob' },
     { email: 'tcarol@example.com', displayName: 'Carol' },
+    { email: 'tdelta@example.com', displayName: 'Delta' },
   ]);
   await setupServer({ databaseUrl: dbUrl });
 
@@ -797,7 +798,8 @@ describeTimeEntries('time-entries API integration', async () => {
   }
 
   it('GET /api/time-entries/latest returns the newest startedAt', async () => {
-    const { jar, token } = await loginAs('talice@example.com', 'secret');
+    // Dedicated user so concurrent suite entries on Alice/Bob cannot race this assertion.
+    const { jar, token } = await loginAs('tdelta@example.com', 'secret');
     const olderStart = new Date(Date.now() - 3 * 3_600_000).toISOString();
     const olderStop = new Date(Date.now() - 2 * 3_600_000).toISOString();
     const newerStart = new Date(Date.now() - 60_000).toISOString();

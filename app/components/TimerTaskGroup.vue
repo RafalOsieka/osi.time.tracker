@@ -157,10 +157,16 @@ const remoteIssueTooltip = computed(() =>
 
 async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: string }) {
   if (!props.group.taskId) return;
+  const ids = props.group.entries.map((entry) => entry.id);
+  if (ids.length === 0) return;
   try {
-    await $csrfFetch(`/api/tasks/${props.group.taskId}/remote-issue-ref`, {
+    await $csrfFetch('/api/time-entries/reassign', {
       method: 'POST',
-      body: payload,
+      body: {
+        ids,
+        remoteIssueId: payload.remoteIssueId,
+        cachedTitle: payload.cachedTitle,
+      },
     });
     emit('entry-changed');
   } catch (err: unknown) {
@@ -170,8 +176,13 @@ async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: st
 
 async function unlinkRemoteIssue() {
   if (!props.group.taskId) return;
+  const ids = props.group.entries.map((entry) => entry.id);
+  if (ids.length === 0) return;
   try {
-    await $csrfFetch(`/api/tasks/${props.group.taskId}/remote-issue-ref`, { method: 'DELETE' });
+    await $csrfFetch('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids, remoteIssueId: null },
+    });
     emit('entry-changed');
   } catch (err: unknown) {
     toast.error(t(extractMessageKey(err, 'errors.unexpected')));

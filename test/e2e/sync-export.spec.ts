@@ -76,17 +76,22 @@ async function putRemoteConfig(
 async function linkIssue(
   jar: CookieJar,
   token: string,
-  taskId: string,
+  entryId: string,
   remoteIssueId: string,
   cachedTitle: string,
-) {
-  const res = await fetch(url(`/api/tasks/${taskId}/remote-issue-ref`), {
+): Promise<{ taskId: string }> {
+  const res = await fetch(url('/api/time-entries/reassign'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ remoteIssueId, cachedTitle }),
+    body: JSON.stringify({
+      ids: [entryId],
+      remoteIssueId,
+      cachedTitle,
+    }),
   });
   expect(res.status).toBe(200);
-  return res.json();
+  const body = await res.json();
+  return { taskId: body[0].taskId as string };
 }
 
 async function finalize(
@@ -131,7 +136,8 @@ describeSyncExport('sync export finalization API', async () => {
       stoppedAt: `${date}T10:30:00.000Z`,
     });
     expect(entry.taskId).toBeTruthy();
-    await linkIssue(jar, token, entry.taskId!, '42', 'Linked issue');
+    const linked = await linkIssue(jar, token, entry.id, '42', 'Linked issue');
+    entry.taskId = linked.taskId;
     return { date, entry, client, project };
   }
 

@@ -173,14 +173,23 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-333"]');
     await page.click('[data-testid="remote-issue-picker-result-333"]');
-    await page.waitForSelector(`[data-testid="timer-group-remote-issue-link-${groupKey}"]`);
+    // Day-scoped reassignment changes the task/group id; wait by issue label then re-resolve.
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid^="timer-group-remote-issue-link-"]')
+          ?.textContent?.trim() === '#333',
+    );
+    const linkedKey = await page.evaluate(groupKeyForTitle, label);
+    if (!linkedKey) throw new Error('linked group not found');
+    const linkedGroup = page.locator(`[data-testid="timer-group-${linkedKey}"]`);
     const linkText = await page.textContent(
-      `[data-testid="timer-group-remote-issue-link-${groupKey}"]`,
+      `[data-testid="timer-group-remote-issue-link-${linkedKey}"]`,
     );
     expect(linkText?.trim()).toBe('#333');
 
     // --- Exact issue-ID lookup through the proxy ---
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await linkedGroup.locator('[data-testid="remote-issue-picker-trigger"]').click();
     await page.waitForSelector('[data-testid="remote-issue-picker-mode"]');
     await page
       .locator('[data-testid="remote-issue-picker-mode"]')
@@ -196,11 +205,10 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     await page.waitForSelector('[data-testid="remote-issue-picker-result-777"]');
     await page.click('[data-testid="remote-issue-picker-result-777"]');
     await page.waitForFunction(
-      (key) =>
+      () =>
         document
-          .querySelector(`[data-testid="timer-group-remote-issue-link-${key}"]`)
+          .querySelector('[data-testid^="timer-group-remote-issue-link-"]')
           ?.textContent?.trim() === '#777',
-      groupKey,
     );
 
     await page.close();

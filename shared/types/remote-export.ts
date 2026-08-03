@@ -54,7 +54,8 @@ export type FinalizeRemoteExportDto = z.infer<typeof finalizeRemoteExportSchema>
 /** Successful finalization response, including known-result replay. */
 export interface FinalizeRemoteExportResultDto {
   exportId: string;
-  taskId: string;
+  /** Nullable after the source task is garbage-collected (ON DELETE SET NULL). */
+  taskId: string | null;
   localDate: string;
   remoteIssueId: string;
   remoteLogId: string;
