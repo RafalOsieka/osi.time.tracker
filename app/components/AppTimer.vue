@@ -41,13 +41,19 @@ watch(
 
 const displayedTitle = computed(() => (isRunning.value ? editedTitle.value : title.value));
 
+/** Sentinel id for the synthetic "create new task" row (not a real task). */
+const CREATE_ITEM_ID = '__create_new_task__';
+
 /**
  * Menu items use a string `name` as the model value (autocomplete mode
  * stringifies objects to "[object Object]"). `onSelect` captures the
  * concrete task id before the model update lands.
+ *
+ * Nuxt UI's built-in `create-item="always"` still hides the create row when an
+ * exact match exists, so we append our own sentinel for any non-empty typed text.
  */
-const menuItems = computed(() =>
-  suggestions.value.map((task) => ({
+const menuItems = computed(() => {
+  const items = suggestions.value.map((task) => ({
     id: task.id,
     name: task.name,
     label: formatTaskSuggestionLabel(task, t('timer.noTask')),
@@ -55,8 +61,30 @@ const menuItems = computed(() =>
       selectedTaskId.value = task.id;
       selectedTaskName.value = task.name;
     },
-  })),
-);
+  }));
+
+  const typed = (searchTerm.value ?? '').trim();
+  if (typed) {
+    items.push({
+      id: CREATE_ITEM_ID,
+      name: typed,
+      label: t('timer.createOption', { title: typed }),
+      onSelect: () => {
+        // Clear any previously captured task identity so start is freeform.
+        selectedTaskId.value = null;
+        selectedTaskName.value = null;
+        if (isRunning.value) {
+          editedTitle.value = typed;
+        } else {
+          title.value = typed;
+        }
+        overlayOpen.value = false;
+      },
+    });
+  }
+
+  return items;
+});
 
 const elapsedLabel = computed(() => {
   const total = elapsedSeconds.value;
@@ -103,6 +131,11 @@ function onTitleModelUpdate(value: string | { name?: string; id?: string } | nul
   if (value && typeof value === 'object') {
     const name = typeof value.name === 'string' ? value.name : '';
     const taskId = typeof value.id === 'string' ? value.id : selectedTaskId.value;
+    if (taskId === CREATE_ITEM_ID) {
+      applyFreeformTitle(name);
+      overlayOpen.value = false;
+      return;
+    }
     if (taskId && name) {
       applySelectedTitle(name, taskId);
       if (isRunning.value) {
@@ -115,6 +148,7 @@ function onTitleModelUpdate(value: string | { name?: string; id?: string } | nul
   const text = typeof value === 'string' ? value : '';
 
   // Selection path: item onSelect already stashed the task id for this name.
+  // Create-sentinel onSelect clears the id so this branch is skipped (freeform).
   if (selectedTaskId.value && selectedTaskName.value === text) {
     applySelectedTitle(text, selectedTaskId.value);
     if (isRunning.value) {
@@ -220,6 +254,7 @@ async function onSaveStartedAt() {
   <div class="flex w-full min-w-0 items-center gap-2" data-testid="app-timer">
     <UInputMenu
       v-model:search-term="searchTerm"
+      v-model:open="overlayOpen"
       :model-value="displayedTitle"
       :items="menuItems"
       value-key="name"
@@ -232,7 +267,6 @@ async function onSaveStartedAt() {
       class="min-w-0 flex-1"
       data-testid="timer-title-input"
       @update:model-value="onTitleModelUpdate"
-      @update:open="(value: boolean) => (overlayOpen = value)"
       @blur="onBlur"
       @keydown.enter="onEnter"
     />

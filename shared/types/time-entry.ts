@@ -70,6 +70,9 @@ export interface TimeEntryDto {
   remoteIssueRef?: RemoteIssueRefDto;
 }
 
+/** Newest entry instant for the authenticated user, or `null` when none exist. */
+export type LatestTimeEntryDto = { startedAt: string } | null;
+
 export const listTimeEntriesQuerySchema = z
   .object({
     from: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }),

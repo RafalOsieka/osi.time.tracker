@@ -128,4 +128,53 @@ describe('computeWindowRange', () => {
     expect(new Date(to).getTime()).toBe(new Date(2024, 2, 18, 0, 0).getTime());
     expect(new Date(from).getTime()).toBe(new Date(2024, 2, 11, 0, 0).getTime());
   });
+
+  it('aligns a past-week anchor to that week start (monday)', () => {
+    // Wednesday 2024-02-28 → monday-aligned week starts 2024-02-26
+    const anchor = new Date('2024-02-28T15:00:00.000Z');
+    const settings = { timeZone: 'UTC', weekStart: 'monday' as const };
+    const { from, to } = computeWindowRange(7, anchor, settings);
+    expect(from).toBe('2024-02-26T00:00:00Z');
+    expect(to).toBe('2024-03-04T00:00:00Z');
+  });
+
+  it('aligns a past-week anchor to that week start (sunday)', () => {
+    // Wednesday 2024-02-28 → sunday-aligned week starts 2024-02-25
+    const anchor = new Date('2024-02-28T15:00:00.000Z');
+    const settings = { timeZone: 'UTC', weekStart: 'sunday' as const };
+    const { from, to } = computeWindowRange(7, anchor, settings);
+    expect(from).toBe('2024-02-25T00:00:00Z');
+    expect(to).toBe('2024-03-03T00:00:00Z');
+  });
+
+  it('yields the current window when the anchor falls in the current week', () => {
+    const now = new Date('2024-03-13T12:00:00.000Z'); // Wednesday
+    const anchorInCurrentWeek = new Date('2024-03-11T09:00:00.000Z'); // Monday
+    const settings = { timeZone: 'UTC', weekStart: 'monday' as const };
+    const current = computeWindowRange(7, now, settings);
+    const anchored = computeWindowRange(7, anchorInCurrentWeek, settings);
+    expect(anchored).toEqual(current);
+    expect(anchored.from).toBe('2024-03-11T00:00:00Z');
+    expect(anchored.to).toBe('2024-03-18T00:00:00Z');
+  });
+
+  it('extends further back from the anchored start on load more', () => {
+    const anchor = new Date('2024-02-28T15:00:00.000Z');
+    const settings = { timeZone: 'UTC', weekStart: 'monday' as const };
+    const first = computeWindowRange(7, anchor, settings);
+    const more = computeWindowRange(14, anchor, settings);
+    expect(first.from).toBe('2024-02-26T00:00:00Z');
+    expect(more.from).toBe('2024-02-19T00:00:00Z');
+    expect(more.to).toBe('2024-03-04T00:00:00Z');
+  });
+
+  it('covers a DST spring-forward boundary week in America/Los_Angeles', () => {
+    // US DST spring forward 2024-03-10; anchor Tuesday 2024-03-12 local.
+    const anchor = new Date('2024-03-12T18:00:00.000Z');
+    const settings = { timeZone: 'America/Los_Angeles', weekStart: 'monday' as const };
+    const { from, to } = computeWindowRange(7, anchor, settings);
+    // Monday 2024-03-11 00:00 PDT (UTC-7) through Monday 2024-03-18 00:00 PDT
+    expect(from).toBe('2024-03-11T07:00:00Z');
+    expect(to).toBe('2024-03-18T07:00:00Z');
+  });
 });

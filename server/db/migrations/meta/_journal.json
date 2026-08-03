@@ -92,6 +92,13 @@
       "when": 1785269180344,
       "tag": "0012_chunky_karnak",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1785772177504,
+      "tag": "0013_friendly_scream",
+      "breakpoints": true
     }
   ]
 }

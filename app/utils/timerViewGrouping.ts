@@ -129,25 +129,27 @@ export function isoToLocalTime(
 
 /**
  * Computes the `[from, to)` instant window covering the most recent `daysBack`
- * browser-local days (including today), relative to `referenceDate`.
+ * local days (including the anchor day), relative to an optional anchor instant
+ * (defaults to now). When `daysBack` is a multiple of 7 the window is aligned
+ * to the user's `weekStart`.
  */
 export function computeWindowRange(
   daysBack: number,
-  referenceDate: Date = new Date(),
+  anchor: Date = new Date(),
   settings: DateTimeSettings = {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     weekStart: 'monday' as const,
   },
 ): { from: string; to: string } {
-  const today = Temporal.Instant.from(referenceDate.toISOString())
+  const anchorDay = Temporal.Instant.from(anchor.toISOString())
     .toZonedDateTimeISO(settings.timeZone)
     .toPlainDate();
-  const dayOfWeek = today.dayOfWeek;
+  const dayOfWeek = anchorDay.dayOfWeek;
   const weekOffset = settings.weekStart === 'sunday' ? dayOfWeek % 7 : dayOfWeek - 1;
   const windowStart =
     daysBack % 7 === 0
-      ? today.subtract({ days: weekOffset + daysBack - 7 })
-      : today.subtract({ days: daysBack - 1 });
+      ? anchorDay.subtract({ days: weekOffset + daysBack - 7 })
+      : anchorDay.subtract({ days: daysBack - 1 });
   const start = windowStart.toZonedDateTime(settings.timeZone);
   const to = windowStart.add({ days: daysBack }).toZonedDateTime(settings.timeZone);
   return { from: start.toInstant().toString(), to: to.toInstant().toString() };

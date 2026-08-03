@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import { computeWindowRange, groupTimeEntriesByDay } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
 import { toPickerDate } from '~/utils/dateTime';
-import type { TimeEntryDto } from '../../shared/types/time-entry';
+import type { LatestTimeEntryDto, TimeEntryDto } from '../../shared/types/time-entry';
 
 const { t, locale } = useI18n();
 const { running, elapsedSeconds, start, fetchRunning } = useTimer();
@@ -13,15 +13,56 @@ const DEFAULT_WINDOW_DAYS = 7;
 const LOAD_MORE_DAYS = 7;
 
 const windowDays = ref(DEFAULT_WINDOW_DAYS);
+/** Cached newest-entry instant; `undefined` until loaded, `null` when never tracked. */
+const anchorStartedAt = ref<string | null | undefined>(undefined);
+const forceCurrentWeek = ref(false);
 
+// Freeze timezone for the range fetch so a timezone-only settings change regroups
+// without refetching (REQ-150). weekStart stays reactive so a change re-aligns.
 const initialTimeZone = effective.value.timeZone;
-const initialWeekStart = effective.value.weekStart;
+
+const windowReference = computed(() => {
+  if (forceCurrentWeek.value || !anchorStartedAt.value) {
+    return new Date();
+  }
+  return new Date(anchorStartedAt.value);
+});
+
 const windowRange = computed(() =>
-  computeWindowRange(windowDays.value, new Date(), {
+  computeWindowRange(windowDays.value, windowReference.value, {
     timeZone: initialTimeZone,
-    weekStart: initialWeekStart,
+    weekStart: effective.value.weekStart,
   }),
 );
+
+const showAnchoredWeekBanner = computed(() => {
+  if (forceCurrentWeek.value || !anchorStartedAt.value) return false;
+  const settings = {
+    timeZone: initialTimeZone,
+    weekStart: effective.value.weekStart,
+  };
+  const currentFrom = computeWindowRange(DEFAULT_WINDOW_DAYS, new Date(), settings).from;
+  const anchorFrom = computeWindowRange(
+    DEFAULT_WINDOW_DAYS,
+    new Date(anchorStartedAt.value),
+    settings,
+  ).from;
+  return currentFrom !== anchorFrom;
+});
+
+const anchoredWeekLabel = computed(() => {
+  if (!anchorStartedAt.value) return '';
+  const { from } = computeWindowRange(DEFAULT_WINDOW_DAYS, new Date(anchorStartedAt.value), {
+    timeZone: initialTimeZone,
+    weekStart: effective.value.weekStart,
+  });
+  return new Date(from).toLocaleDateString(locale.value, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: effective.value.timeZone,
+  });
+});
 
 // `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
 // hydration (matching the server-rendered markup) instead of flipping to `true`
@@ -41,10 +82,20 @@ const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
   () => $fetch<ProjectDto[]>('/api/projects'),
   { server: false, immediate: false },
 );
-onMounted(() => {
-  void refreshEntries();
+
+onMounted(async () => {
+  try {
+    const latest = await $fetch<LatestTimeEntryDto>('/api/time-entries/latest');
+    anchorStartedAt.value = latest?.startedAt ?? null;
+  } catch {
+    anchorStartedAt.value = null;
+  }
+  if (anchorStartedAt.value) {
+    await refreshEntries();
+  }
   void refreshProjectOptions();
 });
+
 const projectOptions = computed(() => projectsData.value ?? []);
 const activeEditorKey = ref<string | null>(null);
 
@@ -103,7 +154,17 @@ watch(
 const days = computed(() =>
   groupTimeEntriesByDay(displayEntries.value, now.value, effective.value),
 );
-const isEmpty = computed(() => !entriesPending.value && days.value.length === 0);
+
+const anchorReady = computed(() => anchorStartedAt.value !== undefined);
+const isNeverTracked = computed(() => anchorReady.value && anchorStartedAt.value === null);
+const isEmptyWindow = computed(
+  () =>
+    anchorReady.value &&
+    anchorStartedAt.value !== null &&
+    !entriesPending.value &&
+    days.value.length === 0,
+);
+const hasEntries = computed(() => days.value.length > 0);
 
 function dayHeading(dayKey: string): string {
   return new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
@@ -133,6 +194,20 @@ function loadMore() {
   // Explicit refresh: watching a computed object source can miss updates depending on
   // Nuxt/Vue timing; keep the watch as a belt-and-suspenders path.
   void refreshEntries();
+}
+
+function resetToCurrentWeek() {
+  forceCurrentWeek.value = true;
+  windowDays.value = DEFAULT_WINDOW_DAYS;
+  void refreshEntries();
+}
+
+function focusTimerWidget() {
+  const root = document.querySelector('[data-testid="timer-title-input"]');
+  const input = root instanceof HTMLInputElement ? root : root?.querySelector('input');
+  if (input instanceof HTMLElement) {
+    input.focus();
+  }
 }
 
 // --- Bulk assign ---
@@ -178,14 +253,39 @@ async function onEntryDeleted() {
 
     <ClientOnly>
       <EmptyState
-        v-if="isEmpty"
-        :message="t('timerView.emptyState')"
+        v-if="isNeverTracked"
+        :message="t('timerView.neverTrackedEmptyState')"
+        :cta-label="t('timerView.neverTrackedCta')"
+        testid="timer-view-never-tracked"
+        @create="focusTimerWidget"
+      />
+
+      <EmptyState
+        v-else-if="isEmptyWindow"
+        :message="t('timerView.emptyWindowState')"
         :cta-label="t('timerView.loadMore')"
         testid="timer-view-empty-state"
         @create="loadMore"
       />
 
-      <div v-else class="grid gap-6">
+      <div v-else-if="hasEntries" class="grid gap-6">
+        <div
+          v-if="showAnchoredWeekBanner"
+          class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-default bg-elevated px-3 py-2"
+          data-testid="timer-view-anchored-week-banner"
+        >
+          <p class="m-0 text-sm text-muted">
+            {{ t('timerView.anchoredWeekBanner', { week: anchoredWeekLabel }) }}
+          </p>
+          <UButton
+            :label="t('timerView.resetToCurrentWeek')"
+            variant="soft"
+            size="sm"
+            data-testid="timer-view-reset-to-current-week"
+            @click="resetToCurrentWeek"
+          />
+        </div>
+
         <div
           v-for="day in days"
           :key="day.dayKey"

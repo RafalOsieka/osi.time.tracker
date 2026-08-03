@@ -132,6 +132,11 @@
   "timerView": {
     "pageTitle": "Stoper",
     "emptyState": "Brak wpisów czasu.",
+    "emptyWindowState": "Brak wpisów czasu w tym okresie.",
+    "neverTrackedEmptyState": "Nie śledziłeś jeszcze czasu. Uruchom stoper powyżej, aby zacząć.",
+    "neverTrackedCta": "Zacznij śledzenie",
+    "anchoredWeekBanner": "Wyświetlany tydzień od {week}",
+    "resetToCurrentWeek": "Wróć do bieżącego tygodnia",
     "loadMore": "Wczytaj więcej",
     "dayTotal": "Suma: {duration}",
     "noTask": "(brak zadania)",
@@ -207,6 +212,7 @@
     "start": "Start",
     "stop": "Stop",
     "noTask": "(brak zadania)",
+    "createOption": "{title} (nowe zadanie)",
     "elapsedLabel": "Czas trwania",
     "editStartLabel": "Edytuj czas rozpoczęcia",
     "startEditor": {
