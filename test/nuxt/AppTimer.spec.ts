@@ -49,10 +49,51 @@ mockNuxtImport('useUserSettings', () => () => ({
 }));
 
 const InputMenuStub = {
-  template:
-    '<input data-testid="timer-title-input" :aria-label="$attrs[\'aria-label\']" :placeholder="placeholder" :disabled="disabled" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'update:searchTerm\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" />',
-  props: ['modelValue', 'searchTerm', 'items', 'disabled', 'placeholder', 'mode'],
+  inheritAttrs: false,
+  template: `
+    <div class="input-menu-stub">
+      <input
+        v-bind="$attrs"
+        :aria-label="$attrs['aria-label']"
+        :placeholder="placeholder"
+        :disabled="disabled"
+        :value="modelValue"
+        @input="$emit('update:modelValue', $event.target.value); $emit('update:searchTerm', $event.target.value)"
+        @blur="$emit('blur')"
+        @keydown.enter="$emit('keydown', $event)"
+      />
+      <button
+        v-for="item in createItems"
+        :key="item.id"
+        type="button"
+        data-testid="timer-create-item"
+        @click="item.onSelect?.(); $emit('update:modelValue', item.name)"
+      >
+        {{ item.label }}
+      </button>
+    </div>
+  `,
+  props: ['modelValue', 'searchTerm', 'items', 'disabled', 'placeholder', 'mode', 'open'],
   emits: ['update:modelValue', 'update:searchTerm', 'update:open', 'blur', 'keydown'],
+  computed: {
+    createItems(this: {
+      items?: Array<{ id?: string; name?: string; label?: string; onSelect?: () => void }>;
+    }): Array<{ id: string; name: string; label: string; onSelect?: () => void }> {
+      const list = Array.isArray(this.items) ? this.items : [];
+      return list
+        .filter(
+          (item) =>
+            item?.id === '__create_new_task__' ||
+            (typeof item?.label === 'string' && /new task/i.test(item.label)),
+        )
+        .map((item) => ({
+          id: item.id ?? '',
+          name: item.name ?? '',
+          label: item.label ?? '',
+          onSelect: item.onSelect,
+        }));
+    },
+  },
 };
 const ButtonStub = {
   template:
@@ -140,6 +181,19 @@ describe('AppTimer', () => {
 
     await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
     expect(startMock).toHaveBeenCalled();
+  });
+
+  it('starts with freeform search text when no task is selected', async () => {
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    // Autocomplete keeps typed text on searchTerm without committing model-value.
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Topbar Stop Task');
+    await flushPromises();
+    await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+
+    expect(startMock).toHaveBeenCalledWith('Topbar Stop Task', undefined, null);
   });
 
   it('calls stop() when the toggle button is clicked while running', async () => {
@@ -310,10 +364,12 @@ describe('AppTimer', () => {
       label: string;
       onSelect: () => void;
     }>;
-    expect(items).toHaveLength(1);
-    expect(items[0]?.label).toContain('Linked Task');
-    expect(items[0]?.label).toContain('#99');
-    items[0]!.onSelect();
+    const suggestion = items.find((item) => item.id === 'task-42');
+    expect(suggestion).toBeTruthy();
+    expect(suggestion!.label).toContain('Linked Task');
+    expect(suggestion!.label).toContain('#99');
+    expect(items.some((item) => item.id === '__create_new_task__')).toBe(true);
+    suggestion!.onSelect();
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
     await flushPromises();
 
@@ -323,7 +379,7 @@ describe('AppTimer', () => {
       'Linked Task',
     );
     expect(wrapper.text()).not.toContain('[object Object]');
-    expect(items[0]?.label).not.toContain('[object Object]');
+    expect(suggestion!.label).not.toContain('[object Object]');
 
     await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
     await flushPromises();
@@ -357,8 +413,9 @@ describe('AppTimer', () => {
       name: string;
       onSelect: () => void;
     }>;
-    expect(items).toHaveLength(1);
-    items[0]!.onSelect();
+    const suggestion = items.find((item) => item.id === 'task-99');
+    expect(suggestion).toBeTruthy();
+    suggestion!.onSelect();
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Other Task');
     await flushPromises();
 
@@ -368,6 +425,108 @@ describe('AppTimer', () => {
       'Other Task',
     );
     expect(wrapper.text()).not.toContain('[object Object]');
+  });
+
+  it('offers a create-new-task option alongside an exact match', async () => {
+    fetchMock.mockResolvedValue([
+      {
+        id: 'task-exact',
+        name: 'Exact Match',
+        projectId: 'project-1',
+        projectName: 'Project One',
+        clientName: null,
+        createdAt: '',
+      },
+    ]);
+
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Exact Match');
+    await flushPromises();
+
+    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
+      id: string;
+      name: string;
+      label: string;
+    }>;
+    expect(items.some((item) => item.id === 'task-exact')).toBe(true);
+    const createItem = items.find((item) => item.id === '__create_new_task__');
+    expect(createItem).toBeTruthy();
+    expect(createItem!.name).toBe('Exact Match');
+    // Label is i18n-backed (`{title} (new task)`); accept translated or key fallback.
+    expect(
+      /new task/i.test(createItem!.label) ||
+        createItem!.label.includes('Exact Match') ||
+        createItem!.label === 'timer.createOption',
+    ).toBe(true);
+    expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(true);
+  });
+
+  it('does not offer a create option for empty text', async () => {
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', '');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(false);
+    let items = wrapper.findComponent(InputMenuStub).props('items') as Array<{ id: string }>;
+    expect(items.some((item) => item.id === '__create_new_task__')).toBe(false);
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', '   ');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(false);
+    items = wrapper.findComponent(InputMenuStub).props('items') as Array<{ id: string }>;
+    expect(items.some((item) => item.id === '__create_new_task__')).toBe(false);
+  });
+
+  it('create option clears a previously selected taskId and closes the overlay', async () => {
+    fetchMock.mockResolvedValue([
+      {
+        id: 'task-42',
+        name: 'Linked Task',
+        projectId: 'project-1',
+        projectName: 'Project One',
+        clientName: null,
+        createdAt: '',
+      },
+    ]);
+
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
+    await flushPromises();
+    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
+      id: string;
+      onSelect: () => void;
+    }>;
+    items.find((item) => item.id === 'task-42')!.onSelect();
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:open', true);
+    await flushPromises();
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked Task');
+    await flushPromises();
+    const createItem = (
+      wrapper.findComponent(InputMenuStub).props('items') as Array<{
+        id: string;
+        onSelect: () => void;
+      }>
+    ).find((item) => item.id === '__create_new_task__');
+    expect(createItem).toBeTruthy();
+    createItem!.onSelect();
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
+    await flushPromises();
+
+    expect(wrapper.findComponent(InputMenuStub).props('open')).toBe(false);
+
+    await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+    await flushPromises();
+    expect(startMock).toHaveBeenCalledWith('Linked Task', undefined, null);
   });
 
   describe('start-time editor popover', () => {

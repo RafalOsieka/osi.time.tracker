@@ -20,6 +20,7 @@ export const timeEntries = pgTable(
   },
   (table) => [
     index('time_entries_userId_idx').on(table.userId),
+    index('time_entries_userId_startedAt_idx').on(table.userId, table.startedAt),
     uniqueIndex('time_entries_userId_running_unique')
       .on(table.userId)
       .where(sql`${table.stoppedAt} IS NULL`),

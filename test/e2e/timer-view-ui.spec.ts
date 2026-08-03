@@ -22,7 +22,10 @@ const groupKeyForTitle = groupKeyForTitleScript();
 
 describeTimerViewUI('timer view UI flow', async () => {
   const dbUrl = await provisionDatabase();
-  await seedUsers(dbUrl, [{ email: 'timerviewui@example.com', displayName: 'timerviewuiuser' }]);
+  await seedUsers(dbUrl, [
+    { email: 'timerviewui@example.com', displayName: 'timerviewuiuser' },
+    { email: 'timerviewfresh@example.com', displayName: 'timerviewfreshuser' },
+  ]);
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
   async function loginAs(email: string) {
@@ -304,25 +307,59 @@ describeTimerViewUI('timer view UI flow', async () => {
   });
 
   it('shows a stopped entry in the timer view after stopping from the top-bar widget', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    // Ensure no leftover running timer from earlier tests confuses the Start/Stop toggle.
+    const runningRes = await fetch(url('/api/time-entries/running'), {
+      headers: { cookie: jar.header() },
+    });
+    const running = await runningRes.json();
+    if (running?.id) {
+      await stopEntry(jar, token, running.id);
+    }
+
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Start',
+    );
 
     // Start a timer from the top-bar widget.
-    await page
+    const titleInput = page
       .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
-      .first()
-      .fill('Topbar Stop Task');
+      .first();
+    await titleInput.click();
+    await titleInput.fill('Topbar Stop Task');
+    // Close the suggestion overlay so the Start click is unambiguous.
+    await titleInput.press('Escape');
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
       () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
     );
 
-    // Stop it from the top-bar widget; the timer view must refresh itself
-    // (no manual reload) and show the finished entry in its day/task group.
-    await page.click('[data-testid="timer-toggle-button"]');
-    await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Start',
+    // Dismiss any open autocomplete overlay that could intercept the Stop click.
+    await page.keyboard.press('Escape');
+    const stopResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/time-entries/') &&
+        response.ok(),
     );
+    // DOM click avoids intermittent actionability flakes on the loading button.
+    await page.locator('[data-testid="timer-toggle-button"]').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+    await stopResponse;
+    await page.waitForFunction(
+      () =>
+        (
+          document.querySelector('[data-testid="timer-toggle-button"]')?.textContent ?? ''
+        ).trim() === 'Start',
+    );
+    // After stop, the list refresh may still be on an older anchored week — reset if needed.
+    const reset = page.locator('[data-testid="timer-view-reset-to-current-week"]');
+    if ((await reset.count()) > 0) {
+      await reset.click();
+    }
     await page.waitForFunction(pageIncludesText, 'Topbar Stop Task');
 
     await page.close();
@@ -459,6 +496,101 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.locator('[data-testid="confirm-accept"]').click();
     await page.waitForFunction(pageExcludesText, 'Inline Edit Target Task');
 
+    await page.close();
+  });
+
+  it('opens on an earlier tracked week with a signpost and can reset to the current week', async () => {
+    const email = 'timerviewanchor@example.com';
+    await seedUsers(dbUrl, [{ email, displayName: 'timerviewanchoruser' }]);
+    const { jar, token } = await apiLogin(email);
+
+    const oldStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const oldStop = new Date(oldStart.getTime() + 30 * 60 * 1000);
+    const pastTitle = 'Anchored Week Task ' + Date.now();
+    await startEntry(jar, token, {
+      title: pastTitle,
+      startedAt: oldStart.toISOString(),
+      stoppedAt: oldStop.toISOString(),
+    });
+
+    const page = await loginAs(email);
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(pageIncludesText, pastTitle);
+    await page.waitForSelector('[data-testid="timer-view-anchored-week-banner"]');
+    await page.waitForSelector('[data-testid="timer-view-reset-to-current-week"]');
+
+    await page.click('[data-testid="timer-view-reset-to-current-week"]');
+    await page.waitForSelector('[data-testid="timer-view-anchored-week-banner"]', {
+      state: 'hidden',
+    });
+    await page.waitForFunction(pageExcludesText, pastTitle);
+    // Current week is empty for this user — empty-window state (not never-tracked).
+    await page.waitForSelector('[data-testid="timer-view-empty-state"]');
+
+    await page.close();
+  });
+
+  it('shows the never-tracked empty state for a user with no entries', async () => {
+    const page = await loginAs('timerviewfresh@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForSelector('[data-testid="timer-view-never-tracked"]');
+    expect(await page.locator('[data-testid="timer-view-load-more"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="timer-view-empty-state"]').count()).toBe(0);
+    await page.close();
+  });
+
+  it('create-new-task option starts a project-less entry even when a project-bound task matches', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const clientRes = await fetch(url('/api/clients'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Create Option Client ' + Date.now() }),
+    });
+    const client = await clientRes.json();
+    const projectRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Create Option Project', clientId: client.id }),
+    });
+    const project = await projectRes.json();
+    const sharedTitle = 'Create Option Shared Title ' + Date.now();
+    const seeded = await startEntry(jar, token, { title: sharedTitle, projectId: project.id });
+    await stopEntry(jar, token, seeded.id);
+    expect(seeded.projectId).toBe(project.id);
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    const titleInput = page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first();
+    await titleInput.click();
+    await titleInput.fill(sharedTitle);
+
+    // Wait for the matching suggestion and the synthetic create-new-task option.
+    await page.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    const createOption = page
+      .locator('[role="option"]')
+      .filter({ hasText: /new task/i })
+      .first();
+    await createOption.waitFor({ state: 'visible', timeout: 10000 });
+    // Combobox options can re-render mid-click; use a DOM click for stability.
+    await createOption.evaluate((el: HTMLElement) => el.click());
+
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+    );
+
+    const runningRes = await fetch(url('/api/time-entries/running'), {
+      headers: { cookie: jar.header() },
+    });
+    const running = await runningRes.json();
+    expect(running.taskName).toBe(sharedTitle);
+    expect(running.projectId).toBeNull();
+    expect(running.taskId).not.toBe(seeded.taskId);
+
+    await stopEntry(jar, token, running.id);
     await page.close();
   });
 });

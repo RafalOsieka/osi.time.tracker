@@ -21,6 +21,9 @@ import { timeEntries } from './time-entries';
  * and intentional repeat exports are valid (REQ-119).
  * `exportRequestKey` is unique per user when present so retries reconcile
  * to the same logical export (REQ-233).
+ *
+ * `taskId` is nullable with ON DELETE SET NULL so export provenance survives
+ * task garbage collection (REQ-237) instead of cascading away or blocking GC.
  */
 export const remoteExports = pgTable(
   'remote_exports',
@@ -31,9 +34,7 @@ export const remoteExports = pgTable(
     userId: uuid('userId')
       .notNull()
       .references(() => users.id),
-    taskId: uuid('taskId')
-      .notNull()
-      .references(() => tasks.id, { onDelete: 'cascade' }),
+    taskId: uuid('taskId').references(() => tasks.id, { onDelete: 'set null' }),
     /** Local calendar day the export covers (`YYYY-MM-DD` in the user's timezone). */
     localDate: date('localDate').notNull(),
     remoteIssueId: text('remoteIssueId').notNull(),

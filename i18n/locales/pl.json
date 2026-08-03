@@ -132,6 +132,11 @@
   "timerView": {
     "pageTitle": "Stoper",
     "emptyState": "Brak wpisów czasu.",
+    "emptyWindowState": "Brak wpisów czasu w tym okresie.",
+    "neverTrackedEmptyState": "Nie śledziłeś jeszcze czasu. Uruchom stoper powyżej, aby zacząć.",
+    "neverTrackedCta": "Zacznij śledzenie",
+    "anchoredWeekBanner": "Wyświetlany tydzień od {week}",
+    "resetToCurrentWeek": "Wróć do bieżącego tygodnia",
     "loadMore": "Wczytaj więcej",
     "dayTotal": "Suma: {duration}",
     "noTask": "(brak zadania)",
@@ -197,8 +202,9 @@
     },
     "remoteIssue": {
       "unlinked": "(niepołączone)",
-      "editLabel": "Połącz ze zdalnym zgłoszeniem",
-      "linkedTooltipPrefix": "Połączone z"
+      "editLabel": "Połącz ze zdalnym zgłoszeniem na ten dzień",
+      "linkedTooltipPrefix": "Połączone z",
+      "unlinkLabel": "Odłącz zdalne zgłoszenie na ten dzień"
     }
   },
   "timer": {
@@ -207,6 +213,7 @@
     "start": "Start",
     "stop": "Stop",
     "noTask": "(brak zadania)",
+    "createOption": "{title} (nowe zadanie)",
     "elapsedLabel": "Czas trwania",
     "editStartLabel": "Edytuj czas rozpoczęcia",
     "startEditor": {
@@ -410,7 +417,6 @@
     "remoteIssueIdRequired": "Identyfikator zdalnego zgłoszenia jest wymagany.",
     "remoteIssueTitleRequired": "Tytuł zdalnego zgłoszenia jest wymagany.",
     "remoteIssueTaskNoConfig": "To zadanie nie ma aktywnej konfiguracji systemu zdalnego do połączenia.",
-    "taskMergeConflictingRemoteIssueRef": "Oba zadania są połączone z różnymi zdalnymi zgłoszeniami, więc nie można ich scalić.",
     "remoteIssueSearchTitleTooShort": "Wprowadź co najmniej 3 znaki, aby wyszukać.",
     "remoteIssueSearchIdInvalid": "Wprowadź prawidłowy identyfikator zgłoszenia.",
     "remoteIssueSearchNotFound": "Nie znaleziono zgłoszenia o tym identyfikatorze.",

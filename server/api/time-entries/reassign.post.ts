@@ -6,6 +6,7 @@ import { db } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
+import { resolveActiveConfigForProject } from '../../utils/remote-issue-refs';
 import { toTimeEntryDto } from '../../utils/time-entries';
 import type { ApiMessage } from '../../types/api-message';
 
@@ -25,6 +26,8 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     }
     throw err;
   }
+
+  const remoteIssueProvided = Object.prototype.hasOwnProperty.call(body ?? {}, 'remoteIssueId');
 
   const updatedRows = await db.transaction(async (tx) => {
     const rows = await tx
@@ -48,14 +51,26 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
 
     let sourceName: string | null = null;
     let sourceProjectId: string | null = null;
+    let sourceRemoteIssueId: string | null = null;
+    let sourceRemoteSystemConfigId: string | null = null;
+    let sourceCachedTitle: string | null = null;
     if (sourceTaskId) {
       const [sourceTask] = await tx
-        .select({ name: tasks.name, projectId: tasks.projectId })
+        .select({
+          name: tasks.name,
+          projectId: tasks.projectId,
+          remoteIssueId: tasks.remoteIssueId,
+          remoteSystemConfigId: tasks.remoteSystemConfigId,
+          remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
+        })
         .from(tasks)
         .where(and(eq(tasks.id, sourceTaskId), eq(tasks.userId, user.id)))
         .limit(1);
       sourceName = sourceTask?.name ?? null;
       sourceProjectId = sourceTask?.projectId ?? null;
+      sourceRemoteIssueId = sourceTask?.remoteIssueId ?? null;
+      sourceRemoteSystemConfigId = sourceTask?.remoteSystemConfigId ?? null;
+      sourceCachedTitle = sourceTask?.remoteIssueCachedTitle ?? null;
     }
 
     const effectiveName = parsedBody.name ?? sourceName;
@@ -94,7 +109,48 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       }
     }
 
-    const targetTaskId = await resolveTaskId(tx, user.id, effectiveName, effectiveProjectId);
+    let effectiveRemoteIssueId: string | null;
+    let effectiveConfigId: string | null;
+    let effectiveCachedTitle: string | null;
+
+    if (!remoteIssueProvided) {
+      // Omitted: keep the source task's current remote issue.
+      effectiveRemoteIssueId = sourceRemoteIssueId;
+      effectiveConfigId = sourceRemoteSystemConfigId;
+      effectiveCachedTitle = sourceCachedTitle;
+    } else if (parsedBody.remoteIssueId == null) {
+      // Explicit null: target the unlinked twin.
+      effectiveRemoteIssueId = null;
+      effectiveConfigId = null;
+      effectiveCachedTitle = null;
+    } else {
+      // Value: target the task carrying that remote issue. Derive configuration
+      // provenance server-side from the target project's client (REQ-179).
+      if (effectiveProjectId === null) {
+        throw createError({
+          statusCode: 409,
+          data: { messageKey: 'error.remoteIssueTaskNoConfig' } satisfies ApiMessage,
+        });
+      }
+
+      const config = await resolveActiveConfigForProject(user.id, effectiveProjectId);
+      if (!config) {
+        throw createError({
+          statusCode: 409,
+          data: { messageKey: 'error.remoteIssueTaskNoConfig' } satisfies ApiMessage,
+        });
+      }
+
+      effectiveRemoteIssueId = parsedBody.remoteIssueId;
+      effectiveConfigId = config.id;
+      effectiveCachedTitle = parsedBody.cachedTitle ?? parsedBody.remoteIssueId;
+    }
+
+    const targetTaskId = await resolveTaskId(tx, user.id, effectiveName, effectiveProjectId, {
+      remoteIssueId: effectiveRemoteIssueId,
+      remoteSystemConfigId: effectiveConfigId,
+      cachedTitle: effectiveCachedTitle,
+    });
     if (!targetTaskId) {
       throw createError({
         statusCode: 422,

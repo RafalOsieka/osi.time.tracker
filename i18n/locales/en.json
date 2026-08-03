@@ -132,6 +132,11 @@
   "timerView": {
     "pageTitle": "Timer",
     "emptyState": "No time entries yet.",
+    "emptyWindowState": "No time entries in this period.",
+    "neverTrackedEmptyState": "You haven't tracked any time yet. Start the timer above to begin.",
+    "neverTrackedCta": "Start tracking",
+    "anchoredWeekBanner": "Showing week of {week}",
+    "resetToCurrentWeek": "Back to this week",
     "loadMore": "Load more",
     "dayTotal": "Total: {duration}",
     "noTask": "(no task)",
@@ -197,8 +202,9 @@
     },
     "remoteIssue": {
       "unlinked": "(unlinked)",
-      "editLabel": "Link remote issue",
-      "linkedTooltipPrefix": "Linked to"
+      "editLabel": "Link remote issue for this day",
+      "linkedTooltipPrefix": "Linked to",
+      "unlinkLabel": "Unlink remote issue for this day"
     }
   },
   "timer": {
@@ -207,6 +213,7 @@
     "start": "Start",
     "stop": "Stop",
     "noTask": "(no task)",
+    "createOption": "{title} (new task)",
     "elapsedLabel": "Elapsed time",
     "editStartLabel": "Edit start time",
     "startEditor": {
@@ -410,7 +417,6 @@
     "remoteIssueIdRequired": "Remote issue id is required.",
     "remoteIssueTitleRequired": "Remote issue title is required.",
     "remoteIssueTaskNoConfig": "This task has no active remote system configuration to link against.",
-    "taskMergeConflictingRemoteIssueRef": "Both tasks are linked to different remote issues, so they cannot be merged.",
     "remoteIssueSearchTitleTooShort": "Enter at least 3 characters to search.",
     "remoteIssueSearchIdInvalid": "Enter a valid issue id.",
     "remoteIssueSearchNotFound": "No issue was found with that id.",

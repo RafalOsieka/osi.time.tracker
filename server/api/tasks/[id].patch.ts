@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { updateTaskSchema } from '../../../shared/types/task';
 import type { UpdateTaskDto, TaskDto } from '../../../shared/types/task';
 import { db } from '../../db/index';
-import { tasks, projects, clients, timeEntries, remoteIssueRefs } from '../../db/schema';
+import { tasks, projects, clients, timeEntries } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
 import type { ApiMessage } from '../../types/api-message';
@@ -26,9 +26,14 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     throw err;
   }
 
-  // Verify ownership (404 for foreign/unknown id)
+  // Verify ownership (404 for foreign/unknown id). Capture the unchanged
+  // remoteIssueId so collision scope includes it (REQ-134).
   const [existing] = await db
-    .select({ id: tasks.id, projectId: tasks.projectId })
+    .select({
+      id: tasks.id,
+      projectId: tasks.projectId,
+      remoteIssueId: tasks.remoteIssueId,
+    })
     .from(tasks)
     .where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)))
     .limit(1);
@@ -71,11 +76,16 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
   const projectCondition =
     targetProjectId === null ? isNull(tasks.projectId) : eq(tasks.projectId, targetProjectId);
+  const remoteCondition =
+    existing.remoteIssueId === null
+      ? isNull(tasks.remoteIssueId)
+      : eq(tasks.remoteIssueId, existing.remoteIssueId);
 
   const updatedId = await db.transaction(async (tx) => {
     // Detect a collision with another task already occupying the target
-    // (userId, projectId, name) scope so the rename/move can be merged
-    // instead of failing on the unique constraint.
+    // (userId, projectId, name, remoteIssueId) scope so the rename/move can
+    // be merged instead of failing on the unique constraint. Differing
+    // remote issues no longer collide (REQ-134).
     const [colliding] = await tx
       .select({ id: tasks.id })
       .from(tasks)
@@ -84,6 +94,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
           eq(tasks.userId, user.id),
           eq(tasks.name, parsedBody.name),
           projectCondition,
+          remoteCondition,
           ne(tasks.id, id!),
         ),
       )
@@ -92,45 +103,11 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     if (colliding) {
       // Merge: re-point all time entries from the edited task onto the
       // surviving (colliding) task, then hard-delete the now-emptied row.
+      // The survivor already shares the same remoteIssueId by construction.
       await tx
         .update(timeEntries)
         .set({ taskId: colliding.id, updatedAt: new Date() })
         .where(eq(timeEntries.taskId, id!));
-
-      // Merge remote issue references, if any, before removing the loser row.
-      const [sourceRef] = await tx
-        .select()
-        .from(remoteIssueRefs)
-        .where(eq(remoteIssueRefs.taskId, id!))
-        .limit(1);
-      const [survivorRef] = await tx
-        .select()
-        .from(remoteIssueRefs)
-        .where(eq(remoteIssueRefs.taskId, colliding.id))
-        .limit(1);
-
-      if (sourceRef && !survivorRef) {
-        // Only the losing task has a reference: move it onto the survivor.
-        await tx
-          .update(remoteIssueRefs)
-          .set({ taskId: colliding.id, updatedAt: new Date() })
-          .where(eq(remoteIssueRefs.id, sourceRef.id));
-      } else if (sourceRef && survivorRef) {
-        const identical =
-          sourceRef.remoteSystemConfigId === survivorRef.remoteSystemConfigId &&
-          sourceRef.remoteIssueId === survivorRef.remoteIssueId;
-
-        if (!identical) {
-          throw createError({
-            statusCode: 409,
-            data: { messageKey: 'error.taskMergeConflictingRemoteIssueRef' } satisfies ApiMessage,
-          });
-        }
-
-        // Both reference the same remote issue: discard the loser's duplicate row.
-        await tx.delete(remoteIssueRefs).where(eq(remoteIssueRefs.id, sourceRef.id));
-      }
-      // else: neither has a reference (no-op), or only survivor has one (already correct).
 
       await tx.delete(tasks).where(and(eq(tasks.id, id!), eq(tasks.userId, user.id)));
 

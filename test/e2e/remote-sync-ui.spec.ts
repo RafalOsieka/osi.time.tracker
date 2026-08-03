@@ -152,11 +152,17 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       stoppedAt,
     });
     expect(entry.taskId).toBeDefined();
-    await fetch(url(`/api/tasks/${entry.taskId}/remote-issue-ref`), {
+    const linkRes = await fetch(url('/api/time-entries/reassign'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ remoteIssueId: '123', cachedTitle: 'Linked Issue' }),
+      body: JSON.stringify({
+        ids: [entry.id],
+        remoteIssueId: '123',
+        cachedTitle: 'Linked Issue',
+      }),
     });
+    const linkedEntries = await linkRes.json();
+    entry.taskId = linkedEntries[0]?.taskId ?? entry.taskId;
 
     // User timezone is UTC (set above). Near local midnight the browser zone and
     // the saved UTC zone disagree on the calendar day, so open the sync page
@@ -282,11 +288,18 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       stoppedAt: new Date(dayStart.getTime() + 63 * 60 * 1000).toISOString(),
     });
     expect(entryA.taskId).toBe(entryB.taskId);
-    await fetch(url(`/api/tasks/${entryA.taskId}/remote-issue-ref`), {
+    const linkRes = await fetch(url('/api/time-entries/reassign'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ remoteIssueId: '456', cachedTitle: 'Suggestion Issue' }),
+      body: JSON.stringify({
+        ids: [entryA.id, entryB.id],
+        remoteIssueId: '456',
+        cachedTitle: 'Suggestion Issue',
+      }),
     });
+    const linkedEntries = await linkRes.json();
+    entryA.taskId = linkedEntries[0]?.taskId ?? entryA.taskId;
+    entryB.taskId = entryA.taskId;
 
     const dayKey = dayStart.toISOString().slice(0, 10);
     const dayApi = await fetch(url(`/api/sync/day?date=${dayKey}`), {
@@ -376,11 +389,17 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       stoppedAt,
     });
     expect(entry.taskId).toBeDefined();
-    await fetch(url(`/api/tasks/${entry.taskId}/remote-issue-ref`), {
+    const linkRes = await fetch(url('/api/time-entries/reassign'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ remoteIssueId: '321', cachedTitle: 'Nav Issue' }),
+      body: JSON.stringify({
+        ids: [entry.id],
+        remoteIssueId: '321',
+        cachedTitle: 'Nav Issue',
+      }),
     });
+    const linkedEntries = await linkRes.json();
+    entry.taskId = linkedEntries[0]?.taskId ?? entry.taskId;
 
     const dayApi = await fetch(url(`/api/sync/day?date=${day}`), {
       headers: { cookie: jar.header() },

@@ -69,19 +69,51 @@ describeDb('tasks schema', () => {
       if (!otherUserTask) throw new Error('otherUserTask not inserted');
       expect(otherUserTask.name).toBe('Standalone Task');
 
-      // Duplicate (userId, projectId=null, name) must be rejected
+      // Duplicate unlinked (userId, projectId=null, name) must be rejected
       await expect(
         db.insert(tasks).values({ userId: userA.id, name: 'Standalone Task' }),
       ).rejects.toThrow();
 
-      // Duplicate (userId, projectId, name) must be rejected
+      // Duplicate unlinked (userId, projectId, name) must be rejected
       await expect(
         db
           .insert(tasks)
           .values({ userId: userA.id, projectId: project.id, name: 'Standalone Task' }),
       ).rejects.toThrow();
 
-      // Hard-deleting the conflicting row frees up the name for reuse (no soft-delete anymore)
+      // Same name with a different remoteIssueId is allowed (project-scoped).
+      const now = new Date();
+      const [linkedTwin] = await db
+        .insert(tasks)
+        .values({
+          userId: userA.id,
+          projectId: project.id,
+          name: 'Standalone Task',
+          remoteIssueId: '4711',
+          remoteIssueCachedTitle: 'Issue 4711',
+          remoteIssueCreatedAt: now,
+          remoteIssueUpdatedAt: now,
+        })
+        .returning();
+      if (!linkedTwin) throw new Error('linkedTwin not inserted');
+      expect(linkedTwin.remoteIssueId).toBe('4711');
+
+      // Same name with a different remoteIssueId is allowed (project-less).
+      const [linkedProjectless] = await db
+        .insert(tasks)
+        .values({
+          userId: userA.id,
+          name: 'Standalone Task',
+          remoteIssueId: '4899',
+          remoteIssueCachedTitle: 'Issue 4899',
+          remoteIssueCreatedAt: now,
+          remoteIssueUpdatedAt: now,
+        })
+        .returning();
+      if (!linkedProjectless) throw new Error('linkedProjectless not inserted');
+      expect(linkedProjectless.remoteIssueId).toBe('4899');
+
+      // Hard-deleting the conflicting unlinked row frees up the name for reuse
       await db.delete(tasks).where(eq(tasks.id, taskWithoutProject.id));
       const [reusedNameTask] = await db
         .insert(tasks)

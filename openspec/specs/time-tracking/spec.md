@@ -54,15 +54,19 @@ The system SHALL guarantee that an authenticated user has at most one running `T
 - **THEN** the partial unique index SHALL prevent two running entries and the system SHALL end with exactly one running entry
 
 ### Requirement: REQ-142 Title binds an entry to a Task
-The system SHALL treat a time entry's title as the name of the `Task` it points to; a `TimeEntry` SHALL carry no title column of its own. When a title is provided, the system SHALL resolve it to a `Task` within one transaction using the matching key `(userId, name, projectId)`, where `projectId = NULL` is a distinct scope. If a non-deleted task with that name exists in the given project scope, the entry SHALL bind to it; otherwise a new `Task` SHALL be created in that scope and the entry SHALL bind to it. A project-less title that matches an existing project-less task SHALL silently bind to it. An empty, whitespace-only, or omitted title SHALL leave `taskId` `null`.
+The system SHALL treat a time entry's title as the name of the `Task` it points to; a `TimeEntry` SHALL carry no title column of its own. When a title is provided, the system SHALL resolve it to a `Task` within one transaction using the matching key `(userId, name, projectId, remoteIssueId)`, where `projectId = NULL` is a distinct scope and `remoteIssueId = NULL` means unlinked. When the caller supplies no remote issue, resolution SHALL consider all tasks matching `(userId, name, projectId)` and SHALL apply the most-recently-used tie-break of REQ-137, creating a new **unlinked** `Task` only when no candidate exists. When the caller supplies an explicit remote issue (REQ-179), resolution SHALL find-or-create against the full four-part key. A project-less title that matches an existing project-less task SHALL silently bind to it. An empty, whitespace-only, or omitted title SHALL leave `taskId` `null`.
 
 #### Scenario: New title creates a task
 - **WHEN** a title with no matching task in the target project scope is provided
-- **THEN** the system SHALL create a new task in that scope and bind the entry to it
+- **THEN** the system SHALL create a new unlinked task in that scope and bind the entry to it
 
 #### Scenario: Existing title matches a task
-- **WHEN** a title matches an existing non-deleted task in the target project scope
+- **WHEN** a title matches exactly one existing task in the target project scope
 - **THEN** the system SHALL bind the entry to that existing task without creating a new one
+
+#### Scenario: Ambiguous title binds to the most recently used task
+- **WHEN** a title matches several tasks in the target project scope differing only by remote issue
+- **THEN** the entry SHALL bind to the most recently used of them and no new task SHALL be created
 
 #### Scenario: Project-less silent match
 - **WHEN** a title with no project matches an existing project-less task of the user
@@ -264,8 +268,37 @@ The system SHALL allow an authenticated user to assign a set of their untitled t
 - **WHEN** the submitted title is empty or whitespace-only, or `ids` is empty
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
+### Requirement: REQ-236 Newest entry anchor endpoint
+
+The system SHALL expose the instant of the authenticated user's most recent time entry via `GET /api/time-entries/latest`, returning `{ startedAt }` as an ISO 8601 instant for the entry with the greatest `startedAt`, or `null` when the user has no entries at all. A running entry SHALL be eligible as the newest entry. The query SHALL be scoped strictly to the authenticated user and SHALL be served by a single indexed read (`ORDER BY startedAt DESC LIMIT 1`). The endpoint SHALL take no parameters and SHALL perform no timezone or day-boundary logic, so callers remain responsible for converting the instant to their local week (mirroring REQ-148). The endpoint SHALL follow the shared `api-endpoint-conventions` for authentication and error contract.
+
+#### Scenario: Newest entry instant returned
+- **WHEN** an authenticated user with entries requests the endpoint
+- **THEN** the system SHALL return the `startedAt` of their entry with the greatest `startedAt` as an ISO 8601 instant
+
+#### Scenario: Running entry is eligible
+- **WHEN** the user's most recent entry is still running (`stoppedAt` null)
+- **THEN** the system SHALL return that entry's `startedAt`
+
+#### Scenario: User has never tracked anything
+- **WHEN** an authenticated user with no time entries requests the endpoint
+- **THEN** the system SHALL return `null`
+
+#### Scenario: Other users' entries never considered
+- **WHEN** another user has a more recent entry
+- **THEN** the response SHALL be derived only from the authenticated user's entries
+
+#### Scenario: Unauthenticated request rejected
+- **WHEN** an unauthenticated client requests the endpoint
+- **THEN** the system SHALL reject the request per the shared authentication conventions
+
 ### Requirement: REQ-150 Timer view page
-The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165, user-settings; day boundaries computed via the timezone-aware utilities of REQ-168) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. The page SHALL initially load the most recent 7 days and provide a "load more" control that extends the window further back by the same step; days without entries SHALL NOT render empty groups. When the user has no entries at all, the page SHALL render a dedicated empty state pointing to the timer widget.
+
+The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165, user-settings; day boundaries computed via the timezone-aware utilities of REQ-168) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. Days without entries SHALL NOT render empty groups.
+
+The initial 7-day window SHALL be **anchored on the user's most recent entry** rather than always on the current instant: on first load the page SHALL read the anchor instant via `GET /api/time-entries/latest` (REQ-236) and align its window start to the user's `weekStart` for the week containing that instant, so a user opening the app in a week with no entries yet still sees their latest tracked week instead of an empty page. When the anchor is `null` (the user has never tracked anything) the page SHALL NOT issue an entry-range request for a further window and SHALL render the never-tracked empty state. When the anchor falls inside the current week, the window SHALL be the current week exactly as before. The page SHALL provide a "load more" control that extends the window further back by the same step from the anchored window.
+
+The page SHALL distinguish three states: (a) entries present, (b) **no entries in the loaded window but entries exist elsewhere**, and (c) **no entries at all**. State (c) SHALL render a dedicated empty state pointing to the timer widget. State (b) SHALL render an empty-window state offering "load more". When the anchored window is not the current week, the page SHALL render a localized indication of which week is shown together with a control that returns the window to the current week; activating it SHALL re-align the window to the current week without a full reload.
 
 The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-131, shared-ui-components; the date is fixed by the day section). The form SHALL convert the entered wall-clock times to instants using the effective timezone (REQ-168) and submit them via `POST /api/time-entries` (REQ-140 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
 
@@ -273,7 +306,7 @@ Each listed entry SHALL be editable inline: its start time, stop time (via the s
 
 The page SHALL observe the shell's running-timer state: when the running entry stops (including a stop triggered from the top-bar widget or a stop-on-new-start), the page SHALL refresh its entry list so the finished entry appears in its day/task group immediately, without a manual reload.
 
-When the user's timezone or week-start setting changes, the page SHALL regroup and re-render from the already-loaded entries (pure re-render); no data migration or refetch SHALL be required for correctness.
+When the user's timezone or week-start setting changes, the page SHALL regroup and re-render from the already-loaded entries (pure re-render); no data migration or refetch SHALL be required for correctness. A `weekStart` change SHALL re-align the anchored window without re-fetching the anchor.
 
 #### Scenario: Entries grouped by effective-timezone day and task
 - **WHEN** the authenticated user opens `/` with entries on multiple days
@@ -282,6 +315,26 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 #### Scenario: Day list renders client-side only
 - **WHEN** the timer view is served with server-side rendering enabled
 - **THEN** the day/group list SHALL be rendered only on the client and the page SHALL produce no hydration mismatch for the grouped content
+
+#### Scenario: Fresh week opens on the latest tracked week
+- **WHEN** the user opens `/` in a week that contains no entries while earlier entries exist
+- **THEN** the initial window SHALL cover the `weekStart`-aligned week containing the newest entry and the page SHALL show that week's entries rather than an empty page
+
+#### Scenario: Anchored week is signposted with a way back
+- **WHEN** the initial window was anchored on a week other than the current one
+- **THEN** the page SHALL state which week is shown and offer a control that re-aligns the window to the current week
+
+#### Scenario: Current week is used when the newest entry is in it
+- **WHEN** the user's newest entry falls within the current `weekStart`-aligned week
+- **THEN** the initial window SHALL be the current week and no anchored-week indication SHALL be shown
+
+#### Scenario: Never-tracked user sees a start-tracking empty state
+- **WHEN** the user has no time entries at all
+- **THEN** the page SHALL render the empty state directing the user to the timer widget and SHALL NOT offer "load more"
+
+#### Scenario: Empty window with entries elsewhere offers load more
+- **WHEN** the loaded window contains no entries but the user has entries outside it
+- **THEN** the page SHALL render the empty-window state whose action extends the window further back
 
 #### Scenario: Expanding a task group lists its entries
 - **WHEN** the user expands a task group
@@ -293,11 +346,7 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 
 #### Scenario: Load more pages further back
 - **WHEN** the user activates the "load more" control
-- **THEN** the page SHALL fetch and append the previous window of days below the existing ones
-
-#### Scenario: Empty state
-- **WHEN** the user has no time entries in the loaded window and none at all
-- **THEN** the page SHALL render an empty state directing the user to start the timer
+- **THEN** the page SHALL fetch and append the previous window of days below the existing ones, measured from the anchored window
 
 #### Scenario: Add a manual entry to a day
 - **WHEN** the user activates a day's "add entry" action and submits a valid start/end time pair with an optional title
@@ -359,11 +408,19 @@ The system SHALL allow an authenticated user to delete their own `TimeEntry` via
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
 
 ### Requirement: REQ-152 Continue a task from the timer view
-Each task group on the timer view SHALL offer a continue action that starts a new running entry via the existing `POST /api/time-entries`, passing the group's task name as `title` and the group's `projectId`. Stop-on-new-start (REQ-141) and title resolution (REQ-142) SHALL apply unchanged, and the shell's timer widget SHALL reflect the new running entry. The "(no task)" group SHALL NOT offer a continue action; instead it SHALL offer the bulk-assign action (REQ-149) that lets the user pick or type a task title (autocomplete over existing tasks) and assign all of the day's untitled entries at once.
+Each task group on the timer view SHALL offer a continue action that starts a new running entry via the existing `POST /api/time-entries`. The action SHALL pass the group's **task identity** so the new entry binds to that exact task and therefore **inherits its remote issue reference** as well as its project, rather than re-resolving the name and risking a different task under the most-recently-used tie-break (REQ-137). Stop-on-new-start (REQ-141) SHALL apply unchanged, and the shell's timer widget SHALL reflect the new running entry. The "(no task)" group SHALL NOT offer a continue action; instead it SHALL offer the bulk-assign action (REQ-149) that lets the user pick or type a task title (autocomplete over existing tasks) and assign all of the day's untitled entries at once.
 
 #### Scenario: Continue starts a timer for the task
 - **WHEN** the user activates continue on a task group
-- **THEN** a new running entry SHALL be started with that task's name and project, stopping any currently running entry first
+- **THEN** a new running entry SHALL be started bound to that group's task, stopping any currently running entry first
+
+#### Scenario: Continue inherits the remote issue
+- **WHEN** the user continues a task group that is linked to a remote issue
+- **THEN** the new running entry SHALL be bound to that same linked task and SHALL show the same remote issue
+
+#### Scenario: Continue is unambiguous under duplicate names
+- **WHEN** the continued task shares its name and project with another task carrying a different remote issue
+- **THEN** the new entry SHALL bind to the continued task and SHALL NOT be re-resolved to the other one
 
 #### Scenario: Running entry reflected in the shell
 - **WHEN** a continue action succeeds
@@ -374,32 +431,42 @@ Each task group on the timer view SHALL offer a continue action that starts a ne
 - **THEN** all of that day's untitled entries SHALL be assigned via the bulk-assign endpoint and the page SHALL regroup them under the resolved task
 
 ### Requirement: REQ-153 Mini task editor on the timer view
-Each task group on the timer view SHALL allow inline (in-place) editing of the task, replacing any modal editor: the task name and the project SHALL each be editable directly in the group header.
+Each task group on the timer view SHALL allow inline (in-place) editing of the task, replacing any modal editor: the task name, the project, and the remote issue SHALL each be editable directly in the group header.
 
-Committing an inline group edit SHALL be **day-scoped**: it SHALL reassign only that day's entries of the group to the find-or-create target task via the day-scoped reassignment operation (REQ-179), passing the group's entry ids for that day. It SHALL NOT rename or re-project the underlying task globally via `PATCH /api/tasks/[id]`, so the same task's entries on other days SHALL be unaffected. When the group is the task's only day, the edit still goes through the day-scoped reassignment (move-only), which MAY leave the source task garbage-collected.
+Committing an inline group edit SHALL be **day-scoped**: it SHALL reassign only that day's entries of the group to the find-or-create target task via the day-scoped reassignment operation (REQ-179), passing the group's entry ids for that day. It SHALL NOT rename, re-project, or re-link the underlying task globally, so the same task's entries on other days SHALL be unaffected. This SHALL hold for **every** group-level edit without exception, including the remote issue: the timer view SHALL make no task-global mutation. When the group is the task's only day, the edit still goes through the day-scoped reassignment (move-only), which MAY leave the source task garbage-collected.
 
 The group title SHALL be an activatable control that swaps to a text input; the edit SHALL be committed on blur or Enter and cancelled on Escape. A committed name that is empty or whitespace-only SHALL silently revert to the previous name without sending a request (a task cannot be unnamed).
 
 The project/client context SHALL be an activatable control that swaps to a project select with a clear option; when the task has no project, the group SHALL render a localized "(no project)" placeholder that is equally activatable. The select SHALL include the task's current project as an option even when that project has been soft-deleted. Committing a selection (including clearing) SHALL reassign that day's entries per REQ-179; dismissing without selection SHALL change nothing.
 
-Inline editing SHALL be single-click and exclusive: at most one inline editor (group title or group project, across all groups and days) SHALL be active at a time. Activating an editor SHALL cancel any other active inline editor — reverting its control to the read-only display without committing — and SHALL immediately make the new editor ready for input: the swapped-in text input SHALL receive focus, and the swapped-in project select SHALL open its option list, so no second click is required.
+The remote issue control (REQ-107) SHALL likewise commit through REQ-179, sending the chosen `remoteIssueId` — or an explicit `null` to unlink — together with that day's entry ids.
 
-On success the page SHALL update the affected groups (including regrouping when entries move between tasks) and refresh the running-timer state. The "(no task)" group SHALL NOT offer title or project editing (it has no task).
+Inline editing SHALL be single-click and exclusive: at most one inline editor (group title, group project, or remote issue picker, across all groups and days) SHALL be active at a time. Activating an editor SHALL cancel any other active inline editor — reverting its control to the read-only display without committing — and SHALL immediately make the new editor ready for input: the swapped-in text input SHALL receive focus, and the swapped-in project select SHALL open its option list, so no second click is required.
+
+On success the page SHALL update the affected groups (including regrouping when entries move between tasks) and refresh the running-timer state. The "(no task)" group SHALL NOT offer title, project or remote issue editing (it has no task).
 
 #### Scenario: Inline rename is day-scoped
 - **WHEN** the user activates the group title, types a new name, and commits (blur or Enter)
 - **THEN** only that day's entries SHALL move to the find-or-create target task via the day-scoped reassignment, and the same task's entries on other days SHALL keep the old name
 
 #### Scenario: Rename onto an existing task merges that day's entries
-- **WHEN** the user renames a day's group so it matches another existing task
+- **WHEN** the user renames a day's group so it matches another existing task with the same remote issue state
 - **THEN** that day's entries SHALL move into the existing task's group and the page SHALL show them under the survivor for that day
+
+#### Scenario: Remote issue change is day-scoped
+- **WHEN** the user links, replaces or unlinks the remote issue on a day's group while the same task has entries on other days
+- **THEN** only that day's entries SHALL move to the find-or-create target task and the other days' groups SHALL keep their previous remote issue
+
+#### Scenario: No task-global mutation from the timer view
+- **WHEN** any group-level edit (title, project, or remote issue) is committed
+- **THEN** the request SHALL be the day-scoped reassignment and the page SHALL make no call that mutates a task row directly
 
 #### Scenario: Empty name silently reverts
 - **WHEN** the user commits an empty or whitespace-only name in the inline title editor
 - **THEN** the title SHALL revert to the previous name and no request SHALL be sent
 
 #### Scenario: Escape cancels the inline edit
-- **WHEN** the user presses Escape while editing the group title or choosing a project
+- **WHEN** the user presses Escape while editing the group title, choosing a project, or picking a remote issue
 - **THEN** the edit SHALL be discarded and no request SHALL be sent
 
 #### Scenario: Project changed inline is day-scoped
@@ -415,7 +482,7 @@ On success the page SHALL update the affected groups (including regrouping when 
 - **THEN** the project select SHALL render with its option list already open, without requiring a second click
 
 #### Scenario: Activating one editor cancels another
-- **WHEN** an inline editor is active in one group and the user activates a title or project editor elsewhere (in the same or a different group)
+- **WHEN** an inline editor is active in one group and the user activates a title, project or remote issue editor elsewhere (in the same or a different group)
 - **THEN** the previously active editor SHALL close without committing, its control SHALL return to the read-only display, and the newly opened editor SHALL receive focus
 
 #### Scenario: Soft-deleted project retained in the select
@@ -424,7 +491,7 @@ On success the page SHALL update the affected groups (including regrouping when 
 
 #### Scenario: No task group is not editable
 - **WHEN** the "(no task)" group is rendered
-- **THEN** it SHALL NOT offer inline title or project editing
+- **THEN** it SHALL NOT offer inline title, project or remote issue editing
 
 ### Requirement: REQ-154 Accessible, localized, tokenized timer view
 The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semantic headings/landmarks, expand/collapse controls SHALL be keyboard operable and expose their expanded state, action controls (continue, assign) SHALL be labelled, and the inline editors (group title, group project, entry fields, and the shared smart time inputs) SHALL be activatable buttons or labelled inputs with accessible names, keyboard operable including Escape to cancel, with the project select reachable and operable by keyboard. Interactive controls SHALL NOT be nested inside one another: a group header row that combines an expand/collapse action with inline edit triggers SHALL use a non-interactive layout container with the controls as siblings. The page SHALL prefer existing PrimeVue components — edit triggers and inline editors SHALL use PrimeVue `Button` and `InputText`/`Select` rather than native `<button>`/`<input>` elements — derive styling from theme tokens (no ad-hoc inline colors), format dates and durations via the active locale, and keep all user-facing strings (including the "(no project)" placeholder) in `en` and `pl` in parity. Server/network failures SHALL surface as a Toast translated from the `{ messageKey, params }` contract.
@@ -450,9 +517,11 @@ The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semant
 - **THEN** the client SHALL show a Toast translated from the returned `messageKey`
 
 ### Requirement: REQ-179 Day-scoped reassignment of time entries to a task
-The system SHALL allow an authenticated user to move a set of their time entries to a target task in one atomic operation via `POST /api/time-entries/reassign`, accepting `{ ids, name?, projectId? }` where `ids` is a non-empty array of entry uuids and `name` is trimmed and length-bounded. This powers the timer view's day-scoped group edits: the client sends exactly the entry ids of one day's task group so that only that day's entries move, while the same task's entries on other days are unaffected.
+The system SHALL allow an authenticated user to move a set of their time entries to a target task in one atomic operation via `POST /api/time-entries/reassign`, accepting `{ ids, name?, projectId?, remoteIssueId? }` where `ids` is a non-empty array of entry uuids and `name` is trimmed and length-bounded. This powers the timer view's day-scoped group edits: the client sends exactly the entry ids of one day's task group so that only that day's entries move, while the same task's entries on other days are unaffected.
 
-Within a single transaction the system SHALL determine the effective target scope from the listed entries' current task: when `projectId` is omitted, the target scope's project SHALL be the source task's current `projectId`; an explicit `null` SHALL target the project-less scope; a uuid SHALL target that owned, non-deleted project. The system SHALL resolve `(userId, effectiveName, effectiveProjectId)` to a `taskId` exactly once using the REQ-142 matching rules (find-or-create, no remote-issue-reference cloning), set that `taskId` on every listed entry, and then garbage-collect the source task if it is left with zero entries (hard delete, mirroring REQ-151). When `name` is omitted the entries keep their current task name and only the project scope changes.
+Within a single transaction the system SHALL determine the effective target scope from the listed entries' current task. When `projectId` is omitted, the target scope's project SHALL be the source task's current `projectId`; an explicit `null` SHALL target the project-less scope; a uuid SHALL target that owned, non-deleted project. The presence of `remoteIssueId` SHALL be equally significant: **omitting** it SHALL keep the source task's current remote issue, an explicit **`null`** SHALL target the unlinked task, and a **value** SHALL target the task carrying that remote issue. When a `remoteIssueId` value is supplied, the system SHALL derive the remote-system configuration provenance and the cached issue title server-side from the target project's client (rejecting a project-less target, a missing or inactive configuration, or an unsupported `systemType` with `{ messageKey, params }`), and SHALL NOT trust client-supplied provenance.
+
+The system SHALL resolve `(userId, effectiveName, effectiveProjectId, effectiveRemoteIssueId)` to a `taskId` exactly once using the REQ-142 matching rules (find-or-create), set that `taskId` on every listed entry, and then garbage-collect the source task if it is left with zero entries (hard delete, mirroring REQ-151). When `name` is omitted the entries keep their current task name. This operation is the only way a set of entries changes its remote issue, replacing the removed task-global link and unlink endpoints (REQ-105).
 
 Every listed entry MUST belong to the authenticated user; otherwise the whole request SHALL fail (HTTP 404 for foreign/unknown ids, or `{ messageKey, params }` for validation errors) and no entry SHALL be modified. On success the updated `TimeEntryDto`s SHALL be returned.
 
@@ -464,24 +533,43 @@ Every listed entry MUST belong to the authenticated user; otherwise the whole re
 - **WHEN** a reassignment moves the source task's last remaining entries away
 - **THEN** the emptied source task SHALL be hard-deleted in the same transaction
 
-#### Scenario: Reassign keeps the source project by default
-- **WHEN** the user reassigns entries with a new `name` and omits `projectId`
-- **THEN** the target task SHALL be resolved within the source task's current project scope
+#### Scenario: Reassign keeps the source project and remote issue by default
+- **WHEN** the user reassigns entries with a new `name` and omits both `projectId` and `remoteIssueId`
+- **THEN** the target task SHALL be resolved within the source task's current project scope and with its current remote issue
 
 #### Scenario: Day-scoped project change
 - **WHEN** the user reassigns a day's entries with a `projectId` (or explicit `null`) and no `name`
-- **THEN** the entries SHALL move to the find-or-create task of the same name in that project scope, leaving other days' entries on the original task
+- **THEN** the entries SHALL move to the find-or-create task of the same name and remote issue in that project scope, leaving other days' entries on the original task
+
+#### Scenario: Day-scoped remote issue link
+- **WHEN** the user reassigns a day's entries with a `remoteIssueId` value while the same task has entries on other days
+- **THEN** only those entries SHALL move to the find-or-create task carrying that remote issue, with provenance and cached title derived server-side, and the other days' entries SHALL keep the previous remote issue
+
+#### Scenario: Day-scoped remote issue unlink
+- **WHEN** the user reassigns a day's entries with an explicit `null` `remoteIssueId`
+- **THEN** the entries SHALL move to the find-or-create task of the same name and project with no remote issue, and no remote request SHALL be made
+
+#### Scenario: Two remote issues under one name coexist
+- **WHEN** one day's entries are reassigned to remote issue `4711` and another day's entries of the same name and project to `4899`
+- **THEN** both target tasks SHALL exist and each day's group SHALL show its own remote issue
+
+#### Scenario: Remote issue on an ineligible target rejected
+- **WHEN** a `remoteIssueId` value is supplied while the effective target scope is project-less or its client has no active supported configuration
+- **THEN** the system SHALL reject the request with `{ messageKey, params }` and no entry SHALL be modified
 
 #### Scenario: Atomic failure leaves entries untouched
 - **WHEN** any listed id is foreign or unknown
 - **THEN** the system SHALL reject the whole request with HTTP 404 and none of the listed entries SHALL be modified
 
 ### Requirement: REQ-180 Top-bar suggestion binding, labels, and popover anchoring
+
 The top-bar timer widget's title autocomplete SHALL present each suggestion as a single object-based item resolved from `GET /api/tasks?search=`, using exactly one selection handler; it SHALL NOT nest an independently clickable control inside a menu item nor cast object items to strings. Selecting a suggestion by mouse or keyboard SHALL fire a single selection and SHALL NOT issue duplicate requests nor set a stringified-object (`[object Object]`) title.
 
 Each suggestion label SHALL show the task name with its project/client context when present, and SHALL additionally append the remote issue id (from the task's remote issue reference) when the task has one.
 
 When the user selects an existing suggestion, the widget SHALL capture that task's identity and send it to the server so the started/updated entry binds to that exact task (its project and remote reference), rather than reconstructing project/reference from front-end state. When the user commits a free-form title that matches no suggestion, the widget SHALL fall back to the title-based create path (REQ-142).
+
+The suggestion overlay SHALL additionally offer, whenever the typed text is non-empty, a distinct **create-new-task option** labelled with the typed text and a localized "(new task)" marker, rendered separately from the task suggestions and shown even when one or more suggestions match the typed text exactly. Activating it (by mouse or keyboard) SHALL commit the typed text as a free-form title with **no task binding** — the widget SHALL clear any captured task identity and send `title` only — so the entry resolves through the project-less title path (REQ-142) instead of binding to a matching suggestion. Activating it SHALL close the overlay so a subsequent Enter starts the timer per REQ-146. The option SHALL be keyboard reachable, SHALL expose an accessible name including the typed text, and its strings SHALL exist in `en` and `pl` in parity.
 
 The elapsed-time start-edit popover SHALL be anchored to the elapsed-time control that opens it, so it appears adjacent to that control rather than to an unrelated element.
 
@@ -496,6 +584,26 @@ The elapsed-time start-edit popover SHALL be anchored to the elapsed-time contro
 #### Scenario: Picking a suggestion binds to that exact task
 - **WHEN** the user picks an existing suggestion and starts the timer
 - **THEN** the entry SHALL bind to that task's identity (its project and remote reference), not a newly created project-less task
+
+#### Scenario: Create option is offered alongside exact matches
+- **WHEN** the typed text exactly matches one or more existing task suggestions
+- **THEN** the overlay SHALL still offer the create-new-task option labelled with the typed text and a localized "(new task)" marker
+
+#### Scenario: Create option sends the title without a task binding
+- **WHEN** the user activates the create-new-task option and starts the timer
+- **THEN** the request SHALL carry the typed `title` with no `taskId` and the entry SHALL resolve in the project-less scope per REQ-142
+
+#### Scenario: Create option clears a previously captured suggestion
+- **WHEN** the user first selects a suggestion, edits the text, and then activates the create-new-task option
+- **THEN** the previously captured task identity SHALL be discarded and SHALL NOT be sent
+
+#### Scenario: Create option is keyboard operable
+- **WHEN** the user navigates the overlay with the keyboard to the create-new-task option and activates it
+- **THEN** the typed text SHALL be committed as a free-form title, the overlay SHALL close, and a subsequent Enter SHALL start the timer
+
+#### Scenario: No create option for empty text
+- **WHEN** the title input is empty or whitespace-only
+- **THEN** the overlay SHALL NOT offer a create-new-task option
 
 #### Scenario: Popover anchored to the elapsed control
 - **WHEN** the user activates the elapsed-time control to edit the start

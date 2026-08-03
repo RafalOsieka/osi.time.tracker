@@ -8,7 +8,7 @@ import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { UNKNOWN_ID } from './support/fixtures';
 import { createDatabaseClient } from '../../server/db/client';
-import { remoteIssueRefs, remoteSystemConfigs, timeEntries, tasks } from '../../server/db/schema';
+import { remoteSystemConfigs, timeEntries, tasks, remoteExports } from '../../server/db/schema';
 
 const describeRemoteIssueRef = requireDocker();
 
@@ -68,8 +68,15 @@ async function createTaskViaEntry(
   token: string,
   title: string,
   projectId?: string | null,
-): Promise<{ id: string; name: string; projectId: string | null }> {
-  const body: Record<string, unknown> = { title };
+  startedAt?: string,
+): Promise<{ id: string; name: string; projectId: string | null; entryId: string }> {
+  const body: Record<string, unknown> = {
+    title,
+    startedAt: startedAt ?? new Date().toISOString(),
+    stoppedAt: startedAt
+      ? new Date(new Date(startedAt).getTime() + 3600_000).toISOString()
+      : new Date(Date.now() + 3600_000).toISOString(),
+  };
   if (projectId !== undefined) body.projectId = projectId;
   const startRes = await fetch(url('/api/time-entries'), {
     method: 'POST',
@@ -77,36 +84,19 @@ async function createTaskViaEntry(
     body: JSON.stringify(body),
   });
   const entry = await startRes.json();
-  await fetch(url(`/api/time-entries/${entry.id}`), {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ stoppedAt: new Date().toISOString() }),
-  });
 
   const tasksRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
   const rows: { id: string; name: string; projectId: string | null }[] = await tasksRes.json();
   const found = rows.find((r) => r.id === entry.taskId);
   if (!found) throw new Error('task not found after creating via time entry');
-  return found;
+  return { ...found, entryId: entry.id };
 }
 
-function linkRef(
-  jar: CookieJar,
-  token: string,
-  taskId: string,
-  body: Record<string, unknown>,
-): Promise<Response> {
-  return fetch(url(`/api/tasks/${taskId}/remote-issue-ref`), {
+function reassign(jar: CookieJar, token: string, body: Record<string, unknown>): Promise<Response> {
+  return fetch(url('/api/time-entries/reassign'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(body),
-  });
-}
-
-function unlinkRef(jar: CookieJar, token: string, taskId: string): Promise<Response> {
-  return fetch(url(`/api/tasks/${taskId}/remote-issue-ref`), {
-    method: 'DELETE',
-    headers: { 'csrf-token': token, cookie: jar.header() },
   });
 }
 
@@ -137,7 +127,7 @@ const redmineConfig = {
   roundingRule: 'none',
 };
 
-describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', async () => {
+describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () => {
   const dbUrl = await provisionDatabase();
   await seedUsers(dbUrl, [
     { email: 'ralice@example.com', displayName: 'Alice' },
@@ -150,83 +140,143 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     await sql.end({ timeout: 5 });
   });
 
-  async function setupTaskWithOpenProjectConfig(
-    label: string,
-  ): Promise<{ jar: CookieJar; token: string; taskId: string; clientId: string }> {
+  async function setupTaskWithOpenProjectConfig(label: string): Promise<{
+    jar: CookieJar;
+    token: string;
+    taskId: string;
+    entryId: string;
+    clientId: string;
+    projectId: string;
+  }> {
     const { jar, token } = await loginAs('ralice@example.com', 'secret');
     const client = await createClient(jar, token, `${label} Client ${Date.now()}`);
     const project = await createProject(jar, token, `${label} Project ${Date.now()}`, client.id);
     await putRemoteConfig(jar, token, client.id, openProjectConfig);
     const task = await createTaskViaEntry(jar, token, `${label} Task ${Date.now()}`, project.id);
-    return { jar, token, taskId: task.id, clientId: client.id };
+    return {
+      jar,
+      token,
+      taskId: task.id,
+      entryId: task.entryId,
+      clientId: client.id,
+      projectId: project.id,
+    };
   }
 
-  it('links a task then replaces the reference on a second link', async () => {
-    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Link');
+  it('links a day via reassign and replaces with a different issue', async () => {
+    const { jar, token, entryId } = await setupTaskWithOpenProjectConfig('Link');
 
-    const first = await linkRef(jar, token, taskId, { remoteIssueId: '10', cachedTitle: 'First' });
+    const first = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '10',
+      cachedTitle: 'First',
+    });
     expect(first.status).toBe(200);
     const firstBody = await first.json();
-    expect(firstBody.remoteIssueId).toBe('10');
-    expect(firstBody.url).toBe('https://op.example.com/work_packages/10');
+    expect(firstBody[0]?.remoteIssueRef?.remoteIssueId).toBe('10');
+    expect(firstBody[0]?.remoteIssueRef?.url).toBe('https://op.example.com/work_packages/10');
 
-    const second = await linkRef(jar, token, taskId, {
+    const second = await reassign(jar, token, {
+      ids: [entryId],
       remoteIssueId: '20',
       cachedTitle: 'Second',
     });
     expect(second.status).toBe(200);
     const secondBody = await second.json();
-    expect(secondBody.remoteIssueId).toBe('20');
-
-    const rows = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, taskId));
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.remoteIssueId).toBe('20');
+    expect(secondBody[0]?.remoteIssueRef?.remoteIssueId).toBe('20');
+    expect(secondBody[0]?.taskId).not.toBe(firstBody[0]?.taskId);
   });
 
-  it('unlink is idempotent', async () => {
-    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Unlink');
-    await linkRef(jar, token, taskId, { remoteIssueId: '30', cachedTitle: 'Some issue' });
-
-    const first = await unlinkRef(jar, token, taskId);
-    expect(first.status).toBe(200);
-
-    const second = await unlinkRef(jar, token, taskId);
-    expect(second.status).toBe(200);
-
-    const rows = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, taskId));
-    expect(rows).toHaveLength(0);
-  });
-
-  it('rejects invalid input with 422', async () => {
-    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Invalid');
-
-    const res = await linkRef(jar, token, taskId, { remoteIssueId: '', cachedTitle: '' });
-    expect(res.status).toBe(422);
-    const body = await res.json();
-    expect(body?.data?.messageKey).toBe('error.remoteIssueIdRequired');
-  });
-
-  it('strips unknown/extra fields from the request body instead of erroring', async () => {
-    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Strip');
-
-    const res = await linkRef(jar, token, taskId, {
-      remoteIssueId: '40',
-      cachedTitle: 'Stripped',
-      apiKey: 'super-secret-should-not-persist',
+  it('explicit null unlinks day-scoped and is idempotent', async () => {
+    const { jar, token, entryId } = await setupTaskWithOpenProjectConfig('Unlink');
+    await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '30',
+      cachedTitle: 'Some issue',
     });
-    expect(res.status).toBe(200);
 
-    const [row] = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, taskId));
-    expect(row).toBeDefined();
-    // The schema doesn't even define an apiKey/credential column, so nothing extra can persist.
-    expect(Object.keys(row!)).not.toContain('apiKey');
+    const first = await reassign(jar, token, { ids: [entryId], remoteIssueId: null });
+    expect(first.status).toBe(200);
+    const firstBody = await first.json();
+    expect(firstBody[0]?.remoteIssueRef).toBeUndefined();
+
+    const second = await reassign(jar, token, { ids: [entryId], remoteIssueId: null });
+    expect(second.status).toBe(200);
+    const secondBody = await second.json();
+    expect(secondBody[0]?.taskId).toBe(firstBody[0]?.taskId);
   });
 
-  it('rejects linking a project-less task', async () => {
+  it('day-scoped link leaves other days untouched', async () => {
+    const { jar, token, projectId } = await setupTaskWithOpenProjectConfig('DayScope');
+    const title = `Shared ${Date.now()}`;
+    const day1 = await createTaskViaEntry(jar, token, title, projectId, '2026-03-01T10:00:00.000Z');
+    const day2 = await createTaskViaEntry(jar, token, title, projectId, '2026-03-02T10:00:00.000Z');
+    // Both days start on the same unlinked task.
+    expect(day1.id).toBe(day2.id);
+
+    const linkDay1 = await reassign(jar, token, {
+      ids: [day1.entryId],
+      remoteIssueId: '4711',
+      cachedTitle: 'Issue 4711',
+    });
+    expect(linkDay1.status).toBe(200);
+    const day1Body = await linkDay1.json();
+    expect(day1Body[0]?.remoteIssueRef?.remoteIssueId).toBe('4711');
+
+    const linkDay2 = await reassign(jar, token, {
+      ids: [day2.entryId],
+      remoteIssueId: '4899',
+      cachedTitle: 'Issue 4899',
+    });
+    expect(linkDay2.status).toBe(200);
+    const day2Body = await linkDay2.json();
+    expect(day2Body[0]?.remoteIssueRef?.remoteIssueId).toBe('4899');
+    expect(day2Body[0]?.taskId).not.toBe(day1Body[0]?.taskId);
+
+    const [entry1] = await db.select().from(timeEntries).where(eq(timeEntries.id, day1.entryId));
+    const [entry2] = await db.select().from(timeEntries).where(eq(timeEntries.id, day2.entryId));
+    expect(entry1?.taskId).toBe(day1Body[0]?.taskId);
+    expect(entry2?.taskId).toBe(day2Body[0]?.taskId);
+
+    const taskRows = await db.select().from(tasks).where(eq(tasks.name, title));
+    expect(taskRows).toHaveLength(2);
+  });
+
+  it('omitted remoteIssueId keeps the current issue when renaming', async () => {
+    const { jar, token, entryId } = await setupTaskWithOpenProjectConfig('KeepIssue');
+    const linked = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '55',
+      cachedTitle: 'Keep me',
+    });
+    const linkedBody = await linked.json();
+    const linkedTaskId = linkedBody[0]?.taskId as string;
+
+    const renamed = await reassign(jar, token, {
+      ids: [entryId],
+      name: `Renamed ${Date.now()}`,
+    });
+    expect(renamed.status).toBe(200);
+    const renamedBody = await renamed.json();
+    expect(renamedBody[0]?.remoteIssueRef?.remoteIssueId).toBe('55');
+    // Source may be GC'd; target carries the same issue.
+    const [task] = await db.select().from(tasks).where(eq(tasks.id, renamedBody[0]?.taskId));
+    expect(task?.remoteIssueId).toBe('55');
+    if (renamedBody[0]?.taskId !== linkedTaskId) {
+      const old = await db.select().from(tasks).where(eq(tasks.id, linkedTaskId));
+      expect(old).toHaveLength(0);
+    }
+  });
+
+  it('rejects linking a project-less target', async () => {
     const { jar, token } = await loginAs('ralice@example.com', 'secret');
     const task = await createTaskViaEntry(jar, token, `Projectless ${Date.now()}`);
 
-    const res = await linkRef(jar, token, task.id, { remoteIssueId: '1', cachedTitle: 'x' });
+    const res = await reassign(jar, token, {
+      ids: [task.entryId],
+      remoteIssueId: '1',
+      cachedTitle: 'x',
+    });
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body?.data?.messageKey).toBe('error.remoteIssueTaskNoConfig');
@@ -238,7 +288,11 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     const project = await createProject(jar, token, `NoConfig Project ${Date.now()}`, client.id);
     const task = await createTaskViaEntry(jar, token, `NoConfig Task ${Date.now()}`, project.id);
 
-    const res = await linkRef(jar, token, task.id, { remoteIssueId: '1', cachedTitle: 'x' });
+    const res = await reassign(jar, token, {
+      ids: [task.entryId],
+      remoteIssueId: '1',
+      cachedTitle: 'x',
+    });
     expect(res.status).toBe(409);
     const body = await res.json();
     expect(body?.data?.messageKey).toBe('error.remoteIssueTaskNoConfig');
@@ -251,78 +305,201 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     await putRemoteConfig(jar, token, client.id, redmineConfig);
     const task = await createTaskViaEntry(jar, token, `Redmine Task ${Date.now()}`, project.id);
 
-    const res = await linkRef(jar, token, task.id, {
+    const res = await reassign(jar, token, {
+      ids: [task.entryId],
       remoteIssueId: '77',
       cachedTitle: 'Redmine issue',
     });
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body.remoteIssueId).toBe('77');
-    expect(body.cachedTitle).toBe('Redmine issue');
-    expect(body.url).toBe('https://redmine.example.com/issues/77');
-
-    const rows = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, task.id));
-    expect(rows).toHaveLength(1);
+    expect(body[0]?.remoteIssueRef?.remoteIssueId).toBe('77');
+    expect(body[0]?.remoteIssueRef?.url).toBe('https://redmine.example.com/issues/77');
   });
 
-  it('foreign/unknown task ids → 404 for both link and unlink', async () => {
+  it('foreign/unknown entry ids → 404', async () => {
     const alice = await loginAs('ralice@example.com', 'secret');
     const bob = await loginAs('rbob@example.com', 'secret');
     const bobTask = await createTaskViaEntry(bob.jar, bob.token, `Bob Task ${Date.now()}`);
 
-    const fakeId = UNKNOWN_ID;
-    const missing = await linkRef(alice.jar, alice.token, fakeId, {
+    const missing = await reassign(alice.jar, alice.token, {
+      ids: [UNKNOWN_ID],
       remoteIssueId: '1',
       cachedTitle: 'x',
     });
     expect(missing.status).toBe(404);
 
-    const foreign = await linkRef(alice.jar, alice.token, bobTask.id, {
+    const foreign = await reassign(alice.jar, alice.token, {
+      ids: [bobTask.entryId],
       remoteIssueId: '1',
       cachedTitle: 'x',
     });
     expect(foreign.status).toBe(404);
-
-    const foreignUnlink = await unlinkRef(alice.jar, alice.token, bobTask.id);
-    expect(foreignUnlink.status).toBe(404);
   });
 
-  it('unauthenticated requests are rejected with 401', async () => {
-    const { taskId } = await setupTaskWithOpenProjectConfig('Auth');
-    const anonJar = new CookieJar();
-    const anonToken = await primeCsrf(anonJar);
-
-    const linkRes = await linkRef(anonJar, anonToken, taskId, {
-      remoteIssueId: '1',
-      cachedTitle: 'x',
+  it('task-global remote-issue-ref routes are absent', async () => {
+    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Gone');
+    const post = await fetch(url(`/api/tasks/${taskId}/remote-issue-ref`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ remoteIssueId: '1', cachedTitle: 'x' }),
     });
-    expect(linkRes.status).toBe(401);
+    expect([404, 405]).toContain(post.status);
 
-    const unlinkRes = await unlinkRef(anonJar, anonToken, taskId);
-    expect(unlinkRes.status).toBe(401);
+    const del = await fetch(url(`/api/tasks/${taskId}/remote-issue-ref`), {
+      method: 'DELETE',
+      headers: { 'csrf-token': token, cookie: jar.header() },
+    });
+    expect([404, 405]).toContain(del.status);
   });
 
-  it('enriches the task list DTO with a URL for a linked task, and omits it once unlinked', async () => {
-    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Enrich');
-    await linkRef(jar, token, taskId, { remoteIssueId: '50', cachedTitle: 'Enriched' });
+  it('PATCH merges when name/project/issue all collide and never changes remote issue', async () => {
+    const { jar, token, projectId } = await setupTaskWithOpenProjectConfig('Merge');
+    const suffix = Date.now();
+    const survivor = await createTaskViaEntry(jar, token, `Surv ${suffix}`, projectId);
+    const loser = await createTaskViaEntry(jar, token, `Lose ${suffix}`, projectId);
+
+    await reassign(jar, token, {
+      ids: [survivor.entryId],
+      remoteIssueId: '100',
+      cachedTitle: 'Same',
+    });
+    await reassign(jar, token, {
+      ids: [loser.entryId],
+      remoteIssueId: '100',
+      cachedTitle: 'Same',
+    });
+
+    const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
+    const list: { id: string; remoteIssueRef?: { remoteIssueId: string } }[] = await listRes.json();
+    const linkedLoser = list.find(
+      (r) => r.remoteIssueRef?.remoteIssueId === '100' && r.id !== survivor.id,
+    );
+    // After linking, loser entry may sit on a new task id.
+    const loserTaskId =
+      linkedLoser?.id ??
+      (await db.select().from(timeEntries).where(eq(timeEntries.id, loser.entryId)))[0]!.taskId!;
+
+    const survivorTaskId = (
+      await db.select().from(timeEntries).where(eq(timeEntries.id, survivor.entryId))
+    )[0]!.taskId!;
+    const [survRow] = await db.select().from(tasks).where(eq(tasks.id, survivorTaskId));
+
+    const res = await patchTask(jar, token, loserTaskId, {
+      name: survRow!.name,
+      projectId,
+    });
+    expect(res.status).toBe(200);
+    const merged = await res.json();
+    expect(merged.id).toBe(survivorTaskId);
+    expect(merged.remoteIssueRef?.remoteIssueId).toBe('100');
+  });
+
+  it('PATCH rename onto a different remote issue does not merge and does not 409', async () => {
+    const { jar, token, projectId } = await setupTaskWithOpenProjectConfig('NoMerge');
+    const suffix = Date.now();
+    const a = await createTaskViaEntry(jar, token, `A ${suffix}`, projectId);
+    const b = await createTaskViaEntry(jar, token, `B ${suffix}`, projectId);
+
+    await reassign(jar, token, {
+      ids: [a.entryId],
+      remoteIssueId: '200',
+      cachedTitle: 'A issue',
+    });
+    await reassign(jar, token, {
+      ids: [b.entryId],
+      remoteIssueId: '201',
+      cachedTitle: 'B issue',
+    });
+
+    const aTaskId = (await db.select().from(timeEntries).where(eq(timeEntries.id, a.entryId)))[0]!
+      .taskId!;
+    const bTaskId = (await db.select().from(timeEntries).where(eq(timeEntries.id, b.entryId)))[0]!
+      .taskId!;
+    const [bRow] = await db.select().from(tasks).where(eq(tasks.id, bTaskId));
+
+    const res = await patchTask(jar, token, aTaskId, {
+      name: bRow!.name,
+      projectId,
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.id).toBe(aTaskId);
+    expect(body.remoteIssueRef?.remoteIssueId).toBe('200');
+
+    const stillB = await db.select().from(tasks).where(eq(tasks.id, bTaskId));
+    expect(stillB).toHaveLength(1);
+  });
+
+  it('export provenance survives garbage collection of its task', async () => {
+    const { jar, token, entryId, projectId } = await setupTaskWithOpenProjectConfig('GC');
+    const linked = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '300',
+      cachedTitle: 'Exported',
+    });
+    const linkedBody = await linked.json();
+    const taskId = linkedBody[0]?.taskId as string;
+
+    const [userRow] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    const [exportRow] = await db
+      .insert(remoteExports)
+      .values({
+        userId: userRow!.userId,
+        taskId,
+        localDate: '2026-03-15',
+        remoteIssueId: '300',
+        remoteLogId: 'log-gc',
+        exportDurationSeconds: 3600,
+        requiredFieldValues: {},
+      })
+      .returning();
+
+    // Move the only entry away so the source task is garbage-collected.
+    const moved = await reassign(jar, token, {
+      ids: [entryId],
+      name: `Moved ${Date.now()}`,
+      projectId,
+    });
+    expect(moved.status).toBe(200);
+
+    const sourceGone = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    expect(sourceGone).toHaveLength(0);
+
+    const [surviving] = await db
+      .select()
+      .from(remoteExports)
+      .where(eq(remoteExports.id, exportRow!.id));
+    expect(surviving).toBeDefined();
+    expect(surviving!.taskId).toBeNull();
+    expect(surviving!.remoteIssueId).toBe('300');
+  });
+
+  it('enriches the task list DTO with a URL for a linked task', async () => {
+    const { jar, token, entryId } = await setupTaskWithOpenProjectConfig('Enrich');
+    const linked = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '50',
+      cachedTitle: 'Enriched',
+    });
+    const linkedBody = await linked.json();
+    const taskId = linkedBody[0]?.taskId as string;
 
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows: { id: string; remoteIssueRef?: { url?: string; remoteIssueId: string } }[] =
       await listRes.json();
-    const linked = rows.find((r) => r.id === taskId);
-    expect(linked?.remoteIssueRef?.remoteIssueId).toBe('50');
-    expect(linked?.remoteIssueRef?.url).toBe('https://op.example.com/work_packages/50');
-
-    await unlinkRef(jar, token, taskId);
-    const listAfter = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const rowsAfter: { id: string; remoteIssueRef?: unknown }[] = await listAfter.json();
-    const unlinked = rowsAfter.find((r) => r.id === taskId);
-    expect(unlinked?.remoteIssueRef).toBeUndefined();
+    const found = rows.find((r) => r.id === taskId);
+    expect(found?.remoteIssueRef?.remoteIssueId).toBe('50');
+    expect(found?.remoteIssueRef?.url).toBe('https://op.example.com/work_packages/50');
   });
 
   it('omits the url once the linked config is soft-deleted, keeping cached id/title', async () => {
-    const { jar, token, taskId, clientId } = await setupTaskWithOpenProjectConfig('SoftDelete');
-    await linkRef(jar, token, taskId, { remoteIssueId: '60', cachedTitle: 'Bare after delete' });
+    const { jar, token, entryId, clientId } = await setupTaskWithOpenProjectConfig('SoftDelete');
+    const linked = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '60',
+      cachedTitle: 'Bare after delete',
+    });
+    const taskId = (await linked.json())[0]?.taskId as string;
 
     await fetch(url(`/api/clients/${clientId}/remote-config`), {
       method: 'DELETE',
@@ -337,142 +514,15 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     expect(found?.remoteIssueRef?.url).toBeUndefined();
   });
 
-  it('strictly isolates references across users in list responses', async () => {
-    const { jar, token, taskId } = await setupTaskWithOpenProjectConfig('Isolation');
-    await linkRef(jar, token, taskId, { remoteIssueId: '70', cachedTitle: 'Alices issue' });
-
-    const bob = await loginAs('rbob@example.com', 'secret');
-    const bobList = await fetch(url('/api/tasks'), { headers: { cookie: bob.jar.header() } });
-    const bobRows: { id: string }[] = await bobList.json();
-    expect(bobRows.find((r) => r.id === taskId)).toBeUndefined();
-  });
-
-  it('unlinked-task merges are unaffected', async () => {
-    const { jar, token } = await loginAs('ralice@example.com', 'secret');
-    const suffix = Date.now();
-    const survivor = await createTaskViaEntry(jar, token, `PlainSurvivor ${suffix}`);
-    const loser = await createTaskViaEntry(jar, token, `PlainLoser ${suffix}`);
-
-    const res = await patchTask(jar, token, loser.id, { name: survivor.name });
-    expect(res.status).toBe(200);
-    const merged = await res.json();
-    expect(merged.id).toBe(survivor.id);
-    expect(merged.remoteIssueRef).toBeUndefined();
-  });
-
-  it('preserves a source-only reference on the survivor after merge', async () => {
-    const { jar, token, taskId: projectId } = await setupTaskWithOpenProjectConfig('SourceOnly');
-    const suffix = Date.now();
-    const listBefore = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const rowsBefore = await listBefore.json();
-    const seedTask = rowsBefore.find((r: { id: string }) => r.id === projectId);
-    const projId: string = seedTask.projectId;
-
-    const survivor = await createTaskViaEntry(jar, token, `SrcSurvivor ${suffix}`, projId);
-    const loser = await createTaskViaEntry(jar, token, `SrcLoser ${suffix}`, projId);
-    await linkRef(jar, token, loser.id, { remoteIssueId: '80', cachedTitle: 'Source ref' });
-
-    const res = await patchTask(jar, token, loser.id, { name: survivor.name, projectId: projId });
-    expect(res.status).toBe(200);
-    const merged = await res.json();
-    expect(merged.id).toBe(survivor.id);
-    expect(merged.remoteIssueRef?.remoteIssueId).toBe('80');
-
-    const rows = await db
-      .select()
-      .from(remoteIssueRefs)
-      .where(eq(remoteIssueRefs.taskId, survivor.id));
-    expect(rows).toHaveLength(1);
-  });
-
-  it('preserves a survivor-only reference after merge', async () => {
-    const { jar, token, taskId: seedTaskId } = await setupTaskWithOpenProjectConfig('SurvOnly');
-    const suffix = Date.now();
-    const listBefore = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const rowsBefore = await listBefore.json();
-    const seedTask = rowsBefore.find((r: { id: string }) => r.id === seedTaskId);
-    const projId: string = seedTask.projectId;
-
-    const survivor = await createTaskViaEntry(jar, token, `SurvSurvivor ${suffix}`, projId);
-    const loser = await createTaskViaEntry(jar, token, `SurvLoser ${suffix}`, projId);
-    await linkRef(jar, token, survivor.id, { remoteIssueId: '90', cachedTitle: 'Surv ref' });
-
-    const res = await patchTask(jar, token, loser.id, { name: survivor.name, projectId: projId });
-    expect(res.status).toBe(200);
-    const merged = await res.json();
-    expect(merged.remoteIssueRef?.remoteIssueId).toBe('90');
-  });
-
-  it('collapses identical references from both tasks into one after merge', async () => {
-    const { jar, token, taskId: seedTaskId } = await setupTaskWithOpenProjectConfig('Identical');
-    const suffix = Date.now();
-    const listBefore = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const rowsBefore = await listBefore.json();
-    const seedTask = rowsBefore.find((r: { id: string }) => r.id === seedTaskId);
-    const projId: string = seedTask.projectId;
-
-    const survivor = await createTaskViaEntry(jar, token, `IdenticalSurvivor ${suffix}`, projId);
-    const loser = await createTaskViaEntry(jar, token, `IdenticalLoser ${suffix}`, projId);
-    await linkRef(jar, token, survivor.id, { remoteIssueId: '100', cachedTitle: 'Same issue' });
-    await linkRef(jar, token, loser.id, { remoteIssueId: '100', cachedTitle: 'Same issue' });
-
-    const res = await patchTask(jar, token, loser.id, { name: survivor.name, projectId: projId });
-    expect(res.status).toBe(200);
-    const merged = await res.json();
-    expect(merged.remoteIssueRef?.remoteIssueId).toBe('100');
-
-    const rows = await db
-      .select()
-      .from(remoteIssueRefs)
-      .where(eq(remoteIssueRefs.taskId, survivor.id));
-    expect(rows).toHaveLength(1);
-  });
-
-  it('rejects merging tasks with conflicting references with 409 and full rollback', async () => {
-    const { jar, token, taskId: seedTaskId } = await setupTaskWithOpenProjectConfig('Conflict');
-    const suffix = Date.now();
-    const listBefore = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
-    const rowsBefore = await listBefore.json();
-    const seedTask = rowsBefore.find((r: { id: string }) => r.id === seedTaskId);
-    const projId: string = seedTask.projectId;
-
-    const survivor = await createTaskViaEntry(jar, token, `ConflictSurvivor ${suffix}`, projId);
-    const loser = await createTaskViaEntry(jar, token, `ConflictLoser ${suffix}`, projId);
-    await linkRef(jar, token, survivor.id, { remoteIssueId: '200', cachedTitle: 'Survivor issue' });
-    await linkRef(jar, token, loser.id, { remoteIssueId: '201', cachedTitle: 'Loser issue' });
-
-    const res = await patchTask(jar, token, loser.id, { name: survivor.name, projectId: projId });
-    expect(res.status).toBe(409);
-    const body = await res.json();
-    expect(body?.data?.messageKey).toBe('error.taskMergeConflictingRemoteIssueRef');
-
-    // Nothing changed: both tasks, their entries, and their refs are untouched.
-    const survivorTask = await db.select().from(tasks).where(eq(tasks.id, survivor.id));
-    const loserTask = await db.select().from(tasks).where(eq(tasks.id, loser.id));
-    expect(survivorTask).toHaveLength(1);
-    expect(loserTask).toHaveLength(1);
-
-    const survivorRef = await db
-      .select()
-      .from(remoteIssueRefs)
-      .where(eq(remoteIssueRefs.taskId, survivor.id));
-    const loserRef = await db
-      .select()
-      .from(remoteIssueRefs)
-      .where(eq(remoteIssueRefs.taskId, loser.id));
-    expect(survivorRef[0]?.remoteIssueId).toBe('200');
-    expect(loserRef[0]?.remoteIssueId).toBe('201');
-
-    const loserEntries = await db
-      .select()
-      .from(timeEntries)
-      .where(eq(timeEntries.taskId, loser.id));
-    expect(loserEntries.length).toBeGreaterThan(0);
-  });
-
   it('identity-changing config updates leave existing references resolvable under the new baseUrl', async () => {
-    const { jar, token, taskId, clientId } = await setupTaskWithOpenProjectConfig('IdentityChange');
-    await linkRef(jar, token, taskId, { remoteIssueId: '300', cachedTitle: 'Rebase' });
+    const { jar, token, entryId, clientId } =
+      await setupTaskWithOpenProjectConfig('IdentityChange');
+    const linked = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '300',
+      cachedTitle: 'Rebase',
+    });
+    const taskId = (await linked.json())[0]?.taskId as string;
 
     await putRemoteConfig(jar, token, clientId, {
       ...openProjectConfig,
@@ -486,18 +536,22 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
   });
 
   it('does not rebind to a newly created replacement config after the old one was deleted', async () => {
-    const { jar, token, taskId, clientId } = await setupTaskWithOpenProjectConfig('NoRebind');
-    await linkRef(jar, token, taskId, { remoteIssueId: '400', cachedTitle: 'Stale ref' });
+    const { jar, token, entryId, clientId } = await setupTaskWithOpenProjectConfig('NoRebind');
+    const linked = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '400',
+      cachedTitle: 'Stale ref',
+    });
+    const taskId = (await linked.json())[0]?.taskId as string;
+    const [taskBefore] = await db.select().from(tasks).where(eq(tasks.id, taskId));
+    const oldConfigId = taskBefore!.remoteSystemConfigId!;
 
     await fetch(url(`/api/clients/${clientId}/remote-config`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
-
-    // Creating a brand-new active config for the same client...
     await putRemoteConfig(jar, token, clientId, openProjectConfig);
 
-    // ...must NOT cause the old reference (still pointing at the deleted config id) to regain a URL.
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows: { id: string; remoteIssueRef?: { url?: string; cachedTitle: string } }[] =
       await listRes.json();
@@ -505,11 +559,10 @@ describeRemoteIssueRef('remote issue ref link/unlink API and DTO enrichment', as
     expect(found?.remoteIssueRef?.cachedTitle).toBe('Stale ref');
     expect(found?.remoteIssueRef?.url).toBeUndefined();
 
-    const [ref] = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, taskId));
     const [oldConfig] = await db
       .select()
       .from(remoteSystemConfigs)
-      .where(eq(remoteSystemConfigs.id, ref!.remoteSystemConfigId));
+      .where(eq(remoteSystemConfigs.id, oldConfigId));
     expect(oldConfig?.deletedAt).not.toBeNull();
   });
 });

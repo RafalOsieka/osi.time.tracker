@@ -67,7 +67,13 @@ const stubs = {
   TimerEntryRow: true,
   RemoteIssuePicker: {
     props: ['config', 'currentRef'],
-    template: '<div v-bind="$attrs" data-remote-issue-picker="1" />',
+    emits: ['link', 'unlink'],
+    template: `
+      <div v-bind="$attrs" data-remote-issue-picker="1">
+        <button type="button" data-testid="stub-link" @click="$emit('link', { remoteIssueId: '42', cachedTitle: 'Fix' })">link</button>
+        <button type="button" data-testid="stub-unlink" @click="$emit('unlink')">unlink</button>
+      </div>
+    `,
   },
 };
 
@@ -305,5 +311,45 @@ describe('TimerTaskGroup', () => {
     expect(wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]').exists()).toBe(
       false,
     );
+  });
+
+  it('link, replace and unlink send the day entry ids to reassign and never call a task-global route', async () => {
+    csrfFetchMock.mockResolvedValue([]);
+    const wrapper = await mount({ remoteConfig: openProjectConfig });
+    expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
+      true,
+    );
+
+    await wrapper.find('[data-testid="stub-link"]').trigger('click');
+    await flushPromises();
+
+    expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries/reassign', {
+      method: 'POST',
+      body: {
+        ids: ['entry-1'],
+        remoteIssueId: '42',
+        cachedTitle: 'Fix',
+      },
+    });
+    expect(
+      csrfFetchMock.mock.calls.some(
+        (call) => typeof call[0] === 'string' && call[0].includes('/remote-issue-ref'),
+      ),
+    ).toBe(false);
+    expect(wrapper.emitted('entry-changed')).toHaveLength(1);
+
+    csrfFetchMock.mockClear();
+    await wrapper.find('[data-testid="stub-unlink"]').trigger('click');
+    await flushPromises();
+    expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids: ['entry-1'], remoteIssueId: null },
+    });
+    expect(
+      csrfFetchMock.mock.calls.some(
+        (call) => typeof call[0] === 'string' && call[0].includes('/remote-issue-ref'),
+      ),
+    ).toBe(false);
+    expect(wrapper.emitted('entry-changed')?.length).toBeGreaterThanOrEqual(2);
   });
 });

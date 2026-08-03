@@ -4,31 +4,20 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { createDatabaseClient } from '../../server/db/client';
-import {
-  users,
-  clients,
-  projects,
-  tasks,
-  remoteSystemConfigs,
-  remoteIssueRefs,
-} from '../../server/db/schema';
+import { users, clients, projects, tasks, remoteSystemConfigs } from '../../server/db/schema';
 import {
   getRemoteIssueRefForTask,
   getRemoteIssueRefsForTasks,
-  unlinkRemoteIssueRef,
-  upsertRemoteIssueRef,
 } from '../../server/utils/remote-issue-refs';
 
 const describeRemoteIssueRefs = requireDocker();
 
-describeRemoteIssueRefs('remote issue reference persistence helpers', async () => {
+describeRemoteIssueRefs('remote issue reference helpers (inline on tasks)', async () => {
   const dbUrl = await provisionDatabase();
   await seedUsers(dbUrl, [
     { email: 'alice@example.com', displayName: 'Alice' },
     { email: 'bob@example.com', displayName: 'Bob' },
   ]);
-  // The helpers under test use the shared lazy `db` client from server/db/index.ts,
-  // which reads DATABASE_URL from the environment on first access.
   process.env.DATABASE_URL = dbUrl;
   const { db, sql } = createDatabaseClient(dbUrl);
 
@@ -45,9 +34,10 @@ describeRemoteIssueRefs('remote issue reference persistence helpers', async () =
     return user!.id;
   }
 
-  async function makeTaskWithConfig(
+  async function makeLinkedTask(
     userId: string,
     label: string,
+    issue: { id: string; title: string },
   ): Promise<{ taskId: string; configId: string }> {
     const [client] = await db
       .insert(clients)
@@ -57,10 +47,6 @@ describeRemoteIssueRefs('remote issue reference persistence helpers', async () =
       .insert(projects)
       .values({ userId, clientId: client!.id, name: `${label} Project` })
       .returning({ id: projects.id });
-    const [task] = await db
-      .insert(tasks)
-      .values({ userId, projectId: project!.id, name: `${label} Task` })
-      .returning({ id: tasks.id });
     const [config] = await db
       .insert(remoteSystemConfigs)
       .values({
@@ -72,59 +58,44 @@ describeRemoteIssueRefs('remote issue reference persistence helpers', async () =
         roundingRule: 'none',
       })
       .returning({ id: remoteSystemConfigs.id });
+    const now = new Date();
+    const [task] = await db
+      .insert(tasks)
+      .values({
+        userId,
+        projectId: project!.id,
+        name: `${label} Task`,
+        remoteSystemConfigId: config!.id,
+        remoteIssueId: issue.id,
+        remoteIssueCachedTitle: issue.title,
+        remoteIssueCreatedAt: now,
+        remoteIssueUpdatedAt: now,
+      })
+      .returning({ id: tasks.id });
     return { taskId: task!.id, configId: config!.id };
   }
 
-  it('persists a new reference', async () => {
+  it('reads an inline reference with a derived URL when the configuration is active', async () => {
     const userId = await getUserId('alice@example.com');
-    const { taskId, configId } = await makeTaskWithConfig(userId, 'Persist');
-
-    const saved = await upsertRemoteIssueRef(userId, taskId, configId, '10', 'First title');
-    expect(saved.taskId).toBe(taskId);
-    expect(saved.remoteIssueId).toBe('10');
-    expect(saved.cachedTitle).toBe('First title');
-  });
-
-  it('replaces an existing reference so only one row remains', async () => {
-    const userId = await getUserId('alice@example.com');
-    const { taskId, configId } = await makeTaskWithConfig(userId, 'Replace');
-
-    await upsertRemoteIssueRef(userId, taskId, configId, '10', 'First title');
-    await upsertRemoteIssueRef(userId, taskId, configId, '20', 'Second title');
-
-    const rows = await db.select().from(remoteIssueRefs).where(eq(remoteIssueRefs.taskId, taskId));
-    expect(rows).toHaveLength(1);
-    expect(rows[0]?.remoteIssueId).toBe('20');
-    expect(rows[0]?.cachedTitle).toBe('Second title');
-  });
-
-  it('unlinks idempotently: unlinking twice succeeds and the second time is a no-op', async () => {
-    const userId = await getUserId('alice@example.com');
-    const { taskId, configId } = await makeTaskWithConfig(userId, 'Unlink');
-    await upsertRemoteIssueRef(userId, taskId, configId, '10', 'Some title');
-
-    await unlinkRemoteIssueRef(userId, taskId);
-    const afterFirst = await getRemoteIssueRefForTask(userId, taskId);
-    expect(afterFirst).toBeNull();
-
-    await expect(unlinkRemoteIssueRef(userId, taskId)).resolves.toBeUndefined();
-    const afterSecond = await getRemoteIssueRefForTask(userId, taskId);
-    expect(afterSecond).toBeNull();
-  });
-
-  it('derives a URL when the configuration is active', async () => {
-    const userId = await getUserId('alice@example.com');
-    const { taskId, configId } = await makeTaskWithConfig(userId, 'ActiveUrl');
-    await upsertRemoteIssueRef(userId, taskId, configId, '42', 'Active issue');
+    const { taskId } = await makeLinkedTask(userId, 'ActiveUrl', {
+      id: '42',
+      title: 'Active issue',
+    });
 
     const ref = await getRemoteIssueRefForTask(userId, taskId);
+    expect(ref?.remoteIssueId).toBe('42');
+    expect(ref?.cachedTitle).toBe('Active issue');
     expect(ref?.url).toBe('https://op.example.com/work_packages/42');
+    expect(ref?.taskId).toBe(taskId);
+    expect(ref?.id).toBe(taskId);
   });
 
   it('omits the URL but keeps cached id/title when the configuration is soft-deleted', async () => {
     const userId = await getUserId('alice@example.com');
-    const { taskId, configId } = await makeTaskWithConfig(userId, 'DeletedConfig');
-    await upsertRemoteIssueRef(userId, taskId, configId, '99', 'Bare reference');
+    const { taskId, configId } = await makeLinkedTask(userId, 'DeletedConfig', {
+      id: '99',
+      title: 'Bare reference',
+    });
 
     await db
       .update(remoteSystemConfigs)
@@ -139,10 +110,8 @@ describeRemoteIssueRefs('remote issue reference persistence helpers', async () =
 
   it('supports batch lookup for multiple tasks with mixed active/deleted configs', async () => {
     const userId = await getUserId('alice@example.com');
-    const active = await makeTaskWithConfig(userId, 'BatchActive');
-    const deleted = await makeTaskWithConfig(userId, 'BatchDeleted');
-    await upsertRemoteIssueRef(userId, active.taskId, active.configId, '1', 'Active');
-    await upsertRemoteIssueRef(userId, deleted.taskId, deleted.configId, '2', 'Deleted');
+    const active = await makeLinkedTask(userId, 'BatchActive', { id: '1', title: 'Active' });
+    const deleted = await makeLinkedTask(userId, 'BatchDeleted', { id: '2', title: 'Deleted' });
     await db
       .update(remoteSystemConfigs)
       .set({ deletedAt: new Date() })
@@ -154,17 +123,26 @@ describeRemoteIssueRefs('remote issue reference persistence helpers', async () =
     expect(refs.get(deleted.taskId)?.cachedTitle).toBe('Deleted');
   });
 
-  it('isolates references across users: user A cannot read or unlink user B Task reference', async () => {
+  it('isolates references across users', async () => {
     const aliceId = await getUserId('alice@example.com');
     const bobId = await getUserId('bob@example.com');
-    const { taskId, configId } = await makeTaskWithConfig(aliceId, 'Isolation');
-    await upsertRemoteIssueRef(aliceId, taskId, configId, '55', "Alice's issue");
+    const { taskId } = await makeLinkedTask(aliceId, 'Isolation', {
+      id: '55',
+      title: "Alice's issue",
+    });
 
     const bobsView = await getRemoteIssueRefForTask(bobId, taskId);
     expect(bobsView).toBeNull();
+  });
 
-    await unlinkRemoteIssueRef(bobId, taskId);
-    const stillThere = await getRemoteIssueRefForTask(aliceId, taskId);
-    expect(stillThere?.remoteIssueId).toBe('55');
+  it('returns null for an unlinked task', async () => {
+    const userId = await getUserId('alice@example.com');
+    const [task] = await db
+      .insert(tasks)
+      .values({ userId, name: 'Unlinked Only' })
+      .returning({ id: tasks.id });
+
+    const ref = await getRemoteIssueRefForTask(userId, task!.id);
+    expect(ref).toBeNull();
   });
 });
