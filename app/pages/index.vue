@@ -145,7 +145,22 @@ watch(
   async (runningId) => {
     const previousId = lastRunningId;
     lastRunningId = runningId;
+
+    // First-ever start must leave the never-tracked empty state so the live
+    // (and later stopped) entry can render in the list.
+    if (runningId && running.value && anchorStartedAt.value == null) {
+      anchorStartedAt.value = running.value.startedAt;
+    }
+
     if ((previousId && !runningId) || (previousId && runningId && previousId !== runningId)) {
+      if (!runningId && anchorStartedAt.value == null) {
+        try {
+          const latest = await $fetch<LatestTimeEntryDto>('/api/time-entries/latest');
+          anchorStartedAt.value = latest?.startedAt ?? null;
+        } catch {
+          // Keep null; refresh below is still best-effort.
+        }
+      }
       await refreshEntries();
     }
   },

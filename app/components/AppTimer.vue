@@ -171,10 +171,20 @@ async function onToggle() {
   } else {
     starting.value = true;
     try {
+      // UInputMenu autocomplete keeps typed text in `searchTerm` until a menu
+      // item commits `model-value`. Commit freeform text before starting so a
+      // typed title is not dropped as an untitled entry.
+      if (!selectedTaskId.value) {
+        const typed = (searchTerm.value ?? '').trim();
+        if (typed) {
+          title.value = typed;
+        }
+      }
       await start(title.value || undefined, undefined, selectedTaskId.value);
       title.value = '';
       searchTerm.value = '';
       selectedTaskId.value = null;
+      selectedTaskName.value = null;
     } finally {
       starting.value = false;
     }

@@ -84,17 +84,15 @@ mockNuxtImport('useAsyncData', () => {
   };
 });
 
-const { runningState, elapsedSecondsState, startMock, fetchRunningMock } = vi.hoisted(() => ({
-  runningState: { value: null as unknown, __v_isRef: true },
-  elapsedSecondsState: { value: 0, __v_isRef: true },
-  startMock: vi.fn(),
-  fetchRunningMock: vi.fn().mockResolvedValue(undefined),
-}));
+const runningState = ref<unknown>(null);
+const elapsedSecondsState = ref(0);
+const startMock = vi.fn();
+const fetchRunningMock = vi.fn().mockResolvedValue(undefined);
 
 mockNuxtImport('useTimer', () => () => ({
   running: runningState,
   elapsedSeconds: elapsedSecondsState,
-  loading: { value: false },
+  loading: ref(false),
   fetchRunning: fetchRunningMock,
   start: startMock,
   stop: vi.fn(),
@@ -186,6 +184,39 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-view-empty-state"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(false);
+  });
+
+  it('leaves the never-tracked state when the first timer starts', async () => {
+    mockState.latest = null;
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(true);
+
+    const startedAt = new Date().toISOString();
+    runningState.value = {
+      id: 'running-1',
+      taskId: 'task-1',
+      taskName: 'First Task',
+      projectId: null,
+      projectName: null,
+      clientName: null,
+      startedAt,
+      stoppedAt: null,
+    };
+    mockState.entries = [
+      entry({
+        id: 'running-1',
+        taskId: 'task-1',
+        taskName: 'First Task',
+        startedAt,
+        stoppedAt: null,
+      }),
+    ];
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
   });
 
   it('renders the empty-window state when entries exist elsewhere', async () => {

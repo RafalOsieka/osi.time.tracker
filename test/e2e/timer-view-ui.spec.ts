@@ -338,9 +338,22 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     // Dismiss any open autocomplete overlay that could intercept the Stop click.
     await page.keyboard.press('Escape');
-    await page.locator('[data-testid="timer-toggle-button"]').click({ force: true });
+    const stopResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/time-entries/') &&
+        response.ok(),
+    );
+    // DOM click avoids intermittent actionability flakes on the loading button.
+    await page.locator('[data-testid="timer-toggle-button"]').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+    await stopResponse;
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Start',
+      () =>
+        (
+          document.querySelector('[data-testid="timer-toggle-button"]')?.textContent ?? ''
+        ).trim() === 'Start',
     );
     // After stop, the list refresh may still be on an older anchored week — reset if needed.
     const reset = page.locator('[data-testid="timer-view-reset-to-current-week"]');

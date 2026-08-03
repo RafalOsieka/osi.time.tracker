@@ -76,13 +76,22 @@ const InputMenuStub = {
   props: ['modelValue', 'searchTerm', 'items', 'disabled', 'placeholder', 'mode', 'open'],
   emits: ['update:modelValue', 'update:searchTerm', 'update:open', 'blur', 'keydown'],
   computed: {
-    createItems(): Array<{ id: string; name: string; label: string; onSelect?: () => void }> {
+    createItems(this: {
+      items?: Array<{ id?: string; name?: string; label?: string; onSelect?: () => void }>;
+    }): Array<{ id: string; name: string; label: string; onSelect?: () => void }> {
       const list = Array.isArray(this.items) ? this.items : [];
-      return list.filter(
-        (item: { id?: string; label?: string }) =>
-          item?.id === '__create_new_task__' ||
-          (typeof item?.label === 'string' && /new task/i.test(item.label)),
-      );
+      return list
+        .filter(
+          (item) =>
+            item?.id === '__create_new_task__' ||
+            (typeof item?.label === 'string' && /new task/i.test(item.label)),
+        )
+        .map((item) => ({
+          id: item.id ?? '',
+          name: item.name ?? '',
+          label: item.label ?? '',
+          onSelect: item.onSelect,
+        }));
     },
   },
 };
@@ -172,6 +181,19 @@ describe('AppTimer', () => {
 
     await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
     expect(startMock).toHaveBeenCalled();
+  });
+
+  it('starts with freeform search text when no task is selected', async () => {
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    // Autocomplete keeps typed text on searchTerm without committing model-value.
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Topbar Stop Task');
+    await flushPromises();
+    await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+
+    expect(startMock).toHaveBeenCalledWith('Topbar Stop Task', undefined, null);
   });
 
   it('calls stop() when the toggle button is clicked while running', async () => {
