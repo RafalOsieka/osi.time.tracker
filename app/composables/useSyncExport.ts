@@ -1,10 +1,11 @@
-import { computed, ref, type Ref } from 'vue';
+import { computed, ref } from 'vue';
 import type {
   FinalizeRemoteExportResultDto,
   RemoteExportTaskOutcomeDto,
 } from '../../shared/types/remote-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/syncUiMaps';
 import { buildExportRequestKey } from '../../shared/utils/export-request-key';
 import { resolveExportComment } from '../../shared/utils/export-comment';
 import { mapRemoteSyncClientError } from './useRemoteSyncClient';
@@ -54,18 +55,14 @@ export function useSyncExport(options: {
   onTaskFinalized?: (row: RemoteSyncDayRowDto) => Promise<void> | void;
   refresh?: () => Promise<void> | void;
 }) {
-  const outcomes = ref<Record<string, RemoteExportTaskOutcomeDto>>({}) as Ref<
-    Record<string, RemoteExportTaskOutcomeDto>
-  >;
-  const progress = ref<Record<string, SyncExportProgressStatus>>({}) as Ref<
-    Record<string, SyncExportProgressStatus>
-  >;
+  const outcomes = ref<ExportOutcomesByTask<RemoteExportTaskOutcomeDto>>({});
+  const progress = ref<ExportProgressByTask<SyncExportProgressStatus>>({});
   const isRunning = ref(false);
   const stopRequested = ref(false);
   const totalCount = ref(0);
   const lastBatch = ref<SyncExportTaskInput[]>([]);
   /** Known remote log ids from prior attempts (for uncertain retry reconciliation). */
-  const knownRemoteLogIds = ref<Record<string, string>>({});
+  const knownRemoteLogIds = ref<Record<TaskId, string>>({});
 
   const completedCount = computed(() => {
     let count = 0;

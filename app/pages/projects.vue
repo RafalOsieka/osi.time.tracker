@@ -48,7 +48,12 @@ onMounted(() => {
 const projects = computed(() => projectsData.value ?? []);
 const dialogOpen = ref(false);
 const editingProject = ref<ProjectDto | null>(null);
-const state = reactive<{ name: string; clientId: string | undefined }>({
+/** UI allows empty client before submit; schema requires uuid on save. */
+type ProjectFormState = {
+  name: string;
+  clientId?: string;
+};
+const state = reactive<ProjectFormState>({
   name: '',
   clientId: undefined,
 });
@@ -83,19 +88,19 @@ function closeDialog() {
 
 defineExpose({ openEdit });
 
-async function onSave(event: FormSubmitEvent<typeof state>) {
+async function onSave(event: FormSubmitEvent<CreateProjectDto>) {
   nameServerError.value = '';
   clientServerError.value = '';
   saving.value = true;
   try {
+    const payload: CreateProjectDto = {
+      name: event.data.name,
+      clientId: event.data.clientId,
+    };
     if (editingProject.value) {
-      const payload: UpdateProjectDto = {
-        name: event.data.name,
-        clientId: event.data.clientId as string,
-      };
       const updated = await $csrfFetch<ProjectDto>(`/api/projects/${editingProject.value.id}`, {
         method: 'PATCH',
-        body: payload,
+        body: payload satisfies UpdateProjectDto,
       });
       await fetchProjects();
       toast.success(
@@ -103,10 +108,6 @@ async function onSave(event: FormSubmitEvent<typeof state>) {
         t('projects.toastUpdatedDetail', { name: updated.name }),
       );
     } else {
-      const payload: CreateProjectDto = {
-        name: event.data.name,
-        clientId: event.data.clientId as string,
-      };
       const created = await $csrfFetch<ProjectDto>('/api/projects', {
         method: 'POST',
         body: payload,

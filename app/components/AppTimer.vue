@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { instantToZoned, wallClockToInstant, toPickerDate, fromPickerDate } from '~/utils/dateTime';
-import { formatTaskSuggestionLabel } from '~/utils/taskSuggestionLabel';
+import { buildTaskTitleMenuItems, TASK_TITLE_CREATE_ITEM_ID } from '~/utils/taskTitleMenu';
 import type { TaskDto } from '../../shared/types/task';
 
 const { t } = useI18n();
@@ -41,50 +41,34 @@ watch(
 
 const displayedTitle = computed(() => (isRunning.value ? editedTitle.value : title.value));
 
-/** Sentinel id for the synthetic "create new task" row (not a real task). */
-const CREATE_ITEM_ID = '__create_new_task__';
-
 /**
  * Menu items use a string `name` as the model value (autocomplete mode
  * stringifies objects to "[object Object]"). `onSelect` captures the
  * concrete task id before the model update lands.
- *
- * Nuxt UI's built-in `create-item="always"` still hides the create row when an
- * exact match exists, so we append our own sentinel for any non-empty typed text.
  */
-const menuItems = computed(() => {
-  const items = suggestions.value.map((task) => ({
-    id: task.id,
-    name: task.name,
-    label: formatTaskSuggestionLabel(task, t('timer.noTask')),
-    onSelect: () => {
+const menuItems = computed(() =>
+  buildTaskTitleMenuItems({
+    suggestions: suggestions.value,
+    searchText: searchTerm.value ?? '',
+    noProjectLabel: t('timer.noTask'),
+    createOptionLabel: (typed) => t('timer.createOption', { title: typed }),
+    onSelectTask: (task) => {
       selectedTaskId.value = task.id;
       selectedTaskName.value = task.name;
     },
-  }));
-
-  const typed = (searchTerm.value ?? '').trim();
-  if (typed) {
-    items.push({
-      id: CREATE_ITEM_ID,
-      name: typed,
-      label: t('timer.createOption', { title: typed }),
-      onSelect: () => {
-        // Clear any previously captured task identity so start is freeform.
-        selectedTaskId.value = null;
-        selectedTaskName.value = null;
-        if (isRunning.value) {
-          editedTitle.value = typed;
-        } else {
-          title.value = typed;
-        }
-        overlayOpen.value = false;
-      },
-    });
-  }
-
-  return items;
-});
+    onSelectCreate: (typed) => {
+      // Clear any previously captured task identity so start is freeform.
+      selectedTaskId.value = null;
+      selectedTaskName.value = null;
+      if (isRunning.value) {
+        editedTitle.value = typed;
+      } else {
+        title.value = typed;
+      }
+      overlayOpen.value = false;
+    },
+  }),
+);
 
 const elapsedLabel = computed(() => {
   const total = elapsedSeconds.value;
@@ -131,7 +115,7 @@ function onTitleModelUpdate(value: string | { name?: string; id?: string } | nul
   if (value && typeof value === 'object') {
     const name = typeof value.name === 'string' ? value.name : '';
     const taskId = typeof value.id === 'string' ? value.id : selectedTaskId.value;
-    if (taskId === CREATE_ITEM_ID) {
+    if (taskId === TASK_TITLE_CREATE_ITEM_ID) {
       applyFreeformTitle(name);
       overlayOpen.value = false;
       return;

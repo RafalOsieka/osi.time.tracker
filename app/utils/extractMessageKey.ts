@@ -9,16 +9,15 @@
  */
 export function extractMessageKey(err: unknown, fallback: string): string {
   if (err === null || typeof err !== 'object') return fallback;
-  const errObj = err as Record<string, unknown>;
-  const top = errObj['data'];
+  if (!('data' in err)) return fallback;
+  const top = err.data;
   if (top === null || typeof top !== 'object') return fallback;
-  const topObj = top as Record<string, unknown>;
+  if (!('data' in top)) return fallback;
 
   // Nitro createError shape: err.data.data.messageKey
-  const nested = topObj['data'];
-  if (nested !== null && typeof nested === 'object') {
-    const nestedObj = nested as Record<string, unknown>;
-    if (typeof nestedObj['messageKey'] === 'string') return nestedObj['messageKey'];
+  const nested = top.data;
+  if (nested !== null && typeof nested === 'object' && 'messageKey' in nested) {
+    if (typeof nested.messageKey === 'string') return nested.messageKey;
   }
 
   return fallback;

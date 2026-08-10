@@ -2,7 +2,8 @@
 import type { FormErrorEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
 import { combineLocalDateAndTime } from '~/utils/timerViewGrouping';
-import type { TimeEntryDto } from '../../shared/types/time-entry';
+import { buildTaskTitleMenuItems } from '~/utils/taskTitleMenu';
+import type { TimeEntryDto, TimerAddEntryFormDto } from '../../shared/types/time-entry';
 
 const props = defineProps<{
   visible: boolean;
@@ -21,7 +22,7 @@ const open = computed({
   set: (value: boolean) => emit('update:visible', value),
 });
 
-const state = reactive({
+const state = reactive<TimerAddEntryFormDto>({
   title: '',
   startTime: '09:00',
   endTime: '10:00',
@@ -52,10 +53,26 @@ watch(searchTerm, (query) => {
   void search(query ?? '');
 });
 
-function onSelectSuggestion(task: TaskDto) {
+function onSelectTask(task: TaskDto) {
   state.title = task.name;
   searchTerm.value = task.name;
 }
+
+function onSelectCreate(title: string) {
+  state.title = title;
+  searchTerm.value = title;
+}
+
+const titleMenuItems = computed(() =>
+  buildTaskTitleMenuItems({
+    suggestions: suggestions.value,
+    searchText: searchTerm.value ?? '',
+    noProjectLabel: t('timer.noTask'),
+    createOptionLabel: (typed) => t('timer.createOption', { title: typed }),
+    onSelectTask,
+    onSelectCreate,
+  }),
+);
 
 function close() {
   open.value = false;
@@ -96,9 +113,6 @@ async function onSave() {
     saving.value = false;
   }
 }
-
-// Autocomplete mode wants a free-form string model; cast items so the prop types accept it.
-const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
@@ -119,24 +133,13 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
             v-model="state.title"
             v-model:search-term="searchTerm"
             :items="titleMenuItems"
+            value-key="name"
+            label-key="label"
             mode="autocomplete"
             ignore-filter
             :placeholder="t('timerView.addEntry.titlePlaceholder')"
             data-testid="add-entry-title-input"
-          >
-            <template #item-label="{ item }">
-              <UButton
-                type="button"
-                color="neutral"
-                variant="ghost"
-                block
-                class="justify-start"
-                @click="onSelectSuggestion(item as unknown as TaskDto)"
-              >
-                {{ (item as unknown as TaskDto).name }}
-              </UButton>
-            </template>
-          </UInputMenu>
+          />
         </div>
 
         <div class="grid gap-1">

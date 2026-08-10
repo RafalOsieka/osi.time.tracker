@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { sidebarToggleProps } from '~/utils/sidebarToggleProps';
 
 const { t } = useI18n();
 const { fetchRunning } = useTimer();
@@ -8,8 +9,7 @@ const { fetchRunning } = useTimer();
 // Keep a local v-model only for aria-expanded and slot bindings; Nuxt UI hydrates it from storage.
 const collapsed = ref(false);
 const open = ref(false);
-// Cast: Nuxt UI ButtonProps omit some HTML attrs we still want to pass through at runtime.
-const sidebarToggle = { color: 'neutral', variant: 'ghost' } as Record<string, unknown>;
+const sidebarToggle = sidebarToggleProps();
 
 onMounted(() => {
   fetchRunning().catch(() => {
