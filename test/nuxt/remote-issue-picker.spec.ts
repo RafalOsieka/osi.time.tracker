@@ -79,7 +79,7 @@ function testI18n() {
 
 const config = {
   id: 'config-1',
-  clientId: 'client-1',
+  name: 'Tracker 1',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
   executionMode: 'client' as const,
@@ -168,7 +168,7 @@ describe('RemoteIssuePicker', () => {
         id: 'ref-1',
         taskId: 'task-1',
         userId: 'user-1',
-        remoteSystemConfigId: 'config-1',
+        trackerId: 'config-1',
         remoteIssueId: '10',
         cachedTitle: 'Existing',
         url: 'https://op.example.com/work_packages/10',

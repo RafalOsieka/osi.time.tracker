@@ -6,7 +6,7 @@ import { db } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
-import { resolveActiveConfigForProject } from '../../utils/remote-issue-refs';
+import { resolveActiveTrackerForProject } from '../../utils/remote-issue-refs';
 import { toTimeEntryDto } from '../../utils/time-entries';
 import type { ApiMessage } from '../../types/api-message';
 
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     let sourceName: string | null = null;
     let sourceProjectId: string | null = null;
     let sourceRemoteIssueId: string | null = null;
-    let sourceRemoteSystemConfigId: string | null = null;
+    let sourceTrackerId: string | null = null;
     let sourceCachedTitle: string | null = null;
     if (sourceTaskId) {
       const [sourceTask] = await tx
@@ -60,7 +60,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
           name: tasks.name,
           projectId: tasks.projectId,
           remoteIssueId: tasks.remoteIssueId,
-          remoteSystemConfigId: tasks.remoteSystemConfigId,
+          trackerId: tasks.trackerId,
           remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
         })
         .from(tasks)
@@ -69,7 +69,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       sourceName = sourceTask?.name ?? null;
       sourceProjectId = sourceTask?.projectId ?? null;
       sourceRemoteIssueId = sourceTask?.remoteIssueId ?? null;
-      sourceRemoteSystemConfigId = sourceTask?.remoteSystemConfigId ?? null;
+      sourceTrackerId = sourceTask?.trackerId ?? null;
       sourceCachedTitle = sourceTask?.remoteIssueCachedTitle ?? null;
     }
 
@@ -110,22 +110,24 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     }
 
     let effectiveRemoteIssueId: string | null;
-    let effectiveConfigId: string | null;
+    let effectiveTrackerId: string | null;
     let effectiveCachedTitle: string | null;
 
     if (!remoteIssueProvided) {
       // Omitted: keep the source task's current remote issue.
       effectiveRemoteIssueId = sourceRemoteIssueId;
-      effectiveConfigId = sourceRemoteSystemConfigId;
+      effectiveTrackerId = sourceTrackerId;
       effectiveCachedTitle = sourceCachedTitle;
     } else if (parsedBody.remoteIssueId == null) {
       // Explicit null: target the unlinked twin.
       effectiveRemoteIssueId = null;
-      effectiveConfigId = null;
+      effectiveTrackerId = null;
       effectiveCachedTitle = null;
     } else {
-      // Value: target the task carrying that remote issue. Derive configuration
-      // provenance server-side from the target project's client (REQ-179).
+      // Value: target the task carrying that remote issue. Derive tracker
+      // provenance server-side from the target project's active tracker (REQ-179).
+      // Cached title comes from the client search result; tracker id is never
+      // client-trusted.
       if (effectiveProjectId === null) {
         throw createError({
           statusCode: 409,
@@ -133,8 +135,8 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
         });
       }
 
-      const config = await resolveActiveConfigForProject(user.id, effectiveProjectId);
-      if (!config) {
+      const tracker = await resolveActiveTrackerForProject(user.id, effectiveProjectId);
+      if (!tracker) {
         throw createError({
           statusCode: 409,
           data: { messageKey: 'error.remoteIssueTaskNoConfig' } satisfies ApiMessage,
@@ -142,13 +144,13 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       }
 
       effectiveRemoteIssueId = parsedBody.remoteIssueId;
-      effectiveConfigId = config.id;
+      effectiveTrackerId = tracker.id;
       effectiveCachedTitle = parsedBody.cachedTitle ?? parsedBody.remoteIssueId;
     }
 
     const targetTaskId = await resolveTaskId(tx, user.id, effectiveName, effectiveProjectId, {
       remoteIssueId: effectiveRemoteIssueId,
-      remoteSystemConfigId: effectiveConfigId,
+      trackerId: effectiveTrackerId,
       cachedTitle: effectiveCachedTitle,
     });
     if (!targetTaskId) {

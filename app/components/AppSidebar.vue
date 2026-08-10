@@ -21,10 +21,10 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     exact: true,
   },
   {
-    label: t('nav.clients'),
-    to: '/clients',
-    icon: 'i-lucide-users',
-    active: route.path.startsWith('/clients'),
+    label: t('nav.trackers'),
+    to: '/trackers',
+    icon: 'i-lucide-cable',
+    active: route.path.startsWith('/trackers'),
   },
   {
     label: t('nav.projects'),

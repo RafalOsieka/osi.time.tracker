@@ -2,8 +2,8 @@ import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import { extractRemoteErrorKey } from '../utils/remote/extract-remote-error-key';
 import type { RemoteFieldOption } from '../../shared/types/remote-field-option';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
-import { useRemoteConfigSecret } from './useRemoteConfigSecret';
+import type { TrackerDto } from '../../shared/types/tracker';
+import { useTrackerSecret } from './useTrackerSecret';
 
 export interface RemoteActivitiesState {
   options: RemoteFieldOption[];
@@ -28,12 +28,12 @@ function scopeKeyFor(configId: string, remoteIssueId: string): string {
  * Owns cache, in-flight dedupe, ensureLoaded/retry, and selectors.
  */
 export function useRemoteActivities() {
-  const { get: getSecret } = useRemoteConfigSecret();
+  const { get: getSecret } = useTrackerSecret();
   const activitiesByScopeKey = ref<Record<string, RemoteActivitiesState>>({});
   const activitiesInFlight = new Map<string, Promise<void>>();
 
   async function ensureLoaded(
-    config: RemoteSystemConfigDto,
+    config: TrackerDto,
     remoteIssueId: string,
     force = false,
   ): Promise<void> {
@@ -87,7 +87,7 @@ export function useRemoteActivities() {
     }
   }
 
-  async function retry(config: RemoteSystemConfigDto, remoteIssueId: string): Promise<void> {
+  async function retry(config: TrackerDto, remoteIssueId: string): Promise<void> {
     await ensureLoaded(config, remoteIssueId, true);
   }
 

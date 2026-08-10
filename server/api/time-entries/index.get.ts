@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { listTimeEntriesQuerySchema } from '../../../shared/types/time-entry';
 import type { ListTimeEntriesQuery, TimeEntryDto } from '../../../shared/types/time-entry';
 import { db } from '../../db/index';
-import { timeEntries, tasks, projects, clients } from '../../db/schema';
+import { timeEntries, tasks, projects } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
@@ -35,14 +35,12 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       taskName: tasks.name,
       projectId: tasks.projectId,
       projectName: projects.name,
-      clientName: clients.name,
       startedAt: timeEntries.startedAt,
       stoppedAt: timeEntries.stoppedAt,
     })
     .from(timeEntries)
     .leftJoin(tasks, eq(tasks.id, timeEntries.taskId))
     .leftJoin(projects, eq(projects.id, tasks.projectId))
-    .leftJoin(clients, eq(clients.id, projects.clientId))
     .where(
       and(
         eq(timeEntries.userId, user.id),
@@ -61,7 +59,6 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     taskName: row.taskName ?? null,
     projectId: row.projectId ?? null,
     projectName: row.projectName ?? null,
-    clientName: row.clientName ?? null,
     startedAt: row.startedAt.toISOString(),
     stoppedAt: row.stoppedAt ? row.stoppedAt.toISOString() : null,
     remoteIssueRef: row.taskId ? refs.get(row.taskId) : undefined,

@@ -5,8 +5,8 @@ import type {
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
-import { useRemoteConfigSecret } from './useRemoteConfigSecret';
+import type { TrackerDto } from '../../shared/types/tracker';
+import { useTrackerSecret } from './useTrackerSecret';
 
 export const REMOTE_ISSUE_SEARCH_MIN_TITLE_LENGTH = 3;
 
@@ -22,8 +22,8 @@ export interface RemoteIssueSearchInput {
  * delegated to the adapter, which behaves identically regardless of
  * execution mode.
  */
-export function useRemoteIssueSearch(config: RemoteSystemConfigDto) {
-  const { get: getSecret } = useRemoteConfigSecret();
+export function useRemoteIssueSearch(config: TrackerDto) {
+  const { get: getSecret } = useTrackerSecret();
 
   const results = ref<RemoteIssueSearchResult[]>([]);
   const loading = ref(false);

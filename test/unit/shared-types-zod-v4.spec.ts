@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createProjectSchema } from '../../shared/types/project';
-import { createRemoteSystemConfigSchema } from '../../shared/types/remote-system-config';
+import { createTrackerSchema } from '../../shared/types/tracker';
 import { bulkAssignSchema, startTimeEntrySchema } from '../../shared/types/time-entry';
 
 /** Deterministic UUIDv7-shaped value (version nibble 7, RFC variant). */
@@ -12,7 +12,7 @@ const MALFORMED_UUID = '00000000-0000-0000-0000-000000000001';
 
 describe('shared types zod v4 identifier schemas (REQ-234)', () => {
   it('rejects a non-RFC UUID on identifier fields', () => {
-    const project = createProjectSchema.safeParse({ name: 'Acme', clientId: MALFORMED_UUID });
+    const project = createProjectSchema.safeParse({ name: 'Acme', trackerId: MALFORMED_UUID });
     expect(project.success).toBe(false);
 
     const bulk = bulkAssignSchema.safeParse({
@@ -26,7 +26,7 @@ describe('shared types zod v4 identifier schemas (REQ-234)', () => {
   });
 
   it('accepts a UUIDv7 identifier', () => {
-    const project = createProjectSchema.safeParse({ name: 'Acme', clientId: VALID_UUID_V7 });
+    const project = createProjectSchema.safeParse({ name: 'Acme', trackerId: VALID_UUID_V7 });
     expect(project.success).toBe(true);
 
     const bulk = bulkAssignSchema.safeParse({
@@ -77,9 +77,10 @@ describe('shared types zod v4 idiom (no deprecated options)', () => {
   });
 });
 
-describe('remoteExecutionModeSchema.default input typing', () => {
+describe('trackerExecutionModeSchema.default input typing', () => {
   it('treats executionMode as optional on create input', () => {
-    const result = createRemoteSystemConfigSchema.safeParse({
+    const result = createTrackerSchema.safeParse({
+      name: 'Acme',
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
       roundingRule: 'none',

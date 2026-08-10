@@ -241,14 +241,14 @@ describe('RemoteSync page', () => {
     }
   });
 
-  it('renders a read-only row with its reason for a task with no client', async () => {
+  it('renders a read-only row with its reason for a task with no tracker', async () => {
     dayData = makeDay({
       rows: [
         {
           taskId: 'task-1',
-          taskName: 'Orphan Task',
-          projectName: null,
-          clientName: null,
+          taskName: 'Local Project Task',
+          projectName: 'Local Project',
+          trackerName: null,
           totalSeconds: 600,
           config: null,
           issueRef: null,
@@ -261,7 +261,7 @@ describe('RemoteSync page', () => {
 
     const wrapper = await mount();
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
-      'remoteSync.state.noClient',
+      'remoteSync.state.noTracker',
     );
     await expandRow(wrapper, 'task-1');
     expect(wrapper.find('[data-testid="remote-sync-original-duration-task-1"]').exists()).toBe(
@@ -279,7 +279,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-2',
           taskName: 'Manageable Task',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 50 * 60,
           config: baseConfig,
           issueRef: { remoteIssueId: '42', cachedTitle: 'Fix bug' },
@@ -318,7 +318,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-inline',
           taskName: 'Inline Edit Task',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 50 * 60,
           config: { ...baseConfig, requiredFieldDefaults: { activity: '1' } },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Fix bug' },
@@ -363,7 +363,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-3',
           taskName: 'With Default Activity',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 3600,
           config: { ...baseConfig, id: 'config-3', requiredFieldDefaults: { activity: '2' } },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
@@ -393,7 +393,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-server',
           taskName: 'Server Routed Task',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 3600,
           config: { ...baseConfig, id: 'config-server', executionMode: 'server' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
@@ -420,7 +420,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-6a',
           taskName: 'Shared Scope A',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 1800,
           config: { ...baseConfig, id: 'config-6' },
           issueRef: { remoteIssueId: '7', cachedTitle: 'Shared Issue' },
@@ -431,7 +431,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-6b',
           taskName: 'Shared Scope B',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 900,
           config: { ...baseConfig, id: 'config-6' },
           issueRef: { remoteIssueId: '7', cachedTitle: 'Shared Issue' },
@@ -454,7 +454,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-4',
           taskName: 'Fetch Fails',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 3600,
           config: { ...baseConfig, id: 'config-4' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
@@ -481,7 +481,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-empty',
           taskName: 'No Activity',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 600,
           config: { ...baseConfig, id: 'config-empty' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
@@ -507,7 +507,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-5',
           taskName: 'Unlinked Task',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 1200,
           config: { ...baseConfig, id: 'config-5' },
           issueRef: null,
@@ -525,7 +525,7 @@ describe('RemoteSync page', () => {
               taskId: 'task-5-linked',
               taskName: 'Unlinked Task',
               projectName: 'Project',
-              clientName: 'Client',
+              trackerName: 'Client',
               totalSeconds: 1200,
               config: { ...baseConfig, id: 'config-5' },
               issueRef: { remoteIssueId: '9', cachedTitle: 'Stub Issue' },
@@ -577,7 +577,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-redmine-logs',
           taskName: 'Redmine Task',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 3600,
           config: {
             ...baseConfig,
@@ -635,7 +635,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-export',
           taskName: 'Ship feature X',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 3600,
           config: {
             ...baseConfig,
@@ -714,7 +714,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-sum-ok',
           taskName: 'Ready',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 3600,
           config: { ...baseConfig, id: 'config-sum', requiredFieldDefaults: { activity: '1' } },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
@@ -724,8 +724,8 @@ describe('RemoteSync page', () => {
         {
           taskId: 'task-sum-blocked',
           taskName: 'Blocked',
-          projectName: null,
-          clientName: null,
+          projectName: 'Local Project',
+          trackerName: null,
           totalSeconds: 600,
           config: null,
           issueRef: null,
@@ -744,7 +744,7 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-total-blocked"]').text()).toContain('00:10:00');
     expect(wrapper.find('[data-testid="remote-sync-total-untitled"]').text()).toContain('00:05:00');
     expect(wrapper.find('[data-testid="remote-sync-state-task-sum-blocked"]').text()).toContain(
-      'remoteSync.state.noClient',
+      'remoteSync.state.noTracker',
     );
 
     const tooltipTexts = wrapper
@@ -769,7 +769,7 @@ describe('RemoteSync page', () => {
           taskId: 'task-comment',
           taskName: 'Comment Task',
           projectName: 'Project',
-          clientName: 'Client',
+          trackerName: 'Client',
           totalSeconds: 1800,
           config: { ...baseConfig, id: 'config-comment', requiredFieldDefaults: { activity: '1' } },
           issueRef: { remoteIssueId: '55', cachedTitle: 'Issue' },

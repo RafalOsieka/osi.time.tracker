@@ -1,9 +1,9 @@
-import type { RemoteSystemType } from '../types/remote-system-config';
+import type { TrackerSystemType } from '../types/tracker';
 import { normalizeBaseUrl } from '../utils/normalize-base-url';
 
 type IssueUrlBuilder = (baseUrl: string, remoteIssueId: string) => string;
 
-const ISSUE_URL_BUILDERS: Record<RemoteSystemType, IssueUrlBuilder> = {
+const ISSUE_URL_BUILDERS: Record<TrackerSystemType, IssueUrlBuilder> = {
   openproject: (baseUrl, remoteIssueId) =>
     `${normalizeBaseUrl(baseUrl)}/work_packages/${encodeURIComponent(remoteIssueId)}`,
   redmine: (baseUrl, remoteIssueId) =>
@@ -15,7 +15,7 @@ const ISSUE_URL_BUILDERS: Record<RemoteSystemType, IssueUrlBuilder> = {
  * base URL, and remote issue id via a per-provider dispatch table.
  */
 export function deriveIssueUrl(
-  systemType: RemoteSystemType,
+  systemType: TrackerSystemType,
   baseUrl: string,
   remoteIssueId: string,
 ): string {

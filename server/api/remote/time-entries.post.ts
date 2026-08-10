@@ -6,7 +6,7 @@ import {
   type ProxiedRemoteCreateTimeEntryResponseDto,
 } from '../../../shared/types/remote-export';
 import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
-import { resolveOwnedRemoteConfig } from '../../utils/remote/resolve-owned-config';
+import { resolveOwnedTracker } from '../../utils/remote/resolve-owned-tracker';
 import { toApiError } from '../../utils/remote/adapter-error';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
@@ -40,7 +40,7 @@ export default defineEventHandler(
       throw err;
     }
 
-    const config = await resolveOwnedRemoteConfig(user.id, parsedBody.remoteSystemConfigId);
+    const config = await resolveOwnedTracker(user.id, parsedBody.trackerId);
     const adapter = createServerRemoteAdapter(config, secret);
 
     try {

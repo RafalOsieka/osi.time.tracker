@@ -15,8 +15,8 @@ describe('extractMessageKey', () => {
   });
 
   it('returns messageKey from err.data.data.messageKey (Nitro createError shape)', () => {
-    const err = { data: { statusCode: 422, data: { messageKey: 'error.clientNameDuplicate' } } };
-    expect(extractMessageKey(err, 'fallback')).toBe('error.clientNameDuplicate');
+    const err = { data: { statusCode: 422, data: { messageKey: 'error.trackerNameDuplicate' } } };
+    expect(extractMessageKey(err, 'fallback')).toBe('error.trackerNameDuplicate');
   });
 
   it('returns fallback when nested data has no messageKey', () => {

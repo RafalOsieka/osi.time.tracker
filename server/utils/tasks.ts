@@ -14,7 +14,7 @@ export interface ResolveTaskRemoteIssueOptions {
    */
   remoteIssueId?: string | null;
   /** Required when creating a newly linked task (`remoteIssueId` is a value). */
-  remoteSystemConfigId?: string | null;
+  trackerId?: string | null;
   /** Cached issue title stored on a newly linked task. */
   cachedTitle?: string | null;
 }
@@ -80,7 +80,7 @@ export async function resolveTaskId(
         name: trimmedTitle,
         projectId: scopedProjectId,
         remoteIssueId: linked ? remoteIssueId : null,
-        remoteSystemConfigId: linked ? (options.remoteSystemConfigId ?? null) : null,
+        trackerId: linked ? (options.trackerId ?? null) : null,
         remoteIssueCachedTitle: linked ? options.cachedTitle?.trim() || remoteIssueId : null,
         remoteIssueCreatedAt: linked ? now : null,
         remoteIssueUpdatedAt: linked ? now : null,
@@ -115,7 +115,7 @@ export async function resolveTaskId(
       name: trimmedTitle,
       projectId: scopedProjectId,
       remoteIssueId: null,
-      remoteSystemConfigId: null,
+      trackerId: null,
       remoteIssueCachedTitle: null,
       remoteIssueCreatedAt: null,
       remoteIssueUpdatedAt: null,

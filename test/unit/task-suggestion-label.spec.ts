@@ -8,20 +8,16 @@ function task(overrides: Partial<TaskDto> = {}): TaskDto {
     name: 'Fix login',
     projectId: null,
     projectName: null,
-    clientName: null,
     createdAt: '',
     ...overrides,
   };
 }
 
 describe('formatTaskSuggestionLabel', () => {
-  it('includes project and client context when present', () => {
-    expect(
-      formatTaskSuggestionLabel(
-        task({ projectName: 'Portal', clientName: 'Acme' }),
-        '(no project)',
-      ),
-    ).toBe('Fix login · Portal · Acme');
+  it('includes project context when present', () => {
+    expect(formatTaskSuggestionLabel(task({ projectName: 'Portal' }), '(no project)')).toBe(
+      'Fix login · Portal',
+    );
   });
 
   it('falls back to the no-project label when the task has no project', () => {
@@ -33,12 +29,11 @@ describe('formatTaskSuggestionLabel', () => {
       formatTaskSuggestionLabel(
         task({
           projectName: 'Portal',
-          clientName: 'Acme',
           remoteIssueRef: {
             id: 'ref-1',
             taskId: 'task-1',
             userId: 'user-1',
-            remoteSystemConfigId: 'cfg-1',
+            trackerId: 'cfg-1',
             remoteIssueId: '42',
             cachedTitle: 'Fix login',
             createdAt: '',
@@ -47,7 +42,7 @@ describe('formatTaskSuggestionLabel', () => {
         }),
         '(no project)',
       ),
-    ).toBe('Fix login · Portal · Acme #42');
+    ).toBe('Fix login · Portal #42');
   });
 
   it('distinguishes same-name tasks that differ only by remote issue', () => {
@@ -55,7 +50,6 @@ describe('formatTaskSuggestionLabel', () => {
       name: 'title1',
       projectId: 'p1',
       projectName: 'Portal',
-      clientName: 'Acme',
     } as const;
     const a = formatTaskSuggestionLabel(
       task({
@@ -65,7 +59,7 @@ describe('formatTaskSuggestionLabel', () => {
           id: 't-a',
           taskId: 't-a',
           userId: 'u',
-          remoteSystemConfigId: 'cfg',
+          trackerId: 'cfg',
           remoteIssueId: '4711',
           cachedTitle: 'One',
           createdAt: '',
@@ -82,7 +76,7 @@ describe('formatTaskSuggestionLabel', () => {
           id: 't-b',
           taskId: 't-b',
           userId: 'u',
-          remoteSystemConfigId: 'cfg',
+          trackerId: 'cfg',
           remoteIssueId: '4899',
           cachedTitle: 'Two',
           createdAt: '',
@@ -91,8 +85,8 @@ describe('formatTaskSuggestionLabel', () => {
       }),
       '(no project)',
     );
-    expect(a).toBe('title1 · Portal · Acme #4711');
-    expect(b).toBe('title1 · Portal · Acme #4899');
+    expect(a).toBe('title1 · Portal #4711');
+    expect(b).toBe('title1 · Portal #4899');
     expect(a).not.toBe(b);
   });
 });

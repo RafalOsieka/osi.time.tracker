@@ -30,21 +30,37 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     return { jar, token };
   }
 
-  async function createClient(jar: CookieJar, token: string, name: string) {
-    const res = await fetch(url('/api/clients'), {
+  async function createTracker(
+    jar: CookieJar,
+    token: string,
+    name: string,
+    overrides: Record<string, unknown> = {},
+  ): Promise<{ id: string; name: string }> {
+    const res = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        systemType: 'openproject',
+        baseUrl: `https://${
+          name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'tracker'
+        }.example.com`,
+        executionMode: 'client',
+        roundingRule: 'none',
+        ...overrides,
+      }),
     });
-    expect(res.status).toBe(200);
     return res.json();
   }
 
-  async function createProject(jar: CookieJar, token: string, name: string, clientId: string) {
+  async function createProject(jar: CookieJar, token: string, name: string, trackerId: string) {
     const res = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name, clientId }),
+      body: JSON.stringify({ name, trackerId }),
     });
     expect(res.status).toBe(200);
     return res.json();
@@ -58,28 +74,6 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     });
     expect(res.status).toBe(200);
     return res.json();
-  }
-
-  async function putRemoteConfig(
-    jar: CookieJar,
-    token: string,
-    clientId: string,
-    roundingRule: string,
-  ) {
-    const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({
-        systemType: 'openproject',
-        baseUrl: OPENPROJECT_BASE_URL,
-        executionMode: 'client',
-        roundingRule,
-        // Pre-select the mocked OpenProject activity so the row is pushable.
-        requiredFieldDefaults: { activity: '1' },
-      }),
-    });
-    expect(res.status).toBe(200);
-    return res.json() as Promise<{ id: string }>;
   }
 
   async function loginPage(email: string) {
@@ -137,9 +131,13 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       body: JSON.stringify({ timezone: 'UTC' }),
     });
 
-    const client = await createClient(jar, token, 'Sync UI Client ' + Date.now());
-    const project = await createProject(jar, token, 'Sync UI Project ' + Date.now(), client.id);
-    const config = await putRemoteConfig(jar, token, client.id, 'up_15m');
+    const tracker = await createTracker(jar, token, 'Sync UI Tracker ' + Date.now(), {
+      baseUrl: OPENPROJECT_BASE_URL,
+      roundingRule: 'up_15m',
+      requiredFieldDefaults: { activity: '1' },
+    });
+    const project = await createProject(jar, token, 'Sync UI Project ' + Date.now(), tracker.id);
+    const config = tracker;
 
     const now = new Date();
     const startedAt = new Date(now.getTime() - 20 * 60 * 1000).toISOString();
@@ -266,9 +264,13 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       body: JSON.stringify({ timezone: 'UTC' }),
     });
 
-    const client = await createClient(jar, token, 'Suggestion Client ' + Date.now());
-    const project = await createProject(jar, token, 'Suggestion Project ' + Date.now(), client.id);
-    const config = await putRemoteConfig(jar, token, client.id, 'nearest_15m');
+    const tracker = await createTracker(jar, token, 'Suggestion Tracker ' + Date.now(), {
+      baseUrl: OPENPROJECT_BASE_URL,
+      roundingRule: 'nearest_15m',
+      requiredFieldDefaults: { activity: '1' },
+    });
+    const project = await createProject(jar, token, 'Suggestion Project ' + Date.now(), tracker.id);
+    const config = tracker;
 
     // 1h 03m total across two entries so floor/ceil suggestions differ from exact.
     // Anchor a few hours in the past so the pair is always valid against clock skew.
@@ -370,9 +372,13 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       body: JSON.stringify({ timezone: 'UTC' }),
     });
 
-    const client = await createClient(jar, token, 'Sync Nav Client ' + Date.now());
-    const project = await createProject(jar, token, 'Sync Nav Project ' + Date.now(), client.id);
-    const config = await putRemoteConfig(jar, token, client.id, 'none');
+    const tracker = await createTracker(jar, token, 'Sync Nav Tracker ' + Date.now(), {
+      baseUrl: OPENPROJECT_BASE_URL,
+      roundingRule: 'none',
+      requiredFieldDefaults: { activity: '1' },
+    });
+    const project = await createProject(jar, token, 'Sync Nav Project ' + Date.now(), tracker.id);
+    const config = tracker;
 
     // Use a day a few days in the past (still valid vs clock skew) so navigation
     // to the next empty day is deterministic.

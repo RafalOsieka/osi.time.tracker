@@ -129,7 +129,6 @@ function runningEntry(taskName: string | null = 'My Task') {
     taskName,
     projectId: null,
     projectName: null,
-    clientName: null,
     startedAt: new Date().toISOString(),
     stoppedAt: null,
   };
@@ -334,13 +333,12 @@ describe('AppTimer', () => {
         name: 'Linked Task',
         projectId: 'project-1',
         projectName: 'Project One',
-        clientName: 'Acme',
         createdAt: '',
         remoteIssueRef: {
           id: 'ref-1',
           taskId: 'task-42',
           userId: 'user-1',
-          remoteSystemConfigId: 'cfg-1',
+          trackerId: 'cfg-1',
           remoteIssueId: '99',
           cachedTitle: 'Linked Task',
           createdAt: '',
@@ -396,7 +394,6 @@ describe('AppTimer', () => {
         name: 'Other Task',
         projectId: null,
         projectName: null,
-        clientName: null,
         createdAt: '',
       },
     ]);
@@ -434,7 +431,6 @@ describe('AppTimer', () => {
         name: 'Exact Match',
         projectId: 'project-1',
         projectName: 'Project One',
-        clientName: null,
         createdAt: '',
       },
     ]);
@@ -489,7 +485,6 @@ describe('AppTimer', () => {
         name: 'Linked Task',
         projectId: 'project-1',
         projectName: 'Project One',
-        clientName: null,
         createdAt: '',
       },
     ]);

@@ -21,11 +21,11 @@ const InputStub = {
 describe('TableHeader', () => {
   it('renders the title and New button, and emits create on click', async () => {
     const wrapper = await mountSuspended(TableHeader, {
-      props: { title: 'Clients', newLabel: 'New client', newTestid: 'new-client-button' },
+      props: { title: 'trackers', newLabel: 'New client', newTestid: 'new-client-button' },
       global: { stubs: { UButton: ButtonStub } },
     });
 
-    expect(wrapper.text()).toContain('Clients');
+    expect(wrapper.text()).toContain('trackers');
     const button = wrapper.find('[data-testid="new-client-button"]');
     expect(button.exists()).toBe(true);
 
@@ -37,12 +37,12 @@ describe('TableHeader', () => {
 describe('EmptyState', () => {
   it('renders the message and CTA, and emits create on click', async () => {
     const wrapper = await mountSuspended(EmptyState, {
-      props: { message: 'No clients yet', ctaLabel: 'Add one', testid: 'clients-empty-state' },
+      props: { message: 'No trackers yet', ctaLabel: 'Add one', testid: 'trackers-empty-state' },
       global: { stubs: { UButton: ButtonStub } },
     });
 
-    expect(wrapper.find('[data-testid="clients-empty-state"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain('No clients yet');
+    expect(wrapper.find('[data-testid="trackers-empty-state"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain('No trackers yet');
 
     const cta = wrapper.find('[data-testid="empty-state-cta"]');
     expect(cta.exists()).toBe(true);

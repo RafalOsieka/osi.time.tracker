@@ -23,20 +23,37 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string) {
-  const res = await fetch(url('/api/clients'), {
+async function createTracker(
+  jar: CookieJar,
+  token: string,
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      systemType: 'openproject',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
+      roundingRule: 'none',
+      ...overrides,
+    }),
   });
   return res.json();
 }
 
-async function createProject(jar: CookieJar, token: string, name: string, clientId: string) {
+async function createProject(jar: CookieJar, token: string, name: string, trackerId: string) {
   const res = await fetch(url('/api/projects'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name, clientId }),
+    body: JSON.stringify({ name, trackerId }),
   });
   return res.json();
 }
@@ -61,20 +78,6 @@ async function setTimezone(jar: CookieJar, token: string, timezone: string): Pro
   });
 }
 
-async function putRemoteConfig(
-  jar: CookieJar,
-  token: string,
-  clientId: string,
-  body: Record<string, unknown>,
-) {
-  const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify(body),
-  });
-  return res.json();
-}
-
 async function getDay(jar: CookieJar, date: string): Promise<Response> {
   return fetch(url(`/api/sync/day?date=${encodeURIComponent(date)}`), {
     headers: { cookie: jar.header() },
@@ -92,14 +95,13 @@ describeSyncDay('sync day-review API integration', async () => {
   it('returns one row per task with config/link state, entry details, and the untitled bucket', async () => {
     const { jar, token } = await loginAs('salice@example.com', 'secret');
     await setTimezone(jar, token, 'UTC');
-    const client = await createClient(jar, token, 'Sync Client ' + Date.now());
-    const project = await createProject(jar, token, 'Sync Project ' + Date.now(), client.id);
-    await putRemoteConfig(jar, token, client.id, {
+    const tracker = await createTracker(jar, token, 'Sync Client ' + Date.now(), {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
       executionMode: 'client',
       roundingRule: 'none',
     });
+    const project = await createProject(jar, token, 'Sync Project ' + Date.now(), tracker.id);
 
     const date = '2026-03-15';
     const startedAt = `${date}T10:00:00.000Z`;
@@ -174,16 +176,20 @@ describeSyncDay('sync day-review API integration', async () => {
     expect(day17.rows.find((r: { taskName: string }) => r.taskName === title)).toBeDefined();
   });
 
-  it('surfaces no-config, no-project (untitled), and unlinked rows distinctly', async () => {
+  it('surfaces no_tracker for a local project and untitled buckets distinctly', async () => {
     const { jar, token } = await loginAs('salice@example.com', 'secret');
     await setTimezone(jar, token, 'UTC');
-    const client = await createClient(jar, token, 'No Config Client ' + Date.now());
-    const project = await createProject(jar, token, 'No Config Project ' + Date.now(), client.id);
+    const projectRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Local No Tracker Project ' + Date.now() }),
+    });
+    const project = await projectRes.json();
 
     const date = '2026-03-18';
     const startedAt = `${date}T08:00:00.000Z`;
     const stoppedAt = `${date}T08:20:00.000Z`;
-    const title = 'No Config Task ' + Date.now();
+    const title = 'Local Project Task ' + Date.now();
     await createEntry(jar, token, { title, projectId: project.id, startedAt, stoppedAt });
 
     const body = await (await getDay(jar, date)).json();

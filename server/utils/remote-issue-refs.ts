@@ -1,14 +1,14 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { db } from '../db/index';
-import { tasks, projects, remoteSystemConfigs } from '../db/schema';
+import { tasks, projects, trackers } from '../db/schema';
 import { deriveIssueUrl } from '../../shared/remote/issue-url';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
-import type { RemoteSystemType } from '../../shared/types/remote-system-config';
+import type { TrackerSystemType } from '../../shared/types/tracker';
 
 type TaskRefRow = {
   id: string;
   userId: string;
-  remoteSystemConfigId: string | null;
+  trackerId: string | null;
   remoteIssueId: string | null;
   remoteIssueCachedTitle: string | null;
   remoteIssueCreatedAt: Date | null;
@@ -16,13 +16,11 @@ type TaskRefRow = {
 };
 
 /**
- * Resolves the active (non-soft-deleted) remote-system configuration
- * reachable from an owned Task through its Project -> Client chain.
- * Returns `null` when the Task is unowned/unknown, project-less, or the
- * configuration is missing/soft-deleted. Callers enforce any adapter-type
- * restriction (e.g. OpenProject-only).
+ * Resolves the active (non-soft-deleted) tracker reachable from an owned
+ * Task through its Project.trackerId. Returns `null` when the Task is
+ * unowned/unknown, project-less, local, or the tracker is missing/soft-deleted.
  */
-export async function resolveActiveConfigForTask(
+export async function resolveActiveTrackerForTask(
   userId: string,
   taskId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
@@ -36,55 +34,55 @@ export async function resolveActiveConfigForTask(
     return null;
   }
 
-  return resolveActiveConfigForProject(userId, task.projectId);
+  return resolveActiveTrackerForProject(userId, task.projectId);
 }
 
 /**
- * Resolves the active remote-system configuration for an owned, non-deleted
- * project through its Client chain. Used by day-scoped reassignment when the
- * target project is known without a task id yet.
+ * Resolves the active tracker for an owned, non-deleted project via
+ * `project.trackerId`. Used by day-scoped reassignment when the target
+ * project is known without a task id yet.
  */
-export async function resolveActiveConfigForProject(
+export async function resolveActiveTrackerForProject(
   userId: string,
   projectId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
   const [project] = await db
-    .select({ id: projects.id, clientId: projects.clientId })
+    .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
     .where(and(eq(projects.id, projectId), eq(projects.userId, userId), isNull(projects.deletedAt)))
     .limit(1);
 
-  if (!project) {
+  if (!project?.trackerId) {
     return null;
   }
 
-  const [config] = await db
+  const [tracker] = await db
     .select({
-      id: remoteSystemConfigs.id,
-      systemType: remoteSystemConfigs.systemType,
-      baseUrl: remoteSystemConfigs.baseUrl,
+      id: trackers.id,
+      systemType: trackers.systemType,
+      baseUrl: trackers.baseUrl,
     })
-    .from(remoteSystemConfigs)
+    .from(trackers)
     .where(
       and(
-        eq(remoteSystemConfigs.clientId, project.clientId),
-        eq(remoteSystemConfigs.userId, userId),
-        isNull(remoteSystemConfigs.deletedAt),
+        eq(trackers.id, project.trackerId),
+        eq(trackers.userId, userId),
+        isNull(trackers.deletedAt),
       ),
     )
     .limit(1);
 
-  return config ?? null;
+  return tracker ?? null;
 }
 
 /**
  * Builds a `RemoteIssueRefDto` from an inline task-row reference, or `null`
  * when the task is unlinked. `url` is included only when the reference's
- * configuration is currently active (non-soft-deleted).
+ * tracker is currently active (non-soft-deleted).
  */
 export function taskRowToRemoteIssueRefDto(
   row: TaskRefRow,
-  config?: {
+  tracker?: {
     baseUrl: string | null;
     systemType: string | null;
     deletedAt: Date | null;
@@ -92,7 +90,7 @@ export function taskRowToRemoteIssueRefDto(
 ): RemoteIssueRefDto | null {
   if (
     !row.remoteIssueId ||
-    !row.remoteSystemConfigId ||
+    !row.trackerId ||
     !row.remoteIssueCachedTitle ||
     !row.remoteIssueCreatedAt ||
     !row.remoteIssueUpdatedAt
@@ -101,17 +99,20 @@ export function taskRowToRemoteIssueRefDto(
   }
 
   const isActive =
-    !!config && config.deletedAt === null && config.baseUrl != null && config.systemType != null;
+    !!tracker &&
+    tracker.deletedAt === null &&
+    tracker.baseUrl != null &&
+    tracker.systemType != null;
 
   return {
     id: row.id,
     taskId: row.id,
     userId: row.userId,
-    remoteSystemConfigId: row.remoteSystemConfigId,
+    trackerId: row.trackerId,
     remoteIssueId: row.remoteIssueId,
     cachedTitle: row.remoteIssueCachedTitle,
     url: isActive
-      ? deriveIssueUrl(config.systemType as RemoteSystemType, config.baseUrl!, row.remoteIssueId)
+      ? deriveIssueUrl(tracker.systemType as TrackerSystemType, tracker.baseUrl!, row.remoteIssueId)
       : undefined,
     createdAt: row.remoteIssueCreatedAt.toISOString(),
     updatedAt: row.remoteIssueUpdatedAt.toISOString(),
@@ -120,8 +121,7 @@ export function taskRowToRemoteIssueRefDto(
 
 /**
  * Returns the cached remote issue reference for a single Task, scoped to
- * `userId`, or `null` when none exists. `url` is included only when the
- * reference's configuration is currently active (non-soft-deleted).
+ * `userId`, or `null` when none exists.
  */
 export async function getRemoteIssueRefForTask(
   userId: string,
@@ -133,9 +133,7 @@ export async function getRemoteIssueRefForTask(
 
 /**
  * Returns cached remote issue references for many Tasks at once, scoped to
- * `userId`, keyed by `taskId`. `url` is included only when the reference's
- * configuration is currently active (non-soft-deleted); otherwise the DTO
- * carries only the cached id/title with `url` left undefined.
+ * `userId`, keyed by `taskId`.
  */
 export async function getRemoteIssueRefsForTasks(
   userId: string,
@@ -150,24 +148,24 @@ export async function getRemoteIssueRefsForTasks(
     .select({
       id: tasks.id,
       userId: tasks.userId,
-      remoteSystemConfigId: tasks.remoteSystemConfigId,
+      trackerId: tasks.trackerId,
       remoteIssueId: tasks.remoteIssueId,
       remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
       remoteIssueCreatedAt: tasks.remoteIssueCreatedAt,
       remoteIssueUpdatedAt: tasks.remoteIssueUpdatedAt,
-      configBaseUrl: remoteSystemConfigs.baseUrl,
-      configSystemType: remoteSystemConfigs.systemType,
-      configDeletedAt: remoteSystemConfigs.deletedAt,
+      trackerBaseUrl: trackers.baseUrl,
+      trackerSystemType: trackers.systemType,
+      trackerDeletedAt: trackers.deletedAt,
     })
     .from(tasks)
-    .leftJoin(remoteSystemConfigs, eq(tasks.remoteSystemConfigId, remoteSystemConfigs.id))
+    .leftJoin(trackers, eq(tasks.trackerId, trackers.id))
     .where(and(eq(tasks.userId, userId), inArray(tasks.id, taskIds)));
 
   for (const row of rows) {
     const dto = taskRowToRemoteIssueRefDto(row, {
-      baseUrl: row.configBaseUrl,
-      systemType: row.configSystemType,
-      deletedAt: row.configDeletedAt,
+      baseUrl: row.trackerBaseUrl,
+      systemType: row.trackerSystemType,
+      deletedAt: row.trackerDeletedAt,
     });
     if (dto) {
       result.set(row.id, dto);

@@ -8,7 +8,7 @@ export const createProjectSchema = z.object({
     .trim()
     .min(1, { error: 'error.projectNameRequired' })
     .max(PROJECT_NAME_MAX_LENGTH, { error: 'error.projectNameTooLong' }),
-  clientId: z.uuid({ error: 'error.projectClientRequired' }),
+  trackerId: z.uuid({ error: 'error.projectTrackerInvalid' }).nullish(),
 });
 
 export type CreateProjectDto = z.infer<typeof createProjectSchema>;
@@ -20,7 +20,7 @@ export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
 export interface ProjectDto {
   id: string;
   name: string;
-  clientId: string;
-  clientName: string;
+  trackerId: string | null;
+  trackerName: string | null;
   createdAt: string;
 }

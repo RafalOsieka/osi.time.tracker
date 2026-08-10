@@ -1,6 +1,6 @@
 import { ref, type Ref } from 'vue';
 import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 import { mapRemoteSyncClientError, useRemoteSyncClient } from './useRemoteSyncClient';
 
 export interface RemoteDayLogsState {
@@ -28,7 +28,7 @@ export function useRemoteDayLogs(date: Ref<string>) {
   const remoteLogsByConfig = ref<Record<string, RemoteDayLogsState>>({});
   const clientByConfigId = new Map<string, ReturnType<typeof useRemoteSyncClient>>();
 
-  function clientFor(config: RemoteSystemConfigDto) {
+  function clientFor(config: TrackerDto) {
     let client = clientByConfigId.get(config.id);
     if (!client) {
       client = useRemoteSyncClient(config);
@@ -38,7 +38,7 @@ export function useRemoteDayLogs(date: Ref<string>) {
   }
 
   async function ensureLoaded(
-    config: RemoteSystemConfigDto,
+    config: TrackerDto,
     workPackageIds: string[],
     force = false,
   ): Promise<void> {
@@ -70,7 +70,7 @@ export function useRemoteDayLogs(date: Ref<string>) {
     }
   }
 
-  async function retry(config: RemoteSystemConfigDto, workPackageIds: string[]): Promise<void> {
+  async function retry(config: TrackerDto, workPackageIds: string[]): Promise<void> {
     clientFor(config).invalidateCaches();
     await ensureLoaded(config, workPackageIds, true);
   }

@@ -1,70 +1,70 @@
 import { describe, expect, it } from 'vitest';
 import {
   deriveRemoteSyncRowState,
-  isImplementedRemoteSystemType,
+  isImplementedTrackerSystemType,
 } from '../../shared/utils/remote-sync-row-state';
 
-describe('isImplementedRemoteSystemType', () => {
+describe('isImplementedTrackerSystemType', () => {
   it('accepts openproject and redmine', () => {
-    expect(isImplementedRemoteSystemType('openproject')).toBe(true);
-    expect(isImplementedRemoteSystemType('redmine')).toBe(true);
+    expect(isImplementedTrackerSystemType('openproject')).toBe(true);
+    expect(isImplementedTrackerSystemType('redmine')).toBe(true);
   });
 
   it('rejects unknown system types', () => {
-    expect(isImplementedRemoteSystemType('jira')).toBe(false);
+    expect(isImplementedTrackerSystemType('jira')).toBe(false);
   });
 });
 
 describe('deriveRemoteSyncRowState', () => {
-  it('returns no_client when the Task has no Project', () => {
+  it('returns no_project when the Task has no Project', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: false,
-        hasClient: false,
+        hasTracker: false,
         config: null,
         hasIssueRef: false,
       }),
-    ).toBe('no_client');
+    ).toBe('no_project');
   });
 
-  it('returns no_client when the Project has no resolvable Client', () => {
+  it('returns no_tracker when the Project has no active tracker', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: false,
+        hasTracker: false,
         config: null,
         hasIssueRef: false,
       }),
-    ).toBe('no_client');
+    ).toBe('no_tracker');
   });
 
-  it('returns no_config when the Client has no remote configuration', () => {
+  it('returns no_tracker when tracker is present but config surface is missing', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: null,
         hasIssueRef: false,
       }),
-    ).toBe('no_config');
+    ).toBe('no_tracker');
   });
 
-  it('returns unlinked for a Redmine configuration without an issue ref', () => {
+  it('returns unlinked for a Redmine tracker without an issue ref', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'redmine' },
         hasIssueRef: false,
       }),
     ).toBe('unlinked');
   });
 
-  it('returns unlinked when the configuration is usable but there is no issue ref', () => {
+  it('returns unlinked when the tracker is usable but there is no issue ref', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: false,
       }),
@@ -75,7 +75,7 @@ describe('deriveRemoteSyncRowState', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
       }),
@@ -86,7 +86,7 @@ describe('deriveRemoteSyncRowState', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
         activityStatus: 'loading',
@@ -98,7 +98,7 @@ describe('deriveRemoteSyncRowState', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
         activityStatus: 'error',
@@ -110,7 +110,7 @@ describe('deriveRemoteSyncRowState', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
         activityStatus: 'empty',
@@ -122,7 +122,7 @@ describe('deriveRemoteSyncRowState', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
         activityStatus: 'error',
@@ -130,23 +130,23 @@ describe('deriveRemoteSyncRowState', () => {
     ).not.toBe('no_activity');
   });
 
-  it('gives no_client precedence over activity outcomes', () => {
+  it('gives no_project precedence over activity outcomes', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: false,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: true,
         activityStatus: 'available',
       }),
-    ).toBe('no_client');
+    ).toBe('no_project');
   });
 
   it('gives unlinked precedence over activity outcomes', () => {
     expect(
       deriveRemoteSyncRowState({
         hasProject: true,
-        hasClient: true,
+        hasTracker: true,
         config: { systemType: 'openproject' },
         hasIssueRef: false,
         activityStatus: 'empty',

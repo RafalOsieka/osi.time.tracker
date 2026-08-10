@@ -2,7 +2,7 @@ import { pgTable, uuid, text, timestamp, index, uniqueIndex, unique } from 'driz
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { projects } from './projects';
-import { remoteSystemConfigs } from './remote-system-configs';
+import { trackers } from './trackers';
 
 export const tasks = pgTable(
   'tasks',
@@ -16,12 +16,11 @@ export const tasks = pgTable(
     projectId: uuid('projectId').references(() => projects.id),
     name: text('name').notNull(),
     /**
-     * Inline remote issue reference (formerly `remote_issue_refs`).
-     * `remoteIssueId IS NULL` means the task is unlinked; when set, the
-     * configuration provenance and cached title are required by application
-     * logic and form part of the uniqueness key (REQ-136 / REQ-237).
+     * Inline remote issue reference. `remoteIssueId IS NULL` means the task
+     * is unlinked; when set, tracker provenance and cached title are required
+     * by application logic and form part of the uniqueness key.
      */
-    remoteSystemConfigId: uuid('remoteSystemConfigId').references(() => remoteSystemConfigs.id),
+    trackerId: uuid('trackerId').references(() => trackers.id),
     remoteIssueId: text('remoteIssueId'),
     remoteIssueCachedTitle: text('remoteIssueCachedTitle'),
     remoteIssueCreatedAt: timestamp('remoteIssueCreatedAt', { withTimezone: true }),

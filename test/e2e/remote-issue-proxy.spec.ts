@@ -27,29 +27,27 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string): Promise<{ id: string }> {
-  const res = await fetch(url('/api/clients'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
-  });
-  return res.json();
-}
-
-async function createProxiedConfig(
+async function createTracker(
   jar: CookieJar,
   token: string,
-  clientId: string,
-  baseUrl: string,
-): Promise<{ id: string }> {
-  const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-    method: 'PUT',
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
+    method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify({
+      name,
       systemType: 'openproject',
-      baseUrl,
-      executionMode: 'server',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
       roundingRule: 'none',
+      ...overrides,
     }),
   });
   return res.json();
@@ -115,8 +113,10 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
 
   it('3.6 title search happy path + invalid input (422) + missing credential header', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Proxy Title Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     // Happy path
     const res = await fetch(url('/api/remote/search'), {
@@ -127,7 +127,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -142,7 +142,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'ab' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'ab' }),
     });
     expect(invalidRes.status).toBe(422);
     expect((await invalidRes.json())?.data?.messageKey).toBe(
@@ -157,7 +157,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(missingSecretRes.status).toBe(422);
     expect((await missingSecretRes.json())?.data?.messageKey).toBe(
@@ -168,8 +168,10 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
   it('3.7 issue-id lookup happy path + not-found + foreign/unknown config concealed', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
     const bob = await loginAs('bob@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Proxy Id Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     // Happy path
     const res = await fetch(url('/api/remote/search'), {
@@ -180,7 +182,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'id', query: '42' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'id', query: '42' }),
     });
     expect(res.status).toBe(200);
     expect((await res.json()).results).toEqual([{ remoteIssueId: '42', title: 'Fix login bug' }]);
@@ -194,7 +196,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'id', query: '999' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'id', query: '999' }),
     });
     expect(notFoundRes.status).toBe(404);
     expect((await notFoundRes.json())?.data?.messageKey).toBe('error.remoteIssueSearchNotFound');
@@ -208,7 +210,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: bob.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'id', query: '42' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'id', query: '42' }),
     });
     expect(foreignRes.status).toBe(404);
     expect((await foreignRes.json())?.data?.messageKey).toBe('error.notFound');
@@ -217,8 +219,10 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
   it('3.8 unauthenticated, missing CSRF, and cross-user config are rejected without contacting upstream', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
     const bob = await loginAs('bob@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Proxy Security Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     // Unauthenticated (valid CSRF token/cookie pair but no session)
     const anonJar = new CookieJar();
@@ -231,7 +235,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: anonJar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(unauthRes.status).toBe(401);
 
@@ -243,7 +247,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(noCsrfRes.status).toBe(403);
 
@@ -256,15 +260,17 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: bob.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(bobRes.status).toBe(404);
   });
 
   it('3.9 maps upstream 401 to the auth messageKey and never echoes the secret', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Proxy Error Mapping Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     const secret = 'rejected-secret';
     const res = await fetch(url('/api/remote/search'), {
@@ -275,7 +281,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: secret,
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, mode: 'title', query: 'login bug' }),
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
     });
     expect(res.status).toBe(502);
     const body = await res.json();
@@ -283,16 +289,11 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
     expect(JSON.stringify(body)).not.toContain(secret);
 
     // Connection failure (unreachable tracker) maps to the connection messageKey
-    const unreachableClient = await createClient(
+    const unreachableConfig = await createTracker(
       alice.jar,
       alice.token,
-      'Proxy Unreachable Client',
-    );
-    const unreachableConfig = await createProxiedConfig(
-      alice.jar,
-      alice.token,
-      unreachableClient.id,
-      'http://127.0.0.1:1',
+      'Server Tracker ' + Date.now(),
+      { executionMode: 'server', baseUrl: 'http://127.0.0.1:1' },
     );
     const connRes = await fetch(url('/api/remote/search'), {
       method: 'POST',
@@ -303,7 +304,7 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({
-        remoteSystemConfigId: unreachableConfig.id,
+        trackerId: unreachableConfig.id,
         mode: 'title',
         query: 'login bug',
       }),

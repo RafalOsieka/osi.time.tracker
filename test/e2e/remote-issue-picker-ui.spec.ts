@@ -30,41 +30,44 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     return { jar, token };
   }
 
-  async function createClient(jar: CookieJar, token: string, name: string): Promise<string> {
-    const res = await fetch(url('/api/clients'), {
+  async function createTracker(
+    jar: CookieJar,
+    token: string,
+    name: string,
+    overrides: Record<string, unknown> = {},
+  ): Promise<{ id: string; name: string }> {
+    const res = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        systemType: 'openproject',
+        baseUrl: `https://${
+          name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'tracker'
+        }.example.com`,
+        executionMode: 'client',
+        roundingRule: 'none',
+        ...overrides,
+      }),
     });
-    return (await res.json()).id;
+    return res.json();
   }
 
   async function createProject(
     jar: CookieJar,
     token: string,
     name: string,
-    clientId: string,
+    trackerId: string,
   ): Promise<string> {
     const res = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name, clientId }),
+      body: JSON.stringify({ name, trackerId }),
     });
     return (await res.json()).id;
-  }
-
-  async function putRemoteConfig(jar: CookieJar, token: string, clientId: string): Promise<void> {
-    await fetch(url(`/api/clients/${clientId}/remote-config`), {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({
-        systemType: 'openproject',
-        baseUrl: OPENPROJECT_BASE_URL,
-        executionMode: 'client',
-        roundingRule: 'none',
-        apiKey: 'e2e-secret-api-key',
-      }),
-    });
   }
 
   async function createTaskViaEntry(
@@ -139,9 +142,12 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
 
   async function setupClientAndTask(label: string) {
     const { jar, token } = await apiLogin('remoteissuepickerui@example.com');
-    const clientId = await createClient(jar, token, `${label} Client ${Date.now()}`);
-    const projectId = await createProject(jar, token, `${label} Project ${Date.now()}`, clientId);
-    await putRemoteConfig(jar, token, clientId);
+    const tracker = await createTracker(jar, token, `${label} Tracker ${Date.now()}`, {
+      baseUrl: OPENPROJECT_BASE_URL,
+      systemType: 'openproject',
+      executionMode: 'client',
+    });
+    const projectId = await createProject(jar, token, `${label} Project ${Date.now()}`, tracker.id);
     const taskId = await createTaskViaEntry(jar, token, `${label} Task ${Date.now()}`, projectId);
     return { jar, token, taskId };
   }

@@ -25,16 +25,27 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(
+async function createTracker(
   jar: CookieJar,
   token: string,
   name: string,
 ): Promise<{ id: string; name: string }> {
-  const res = await fetch(url('/api/clients'), {
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  const res = await fetch(url('/api/trackers'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      systemType: 'openproject',
+      baseUrl: `https://${slug || 'tracker'}.example.com`,
+      executionMode: 'client',
+      roundingRule: 'none',
+    }),
   });
+  expect(res.status).toBe(200);
   return res.json();
 }
 
@@ -46,52 +57,54 @@ describeProjects('projects API integration', async () => {
   ]);
   await setupServer({ databaseUrl: dbUrl });
 
-  // 3.6 list returns only own non-deleted projects, ordered by name, honors clientId filter
-  it('3.6 list returns own non-deleted projects ordered by name and honors clientId filter', async () => {
+  it('list returns own non-deleted projects ordered by name and honors trackerId filter', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const clientA = await createClient(jar, token, 'Client A ' + Date.now());
-    const clientB = await createClient(jar, token, 'Client B ' + Date.now());
+    const trackerA = await createTracker(jar, token, 'Tracker A ' + Date.now());
+    const trackerB = await createTracker(jar, token, 'Tracker B ' + Date.now());
 
-    // Empty list initially
     const empty = await fetch(url('/api/projects'), { headers: { cookie: jar.header() } });
     expect(empty.status).toBe(200);
     expect(await empty.json()).toEqual([]);
 
-    // Create projects under both clients
     await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Zebra Project', clientId: clientA.id }),
+      body: JSON.stringify({ name: 'Zebra Project', trackerId: trackerA.id }),
     });
     await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Acme Project', clientId: clientB.id }),
+      body: JSON.stringify({ name: 'Acme Project', trackerId: trackerB.id }),
+    });
+    await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Local Project' }),
     });
 
     const list = await fetch(url('/api/projects'), { headers: { cookie: jar.header() } });
     expect(list.status).toBe(200);
     const rows = await list.json();
-    expect(rows).toHaveLength(2);
-    expect(rows[0].name).toBe('Acme Project');
-    expect(rows[1].name).toBe('Zebra Project');
+    expect(rows).toHaveLength(3);
+    expect(rows.map((r: { name: string }) => r.name)).toEqual([
+      'Acme Project',
+      'Local Project',
+      'Zebra Project',
+    ]);
 
-    // Filter by clientId
-    const filtered = await fetch(url(`/api/projects?clientId=${clientA.id}`), {
+    const filtered = await fetch(url(`/api/projects?trackerId=${trackerA.id}`), {
       headers: { cookie: jar.header() },
     });
     const filteredRows = await filtered.json();
     expect(filteredRows).toHaveLength(1);
     expect(filteredRows[0].name).toBe('Zebra Project');
+    expect(filteredRows[0].trackerName).toBe(trackerA.name);
 
-    // Foreign/unknown clientId filter → empty list
-    const fakeId = UNKNOWN_ID;
-    const foreignFiltered = await fetch(url(`/api/projects?clientId=${fakeId}`), {
+    const foreignFiltered = await fetch(url(`/api/projects?trackerId=${UNKNOWN_ID}`), {
       headers: { cookie: jar.header() },
     });
     expect(await foreignFiltered.json()).toEqual([]);
 
-    // Soft-delete one and verify it's excluded
     const deleteRes = await fetch(url(`/api/projects/${rows[0].id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
@@ -100,87 +113,85 @@ describeProjects('projects API integration', async () => {
 
     const afterDelete = await fetch(url('/api/projects'), { headers: { cookie: jar.header() } });
     const afterRows = await afterDelete.json();
-    expect(afterRows).toHaveLength(1);
-    expect(afterRows[0].name).toBe('Zebra Project');
+    expect(afterRows).toHaveLength(2);
   });
 
-  // 3.7 create happy path + validation errors + same name under a different client allowed
-  it('3.7 create happy path + validation errors', async () => {
+  it('create happy path for local and tracker-linked projects + validation errors', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const clientA = await createClient(jar, token, 'Client Create A ' + Date.now());
-    const clientB = await createClient(jar, token, 'Client Create B ' + Date.now());
+    const trackerA = await createTracker(jar, token, 'Tracker Create A ' + Date.now());
+    const trackerB = await createTracker(jar, token, 'Tracker Create B ' + Date.now());
 
-    // Happy path
+    const localRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Local Only' }),
+    });
+    expect(localRes.status).toBe(200);
+    const local = await localRes.json();
+    expect(local.name).toBe('Local Only');
+    expect(local.trackerId).toBeNull();
+    expect(local.trackerName).toBeNull();
+
     const res = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'New Project', clientId: clientA.id }),
+      body: JSON.stringify({ name: 'New Project', trackerId: trackerA.id }),
     });
     expect(res.status).toBe(200);
     const created = await res.json();
     expect(created.name).toBe('New Project');
-    expect(created.clientId).toBe(clientA.id);
+    expect(created.trackerId).toBe(trackerA.id);
+    expect(created.trackerName).toBe(trackerA.name);
     expect(created.id).toBeDefined();
 
-    // Empty name rejected
     const emptyRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: '', clientId: clientA.id }),
+      body: JSON.stringify({ name: '', trackerId: trackerA.id }),
     });
     expect(emptyRes.status).toBe(422);
-    const emptyBody = await emptyRes.json();
-    expect(emptyBody?.data?.messageKey).toBe('error.projectNameRequired');
+    expect((await emptyRes.json())?.data?.messageKey).toBe('error.projectNameRequired');
 
-    // Missing clientId rejected
-    const noClientRes = await fetch(url('/api/projects'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'No Client' }),
-    });
-    expect(noClientRes.status).toBe(422);
-    const noClientBody = await noClientRes.json();
-    expect(noClientBody?.data?.messageKey).toBe('error.projectClientRequired');
-
-    // Over-length name rejected
-    const longName = 'a'.repeat(101); // PROJECT_NAME_MAX_LENGTH + 1
+    const longName = 'a'.repeat(101);
     const longRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: longName, clientId: clientA.id }),
+      body: JSON.stringify({ name: longName, trackerId: trackerA.id }),
     });
     expect(longRes.status).toBe(422);
     const longBody = await longRes.json();
     expect(longBody?.data?.messageKey).toBe('error.projectNameTooLong');
     expect(longBody?.data?.params).toEqual({ max: 100 });
 
-    // Duplicate name under same client rejected
     const dupRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'New Project', clientId: clientA.id }),
+      body: JSON.stringify({ name: 'New Project', trackerId: trackerA.id }),
     });
     expect(dupRes.status).toBe(422);
-    const dupBody = await dupRes.json();
-    expect(dupBody?.data?.messageKey).toBe('error.projectNameDuplicate');
+    expect((await dupRes.json())?.data?.messageKey).toBe('error.projectNameDuplicate');
 
-    // Same name under a different client allowed
-    const differentClientRes = await fetch(url('/api/projects'), {
+    const differentTrackerRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'New Project', clientId: clientB.id }),
+      body: JSON.stringify({ name: 'New Project', trackerId: trackerB.id }),
     });
-    expect(differentClientRes.status).toBe(200);
+    expect(differentTrackerRes.status).toBe(200);
+
+    const dupLocal = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Local Only' }),
+    });
+    expect(dupLocal.status).toBe(422);
+    expect((await dupLocal.json())?.data?.messageKey).toBe('error.projectNameDuplicate');
   });
 
-  // 3.8 create/patch with a foreign or unknown clientId → 404
-  it('3.8 create/patch with a foreign or unknown clientId → 404', async () => {
+  it('create/patch with a foreign or unknown trackerId → 404', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
     const bob = await loginAs('bob@example.com', 'secret');
-    const bobClient = await createClient(bob.jar, bob.token, 'Bob Client ' + Date.now());
-    const fakeId = UNKNOWN_ID;
+    const bobTracker = await createTracker(bob.jar, bob.token, 'Bob Tracker ' + Date.now());
 
-    // Create with unknown clientId → 404
     const unknownRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: {
@@ -188,11 +199,10 @@ describeProjects('projects API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ name: 'Ghost Project', clientId: fakeId }),
+      body: JSON.stringify({ name: 'Ghost Project', trackerId: UNKNOWN_ID }),
     });
     expect(unknownRes.status).toBe(404);
 
-    // Malformed clientId in body → 422 with messageKey (REQ-172)
     const malformedRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: {
@@ -200,13 +210,11 @@ describeProjects('projects API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ name: 'Bad Id Project', clientId: MALFORMED_ID }),
+      body: JSON.stringify({ name: 'Bad Id Project', trackerId: MALFORMED_ID }),
     });
     expect(malformedRes.status).toBe(422);
-    const malformedBody = await malformedRes.json();
-    expect(malformedBody?.data?.messageKey).toBe('error.projectClientRequired');
+    expect((await malformedRes.json())?.data?.messageKey).toBe('error.projectTrackerInvalid');
 
-    // Create with foreign (Bob's) clientId → 404
     const foreignRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: {
@@ -214,12 +222,11 @@ describeProjects('projects API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ name: 'Foreign Project', clientId: bobClient.id }),
+      body: JSON.stringify({ name: 'Foreign Project', trackerId: bobTracker.id }),
     });
     expect(foreignRes.status).toBe(404);
 
-    // Create a valid project, then patch its clientId to a foreign client → 404
-    const aliceClient = await createClient(alice.jar, alice.token, 'Alice Client ' + Date.now());
+    const aliceTracker = await createTracker(alice.jar, alice.token, 'Alice Tracker ' + Date.now());
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: {
@@ -227,7 +234,7 @@ describeProjects('projects API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ name: 'Patchable Project', clientId: aliceClient.id }),
+      body: JSON.stringify({ name: 'Patchable Project', trackerId: aliceTracker.id }),
     });
     const project = await createRes.json();
 
@@ -238,117 +245,118 @@ describeProjects('projects API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ name: 'Patchable Project', clientId: bobClient.id }),
+      body: JSON.stringify({ name: 'Patchable Project', trackerId: bobTracker.id }),
     });
     expect(patchForeignRes.status).toBe(404);
   });
 
-  // 3.9 patch happy path (name + client change) + foreign project id → 404
-  it('3.9 patch happy path (name + client change) + foreign project id → 404', async () => {
+  it('patch happy path (name + tracker change + detach) + foreign project id → 404', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const clientA = await createClient(jar, token, 'Patch Client A ' + Date.now());
-    const clientC = await createClient(jar, token, 'Patch Client C ' + Date.now());
+    const trackerA = await createTracker(jar, token, 'Patch Tracker A ' + Date.now());
+    const trackerC = await createTracker(jar, token, 'Patch Tracker C ' + Date.now());
 
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Patch Me', clientId: clientA.id }),
+      body: JSON.stringify({ name: 'Patch Me', trackerId: trackerA.id }),
     });
     const project = await createRes.json();
 
-    // Happy path rename + client change
     const patchRes = await fetch(url(`/api/projects/${project.id}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Patched Name', clientId: clientC.id }),
+      body: JSON.stringify({ name: 'Patched Name', trackerId: trackerC.id }),
     });
     expect(patchRes.status).toBe(200);
     const patched = await patchRes.json();
     expect(patched.name).toBe('Patched Name');
-    expect(patched.clientId).toBe(clientC.id);
+    expect(patched.trackerId).toBe(trackerC.id);
+    expect(patched.trackerName).toBe(trackerC.name);
 
-    // Foreign/unknown id → 404
-    const fakeId = UNKNOWN_ID;
-    const notFound = await fetch(url(`/api/projects/${fakeId}`), {
+    const detachRes = await fetch(url(`/api/projects/${project.id}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Ghost', clientId: clientA.id }),
+      body: JSON.stringify({ name: 'Patched Name', trackerId: null }),
+    });
+    expect(detachRes.status).toBe(200);
+    const detached = await detachRes.json();
+    expect(detached.trackerId).toBeNull();
+    expect(detached.trackerName).toBeNull();
+
+    const notFound = await fetch(url(`/api/projects/${UNKNOWN_ID}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Ghost', trackerId: trackerA.id }),
     });
     expect(notFound.status).toBe(404);
   });
 
-  // 3.9a rename a project whose client is soft-deleted succeeds when clientId is unchanged
-  it('3.9a rename a project whose client is soft-deleted succeeds when clientId is unchanged', async () => {
+  it('rename a project whose tracker is soft-deleted succeeds when trackerId is unchanged', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Soft Delete Client ' + Date.now());
+    const tracker = await createTracker(jar, token, 'Soft Delete Tracker ' + Date.now());
 
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Original Name', clientId: client.id }),
+      body: JSON.stringify({ name: 'Original Name', trackerId: tracker.id }),
     });
     const project = await createRes.json();
 
-    // Soft-delete the client
-    const delRes = await fetch(url(`/api/clients/${client.id}`), {
+    const delRes = await fetch(url(`/api/trackers/${tracker.id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
     expect(delRes.status).toBe(200);
 
-    // Rename the project keeping the same (now soft-deleted) clientId → should succeed
     const patchRes = await fetch(url(`/api/projects/${project.id}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Renamed Name', clientId: client.id }),
+      body: JSON.stringify({ name: 'Renamed Name', trackerId: tracker.id }),
     });
     expect(patchRes.status).toBe(200);
     const patched = await patchRes.json();
     expect(patched.name).toBe('Renamed Name');
-    expect(patched.clientId).toBe(client.id);
-    expect(patched.clientName).toBe(client.name);
+    expect(patched.trackerId).toBe(tracker.id);
+    // Soft-deleted tracker name remains populated for display/edit seed (REQ-084).
+    expect(patched.trackerName).toBe(tracker.name);
   });
 
-  // 3.9b list still returns clientName for a project whose client is soft-deleted
-  it('3.9b list still returns clientName for a project whose client is soft-deleted', async () => {
+  it('list keeps trackerName for a project whose tracker is soft-deleted', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Soft Delete List Client ' + Date.now());
+    const tracker = await createTracker(jar, token, 'Soft Delete List Tracker ' + Date.now());
 
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Orphaned Project', clientId: client.id }),
+      body: JSON.stringify({ name: 'Orphaned Project', trackerId: tracker.id }),
     });
     const project = await createRes.json();
-    expect(project.clientName).toBe(client.name);
+    expect(project.trackerName).toBe(tracker.name);
 
-    // Soft-delete the client
-    const delRes = await fetch(url(`/api/clients/${client.id}`), {
+    const delRes = await fetch(url(`/api/trackers/${tracker.id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
     expect(delRes.status).toBe(200);
 
-    // The project should still show the client's name in the list
-    const listRes = await fetch(url(`/api/projects?clientId=${client.id}`), {
+    const listRes = await fetch(url(`/api/projects?trackerId=${tracker.id}`), {
       headers: { cookie: jar.header() },
     });
     const rows = await listRes.json();
     const found = rows.find((r: { id: string }) => r.id === project.id);
     expect(found).toBeDefined();
-    expect(found.clientName).toBe(client.name);
+    expect(found.trackerId).toBe(tracker.id);
+    expect(found.trackerName).toBe(tracker.name);
   });
 
-  // Pinning test: clientId is required, so a name-only PATCH fails loud instead of silently
-  // clearing the client. Guards against a future relaxation reintroducing silent data loss.
-  it('patch with name only (no clientId) returns 422', async () => {
+  it('patch with name only keeps the current trackerId', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Pin Client ' + Date.now());
+    const tracker = await createTracker(jar, token, 'Pin Tracker ' + Date.now());
 
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Pin Me', clientId: client.id }),
+      body: JSON.stringify({ name: 'Pin Me', trackerId: tracker.id }),
     });
     const project = await createRes.json();
 
@@ -357,60 +365,55 @@ describeProjects('projects API integration', async () => {
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({ name: 'Pinned Name' }),
     });
-    expect(patchRes.status).toBe(422);
+    expect(patchRes.status).toBe(200);
+    const patched = await patchRes.json();
+    expect(patched.name).toBe('Pinned Name');
+    expect(patched.trackerId).toBe(tracker.id);
   });
 
-  // 3.10 delete soft-deletes (row retained) + foreign id → 404
-  it('3.10 delete soft-deletes (row retained) + foreign id → 404', async () => {
+  it('delete soft-deletes (row retained) + foreign id → 404', async () => {
     const { jar, token } = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Delete Client ' + Date.now());
+    const tracker = await createTracker(jar, token, 'Delete Tracker ' + Date.now());
 
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Delete Me', clientId: client.id }),
+      body: JSON.stringify({ name: 'Delete Me', trackerId: tracker.id }),
     });
     const project = await createRes.json();
 
-    // Soft delete
     const delRes = await fetch(url(`/api/projects/${project.id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
     expect(delRes.status).toBe(200);
 
-    // Project no longer appears in list (soft-deleted)
     const listRes = await fetch(url('/api/projects'), { headers: { cookie: jar.header() } });
     const rows = await listRes.json();
     expect(rows.find((r: { id: string }) => r.id === project.id)).toBeUndefined();
 
-    // Deleting again (already soft-deleted) → 404
     const again = await fetch(url(`/api/projects/${project.id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
     expect(again.status).toBe(404);
 
-    // Foreign id → 404
-    const fakeId = UNKNOWN_ID;
-    const notFound = await fetch(url(`/api/projects/${fakeId}`), {
+    const notFound = await fetch(url(`/api/projects/${UNKNOWN_ID}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
     expect(notFound.status).toBe(404);
   });
 
-  // 3.11 cross-user isolation + unauthenticated → 401
-  it('3.11 cross-user isolation and unauthenticated → 401', async () => {
+  it('cross-user isolation and unauthenticated → 401', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
     const bob = await loginAs('bob@example.com', 'secret');
-    const aliceClient = await createClient(
+    const aliceTracker = await createTracker(
       alice.jar,
       alice.token,
-      'Isolation Client ' + Date.now(),
+      'Isolation Tracker ' + Date.now(),
     );
 
-    // Alice creates a project
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: {
@@ -418,16 +421,14 @@ describeProjects('projects API integration', async () => {
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ name: 'Alice Only', clientId: aliceClient.id }),
+      body: JSON.stringify({ name: 'Alice Only', trackerId: aliceTracker.id }),
     });
     const aliceProject = await createRes.json();
 
-    // Bob cannot see Alice's project in his list
     const bobList = await fetch(url('/api/projects'), { headers: { cookie: bob.jar.header() } });
     const bobRows = await bobList.json();
     expect(bobRows.find((r: { id: string }) => r.id === aliceProject.id)).toBeUndefined();
 
-    // Bob cannot patch Alice's project → 404
     const bobPatch = await fetch(url(`/api/projects/${aliceProject.id}`), {
       method: 'PATCH',
       headers: {
@@ -435,18 +436,16 @@ describeProjects('projects API integration', async () => {
         'csrf-token': bob.token,
         cookie: bob.jar.header(),
       },
-      body: JSON.stringify({ name: 'Hijacked', clientId: aliceClient.id }),
+      body: JSON.stringify({ name: 'Hijacked', trackerId: aliceTracker.id }),
     });
     expect(bobPatch.status).toBe(404);
 
-    // Bob cannot delete Alice's project → 404
     const bobDelete = await fetch(url(`/api/projects/${aliceProject.id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': bob.token, cookie: bob.jar.header() },
     });
     expect(bobDelete.status).toBe(404);
 
-    // Unauthenticated → 401
     const unauth = await fetch(url('/api/projects'));
     expect(unauth.status).toBe(401);
   });

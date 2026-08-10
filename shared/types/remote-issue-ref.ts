@@ -41,8 +41,8 @@ export interface RemoteIssueSearchResult {
 
 /**
  * Request body accepted by the link endpoint. Only the remote issue id and
- * cached title are accepted from the client; Task ownership and the
- * Project -> Client -> active configuration provenance are derived
+ * cached title (from the search result) are accepted from the client; Task
+ * ownership and the Project -> active tracker provenance are derived
  * server-side (REQ-106), never accepted from the request body.
  */
 export const linkRemoteIssueSchema = z.object({
@@ -60,13 +60,13 @@ export type LinkRemoteIssueDto = z.infer<typeof linkRemoteIssueSchema>;
 
 /**
  * Request body accepted by the `proxied`-transport search endpoints
- * (REQ-108). The client identifies only the owned configuration and the
+ * (REQ-253). The client identifies only the owned tracker and the
  * search input; the server derives the target tracker base URL from the
- * authenticated user's owned stored configuration and never accepts a
+ * authenticated user's owned stored tracker and never accepts a
  * target URL from the client.
  */
 export const proxiedRemoteIssueSearchSchema = z.object({
-  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
+  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
   mode: remoteIssueSearchModeSchema,
   query: z
     .string({ error: 'error.remoteIssueSearchQueryRequired' })
@@ -87,15 +87,15 @@ export interface ProxiedRemoteIssueSearchResponseDto {
 
 /**
  * Persisted remote issue reference DTO. `url` is included only when the
- * reference's `remoteSystemConfigId` currently points to an active
- * (non-soft-deleted) configuration; otherwise it is omitted and only the
- * cached id/title remain available as provenance.
+ * reference's `trackerId` currently points to an active (non-soft-deleted)
+ * tracker; otherwise it is omitted and only the cached id/title remain
+ * available as provenance.
  */
 export interface RemoteIssueRefDto {
   id: string;
   taskId: string;
   userId: string;
-  remoteSystemConfigId: string;
+  trackerId: string;
   remoteIssueId: string;
   cachedTitle: string;
   url?: string;

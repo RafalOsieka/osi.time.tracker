@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../server/db/client';
 import { users } from '../../server/db/schema/users';
-import { clients } from '../../server/db/schema/clients';
+import { trackers } from '../../server/db/schema/trackers';
 import { projects } from '../../server/db/schema/projects';
 import { tasks } from '../../server/db/schema/tasks';
 import { timeEntries } from '../../server/db/schema/time-entries';
@@ -24,15 +24,22 @@ describeDb('remote exports schema', () => {
         .returning();
       if (!user) throw new Error('user not inserted');
 
-      const [client] = await db
-        .insert(clients)
-        .values({ userId: user.id, name: 'Export Client' })
+      const [tracker] = await db
+        .insert(trackers)
+        .values({
+          userId: user.id,
+          name: 'Export Tracker',
+          systemType: 'openproject',
+          baseUrl: 'https://op.example.com',
+          executionMode: 'client',
+          roundingRule: 'none',
+        })
         .returning();
-      if (!client) throw new Error('client not inserted');
+      if (!tracker) throw new Error('tracker not inserted');
 
       const [project] = await db
         .insert(projects)
-        .values({ userId: user.id, clientId: client.id, name: 'Export Project' })
+        .values({ userId: user.id, trackerId: tracker.id, name: 'Export Project' })
         .returning();
       if (!project) throw new Error('project not inserted');
 

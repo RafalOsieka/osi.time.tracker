@@ -1,7 +1,7 @@
 import { OpenProjectAdapter } from '../../../shared/remote/openproject/adapter';
 import { RedmineAdapter } from '../../../shared/remote/redmine/adapter';
 import type { RemoteTrackerAdapter } from '../../../shared/types/remote-adapter';
-import type { RemoteSystemConfigDto } from '../../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../../shared/types/tracker';
 import { clientFetchTransport } from './client-fetch-transport';
 import { ServerExecutionAdapter } from './server-execution-adapter';
 
@@ -14,7 +14,7 @@ import { ServerExecutionAdapter } from './server-execution-adapter';
  * server-side). `secret` is resolved by the caller for this call.
  */
 export function createRemoteAdapter(
-  config: RemoteSystemConfigDto,
+  config: TrackerDto,
   secret: string | null,
 ): RemoteTrackerAdapter {
   if (config.executionMode === 'server') {

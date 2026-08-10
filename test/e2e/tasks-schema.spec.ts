@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../server/db/client';
 import { users } from '../../server/db/schema/users';
-import { clients } from '../../server/db/schema/clients';
+import { trackers } from '../../server/db/schema/trackers';
 import { projects } from '../../server/db/schema/projects';
 import { tasks } from '../../server/db/schema/tasks';
 import { requireDocker } from './support/guards';
@@ -34,14 +34,21 @@ describeDb('tasks schema', () => {
         .returning();
       if (!userB) throw new Error('userB not inserted');
 
-      const [client] = await db
-        .insert(clients)
-        .values({ userId: userA.id, name: 'Client A' })
+      const [tracker] = await db
+        .insert(trackers)
+        .values({
+          userId: userA.id,
+          name: 'Tracker A',
+          systemType: 'openproject',
+          baseUrl: 'https://op.example.com',
+          executionMode: 'client',
+          roundingRule: 'none',
+        })
         .returning();
-      if (!client) throw new Error('client not inserted');
+      if (!tracker) throw new Error('tracker not inserted');
       const [project] = await db
         .insert(projects)
-        .values({ userId: userA.id, clientId: client.id, name: 'Project A' })
+        .values({ userId: userA.id, trackerId: tracker.id, name: 'Project A' })
         .returning();
       if (!project) throw new Error('project not inserted');
 
@@ -93,6 +100,7 @@ describeDb('tasks schema', () => {
           remoteIssueCachedTitle: 'Issue 4711',
           remoteIssueCreatedAt: now,
           remoteIssueUpdatedAt: now,
+          trackerId: tracker.id,
         })
         .returning();
       if (!linkedTwin) throw new Error('linkedTwin not inserted');
@@ -108,6 +116,7 @@ describeDb('tasks schema', () => {
           remoteIssueCachedTitle: 'Issue 4899',
           remoteIssueCreatedAt: now,
           remoteIssueUpdatedAt: now,
+          trackerId: tracker.id,
         })
         .returning();
       if (!linkedProjectless) throw new Error('linkedProjectless not inserted');

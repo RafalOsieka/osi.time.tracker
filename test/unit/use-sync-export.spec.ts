@@ -1,12 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { useSyncExport } from '../../app/composables/useSyncExport';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 import { buildExportRequestKey } from '../../shared/utils/export-request-key';
 
-const config: RemoteSystemConfigDto = {
+const config: TrackerDto = {
   id: 'cfg-1',
-  clientId: 'client-1',
+  name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',
@@ -21,7 +21,7 @@ function row(taskId = 'task-1', taskName = 'Ship it'): RemoteSyncDayRowDto {
     taskId,
     taskName,
     projectName: 'P',
-    clientName: 'C',
+    trackerName: 'C',
     totalSeconds: 3600,
     entries: [],
     exports: [],

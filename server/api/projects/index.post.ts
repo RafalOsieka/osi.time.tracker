@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { createProjectSchema } from '../../../shared/types/project';
 import type { CreateProjectDto, ProjectDto } from '../../../shared/types/project';
 import { db } from '../../db/index';
-import { projects, clients } from '../../db/schema';
+import { projects, trackers } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
@@ -24,34 +24,34 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     throw err;
   }
 
-  // Verify the client exists, is owned by the user, and is not soft-deleted
-  const [client] = await db
-    .select({ id: clients.id, name: clients.name })
-    .from(clients)
-    .where(
-      and(
-        eq(clients.id, parsedBody.clientId),
-        eq(clients.userId, user.id),
-        isNull(clients.deletedAt),
-      ),
-    )
-    .limit(1);
+  const trackerId = parsedBody.trackerId ?? null;
+  let trackerName: string | null = null;
 
-  if (!client) {
-    throw createError({
-      statusCode: 404,
-      data: { messageKey: 'error.notFound' } satisfies ApiMessage,
-    });
+  if (trackerId) {
+    const [tracker] = await db
+      .select({ id: trackers.id, name: trackers.name })
+      .from(trackers)
+      .where(
+        and(eq(trackers.id, trackerId), eq(trackers.userId, user.id), isNull(trackers.deletedAt)),
+      )
+      .limit(1);
+
+    if (!tracker) {
+      throw createError({
+        statusCode: 404,
+        data: { messageKey: 'error.notFound' } satisfies ApiMessage,
+      });
+    }
+    trackerName = tracker.name;
   }
 
-  // App-layer duplicate check (partial unique index is the primary guard)
   const existing = await db
     .select({ id: projects.id })
     .from(projects)
     .where(
       and(
         eq(projects.userId, user.id),
-        eq(projects.clientId, parsedBody.clientId),
+        trackerId ? eq(projects.trackerId, trackerId) : isNull(projects.trackerId),
         eq(projects.name, parsedBody.name),
         isNull(projects.deletedAt),
       ),
@@ -68,7 +68,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   try {
     const [created] = await db
       .insert(projects)
-      .values({ userId: user.id, clientId: parsedBody.clientId, name: parsedBody.name })
+      .values({ userId: user.id, trackerId, name: parsedBody.name })
       .returning();
 
     if (!created) {
@@ -81,12 +81,11 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     return {
       id: created.id,
       name: created.name,
-      clientId: created.clientId,
-      clientName: client.name,
+      trackerId: created.trackerId,
+      trackerName,
       createdAt: created.createdAt.toISOString(),
     };
   } catch (err: unknown) {
-    // Map DB unique constraint violation to duplicate error
     if (
       err &&
       typeof err === 'object' &&

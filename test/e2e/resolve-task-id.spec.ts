@@ -3,14 +3,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { createDatabaseClient } from '../../server/db/client';
-import {
-  users,
-  tasks,
-  timeEntries,
-  clients,
-  projects,
-  remoteSystemConfigs,
-} from '../../server/db/schema';
+import { users, tasks, timeEntries, trackers, projects } from '../../server/db/schema';
 import { resolveTaskId } from '../../server/utils/tasks';
 import { eq } from 'drizzle-orm';
 
@@ -32,6 +25,21 @@ describeResolveTaskId('resolveTaskId', async () => {
       .where(eq(users.email, 'resolver@example.com'))
       .limit(1);
     return user!.id;
+  }
+
+  async function insertTracker(userId: string, name: string) {
+    const [row] = await db
+      .insert(trackers)
+      .values({
+        userId,
+        name,
+        systemType: 'openproject',
+        baseUrl: 'https://op.example.com',
+        executionMode: 'client',
+        roundingRule: 'none',
+      })
+      .returning({ id: trackers.id });
+    return row!;
   }
 
   it('returns null for an empty or whitespace-only title', async () => {
@@ -79,25 +87,11 @@ describeResolveTaskId('resolveTaskId', async () => {
 
   it('tie-breaks ambiguous titles by most recently used entry startedAt', async () => {
     const userId = await getUserId();
-    const [client] = await db
-      .insert(clients)
-      .values({ userId, name: 'TB Client' })
-      .returning({ id: clients.id });
+    const tracker = await insertTracker(userId, 'TB Tracker');
     const [project] = await db
       .insert(projects)
-      .values({ userId, clientId: client!.id, name: 'TB Project' })
+      .values({ userId, trackerId: tracker.id, name: 'TB Project' })
       .returning({ id: projects.id });
-    const [config] = await db
-      .insert(remoteSystemConfigs)
-      .values({
-        userId,
-        clientId: client!.id,
-        systemType: 'openproject',
-        baseUrl: 'https://op.example.com',
-        executionMode: 'client',
-        roundingRule: 'none',
-      })
-      .returning({ id: remoteSystemConfigs.id });
 
     const now = new Date();
     const [older] = await db
@@ -107,7 +101,7 @@ describeResolveTaskId('resolveTaskId', async () => {
         projectId: project!.id,
         name: 'Ambiguous',
         remoteIssueId: '1',
-        remoteSystemConfigId: config!.id,
+        trackerId: tracker.id,
         remoteIssueCachedTitle: 'One',
         remoteIssueCreatedAt: now,
         remoteIssueUpdatedAt: now,
@@ -120,7 +114,7 @@ describeResolveTaskId('resolveTaskId', async () => {
         projectId: project!.id,
         name: 'Ambiguous',
         remoteIssueId: '2',
-        remoteSystemConfigId: config!.id,
+        trackerId: tracker.id,
         remoteIssueCachedTitle: 'Two',
         remoteIssueCreatedAt: now,
         remoteIssueUpdatedAt: now,
@@ -160,27 +154,13 @@ describeResolveTaskId('resolveTaskId', async () => {
       stoppedAt: new Date('2026-02-01T11:00:00.000Z'),
     });
     // Second candidate with a different remote issue and no entries.
-    const [configClient] = await db
-      .insert(clients)
-      .values({ userId, name: `Cfg ${name}` })
-      .returning({ id: clients.id });
-    const [config] = await db
-      .insert(remoteSystemConfigs)
-      .values({
-        userId,
-        clientId: configClient!.id,
-        systemType: 'openproject',
-        baseUrl: 'https://op.example.com',
-        executionMode: 'client',
-        roundingRule: 'none',
-      })
-      .returning({ id: remoteSystemConfigs.id });
+    const tracker = await insertTracker(userId, `Cfg ${name}`);
     const now = new Date();
     await db.insert(tasks).values({
       userId,
       name,
       remoteIssueId: '999',
-      remoteSystemConfigId: config!.id,
+      trackerId: tracker.id,
       remoteIssueCachedTitle: 'Linked twin',
       remoteIssueCreatedAt: now,
       remoteIssueUpdatedAt: now,
@@ -192,25 +172,11 @@ describeResolveTaskId('resolveTaskId', async () => {
 
   it('explicit remote issue bypasses the tie-break and find-or-creates that task', async () => {
     const userId = await getUserId();
-    const [client] = await db
-      .insert(clients)
-      .values({ userId, name: 'Exact Client' })
-      .returning({ id: clients.id });
+    const tracker = await insertTracker(userId, 'Exact Tracker');
     const [project] = await db
       .insert(projects)
-      .values({ userId, clientId: client!.id, name: 'Exact Project' })
+      .values({ userId, trackerId: tracker.id, name: 'Exact Project' })
       .returning({ id: projects.id });
-    const [config] = await db
-      .insert(remoteSystemConfigs)
-      .values({
-        userId,
-        clientId: client!.id,
-        systemType: 'openproject',
-        baseUrl: 'https://op.example.com',
-        executionMode: 'client',
-        roundingRule: 'none',
-      })
-      .returning({ id: remoteSystemConfigs.id });
 
     const now = new Date();
     const [mru] = await db
@@ -220,7 +186,7 @@ describeResolveTaskId('resolveTaskId', async () => {
         projectId: project!.id,
         name: 'Exact Title',
         remoteIssueId: '10',
-        remoteSystemConfigId: config!.id,
+        trackerId: tracker.id,
         remoteIssueCachedTitle: 'Ten',
         remoteIssueCreatedAt: now,
         remoteIssueUpdatedAt: now,
@@ -236,7 +202,7 @@ describeResolveTaskId('resolveTaskId', async () => {
     const created = await db.transaction((tx) =>
       resolveTaskId(tx, userId, 'Exact Title', project!.id, {
         remoteIssueId: '20',
-        remoteSystemConfigId: config!.id,
+        trackerId: tracker.id,
         cachedTitle: 'Twenty',
       }),
     );
@@ -248,7 +214,7 @@ describeResolveTaskId('resolveTaskId', async () => {
     const reused = await db.transaction((tx) =>
       resolveTaskId(tx, userId, 'Exact Title', project!.id, {
         remoteIssueId: '20',
-        remoteSystemConfigId: config!.id,
+        trackerId: tracker.id,
         cachedTitle: 'Twenty',
       }),
     );

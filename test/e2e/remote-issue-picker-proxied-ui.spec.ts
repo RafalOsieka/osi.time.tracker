@@ -65,43 +65,42 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     return { jar, token };
   }
 
-  async function createClient(jar: CookieJar, token: string, name: string): Promise<string> {
-    const res = await fetch(url('/api/clients'), {
+  async function createTracker(
+    jar: CookieJar,
+    token: string,
+    name: string,
+    overrides: Record<string, unknown> = {},
+  ): Promise<{ id: string; name: string }> {
+    const res = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({
+        name,
+        systemType: 'openproject',
+        baseUrl: `https://${
+          name
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '') || 'tracker'
+        }.example.com`,
+        executionMode: 'client',
+        roundingRule: 'none',
+        ...overrides,
+      }),
     });
-    return (await res.json()).id;
+    return res.json();
   }
 
   async function createProject(
     jar: CookieJar,
     token: string,
     name: string,
-    clientId: string,
+    trackerId: string,
   ): Promise<string> {
     const res = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name, clientId }),
-    });
-    return (await res.json()).id;
-  }
-
-  async function putProxiedRemoteConfig(
-    jar: CookieJar,
-    token: string,
-    clientId: string,
-  ): Promise<string> {
-    const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({
-        systemType: 'openproject',
-        baseUrl: tracker.baseUrl,
-        executionMode: 'server',
-        roundingRule: 'none',
-      }),
+      body: JSON.stringify({ name, trackerId }),
     });
     return (await res.json()).id;
   }
@@ -141,9 +140,18 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
 
   it('4.5 completes a title search and an issue-id link flow through the proxy against a mocked tracker', async () => {
     const { jar, token } = await apiLogin('remoteissueproxyui@example.com');
-    const clientId = await createClient(jar, token, `Proxied UI Client ${Date.now()}`);
-    const projectId = await createProject(jar, token, `Proxied UI Project ${Date.now()}`, clientId);
-    const configId = await putProxiedRemoteConfig(jar, token, clientId);
+    const trackerRow = await createTracker(jar, token, `Proxied UI Tracker ${Date.now()}`, {
+      baseUrl: tracker.baseUrl,
+      systemType: 'openproject',
+      executionMode: 'server',
+    });
+    const projectId = await createProject(
+      jar,
+      token,
+      `Proxied UI Project ${Date.now()}`,
+      trackerRow.id,
+    );
+    const configId = trackerRow.id;
     const label = `Proxied UI Task ${Date.now()}`;
     await createTaskViaEntry(jar, token, label, projectId);
 

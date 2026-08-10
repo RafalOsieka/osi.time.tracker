@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRemoteActivities } from '../../app/composables/useRemoteActivities';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const getActivityOptionsMock = vi.fn();
 const getSecretMock = vi.fn(() => 'secret');
@@ -11,13 +11,13 @@ vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   }),
 }));
 
-vi.mock('../../app/composables/useRemoteConfigSecret', () => ({
-  useRemoteConfigSecret: () => ({ get: getSecretMock }),
+vi.mock('../../app/composables/useTrackerSecret', () => ({
+  useTrackerSecret: () => ({ get: getSecretMock }),
 }));
 
-const config: RemoteSystemConfigDto = {
+const config: TrackerDto = {
   id: 'cfg-1',
-  clientId: 'client-1',
+  name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',

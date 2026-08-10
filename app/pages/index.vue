@@ -99,26 +99,25 @@ onMounted(async () => {
 const projectOptions = computed(() => projectsData.value ?? []);
 const activeEditorKey = ref<string | null>(null);
 
-const { ensureLoaded: ensureRemoteConfigLoaded, getConfig: getRemoteConfigForClient } =
-  useActiveRemoteConfigs();
+const { ensureLoaded: ensureTrackerLoaded, getTracker } = useActiveTrackers();
 
-function clientIdForProject(projectId: string | null): string | null {
-  return projectOptions.value.find((p) => p.id === projectId)?.clientId ?? null;
+function trackerIdForProject(projectId: string | null): string | null {
+  return projectOptions.value.find((p) => p.id === projectId)?.trackerId ?? null;
 }
 
 watch(
   projectOptions,
   (options) => {
-    const clientIds = new Set(options.map((p) => p.clientId));
-    for (const clientId of clientIds) {
-      void ensureRemoteConfigLoaded(clientId);
+    const trackerIds = new Set(options.map((p) => p.trackerId).filter((id): id is string => !!id));
+    for (const trackerId of trackerIds) {
+      void ensureTrackerLoaded(trackerId);
     }
   },
   { immediate: true },
 );
 
-function remoteConfigForGroup(group: { projectId: string | null }) {
-  return getRemoteConfigForClient(clientIdForProject(group.projectId));
+function trackerForGroup(group: { projectId: string | null }) {
+  return getTracker(trackerIdForProject(group.projectId));
 }
 
 const now = ref(Date.now());
@@ -343,7 +342,7 @@ async function onEntryDeleted() {
             :time-zone="effective.timeZone"
             :active-editor-key="activeEditorKey"
             :project-options="projectOptions"
-            :remote-config="remoteConfigForGroup(group)"
+            :tracker="trackerForGroup(group)"
             @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
             @continue="onContinue(group)"
             @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"

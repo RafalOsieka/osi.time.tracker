@@ -8,7 +8,6 @@ function task(overrides: Partial<TaskDto> = {}): TaskDto {
     name: 'Fix login',
     projectId: 'project-1',
     projectName: 'Portal',
-    clientName: 'Acme',
     createdAt: '',
     ...overrides,
   };
@@ -31,7 +30,7 @@ describe('buildTaskTitleMenuItems', () => {
     expect(items[0]).toMatchObject({
       id: 'task-1',
       name: 'Fix login',
-      label: 'Fix login · Portal · Acme',
+      label: 'Fix login · Portal',
     });
     items[0]?.onSelect();
     expect(onSelectTask).toHaveBeenCalledWith(

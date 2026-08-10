@@ -22,7 +22,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 | --------------------------- | ---------------------- | --------------------------------- |
 | Variables / parameters      | `camelCase`            | `parsedBody`, `requestToken`      |
 | Functions / methods         | `camelCase()`          | `formatDuration()`, `search()`    |
-| Composables                 | `useXxx()`             | `useRemoteConfig()`               |
+| Composables                 | `useXxx()`             | `useTrackerSecret()`              |
 | Vue components (files/tags) | `PascalCase`           | `EntityPicker.vue`                |
 | Types / interfaces          | `PascalCase`           | `EntityRef`                       |
 | Response DTO types          | `PascalCase` + `Dto`   | `EntityDto`, `CreateEntityDto`    |

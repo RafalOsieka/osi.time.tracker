@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { updateProjectSchema } from '../../../shared/types/project';
 import type { UpdateProjectDto, ProjectDto } from '../../../shared/types/project';
 import { db } from '../../db/index';
-import { projects, clients } from '../../db/schema';
+import { projects, trackers } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
@@ -25,9 +25,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     throw err;
   }
 
-  // Verify ownership (404 for foreign/unknown id)
   const [existing] = await db
-    .select({ id: projects.id, clientId: projects.clientId })
+    .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
     .where(and(eq(projects.id, id!), eq(projects.userId, user.id), isNull(projects.deletedAt)))
     .limit(1);
@@ -39,22 +38,25 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     });
   }
 
-  // Only re-validate the client's ownership/soft-delete status when it changed,
-  // so a rename works even if the current client was soft-deleted
-  if (parsedBody.clientId !== existing.clientId) {
-    const [client] = await db
-      .select({ id: clients.id })
-      .from(clients)
+  const nextTrackerId =
+    parsedBody.trackerId === undefined ? existing.trackerId : (parsedBody.trackerId ?? null);
+
+  // Only re-validate tracker ownership/soft-delete when attaching a different
+  // non-null tracker, so rename works after the current tracker is soft-deleted.
+  if (nextTrackerId && nextTrackerId !== existing.trackerId) {
+    const [tracker] = await db
+      .select({ id: trackers.id })
+      .from(trackers)
       .where(
         and(
-          eq(clients.id, parsedBody.clientId),
-          eq(clients.userId, user.id),
-          isNull(clients.deletedAt),
+          eq(trackers.id, nextTrackerId),
+          eq(trackers.userId, user.id),
+          isNull(trackers.deletedAt),
         ),
       )
       .limit(1);
 
-    if (!client) {
+    if (!tracker) {
       throw createError({
         statusCode: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
@@ -62,14 +64,13 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     }
   }
 
-  // App-layer duplicate check
   const duplicate = await db
     .select({ id: projects.id })
     .from(projects)
     .where(
       and(
         eq(projects.userId, user.id),
-        eq(projects.clientId, parsedBody.clientId),
+        nextTrackerId ? eq(projects.trackerId, nextTrackerId) : isNull(projects.trackerId),
         eq(projects.name, parsedBody.name),
         isNull(projects.deletedAt),
         ne(projects.id, id!),
@@ -87,7 +88,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   try {
     const [updated] = await db
       .update(projects)
-      .set({ name: parsedBody.name, clientId: parsedBody.clientId, updatedAt: new Date() })
+      .set({ name: parsedBody.name, trackerId: nextTrackerId, updatedAt: new Date() })
       .where(and(eq(projects.id, id!), eq(projects.userId, user.id)))
       .returning();
 
@@ -98,17 +99,22 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       });
     }
 
-    const [updatedClient] = await db
-      .select({ name: clients.name })
-      .from(clients)
-      .where(eq(clients.id, updated.clientId))
-      .limit(1);
+    // Name lookup must include soft-deleted trackers so the DTO keeps trackerName (REQ-084).
+    let trackerName: string | null = null;
+    if (updated.trackerId) {
+      const [tracker] = await db
+        .select({ name: trackers.name })
+        .from(trackers)
+        .where(eq(trackers.id, updated.trackerId))
+        .limit(1);
+      trackerName = tracker?.name ?? null;
+    }
 
     return {
       id: updated.id,
       name: updated.name,
-      clientId: updated.clientId,
-      clientName: updatedClient?.name ?? '',
+      trackerId: updated.trackerId,
+      trackerName,
       createdAt: updated.createdAt.toISOString(),
     };
   } catch (err: unknown) {

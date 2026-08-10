@@ -58,7 +58,6 @@ function makeEntry(overrides: Partial<TimeEntryDto> = {}): TimeEntryDto {
     taskName: 'Task One',
     projectId: null,
     projectName: null,
-    clientName: null,
     startedAt: '2024-03-15T09:00:00.000Z',
     stoppedAt: '2024-03-15T10:00:00.000Z',
     ...overrides,

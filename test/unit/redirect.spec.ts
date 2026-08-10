@@ -4,8 +4,8 @@ import { sanitizeRedirect } from '../../app/utils/redirect';
 describe('sanitizeRedirect', () => {
   it('accepts same-origin paths starting with a single slash', () => {
     expect(sanitizeRedirect('/')).toBe('/');
-    expect(sanitizeRedirect('/clients')).toBe('/clients');
-    expect(sanitizeRedirect('/clients?foo=bar#frag')).toBe('/clients?foo=bar#frag');
+    expect(sanitizeRedirect('/trackers')).toBe('/trackers');
+    expect(sanitizeRedirect('/trackers?foo=bar#frag')).toBe('/trackers?foo=bar#frag');
   });
 
   it('rejects protocol-relative and absolute URLs', () => {

@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import type { TableColumn } from '@nuxt/ui';
 import {
   deriveRemoteSyncRowState,
-  isImplementedRemoteSystemType,
+  isImplementedTrackerSystemType,
 } from '~~/shared/utils/remote-sync-row-state';
 import { computeRemoteSyncDayTotals } from '~~/shared/utils/remote-sync-day-totals';
 import { findDuplicateRemoteLog } from '~~/shared/utils/find-duplicate-remote-log';
@@ -13,7 +13,7 @@ import type {
   RemoteSyncDayRowDto,
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
-import type { RemoteSystemConfigDto } from '~~/shared/types/remote-system-config';
+import type { TrackerDto } from '~~/shared/types/tracker';
 import { formatDuration, formatSignedDuration } from '~/utils/formatDuration';
 import { useRemoteActivities } from '~/composables/useRemoteActivities';
 import { useRemoteDayLogs } from '~/composables/useRemoteDayLogs';
@@ -86,10 +86,10 @@ if (import.meta.client) {
   watch([date, locale, () => effective.value.timeZone], refreshDayHeading, { immediate: true });
 }
 
-function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigDto {
+function toPickerConfig(config: RemoteSyncConfigSurfaceDto): TrackerDto {
   return {
     id: config.id,
-    clientId: '',
+    name: '',
     systemType: config.systemType,
     baseUrl: config.baseUrl,
     executionMode: config.executionMode,
@@ -252,7 +252,7 @@ function activityStatusFor(
 function stateFor(row: RemoteSyncDayRowDto): RemoteSyncRowState {
   return deriveRemoteSyncRowState({
     hasProject: !!row.projectName,
-    hasClient: !!row.clientName,
+    hasTracker: !!row.config || !!row.trackerName,
     config: row.config ? { systemType: row.config.systemType } : null,
     hasIssueRef: !!issueRefFor(row),
     activityStatus: activityStatusFor(row),
@@ -262,10 +262,10 @@ function stateFor(row: RemoteSyncDayRowDto): RemoteSyncRowState {
 function reasonKeyFor(row: RemoteSyncDayRowDto): string {
   const state = stateFor(row);
   switch (state) {
-    case 'no_client':
-      return t('remoteSync.state.noClient');
-    case 'no_config':
-      return t('remoteSync.state.noConfig');
+    case 'no_project':
+      return t('remoteSync.state.noProject');
+    case 'no_tracker':
+      return t('remoteSync.state.noTracker');
     case 'system_not_implemented':
       return t('remoteSync.state.systemNotImplemented', { systemType: row.config?.systemType });
     case 'unlinked':
@@ -301,10 +301,10 @@ function skipReasonFor(row: RemoteSyncDayRowDto): string {
 
 function stateIconFor(row: RemoteSyncDayRowDto): string {
   switch (stateFor(row)) {
-    case 'no_client':
-      return 'i-lucide-user-x';
-    case 'no_config':
-      return 'i-lucide-settings';
+    case 'no_project':
+      return 'i-lucide-folder-x';
+    case 'no_tracker':
+      return 'i-lucide-cable';
     case 'system_not_implemented':
       return 'i-lucide-ban';
     case 'unlinked':
@@ -329,8 +329,8 @@ function stateBadgeColor(row: RemoteSyncDayRowDto): 'success' | 'warning' | 'err
       return 'warning';
     case 'activity_error':
     case 'no_activity':
-    case 'no_client':
-    case 'no_config':
+    case 'no_project':
+    case 'no_tracker':
     case 'system_not_implemented':
       return 'error';
     default:
@@ -433,7 +433,7 @@ watch(
       if (row.config && remoteIssueId) {
         const staticState = deriveRemoteSyncRowState({
           hasProject: !!row.projectName,
-          hasClient: !!row.clientName,
+          hasTracker: true,
           config: { systemType: row.config.systemType },
           hasIssueRef: true,
         });
@@ -480,7 +480,7 @@ watch(
     >();
     for (const row of list) {
       const issueId = issueRefFor(row)?.remoteIssueId;
-      if (!row.config || !issueId || !isImplementedRemoteSystemType(row.config.systemType)) {
+      if (!row.config || !issueId || !isImplementedTrackerSystemType(row.config.systemType)) {
         continue;
       }
       const bucket = byConfig.get(row.config.id) ?? {
