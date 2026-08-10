@@ -22,7 +22,6 @@ type Entry = {
   taskName: string | null;
   projectId: string | null;
   projectName: string | null;
-  clientName: string | null;
   startedAt: string;
   stoppedAt: string | null;
 };
@@ -155,7 +154,6 @@ function entry(overrides: Partial<Entry>): Entry {
     taskName: null,
     projectId: null,
     projectName: null,
-    clientName: null,
     startedAt: new Date().toISOString(),
     stoppedAt: new Date().toISOString(),
     ...overrides,
@@ -199,7 +197,6 @@ describe('timer view page', () => {
       taskName: 'First Task',
       projectId: null,
       projectName: null,
-      clientName: null,
       startedAt,
       stoppedAt: null,
     };

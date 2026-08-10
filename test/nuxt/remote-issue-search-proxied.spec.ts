@@ -18,17 +18,17 @@ vi.mock('ofetch', async (importOriginal) => {
 
 const secretStore = new Map<string, string>();
 
-vi.mock('../../app/composables/useRemoteConfigSecret', () => ({
-  useRemoteConfigSecret: () => ({
-    get: (configId: string) => secretStore.get(configId) ?? null,
-    set: (configId: string, secret: string) => secretStore.set(configId, secret),
-    clear: (configId: string) => secretStore.delete(configId),
+vi.mock('../../app/composables/useTrackerSecret', () => ({
+  useTrackerSecret: () => ({
+    get: (trackerId: string) => secretStore.get(trackerId) ?? null,
+    set: (trackerId: string, secret: string) => secretStore.set(trackerId, secret),
+    clear: (trackerId: string) => secretStore.delete(trackerId),
   }),
 }));
 
 const config = {
   id: 'config-1',
-  clientId: 'client-1',
+  name: 'Tracker 1',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
   executionMode: 'server' as const,
@@ -62,7 +62,7 @@ describe('useRemoteIssueSearch (proxied transport)', () => {
     expect(init.method).toBe('POST');
     expect(init.headers[REMOTE_SECRET_HEADER]).toBe('browser-held-secret');
     expect(init.body).toEqual({
-      remoteSystemConfigId: 'config-1',
+      trackerId: 'config-1',
       mode: 'title',
       query: 'login bug',
     });

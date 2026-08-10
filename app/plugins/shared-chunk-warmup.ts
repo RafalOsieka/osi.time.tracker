@@ -24,7 +24,7 @@ export default defineNuxtPlugin(() => {
     roundingSuggestionsFor(0, 'none');
     deriveRemoteSyncRowState({
       hasProject: false,
-      hasClient: false,
+      hasTracker: false,
       config: null,
       hasIssueRef: false,
     });

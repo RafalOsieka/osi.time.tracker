@@ -3,7 +3,7 @@ import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
 import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const props = withDefaults(
   defineProps<{
@@ -14,9 +14,9 @@ const props = withDefaults(
     editorKey: string;
     activeEditorKey?: string | null;
     projectOptions?: ProjectDto[];
-    remoteConfig?: RemoteSystemConfigDto | null;
+    tracker?: TrackerDto | null;
   }>(),
-  { activeEditorKey: null, projectOptions: () => [], remoteConfig: null },
+  { activeEditorKey: null, projectOptions: () => [], tracker: null },
 );
 
 const emit = defineEmits<{
@@ -47,12 +47,7 @@ watch(
   },
 );
 
-const contextLabel = computed(() => {
-  if (!props.group.projectName) return null;
-  return props.group.clientName
-    ? `${props.group.projectName} · ${props.group.clientName}`
-    : props.group.projectName;
-});
+const contextLabel = computed(() => props.group.projectName ?? null);
 
 const projectSelectOptions = computed(() => {
   if (!props.group.projectId || props.projectOptions.some((p) => p.id === props.group.projectId)) {
@@ -63,8 +58,8 @@ const projectSelectOptions = computed(() => {
     {
       id: props.group.projectId,
       name: props.group.projectName ?? '',
-      clientId: '',
-      clientName: props.group.clientName ?? '',
+      trackerId: null,
+      trackerName: null,
       createdAt: '',
     },
   ];
@@ -147,7 +142,7 @@ const countLabel = computed(() => {
     : t('timerView.entryCount', { count });
 });
 
-const showRemoteIssueControl = computed(() => !!props.remoteConfig && !!props.group.taskId);
+const showRemoteIssueControl = computed(() => !!props.tracker && !!props.group.taskId);
 const remoteIssueRef = computed(() => props.group.remoteIssueRef);
 const remoteIssueTooltip = computed(() =>
   remoteIssueRef.value
@@ -304,7 +299,7 @@ async function unlinkRemoteIssue() {
         </span>
 
         <RemoteIssuePicker
-          :config="remoteConfig!"
+          :config="tracker!"
           :current-ref="remoteIssueRef"
           :data-testid="`timer-group-remote-issue-picker-${group.key}`"
           @link="linkRemoteIssue"

@@ -8,7 +8,7 @@ import { seedUsers } from './support/seed';
 import { setupServer } from './support/setupServer';
 import { UNKNOWN_ID } from './support/fixtures';
 import { createDatabaseClient } from '../../server/db/client';
-import { remoteSystemConfigs, timeEntries, tasks, remoteExports } from '../../server/db/schema';
+import { trackers, timeEntries, tasks, remoteExports } from '../../server/db/schema';
 
 const describeRemoteIssueRef = requireDocker();
 
@@ -27,11 +27,28 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string): Promise<{ id: string }> {
-  const res = await fetch(url('/api/clients'), {
+async function createTracker(
+  jar: CookieJar,
+  token: string,
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      systemType: 'openproject',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
+      roundingRule: 'none',
+      ...overrides,
+    }),
   });
   return res.json();
 }
@@ -40,27 +57,17 @@ async function createProject(
   jar: CookieJar,
   token: string,
   name: string,
-  clientId: string,
+  trackerId?: string | null,
 ): Promise<{ id: string }> {
+  const body: Record<string, unknown> = { name };
+  if (trackerId !== undefined) body.trackerId = trackerId;
   const res = await fetch(url('/api/projects'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name, clientId }),
-  });
-  return res.json();
-}
-
-async function putRemoteConfig(
-  jar: CookieJar,
-  token: string,
-  clientId: string,
-  body: Record<string, unknown>,
-): Promise<Response> {
-  return fetch(url(`/api/clients/${clientId}/remote-config`), {
-    method: 'PUT',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(body),
   });
+  expect(res.status).toBe(200);
+  return res.json();
 }
 
 async function createTaskViaEntry(
@@ -145,20 +152,24 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     token: string;
     taskId: string;
     entryId: string;
-    clientId: string;
+    trackerId: string;
     projectId: string;
   }> {
     const { jar, token } = await loginAs('ralice@example.com', 'secret');
-    const client = await createClient(jar, token, `${label} Client ${Date.now()}`);
-    const project = await createProject(jar, token, `${label} Project ${Date.now()}`, client.id);
-    await putRemoteConfig(jar, token, client.id, openProjectConfig);
+    const tracker = await createTracker(
+      jar,
+      token,
+      `${label} Tracker ${Date.now()}`,
+      openProjectConfig,
+    );
+    const project = await createProject(jar, token, `${label} Project ${Date.now()}`, tracker.id);
     const task = await createTaskViaEntry(jar, token, `${label} Task ${Date.now()}`, project.id);
     return {
       jar,
       token,
       taskId: task.id,
       entryId: task.entryId,
-      clientId: client.id,
+      trackerId: tracker.id,
       projectId: project.id,
     };
   }
@@ -282,11 +293,11 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     expect(body?.data?.messageKey).toBe('error.remoteIssueTaskNoConfig');
   });
 
-  it('rejects linking when the client has no active remote config', async () => {
+  it('rejects linking when the project has no active tracker', async () => {
     const { jar, token } = await loginAs('ralice@example.com', 'secret');
-    const client = await createClient(jar, token, `NoConfig Client ${Date.now()}`);
-    const project = await createProject(jar, token, `NoConfig Project ${Date.now()}`, client.id);
-    const task = await createTaskViaEntry(jar, token, `NoConfig Task ${Date.now()}`, project.id);
+    // Local project (trackerId null) cannot resolve an active tracker for linking.
+    const project = await createProject(jar, token, `NoTracker Project ${Date.now()}`);
+    const task = await createTaskViaEntry(jar, token, `NoTracker Task ${Date.now()}`, project.id);
 
     const res = await reassign(jar, token, {
       ids: [task.entryId],
@@ -300,9 +311,8 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
 
   it('links against a Redmine configuration and derives an issues URL', async () => {
     const { jar, token } = await loginAs('ralice@example.com', 'secret');
-    const client = await createClient(jar, token, `Redmine Client ${Date.now()}`);
-    const project = await createProject(jar, token, `Redmine Project ${Date.now()}`, client.id);
-    await putRemoteConfig(jar, token, client.id, redmineConfig);
+    const tracker = await createTracker(jar, token, `Redmine Tracker ${Date.now()}`, redmineConfig);
+    const project = await createProject(jar, token, `Redmine Project ${Date.now()}`, tracker.id);
     const task = await createTaskViaEntry(jar, token, `Redmine Task ${Date.now()}`, project.id);
 
     const res = await reassign(jar, token, {
@@ -493,7 +503,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
   });
 
   it('omits the url once the linked config is soft-deleted, keeping cached id/title', async () => {
-    const { jar, token, entryId, clientId } = await setupTaskWithOpenProjectConfig('SoftDelete');
+    const { jar, token, entryId, trackerId } = await setupTaskWithOpenProjectConfig('SoftDelete');
     const linked = await reassign(jar, token, {
       ids: [entryId],
       remoteIssueId: '60',
@@ -501,7 +511,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     });
     const taskId = (await linked.json())[0]?.taskId as string;
 
-    await fetch(url(`/api/clients/${clientId}/remote-config`), {
+    await fetch(url(`/api/trackers/${trackerId}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
@@ -514,8 +524,8 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     expect(found?.remoteIssueRef?.url).toBeUndefined();
   });
 
-  it('identity-changing config updates leave existing references resolvable under the new baseUrl', async () => {
-    const { jar, token, entryId, clientId } =
+  it('identity-changing tracker updates leave existing references resolvable under the new baseUrl', async () => {
+    const { jar, token, entryId, trackerId } =
       await setupTaskWithOpenProjectConfig('IdentityChange');
     const linked = await reassign(jar, token, {
       ids: [entryId],
@@ -524,10 +534,20 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     });
     const taskId = (await linked.json())[0]?.taskId as string;
 
-    await putRemoteConfig(jar, token, clientId, {
-      ...openProjectConfig,
-      baseUrl: 'https://op2.example.com',
+    const patchRes = await fetch(url(`/api/trackers/${trackerId}`), {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': token,
+        cookie: jar.header(),
+      },
+      body: JSON.stringify({
+        name: 'Rebased Tracker',
+        ...openProjectConfig,
+        baseUrl: 'https://op2.example.com',
+      }),
     });
+    expect(patchRes.status).toBe(200);
 
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows: { id: string; remoteIssueRef?: { url?: string } }[] = await listRes.json();
@@ -535,8 +555,8 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     expect(found?.remoteIssueRef?.url).toBe('https://op2.example.com/work_packages/300');
   });
 
-  it('does not rebind to a newly created replacement config after the old one was deleted', async () => {
-    const { jar, token, entryId, clientId } = await setupTaskWithOpenProjectConfig('NoRebind');
+  it('does not rebind to a newly created replacement tracker after the old one was deleted', async () => {
+    const { jar, token, entryId, trackerId } = await setupTaskWithOpenProjectConfig('NoRebind');
     const linked = await reassign(jar, token, {
       ids: [entryId],
       remoteIssueId: '400',
@@ -544,13 +564,13 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     });
     const taskId = (await linked.json())[0]?.taskId as string;
     const [taskBefore] = await db.select().from(tasks).where(eq(tasks.id, taskId));
-    const oldConfigId = taskBefore!.remoteSystemConfigId!;
+    const oldConfigId = taskBefore!.trackerId!;
 
-    await fetch(url(`/api/clients/${clientId}/remote-config`), {
+    await fetch(url(`/api/trackers/${trackerId}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },
     });
-    await putRemoteConfig(jar, token, clientId, openProjectConfig);
+    await createTracker(jar, token, `Replacement ${Date.now()}`, openProjectConfig);
 
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows: { id: string; remoteIssueRef?: { url?: string; cachedTitle: string } }[] =
@@ -559,10 +579,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     expect(found?.remoteIssueRef?.cachedTitle).toBe('Stale ref');
     expect(found?.remoteIssueRef?.url).toBeUndefined();
 
-    const [oldConfig] = await db
-      .select()
-      .from(remoteSystemConfigs)
-      .where(eq(remoteSystemConfigs.id, oldConfigId));
+    const [oldConfig] = await db.select().from(trackers).where(eq(trackers.id, oldConfigId));
     expect(oldConfig?.deletedAt).not.toBeNull();
   });
 });

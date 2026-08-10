@@ -1,5 +1,5 @@
 import { db } from '../../db/index';
-import { clients } from '../../db/schema';
+import { trackers } from '../../db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 import type { ApiMessage } from '../../types/api-message';
 
@@ -7,11 +7,10 @@ export default defineEventHandler(async (event) => {
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
 
-  // Verify ownership (404 for foreign/unknown id)
   const [existing] = await db
-    .select({ id: clients.id })
-    .from(clients)
-    .where(and(eq(clients.id, id!), eq(clients.userId, user.id), isNull(clients.deletedAt)))
+    .select({ id: trackers.id })
+    .from(trackers)
+    .where(and(eq(trackers.id, id!), eq(trackers.userId, user.id), isNull(trackers.deletedAt)))
     .limit(1);
 
   if (!existing) {
@@ -22,9 +21,9 @@ export default defineEventHandler(async (event) => {
   }
 
   await db
-    .update(clients)
+    .update(trackers)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
-    .where(and(eq(clients.id, id!), eq(clients.userId, user.id)));
+    .where(and(eq(trackers.id, id!), eq(trackers.userId, user.id)));
 
   return { success: true };
 });

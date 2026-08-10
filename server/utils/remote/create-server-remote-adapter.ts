@@ -1,7 +1,7 @@
 import { OpenProjectAdapter } from '../../../shared/remote/openproject/adapter';
 import { RedmineAdapter } from '../../../shared/remote/redmine/adapter';
 import type { RemoteTrackerAdapter } from '../../../shared/types/remote-adapter';
-import type { RemoteSystemType } from '../../../shared/types/remote-system-config';
+import type { TrackerSystemType } from '../../../shared/types/tracker';
 import { createServerFetchTransport } from './server-fetch-transport';
 
 /**
@@ -12,7 +12,7 @@ import { createServerFetchTransport } from './server-fetch-transport';
  * `createRemoteAdapter`).
  */
 export function createServerRemoteAdapter(
-  config: { systemType: RemoteSystemType; baseUrl: string },
+  config: { systemType: TrackerSystemType; baseUrl: string },
   secret: string,
 ): RemoteTrackerAdapter {
   switch (config.systemType) {

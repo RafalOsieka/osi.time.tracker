@@ -1,22 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const secretStore = new Map<string, string>();
 
-vi.mock('../../app/composables/useRemoteConfigSecret', () => ({
-  useRemoteConfigSecret: () => ({
-    get: (configId: string) => secretStore.get(configId) ?? null,
-    set: (configId: string, secret: string) => secretStore.set(configId, secret),
-    clear: (configId: string) => secretStore.delete(configId),
+vi.mock('../../app/composables/useTrackerSecret', () => ({
+  useTrackerSecret: () => ({
+    get: (trackerId: string) => secretStore.get(trackerId) ?? null,
+    set: (trackerId: string, secret: string) => secretStore.set(trackerId, secret),
+    clear: (trackerId: string) => secretStore.delete(trackerId),
   }),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- imported after the mock is registered.
 let useRemoteIssueSearch: any;
 
-const config: RemoteSystemConfigDto = {
+const config: TrackerDto = {
   id: 'config-1',
-  clientId: 'client-1',
+  name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',

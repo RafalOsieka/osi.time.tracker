@@ -27,29 +27,27 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string): Promise<{ id: string }> {
-  const res = await fetch(url('/api/clients'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
-  });
-  return res.json();
-}
-
-async function createProxiedConfig(
+async function createTracker(
   jar: CookieJar,
   token: string,
-  clientId: string,
-  baseUrl: string,
-): Promise<{ id: string }> {
-  const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-    method: 'PUT',
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
+    method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify({
+      name,
       systemType: 'openproject',
-      baseUrl,
-      executionMode: 'server',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
       roundingRule: 'none',
+      ...overrides,
     }),
   });
   return res.json();
@@ -122,8 +120,10 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
 
   it('happy path returns the adapter-neutral activity options', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Activities Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     const res = await fetch(url('/api/remote/activities'), {
       method: 'POST',
@@ -133,7 +133,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
+      body: JSON.stringify({ trackerId: config.id, remoteIssueId: '42' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -145,8 +145,10 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
 
   it('treats an upstream 403 (work package does not allow time logging) as an empty result', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Activities No-Log-Time Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     const res = await fetch(url('/api/remote/activities'), {
       method: 'POST',
@@ -156,7 +158,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: 'no-log-time' }),
+      body: JSON.stringify({ trackerId: config.id, remoteIssueId: 'no-log-time' }),
     });
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -165,8 +167,10 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
 
   it('maps an upstream auth rejection to the translated messageKey without echoing the secret', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Activities Error Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     const secret = 'rejected-secret';
     const res = await fetch(url('/api/remote/activities'), {
@@ -177,7 +181,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         cookie: alice.jar.header(),
         [REMOTE_SECRET_HEADER]: secret,
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
+      body: JSON.stringify({ trackerId: config.id, remoteIssueId: '42' }),
     });
     expect(res.status).toBe(502);
     const body = await res.json();
@@ -187,8 +191,10 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
 
   it('requires the secret header and rejects a missing/foreign configuration', async () => {
     const alice = await loginAs('alice@example.com', 'secret');
-    const client = await createClient(alice.jar, alice.token, 'Activities Missing Client');
-    const config = await createProxiedConfig(alice.jar, alice.token, client.id, tracker.baseUrl);
+    const config = await createTracker(alice.jar, alice.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     const missingSecretRes = await fetch(url('/api/remote/activities'), {
       method: 'POST',
@@ -197,7 +203,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         'csrf-token': alice.token,
         cookie: alice.jar.header(),
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id, remoteIssueId: '42' }),
+      body: JSON.stringify({ trackerId: config.id, remoteIssueId: '42' }),
     });
     expect(missingSecretRes.status).toBe(422);
     expect((await missingSecretRes.json())?.data?.messageKey).toBe(
@@ -213,7 +219,7 @@ describeRemoteActivitiesProxy('remote activities proxy API integration', async (
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
       body: JSON.stringify({
-        remoteSystemConfigId: UNKNOWN_ID,
+        trackerId: UNKNOWN_ID,
         remoteIssueId: '42',
       }),
     });

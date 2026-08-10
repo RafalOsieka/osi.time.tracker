@@ -1,13 +1,9 @@
 import { z } from 'zod';
-import type {
-  RemoteExecutionMode,
-  RemoteRoundingRule,
-  RemoteSystemType,
-} from './remote-system-config';
+import type { TrackerExecutionMode, TrackerRoundingRule, TrackerSystemType } from './tracker';
 
 /**
  * Explicit per-row state on the Remote Sync page, derived by a pure shared
- * function (`deriveRemoteSyncRowState`). `no_client`/`no_config`/
+ * function (`deriveRemoteSyncRowState`). `no_project`/`no_tracker`/
  * `system_not_implemented` render read-only with a stated reason;
  * `unlinked` is read-only but linkable; `manageable` exposes the editable
  * rounded duration and required-field controls. Activity load outcomes
@@ -15,8 +11,8 @@ import type {
  * client after the static prerequisites resolve to manageable.
  */
 export const remoteSyncRowStateSchema = z.enum([
-  'no_client',
-  'no_config',
+  'no_project',
+  'no_tracker',
   'system_not_implemented',
   'unlinked',
   'activity_loading',
@@ -34,10 +30,10 @@ export type RemoteSyncRowState = z.infer<typeof remoteSyncRowStateSchema>;
  */
 export interface RemoteSyncConfigSurfaceDto {
   id: string;
-  systemType: RemoteSystemType;
+  systemType: TrackerSystemType;
   baseUrl: string;
-  executionMode: RemoteExecutionMode;
-  roundingRule: RemoteRoundingRule;
+  executionMode: TrackerExecutionMode;
+  roundingRule: TrackerRoundingRule;
   requiredFieldDefaults: Record<string, string>;
 }
 
@@ -75,7 +71,7 @@ export interface RemoteSyncDayRowDto {
   taskId: string;
   taskName: string;
   projectName: string | null;
-  clientName: string | null;
+  trackerName: string | null;
   totalSeconds: number;
   config: RemoteSyncConfigSurfaceDto | null;
   issueRef: RemoteSyncIssueRefDto | null;
@@ -106,12 +102,12 @@ export type RemoteSyncDayQuery = z.infer<typeof remoteSyncDayQuerySchema>;
 /** Input to `deriveRemoteSyncRowState`, the pure precedence-ordered state mapping. */
 export interface RemoteSyncRowStateInput {
   hasProject: boolean;
-  hasClient: boolean;
-  config: { systemType: RemoteSystemType } | null;
+  hasTracker: boolean;
+  config: { systemType: TrackerSystemType } | null;
   hasIssueRef: boolean;
   /**
    * Optional activity-fetch outcome applied only after static prerequisites
-   * resolve to a linked, implemented configuration. Omitted/undefined leaves
+   * resolve to a linked, implemented tracker. Omitted/undefined leaves
    * the static mapping unchanged (typically `manageable`).
    */
   activityStatus?: 'loading' | 'error' | 'empty' | 'available';

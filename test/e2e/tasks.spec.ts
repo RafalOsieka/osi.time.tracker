@@ -25,15 +25,28 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(
+async function createTracker(
   jar: CookieJar,
   token: string,
   name: string,
+  overrides: Record<string, unknown> = {},
 ): Promise<{ id: string; name: string }> {
-  const res = await fetch(url('/api/clients'), {
+  const res = await fetch(url('/api/trackers'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      systemType: 'openproject',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
+      roundingRule: 'none',
+      ...overrides,
+    }),
   });
   return res.json();
 }
@@ -42,12 +55,12 @@ async function createProject(
   jar: CookieJar,
   token: string,
   name: string,
-  clientId: string,
+  trackerId: string,
 ): Promise<{ id: string; name: string }> {
   const res = await fetch(url('/api/projects'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name, clientId }),
+    body: JSON.stringify({ name, trackerId }),
   });
   return res.json();
 }
@@ -103,8 +116,8 @@ describeTasks('tasks API integration', async () => {
 
   it('list returns own tasks ordered by name and honors project/search filters', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'List Client ' + Date.now());
-    const project = await createProject(jar, token, 'List Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'List Client ' + Date.now());
+    const project = await createProject(jar, token, 'List Project ' + Date.now(), tracker.id);
 
     const t1 = await createTaskViaEntry(jar, token, 'Alpha Task', project.id);
     const t2 = await createTaskViaEntry(jar, token, 'Beta Task');
@@ -134,9 +147,9 @@ describeTasks('tasks API integration', async () => {
 
   it('patch happy path rename and project reassignment when no collision', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Patch T Client ' + Date.now());
-    const projectA = await createProject(jar, token, 'Patch T Project A ' + Date.now(), client.id);
-    const projectB = await createProject(jar, token, 'Patch T Project B ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'Patch T Client ' + Date.now());
+    const projectA = await createProject(jar, token, 'Patch T Project A ' + Date.now(), tracker.id);
+    const projectB = await createProject(jar, token, 'Patch T Project B ' + Date.now(), tracker.id);
 
     const created = await createTaskViaEntry(jar, token, 'Patch Me ' + Date.now(), projectA.id);
 
@@ -176,8 +189,13 @@ describeTasks('tasks API integration', async () => {
 
   it('patch merges when clearing project onto an existing project-less task', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Merge Clear Client ' + Date.now());
-    const project = await createProject(jar, token, 'Merge Clear Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'Merge Clear Client ' + Date.now());
+    const project = await createProject(
+      jar,
+      token,
+      'Merge Clear Project ' + Date.now(),
+      tracker.id,
+    );
     const suffix = Date.now();
 
     const projectLess = await createTaskViaEntry(jar, token, `Shared ${suffix}`);
@@ -199,8 +217,8 @@ describeTasks('tasks API integration', async () => {
 
   it('patch with name only keeps the current project (no silent unassign)', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Name Only Client ' + Date.now());
-    const project = await createProject(jar, token, 'Name Only Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'Name Only Client ' + Date.now());
+    const project = await createProject(jar, token, 'Name Only Project ' + Date.now(), tracker.id);
 
     const created = await createTaskViaEntry(jar, token, 'Rename Me ' + Date.now(), project.id);
 
@@ -212,8 +230,8 @@ describeTasks('tasks API integration', async () => {
 
   it('patch with projectId: null explicitly clears the project', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Clear Client ' + Date.now());
-    const project = await createProject(jar, token, 'Clear Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'Clear Client ' + Date.now());
+    const project = await createProject(jar, token, 'Clear Project ' + Date.now(), tracker.id);
     const suffix = Date.now();
 
     const created = await createTaskViaEntry(jar, token, `Clear Me ${suffix}`, project.id);
@@ -229,8 +247,8 @@ describeTasks('tasks API integration', async () => {
 
   it('patch with an owned projectId sets the project (ownership validated)', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Set Client ' + Date.now());
-    const project = await createProject(jar, token, 'Set Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'Set Client ' + Date.now());
+    const project = await createProject(jar, token, 'Set Project ' + Date.now(), tracker.id);
     const suffix = Date.now();
 
     const created = await createTaskViaEntry(jar, token, `Set Me ${suffix}`);

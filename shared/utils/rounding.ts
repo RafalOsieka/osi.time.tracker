@@ -1,7 +1,7 @@
-import type { RemoteRoundingRule } from '../types/remote-system-config';
+import type { TrackerRoundingRule } from '../types/tracker';
 
 /** Increment in seconds for every non-passthrough rounding rule. */
-export const ROUNDING_INCREMENT_SECONDS: Record<Exclude<RemoteRoundingRule, 'none'>, number> = {
+export const ROUNDING_INCREMENT_SECONDS: Record<Exclude<TrackerRoundingRule, 'none'>, number> = {
   up_15m: 15 * 60,
   up_30m: 30 * 60,
   up_1h: 60 * 60,
@@ -11,7 +11,7 @@ export const ROUNDING_INCREMENT_SECONDS: Record<Exclude<RemoteRoundingRule, 'non
 };
 
 /**
- * Applies a Client's configured rounding rule to a summed duration, once.
+ * Applies a tracker's configured rounding rule to a summed duration, once.
  *
  * - `none` passes the total through unchanged.
  * - `up_15m` / `up_30m` / `up_1h` round **up** to the next multiple of the
@@ -25,7 +25,7 @@ export const ROUNDING_INCREMENT_SECONDS: Record<Exclude<RemoteRoundingRule, 'non
  *
  * Pure and reused by export so the pushed default equals the reviewed default.
  */
-export function applyRoundingRule(totalSeconds: number, rule: RemoteRoundingRule): number {
+export function applyRoundingRule(totalSeconds: number, rule: TrackerRoundingRule): number {
   if (rule === 'none' || totalSeconds === 0) {
     return totalSeconds;
   }
@@ -57,7 +57,7 @@ export interface RoundingSuggestion {
  */
 export function roundingSuggestionsFor(
   selectedSeconds: number,
-  rule: RemoteRoundingRule,
+  rule: TrackerRoundingRule,
 ): RoundingSuggestion[] {
   const exact = Math.max(0, selectedSeconds);
 

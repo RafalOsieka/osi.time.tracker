@@ -17,7 +17,6 @@ function entry(overrides: Partial<TimeEntryDto>): TimeEntryDto {
     taskName: null,
     projectId: null,
     projectName: null,
-    clientName: null,
     startedAt: '2024-03-15T09:00:00.000Z',
     stoppedAt: '2024-03-15T10:00:00.000Z',
     ...overrides,
@@ -70,7 +69,6 @@ describe('groupTimeEntriesByDay', () => {
       taskName: 'Task One',
       projectId: 'proj-1',
       projectName: 'Project One',
-      clientName: 'Client One',
     });
     const untitled = entry({
       id: '2',
@@ -83,6 +81,8 @@ describe('groupTimeEntriesByDay', () => {
     const day = days[0]!;
     expect(day.groups.map((g) => g.key)).toEqual(['task-1', UNTITLED_GROUP_KEY]);
     expect(day.groups[0]!.totalSeconds).toBe(3600);
+    expect(day.groups[0]!.projectName).toBe('Project One');
+    expect(day.groups[0]).not.toHaveProperty('trackerName');
     expect(day.groups[1]!.totalSeconds).toBe(1800);
     expect(day.totalSeconds).toBe(3600 + 1800);
   });

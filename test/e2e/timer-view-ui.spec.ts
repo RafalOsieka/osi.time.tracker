@@ -260,16 +260,16 @@ describeTimerViewUI('timer view UI flow', async () => {
   it('assigns a project inline via the "(no project)" placeholder', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
 
-    const clientRes = await fetch(url('/api/clients'), {
+    const clientRes = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({ name: 'Inline Assign Client ' + Date.now() }),
     });
-    const client = await clientRes.json();
+    const tracker = await clientRes.json();
     const projectRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Inline Assign Project', clientId: client.id }),
+      body: JSON.stringify({ name: 'Inline Assign Project', trackerId: tracker.id }),
     });
     const project = await projectRes.json();
     expect(project.id).toBeDefined();
@@ -367,16 +367,16 @@ describeTimerViewUI('timer view UI flow', async () => {
 
   it('starting from a suggestion binds the picked task project and survives reload', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
-    const clientRes = await fetch(url('/api/clients'), {
+    const clientRes = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({ name: 'Suggestion Client ' + Date.now() }),
     });
-    const client = await clientRes.json();
+    const tracker = await clientRes.json();
     const projectRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Suggestion Project', clientId: client.id }),
+      body: JSON.stringify({ name: 'Suggestion Project', trackerId: tracker.id }),
     });
     const project = await projectRes.json();
     const seedTitle = 'Suggestion Source Task ' + Date.now();
@@ -541,16 +541,16 @@ describeTimerViewUI('timer view UI flow', async () => {
 
   it('create-new-task option starts a project-less entry even when a project-bound task matches', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
-    const clientRes = await fetch(url('/api/clients'), {
+    const clientRes = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({ name: 'Create Option Client ' + Date.now() }),
     });
-    const client = await clientRes.json();
+    const tracker = await clientRes.json();
     const projectRes = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Create Option Project', clientId: client.id }),
+      body: JSON.stringify({ name: 'Create Option Project', trackerId: tracker.id }),
     });
     const project = await projectRes.json();
     const sharedTitle = 'Create Option Shared Title ' + Date.now();

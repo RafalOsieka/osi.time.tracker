@@ -15,7 +15,7 @@ Each registered user operates in a fully isolated workspace — there are no sha
 
 IT specialists working with multiple clients face a recurring challenge: their clients use different issue tracking systems (Redmine, OpenProject, etc.), but there is no lightweight, self-hosted tool that:
 
-1. Tracks time locally in a structured hierarchy (Client → Project → Task),
+1. Tracks time locally in a structured hierarchy (Tracker → Project → Task, with local projects allowed),
 2. Allows associating local tasks with remote issues in external trackers, and
 3. Pushes time entries to those remote systems on demand — without requiring the user to manually re-enter data in each client's tool.
 
@@ -29,9 +29,9 @@ Existing solutions are either too heavyweight (full project management suites), 
 
 - **Time Tracking** — start/stop a live timer or create manual time entries; **time entries are the primary objects the user creates**
 - **Timer View** — the main working page: time entries listed per day, grouped by Task, expandable to individual entries
-- **Data Hierarchy** — organize work under Clients → Projects; Tasks are created and matched implicitly from time entry titles
-- **Reporting** — view summaries by client/project and weekly timesheets (the Timer View doubles as the daily timesheet)
-- **Remote Integration** — link local tasks to remote issues (Redmine, OpenProject) and push time entries on demand
+- **Data Hierarchy** — organize work under Trackers → Projects (projects may also be local with no tracker); Tasks are created and matched implicitly from time entry titles
+- **Reporting** — view summaries by project and weekly timesheets (the Timer View doubles as the daily timesheet)
+- **Remote Integration** — link local tasks to remote issues via an active Tracker (Redmine, OpenProject) and push time entries on demand
 - **User Settings** — timezone, week start day, language, rounding preferences
 
 The application is self-hosted via Docker. Each user has an isolated account and manages their own data.
@@ -44,29 +44,27 @@ The model is **entry-first**: the primary object a user creates is a `TimeEntry`
 
 ```
 User
- ├─► Client
- │     ├─► RemoteSystemConfig (optional, one per remote system type)
- │     └─► Project
+ ├─► Tracker (named remote connection: system type, base URL, execution mode, rounding, defaults)
+ ├─► Project (trackerId nullable ──► Tracker; null = local project)
  ├─► Task (auto-created / auto-matched; projectId nullable ──► Project)
- │     └─► RemoteIssueRef (optional)
+ │     └─► RemoteIssueRef (optional; tracker provenance via task.trackerId)
  └─► TimeEntry (taskId nullable ──► Task)
 ```
 
-A `TimeEntry` optionally points to a `Task` — the task's name is what the user perceives as the entry's "title". A `Task` optionally belongs to a `Project`; a project-less Task is owned directly by the User and is not grouped under any Client or Project.
+A `TimeEntry` optionally points to a `Task` — the task's name is what the user perceives as the entry's "title". A `Task` optionally belongs to a `Project`; a project-less Task is owned directly by the User. A `Project` may optionally belong to a `Tracker`, or be local with no tracker.
 
 ### Entities
 
-| Entity                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **User**               | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                                                                                                                                                                                                                                                                             |
-| **Client**             | A company or person the user works for. Top-level grouping for projects. Holds remote system configuration for that client's issue tracker.                                                                                                                                                                                                                                                                                                  |
-| **RemoteSystemConfig** | Configuration for a remote issue tracker associated with a Client. The full config (system type, base URL, adapter execution mode, rounding rule, and optional defaults for required remote fields) is stored in the database. For client-side mode (the only MVP mode) only the API secret/credential is held in the user's browser and never persisted server-side; backend-side mode (post-MVP) stores credentials encrypted server-side. |
-| **Project**            | A body of work for a Client. Contains tasks.                                                                                                                                                                                                                                                                                                                                                                                                 |
-| **Task**               | A derived unit of work grouping time entries. Auto-created or auto-matched when the user titles a time entry; renamed via the group header in the Timer View; hard-deleted (garbage-collected) when its last entry leaves. Has a name and an optional Project. No status, no number, no description. May optionally be linked to a remote issue.                                                                                             |
-| **TimeEntry**          | A single logged time interval (`startedAt` + `stoppedAt`; a running timer is an entry with no stop time). Carries no title of its own — its displayed title is the name of the Task it points to (`taskId` nullable ⇒ shown as "(no task)").                                                                                                                                                                                                 |
-| **RemoteIssueRef**     | An optional link from a Task to a specific issue in the client's remote system. Stores only the remote issue ID and relevant issue metadata (title, URL).                                                                                                                                                                                                                                                                                    |
+| Entity             | Description                                                                                                                                                                                                                                                                                                                                      |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **User**           | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                                                                                                                                                                                 |
+| **Tracker**        | A named remote issue-tracker connection (OpenProject, Redmine, …). Stores system type, base URL, execution mode, rounding rule, and optional required-field defaults. Browser-only API secret is never persisted server-side.                                                                                                                    |
+| **Project**        | A body of work that may optionally belong to a Tracker (`trackerId` nullable). Local projects (no tracker) are first-class.                                                                                                                                                                                                                      |
+| **Task**           | A derived unit of work grouping time entries. Auto-created or auto-matched when the user titles a time entry; renamed via the group header in the Timer View; hard-deleted (garbage-collected) when its last entry leaves. Has a name and an optional Project. No status, no number, no description. May optionally be linked to a remote issue. |
+| **TimeEntry**      | A single logged time interval (`startedAt` + `stoppedAt`; a running timer is an entry with no stop time). Carries no title of its own — its displayed title is the name of the Task it points to (`taskId` nullable ⇒ shown as "(no task)").                                                                                                     |
+| **RemoteIssueRef** | An optional link from a Task to a specific issue in the project's active Tracker. Stores the remote issue ID, cached title, and tracker provenance id.                                                                                                                                                                                           |
 
-A `Client` holds the `RemoteSystemConfig` (connection details, credentials, adapter mode). A `Task` holds a `RemoteIssueRef` that references only the remote issue identifier and metadata — it does not duplicate connection details. When a `TimeEntry` is pushed, the adapter reads the connection config from the parent `Client` and the issue reference from the parent `Task`.
+A `Tracker` holds the connection details (system type, base URL, execution mode, rounding). A `Task` holds a `RemoteIssueRef` that references only the remote issue identifier and metadata plus tracker provenance — it does not duplicate connection details. Linking and push resolve the active tracker via `project.trackerId`.
 
 ### Entry-First Semantics
 
@@ -77,7 +75,7 @@ A `Client` holds the `RemoteSystemConfig` (connection details, credentials, adap
 5. **Auto-merge invariant.** After any task mutation (rename, project assignment), if two Tasks share `(name, project)` they merge: entries move to the survivor, the emptied Task is garbage-collected. Merges are irreversible. _Future guard:_ once `RemoteIssueRef`s exist, a merge where both Tasks hold a ref must block or ask the user.
 6. **Untitled entries** (`taskId = null`) group into one "(no task)" bucket per day. Typing a title into the bucket header bulk-assigns all of that day's untitled entries to the matched/created Task.
 7. **Group row = mini task editor.** The group header in the Timer View (title + project selector) is the only task-editing surface. "(no project)" is a visible state nudging assignment for reports.
-8. **Task lifecycle is implicit.** Users never manage Tasks directly: Tasks are hard-deleted (no soft delete) when their last entry leaves. Clients and Projects keep soft-delete semantics.
+8. **Task lifecycle is implicit.** Users never manage Tasks directly: Tasks are hard-deleted (no soft delete) when their last entry leaves. Trackers and Projects keep soft-delete semantics.
 9. **Running timer = TimeEntry with no stop time.** Persisted server-side; at most one running entry per user. Duration is always derived (`stoppedAt − startedAt`).
 10. **Tie-breaker:** where behavior is unspecified, follow Toggl's handling.
 
@@ -92,7 +90,7 @@ There is a single role in the system: **User**.
 | **User** | An account with full CRUD access to their own data only. |
 
 - No admin role, no team hierarchy, no cross-user visibility.
-- Every user's data (clients, projects, tasks, time entries) is strictly isolated.
+- Every user's data (trackers, projects, tasks, time entries) is strictly isolated.
 - Account provisioning (MVP): a bootstrap user is provisioned via environment variables (`BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD`). Self-registration (email + password) is planned for V1.1.
 
 ---
@@ -101,9 +99,8 @@ There is a single role in the system: **User**.
 
 ```
 Log in (bootstrap-provisioned account; self-registration in V1.1)
-    ├─► (Optional) Create Client ─► Create Project under Client
-    │         └─► (Optional) Configure RemoteSystemConfig on Client
-    │               (system type, base URL, API credentials, adapter mode, rounding rule)
+    ├─► (Optional) Create Tracker (name + system type, base URL, API secret, adapter mode, rounding rule)
+    │         └─► (Optional) Create Project under Tracker — or create a local Project with no tracker
     └─► Start Timer  ──OR──  Create Manual Entry      ← the primary action; title optional
           ├─► Type a title → autocomplete suggests existing Tasks (name + project)
           │     ├─► Pick one → entry binds to that Task
@@ -145,7 +142,7 @@ A running timer **is** a TimeEntry with no stop time — persisted server-side, 
 
 ### Model
 
-Remote integration is configured at the **Client** level via a `RemoteSystemConfig`. Each client may have one remote system configuration, which stores:
+Remote integration is configured as a first-class **Tracker**. Each tracker stores:
 
 - **System type** (e.g. `redmine`, `openproject`)
 - **Base URL** of the remote system
@@ -154,7 +151,7 @@ Remote integration is configured at the **Client** level via a `RemoteSystemConf
 - **Rounding rule** (e.g. round up to nearest 15 minutes)
 - **Required remote fields** — some systems require extra fields on a time log (e.g. Redmine `activity_id`). The config may store adapter-fetched defaults; values can also be chosen on the Remote Sync page at push time.
 
-A `Task` may optionally hold a `RemoteIssueRef` — a lightweight reference to a specific issue in the client's remote system. It stores only:
+A `Task` may optionally hold a `RemoteIssueRef` — a lightweight reference to a specific issue in the project's active tracker. It stores only:
 
 - **Remote issue ID** (numeric or string identifier used by the remote system)
 - **Issue title / summary** (cached for display purposes)
@@ -169,7 +166,7 @@ The user can browse and search issues from the configured remote system directly
 
 ### Remote Sync (user-controlled export)
 
-From the Timer view the user opens a **Remote Sync** page for a selected day. It lists **all** of that day's tasks; each row is either **manageable** or **read-only with a stated reason** (no Project/Client, Client has no `RemoteSystemConfig`, unsupported system type, no activities available, or a retryable remote load failure). A task without a `RemoteIssueRef` is read-only too, but an inline link action flips it toward manageable. Each manageable row shows:
+From the Timer view the user opens a **Remote Sync** page for a selected day. It lists **all** of that day's tasks; each row is either **manageable** or **read-only with a stated reason** (no Project, no active Tracker, unsupported system type, no activities available, or a retryable remote load failure). A task without a `RemoteIssueRef` is read-only too, but an inline link action flips it toward manageable. Each manageable row shows:
 
 - completed **local entries** with individual selection (eligible entries selected by default);
 - the **original duration**, **selected total**, and an **editable export duration** pre-filled by applying the configured rounding rule once to the selected total (overridable; reset restores the rounded selected total);
@@ -187,7 +184,7 @@ On export, the browser orchestrates one remote create per included task (direct 
 
 ### Rounding
 
-Rounding is configurable per `RemoteSystemConfig` (e.g. round up to nearest 15 minutes). This is needed because some external systems (e.g. Redmine) enforce minimum time increments.
+Rounding is configurable per Tracker (e.g. round up to nearest 15 minutes). This is needed because some external systems (e.g. Redmine) enforce minimum time increments.
 
 ### Adapter Execution Modes
 
@@ -198,7 +195,7 @@ Some remote systems are hosted behind a client's VPN and are not reachable from 
 | **Backend-side** | Application server | Remote system is publicly reachable; API calls are made server-to-server.                 |
 | **Client-side**  | User's browser     | Remote system is behind a VPN; the browser (already on the VPN) makes API calls directly. |
 
-The execution mode is configured per `RemoteSystemConfig`. **MVP ships only the client-side mode**, where credentials are entered and held **only in the user's browser** and are never persisted to the server (the rest of the config still lives in the database). **Backend-side** mode (credentials encrypted server-side, server-to-server calls) is a **post-MVP** capability. The adapter interface is identical in both modes; only the execution context and credential handling differ. CORS must be enabled on the remote system for client-side mode to work.
+The execution mode is configured per Tracker. **MVP ships client-side and server-proxied modes**, where credentials are entered and held **only in the user's browser** and are never persisted to the server (the rest of the tracker still lives in the database). Encrypted server-side credential storage is out of scope. The adapter interface is identical in both modes; only the execution context and credential handling differ. CORS must be enabled on the remote system for client-side mode to work.
 
 ### Adapter Model
 

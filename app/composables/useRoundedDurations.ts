@@ -4,7 +4,7 @@ import {
   roundingSuggestionsFor,
   type RoundingSuggestion,
 } from '../../shared/utils/rounding';
-import type { RemoteRoundingRule } from '../../shared/types/remote-system-config';
+import type { TrackerRoundingRule } from '../../shared/types/tracker';
 import { formatDuration } from '../utils/formatDuration';
 import { normalizeDurationInput } from '../utils/normalizeDurationInput';
 
@@ -18,7 +18,7 @@ export function useRoundedDurations() {
   function computedSeconds(
     taskId: string,
     selectedSeconds: number,
-    roundingRule: RemoteRoundingRule,
+    roundingRule: TrackerRoundingRule,
   ) {
     if (taskId in overrides.value) {
       return overrides.value[taskId]!;
@@ -29,7 +29,7 @@ export function useRoundedDurations() {
   function displayedInput(
     taskId: string,
     selectedSeconds: number,
-    roundingRule: RemoteRoundingRule,
+    roundingRule: TrackerRoundingRule,
   ): string {
     return (
       inputText.value[taskId] ??
@@ -41,7 +41,11 @@ export function useRoundedDurations() {
     inputText.value = { ...inputText.value, [taskId]: value ?? '' };
   }
 
-  function commit(taskId: string, selectedSeconds: number, roundingRule: RemoteRoundingRule): void {
+  function commit(
+    taskId: string,
+    selectedSeconds: number,
+    roundingRule: TrackerRoundingRule,
+  ): void {
     const raw =
       inputText.value[taskId] ??
       formatDuration(computedSeconds(taskId, selectedSeconds, roundingRule));
@@ -88,7 +92,7 @@ export function useRoundedDurations() {
   function suggestionsFor(
     _taskId: string,
     selectedSeconds: number,
-    rule: RemoteRoundingRule,
+    rule: TrackerRoundingRule,
   ): RoundingSuggestion[] {
     return roundingSuggestionsFor(selectedSeconds, rule);
   }

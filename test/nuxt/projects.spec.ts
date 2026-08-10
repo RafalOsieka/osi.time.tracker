@@ -21,16 +21,16 @@ vi.mock('ofetch', async (importOriginal) => {
   };
 });
 
-type Client = { id: string; name: string; createdAt: string };
+type Tracker = { id: string; name: string; createdAt: string };
 type Project = {
   id: string;
   name: string;
-  clientId: string;
-  clientName: string;
+  trackerId: string | null;
+  trackerName: string | null;
   createdAt: string;
 };
 
-let mockClients: Client[] = [];
+let mockTrackers: Tracker[] = [];
 let mockProjects: Project[] = [];
 
 mockNuxtImport('$fetch', () => fetchMock);
@@ -44,9 +44,9 @@ mockNuxtImport('useUserSettings', () => () => ({
 }));
 
 mockNuxtImport('useAsyncData', () => {
-  return (key: string, fetcher: () => Promise<Client[] | Project[]>) => {
-    const initial = key === 'clients-for-projects' ? mockClients : mockProjects;
-    const data = ref<Client[] | Project[]>(initial);
+  return (key: string, fetcher: () => Promise<Tracker[] | Project[]>) => {
+    const initial = key === 'trackers-for-projects' ? mockTrackers : mockProjects;
+    const data = ref<Tracker[] | Project[]>(initial);
     const refresh = vi.fn(async () => {
       data.value = await fetcher();
     });
@@ -83,7 +83,7 @@ const TableStub = {
   template: `
     <div data-testid="projects-table">
       <slot name="empty" v-if="!data || data.length === 0" />
-      <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} {{ row.clientName }}</div>
+      <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} {{ row.trackerName }}</div>
     </div>
   `,
   props: ['data', 'columns', 'loading'],
@@ -103,7 +103,7 @@ const FormStub = {
     '<form v-bind="$attrs" @submit.prevent="$emit(\'submit\', { data: stateSnapshot() })"><slot /></form>',
   methods: {
     stateSnapshot() {
-      return { name: '', clientId: undefined };
+      return { name: '', trackerId: undefined };
     },
   },
 };
@@ -118,7 +118,7 @@ const commonStubs = {
   UFormField: {
     props: ['label', 'name', 'error'],
     template:
-      '<div><label v-if="label" :for="name === \'clientId\' ? \'project-client\' : undefined">{{ label }}</label><slot /><slot name="error" /></div>',
+      '<div><label v-if="label" :for="name === \'trackerId\' ? \'project-tracker\' : undefined">{{ label }}</label><slot /><slot name="error" /></div>',
   },
   TableHeader: {
     props: ['title', 'newLabel', 'newTestid'],
@@ -144,10 +144,10 @@ const commonStubs = {
 describe('projects page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockClients = [];
+    mockTrackers = [];
     mockProjects = [];
     fetchMock.mockImplementation((url: string) =>
-      Promise.resolve(String(url).includes('clients') ? mockClients : mockProjects),
+      Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
     );
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,20 +171,20 @@ describe('projects page', () => {
   });
 
   it('4.7b renders project rows when projects exist', async () => {
-    mockClients = [{ id: 'c1', name: 'Acme', createdAt: new Date().toISOString() }];
+    mockTrackers = [{ id: 't1', name: 'Acme', createdAt: new Date().toISOString() }];
     mockProjects = [
       {
         id: '1',
         name: 'Alpha',
-        clientId: 'c1',
-        clientName: 'Acme',
+        trackerId: 't1',
+        trackerName: 'Acme',
         createdAt: new Date().toISOString(),
       },
       {
         id: '2',
         name: 'Beta',
-        clientId: 'c1',
-        clientName: 'Acme',
+        trackerId: 't1',
+        trackerName: 'Acme',
         createdAt: new Date().toISOString(),
       },
     ];
@@ -199,14 +199,14 @@ describe('projects page', () => {
     expect(wrapper.findAll('[data-testid="projects-row"]')).toHaveLength(2);
   });
 
-  it('4.7f shows clientName for a project whose client was soft-deleted (missing from clientOptions)', async () => {
-    mockClients = [];
+  it('4.7f shows trackerName for a project whose tracker was soft-deleted (missing from trackerOptions)', async () => {
+    mockTrackers = [];
     mockProjects = [
       {
         id: '1',
         name: 'Orphaned',
-        clientId: 'deleted-client',
-        clientName: 'Deleted Client',
+        trackerId: 'deleted-tracker',
+        trackerName: 'Deleted Tracker',
         createdAt: new Date().toISOString(),
       },
     ];
@@ -217,17 +217,17 @@ describe('projects page', () => {
     });
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Deleted Client');
+    expect(wrapper.text()).toContain('Deleted Tracker');
   });
 
-  it('4.7g edit dialog seeds a missing client option for a soft-deleted client', async () => {
-    mockClients = [];
+  it('4.7g edit dialog seeds a missing tracker option for a soft-deleted tracker', async () => {
+    mockTrackers = [];
     mockProjects = [
       {
         id: '1',
         name: 'Orphaned',
-        clientId: 'deleted-client',
-        clientName: 'Deleted Client',
+        trackerId: 'deleted-tracker',
+        trackerName: 'Deleted Tracker',
         createdAt: new Date().toISOString(),
       },
     ];
@@ -242,12 +242,12 @@ describe('projects page', () => {
     (wrapper.vm as any).openEdit(mockProjects[0]);
     await flushPromises();
 
-    const select = wrapper.find('[data-testid="project-client-select"]');
+    const select = wrapper.find('[data-testid="project-tracker-select"]');
     expect(select.exists()).toBe(true);
-    const option = select.find('option[value="deleted-client"]');
+    const option = select.find('option[value="deleted-tracker"]');
     expect(option.exists()).toBe(true);
-    expect(option.text()).toBe('Deleted Client');
-    expect((select.element as HTMLSelectElement).value).toBe('deleted-client');
+    expect(option.text()).toBe('Deleted Tracker');
+    expect((select.element as HTMLSelectElement).value).toBe('deleted-tracker');
   });
 
   it('4.7c dialog opens on new button click', async () => {
@@ -262,7 +262,7 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="project-dialog"]').exists()).toBe(true);
   });
 
-  it('blocks submission client-side and does not call the server when name/client are missing', async () => {
+  it('blocks submission client-side and does not call the server when name is missing', async () => {
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ProjectsPage, {
@@ -280,7 +280,7 @@ describe('projects page', () => {
   });
 
   it('4.7d inline error displays on save with empty name', async () => {
-    mockClients = [{ id: 'c1', name: 'Acme', createdAt: new Date().toISOString() }];
+    mockTrackers = [{ id: 't1', name: 'Acme', createdAt: new Date().toISOString() }];
     csrfFetchMock.mockRejectedValue({
       data: {
         data: { messageKey: 'error.projectNameRequired' },
@@ -294,7 +294,7 @@ describe('projects page', () => {
           UForm: {
             emits: ['submit'],
             template:
-              "<form v-bind=\"$attrs\" @submit.prevent=\"$emit('submit', { data: { name: '', clientId: 'c1' } })\"><slot /></form>",
+              "<form v-bind=\"$attrs\" @submit.prevent=\"$emit('submit', { data: { name: '', trackerId: 't1' } })\"><slot /></form>",
           },
         },
       },
@@ -309,16 +309,16 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="project-name-error"]').exists()).toBe(true);
   });
 
-  it('4.7e client select is labelled', async () => {
+  it('4.7e tracker select is labelled', async () => {
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ProjectsPage, {
       global: { stubs: commonStubs },
     });
 
-    expect(wrapper.find('label[for="project-client-filter"]').exists()).toBe(true);
+    expect(wrapper.find('label[for="project-tracker-filter"]').exists()).toBe(true);
 
     await wrapper.find('[data-testid="new-project-button"]').trigger('click');
-    expect(wrapper.find('label[for="project-client"]').exists()).toBe(true);
+    expect(wrapper.find('label[for="project-tracker"]').exists()).toBe(true);
   });
 });

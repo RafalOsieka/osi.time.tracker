@@ -4,7 +4,7 @@ import { requireDocker } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
 import { createDatabaseClient } from '../../server/db/client';
-import { users, clients, projects, tasks, remoteSystemConfigs } from '../../server/db/schema';
+import { users, trackers, projects, tasks } from '../../server/db/schema';
 import {
   getRemoteIssueRefForTask,
   getRemoteIssueRefsForTasks,
@@ -38,26 +38,22 @@ describeRemoteIssueRefs('remote issue reference helpers (inline on tasks)', asyn
     userId: string,
     label: string,
     issue: { id: string; title: string },
-  ): Promise<{ taskId: string; configId: string }> {
-    const [client] = await db
-      .insert(clients)
-      .values({ userId, name: `${label} Client` })
-      .returning({ id: clients.id });
-    const [project] = await db
-      .insert(projects)
-      .values({ userId, clientId: client!.id, name: `${label} Project` })
-      .returning({ id: projects.id });
-    const [config] = await db
-      .insert(remoteSystemConfigs)
+  ): Promise<{ taskId: string; trackerId: string }> {
+    const [tracker] = await db
+      .insert(trackers)
       .values({
         userId,
-        clientId: client!.id,
+        name: `${label} Tracker`,
         systemType: 'openproject',
         baseUrl: 'https://op.example.com',
         executionMode: 'client',
         roundingRule: 'none',
       })
-      .returning({ id: remoteSystemConfigs.id });
+      .returning({ id: trackers.id });
+    const [project] = await db
+      .insert(projects)
+      .values({ userId, trackerId: tracker!.id, name: `${label} Project` })
+      .returning({ id: projects.id });
     const now = new Date();
     const [task] = await db
       .insert(tasks)
@@ -65,17 +61,17 @@ describeRemoteIssueRefs('remote issue reference helpers (inline on tasks)', asyn
         userId,
         projectId: project!.id,
         name: `${label} Task`,
-        remoteSystemConfigId: config!.id,
+        trackerId: tracker!.id,
         remoteIssueId: issue.id,
         remoteIssueCachedTitle: issue.title,
         remoteIssueCreatedAt: now,
         remoteIssueUpdatedAt: now,
       })
       .returning({ id: tasks.id });
-    return { taskId: task!.id, configId: config!.id };
+    return { taskId: task!.id, trackerId: tracker!.id };
   }
 
-  it('reads an inline reference with a derived URL when the configuration is active', async () => {
+  it('reads an inline reference with a derived URL when the tracker is active', async () => {
     const userId = await getUserId('alice@example.com');
     const { taskId } = await makeLinkedTask(userId, 'ActiveUrl', {
       id: '42',
@@ -90,17 +86,14 @@ describeRemoteIssueRefs('remote issue reference helpers (inline on tasks)', asyn
     expect(ref?.id).toBe(taskId);
   });
 
-  it('omits the URL but keeps cached id/title when the configuration is soft-deleted', async () => {
+  it('omits the URL but keeps cached id/title when the tracker is soft-deleted', async () => {
     const userId = await getUserId('alice@example.com');
-    const { taskId, configId } = await makeLinkedTask(userId, 'DeletedConfig', {
+    const { taskId, trackerId } = await makeLinkedTask(userId, 'DeletedTracker', {
       id: '99',
       title: 'Bare reference',
     });
 
-    await db
-      .update(remoteSystemConfigs)
-      .set({ deletedAt: new Date() })
-      .where(eq(remoteSystemConfigs.id, configId));
+    await db.update(trackers).set({ deletedAt: new Date() }).where(eq(trackers.id, trackerId));
 
     const ref = await getRemoteIssueRefForTask(userId, taskId);
     expect(ref?.remoteIssueId).toBe('99');
@@ -108,14 +101,14 @@ describeRemoteIssueRefs('remote issue reference helpers (inline on tasks)', asyn
     expect(ref?.url).toBeUndefined();
   });
 
-  it('supports batch lookup for multiple tasks with mixed active/deleted configs', async () => {
+  it('supports batch lookup for multiple tasks with mixed active/deleted trackers', async () => {
     const userId = await getUserId('alice@example.com');
     const active = await makeLinkedTask(userId, 'BatchActive', { id: '1', title: 'Active' });
     const deleted = await makeLinkedTask(userId, 'BatchDeleted', { id: '2', title: 'Deleted' });
     await db
-      .update(remoteSystemConfigs)
+      .update(trackers)
       .set({ deletedAt: new Date() })
-      .where(eq(remoteSystemConfigs.id, deleted.configId));
+      .where(eq(trackers.id, deleted.trackerId));
 
     const refs = await getRemoteIssueRefsForTasks(userId, [active.taskId, deleted.taskId]);
     expect(refs.get(active.taskId)?.url).toBe('https://op.example.com/work_packages/1');

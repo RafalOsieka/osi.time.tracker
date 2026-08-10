@@ -4,7 +4,7 @@ import type {
   RemoteExportTaskOutcomeDto,
 } from '../../shared/types/remote-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/syncUiMaps';
 import { buildExportRequestKey } from '../../shared/utils/export-request-key';
 import { resolveExportComment } from '../../shared/utils/export-comment';
@@ -15,7 +15,7 @@ export type SyncExportProgressStatus =
 
 export interface SyncExportTaskInput {
   row: RemoteSyncDayRowDto;
-  config: RemoteSystemConfigDto;
+  config: TrackerDto;
   remoteIssueId: string;
   activityId: string;
   durationSeconds: number;
@@ -42,7 +42,7 @@ export interface FinalizeExportBody {
  */
 export function useSyncExport(options: {
   createTimeEntry: (
-    config: RemoteSystemConfigDto,
+    config: TrackerDto,
     input: {
       remoteIssueId: string;
       spentOn: string;

@@ -26,20 +26,37 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string) {
-  const res = await fetch(url('/api/clients'), {
+async function createTracker(
+  jar: CookieJar,
+  token: string,
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      systemType: 'openproject',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
+      roundingRule: 'none',
+      ...overrides,
+    }),
   });
   return res.json();
 }
 
-async function createProject(jar: CookieJar, token: string, name: string, clientId: string) {
+async function createProject(jar: CookieJar, token: string, name: string, trackerId: string) {
   const res = await fetch(url('/api/projects'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name, clientId }),
+    body: JSON.stringify({ name, trackerId }),
   });
   return res.json();
 }
@@ -51,21 +68,6 @@ async function createEntry(
 ): Promise<{ id: string; taskId: string | null }> {
   const res = await fetch(url('/api/time-entries'), {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify(body),
-  });
-  expect(res.status).toBe(200);
-  return res.json();
-}
-
-async function putRemoteConfig(
-  jar: CookieJar,
-  token: string,
-  clientId: string,
-  body: Record<string, unknown>,
-) {
-  const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-    method: 'PUT',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(body),
   });
@@ -120,14 +122,13 @@ describeSyncExport('sync export finalization API', async () => {
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({ timezone: 'UTC' }),
     });
-    const client = await createClient(jar, token, `Export Client ${suffix}`);
-    const project = await createProject(jar, token, `Export Project ${suffix}`, client.id);
-    await putRemoteConfig(jar, token, client.id, {
+    const tracker = await createTracker(jar, token, `Export Client ${suffix}`, {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
       executionMode: 'client',
       roundingRule: 'none',
     });
+    const project = await createProject(jar, token, `Export Project ${suffix}`, tracker.id);
     const date = '2026-04-01';
     const entry = await createEntry(jar, token, {
       title: `Export Task ${suffix}`,
@@ -138,7 +139,7 @@ describeSyncExport('sync export finalization API', async () => {
     expect(entry.taskId).toBeTruthy();
     const linked = await linkIssue(jar, token, entry.id, '42', 'Linked issue');
     entry.taskId = linked.taskId;
-    return { date, entry, client, project };
+    return { date, entry, tracker, project };
   }
 
   function withKey(body: Record<string, unknown>, key: string) {

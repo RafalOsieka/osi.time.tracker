@@ -19,7 +19,6 @@ export interface TaskDto {
   name: string;
   projectId: string | null;
   projectName: string | null;
-  clientName: string | null;
   createdAt: string;
   remoteIssueRef?: RemoteIssueRefDto;
 }

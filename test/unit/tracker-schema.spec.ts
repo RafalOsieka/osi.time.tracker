@@ -1,68 +1,62 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
-import { createRemoteSystemConfigSchema } from '../../shared/types/remote-system-config';
+import {
+  createTrackerSchema,
+  trackerExecutionModeSchema,
+  trackerRoundingRuleSchema,
+  trackerSystemTypeSchema,
+} from '../../shared/types/tracker';
 import { mapZodError } from '../../server/utils/zod-error';
 
-describe('createRemoteSystemConfigSchema', () => {
+describe('tracker connection field schemas', () => {
   const valid = {
+    name: 'My Tracker',
     systemType: 'redmine',
     baseUrl: 'https://redmine.example.com',
     executionMode: 'client',
     roundingRule: 'none',
   };
 
-  it('parses a valid body', () => {
-    const result = createRemoteSystemConfigSchema.parse(valid);
+  it('parses a valid tracker body', () => {
+    const result = createTrackerSchema.parse(valid);
     expect(result).toEqual(valid);
   });
 
-  it('accepts optional requiredFieldDefaults', () => {
-    const result = createRemoteSystemConfigSchema.parse({
-      ...valid,
-      requiredFieldDefaults: { activity_id: '5' },
-    });
-    expect(result.requiredFieldDefaults).toEqual({ activity_id: '5' });
-  });
-
   it('rejects a missing baseUrl', () => {
-    const { baseUrl, ...rest } = valid;
-    expect(() => createRemoteSystemConfigSchema.parse(rest)).toThrow();
+    const { baseUrl: _ignored, ...rest } = valid;
+    expect(() => createTrackerSchema.parse(rest)).toThrow();
   });
 
   it('rejects an invalid baseUrl', () => {
-    expect(() =>
-      createRemoteSystemConfigSchema.parse({ ...valid, baseUrl: 'not-a-url' }),
-    ).toThrow();
+    expect(() => createTrackerSchema.parse({ ...valid, baseUrl: 'not-a-url' })).toThrow();
   });
 
   it('rejects an unknown systemType', () => {
-    expect(() => createRemoteSystemConfigSchema.parse({ ...valid, systemType: 'jira' })).toThrow();
+    expect(() => createTrackerSchema.parse({ ...valid, systemType: 'jira' })).toThrow();
   });
 
   it('defaults executionMode to client when omitted', () => {
     const { executionMode: _ignored, ...rest } = valid;
-    const result = createRemoteSystemConfigSchema.parse(rest);
+    const result = createTrackerSchema.parse(rest);
     expect(result.executionMode).toBe('client');
   });
 
   it('accepts an explicit server executionMode', () => {
-    const result = createRemoteSystemConfigSchema.parse({ ...valid, executionMode: 'server' });
+    const result = createTrackerSchema.parse({ ...valid, executionMode: 'server' });
     expect(result.executionMode).toBe('server');
   });
 
   it('rejects an invalid executionMode', () => {
-    expect(() =>
-      createRemoteSystemConfigSchema.parse({ ...valid, executionMode: 'tunneled' }),
-    ).toThrow();
+    expect(() => createTrackerSchema.parse({ ...valid, executionMode: 'tunneled' })).toThrow();
   });
 
   it('no longer exposes a transportMode field', () => {
-    const result = createRemoteSystemConfigSchema.parse(valid);
+    const result = createTrackerSchema.parse(valid);
     expect((result as Record<string, unknown>).transportMode).toBeUndefined();
   });
 
   it('strips a secret field submitted alongside a valid body', () => {
-    const result = createRemoteSystemConfigSchema.parse({
+    const result = createTrackerSchema.parse({
       ...valid,
       apiKey: 'super-secret',
       secret: 'super-secret',
@@ -73,25 +67,31 @@ describe('createRemoteSystemConfigSchema', () => {
 
   it('maps validation failures to { messageKey, params } via mapZodError', () => {
     try {
-      createRemoteSystemConfigSchema.parse({ ...valid, baseUrl: 'not-a-url' });
+      createTrackerSchema.parse({ ...valid, baseUrl: 'not-a-url' });
       throw new Error('expected parse to throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ZodError);
       const mapped = mapZodError(err as ZodError);
-      expect(mapped.messageKey).toBe('error.remoteConfigBaseUrlInvalid');
+      expect(mapped.messageKey).toBe('error.trackerBaseUrlInvalid');
     }
   });
 
   it('accepts nearest_* rounding rules', () => {
     for (const roundingRule of ['nearest_15m', 'nearest_30m', 'nearest_1h'] as const) {
-      const result = createRemoteSystemConfigSchema.parse({ ...valid, roundingRule });
+      const result = createTrackerSchema.parse({ ...valid, roundingRule });
       expect(result.roundingRule).toBe(roundingRule);
     }
   });
 
   it('rejects an unknown rounding rule', () => {
-    expect(() =>
-      createRemoteSystemConfigSchema.parse({ ...valid, roundingRule: 'bankers_15m' }),
-    ).toThrow(ZodError);
+    expect(() => createTrackerSchema.parse({ ...valid, roundingRule: 'bankers_15m' })).toThrow(
+      ZodError,
+    );
+  });
+
+  it('exports standalone enums used by adapters', () => {
+    expect(trackerSystemTypeSchema.parse('openproject')).toBe('openproject');
+    expect(trackerExecutionModeSchema.parse('server')).toBe('server');
+    expect(trackerRoundingRuleSchema.parse('up_15m')).toBe('up_15m');
   });
 });

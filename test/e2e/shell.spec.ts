@@ -36,7 +36,7 @@ describeShell('authenticated shell navigation', async () => {
     const page = await loginAs('shell@example.com');
     const nav = page.locator('[data-testid="app-sidebar"]');
     expect(await nav.locator('a[href="/"]').isVisible()).toBe(true);
-    expect(await nav.locator('a[href="/clients"]').isVisible()).toBe(true);
+    expect(await nav.locator('a[href="/trackers"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/projects"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/tasks"]').count()).toBe(0);
     expect(await nav.locator('a[href="/reports"]').isVisible()).toBe(true);

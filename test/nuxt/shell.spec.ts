@@ -18,7 +18,7 @@ const sidebarStub = {
   template:
     '<nav aria-label="Main navigation" data-testid="app-sidebar">' +
     '<a data-testid="nav-link-timer" aria-current="page" href="/">Timer</a>' +
-    '<a data-testid="nav-link-clients" href="/clients">Clients</a>' +
+    '<a data-testid="nav-link-trackers" href="/trackers">Trackers</a>' +
     '<a data-testid="nav-link-projects" href="/projects">Projects</a>' +
     '<a data-testid="nav-link-reports" href="/reports">Reports</a>' +
     '<a data-testid="nav-link-settings" href="/settings">Settings</a>' +
@@ -105,9 +105,10 @@ describe('REQ-065: sidebar nav skeleton', () => {
     const links = wrapper.findAll('a');
     const hrefs = links.map((l) => l.attributes('href'));
     expect(hrefs).toContain('/');
-    expect(hrefs).toContain('/clients');
+    expect(hrefs).toContain('/trackers');
     expect(hrefs).toContain('/projects');
     expect(hrefs).not.toContain('/tasks');
+    expect(hrefs).not.toContain('/clients');
     expect(hrefs).toContain('/reports');
     expect(hrefs).toContain('/settings');
   });

@@ -1,8 +1,5 @@
 import { expect, it } from 'vitest';
 import { createDatabaseClient } from '../../server/db/client';
-import { users } from '../../server/db/schema/users';
-import { clients } from '../../server/db/schema/clients';
-import { projects } from '../../server/db/schema/projects';
 import { requireDocker } from './support/guards';
 import { provisionEmptyDatabase } from './support/database';
 import { readFileSync, readdirSync } from 'node:fs';
@@ -14,17 +11,20 @@ const describeDb = requireDocker();
  * Applies every migration SQL file up to (but not including) 0014, seeds a
  * representative pre-change dataset, then applies 0014 and asserts the
  * fan-out preserved every reference inline.
+ *
+ * Uses raw SQL against the historical pre-0014/pre-0015 schema (clients +
+ * remote_system_configs + remote_issue_refs), not the current Drizzle models.
  */
 describeDb('per-day remote issue refs migration', () => {
   it('fans refs onto tasks, rebuilds indexes, drops remote_issue_refs, keeps exports', async () => {
     const dbUrl = await provisionEmptyDatabase();
-    const { db, sql } = createDatabaseClient(dbUrl, { max: 5 });
+    const { sql } = createDatabaseClient(dbUrl, { max: 5 });
 
     try {
       // Apply migrations 0000..0013 only (pre-change schema still has remote_issue_refs).
       const migrationsDir = join(process.cwd(), 'server', 'db', 'migrations');
       const files = readdirSync(migrationsDir)
-        .filter((f) => f.endsWith('.sql') && !f.startsWith('0014_'))
+        .filter((f) => f.endsWith('.sql') && !f.startsWith('0014_') && !f.startsWith('0015_'))
         .sort();
       for (const file of files) {
         const content = readFileSync(join(migrationsDir, file), 'utf8');
@@ -34,22 +34,25 @@ describeDb('per-day remote issue refs migration', () => {
         }
       }
 
-      const [user] = await db
-        .insert(users)
-        .values({ email: 'migrate@example.com', passwordHash: 'hash' })
-        .returning();
+      const [user] = await sql<{ id: string }[]>`
+        INSERT INTO "users" ("email", "passwordHash")
+        VALUES ('migrate@example.com', 'hash')
+        RETURNING id
+      `;
       if (!user) throw new Error('user');
 
-      const [client] = await db
-        .insert(clients)
-        .values({ userId: user.id, name: 'Client' })
-        .returning();
+      const [client] = await sql<{ id: string }[]>`
+        INSERT INTO "clients" ("userId", "name")
+        VALUES (${user.id}, 'Client')
+        RETURNING id
+      `;
       if (!client) throw new Error('client');
 
-      const [project] = await db
-        .insert(projects)
-        .values({ userId: user.id, clientId: client.id, name: 'Project' })
-        .returning();
+      const [project] = await sql<{ id: string }[]>`
+        INSERT INTO "projects" ("userId", "clientId", "name")
+        VALUES (${user.id}, ${client.id}, 'Project')
+        RETURNING id
+      `;
       if (!project) throw new Error('project');
 
       const [config] = await sql<{ id: string }[]>`
@@ -106,8 +109,7 @@ describeDb('per-day remote issue refs migration', () => {
       const taskCountBefore = await sql<{ c: string }[]>`SELECT count(*)::text AS c FROM tasks`;
       expect(Number(taskCountBefore[0]!.c)).toBe(3);
 
-      // Apply migration 0014 via the real migrator (from empty-ish journal state).
-      // The journal table may not exist yet if we applied SQL manually; use raw 0014.
+      // Apply migration 0014 via raw SQL.
       const migration14 = readFileSync(join(migrationsDir, '0014_loving_clea.sql'), 'utf8');
       for (const statement of migration14.split('--> statement-breakpoint')) {
         const trimmed = statement.trim();
@@ -125,7 +127,7 @@ describeDb('per-day remote issue refs migration', () => {
       const taskCountAfter = await sql<{ c: string }[]>`SELECT count(*)::text AS c FROM tasks`;
       expect(Number(taskCountAfter[0]!.c)).toBe(3);
 
-      // Linked task carries the reference inline
+      // Linked task carries the reference inline (column still remoteSystemConfigId pre-0015)
       const linkedAfter = await sql<
         {
           remoteIssueId: string | null;

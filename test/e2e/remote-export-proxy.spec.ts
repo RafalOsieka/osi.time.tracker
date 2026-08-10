@@ -27,29 +27,27 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string): Promise<{ id: string }> {
-  const res = await fetch(url('/api/clients'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
-  });
-  return res.json();
-}
-
-async function createProxiedConfig(
+async function createTracker(
   jar: CookieJar,
   token: string,
-  clientId: string,
-  baseUrl: string,
-): Promise<{ id: string }> {
-  const res = await fetch(url(`/api/clients/${clientId}/remote-config`), {
-    method: 'PUT',
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
+    method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify({
+      name,
       systemType: 'openproject',
-      baseUrl,
-      executionMode: 'server',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
       roundingRule: 'none',
+      ...overrides,
     }),
   });
   return res.json();
@@ -132,8 +130,10 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
 
   it('forwards account, time-log, and create operations without echoing secrets', async () => {
     const user = await loginAs('exportproxy@example.com', 'secret');
-    const client = await createClient(user.jar, user.token, 'Export Proxy Client');
-    const config = await createProxiedConfig(user.jar, user.token, client.id, tracker.baseUrl);
+    const config = await createTracker(user.jar, user.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
     const secret = 'good-secret';
 
     const accountRes = await fetch(url('/api/remote/account'), {
@@ -144,7 +144,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         cookie: user.jar.header(),
         [REMOTE_SECRET_HEADER]: secret,
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id }),
+      body: JSON.stringify({ trackerId: config.id }),
     });
     expect(accountRes.status).toBe(200);
     const accountBody = await accountRes.json();
@@ -159,7 +159,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({
-        remoteSystemConfigId: config.id,
+        trackerId: config.id,
         spentOn: '2026-03-15',
         workPackageIds: ['42'],
         userId: '7',
@@ -179,7 +179,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         [REMOTE_SECRET_HEADER]: secret,
       },
       body: JSON.stringify({
-        remoteSystemConfigId: config.id,
+        trackerId: config.id,
         remoteIssueId: '42',
         spentOn: '2026-03-15',
         durationSeconds: 1800,
@@ -198,8 +198,10 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
 
   it('requires auth and secret, and rejects unknown configs', async () => {
     const user = await loginAs('exportproxy@example.com', 'secret');
-    const client = await createClient(user.jar, user.token, 'Export Proxy Guard Client');
-    const config = await createProxiedConfig(user.jar, user.token, client.id, tracker.baseUrl);
+    const config = await createTracker(user.jar, user.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
 
     // Unauthenticated with a valid CSRF pair (no session) must be 401, not CSRF 403.
     const anonJar = new CookieJar();
@@ -211,7 +213,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         'csrf-token': anonToken,
         cookie: anonJar.header(),
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id }),
+      body: JSON.stringify({ trackerId: config.id }),
     });
     expect(anon.status).toBe(401);
 
@@ -222,7 +224,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         'csrf-token': user.token,
         cookie: user.jar.header(),
       },
-      body: JSON.stringify({ remoteSystemConfigId: config.id }),
+      body: JSON.stringify({ trackerId: config.id }),
     });
     expect(missingSecret.status).toBe(422);
 
@@ -234,7 +236,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
         cookie: user.jar.header(),
         [REMOTE_SECRET_HEADER]: 'good-secret',
       },
-      body: JSON.stringify({ remoteSystemConfigId: UNKNOWN_ID }),
+      body: JSON.stringify({ trackerId: UNKNOWN_ID }),
     });
     expect(unknown.status).toBe(404);
   });

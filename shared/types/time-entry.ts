@@ -64,7 +64,6 @@ export interface TimeEntryDto {
   taskName: string | null;
   projectId: string | null;
   projectName: string | null;
-  clientName: string | null;
   startedAt: string;
   stoppedAt: string | null;
   remoteIssueRef?: RemoteIssueRefDto;
@@ -122,8 +121,9 @@ export const reassignTimeEntriesSchema = z
       .min(1, { error: 'error.remoteIssueIdRequired' })
       .nullish(),
     /**
-     * Cached issue title used when creating a newly linked target task.
-     * Required when `remoteIssueId` is a non-null value.
+     * Cached issue title from the client search result, used when creating a
+     * newly linked target task. Required when `remoteIssueId` is a non-null
+     * value. Tracker provenance is always derived server-side.
      */
     cachedTitle: z
       .string({ error: 'error.remoteIssueTitleRequired' })

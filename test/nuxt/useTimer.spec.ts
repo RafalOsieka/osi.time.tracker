@@ -71,7 +71,6 @@ describe('useTimer', () => {
       taskName: null,
       projectId: null,
       projectName: null,
-      clientName: null,
       startedAt,
       stoppedAt: null,
     });
@@ -108,7 +107,6 @@ describe('useTimer', () => {
       taskName: null,
       projectId: null,
       projectName: null,
-      clientName: null,
       startedAt,
       stoppedAt: null,
     });
@@ -134,7 +132,6 @@ describe('useTimer', () => {
       taskName: null,
       projectId: null,
       projectName: null,
-      clientName: null,
       startedAt,
       stoppedAt: null,
     });
@@ -148,7 +145,6 @@ describe('useTimer', () => {
       taskName: null,
       projectId: null,
       projectName: null,
-      clientName: null,
       startedAt,
       stoppedAt: new Date().toISOString(),
     });

@@ -3,8 +3,8 @@ import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import { extractRemoteErrorKey } from '../utils/remote/extract-remote-error-key';
 import type { RemoteAccount } from '../../shared/types/remote-account';
 import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
-import { useRemoteConfigSecret } from './useRemoteConfigSecret';
+import type { TrackerDto } from '../../shared/types/tracker';
+import { useTrackerSecret } from './useTrackerSecret';
 
 /**
  * Feature composable for browser-orchestrated remote sync: current account,
@@ -14,8 +14,8 @@ import { useRemoteConfigSecret } from './useRemoteConfigSecret';
  * provider quirks to the adapter, which behaves identically regardless of
  * execution mode.
  */
-export function useRemoteSyncClient(config: RemoteSystemConfigDto) {
-  const { get: getSecret } = useRemoteConfigSecret();
+export function useRemoteSyncClient(config: TrackerDto) {
+  const { get: getSecret } = useTrackerSecret();
 
   const accountCache = ref<RemoteAccount | null>(null);
   const logsCache = new Map<string, RemoteTimeLogDto[]>();

@@ -8,17 +8,16 @@ import type {
   RemoteSyncExportProvenanceDto,
 } from '../../../shared/types/remote-sync-day';
 import type {
-  RemoteExecutionMode,
-  RemoteRoundingRule,
-  RemoteSystemType,
-} from '../../../shared/types/remote-system-config';
+  TrackerExecutionMode,
+  TrackerRoundingRule,
+  TrackerSystemType,
+} from '../../../shared/types/tracker';
 import { db } from '../../db/index';
 import {
   timeEntries,
   tasks,
   projects,
-  clients,
-  remoteSystemConfigs,
+  trackers,
   users,
   remoteExports,
   remoteExportEntries,
@@ -29,13 +28,11 @@ import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
- * Returns the authenticated user's day-review aggregate (REQ-115/120/122):
+ * Returns the authenticated user's day-review aggregate (REQ-115):
  * one row per Task with entries that day, carrying completed entry details,
  * prior export provenance, the summed unrounded duration, the resolvable
- * Client configuration surface, and the remote issue reference when present,
- * plus the untitled-entries total. The day boundary is computed server-side
- * in the user's configured timezone, mirroring the Timer view's rule. Never
- * includes credential material.
+ * Tracker configuration surface, and the remote issue reference when present,
+ * plus the untitled-entries total. Never includes credential material.
  */
 export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const { user } = await requireAuth(event);
@@ -69,15 +66,15 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       taskName: tasks.name,
       projectId: tasks.projectId,
       projectName: projects.name,
-      clientId: projects.clientId,
-      clientName: clients.name,
+      trackerId: projects.trackerId,
+      trackerName: trackers.name,
       startedAt: timeEntries.startedAt,
       stoppedAt: timeEntries.stoppedAt,
     })
     .from(timeEntries)
     .leftJoin(tasks, eq(tasks.id, timeEntries.taskId))
     .leftJoin(projects, eq(projects.id, tasks.projectId))
-    .leftJoin(clients, eq(clients.id, projects.clientId))
+    .leftJoin(trackers, eq(trackers.id, projects.trackerId))
     .where(
       and(
         eq(timeEntries.userId, user.id),
@@ -86,32 +83,32 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       ),
     );
 
-  const clientIds = [...new Set(rows.map((r) => r.clientId).filter((id): id is string => !!id))];
-  const configsByClientId = new Map<
+  const trackerIds = [...new Set(rows.map((r) => r.trackerId).filter((id): id is string => !!id))];
+  const configsByTrackerId = new Map<
     string,
     {
       id: string;
-      systemType: RemoteSystemType;
+      systemType: TrackerSystemType;
       baseUrl: string;
-      executionMode: RemoteExecutionMode;
-      roundingRule: RemoteRoundingRule;
+      executionMode: TrackerExecutionMode;
+      roundingRule: TrackerRoundingRule;
       requiredFieldDefaults: Record<string, string>;
     }
   >();
-  if (clientIds.length > 0) {
-    const configRows = await db
+  if (trackerIds.length > 0) {
+    const trackerRows = await db
       .select()
-      .from(remoteSystemConfigs)
-      .where(and(eq(remoteSystemConfigs.userId, user.id), isNull(remoteSystemConfigs.deletedAt)));
-    for (const config of configRows) {
-      if (config.clientId && clientIds.includes(config.clientId)) {
-        configsByClientId.set(config.clientId, {
-          id: config.id,
-          systemType: config.systemType,
-          baseUrl: config.baseUrl,
-          executionMode: config.executionMode,
-          roundingRule: config.roundingRule,
-          requiredFieldDefaults: config.requiredFieldDefaults,
+      .from(trackers)
+      .where(and(eq(trackers.userId, user.id), isNull(trackers.deletedAt)));
+    for (const tracker of trackerRows) {
+      if (trackerIds.includes(tracker.id)) {
+        configsByTrackerId.set(tracker.id, {
+          id: tracker.id,
+          systemType: tracker.systemType,
+          baseUrl: tracker.baseUrl,
+          executionMode: tracker.executionMode,
+          roundingRule: tracker.roundingRule,
+          requiredFieldDefaults: tracker.requiredFieldDefaults,
         });
       }
     }
@@ -199,8 +196,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       taskId: string;
       taskName: string;
       projectName: string | null;
-      clientName: string | null;
-      clientId: string | null;
+      trackerName: string | null;
+      trackerId: string | null;
       totalSeconds: number;
       entries: RemoteSyncDayEntryDto[];
     }
@@ -219,8 +216,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
         taskId: row.taskId,
         taskName: row.taskName ?? '',
         projectName: row.projectName ?? null,
-        clientName: row.clientName ?? null,
-        clientId: row.clientId ?? null,
+        trackerName: row.trackerName ?? null,
+        trackerId: row.trackerId ?? null,
         totalSeconds: 0,
         entries: [],
       };
@@ -241,7 +238,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   }
 
   const dayRows = Array.from(rowsByTaskId.values()).map((entry) => {
-    const config = entry.clientId ? (configsByClientId.get(entry.clientId) ?? null) : null;
+    const config = entry.trackerId ? (configsByTrackerId.get(entry.trackerId) ?? null) : null;
     const ref = refs.get(entry.taskId);
     const exportsForTask = exportsByTaskId.get(entry.taskId) ?? [];
     exportsForTask.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
@@ -250,7 +247,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       taskId: entry.taskId,
       taskName: entry.taskName,
       projectName: entry.projectName,
-      clientName: entry.clientName,
+      trackerName: entry.trackerName,
       totalSeconds: entry.totalSeconds,
       config,
       issueRef: ref ? { remoteIssueId: ref.remoteIssueId, cachedTitle: ref.cachedTitle } : null,

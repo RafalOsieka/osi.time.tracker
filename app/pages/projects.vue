@@ -10,23 +10,23 @@ const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
 
 const {
-  data: clientsData,
-  pending: clientsPending,
-  refresh: fetchClientOptions,
-} = useAsyncData('clients-for-projects', () => $fetch<ClientDto[]>('/api/clients'), {
+  data: trackersData,
+  pending: trackersPending,
+  refresh: fetchTrackerOptions,
+} = useAsyncData('trackers-for-projects', () => $fetch<TrackerDto[]>('/api/trackers'), {
   server: false,
   immediate: false,
 });
-const extraClientOptions = ref<ClientDto[]>([]);
-const clientOptions = computed(() => {
-  const active = clientsData.value ?? [];
-  const missing = extraClientOptions.value.filter(
-    (extra) => !active.some((c) => c.id === extra.id),
+const extraTrackerOptions = ref<{ id: string; name: string }[]>([]);
+const trackerOptions = computed(() => {
+  const active = trackersData.value ?? [];
+  const missing = extraTrackerOptions.value.filter(
+    (extra) => !active.some((tracker) => tracker.id === extra.id),
   );
   return [...active, ...missing];
 });
 
-const clientFilter = ref<string | undefined>(undefined);
+const trackerFilter = ref<string | undefined>(undefined);
 
 const {
   data: projectsData,
@@ -36,48 +36,56 @@ const {
   'projects',
   () =>
     $fetch<ProjectDto[]>('/api/projects', {
-      query: clientFilter.value ? { clientId: clientFilter.value } : {},
+      query: trackerFilter.value ? { trackerId: trackerFilter.value } : {},
     }),
-  { server: false, immediate: false, watch: [clientFilter] },
+  { server: false, immediate: false, watch: [trackerFilter] },
 );
 onMounted(() => {
-  void fetchClientOptions();
+  void fetchTrackerOptions();
   void fetchProjects();
 });
 
 const projects = computed(() => projectsData.value ?? []);
 const dialogOpen = ref(false);
 const editingProject = ref<ProjectDto | null>(null);
-/** UI allows empty client before submit; schema requires uuid on save. */
+/** UI uses undefined for empty/local; API null is mapped at open/submit boundaries. */
 type ProjectFormState = {
   name: string;
-  clientId?: string;
+  trackerId?: string;
 };
 const state = reactive<ProjectFormState>({
   name: '',
-  clientId: undefined,
+  trackerId: undefined,
 });
 const nameServerError = ref('');
-const clientServerError = ref('');
+const trackerServerError = ref('');
 const saving = ref(false);
 
 function openCreate() {
   editingProject.value = null;
   state.name = '';
-  state.clientId = clientFilter.value;
+  state.trackerId = trackerFilter.value === 'local' ? undefined : trackerFilter.value;
   nameServerError.value = '';
-  clientServerError.value = '';
+  trackerServerError.value = '';
   dialogOpen.value = true;
 }
 
 function openEdit(project: ProjectDto) {
   editingProject.value = project;
   state.name = project.name;
-  state.clientId = project.clientId;
+  state.trackerId = project.trackerId ?? undefined;
   nameServerError.value = '';
-  clientServerError.value = '';
-  if (!clientOptions.value.some((c) => c.id === project.clientId)) {
-    extraClientOptions.value = [{ id: project.clientId, name: project.clientName, createdAt: '' }];
+  trackerServerError.value = '';
+  if (
+    project.trackerId &&
+    !trackerOptions.value.some((tracker) => tracker.id === project.trackerId)
+  ) {
+    extraTrackerOptions.value = [
+      {
+        id: project.trackerId,
+        name: project.trackerName ?? project.trackerId,
+      },
+    ];
   }
   dialogOpen.value = true;
 }
@@ -90,12 +98,25 @@ defineExpose({ openEdit });
 
 async function onSave(event: FormSubmitEvent<CreateProjectDto>) {
   nameServerError.value = '';
-  clientServerError.value = '';
+  trackerServerError.value = '';
+
+  const nextTrackerId = event.data.trackerId ?? null;
+  const previousTrackerId = editingProject.value?.trackerId ?? null;
+  if (editingProject.value && previousTrackerId && nextTrackerId !== previousTrackerId) {
+    const accepted = await confirm({
+      title: t('projects.detachConfirmHeader'),
+      description: t('projects.detachConfirmMessage'),
+      confirmLabel: t('projects.detachConfirmAccept'),
+      cancelLabel: t('projects.detachConfirmReject'),
+    });
+    if (!accepted) return;
+  }
+
   saving.value = true;
   try {
     const payload: CreateProjectDto = {
       name: event.data.name,
-      clientId: event.data.clientId,
+      trackerId: nextTrackerId,
     };
     if (editingProject.value) {
       const updated = await $csrfFetch<ProjectDto>(`/api/projects/${editingProject.value.id}`, {
@@ -127,8 +148,8 @@ async function onSave(event: FormSubmitEvent<CreateProjectDto>) {
       key === 'error.projectNameTooLong'
     ) {
       nameServerError.value = t(key);
-    } else if (key === 'error.projectClientRequired') {
-      clientServerError.value = t(key);
+    } else if (key === 'error.projectTrackerInvalid') {
+      trackerServerError.value = t(key);
     } else {
       toast.error(t(key));
     }
@@ -162,9 +183,9 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     header: t('projects.columnName'),
   },
   {
-    id: 'client',
-    header: t('projects.columnClient'),
-    cell: ({ row }) => row.original.clientName,
+    id: 'tracker',
+    header: t('projects.columnTracker'),
+    cell: ({ row }) => row.original.trackerName ?? t('projects.localTrackerLabel'),
   },
   {
     accessorKey: 'createdAt',
@@ -185,25 +206,30 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
       }),
   },
 ]);
+
+const filterItems = computed(() => [
+  { id: 'local', name: t('projects.localTrackerLabel') },
+  ...trackerOptions.value,
+]);
 </script>
 
 <template>
   <div data-testid="projects-page" class="space-y-4">
     <div class="flex items-center gap-2">
-      <label for="project-client-filter" class="text-sm">
-        {{ t('projects.clientFilterLabel') }}
+      <label for="project-tracker-filter" class="text-sm">
+        {{ t('projects.trackerFilterLabel') }}
       </label>
       <USelect
-        id="project-client-filter"
-        v-model="clientFilter"
-        :items="clientOptions"
+        id="project-tracker-filter"
+        v-model="trackerFilter"
+        :items="filterItems"
         value-key="id"
         label-key="name"
-        :placeholder="t('projects.clientFilterAll')"
-        :loading="clientsPending"
+        :placeholder="t('projects.trackerFilterAll')"
+        :loading="trackersPending"
         clearable
         class="min-w-48"
-        data-testid="project-client-filter"
+        data-testid="project-tracker-filter"
       />
     </div>
 
@@ -264,23 +290,24 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
             </UFormField>
 
             <UFormField
-              :label="t('projects.clientLabel')"
-              name="clientId"
-              :error="clientServerError || undefined"
+              :label="t('projects.trackerLabel')"
+              name="trackerId"
+              :error="trackerServerError || undefined"
             >
               <USelect
-                id="project-client"
-                v-model="state.clientId"
-                :items="clientOptions"
+                id="project-tracker"
+                v-model="state.trackerId"
+                :items="trackerOptions"
                 value-key="id"
                 label-key="name"
-                :placeholder="t('projects.clientPlaceholder')"
+                :placeholder="t('projects.trackerPlaceholder')"
+                clearable
                 class="w-full"
-                data-testid="project-client-select"
+                data-testid="project-tracker-select"
               />
-              <template v-if="clientServerError" #error>
-                <span id="project-client-error" data-testid="project-client-error" role="alert">
-                  {{ clientServerError }}
+              <template v-if="trackerServerError" #error>
+                <span id="project-tracker-error" data-testid="project-tracker-error" role="alert">
+                  {{ trackerServerError }}
                 </span>
               </template>
             </UFormField>

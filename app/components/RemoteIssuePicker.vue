@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 import type {
   RemoteIssueRefDto,
   RemoteIssueSearchMode,
@@ -9,7 +9,7 @@ import type {
 import { useRemoteIssueSearch } from '~/composables/useRemoteIssueSearch';
 
 const props = defineProps<{
-  config: RemoteSystemConfigDto;
+  config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
 }>();
 

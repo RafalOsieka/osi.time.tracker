@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useRemoteConfigSecret } from '../../app/composables/useRemoteConfigSecret';
+import { useTrackerSecret } from '../../app/composables/useTrackerSecret';
 
 /**
  * Node's own global `localStorage` (added in recent Node versions) is a
@@ -21,40 +21,40 @@ function installFakeLocalStorage() {
   });
 }
 
-describe('useRemoteConfigSecret', () => {
+describe('useTrackerSecret', () => {
   beforeEach(() => {
     installFakeLocalStorage();
   });
 
-  it('persists a secret per config id and retrieves it later (simulating reload)', () => {
-    const { get, set } = useRemoteConfigSecret();
+  it('persists a secret per tracker id and retrieves it later (simulating reload)', () => {
+    const { get, set } = useTrackerSecret();
 
-    set('config-a', 'secret-a');
-    set('config-b', 'secret-b');
+    set('tracker-a', 'secret-a');
+    set('tracker-b', 'secret-b');
 
-    expect(get('config-a')).toBe('secret-a');
-    expect(get('config-b')).toBe('secret-b');
-    expect(window.localStorage.getItem('rsc:config-a')).toBe('secret-a');
+    expect(get('tracker-a')).toBe('secret-a');
+    expect(get('tracker-b')).toBe('secret-b');
+    expect(window.localStorage.getItem('rsc:tracker-a')).toBe('secret-a');
   });
 
-  it('returns null for a config id with no stored secret', () => {
-    const { get } = useRemoteConfigSecret();
+  it('returns null for a tracker id with no stored secret', () => {
+    const { get } = useTrackerSecret();
 
     expect(get('unknown')).toBeNull();
   });
 
   it('clears the secret on demand', () => {
-    const { get, set, clear } = useRemoteConfigSecret();
+    const { get, set, clear } = useTrackerSecret();
 
-    set('config-a', 'secret-a');
-    clear('config-a');
+    set('tracker-a', 'secret-a');
+    clear('tracker-a');
 
-    expect(get('config-a')).toBeNull();
+    expect(get('tracker-a')).toBeNull();
   });
 
   it('never includes the secret in an outgoing request body shape', () => {
-    const { set } = useRemoteConfigSecret();
-    set('config-a', 'secret-a');
+    const { set } = useTrackerSecret();
+    set('tracker-a', 'secret-a');
 
     const outgoingBody = {
       systemType: 'redmine',

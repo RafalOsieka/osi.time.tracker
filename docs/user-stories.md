@@ -4,6 +4,8 @@ This document lists the 🔴 MVP user stories (see `docs/wbs.md`) in the order t
 
 The domain model is **entry-first** (see `docs/vision.md`, "Entry-First Semantics"): the user creates time entries; Tasks are auto-created/auto-matched from entry titles and have no dedicated management page.
 
+The workspace hierarchy is **Tracker → Project → Task**, where a Project may be local (`trackerId = null`) or attached to one Tracker. There is no Client entity.
+
 Conventions that apply to every story:
 
 - All data is strictly scoped to the authenticated user; cross-user access is impossible (WBS 8.7).
@@ -13,30 +15,32 @@ Conventions that apply to every story:
 
 ---
 
-## 1. Authenticated app shell & Client management ✅ Delivered
+## 1. Authenticated app shell & Tracker management ✅ Delivered
 
-> **As a user, I want an authenticated app shell and to create, edit, delete, and list my Clients, so I can organize my work by the companies I work for.** (WBS 3.1)
+> **As a user, I want an authenticated app shell and to create, edit, delete, and list my Trackers, so I can organize remote systems I push time to.** (WBS 3.1; Clients retired)
 
 **Acceptance criteria**
 
-- After logging in, I see a persistent authenticated app shell with navigation.
-- I can create a Client with a name.
-- I can view a list of only my own Clients.
-- I can edit and delete a Client.
-- Another user can never see or access my Clients.
+- After logging in, I see a persistent authenticated app shell with navigation (Trackers, Projects, Timer, …).
+- I can create a Tracker with a name, remote system type, base URL, execution mode, and rounding rule.
+- I can view a list of only my own Trackers.
+- I can edit and delete a Tracker.
+- For client-side execution mode, API secrets stay in the browser only.
+- Another user can never see or access my Trackers.
 
 ---
 
 ## 2. Project management ✅ Delivered
 
-> **As a user, I want to create, edit, delete, and list Projects under a Client, so I can group related bodies of work.** (WBS 3.2)
+> **As a user, I want to create, edit, delete, and list Projects with an optional Tracker parent, so I can group related bodies of work.** (WBS 3.2)
 
 **Acceptance criteria**
 
-- I can create a Project, choosing which of my Clients it belongs to.
-- I can list Projects, filterable by Client.
-- I can edit and delete a Project.
-- I cannot assign a Project to a Client I don't own.
+- I can create a Project as local (no tracker) or attached to one of my active Trackers.
+- I can list Projects, filterable by Tracker (including a local-only filter).
+- I can edit and delete a Project; changing/clearing the tracker is confirmed when it affects remote eligibility.
+- I cannot assign a Project to a Tracker I don't own.
+- Soft-deleted trackers still surface their name on attached projects for display and edit seed.
 
 ---
 
@@ -71,9 +75,10 @@ Conventions that apply to every story:
 - I see my time entries listed per day (newest first), with a per-day total.
 - Entries of the same Task within a day are grouped into one row showing entry count and summed duration; the group expands to individual entries.
 - Untitled entries group into one "(no task)" bucket per day; typing a title into the bucket header bulk-assigns all of that day's untitled entries.
-- The group header is a mini task editor: renaming it renames the Task everywhere; a project selector assigns/changes the Task's project ("(no project)" is a visible state).
+- The group header is a mini task editor: renaming it renames the Task everywhere; a project selector assigns/changes the Task's project ("(no project)" is a visible state). Group context labels show the project name only (no client).
 - After any task rename or project assignment, Tasks colliding on `(name, project)` auto-merge; emptied Tasks are hard-deleted.
 - A continue (▶) action on a group/entry starts a new timer bound to the same Task.
+- Remote-issue linking controls appear only when the task's project has an active tracker.
 - The dedicated tasks page and per-user task numbers are removed.
 
 ---
@@ -107,11 +112,11 @@ Conventions that apply to every story:
 
 ## 8. Reporting & timesheets
 
-> **As a user, I want client/project summaries and weekly timesheets filtered by date range, so I can review where my time went.** (WBS 4.1, 4.3, 4.4)
+> **As a user, I want tracker/project summaries and weekly timesheets filtered by date range, so I can review where my time went.** (WBS 4.1, 4.3, 4.4)
 
 **Acceptance criteria**
 
-- I can see total hours grouped by Client and Project for a selected date range; project-less Tasks appear as an explicit "(no project)" row.
+- I can see total hours grouped by Tracker and Project for a selected date range; project-less Tasks and local projects appear as explicit rows.
 - I can see a weekly timesheet (hours per day across a week), honoring my week-start day.
 - I can filter all reports by an arbitrary start/end date.
 - Grouping and totals respect my timezone and week-start preferences.
@@ -119,29 +124,30 @@ Conventions that apply to every story:
 
 ---
 
-## 9. Remote system configuration & secure credentials ✅ Delivered
+## 9. Tracker configuration & secure credentials ✅ Delivered
 
-> **As a user, I want to configure a remote issue tracker per Client with an execution mode and rounding rule, with my credentials stored securely, so I can later link issues and push time.** (WBS 5.1–5.4)
+> **As a user, I want to configure each Tracker with an execution mode and rounding rule, with my credentials stored securely, so I can later link issues and push time.** (WBS 5.1–5.4; absorbed into tracker-management)
 
 **Acceptance criteria**
 
-- I can configure a RemoteSystemConfig on a Client: system type (redmine/openproject), base URL, API credentials, execution mode (backend/client), and rounding rule. The full config except the API secret is stored in the database.
-- For **client-side** configs (**the only MVP mode**), my credentials are entered and kept **only in my browser** and are never persisted to the server, while the rest of the config is still stored in the database.
-- (Post-MVP) For **backend-side** configs, my credentials are stored encrypted and never returned to the client in plaintext.
+- I can configure a Tracker: system type (redmine/openproject), base URL, API credentials, execution mode (backend/client), and rounding rule. The full config except the API secret is stored in the database.
+- For **client-side** trackers (**the only MVP mode**), my credentials are entered and kept **only in my browser** (keyed by tracker id) and are never persisted to the server, while the rest of the tracker is still stored in the database.
+- (Post-MVP) For **backend-side** trackers, my credentials are stored encrypted and never returned to the client in plaintext.
 - I can optionally set defaults for the remote system's **required fields** (e.g. Redmine activity), used to pre-fill the Remote Sync page.
-- I can edit and remove a Client's remote configuration.
+- I can edit and remove a Tracker.
 
 ---
 
 ## 10a. Adapters: browse, search & link remote issues ✅ Delivered
 
-> **As a user, I want to browse/search remote issues and link/unlink a Task to a remote issue, so my local work maps to the client's tracker.** (WBS 5.5–5.6, fetch side of 5.14–5.15)
+> **As a user, I want to browse/search remote issues and link/unlink a Task to a remote issue, so my local work maps to the project's tracker.** (WBS 5.5–5.6, fetch side of 5.14–5.15)
 
 **Acceptance criteria**
 
-- I can browse/search open issues from a Client's configured remote system (**OpenProject** for MVP; **Redmine** at the end of MVP), in **client-side** execution mode (backend-side is post-MVP).
-- I can link a remote issue to a Task from its group row in the Timer view (and inline on the Remote Sync page), storing the issue ID and cached title/URL (RemoteIssueRef).
+- I can browse/search open issues from a Project's active Tracker (**OpenProject** for MVP; **Redmine** at the end of MVP), in **client-side** execution mode (backend-side is post-MVP).
+- I can link a remote issue to a Task from its group row in the Timer view (and inline on the Remote Sync page), storing the issue ID and cached title/URL (RemoteIssueRef) via the project's tracker.
 - I can unlink a remote issue from a Task.
+- Linking is rejected for local projects or projects whose tracker is missing/soft-deleted.
 - A task merge where both Tasks hold a RemoteIssueRef is blocked (or requires an explicit choice).
 
 ---
@@ -152,30 +158,31 @@ Conventions that apply to every story:
 
 **Acceptance criteria**
 
-- I can open a remote-issue view listing issues from a configured Client's tracker.
+- I can open a remote-issue view listing issues from a configured Tracker.
 - Selecting an issue starts a timer with the Task and remote link pre-populated.
 
 ---
 
 ## 11a. Remote Sync: per-day review page ✅ Delivered
 
-> **As a user, I want a per-day Remote Sync page that shows all of a day's tasks with editable rounded times and required remote fields, so I can review a whole day's time before exporting it to the client's tracker.** (WBS 5.8, 5.9, 5.12)
+> **As a user, I want a per-day Remote Sync page that shows all of a day's tasks with editable rounded times and required remote fields, so I can review a whole day's time before exporting it to the project's tracker.** (WBS 5.8, 5.9, 5.12)
 
 **Acceptance criteria**
 
 - From the Timer view I can open a Remote Sync page for a specific day.
 - It lists **all** of that day's tasks (including a read-only "(no task)" bucket), each in an explicit state:
-  - **read-only** with a stated reason — no Project/Client, Client has no RemoteSystemConfig, unsupported system type, successful empty activity fetch, or retryable remote load failure;
+  - **read-only** with a stated reason — no Project, Project has no active Tracker, unsupported system type, successful empty activity fetch, or retryable remote load failure;
   - **read-only but linkable** — the task has no RemoteIssueRef; the link action is available inline and flips the row toward manageable;
   - **manageable** when prerequisites and activities are available.
+- Tracker surface on the day aggregate never includes credentials.
 - Each manageable task shows its **original duration**, **selected-entry total**, and an **editable export duration** pre-filled by applying the configured rounding rule once to the selected total. Eligible completed entries are selected by default. A value of **0** or an empty selection excludes the task from export.
-- I can set required remote fields (e.g. OpenProject activity) with options fetched from the remote system; previously finalized values take precedence over config defaults.
+- I can set required remote fields (e.g. OpenProject activity) with options fetched from the remote system; previously finalized values take precedence over tracker defaults.
 
 ---
 
 ## 11b. Remote Sync: user-controlled export ✅ Delivered
 
-> **As a user, I want to export selected local entries to the client's tracker as one remote log per task, with remote-log context and non-locking provenance, so I can push intentionally and correct local data later.** (WBS 5.10, 5.11, 5.13, 5.14)
+> **As a user, I want to export selected local entries to the project's tracker as one remote log per task, with remote-log context and non-locking provenance, so I can push intentionally and correct local data later.** (WBS 5.10, 5.11, 5.13, 5.14)
 
 **Acceptance criteria**
 

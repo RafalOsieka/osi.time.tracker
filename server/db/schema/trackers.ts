@@ -1,15 +1,14 @@
-import { pgTable, uuid, text, jsonb, timestamp, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
-import { clients } from './clients';
 import type {
-  RemoteSystemType,
-  RemoteExecutionMode,
-  RemoteRoundingRule,
-} from '../../../shared/types/remote-system-config';
+  TrackerSystemType,
+  TrackerExecutionMode,
+  TrackerRoundingRule,
+} from '../../../shared/types/tracker';
 
-export const remoteSystemConfigs = pgTable(
-  'remote_system_configs',
+export const trackers = pgTable(
+  'trackers',
   {
     id: uuid('id')
       .primaryKey()
@@ -17,13 +16,11 @@ export const remoteSystemConfigs = pgTable(
     userId: uuid('userId')
       .notNull()
       .references(() => users.id),
-    clientId: uuid('clientId')
-      .notNull()
-      .references(() => clients.id),
-    systemType: text('systemType').notNull().$type<RemoteSystemType>(),
+    name: text('name').notNull(),
+    systemType: text('systemType').notNull().$type<TrackerSystemType>(),
     baseUrl: text('baseUrl').notNull(),
-    executionMode: text('executionMode').notNull().$type<RemoteExecutionMode>(),
-    roundingRule: text('roundingRule').notNull().$type<RemoteRoundingRule>(),
+    executionMode: text('executionMode').notNull().$type<TrackerExecutionMode>(),
+    roundingRule: text('roundingRule').notNull().$type<TrackerRoundingRule>(),
     requiredFieldDefaults: jsonb('requiredFieldDefaults')
       .notNull()
       .default({})
@@ -33,8 +30,9 @@ export const remoteSystemConfigs = pgTable(
     deletedAt: timestamp('deletedAt', { withTimezone: true }),
   },
   (table) => [
-    uniqueIndex('remote_system_configs_clientId_unique')
-      .on(table.clientId)
+    uniqueIndex('trackers_userId_name_unique')
+      .on(table.userId, table.name)
       .where(sql`${table.deletedAt} IS NULL`),
+    index('trackers_userId_idx').on(table.userId),
   ],
 );

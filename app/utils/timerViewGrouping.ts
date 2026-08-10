@@ -12,7 +12,6 @@ export interface TimerViewGroup {
   taskName: string | null;
   projectId: string | null;
   projectName: string | null;
-  clientName: string | null;
   remoteIssueRef?: RemoteIssueRefDto;
   entries: TimeEntryDto[];
   totalSeconds: number;
@@ -72,7 +71,6 @@ export function groupTimeEntriesByDay(
         taskName: entry.taskName,
         projectId: entry.projectId,
         projectName: entry.projectName,
-        clientName: entry.clientName,
         remoteIssueRef: entry.remoteIssueRef,
         entries: [],
         totalSeconds: 0,

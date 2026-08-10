@@ -77,9 +77,9 @@ const stubs = {
   },
 };
 
-const openProjectConfig = {
-  id: 'config-1',
-  clientId: 'client-1',
+const openProjectTracker = {
+  id: 'tracker-1',
+  name: 'OpenProject',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
   executionMode: 'client' as const,
@@ -88,7 +88,7 @@ const openProjectConfig = {
   createdAt: '',
   updatedAt: '',
 };
-const redmineConfig = { ...openProjectConfig, systemType: 'redmine' as const };
+const redmineTracker = { ...openProjectTracker, systemType: 'redmine' as const };
 
 function testI18n() {
   return createI18n({
@@ -107,7 +107,6 @@ function group(key = 'task-1') {
     taskName: 'Build feature',
     projectId: 'project-gone',
     projectName: 'Archived project',
-    clientName: 'Acme',
     date: '2024-03-15',
     totalSeconds: 3600,
     entries: [
@@ -117,7 +116,6 @@ function group(key = 'task-1') {
         taskName: 'Build feature',
         projectId: 'project-gone',
         projectName: 'Archived project',
-        clientName: 'Acme',
         startedAt: '2024-03-15T09:00:00.000Z',
         stoppedAt: '2024-03-15T10:00:00.000Z',
       },
@@ -189,8 +187,7 @@ describe('TimerTaskGroup', () => {
         {
           id: 'project-2',
           name: 'Current project',
-          clientId: 'c',
-          clientName: 'Acme',
+          trackerId: 'c',
           createdAt: '',
         },
       ],
@@ -221,7 +218,7 @@ describe('TimerTaskGroup', () => {
     });
 
     const noProject = await mount({
-      group: { ...group(), projectId: null, projectName: null, clientName: null },
+      group: { ...group(), projectId: null, projectName: null, trackerName: null },
     });
     expect(
       (noProject.find('[data-testid="timer-group-project-task-1"]').element as HTMLInputElement)
@@ -256,8 +253,8 @@ describe('TimerTaskGroup', () => {
     expect(wrapper.find('[data-testid="timer-group-project-select-task-b"]').exists()).toBe(true);
   });
 
-  it('omits the remote-issue control entirely when there is no active configuration', async () => {
-    const wrapper = await mount({ remoteConfig: null });
+  it('omits the remote-issue control entirely when there is no active tracker', async () => {
+    const wrapper = await mount({ tracker: null });
     expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').exists()).toBe(
       false,
     );
@@ -266,8 +263,8 @@ describe('TimerTaskGroup', () => {
     );
   });
 
-  it('shows an unlinked status and an enabled picker when an OpenProject config exists but no reference', async () => {
-    const wrapper = await mount({ remoteConfig: openProjectConfig });
+  it('shows an unlinked status and an enabled picker when an OpenProject tracker exists but no reference', async () => {
+    const wrapper = await mount({ tracker: openProjectTracker });
     expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').text()).toBe(
       'timerView.remoteIssue.unlinked',
     );
@@ -278,14 +275,14 @@ describe('TimerTaskGroup', () => {
 
   it('renders a linked anchor with the reference URL and a tooltip', async () => {
     const wrapper = await mount({
-      remoteConfig: openProjectConfig,
+      tracker: openProjectTracker,
       group: {
         ...group(),
         remoteIssueRef: {
           id: 'ref-1',
           taskId: 'task-1',
           userId: 'user-1',
-          remoteSystemConfigId: 'config-1',
+          trackerId: 'tracker-1',
           remoteIssueId: '42',
           cachedTitle: 'Fix login bug',
           url: 'https://op.example.com/work_packages/42',
@@ -300,8 +297,8 @@ describe('TimerTaskGroup', () => {
     expect(link.attributes('title')).toContain('Fix login bug');
   });
 
-  it('shows an enabled picker for a Redmine configuration', async () => {
-    const wrapper = await mount({ remoteConfig: redmineConfig });
+  it('shows an enabled picker for a Redmine tracker', async () => {
+    const wrapper = await mount({ tracker: redmineTracker });
     expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').text()).toBe(
       'timerView.remoteIssue.unlinked',
     );
@@ -315,7 +312,7 @@ describe('TimerTaskGroup', () => {
 
   it('link, replace and unlink send the day entry ids to reassign and never call a task-global route', async () => {
     csrfFetchMock.mockResolvedValue([]);
-    const wrapper = await mount({ remoteConfig: openProjectConfig });
+    const wrapper = await mount({ tracker: openProjectTracker });
     expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
       true,
     );

@@ -33,7 +33,7 @@ import type { RemoteTrackerAdapter } from '../../../shared/types/remote-adapter'
  */
 export class ServerExecutionAdapter implements RemoteTrackerAdapter {
   constructor(
-    private readonly remoteSystemConfigId: string,
+    private readonly trackerId: string,
     private readonly secret: string | null,
   ) {}
 
@@ -42,7 +42,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
       ProxiedRemoteIssueSearchDto,
       ProxiedRemoteIssueSearchResponseDto
     >('/api/remote/search', {
-      remoteSystemConfigId: this.remoteSystemConfigId,
+      trackerId: this.trackerId,
       mode: 'title',
       query,
     });
@@ -54,7 +54,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
       ProxiedRemoteIssueSearchDto,
       ProxiedRemoteIssueSearchResponseDto
     >('/api/remote/search', {
-      remoteSystemConfigId: this.remoteSystemConfigId,
+      trackerId: this.trackerId,
       mode: 'id',
       query: remoteIssueId,
     });
@@ -66,7 +66,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
       ProxiedRemoteActivitiesDto,
       ProxiedRemoteActivitiesResponseDto
     >('/api/remote/activities', {
-      remoteSystemConfigId: this.remoteSystemConfigId,
+      trackerId: this.trackerId,
       remoteIssueId,
     });
     return response.options;
@@ -75,7 +75,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
   async getCurrentAccount(): Promise<RemoteAccount> {
     return this.post<ProxiedRemoteAccountDto, ProxiedRemoteAccountResponseDto>(
       '/api/remote/account',
-      { remoteSystemConfigId: this.remoteSystemConfigId },
+      { trackerId: this.trackerId },
     );
   }
 
@@ -87,7 +87,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
     const response = await this.post<ProxiedRemoteTimeLogsDto, ProxiedRemoteTimeLogsResponseDto>(
       '/api/remote/time-logs',
       {
-        remoteSystemConfigId: this.remoteSystemConfigId,
+        trackerId: this.trackerId,
         spentOn: input.spentOn,
         workPackageIds: input.workPackageIds,
         userId: input.userId,
@@ -105,7 +105,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
   }): Promise<{ remoteLogId: string }> {
     return this.post<ProxiedRemoteCreateTimeEntryDto, ProxiedRemoteCreateTimeEntryResponseDto>(
       '/api/remote/time-entries',
-      { remoteSystemConfigId: this.remoteSystemConfigId, ...input },
+      { trackerId: this.trackerId, ...input },
     );
   }
 

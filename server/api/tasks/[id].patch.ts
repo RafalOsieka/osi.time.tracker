@@ -3,7 +3,7 @@ import { ZodError } from 'zod';
 import { updateTaskSchema } from '../../../shared/types/task';
 import type { UpdateTaskDto, TaskDto } from '../../../shared/types/task';
 import { db } from '../../db/index';
-import { tasks, projects, clients, timeEntries } from '../../db/schema';
+import { tasks, projects, timeEntries } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
 import type { ApiMessage } from '../../types/api-message';
@@ -133,24 +133,15 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   }
 
   let projectName: string | null = null;
-  let clientName: string | null = null;
 
   if (updated.projectId) {
     const [project] = await db
-      .select({ name: projects.name, clientId: projects.clientId })
+      .select({ name: projects.name })
       .from(projects)
       .where(eq(projects.id, updated.projectId))
       .limit(1);
 
-    if (project) {
-      projectName = project.name;
-      const [client] = await db
-        .select({ name: clients.name })
-        .from(clients)
-        .where(eq(clients.id, project.clientId))
-        .limit(1);
-      clientName = client?.name ?? null;
-    }
+    projectName = project?.name ?? null;
   }
 
   const remoteIssueRef = await getRemoteIssueRefForTask(user.id, updated.id);
@@ -160,7 +151,6 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     name: updated.name,
     projectId: updated.projectId,
     projectName,
-    clientName,
     createdAt: updated.createdAt.toISOString(),
     remoteIssueRef: remoteIssueRef ?? undefined,
   };

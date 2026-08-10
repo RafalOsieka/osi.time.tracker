@@ -108,7 +108,7 @@ export interface RemoteExportTaskOutcomeDto {
 
 /** Proxied current-account resolution body. */
 export const proxiedRemoteAccountSchema = z.object({
-  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
+  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
 });
 
 export type ProxiedRemoteAccountDto = z.infer<typeof proxiedRemoteAccountSchema>;
@@ -120,7 +120,7 @@ export interface ProxiedRemoteAccountResponseDto {
 
 /** Proxied same-day time-log context body. */
 export const proxiedRemoteTimeLogsSchema = z.object({
-  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
+  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
   spentOn: isoDateSchema,
   workPackageIds: z
     .array(
@@ -140,7 +140,7 @@ export interface ProxiedRemoteTimeLogsResponseDto {
 
 /** Proxied create-time-entry body. */
 export const proxiedRemoteCreateTimeEntrySchema = z.object({
-  remoteSystemConfigId: z.uuid({ error: 'error.remoteConfigIdRequired' }),
+  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
   remoteIssueId: z
     .string({ error: 'error.remoteIssueIdRequired' })
     .min(1, { error: 'error.remoteIssueIdRequired' }),

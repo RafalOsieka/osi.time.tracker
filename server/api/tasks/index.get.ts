@@ -1,5 +1,5 @@
 import { db } from '../../db/index';
-import { tasks, projects, clients } from '../../db/schema';
+import { tasks, projects } from '../../db/schema';
 import { eq, isNull, asc, and, ilike } from 'drizzle-orm';
 import type { TaskDto } from '../../../shared/types/task';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
@@ -26,12 +26,10 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
       name: tasks.name,
       projectId: tasks.projectId,
       projectName: projects.name,
-      clientName: clients.name,
       createdAt: tasks.createdAt,
     })
     .from(tasks)
     .leftJoin(projects, eq(projects.id, tasks.projectId))
-    .leftJoin(clients, eq(clients.id, projects.clientId))
     .where(and(...conditions))
     .orderBy(asc(tasks.name));
 
@@ -45,7 +43,6 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     name: row.name,
     projectId: row.projectId,
     projectName: row.projectName ?? null,
-    clientName: row.clientName ?? null,
     createdAt: row.createdAt.toISOString(),
     remoteIssueRef: refs.get(row.id),
   }));

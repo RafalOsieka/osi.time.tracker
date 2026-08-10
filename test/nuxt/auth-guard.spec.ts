@@ -42,10 +42,10 @@ describe('auth.global middleware', () => {
 
   it('preserves a deep link through the login round-trip', () => {
     // 1. Unauthenticated deep link is stashed on the login redirect.
-    authGuard(route({ path: '/clients/5', fullPath: '/clients/5' }), from);
+    authGuard(route({ path: '/trackers/5', fullPath: '/trackers/5' }), from);
     expect(navigateToMock).toHaveBeenCalledWith({
       path: '/login',
-      query: { redirect: '/clients/5' },
+      query: { redirect: '/trackers/5' },
     });
 
     // 2. After authentication, hitting /login with that redirect returns to it.
@@ -54,12 +54,12 @@ describe('auth.global middleware', () => {
     authGuard(
       route({
         path: '/login',
-        fullPath: '/login?redirect=/clients/5',
-        query: { redirect: '/clients/5' },
+        fullPath: '/login?redirect=/trackers/5',
+        query: { redirect: '/trackers/5' },
       }),
       from,
     );
-    expect(navigateToMock).toHaveBeenCalledWith('/clients/5');
+    expect(navigateToMock).toHaveBeenCalledWith('/trackers/5');
   });
 
   it('redirects an authenticated user away from /login to / when no redirect is present', () => {
@@ -79,7 +79,7 @@ describe('auth.global middleware', () => {
 
   it('lets an authenticated user reach a private route untouched', () => {
     sessionState.loggedIn.value = true;
-    const result = authGuard(route({ path: '/clients', fullPath: '/clients' }), from);
+    const result = authGuard(route({ path: '/trackers', fullPath: '/trackers' }), from);
     expect(navigateToMock).not.toHaveBeenCalled();
     expect(result).toBeUndefined();
   });

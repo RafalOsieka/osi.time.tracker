@@ -3,11 +3,11 @@ import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapte
 import { OpenProjectAdapter } from '../../shared/remote/openproject/adapter';
 import { RedmineAdapter } from '../../shared/remote/redmine/adapter';
 import { ServerExecutionAdapter } from '../../app/utils/remote/server-execution-adapter';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 
-const baseConfig: RemoteSystemConfigDto = {
+const baseConfig: TrackerDto = {
   id: 'config-1',
-  clientId: 'client-1',
+  name: 'OpenProject',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',

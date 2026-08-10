@@ -24,20 +24,37 @@ async function loginAs(
   return { jar, token };
 }
 
-async function createClient(jar: CookieJar, token: string, name: string) {
-  const res = await fetch(url('/api/clients'), {
+async function createTracker(
+  jar: CookieJar,
+  token: string,
+  name: string,
+  overrides: Record<string, unknown> = {},
+): Promise<{ id: string; name: string }> {
+  const res = await fetch(url('/api/trackers'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({
+      name,
+      systemType: 'openproject',
+      baseUrl: `https://${
+        name
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '') || 'tracker'
+      }.example.com`,
+      executionMode: 'client',
+      roundingRule: 'none',
+      ...overrides,
+    }),
   });
   return res.json();
 }
 
-async function createProject(jar: CookieJar, token: string, name: string, clientId: string) {
+async function createProject(jar: CookieJar, token: string, name: string, trackerId: string) {
   const res = await fetch(url('/api/projects'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ name, clientId }),
+    body: JSON.stringify({ name, trackerId }),
   });
   return res.json();
 }
@@ -111,8 +128,8 @@ describeTimeEntries('time-entries API integration', async () => {
 
   it('4.6a starts a running entry with a title and project, and matches it via resolved task', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'TE Client ' + Date.now());
-    const project = await createProject(jar, token, 'TE Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'TE Client ' + Date.now());
+    const project = await createProject(jar, token, 'TE Project ' + Date.now(), tracker.id);
 
     const res = await startEntry(jar, token, { title: 'Working on it', projectId: project.id });
     expect(res.status).toBe(200);
@@ -120,7 +137,6 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(created.taskName).toBe('Working on it');
     expect(created.projectId).toBe(project.id);
     expect(created.projectName).toBe(project.name);
-    expect(created.clientName).toBe(client.name);
     expect(created.stoppedAt).toBeNull();
     expect(created.startedAt).toBeDefined();
 
@@ -238,8 +254,8 @@ describeTimeEntries('time-entries API integration', async () => {
 
   it('list filters by range, orders DESC, includes running entries and resolved names', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'List TE Client ' + Date.now());
-    const project = await createProject(jar, token, 'List TE Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'List TE Client ' + Date.now());
+    const project = await createProject(jar, token, 'List TE Project ' + Date.now(), tracker.id);
 
     const first = await (
       await startEntry(jar, token, { title: 'List Entry 1', projectId: project.id })
@@ -259,7 +275,6 @@ describeTimeEntries('time-entries API integration', async () => {
     const found1 = rows.find((r: { id: string }) => r.id === first.id);
     expect(found1.taskName).toBe('List Entry 1');
     expect(found1.projectName).toBe(project.name);
-    expect(found1.clientName).toBe(client.name);
 
     const foundRunning = rows.find((r: { id: string }) => r.id === second.id);
     expect(foundRunning.stoppedAt).toBeNull();
@@ -503,12 +518,12 @@ describeTimeEntries('time-entries API integration', async () => {
 
   it('patch title only keeps the entry current project scope (no silent unassign)', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'TE Title Only Client ' + Date.now());
+    const tracker = await createTracker(jar, token, 'TE Title Only Client ' + Date.now());
     const project = await createProject(
       jar,
       token,
       'TE Title Only Project ' + Date.now(),
-      client.id,
+      tracker.id,
     );
 
     const created = await (
@@ -525,8 +540,8 @@ describeTimeEntries('time-entries API integration', async () => {
 
   it('patch projectId: null moves the entry to the project-less scope', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'TE Clear Client ' + Date.now());
-    const project = await createProject(jar, token, 'TE Clear Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'TE Clear Client ' + Date.now());
+    const project = await createProject(jar, token, 'TE Clear Project ' + Date.now(), tracker.id);
     const title = 'Clear Scope Entry ' + Date.now();
 
     const created = await (await startEntry(jar, token, { title, projectId: project.id })).json();
@@ -593,8 +608,8 @@ describeTimeEntries('time-entries API integration', async () => {
 
   it('start bound to an explicit owned taskId binds that task', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'TE TaskId Client ' + Date.now());
-    const project = await createProject(jar, token, 'TE TaskId Project ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'TE TaskId Client ' + Date.now());
+    const project = await createProject(jar, token, 'TE TaskId Project ' + Date.now(), tracker.id);
     const seeded = await (
       await startEntry(jar, token, { title: 'Owned Task ' + Date.now(), projectId: project.id })
     ).json();
@@ -719,9 +734,9 @@ describeTimeEntries('time-entries API integration', async () => {
 
   it('reassign projectId-only change moves entries within a new project scope', async () => {
     const { jar, token } = await loginAs('talice@example.com', 'secret');
-    const client = await createClient(jar, token, 'Reassign Client ' + Date.now());
-    const projectA = await createProject(jar, token, 'Reassign A ' + Date.now(), client.id);
-    const projectB = await createProject(jar, token, 'Reassign B ' + Date.now(), client.id);
+    const tracker = await createTracker(jar, token, 'Reassign Client ' + Date.now());
+    const projectA = await createProject(jar, token, 'Reassign A ' + Date.now(), tracker.id);
+    const projectB = await createProject(jar, token, 'Reassign B ' + Date.now(), tracker.id);
     const title = 'Project Move Task ' + Date.now();
     const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
     const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();

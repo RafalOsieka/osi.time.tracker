@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { useRemoteDayLogs } from '../../app/composables/useRemoteDayLogs';
-import type { RemoteSystemConfigDto } from '../../shared/types/remote-system-config';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const fetchTimeLogsMock = vi.fn();
 const invalidateCachesMock = vi.fn();
@@ -16,9 +16,9 @@ vi.mock('../../app/composables/useRemoteSyncClient', () => ({
   mapRemoteSyncClientError: (_err: unknown, fallback: string) => fallback,
 }));
 
-const config: RemoteSystemConfigDto = {
+const config: TrackerDto = {
   id: 'cfg-1',
-  clientId: 'client-1',
+  name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
   executionMode: 'client',
