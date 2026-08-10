@@ -2,6 +2,7 @@
 import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
 import { extractMessageKey } from '~/utils/extractMessageKey';
+import type { LoginDto } from '../../shared/types/auth';
 
 definePageMeta({ layout: 'auth', public: true });
 
@@ -9,12 +10,12 @@ const { t } = useI18n();
 const { login } = useAuth();
 const route = useRoute();
 
-const state = reactive({ email: '', password: '' });
+const state = reactive<LoginDto>({ email: '', password: '' });
 const error = ref('');
 const pending = ref(false);
 const clientErrorKey = ref('');
 
-async function onSubmit(event: FormSubmitEvent<typeof state>) {
+async function onSubmit(event: FormSubmitEvent<LoginDto>) {
   error.value = '';
   clientErrorKey.value = '';
   pending.value = true;

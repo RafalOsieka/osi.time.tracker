@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { FormErrorEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
+import { buildTaskTitleMenuItems } from '~/utils/taskTitleMenu';
+import type { TimerBulkAssignFormDto } from '../../shared/types/time-entry';
 
 const props = defineProps<{
   visible: boolean;
@@ -19,9 +21,15 @@ const open = computed({
   set: (value: boolean) => emit('update:visible', value),
 });
 
-const state = reactive({
+/** UI allows empty optional project before submit; schema validates on save. */
+type BulkAssignFormState = {
+  title: string;
+  projectId?: string;
+};
+
+const state = reactive<BulkAssignFormState>({
   title: '',
-  projectId: undefined as string | undefined,
+  projectId: undefined,
 });
 const searchTerm = ref('');
 const suggestions = ref<TaskDto[]>([]);
@@ -48,11 +56,27 @@ watch(searchTerm, (query) => {
   void search(query ?? '');
 });
 
-function onSelectSuggestion(task: TaskDto) {
+function onSelectTask(task: TaskDto) {
   state.title = task.name;
   searchTerm.value = task.name;
   state.projectId = task.projectId ?? undefined;
 }
+
+function onSelectCreate(title: string) {
+  state.title = title;
+  searchTerm.value = title;
+}
+
+const titleMenuItems = computed(() =>
+  buildTaskTitleMenuItems({
+    suggestions: suggestions.value,
+    searchText: searchTerm.value ?? '',
+    noProjectLabel: t('timer.noTask'),
+    createOptionLabel: (typed) => t('timer.createOption', { title: typed }),
+    onSelectTask,
+    onSelectCreate,
+  }),
+);
 
 function close() {
   open.value = false;
@@ -68,9 +92,14 @@ async function onSave() {
   nameError.value = '';
   saving.value = true;
   try {
+    const body: TimerBulkAssignFormDto & { ids: string[] } = {
+      ids: props.ids,
+      title: trimmed,
+      projectId: state.projectId ?? null,
+    };
     await $csrfFetch('/api/time-entries/bulk-assign', {
       method: 'POST',
-      body: { ids: props.ids, title: trimmed, projectId: state.projectId ?? null },
+      body,
     });
     toast.success(
       t('timerView.bulkAssign.toastSuccessSummary'),
@@ -85,9 +114,6 @@ async function onSave() {
     saving.value = false;
   }
 }
-
-// Autocomplete mode wants a free-form string model; cast items so the prop types accept it.
-const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
 </script>
 
 <template>
@@ -108,26 +134,15 @@ const titleMenuItems = computed(() => suggestions.value as unknown as string[]);
             v-model="state.title"
             v-model:search-term="searchTerm"
             :items="titleMenuItems"
+            value-key="name"
+            label-key="label"
             mode="autocomplete"
             ignore-filter
             :placeholder="t('timerView.bulkAssign.namePlaceholder')"
             :aria-invalid="!!nameError || undefined"
             :aria-describedby="nameError ? 'bulk-assign-name-error' : undefined"
             data-testid="bulk-assign-name-input"
-          >
-            <template #item-label="{ item }">
-              <UButton
-                type="button"
-                color="neutral"
-                variant="ghost"
-                block
-                class="justify-start"
-                @click="onSelectSuggestion(item as unknown as TaskDto)"
-              >
-                {{ (item as unknown as TaskDto).name }}
-              </UButton>
-            </template>
-          </UInputMenu>
+          />
         </div>
         <p
           v-if="nameError"

@@ -50,12 +50,37 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 
 - Order blocks as `<script setup>`, then `<template>`, then `<style scoped>`.
 - Declare props and emits with typed generics (`defineProps<{ ... }>()`, `defineEmits<{ ... }>()`).
-- Use `ref`/`computed` for reactive state; keep event handlers as named functions.
 - Prefer existing Nuxt UI components (`UButton`, `UInput`, `UForm`/`UFormField`, `UTable`, `UModal`, `UDashboard*`, etc.) over native form controls. Reserve native elements for semantic structure or lightweight wrappers.
 - Keep all user-facing text in the i18n catalogs and render it via `t(...)`; never hard-code display strings in templates or scripts.
 - Provide accessibility affordances: `aria-label`, `role`, and `aria-live` where appropriate, and use stable `data-testid` hooks for testable elements.
 - Prefer Tailwind utility classes and Nuxt UI `--ui-*` design tokens for layout/color. Icons use the Lucide set (`i-lucide-*`). Keep residual `<style scoped>` only when utilities are insufficient.
 - Forms use `UForm` with a shared zod `:schema` and labelled `UFormField`s. Confirmations use `useAppConfirm()` (`useOverlay` + `ConfirmModal`), not per-page dialog instances.
+
+### Reactive state
+
+- Use `ref` / `shallowRef` / `computed` for reactive state; keep event handlers as named functions.
+- **UForm-backed** dialogs and pages hold field state in a `reactive` object typed from the form schema input (`z.input<typeof schema>`) or a dedicated `*FormState` alias when the UI allows looser empties than the API DTO. Initialize without value-level casts (never `undefined as string | undefined`).
+- **Non-UForm** editors (timer title, inline row edit, flags) use separate primitive refs/shallowRefs, not an untyped multi-field bag.
+- Derived values use `computed` only.
+- Task-keyed UI maps (activity selection, issue refs, selected entry ids, export comments, dismiss flags, outcomes, progress, and similar) stay as **parallel named map refs**, not one mega row-state object. Prefer documentation aliases such as `type TaskId = string` and `type ActivityByTask = Partial<Record<TaskId, string | null>>` (not branded nominal IDs). Prefer replace-the-map updates (`map.value = { ...map.value, [id]: value }`). Clear every related map through one reset path on scope/date change.
+
+### Type assertions
+
+Prefer, in order:
+
+1. Annotating the reactive container or ref generic (`reactive<T>({...})`, `ref<T>(...)`).
+2. `satisfies` for literal structures that must match a union.
+3. `as const` for discriminant/literal narrowing (e.g. menu item `type` fields).
+4. Runtime narrowing or type guards (`instanceof`, `'key' in value`, named `isX` guards).
+5. Schema parse at submit/boundary (`FormSubmitEvent` / zod output).
+6. A **single documented adapter** cast for third-party library or DOM gaps.
+
+Rules:
+
+- **`as unknown as` is forbidden** in `app/` components, pages, layouts, composables, and client utilities. Isolate unavoidable library friction in one adapter util that returns the real prop or DOM type — never cast in templates.
+- Do not cast form fields or submit payloads (`clientId as string`) when container annotation or schema-typed `FormSubmitEvent` removes the need.
+- Do not use `as Record<string, unknown>` for “I don’t know the prop type”; prefer the component’s prop type or a narrow adapter.
+- Freeform task-title autocomplete (`UInputMenu` autocomplete mode) uses the shared builder in `app/utils/taskTitleMenu.ts`: object items with string model via `value-key` / `label-key` and `onSelect` closures over real `TaskDto` identity — never double-cast task DTOs to/from strings.
 
 ## 5. Server / API Conventions
 

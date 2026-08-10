@@ -22,17 +22,20 @@ const { t } = useI18n();
 const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
 
 const open = ref(false);
-const state = reactive({
-  mode: 'title' as RemoteIssueSearchMode,
+const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
+  mode: 'title',
   query: '',
 });
 const firstField = ref<HTMLElement | null>(null);
 let triggerElement: HTMLElement | null = null;
 
-const modeItems = computed(() => [
-  { label: t('remoteIssuePicker.modeTitle'), value: 'title' as RemoteIssueSearchMode },
-  { label: t('remoteIssuePicker.modeId'), value: 'id' as RemoteIssueSearchMode },
-]);
+const modeItems = computed(
+  () =>
+    [
+      { label: t('remoteIssuePicker.modeTitle'), value: 'title' },
+      { label: t('remoteIssuePicker.modeId'), value: 'id' },
+    ] satisfies Array<{ label: string; value: RemoteIssueSearchMode }>,
+);
 
 const statusMessage = computed(() => {
   if (loading.value) return t('remoteIssuePicker.loading');
@@ -47,7 +50,8 @@ const statusMessage = computed(() => {
 });
 
 async function onOpen(event: Event) {
-  triggerElement = event.currentTarget as HTMLElement;
+  const target = event.currentTarget;
+  triggerElement = target instanceof HTMLElement ? target : null;
   open.value = true;
   await nextTick();
   firstField.value?.focus?.();

@@ -21,6 +21,14 @@ import { useRoundedDurations } from '~/composables/useRoundedDurations';
 import { useSyncExport } from '~/composables/useSyncExport';
 import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
 import { extractMessageKey } from '~/utils/extractMessageKey';
+import { isExpandedInMap, toggleExpandMap, type TableExpandMap } from '~/utils/tableExpandMap';
+import type {
+  ActivityByTask,
+  DismissedDuplicatesByTask,
+  ExportCommentsByTask,
+  IssueRefByTask,
+  SelectedEntryIdsByTask,
+} from '~/types/syncUiMaps';
 
 type ExportDialogPhase = 'review' | 'running' | 'report';
 
@@ -92,13 +100,13 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): RemoteSystemConfigD
   };
 }
 
-// --- Local page orchestration state ---
-const activitySelections = ref<Record<string, string | null>>({});
-const localIssueRefs = ref<Record<string, { remoteIssueId: string; cachedTitle: string }>>({});
-const selectedEntryIds = ref<Record<string, string[]>>({});
-const expanded = ref<true | Record<string, boolean>>({});
-const dismissedDuplicates = ref<Record<string, boolean>>({});
-const exportComments = ref<Record<string, string>>({});
+// --- Local page orchestration state (parallel named task-keyed maps) ---
+const activitySelections = ref<ActivityByTask>({});
+const localIssueRefs = ref<IssueRefByTask>({});
+const selectedEntryIds = ref<SelectedEntryIdsByTask>({});
+const expanded = ref<TableExpandMap>({});
+const dismissedDuplicates = ref<DismissedDuplicatesByTask>({});
+const exportComments = ref<ExportCommentsByTask>({});
 const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const exportDialogPhase = ref<ExportDialogPhase>('review');
@@ -159,7 +167,7 @@ const {
   },
 });
 
-watch(date, () => {
+function resetUiState() {
   activitySelections.value = {};
   localIssueRefs.value = {};
   selectedEntryIds.value = {};
@@ -171,6 +179,10 @@ watch(date, () => {
   roundedInputText.value = {};
   exportDialogOpen.value = false;
   exportDialogPhase.value = 'review';
+}
+
+watch(date, () => {
+  resetUiState();
 });
 
 function issueRefFor(row: RemoteSyncDayRowDto) {
@@ -798,19 +810,11 @@ function taskOf(row: SyncTableRow): RemoteSyncDayRowDto {
 }
 
 function isExpanded(taskId: string): boolean {
-  if (expanded.value === true) return true;
-  if (!expanded.value || typeof expanded.value !== 'object') return false;
-  return !!expanded.value[taskId];
+  return isExpandedInMap(expanded.value, taskId);
 }
 
 function toggleExpanded(taskId: string) {
-  if (expanded.value === true) {
-    expanded.value = { [taskId]: false };
-    return;
-  }
-  const current = { ...(expanded.value as Record<string, boolean>) };
-  current[taskId] = !current[taskId];
-  expanded.value = current;
+  expanded.value = toggleExpandMap(expanded.value, taskId);
 }
 
 const columns = computed<TableColumn<SyncTableRow>[]>(() => [

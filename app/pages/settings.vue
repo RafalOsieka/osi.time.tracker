@@ -1,22 +1,26 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import type { WeekStart } from '../../shared/types/user-settings';
 
 const { t } = useI18n();
 const { settings, detectedTimeZone, save } = useUserSettings();
 
-const state = reactive({
+const state = reactive<{ timezone: string; weekStart: WeekStart }>({
   timezone: settings.value.timezone ?? detectedTimeZone,
-  weekStart: settings.value.weekStart as 'monday' | 'sunday',
+  weekStart: settings.value.weekStart,
 });
 const saving = ref(false);
 const saved = ref(false);
 const error = ref('');
 
 const timezones = Intl.supportedValuesOf('timeZone');
-const weekStartItems = computed(() => [
-  { label: t('settings.monday'), value: 'monday' as const },
-  { label: t('settings.sunday'), value: 'sunday' as const },
-]);
+const weekStartItems = computed(
+  () =>
+    [
+      { label: t('settings.monday'), value: 'monday' },
+      { label: t('settings.sunday'), value: 'sunday' },
+    ] satisfies Array<{ label: string; value: WeekStart }>,
+);
 
 watch(settings, (value) => {
   state.timezone = value.timezone ?? detectedTimeZone;
