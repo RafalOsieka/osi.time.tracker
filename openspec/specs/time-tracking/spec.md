@@ -235,11 +235,11 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
 ### Requirement: REQ-148 List time entries by instant range
-The system SHALL expose the authenticated user's time entries via `GET /api/time-entries` with required `from` and `to` query parameters (ISO 8601 instants). The response SHALL be a flat array of `TimeEntryDto` (including `taskId`, `taskName`, `projectId`, `projectName`, `clientName`, with parent names resolved via LEFT joins that do NOT filter on the parent's `deletedAt`) for entries whose `startedAt` falls within `[from, to)`, ordered by `startedAt` descending, scoped strictly to the authenticated user. A running entry (`stoppedAt` null) whose `startedAt` is in range SHALL be included. Invalid or missing `from`/`to`, or `from >= to`, SHALL be rejected with `{ messageKey, params }`. The server SHALL perform no timezone or day-boundary logic; callers convert their local day boundaries to instants.
+The system SHALL expose the authenticated user's time entries via `GET /api/time-entries` with required `from` and `to` query parameters (ISO 8601 instants). The response SHALL be a flat array of `TimeEntryDto` (including `taskId`, `taskName`, `projectId`, `projectName`, with parent names resolved via LEFT joins that do NOT filter on the parent's `deletedAt`) for entries whose `startedAt` falls within `[from, to)`, ordered by `startedAt` descending, scoped strictly to the authenticated user. The DTO SHALL NOT include `clientName` or any tracker display name for timer listing. A running entry (`stoppedAt` null) whose `startedAt` is in range SHALL be included. Invalid or missing `from`/`to`, or `from >= to`, SHALL be rejected with `{ messageKey, params }`. The server SHALL perform no timezone or day-boundary logic; callers convert their local day boundaries to instants.
 
 #### Scenario: Entries in range returned newest first
 - **WHEN** an authenticated user requests entries with a valid `from`/`to` window
-- **THEN** the system SHALL return only their entries with `startedAt` in `[from, to)`, ordered by `startedAt` descending, each with task/project/client context
+- **THEN** the system SHALL return only their entries with `startedAt` in `[from, to)`, ordered by `startedAt` descending, each with task/project context and without a client name field
 
 #### Scenario: Running entry included
 - **WHEN** the user has a running entry whose `startedAt` is within the requested window
@@ -293,8 +293,7 @@ The system SHALL expose the instant of the authenticated user's most recent time
 - **THEN** the system SHALL reject the request per the shared authentication conventions
 
 ### Requirement: REQ-150 Timer view page
-
-The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165, user-settings; day boundaries computed via the timezone-aware utilities of REQ-168) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its project/client context (when present), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. Days without entries SHALL NOT render empty groups.
+The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165, user-settings; day boundaries computed via the timezone-aware utilities of REQ-168) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its **project** context only when present (no client or tracker secondary label), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. Days without entries SHALL NOT render empty groups.
 
 The initial 7-day window SHALL be **anchored on the user's most recent entry** rather than always on the current instant: on first load the page SHALL read the anchor instant via `GET /api/time-entries/latest` (REQ-236) and align its window start to the user's `weekStart` for the week containing that instant, so a user opening the app in a week with no entries yet still sees their latest tracked week instead of an empty page. When the anchor is `null` (the user has never tracked anything) the page SHALL NOT issue an entry-range request for a further window and SHALL render the never-tracked empty state. When the anchor falls inside the current week, the window SHALL be the current week exactly as before. The page SHALL provide a "load more" control that extends the window further back by the same step from the anchored window.
 
@@ -310,7 +309,11 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 
 #### Scenario: Entries grouped by effective-timezone day and task
 - **WHEN** the authenticated user opens `/` with entries on multiple days
-- **THEN** the page SHALL show one section per day in the effective timezone, newest first, each with a day total and per-task groups showing name, context, entry count, and group total
+- **THEN** the page SHALL show one section per day in the effective timezone, newest first, each with a day total and per-task groups showing name, project context only (when present), entry count, and group total
+
+#### Scenario: Group label omits tracker and client
+- **WHEN** a task group belongs to a project that has a tracker
+- **THEN** the group label SHALL show the project name only and SHALL NOT append a client or tracker name
 
 #### Scenario: Day list renders client-side only
 - **WHEN** the timer view is served with server-side rendering enabled
@@ -437,7 +440,7 @@ Committing an inline group edit SHALL be **day-scoped**: it SHALL reassign only 
 
 The group title SHALL be an activatable control that swaps to a text input; the edit SHALL be committed on blur or Enter and cancelled on Escape. A committed name that is empty or whitespace-only SHALL silently revert to the previous name without sending a request (a task cannot be unnamed).
 
-The project/client context SHALL be an activatable control that swaps to a project select with a clear option; when the task has no project, the group SHALL render a localized "(no project)" placeholder that is equally activatable. The select SHALL include the task's current project as an option even when that project has been soft-deleted. Committing a selection (including clearing) SHALL reassign that day's entries per REQ-179; dismissing without selection SHALL change nothing.
+The project context SHALL be an activatable control that swaps to a project select with a clear option; when the task has no project, the group SHALL render a localized "(no project)" placeholder that is equally activatable. The select SHALL include the task's current project as an option even when that project has been soft-deleted. Committing a selection (including clearing) SHALL reassign that day's entries per REQ-179; dismissing without selection SHALL change nothing. Project options SHALL be labeled by project name only (no client/tracker secondary segment).
 
 The remote issue control (REQ-107) SHALL likewise commit through REQ-179, sending the chosen `remoteIssueId` — or an explicit `null` to unlink — together with that day's entry ids.
 
@@ -519,7 +522,7 @@ The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semant
 ### Requirement: REQ-179 Day-scoped reassignment of time entries to a task
 The system SHALL allow an authenticated user to move a set of their time entries to a target task in one atomic operation via `POST /api/time-entries/reassign`, accepting `{ ids, name?, projectId?, remoteIssueId? }` where `ids` is a non-empty array of entry uuids and `name` is trimmed and length-bounded. This powers the timer view's day-scoped group edits: the client sends exactly the entry ids of one day's task group so that only that day's entries move, while the same task's entries on other days are unaffected.
 
-Within a single transaction the system SHALL determine the effective target scope from the listed entries' current task. When `projectId` is omitted, the target scope's project SHALL be the source task's current `projectId`; an explicit `null` SHALL target the project-less scope; a uuid SHALL target that owned, non-deleted project. The presence of `remoteIssueId` SHALL be equally significant: **omitting** it SHALL keep the source task's current remote issue, an explicit **`null`** SHALL target the unlinked task, and a **value** SHALL target the task carrying that remote issue. When a `remoteIssueId` value is supplied, the system SHALL derive the remote-system configuration provenance and the cached issue title server-side from the target project's client (rejecting a project-less target, a missing or inactive configuration, or an unsupported `systemType` with `{ messageKey, params }`), and SHALL NOT trust client-supplied provenance.
+Within a single transaction the system SHALL determine the effective target scope from the listed entries' current task. When `projectId` is omitted, the target scope's project SHALL be the source task's current `projectId`; an explicit `null` SHALL target the project-less scope; a uuid SHALL target that owned, non-deleted project. The presence of `remoteIssueId` SHALL be equally significant: **omitting** it SHALL keep the source task's current remote issue, an explicit **`null`** SHALL target the unlinked task, and a **value** SHALL target the task carrying that remote issue. When a `remoteIssueId` value is supplied, the system SHALL derive the tracker provenance server-side from the target project's active tracker (rejecting a project-less target, a local project, a missing or inactive tracker, or an unsupported `systemType` with `{ messageKey, params }`), and SHALL NOT trust client-supplied tracker identity. The cached issue title MAY be accepted from the client search result for display caching and is not used as ownership or tracker provenance.
 
 The system SHALL resolve `(userId, effectiveName, effectiveProjectId, effectiveRemoteIssueId)` to a `taskId` exactly once using the REQ-142 matching rules (find-or-create), set that `taskId` on every listed entry, and then garbage-collect the source task if it is left with zero entries (hard delete, mirroring REQ-151). When `name` is omitted the entries keep their current task name. This operation is the only way a set of entries changes its remote issue, replacing the removed task-global link and unlink endpoints (REQ-105).
 
@@ -537,6 +540,10 @@ Every listed entry MUST belong to the authenticated user; otherwise the whole re
 - **WHEN** the user reassigns entries with a new `name` and omits both `projectId` and `remoteIssueId`
 - **THEN** the target task SHALL be resolved within the source task's current project scope and with its current remote issue
 
+#### Scenario: Link rejected for local project
+- **WHEN** the user supplies a `remoteIssueId` value for entries whose target project has no active tracker
+- **THEN** the system SHALL reject the request with `{ messageKey, params }` and move no entry
+
 #### Scenario: Day-scoped project change
 - **WHEN** the user reassigns a day's entries with a `projectId` (or explicit `null`) and no `name`
 - **THEN** the entries SHALL move to the find-or-create task of the same name and remote issue in that project scope, leaving other days' entries on the original task
@@ -552,10 +559,6 @@ Every listed entry MUST belong to the authenticated user; otherwise the whole re
 #### Scenario: Two remote issues under one name coexist
 - **WHEN** one day's entries are reassigned to remote issue `4711` and another day's entries of the same name and project to `4899`
 - **THEN** both target tasks SHALL exist and each day's group SHALL show its own remote issue
-
-#### Scenario: Remote issue on an ineligible target rejected
-- **WHEN** a `remoteIssueId` value is supplied while the effective target scope is project-less or its client has no active supported configuration
-- **THEN** the system SHALL reject the request with `{ messageKey, params }` and no entry SHALL be modified
 
 #### Scenario: Atomic failure leaves entries untouched
 - **WHEN** any listed id is foreign or unknown
