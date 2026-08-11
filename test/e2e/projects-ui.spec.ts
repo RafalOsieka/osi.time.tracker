@@ -55,13 +55,15 @@ describeProjectsUI('projects UI flow', async () => {
     return page;
   }
 
-  it('full CRUD happy path through the UI, local project, tracker link, filter, and detach', async () => {
+  it('full CRUD happy path through the UI, local project, tracker link, and detach', async () => {
     const trackerA = await createTrackerViaApi('UI Tracker A ' + Date.now());
-    const trackerB = await createTrackerViaApi('UI Tracker B ' + Date.now());
 
     const page = await loginAs('projectsui@example.com');
     await page.click('[data-testid="app-sidebar"] a[href="/projects"]');
     await page.waitForSelector('[data-testid="projects-page"]');
+
+    // No page-level tracker filter in MVP
+    expect(await page.locator('[data-testid="project-tracker-filter"]').count()).toBe(0);
 
     // Create a local project (no tracker)
     await page.click('[data-testid="new-project-button"]');
@@ -74,7 +76,7 @@ describeProjectsUI('projects UI flow', async () => {
     await page.waitForSelector('[data-testid="project-dialog"]', { state: 'hidden' });
     await page.waitForFunction(() => document.body.textContent?.includes('UI Local Project'));
 
-    // Create a project under Tracker A
+    // Create a project under Tracker A (dialog loads tracker options on open)
     await page.click('[data-testid="new-project-button"]');
     await page.waitForSelector('[data-testid="project-dialog"]');
     await page
@@ -89,19 +91,6 @@ describeProjectsUI('projects UI flow', async () => {
     await page.waitForFunction(() => document.body.textContent?.includes('UI Project One'));
     expect(await page.textContent('[data-testid="projects-table"]')).toContain('UI Project One');
     expect(await page.textContent('[data-testid="projects-table"]')).toContain(trackerA.name);
-
-    // Filter by Tracker B: the project (under Tracker A) should disappear
-    await page.click('[data-testid="project-tracker-filter"]');
-    await page.getByRole('option', { name: trackerB.name }).click();
-    await page.waitForFunction(() => !document.body.textContent?.includes('UI Project One'));
-    expect(await page.textContent('[data-testid="projects-table"]')).not.toContain(
-      'UI Project One',
-    );
-
-    // Clear the filter by selecting Tracker A so the project is visible again
-    await page.click('[data-testid="project-tracker-filter"]');
-    await page.getByRole('option', { name: trackerA.name }).click();
-    await page.waitForFunction(() => document.body.textContent?.includes('UI Project One'));
 
     // Edit: rename and detach from tracker (confirm path)
     const row = page.locator('tr', { hasText: 'UI Project One' });
@@ -148,5 +137,21 @@ describeProjectsUI('projects UI flow', async () => {
     expect(await page.textContent('[data-testid="projects-table"]')).not.toContain(
       'UI Project Renamed',
     );
+  });
+
+  it('hard navigation shows project list or empty state without tracker filter', async () => {
+    const page = await loginAs('projectsui@example.com');
+    // Hard navigation (full document load) of the projects page
+    await page.goto(url('/projects'));
+    await page.waitForSelector('[data-testid="projects-page"]');
+    await page.waitForSelector(
+      '[data-testid="projects-empty-state"], [data-testid="projects-table"]',
+    );
+    expect(await page.locator('[data-testid="project-tracker-filter"]').count()).toBe(0);
+
+    // Opening create loads tracker select
+    await page.click('[data-testid="new-project-button"]');
+    await page.waitForSelector('[data-testid="project-dialog"]');
+    expect(await page.locator('[data-testid="project-tracker-select"]').count()).toBe(1);
   });
 });

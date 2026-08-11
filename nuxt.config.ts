@@ -29,6 +29,15 @@ export default defineNuxtConfig({
     },
   },
   css: ['~/assets/css/main.css'],
+  // Pre-bundle every Lucide icon referenced in app source so SSR does not need
+  // a runtime `/api/_nuxt_icon` fetch (avoids "failed to load icon `lucide:…`"
+  // warnings for sidebar/app icons that are outside Nuxt UI's own set).
+  // Requires `@iconify-json/lucide` (devDependency). See Nuxt UI icons docs.
+  icon: {
+    clientBundle: {
+      scan: true,
+    },
+  },
   // Bundled with @nuxt/ui; classSuffix '' (`.dark`) is set by the UI module.
   // Default preference is system so OS prefers-color-scheme is honored until overridden.
   colorMode: {

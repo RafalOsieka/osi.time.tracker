@@ -146,11 +146,13 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **THEN** its duration SHALL be computed as `stoppedAt − startedAt` rather than read from a stored duration field
 
 ### Requirement: REQ-146 Persistent running-timer indicator
-The application shell SHALL display an always-visible running indicator whenever the authenticated user has a running entry, showing the running entry's title and its live-updating elapsed time. The running state SHALL be sourced from the server (`GET /api/time-entries/running`) so it survives page reloads and is consistent across devices.
+The application shell SHALL display an always-visible running indicator whenever the authenticated user has a running entry, showing the running entry's title and its live-updating elapsed time. The running state SHALL be sourced from the server (`GET /api/time-entries/running`) so it survives page reloads and is consistent across devices. On a full document load of an authenticated page, that fetch SHALL complete during SSR and seed shared timer state so the widget's running vs idle mode and title are correct on first paint (see frontend-shell REQ-258).
 
 The timer widget's title input SHALL be bound to the running entry's title (`taskName`) whenever a timer is running (so the title remains visible after starting and after a reload). When the running entry is untitled (`taskName` is `null`), the title input SHALL be shown **blank** — it SHALL NOT show a placeholder and SHALL NOT show a "(no task)" label.
 
-While the initial running-entry fetch is in flight, the widget SHALL expose a `loading` state and SHALL disable the title input and the start/stop toggle until the fetch resolves, then reflect the server result; the widget SHALL NOT allow starting or editing against the pre-fetch idle state.
+While the initial running-entry resolution is still in flight (including any client-only path that has not yet resolved), the widget SHALL expose a `loading` state and SHALL disable the title input and the start/stop toggle until the result is known; the widget SHALL NOT allow starting or editing against an unresolved pre-fetch idle state. When SSR has already resolved the running entry into shared state before first paint, the widget SHALL NOT remain in that disabled loading gate solely because a redundant client bootstrap has not run.
+
+Live elapsed time SHALL be client-first: until the client ticker starts after hydration, the elapsed display SHALL show zero (`00:00:00` or equivalent) rather than a server-computed wall-clock duration. After the client ticker starts, elapsed time SHALL update from `startedAt` against the client clock at least once per second while running.
 
 The running title SHALL be editable in place: an edit SHALL be committed via `PATCH /api/time-entries/[id]` (REQ-143) on blur or on Enter, and SHALL NOT be committed per keystroke. Committing a blank (empty or whitespace-only) title SHALL detach the task by sending `title = null`, resulting in `taskId = null`.
 
@@ -160,7 +162,7 @@ While a timer is running, the elapsed-time display SHALL be an activatable contr
 
 When a task edit affects the running entry (rename, project change, merge-on-collision, or bulk assignment binding the running entry to a task), the client SHALL re-fetch the running state (`GET /api/time-entries/running`) so the shell indicator reflects the updated title immediately.
 
-The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboard operable, disabled state conveyed) and derive styling from PrimeVue theme tokens; all user-facing strings SHALL exist in `en` and `pl` in parity.
+The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboard operable, disabled state conveyed) and derive styling from Nuxt UI `--ui-*` design tokens; all user-facing strings SHALL exist in `en` and `pl` in parity.
 
 #### Scenario: Indicator visible while running
 - **WHEN** the authenticated user has a running entry
@@ -172,15 +174,19 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 
 #### Scenario: Running state survives reload
 - **WHEN** a user with a running entry reloads the app
-- **THEN** the shell SHALL re-fetch and display the running entry (including its title) from the server
+- **THEN** the shell SHALL display the running entry (including its title) from the server-resolved state on first paint of the authenticated shell, without requiring a client-only post-mount fetch to reveal the running mode
+
+#### Scenario: Elapsed starts at zero until client ticker
+- **WHEN** a full document load completes for a user with a running entry
+- **THEN** the elapsed display SHALL show zero until the client-side ticker starts, after which it SHALL show live elapsed computed on the client from `startedAt`
 
 #### Scenario: Untitled running entry shows blank
 - **WHEN** the running entry has no title (`taskName` is `null`)
 - **THEN** the title input SHALL be blank, showing neither a placeholder nor a "(no task)" label
 
 #### Scenario: Widget disabled during running fetch
-- **WHEN** the initial running-entry fetch is in flight after load
-- **THEN** the title input and the toggle button SHALL be disabled until the fetch resolves, after which they SHALL reflect the fetched state
+- **WHEN** the running-entry result is not yet known (initial resolution still in flight)
+- **THEN** the title input and the toggle button SHALL be disabled until the result resolves, after which they SHALL reflect the resolved state
 
 #### Scenario: Inline retitle committed on blur or Enter
 - **WHEN** the user edits the running entry's title and blurs the input or presses Enter

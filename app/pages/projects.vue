@@ -8,12 +8,14 @@ const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
+// Forwards the incoming request cookies during SSR so the list is authenticated.
+const requestFetch = useRequestFetch();
 
 const {
   data: trackersData,
   pending: trackersPending,
   refresh: fetchTrackerOptions,
-} = useAsyncData('trackers-for-projects', () => $fetch<TrackerDto[]>('/api/trackers'), {
+} = useAsyncData('trackers-for-projects', () => requestFetch<TrackerDto[]>('/api/trackers'), {
   server: false,
   immediate: false,
 });
@@ -26,24 +28,11 @@ const trackerOptions = computed(() => {
   return [...active, ...missing];
 });
 
-const trackerFilter = ref<string | undefined>(undefined);
-
 const {
   data: projectsData,
   pending: projectsPending,
   refresh: fetchProjects,
-} = useAsyncData(
-  'projects',
-  () =>
-    $fetch<ProjectDto[]>('/api/projects', {
-      query: trackerFilter.value ? { trackerId: trackerFilter.value } : {},
-    }),
-  { server: false, immediate: false, watch: [trackerFilter] },
-);
-onMounted(() => {
-  void fetchTrackerOptions();
-  void fetchProjects();
-});
+} = useAsyncData('projects', () => requestFetch<ProjectDto[]>('/api/projects'));
 
 const projects = computed(() => projectsData.value ?? []);
 const dialogOpen = ref(false);
@@ -64,10 +53,11 @@ const saving = ref(false);
 function openCreate() {
   editingProject.value = null;
   state.name = '';
-  state.trackerId = trackerFilter.value === 'local' ? undefined : trackerFilter.value;
+  state.trackerId = undefined;
   nameServerError.value = '';
   trackerServerError.value = '';
   dialogOpen.value = true;
+  void fetchTrackerOptions();
 }
 
 function openEdit(project: ProjectDto) {
@@ -88,6 +78,7 @@ function openEdit(project: ProjectDto) {
     ];
   }
   dialogOpen.value = true;
+  void fetchTrackerOptions();
 }
 
 function closeDialog() {
@@ -194,7 +185,16 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
   },
   {
     id: 'actions',
-    header: t('projects.columnActions'),
+    // Empty header: buttons already expose accessible names; keeps the column tight.
+    header: '',
+    enableSorting: false,
+    meta: {
+      class: {
+        // w-0 + whitespace-nowrap shrinks the column to its content and pins it right.
+        th: 'w-0 whitespace-nowrap text-end',
+        td: 'w-0 whitespace-nowrap text-end',
+      },
+    },
     cell: ({ row }) =>
       h(resolveComponent('RowActions'), {
         editLabel: t('projects.editButton'),
@@ -206,33 +206,10 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
       }),
   },
 ]);
-
-const filterItems = computed(() => [
-  { id: 'local', name: t('projects.localTrackerLabel') },
-  ...trackerOptions.value,
-]);
 </script>
 
 <template>
   <div data-testid="projects-page" class="space-y-4">
-    <div class="flex items-center gap-2">
-      <label for="project-tracker-filter" class="text-sm">
-        {{ t('projects.trackerFilterLabel') }}
-      </label>
-      <USelect
-        id="project-tracker-filter"
-        v-model="trackerFilter"
-        :items="filterItems"
-        value-key="id"
-        label-key="name"
-        :placeholder="t('projects.trackerFilterAll')"
-        :loading="trackersPending"
-        clearable
-        class="min-w-48"
-        data-testid="project-tracker-filter"
-      />
-    </div>
-
     <TableHeader
       :title="t('projects.pageTitle')"
       :new-label="t('projects.newButton')"
@@ -301,6 +278,7 @@ const filterItems = computed(() => [
                 value-key="id"
                 label-key="name"
                 :placeholder="t('projects.trackerPlaceholder')"
+                :loading="trackersPending"
                 clearable
                 class="w-full"
                 data-testid="project-tracker-select"

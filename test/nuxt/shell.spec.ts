@@ -1,8 +1,43 @@
-import { describe, expect, it } from 'vitest';
-import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AppSidebar from '../../app/components/AppSidebar.vue';
 import AppUtilityMenu from '../../app/components/AppUtilityMenu.vue';
+
+const fetchMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
+const seedRunningMock = vi.hoisted(() => vi.fn());
+const resumeTickerMock = vi.hoisted(() => vi.fn());
+
+mockNuxtImport('useRequestFetch', () => () => fetchMock);
+mockNuxtImport('useAsyncData', () => {
+  // Match Nuxt's awaitable useAsyncData: resolve the fetcher before setup continues.
+  return async (_key: string, fetcher: () => Promise<unknown>) => {
+    const data = ref<unknown>(null);
+    try {
+      data.value = await fetcher();
+    } catch {
+      data.value = null;
+    }
+    return { data, pending: ref(false), refresh: vi.fn() };
+  };
+});
+mockNuxtImport('useTimer', () => () => ({
+  seedRunning: seedRunningMock,
+  resumeTickerIfNeeded: resumeTickerMock,
+  fetchRunning: vi.fn(),
+  running: { value: null },
+  elapsedSeconds: { value: 0 },
+  loading: { value: false },
+  start: vi.fn(),
+  stop: vi.fn(),
+  updateTitle: vi.fn(),
+  updateStartedAt: vi.fn(),
+}));
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  fetchMock.mockResolvedValue(null);
+});
 
 const topBarStub = {
   template:
@@ -78,6 +113,26 @@ describe('REQ-064: shell regions', () => {
   it('timer region slot is present in the top bar', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="timer-region-inline"]').exists()).toBe(true);
+  });
+
+  it('SSR-seeds running timer state without a client-only mount fetch', async () => {
+    fetchMock.mockResolvedValueOnce({
+      id: 'entry-1',
+      taskId: null,
+      taskName: 'SSR Running',
+      projectId: null,
+      projectName: null,
+      startedAt: new Date().toISOString(),
+      stoppedAt: null,
+    });
+
+    await mountShell();
+    await vi.waitFor(() => {
+      expect(seedRunningMock).toHaveBeenCalled();
+    });
+    expect(seedRunningMock).toHaveBeenCalledWith(
+      expect.objectContaining({ taskName: 'SSR Running' }),
+    );
   });
 });
 

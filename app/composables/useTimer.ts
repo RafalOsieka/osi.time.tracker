@@ -4,6 +4,9 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
  * Shared running-timer state and actions. Uses `useState` so the running
  * entry is shared across the app shell (single source of truth for the
  * timer widget mounted in the top bar and the stacked mobile row).
+ *
+ * The authenticated layout SSR-seeds `timer-running-entry`; the live elapsed
+ * ticker is client-only and starts at zero until `resumeTickerIfNeeded`.
  */
 export function useTimer() {
   const running = useState<TimeEntryDto | null>('timer-running-entry', () => null);
@@ -24,9 +27,10 @@ export function useTimer() {
     }
   }
 
+  /** Client-only: elapsed stays 0 until the ticker starts after hydrate. */
   function startTicker() {
     stopTicker();
-    if (!running.value) return;
+    if (!import.meta.client || !running.value) return;
     elapsedSeconds.value = computeElapsedSeconds(running.value);
     intervalId = setInterval(() => {
       if (running.value) {
@@ -35,6 +39,29 @@ export function useTimer() {
     }, 1000);
   }
 
+  /**
+   * Apply a resolved running entry (e.g. SSR seed) without toggling the
+   * loading gate or starting the ticker. Call `resumeTickerIfNeeded` on the client.
+   */
+  function seedRunning(entry: TimeEntryDto | null) {
+    running.value = entry;
+    if (!entry) {
+      stopTicker();
+      elapsedSeconds.value = 0;
+    }
+  }
+
+  /** Start the live elapsed ticker when a running entry is already seeded. */
+  function resumeTickerIfNeeded() {
+    if (running.value) {
+      startTicker();
+    }
+  }
+
+  /**
+   * Mutation-driven / explicit refresh. Does not clear the previous running
+   * entry until the response arrives (avoids blanking an SSR-seeded title).
+   */
   async function fetchRunning(): Promise<void> {
     loading.value = true;
     try {
@@ -115,6 +142,8 @@ export function useTimer() {
     running: readonly(running),
     elapsedSeconds: readonly(elapsedSeconds),
     loading: readonly(loading),
+    seedRunning,
+    resumeTickerIfNeeded,
     fetchRunning,
     start,
     stop,
