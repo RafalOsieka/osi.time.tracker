@@ -6,7 +6,7 @@ const { t } = useI18n();
 const { settings, detectedTimeZone, save } = useUserSettings();
 
 const state = reactive<{ timezone: string; weekStart: WeekStart }>({
-  timezone: settings.value.timezone ?? detectedTimeZone,
+  timezone: settings.value.timezone ?? detectedTimeZone.value,
   weekStart: settings.value.weekStart,
 });
 const saving = ref(false);
@@ -23,8 +23,15 @@ const weekStartItems = computed(
 );
 
 watch(settings, (value) => {
-  state.timezone = value.timezone ?? detectedTimeZone;
+  state.timezone = value.timezone ?? detectedTimeZone.value;
   state.weekStart = value.weekStart;
+});
+
+// After mount, unsaved timezone upgrades from UTC fallback to browser-detected.
+watch(detectedTimeZone, (tz) => {
+  if (!settings.value.timezone) {
+    state.timezone = tz;
+  }
 });
 
 async function submit() {

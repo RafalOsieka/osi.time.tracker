@@ -32,8 +32,10 @@ type Project = {
 
 let mockTrackers: Tracker[] = [];
 let mockProjects: Project[] = [];
+const trackersRefreshMocks: ReturnType<typeof vi.fn>[] = [];
 
 mockNuxtImport('$fetch', () => fetchMock);
+mockNuxtImport('useRequestFetch', () => () => fetchMock);
 mockNuxtImport('useAppConfirm', () => () => confirmMock);
 mockNuxtImport('useAppToast', () => () => ({
   success: toastSuccessMock,
@@ -44,13 +46,30 @@ mockNuxtImport('useUserSettings', () => () => ({
 }));
 
 mockNuxtImport('useAsyncData', () => {
-  return (key: string, fetcher: () => Promise<Tracker[] | Project[]>) => {
-    const initial = key === 'trackers-for-projects' ? mockTrackers : mockProjects;
-    const data = ref<Tracker[] | Project[]>(initial);
+  return (
+    key: string,
+    fetcher: () => Promise<Tracker[] | Project[]>,
+    opts?: { immediate?: boolean },
+  ) => {
+    const isTrackers = key === 'trackers-for-projects';
+    // Projects list is SSR-loaded; tracker options stay lazy until dialog open.
+    const data = ref<Tracker[] | Project[] | null>(isTrackers ? null : mockProjects);
+    const pending = ref(false);
     const refresh = vi.fn(async () => {
-      data.value = await fetcher();
+      pending.value = true;
+      try {
+        data.value = await fetcher();
+      } finally {
+        pending.value = false;
+      }
     });
-    return { data, pending: ref(false), refresh };
+    if (isTrackers) {
+      trackersRefreshMocks.push(refresh);
+    } else if (opts?.immediate !== false) {
+      // Simulate SSR list resolution for the projects key.
+      data.value = mockProjects;
+    }
+    return { data, pending, refresh };
   };
 });
 
@@ -75,7 +94,7 @@ const InputStub = {
 };
 const SelectStub = {
   template:
-    '<select v-bind="$attrs" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="opt in items" :key="opt.id" :value="opt.id">{{ opt.name }}</option></select>',
+    '<select v-bind="$attrs" :value="modelValue" :data-loading="loading" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="opt in items" :key="opt.id" :value="opt.id">{{ opt.name }}</option></select>',
   props: ['modelValue', 'items', 'labelKey', 'valueKey', 'placeholder', 'loading'],
   emits: ['update:modelValue'],
 };
@@ -146,6 +165,7 @@ describe('projects page', () => {
     vi.clearAllMocks();
     mockTrackers = [];
     mockProjects = [];
+    trackersRefreshMocks.length = 0;
     fetchMock.mockImplementation((url: string) =>
       Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
     );
@@ -157,7 +177,7 @@ describe('projects page', () => {
     }
   });
 
-  it('4.7a renders empty state when no projects', async () => {
+  it('4.7a renders empty state when no projects (SSR async-data path)', async () => {
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ProjectsPage, {
@@ -170,7 +190,7 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="new-project-button"]').exists()).toBe(true);
   });
 
-  it('4.7b renders project rows when projects exist', async () => {
+  it('4.7b renders project rows when projects exist without a tracker filter', async () => {
     mockTrackers = [{ id: 't1', name: 'Acme', createdAt: new Date().toISOString() }];
     mockProjects = [
       {
@@ -197,6 +217,34 @@ describe('projects page', () => {
 
     expect(wrapper.find('[data-testid="projects-empty-state"]').exists()).toBe(false);
     expect(wrapper.findAll('[data-testid="projects-row"]')).toHaveLength(2);
+    expect(wrapper.find('[data-testid="project-tracker-filter"]').exists()).toBe(false);
+  });
+
+  it('does not fetch trackers until the create/edit dialog opens', async () => {
+    mockProjects = [
+      {
+        id: '1',
+        name: 'Alpha',
+        trackerId: null,
+        trackerName: null,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    csrfFetchMock.mockResolvedValue({});
+
+    const wrapper = await mountSuspended(ProjectsPage, {
+      global: { stubs: commonStubs },
+    });
+    await flushPromises();
+
+    expect(trackersRefreshMocks.length).toBeGreaterThan(0);
+    expect(trackersRefreshMocks[0]).not.toHaveBeenCalled();
+
+    await wrapper.find('[data-testid="new-project-button"]').trigger('click');
+    await flushPromises();
+
+    expect(trackersRefreshMocks[0]).toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="project-tracker-select"]').exists()).toBe(true);
   });
 
   it('4.7f shows trackerName for a project whose tracker was soft-deleted (missing from trackerOptions)', async () => {
@@ -309,14 +357,14 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="project-name-error"]').exists()).toBe(true);
   });
 
-  it('4.7e tracker select is labelled', async () => {
+  it('4.7e tracker select is labelled in the dialog', async () => {
     csrfFetchMock.mockResolvedValue({});
 
     const wrapper = await mountSuspended(ProjectsPage, {
       global: { stubs: commonStubs },
     });
 
-    expect(wrapper.find('label[for="project-tracker-filter"]').exists()).toBe(true);
+    expect(wrapper.find('label[for="project-tracker-filter"]').exists()).toBe(false);
 
     await wrapper.find('[data-testid="new-project-button"]').trigger('click');
     expect(wrapper.find('label[for="project-tracker"]').exists()).toBe(true);

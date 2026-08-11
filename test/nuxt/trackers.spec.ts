@@ -35,9 +35,11 @@ type Tracker = {
 const useAsyncDataTrackers: Tracker[] = [];
 
 mockNuxtImport('$fetch', () => fetchMock);
+mockNuxtImport('useRequestFetch', () => () => fetchMock);
 
 mockNuxtImport('useAsyncData', () => {
   return (_key: string, fetcher: () => Promise<Tracker[]>) => {
+    // SSR path: resolve the list during setup (no server:false / onMounted bootstrap).
     const data = ref<Tracker[]>(useAsyncDataTrackers);
     const pending = ref(false);
     fetcher()
@@ -148,19 +150,21 @@ describe('trackers page', () => {
     }
   });
 
-  it('renders empty state when no trackers', async () => {
+  it('renders empty state when no trackers (SSR async-data path)', async () => {
     fetchMock.mockResolvedValue([]);
     csrfFetchMock.mockResolvedValue({});
     const wrapper = await mountSuspended(TrackersPage, {
       global: { stubs: commonStubs },
     });
+    await flushPromises();
 
     expect(wrapper.find('[data-testid="trackers-page"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="trackers-empty-state"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="new-tracker-button"]').exists()).toBe(true);
+    expect(fetchMock).toHaveBeenCalled();
   });
 
-  it('renders tracker rows when trackers exist', async () => {
+  it('renders tracker rows when trackers exist (SSR async-data path)', async () => {
     const mockTrackers = [
       {
         id: '1',

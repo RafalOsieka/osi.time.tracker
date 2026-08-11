@@ -50,6 +50,90 @@ describe('useTimer', () => {
     expect(elapsedSeconds.value).toBe(0);
   });
 
+  it('seedRunning sets the running entry without advancing elapsed until resumeTickerIfNeeded', async () => {
+    const startedAt = new Date(Date.now() - 60_000).toISOString();
+    const { running, elapsedSeconds, seedRunning, resumeTickerIfNeeded } = await setupTimer();
+
+    seedRunning({
+      id: 'entry-seed',
+      taskId: null,
+      taskName: 'Seeded Task',
+      projectId: null,
+      projectName: null,
+      startedAt,
+      stoppedAt: null,
+    });
+
+    expect(running.value?.taskName).toBe('Seeded Task');
+    expect(elapsedSeconds.value).toBe(0);
+
+    resumeTickerIfNeeded();
+    expect(elapsedSeconds.value).toBeGreaterThanOrEqual(60);
+
+    vi.advanceTimersByTime(2000);
+    expect(elapsedSeconds.value).toBeGreaterThanOrEqual(62);
+  });
+
+  it('seedRunning(null) clears idle state without a loading gate', async () => {
+    const startedAt = new Date().toISOString();
+    const { running, elapsedSeconds, seedRunning, resumeTickerIfNeeded } = await setupTimer();
+
+    seedRunning({
+      id: 'entry-seed',
+      taskId: null,
+      taskName: 'Temp',
+      projectId: null,
+      projectName: null,
+      startedAt,
+      stoppedAt: null,
+    });
+    resumeTickerIfNeeded();
+    seedRunning(null);
+
+    expect(running.value).toBeNull();
+    expect(elapsedSeconds.value).toBe(0);
+  });
+
+  it('fetchRunning updates running entry without clearing it before the response arrives', async () => {
+    const startedAt = new Date(Date.now() - 5_000).toISOString();
+    let resolveFetch!: (value: unknown) => void;
+    fetchMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveFetch = resolve;
+      }),
+    );
+
+    const { running, seedRunning, fetchRunning, loading } = await setupTimer();
+    seedRunning({
+      id: 'entry-ssr',
+      taskId: null,
+      taskName: 'SSR Title',
+      projectId: null,
+      projectName: null,
+      startedAt,
+      stoppedAt: null,
+    });
+
+    const fetchPromise = fetchRunning();
+    expect(loading.value).toBe(true);
+    // SSR-seeded title remains visible while revalidation is in flight.
+    expect(running.value?.taskName).toBe('SSR Title');
+
+    resolveFetch({
+      id: 'entry-ssr',
+      taskId: null,
+      taskName: 'SSR Title',
+      projectId: null,
+      projectName: null,
+      startedAt,
+      stoppedAt: null,
+    });
+    await fetchPromise;
+
+    expect(loading.value).toBe(false);
+    expect(running.value?.taskName).toBe('SSR Title');
+  });
+
   it('loading is true during the in-flight running fetch and false after it resolves (running entry)', async () => {
     const startedAt = new Date().toISOString();
     let resolveFetch!: (value: unknown) => void;

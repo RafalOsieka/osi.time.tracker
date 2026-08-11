@@ -1,9 +1,22 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { sidebarToggleProps } from '~/utils/sidebarToggleProps';
+import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const { t } = useI18n();
-const { fetchRunning } = useTimer();
+const { seedRunning, resumeTickerIfNeeded } = useTimer();
+
+// Forwards the incoming request cookies during SSR so the running entry is
+// authenticated the same way as browser navigations (plain $fetch is not).
+const requestFetch = useRequestFetch();
+
+const { data: runningData } = await useAsyncData('timer-running', () =>
+  requestFetch<TimeEntryDto | null>('/api/time-entries/running').catch(() => null),
+);
+
+// Seed shared timer state for first paint (running title/mode). Elapsed stays
+// zero until the client ticker starts after hydrate.
+seedRunning(runningData.value ?? null);
 
 // Collapse is owned + cookie-persisted by UDashboardGroup/UDashboardSidebar (storage-key).
 // Keep a local v-model only for aria-expanded and slot bindings; Nuxt UI hydrates it from storage.
@@ -12,9 +25,7 @@ const open = ref(false);
 const sidebarToggle = sidebarToggleProps();
 
 onMounted(() => {
-  fetchRunning().catch(() => {
-    // Best-effort: a failed initial fetch just leaves the timer idle.
-  });
+  resumeTickerIfNeeded();
 });
 </script>
 

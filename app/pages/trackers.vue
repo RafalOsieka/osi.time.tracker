@@ -8,6 +8,8 @@ const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
+// Forwards the incoming request cookies during SSR so the list is authenticated.
+const requestFetch = useRequestFetch();
 
 const { get: getSecret, set: setSecret, clear: clearSecret } = useTrackerSecret();
 
@@ -30,13 +32,7 @@ const {
   data: trackersData,
   pending: trackersPending,
   refresh: fetchTrackers,
-} = useAsyncData('trackers', () => $fetch<TrackerDto[]>('/api/trackers'), {
-  server: false,
-  immediate: false,
-});
-onMounted(() => {
-  void fetchTrackers();
-});
+} = useAsyncData('trackers', () => requestFetch<TrackerDto[]>('/api/trackers'));
 
 const trackers = computed(() => trackersData.value ?? []);
 const dialogOpen = ref(false);
@@ -200,6 +196,16 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => [
   {
     accessorKey: 'baseUrl',
     header: t('trackers.columnBaseUrl'),
+    cell: ({ row }) =>
+      h(resolveComponent('UButton'), {
+        to: row.original.baseUrl,
+        target: '_blank',
+        external: true,
+        variant: 'link',
+        label: row.original.baseUrl,
+        class: 'px-0',
+        'data-testid': `tracker-base-url-${row.original.id}`,
+      }),
   },
   {
     accessorKey: 'createdAt',
@@ -208,7 +214,16 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => [
   },
   {
     id: 'actions',
-    header: t('trackers.columnActions'),
+    // Empty header: buttons already expose accessible names; keeps the column tight.
+    header: '',
+    enableSorting: false,
+    meta: {
+      class: {
+        // w-0 + whitespace-nowrap shrinks the column to its content and pins it right.
+        th: 'w-0 whitespace-nowrap text-end',
+        td: 'w-0 whitespace-nowrap text-end',
+      },
+    },
     cell: ({ row }) =>
       h(resolveComponent('RowActions'), {
         editLabel: t('trackers.editButton'),

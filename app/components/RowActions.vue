@@ -10,11 +10,12 @@ const emit = defineEmits<{ edit: []; delete: [] }>();
 </script>
 
 <template>
-  <div class="flex gap-1">
+  <div class="flex shrink-0 justify-end gap-0.5">
     <UButton
       icon="i-lucide-pencil"
       color="neutral"
       variant="ghost"
+      size="sm"
       square
       :aria-label="editLabel"
       :data-testid="editTestid"
@@ -24,6 +25,7 @@ const emit = defineEmits<{ edit: []; delete: [] }>();
       icon="i-lucide-trash-2"
       color="error"
       variant="ghost"
+      size="sm"
       square
       :aria-label="deleteLabel"
       :data-testid="deleteTestid"
