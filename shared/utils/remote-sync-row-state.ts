@@ -1,8 +1,8 @@
 import type { RemoteSyncRowState, RemoteSyncRowStateInput } from '../types/remote-sync-day';
-import type { TrackerSystemType } from '../types/tracker';
+import { TRACKER_SYSTEM_TYPE_ORDER, type TrackerSystemType } from '../types/tracker';
 
 /** System types with a registered adapter. */
-export const IMPLEMENTED_SYSTEM_TYPES = new Set<TrackerSystemType>(['openproject', 'redmine']);
+export const IMPLEMENTED_SYSTEM_TYPES = new Set<TrackerSystemType>(TRACKER_SYSTEM_TYPE_ORDER);
 
 /** True when `systemType` has a registered remote adapter. */
 export function isImplementedTrackerSystemType(

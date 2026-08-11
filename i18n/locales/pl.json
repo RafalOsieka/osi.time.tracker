@@ -36,13 +36,13 @@
     "comingSoon": "Wkrótce."
   },
   "settings": {
+    "language": "Język",
+    "theme": "Motyw",
     "timezone": "Strefa czasowa",
     "detectedTimezone": "Wykryta strefa czasowa: {timezone}",
     "weekStart": "Początek tygodnia",
     "monday": "Poniedziałek",
     "sunday": "Niedziela",
-    "save": "Zapisz ustawienia",
-    "saved": "Ustawienia zapisane.",
     "saveError": "Nie udało się zapisać ustawień."
   },
   "theme": {
@@ -389,6 +389,8 @@
     "projectNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
     "projectTrackerInvalid": "Tracker jest nieprawidłowy.",
     "projectNameDuplicate": "Projekt o tej nazwie już istnieje w tym zakresie trackera.",
+    "unknown": "Wystąpił nieoczekiwany błąd.",
+    "remoteIssueSearchModeRequired": "Wybierz tryb wyszukiwania.",
     "taskNameRequired": "Nazwa jest wymagana.",
     "taskNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
     "taskProjectInvalid": "Wybierz prawidłowy projekt.",
@@ -443,6 +445,10 @@
     "auth": {
       "credentialsRequired": "E-mail i hasło są wymagane.",
       "invalidCredentials": "Nieprawidłowe dane logowania."
+    },
+    "userSettings": {
+      "invalidTimezone": "Wybierz prawidłową strefę czasową.",
+      "invalidWeekStart": "Wybierz poniedziałek lub niedzielę jako początek tygodnia."
     },
     "unexpected": "Wystąpił nieoczekiwany błąd."
   }

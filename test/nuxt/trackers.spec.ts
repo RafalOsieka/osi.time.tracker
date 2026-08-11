@@ -33,6 +33,8 @@ type Tracker = {
   updatedAt: string;
 };
 const useAsyncDataTrackers: Tracker[] = [];
+/** When true, the trackers list mock reports pending with no data (loading gate tests). */
+let trackersListPending = false;
 
 mockNuxtImport('$fetch', () => fetchMock);
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
@@ -40,13 +42,15 @@ mockNuxtImport('useRequestFetch', () => () => fetchMock);
 mockNuxtImport('useAsyncData', () => {
   return (_key: string, fetcher: () => Promise<Tracker[]>) => {
     // SSR path: resolve the list during setup (no server:false / onMounted bootstrap).
-    const data = ref<Tracker[]>(useAsyncDataTrackers);
-    const pending = ref(false);
-    fetcher()
-      .then((result) => {
-        data.value = result;
-      })
-      .catch(() => {});
+    const data = ref<Tracker[] | null>(trackersListPending ? null : useAsyncDataTrackers);
+    const pending = ref(trackersListPending);
+    if (!trackersListPending) {
+      fetcher()
+        .then((result) => {
+          data.value = result;
+        })
+        .catch(() => {});
+    }
     return { data, pending, refresh: vi.fn() };
   };
 });
@@ -86,9 +90,9 @@ const InputStub = {
 };
 const TableStub = {
   template: `
-    <div data-testid="trackers-table">
+    <div data-testid="trackers-table" :data-loading="loading ? 'true' : 'false'">
       <slot />
-      <slot name="empty" v-if="!data || data.length === 0" />
+      <slot name="empty" v-if="!loading && (!data || data.length === 0)" />
       <div v-for="row in (data || [])" :key="row.id" data-testid="trackers-row">{{ row.name }}</div>
     </div>
   `,
@@ -142,6 +146,8 @@ const commonStubs = {
 describe('trackers page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    trackersListPending = false;
+    useAsyncDataTrackers.length = 0;
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
@@ -162,6 +168,19 @@ describe('trackers page', () => {
     expect(wrapper.find('[data-testid="trackers-empty-state"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="new-tracker-button"]').exists()).toBe(true);
     expect(fetchMock).toHaveBeenCalled();
+  });
+
+  it('does not show empty state while the trackers list is still loading', async () => {
+    trackersListPending = true;
+    fetchMock.mockResolvedValue([]);
+    csrfFetchMock.mockResolvedValue({});
+    const wrapper = await mountSuspended(TrackersPage, {
+      global: { stubs: commonStubs },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="trackers-empty-state"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="trackers-table"]').attributes('data-loading')).toBe('true');
   });
 
   it('renders tracker rows when trackers exist (SSR async-data path)', async () => {

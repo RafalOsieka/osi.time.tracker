@@ -36,13 +36,13 @@
     "comingSoon": "Coming soon."
   },
   "settings": {
+    "language": "Language",
+    "theme": "Theme",
     "timezone": "Time zone",
     "detectedTimezone": "Detected time zone: {timezone}",
     "weekStart": "Week starts on",
     "monday": "Monday",
     "sunday": "Sunday",
-    "save": "Save settings",
-    "saved": "Settings saved.",
     "saveError": "Settings could not be saved."
   },
   "theme": {
@@ -389,6 +389,8 @@
     "projectNameTooLong": "Name must be 100 characters or fewer.",
     "projectTrackerInvalid": "Tracker is invalid.",
     "projectNameDuplicate": "A project with this name already exists in this tracker scope.",
+    "unknown": "An unexpected error occurred.",
+    "remoteIssueSearchModeRequired": "Choose a search mode.",
     "taskNameRequired": "Name is required.",
     "taskNameTooLong": "Name must be 100 characters or fewer.",
     "taskProjectInvalid": "Select a valid project.",
@@ -443,6 +445,10 @@
     "auth": {
       "credentialsRequired": "Email and password are required.",
       "invalidCredentials": "Invalid credentials."
+    },
+    "userSettings": {
+      "invalidTimezone": "Choose a valid time zone.",
+      "invalidWeekStart": "Choose Monday or Sunday as the week start."
     },
     "unexpected": "An unexpected error occurred."
   }

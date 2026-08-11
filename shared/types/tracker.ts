@@ -6,6 +6,18 @@ export const trackerSystemTypeSchema = z.enum(['redmine', 'openproject'], {
 
 export type TrackerSystemType = z.infer<typeof trackerSystemTypeSchema>;
 
+/** Stable display order for system-type selects (product names, not i18n keys). */
+export const TRACKER_SYSTEM_TYPE_ORDER = [
+  'openproject',
+  'redmine',
+] as const satisfies readonly TrackerSystemType[];
+
+/** Display labels for each system type (proper nouns; not catalog strings). */
+export const TRACKER_SYSTEM_TYPE_LABELS = {
+  openproject: 'OpenProject',
+  redmine: 'Redmine',
+} as const satisfies Record<TrackerSystemType, string>;
+
 /**
  * Selects the execution mode: `client` (default) sends remote requests
  * directly from the browser to the tracker; `server` routes them through
@@ -16,6 +28,12 @@ export const trackerExecutionModeSchema = z.enum(['client', 'server'], {
 });
 
 export type TrackerExecutionMode = z.infer<typeof trackerExecutionModeSchema>;
+
+/** Stable display order for execution-mode selects. */
+export const TRACKER_EXECUTION_MODE_ORDER = [
+  'client',
+  'server',
+] as const satisfies readonly TrackerExecutionMode[];
 
 /**
  * Tracker-level export rounding rule. `none` passes the total through;
@@ -33,7 +51,7 @@ export const trackerRoundingRuleSchema = z.enum(
 export type TrackerRoundingRule = z.infer<typeof trackerRoundingRuleSchema>;
 
 /** Stable display order for configuration selects: passthrough → up → nearest. */
-export const TRACKER_ROUNDING_RULE_ORDER: readonly TrackerRoundingRule[] = [
+export const TRACKER_ROUNDING_RULE_ORDER = [
   'none',
   'up_15m',
   'up_30m',
@@ -41,7 +59,7 @@ export const TRACKER_ROUNDING_RULE_ORDER: readonly TrackerRoundingRule[] = [
   'nearest_15m',
   'nearest_30m',
   'nearest_1h',
-] as const;
+] as const satisfies readonly TrackerRoundingRule[];
 
 export const TRACKER_NAME_MAX_LENGTH = 100;
 

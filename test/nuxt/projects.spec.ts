@@ -32,6 +32,8 @@ type Project = {
 
 let mockTrackers: Tracker[] = [];
 let mockProjects: Project[] = [];
+/** When true, the projects list mock reports pending with no data (loading gate tests). */
+let projectsListPending = false;
 const trackersRefreshMocks: ReturnType<typeof vi.fn>[] = [];
 
 mockNuxtImport('$fetch', () => fetchMock);
@@ -53,8 +55,10 @@ mockNuxtImport('useAsyncData', () => {
   ) => {
     const isTrackers = key === 'trackers-for-projects';
     // Projects list is SSR-loaded; tracker options stay lazy until dialog open.
-    const data = ref<Tracker[] | Project[] | null>(isTrackers ? null : mockProjects);
-    const pending = ref(false);
+    const data = ref<Tracker[] | Project[] | null>(
+      isTrackers ? null : projectsListPending ? null : mockProjects,
+    );
+    const pending = ref(isTrackers ? false : projectsListPending);
     const refresh = vi.fn(async () => {
       pending.value = true;
       try {
@@ -65,7 +69,7 @@ mockNuxtImport('useAsyncData', () => {
     });
     if (isTrackers) {
       trackersRefreshMocks.push(refresh);
-    } else if (opts?.immediate !== false) {
+    } else if (opts?.immediate !== false && !projectsListPending) {
       // Simulate SSR list resolution for the projects key.
       data.value = mockProjects;
     }
@@ -100,8 +104,8 @@ const SelectStub = {
 };
 const TableStub = {
   template: `
-    <div data-testid="projects-table">
-      <slot name="empty" v-if="!data || data.length === 0" />
+    <div data-testid="projects-table" :data-loading="loading ? 'true' : 'false'">
+      <slot name="empty" v-if="!loading && (!data || data.length === 0)" />
       <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} {{ row.trackerName }}</div>
     </div>
   `,
@@ -165,6 +169,7 @@ describe('projects page', () => {
     vi.clearAllMocks();
     mockTrackers = [];
     mockProjects = [];
+    projectsListPending = false;
     trackersRefreshMocks.length = 0;
     fetchMock.mockImplementation((url: string) =>
       Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
@@ -188,6 +193,19 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="projects-page"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="projects-empty-state"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="new-project-button"]').exists()).toBe(true);
+  });
+
+  it('does not show empty state while the projects list is still loading', async () => {
+    projectsListPending = true;
+    csrfFetchMock.mockResolvedValue({});
+
+    const wrapper = await mountSuspended(ProjectsPage, {
+      global: { stubs: commonStubs },
+    });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="projects-empty-state"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="projects-table"]').attributes('data-loading')).toBe('true');
   });
 
   it('4.7b renders project rows when projects exist without a tracker filter', async () => {

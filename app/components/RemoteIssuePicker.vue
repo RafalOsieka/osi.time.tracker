@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import type { TrackerDto } from '../../shared/types/tracker';
-import type {
-  RemoteIssueRefDto,
-  RemoteIssueSearchMode,
-  RemoteIssueSearchResult,
+import {
+  REMOTE_ISSUE_SEARCH_MODE_ORDER,
+  type RemoteIssueRefDto,
+  type RemoteIssueSearchMode,
+  type RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
 import { useRemoteIssueSearch } from '~/composables/useRemoteIssueSearch';
 
@@ -23,18 +24,22 @@ const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config
 
 const open = ref(false);
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
-  mode: 'title',
+  mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
   query: '',
 });
 const firstField = ref<HTMLElement | null>(null);
 let triggerElement: HTMLElement | null = null;
 
-const modeItems = computed(
-  () =>
-    [
-      { label: t('remoteIssuePicker.modeTitle'), value: 'title' },
-      { label: t('remoteIssuePicker.modeId'), value: 'id' },
-    ] satisfies Array<{ label: string; value: RemoteIssueSearchMode }>,
+const searchModeLabelKeys = {
+  title: 'remoteIssuePicker.modeTitle',
+  id: 'remoteIssuePicker.modeId',
+} as const satisfies Record<RemoteIssueSearchMode, string>;
+
+const modeItems = computed(() =>
+  REMOTE_ISSUE_SEARCH_MODE_ORDER.map((value) => ({
+    label: t(searchModeLabelKeys[value]),
+    value,
+  })),
 );
 
 const statusMessage = computed(() => {
