@@ -39,6 +39,13 @@ watch(
   { immediate: true },
 );
 
+// Close start editor if the timer stops while the popover is open.
+watch(isRunning, (running) => {
+  if (!running) {
+    startEditorOpen.value = false;
+  }
+});
+
 const displayedTitle = computed(() => (isRunning.value ? editedTitle.value : title.value));
 
 /**
@@ -265,14 +272,19 @@ async function onSaveStartedAt() {
       @keydown.enter="onEnter"
     />
 
-    <UPopover v-if="isRunning" v-model:open="startEditorOpen">
+    <!--
+      Always UButton for consistent mono size. Idle: disabled (no popover).
+      Running: opens start-time editor.
+    -->
+    <UPopover v-model:open="startEditorOpen">
       <UButton
         color="neutral"
         variant="link"
-        class="min-w-[4.5rem] font-mono"
+        class="min-w-[4.5rem] font-mono tabular-nums"
         role="timer"
         :label="elapsedLabel"
-        :aria-label="t('timer.editStartLabel')"
+        :aria-label="isRunning ? t('timer.editStartLabel') : t('timer.elapsedLabel')"
+        :disabled="!isRunning"
         data-testid="timer-elapsed"
         @click="openStartEditor"
       />
@@ -336,19 +348,21 @@ async function onSaveStartedAt() {
         </div>
       </template>
     </UPopover>
-    <span
-      v-else
-      class="min-w-[4.5rem] font-mono text-default"
-      role="timer"
-      :aria-label="t('timer.elapsedLabel')"
-      data-testid="timer-elapsed"
-    >
-      {{ elapsedLabel }}
-    </span>
 
     <UButton
-      :label="isRunning ? t('timer.stop') : t('timer.start')"
+      square
+      variant="ghost"
+      :icon="isRunning ? 'i-lucide-square' : 'i-lucide-play'"
+      :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
       :color="isRunning ? 'error' : 'primary'"
+      :ui="
+        isRunning
+          ? {
+              // Pulse icon color only — not the button chrome / background.
+              leadingIcon: 'motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
+            }
+          : undefined
+      "
       :loading="starting || stopping"
       :disabled="isLoading"
       :aria-pressed="isRunning"

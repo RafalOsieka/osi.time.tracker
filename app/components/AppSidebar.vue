@@ -51,6 +51,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   <nav aria-label="Main navigation" class="w-full">
     <UNavigationMenu
       :collapsed="isCollapsed"
+      :tooltip="isCollapsed"
       :items="navItems"
       orientation="vertical"
       class="w-full"

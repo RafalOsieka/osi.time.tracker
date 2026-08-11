@@ -13,6 +13,7 @@
   },
   "layout": {
     "title": "OSI Time Tracker",
+    "brandShort": "OSI",
     "logoutButton": "Wyloguj się"
   },
   "nav": {
@@ -21,12 +22,6 @@
     "projects": "Projekty",
     "reports": "Raporty",
     "settings": "Ustawienia"
-  },
-  "utilityMenu": {
-    "label": "Menu",
-    "locale": "Język",
-    "theme": "Motyw",
-    "logout": "Wyloguj się"
   },
   "locale": {
     "en": "English",

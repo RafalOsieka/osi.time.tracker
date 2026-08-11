@@ -1,9 +1,5 @@
-# frontend-shell Specification
+## MODIFIED Requirements
 
-## Purpose
-Define the global authenticated application shell rendered by the `default` layout — a top bar and a left sidebar wrapping the page outlet — together with its responsive behavior, navigation skeleton, accessibility guarantees, and tokenized styling. The shell exposes named regions for brand, primary navigation, a reserved running-timer region (centered in the top bar), a utility menu (locale, theme, user/logout), and the page content. It adapts across a desktop collapsible rail with persisted SSR-safe state and an off-canvas drawer below the `lg` breakpoint, while meeting WCAG 2.1 AA for its navigation chrome and deriving all styling from Tailwind utilities and Nuxt UI `--ui-*` design tokens.
-
-## Requirements
 ### Requirement: REQ-064 Authenticated shell regions and slots
 The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar inside the panel) and a **full-height left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a sidebar footer **account control** (identity + logout via menu), a reserved running-timer region in the top bar, and the page content (`<NuxtPage />`). The shell SHALL NOT render a top-bar utility menu. Logout from REQ-061 SHALL remain reachable from the sidebar footer account control on every authenticated route (open the account control, then activate Log out). Locale and theme controls SHALL NOT appear in the shell chrome; they live on the settings page (user-settings, ui-theming, internationalization).
 
@@ -18,29 +14,6 @@ The `default` layout SHALL render a global authenticated shell built on the Nuxt
 #### Scenario: Utility menu excludes locale and theme
 - **WHEN** the authenticated shell is rendered
 - **THEN** it SHALL NOT offer locale or theme selection controls in the sidebar or top bar (there is no top-bar utility menu)
-
-### Requirement: REQ-065 Sidebar navigation skeleton with placeholder routes
-The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Projects, Reports, Settings — as navigation links. The Timer link SHALL route to `/`, which renders the timer view (the main working page); the Trackers link SHALL route to `/trackers`, which renders the Trackers management page; the Settings link SHALL route to `/settings`, which renders the preferences page (REQ-167, user-settings) rather than a placeholder; there SHALL be no Clients navigation entry, no Tasks navigation entry, and no Dashboard entry. Destinations that do not yet have a real feature page SHALL route to a placeholder page rather than a broken route. All navigation labels SHALL come from the i18n catalogs with `en`/`pl` parity.
-
-#### Scenario: All skeleton destinations are listed
-- **WHEN** the sidebar is rendered
-- **THEN** it SHALL list links for Timer, Trackers, Projects, Reports, and Settings — and SHALL NOT list Clients, Tasks, or Dashboard
-
-#### Scenario: Timer link opens the timer view
-- **WHEN** the user activates the Timer link
-- **THEN** the application SHALL navigate to `/` and render the timer view page
-
-#### Scenario: Trackers link opens the trackers page
-- **WHEN** the user activates the Trackers link
-- **THEN** the application SHALL navigate to `/trackers` and render the Trackers management page
-
-#### Scenario: Settings link opens the preferences page
-- **WHEN** the user activates the Settings link
-- **THEN** the application SHALL navigate to `/settings` and render the preferences form, not a "coming soon" placeholder
-
-#### Scenario: Unbuilt destination resolves to a placeholder
-- **WHEN** the user activates a destination that has no real feature page yet
-- **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
 
 ### Requirement: REQ-066 Desktop collapsible rail with persisted state
 On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static full-height rail that the user can toggle between a full (labelled) state and an icon-only (collapsed) state, using `UDashboardSidebar`'s built-in `collapsible` behavior. The desktop collapse/expand control SHALL be available in the top bar (navbar) left region. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed). When collapsed, the brand region SHALL show a short brand mark (`layout.brandShort`) centered in the header until a dedicated app icon exists; when expanded, it SHALL show the full application title.
@@ -169,27 +142,3 @@ The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be
 #### Scenario: Collapsed rail shows nav tooltips
 - **WHEN** the desktop sidebar is collapsed to icon-only and the user focuses or hovers a primary navigation icon
 - **THEN** a text tooltip SHALL present that destination's navigation label
-
-### Requirement: REQ-072 Tokenized shell styling
-The shell SHALL be styled using Tailwind utilities and Nuxt UI `--ui-*` design tokens, with no ad-hoc inline `style` attributes in `default.vue`. Brand accent usage SHALL rely on the configured `primary` color (per REQ-160) rather than inline colors or raw hex values.
-
-#### Scenario: No inline ad-hoc styling in the shell
-- **WHEN** the shell is implemented
-- **THEN** its layout and color SHALL derive from Tailwind utilities and Nuxt UI design tokens and not from ad-hoc inline `style` attributes
-
-### Requirement: REQ-258 Running entry resolved during authenticated shell SSR
-The authenticated `default` layout SHALL resolve the current user's running time entry (`GET /api/time-entries/running`) during server-side rendering of any authenticated route and SHALL seed the shared running-timer state used by the live timer widget before first paint. The SSR fetch SHALL authenticate using the incoming session cookie (cookie-forwarding request fetch), matching other authenticated SSR data loads. When no running entry exists, the shell SHALL seed idle state (`null`) rather than leaving the widget in an unknown pre-fetch idle that could accept start actions incorrectly after hydrate without a resolved server result.
-
-Client-side navigations within an already-hydrated session MAY reuse the shared running-timer state and SHALL NOT require a full page reload to keep the widget correct after start/stop mutations already reflected in that state. After a full document load, the running entry SHALL be present in the initial render payload when the SSR request succeeded.
-
-#### Scenario: Hard reload shows running title without waiting for client mount
-- **WHEN** an authenticated user with a running entry performs a full document load of any private route that uses the `default` layout
-- **THEN** the initial HTML/payload for that response SHALL already include the running entry so the timer widget can render the running title (or blank untitled title) without depending solely on a post-mount client fetch
-
-#### Scenario: Hard reload with no running entry shows idle controls
-- **WHEN** an authenticated user with no running entry performs a full document load of a private route on the `default` layout
-- **THEN** the shell SHALL seed idle timer state for first paint and SHALL NOT leave the widget permanently disabled waiting for a client-only fetch that never started
-
-#### Scenario: SSR uses the session cookie
-- **WHEN** the shell resolves the running entry during SSR
-- **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request so the endpoint authorizes the same user as a browser navigation

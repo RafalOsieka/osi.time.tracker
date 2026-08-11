@@ -100,7 +100,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     const continueSelector = '[data-testid^="timer-group-continue-"]';
     await page.click(continueSelector);
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
     );
     // Stop it via API to avoid leaking a running entry into other assertions.
     const runningRes = await fetch(url('/api/time-entries/running'), {
@@ -320,7 +323,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Start',
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') !== 'true',
     );
 
     // Start a timer from the top-bar widget.
@@ -333,7 +339,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     await titleInput.press('Escape');
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
     );
 
     // Dismiss any open autocomplete overlay that could intercept the Stop click.
@@ -351,9 +360,9 @@ describeTimerViewUI('timer view UI flow', async () => {
     await stopResponse;
     await page.waitForFunction(
       () =>
-        (
-          document.querySelector('[data-testid="timer-toggle-button"]')?.textContent ?? ''
-        ).trim() === 'Start',
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') !== 'true',
     );
     // After stop, the list refresh may still be on an older anchored week — reset if needed.
     const reset = page.locator('[data-testid="timer-view-reset-to-current-week"]');
@@ -400,7 +409,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
     );
     await page.waitForFunction(pageIncludesText, seedTitle);
     await page.waitForFunction(pageIncludesText, 'Suggestion Project');
@@ -408,7 +420,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.reload();
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
     );
     await page.waitForFunction(pageIncludesText, seedTitle);
     await page.waitForFunction(pageIncludesText, 'Suggestion Project');
@@ -579,7 +594,10 @@ describeTimerViewUI('timer view UI flow', async () => {
 
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
-      () => document.querySelector('[data-testid="timer-toggle-button"]')?.textContent === 'Stop',
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
     );
 
     const runningRes = await fetch(url('/api/time-entries/running'), {

@@ -2,7 +2,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AppSidebar from '../../app/components/AppSidebar.vue';
-import AppUtilityMenu from '../../app/components/AppUtilityMenu.vue';
 
 const fetchMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
 const seedRunningMock = vi.hoisted(() => vi.fn());
@@ -43,6 +42,7 @@ const topBarStub = {
   template:
     '<header data-testid="app-topbar">' +
     '<button data-testid="sidebar-toggle" aria-expanded="true" />' +
+    '<slot name="left" />' +
     '<slot />' +
     '<slot name="right" />' +
     '</header>',
@@ -51,7 +51,7 @@ const topBarStub = {
 const sidebarStub = {
   props: ['collapsed', 'iconOnly'],
   template:
-    '<nav aria-label="Main navigation" data-testid="app-sidebar">' +
+    '<nav aria-label="Main navigation" data-testid="app-sidebar-nav">' +
     '<a data-testid="nav-link-timer" aria-current="page" href="/">Timer</a>' +
     '<a data-testid="nav-link-trackers" href="/trackers">Trackers</a>' +
     '<a data-testid="nav-link-projects" href="/projects">Projects</a>' +
@@ -60,10 +60,12 @@ const sidebarStub = {
     '</nav>',
 };
 
-const utilityMenuStub = {
+const userFooterStub = {
+  props: ['collapsed'],
   template:
-    '<div data-testid="utility-menu-button">' +
-    '<a data-testid="logout-button">Log out</a>' +
+    '<div data-testid="app-user-footer">' +
+    '<button data-testid="app-user-footer-trigger">User</button>' +
+    '<button data-testid="logout-button">Log out</button>' +
     '</div>',
 };
 
@@ -77,7 +79,11 @@ async function mountShell(overrideStubs: Record<string, unknown> = {}) {
         UDashboardSidebar: {
           props: ['collapsed', 'open'],
           template:
-            '<aside data-testid="app-sidebar" :data-collapsed="collapsed"><slot name="header" :collapsed="collapsed" /><slot :collapsed="collapsed" /></aside>',
+            '<aside data-testid="app-sidebar" :data-collapsed="collapsed">' +
+            '<slot name="header" :collapsed="collapsed" />' +
+            '<slot :collapsed="collapsed" />' +
+            '<slot name="footer" :collapsed="collapsed" />' +
+            '</aside>',
         },
         UDashboardPanel: {
           template:
@@ -87,8 +93,11 @@ async function mountShell(overrideStubs: Record<string, unknown> = {}) {
         UDashboardSidebarToggle: {
           template: '<button data-testid="sidebar-toggle" aria-expanded="true" />',
         },
+        UDashboardSidebarCollapse: {
+          template: '<button data-testid="sidebar-collapse" />',
+        },
         AppSidebar: sidebarStub,
-        AppUtilityMenu: utilityMenuStub,
+        AppUserFooter: userFooterStub,
         AppTimer: appTimerStub,
         NuxtPage: { template: '<div>page</div>' },
         ...overrideStubs,
@@ -105,9 +114,12 @@ describe('REQ-064: shell regions', () => {
     expect(wrapper.find('[data-testid="app-content"]').exists()).toBe(true);
   });
 
-  it('logout control is reachable within the utility menu', async () => {
+  it('logout control is reachable within the sidebar footer', async () => {
     const wrapper = await mountShell();
-    expect(wrapper.find('[data-testid="logout-button"]').exists()).toBe(true);
+    const sidebar = wrapper.find('[data-testid="app-sidebar"]');
+    expect(sidebar.find('[data-testid="app-user-footer-trigger"]').exists()).toBe(true);
+    expect(sidebar.find('[data-testid="logout-button"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(false);
   });
 
   it('timer region slot is present in the top bar', async () => {
@@ -179,6 +191,12 @@ describe('REQ-066: desktop rail toggle', () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="app-sidebar"]').attributes('data-collapsed')).toBe('false');
   });
+
+  it('desktop collapse control is present in the top bar', async () => {
+    const wrapper = await mountShell();
+    const topbar = wrapper.find('[data-testid="app-topbar"]');
+    expect(topbar.find('[data-testid="sidebar-collapse"]').exists()).toBe(true);
+  });
 });
 
 describe('REQ-067: off-canvas drawer', () => {
@@ -198,59 +216,20 @@ describe('REQ-068/070: timer lives in the navbar', () => {
     expect(topbar.find('[data-testid="app-timer"]').exists()).toBe(true);
   });
 
-  it('utility menu stays on the right of the top bar', async () => {
+  it('top bar right has no utility menu', async () => {
     const wrapper = await mountShell();
     const topbar = wrapper.find('[data-testid="app-topbar"]');
-    expect(topbar.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
+    expect(topbar.find('[data-testid="utility-menu-button"]').exists()).toBe(false);
+    expect(topbar.find('[data-testid="logout-button"]').exists()).toBe(false);
   });
 });
 
-describe('REQ-069: utility menu', () => {
-  it('utility menu button is rendered', async () => {
+describe('REQ-069: sidebar footer user area', () => {
+  it('user footer with account menu is rendered in the sidebar', async () => {
     const wrapper = await mountShell();
-    expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
-  });
-
-  it('AppUtilityMenu exposes logout only (no locale or theme groups)', async () => {
-    let capturedItems: Array<Array<{ label?: string; type?: string }>> = [];
-    const wrapper = await mountSuspended(AppUtilityMenu, {
-      global: {
-        stubs: {
-          UDropdownMenu: {
-            props: {
-              items: { type: Array, default: () => [] },
-            },
-            template: '<div data-testid="utility-menu"><slot /></div>',
-            watch: {
-              items: {
-                immediate: true,
-                deep: true,
-                handler(value: Array<Array<{ label?: string; type?: string }>>) {
-                  capturedItems = value;
-                },
-              },
-            },
-          },
-          UButton: {
-            template: '<button data-testid="utility-menu-button" v-bind="$attrs"><slot /></button>',
-          },
-        },
-      },
-    });
-    expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
-
-    const flat = capturedItems.flat();
-    const labels = flat.map((item) => item.label ?? '');
-    expect(labels.some((label) => /log.?out/i.test(label) || label === 'utilityMenu.logout')).toBe(
-      true,
-    );
-    expect(
-      labels.some((label) => label === 'utilityMenu.locale' || label === 'utilityMenu.theme'),
-    ).toBe(false);
-    expect(flat.some((item) => item.type === 'checkbox')).toBe(false);
-    // Single group with logout only — no separate locale/theme sections.
-    expect(capturedItems).toHaveLength(1);
-    expect(flat).toHaveLength(1);
+    const sidebar = wrapper.find('[data-testid="app-sidebar"]');
+    expect(sidebar.find('[data-testid="app-user-footer"]').exists()).toBe(true);
+    expect(sidebar.find('[data-testid="app-user-footer-trigger"]').exists()).toBe(true);
   });
 });
 
@@ -275,5 +254,24 @@ describe('REQ-071: accessible shell navigation', () => {
     const wrapper = await mountShell();
     const toggle = wrapper.find('[data-testid="sidebar-toggle"]');
     expect(toggle.exists()).toBe(true);
+  });
+
+  it('enables tooltips when navigation is collapsed', async () => {
+    let capturedTooltip: unknown;
+    await mountSuspended(AppSidebar, {
+      props: { collapsed: true },
+      global: {
+        stubs: {
+          UNavigationMenu: {
+            props: ['items', 'collapsed', 'tooltip'],
+            template: '<div data-testid="nav-menu" />',
+            created(this: { tooltip?: unknown }) {
+              capturedTooltip = this.tooltip;
+            },
+          },
+        },
+      },
+    });
+    expect(capturedTooltip).toBe(true);
   });
 });
