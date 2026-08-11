@@ -5,7 +5,7 @@ Define the global authenticated application shell rendered by the `default` layo
 
 ## Requirements
 ### Requirement: REQ-064 Authenticated shell regions and slots
-The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar) and a **left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a reserved running-timer region, a utility menu (locale, theme, user/logout), and the page content (`<NuxtPage />`). The logout control (`logout-button`) from REQ-061 SHALL remain available within the utility menu on every authenticated route.
+The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar) and a **left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a reserved running-timer region, a utility menu (user/logout only), and the page content (`<NuxtPage />`). The logout control (`logout-button`) from REQ-061 SHALL remain available within the utility menu on every authenticated route. Locale and theme controls SHALL NOT appear in the utility menu; they live on the settings page (user-settings, ui-theming, internationalization).
 
 #### Scenario: Shell renders on an authenticated route
 - **WHEN** an authenticated user navigates to any page using the `default` layout
@@ -14,6 +14,10 @@ The `default` layout SHALL render a global authenticated shell built on the Nuxt
 #### Scenario: Logout remains reachable
 - **WHEN** the shell is rendered
 - **THEN** a logout control (`logout-button`) SHALL be present in the utility menu, and triggering it SHALL clear the session and navigate to `/login`
+
+#### Scenario: Utility menu excludes locale and theme
+- **WHEN** the utility menu is opened
+- **THEN** it SHALL NOT offer locale or theme selection controls
 
 ### Requirement: REQ-065 Sidebar navigation skeleton with placeholder routes
 The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Projects, Reports, Settings — as navigation links. The Timer link SHALL route to `/`, which renders the timer view (the main working page); the Trackers link SHALL route to `/trackers`, which renders the Trackers management page; the Settings link SHALL route to `/settings`, which renders the preferences page (REQ-167, user-settings) rather than a placeholder; there SHALL be no Clients navigation entry, no Tasks navigation entry, and no Dashboard entry. Destinations that do not yet have a real feature page SHALL route to a placeholder page rather than a broken route. All navigation labels SHALL come from the i18n catalogs with `en`/`pl` parity.
@@ -71,12 +75,16 @@ The top bar (`UDashboardNavbar`) SHALL always host the reserved timer region in 
 - **WHEN** the shell is rendered
 - **THEN** the utility menu SHALL render in the top bar's right region
 
-### Requirement: REQ-069 Collapsed utility cluster
-At every responsive tier the locale, theme, and user/logout controls SHALL be collapsed into a single utility menu rather than rendered as loose top-bar controls. All control labels SHALL come from the i18n catalogs with `en`/`pl` parity.
+### Requirement: REQ-069 Logout-only utility menu
+At every responsive tier the user/logout control SHALL be collapsed into a single utility menu rather than rendered as a loose top-bar control. The utility menu SHALL expose logout (and MAY show a minimal user identity affordance such as an avatar initial) and SHALL NOT expose locale or theme controls. All control labels SHALL come from the i18n catalogs with `en`/`pl` parity.
 
-#### Scenario: Utility controls live behind one menu
+#### Scenario: Utility menu is a single top-bar entry
 - **WHEN** the shell is rendered at any viewport size
-- **THEN** the locale, theme, and user/logout controls SHALL be reachable through a single utility menu
+- **THEN** logout SHALL be reachable through a single utility menu in the top bar
+
+#### Scenario: Locale and theme are not in the utility menu
+- **WHEN** the utility menu is opened
+- **THEN** language and theme options SHALL be absent from that menu
 
 ### Requirement: REQ-070 Reserved timer region hosts the live timer widget
 The shell's reserved running-timer region SHALL host the live timer widget instead of a placeholder, centered in the `UDashboardNavbar` at every viewport width (a single instance — no separate stacked row). The navbar right slot SHALL host the utility menu. The widget SHALL provide a title input (autocomplete over existing tasks) and a start/stop control, and SHALL display the running entry's title and live elapsed time whenever a timer is running (the persistent running indicator). The widget SHALL derive styling from Tailwind utilities and Nuxt UI `--ui-*` design tokens, meet WCAG 2.1 AA (labelled, keyboard-operable controls), and source all user-facing strings from the i18n catalogs with `en`/`pl` parity.

@@ -110,8 +110,17 @@ describeSettingsUI('user settings UI flow', async () => {
     ).toBe(true);
 
     // --- Navigate to the settings page and change timezone + week start ---
+    // Preferences auto-apply on change (no Save button).
     await page.click('a[href="/settings"]');
     await page.waitForSelector('[data-testid="page-settings"]');
+    // Controls mount only after client preference sources settle (no default flash).
+    await page.waitForSelector('[data-testid="settings-preferences"]');
+    expect(await page.locator('button:has-text("Save settings")').count()).toBe(0);
+    expect(await page.locator('[data-testid="settings-saved-message"]').count()).toBe(0);
+
+    // Language and theme controls live on Settings (not the utility menu).
+    expect(await page.locator('[data-testid="settings-language"]').count()).toBe(1);
+    expect(await page.locator('[data-testid="settings-theme"]').count()).toBe(1);
 
     await page.click('#settings-timezone');
     await page.getByRole('option', { name: SHIFTED_TIME_ZONE }).click();
@@ -119,8 +128,18 @@ describeSettingsUI('user settings UI flow', async () => {
     const weekStartGroup = page.locator('#settings-week-start');
     await weekStartGroup.getByText('Sunday').click();
 
-    await page.click('button:has-text("Save settings")');
-    await page.waitForSelector('[data-testid="settings-saved-message"]');
+    // Wait for auto-persist: controls should keep the selected values after network settles.
+    await expect
+      .poll(() => page.locator('#settings-timezone').textContent())
+      .toContain(SHIFTED_TIME_ZONE);
+    await expect
+      .poll(async () =>
+        page
+          .locator('#settings-week-start')
+          .getByRole('radio', { name: /sunday/i })
+          .getAttribute('aria-checked'),
+      )
+      .toBe('true');
 
     // --- Persistence across reload ---
     await page.reload();

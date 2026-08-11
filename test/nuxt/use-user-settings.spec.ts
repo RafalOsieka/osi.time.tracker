@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { nextTick, ref } from 'vue';
+import { nextTick, ref, type Ref } from 'vue';
 import { mount } from '@vue/test-utils';
 import { browserDateTimeSettings } from '../../app/utils/dateTime';
 import { useUserSettings } from '../../app/composables/useUserSettings';
@@ -9,6 +9,18 @@ const sessionUser = ref<{
   settings?: { timezone: string | null; weekStart: 'monday' | 'sunday' };
 } | null>(null);
 const csrfFetch = vi.fn();
+
+/** Isolate Nuxt useState between tests without app-side test hooks. */
+const useStateStore = vi.hoisted(() => new Map<string, Ref<unknown>>());
+
+mockNuxtImport('useState', () => {
+  return <T>(key: string, init?: () => T): Ref<T> => {
+    if (!useStateStore.has(key)) {
+      useStateStore.set(key, ref(init ? init() : null) as Ref<unknown>);
+    }
+    return useStateStore.get(key) as Ref<T>;
+  };
+});
 
 mockNuxtImport('useUserSession', () => () => ({
   user: sessionUser,
@@ -24,6 +36,7 @@ describe('useUserSettings', () => {
   beforeEach(() => {
     sessionUser.value = null;
     csrfFetch.mockReset();
+    useStateStore.clear();
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (useNuxtApp() as any).$csrfFetch = csrfFetch;

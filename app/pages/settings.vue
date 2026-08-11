@@ -1,58 +1,200 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import type { WeekStart } from '../../shared/types/user-settings';
+import { WEEK_START_ORDER, type WeekStart } from '~~/shared/types/user-settings';
 
-const { t } = useI18n();
+type ColorModePreference = 'light' | 'dark' | 'system';
+type AppLocale = 'en' | 'pl';
+
+const { t, locale, setLocale } = useI18n();
+const colorMode = useColorMode();
+const toast = useAppToast();
 const { settings, detectedTimeZone, save } = useUserSettings();
 
-const state = reactive<{ timezone: string; weekStart: WeekStart }>({
-  timezone: settings.value.timezone ?? detectedTimeZone.value,
-  weekStart: settings.value.weekStart,
-});
-const saving = ref(false);
-const saved = ref(false);
-const error = ref('');
+/**
+ * Prefer controls stay hidden until client-side sources settle:
+ * - color-mode cookie/local preference (`unknown` until app:mounted)
+ * - browser timezone detection (UTC fallback until useUserSettings onMounted)
+ * Otherwise USelect shows system/UTC defaults and then jumps.
+ */
+const preferencesReady = ref(false);
+
+const timezone = ref(settings.value.timezone ?? detectedTimeZone.value);
+const weekStart = ref<WeekStart>(settings.value.weekStart);
 
 const timezones = Intl.supportedValuesOf('timeZone');
-const weekStartItems = computed(
+const localeItems = computed(
   () =>
     [
-      { label: t('settings.monday'), value: 'monday' },
-      { label: t('settings.sunday'), value: 'sunday' },
-    ] satisfies Array<{ label: string; value: WeekStart }>,
+      { label: t('locale.en'), value: 'en' },
+      { label: t('locale.pl'), value: 'pl' },
+    ] satisfies Array<{ label: string; value: AppLocale }>,
+);
+const themeItems = computed(
+  () =>
+    [
+      { label: t('theme.light'), value: 'light' },
+      { label: t('theme.dark'), value: 'dark' },
+      { label: t('theme.system'), value: 'system' },
+    ] satisfies Array<{ label: string; value: ColorModePreference }>,
+);
+const weekStartLabelKeys = {
+  monday: 'settings.monday',
+  sunday: 'settings.sunday',
+} as const satisfies Record<WeekStart, string>;
+const weekStartItems = computed(() =>
+  WEEK_START_ORDER.map((value) => ({
+    label: t(weekStartLabelKeys[value]),
+    value,
+  })),
 );
 
-watch(settings, (value) => {
-  state.timezone = value.timezone ?? detectedTimeZone.value;
-  state.weekStart = value.weekStart;
+const selectedLocale = computed({
+  get: () => locale.value as AppLocale,
+  set: (value: AppLocale) => {
+    void setLocale(value);
+  },
+});
+
+const selectedTheme = computed({
+  get: () => colorMode.preference as ColorModePreference,
+  set: (value: ColorModePreference) => {
+    colorMode.preference = value;
+  },
+});
+
+function syncLocalAccountFields() {
+  timezone.value = settings.value.timezone ?? detectedTimeZone.value;
+  weekStart.value = settings.value.weekStart;
+}
+
+function waitForColorMode(): Promise<void> {
+  if (!colorMode.unknown) return Promise.resolve();
+  return new Promise((resolve) => {
+    const stop = watch(
+      () => colorMode.unknown,
+      (unknown) => {
+        if (!unknown) {
+          stop();
+          resolve();
+        }
+      },
+      { immediate: true },
+    );
+    // Safety: never block the form if the flag never clears.
+    window.setTimeout(() => {
+      stop();
+      resolve();
+    }, 1500);
+  });
+}
+
+onMounted(async () => {
+  // useUserSettings registers onMounted first; nextTick lets browser TZ apply.
+  await nextTick();
+  syncLocalAccountFields();
+  await waitForColorMode();
+  syncLocalAccountFields();
+  preferencesReady.value = true;
+});
+
+// Keep local controls in sync when session settings change (e.g. after a successful PATCH).
+watch(settings, () => {
+  if (!preferencesReady.value) return;
+  syncLocalAccountFields();
 });
 
 // After mount, unsaved timezone upgrades from UTC fallback to browser-detected.
-watch(detectedTimeZone, (tz) => {
-  if (!settings.value.timezone) {
-    state.timezone = tz;
-  }
+watch(detectedTimeZone, () => {
+  if (!preferencesReady.value || settings.value.timezone) return;
+  timezone.value = detectedTimeZone.value;
 });
 
-async function submit() {
-  saving.value = true;
-  saved.value = false;
-  error.value = '';
+/** Latest-write-wins: only the most recent PATCH result is applied if requests overlap. */
+let accountPatchGeneration = 0;
+
+async function persistAccountField(
+  patch: { timezone: string } | { weekStart: WeekStart },
+  previous: { timezone: string; weekStart: WeekStart },
+) {
+  const generation = ++accountPatchGeneration;
   try {
-    await save({ timezone: state.timezone, weekStart: state.weekStart });
-    saved.value = true;
+    await save(patch);
   } catch {
-    error.value = t('settings.saveError');
-  } finally {
-    saving.value = false;
+    // Revert only if this is still the latest attempt and nothing newer won.
+    if (generation === accountPatchGeneration) {
+      timezone.value = previous.timezone;
+      weekStart.value = previous.weekStart;
+      toast.error(t('settings.saveError'));
+    }
   }
+}
+
+function onTimezoneChange(value: string | undefined) {
+  if (!value || value === (settings.value.timezone ?? detectedTimeZone.value)) return;
+  const previous = {
+    timezone: settings.value.timezone ?? detectedTimeZone.value,
+    weekStart: weekStart.value,
+  };
+  timezone.value = value;
+  void persistAccountField({ timezone: value }, previous);
+}
+
+function onWeekStartChange(value: WeekStart | undefined) {
+  if (!value || value === settings.value.weekStart) return;
+  const previous = {
+    timezone: timezone.value,
+    weekStart: settings.value.weekStart,
+  };
+  weekStart.value = value;
+  void persistAccountField({ weekStart: value }, previous);
 }
 </script>
 
 <template>
   <div data-testid="page-settings" class="mx-auto max-w-xl space-y-4">
     <h1 class="text-2xl font-semibold">{{ t('nav.settings') }}</h1>
-    <UForm :state="state" class="grid gap-4" @submit="submit">
+
+    <div
+      v-if="!preferencesReady"
+      class="grid gap-4"
+      aria-busy="true"
+      data-testid="settings-preferences-loading"
+    >
+      <USkeleton class="h-14 w-full" />
+      <USkeleton class="h-14 w-full" />
+      <USkeleton class="h-14 w-full" />
+      <USkeleton class="h-10 w-full" />
+    </div>
+
+    <div v-else class="grid gap-4" data-testid="settings-preferences">
+      <UFormField
+        :label="t('settings.language')"
+        name="language"
+        data-testid="settings-language-field"
+      >
+        <USelect
+          id="settings-language"
+          v-model="selectedLocale"
+          :items="localeItems"
+          value-key="value"
+          label-key="label"
+          class="w-full"
+          data-testid="settings-language"
+        />
+      </UFormField>
+
+      <UFormField :label="t('settings.theme')" name="theme" data-testid="settings-theme-field">
+        <USelect
+          id="settings-theme"
+          v-model="selectedTheme"
+          :items="themeItems"
+          value-key="value"
+          label-key="label"
+          class="w-full"
+          data-testid="settings-theme"
+        />
+      </UFormField>
+
       <UFormField
         :label="t('settings.timezone')"
         name="timezone"
@@ -60,11 +202,12 @@ async function submit() {
       >
         <USelectMenu
           id="settings-timezone"
-          v-model="state.timezone"
+          :model-value="timezone"
           :items="timezones"
           searchable
           class="w-full"
           data-testid="settings-timezone"
+          @update:model-value="onTimezoneChange"
         />
         <template v-if="!settings.timezone" #hint>
           {{ t('settings.detectedTimezone', { timezone: detectedTimeZone }) }}
@@ -78,32 +221,15 @@ async function submit() {
       >
         <URadioGroup
           id="settings-week-start"
-          v-model="state.weekStart"
+          :model-value="weekStart"
           :items="weekStartItems"
           orientation="horizontal"
           data-testid="settings-week-start"
           value-key="value"
           label-key="label"
+          @update:model-value="onWeekStartChange"
         />
       </UFormField>
-
-      <div class="flex items-center gap-3">
-        <UButton type="submit" :label="t('settings.save')" :loading="saving" />
-        <UAlert
-          v-if="saved"
-          color="success"
-          variant="subtle"
-          :title="t('settings.saved')"
-          data-testid="settings-saved-message"
-        />
-        <UAlert
-          v-if="error"
-          color="error"
-          variant="subtle"
-          :title="error"
-          data-testid="settings-error-message"
-        />
-      </div>
-    </UForm>
+    </div>
   </div>
 </template>

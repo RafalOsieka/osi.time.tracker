@@ -63,6 +63,38 @@ describeSettings('user settings API integration', async () => {
     expect(invalid.status).toBe(422);
     expect((await invalid.json()).data.messageKey).toBe('errors.userSettings.invalidTimezone');
 
+    // Partial single-field body updates only that field and leaves the other intact.
+    const partialWeekStart = await fetch(url('/api/user/settings'), {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': csrfToken,
+        cookie: jar.header(),
+      },
+      body: JSON.stringify({ weekStart: 'monday' }),
+    });
+    expect(partialWeekStart.status).toBe(200);
+    expect(await partialWeekStart.json()).toEqual({
+      timezone: 'America/New_York',
+      weekStart: 'monday',
+    });
+    jar.capture(partialWeekStart);
+
+    const partialTimezone = await fetch(url('/api/user/settings'), {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': csrfToken,
+        cookie: jar.header(),
+      },
+      body: JSON.stringify({ timezone: 'Europe/Warsaw' }),
+    });
+    expect(partialTimezone.status).toBe(200);
+    expect(await partialTimezone.json()).toEqual({
+      timezone: 'Europe/Warsaw',
+      weekStart: 'monday',
+    });
+
     const unauthenticated = await fetch(url('/api/user/settings'));
     expect(unauthenticated.status).toBe(401);
   });

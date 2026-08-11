@@ -46,23 +46,46 @@ The system SHALL expose `GET /api/user/settings` returning the authenticated use
 - **THEN** the system SHALL respond with HTTP 401 (or reject the request for a missing CSRF token) without touching stored settings
 
 ### Requirement: REQ-167 Settings preferences page
-The `/settings` page SHALL replace its "coming soon" placeholder with a preferences form containing: a filterable timezone `Select` populated from `Intl.supportedValuesOf('timeZone')` that, when no timezone is saved, pre-selects the browser-detected timezone and shows a localized "detected" hint; and a week-start `SelectButton` offering Monday and Sunday. Saving SHALL submit via the PATCH endpoint (REQ-166), show a success confirmation, and apply the new preferences to the app immediately (pure re-render, no reload). API failures SHALL surface via the `{ messageKey, params }` contract as translated messages. The form SHALL use PrimeVue components, meet WCAG 2.1 AA (labelled controls, keyboard operable), derive styling from theme tokens, and keep all strings in `en`/`pl` parity.
+The `/settings` page SHALL present an authenticated preferences surface with:
+
+1. **Language** — a control offering supported UI locales (`en`, `pl`); changing it SHALL apply immediately via the i18n locale cookie (internationalization) without a separate Save action.
+2. **Theme** — a 3-way control for `light`, `dark`, and `system`; changing it SHALL apply immediately via the color-mode cookie (ui-theming) without a separate Save action.
+3. **Timezone** — a filterable select populated from `Intl.supportedValuesOf('timeZone')` that, when no timezone is saved, pre-selects the browser-detected timezone and shows a localized "detected" hint; changing the value SHALL immediately persist via partial `PATCH /api/user/settings` with `{ timezone }` (REQ-166).
+4. **Week start** — a control offering Monday and Sunday; changing the value SHALL immediately persist via partial `PATCH /api/user/settings` with `{ weekStart }` (REQ-166).
+
+The page SHALL NOT require a form-level Save button. Successful applies SHALL be silent (no success toast or banner). Failed account-setting PATCHes SHALL surface a translated toast only (from the `{ messageKey, params }` contract or a repurposed settings error string) and SHALL leave the control in a consistent state after the attempt. Concurrent PATCHes for account fields SHALL use last-write-wins. Applied timezone and week-start changes SHALL re-render times and week groupings without a page reload. Controls SHALL meet WCAG 2.1 AA (labelled, keyboard operable), use Nuxt UI components, derive styling from theme tokens, keep form controls full-width (shared-ui-components), and keep all strings in `en`/`pl` parity.
 
 #### Scenario: Detected timezone pre-selected with hint
 - **WHEN** a user with no saved timezone opens `/settings`
 - **THEN** the timezone select SHALL be pre-set to the browser-detected timezone and a localized hint SHALL identify it as detected
 
 #### Scenario: Saving applies immediately
-- **WHEN** the user saves a different timezone or week start
-- **THEN** the settings SHALL be persisted and all visible times and week groupings SHALL re-render using the new preferences without a page reload
+- **WHEN** the user selects a different timezone or week start on `/settings` (no Save button)
+- **THEN** the system SHALL persist via partial PATCH, update session-backed settings, and re-render times and week groupings without a page reload; success SHALL be silent
 
 #### Scenario: Timezone list is filterable
 - **WHEN** the user types into the timezone select's filter
 - **THEN** the option list SHALL narrow to matching IANA identifiers
 
 #### Scenario: Save failure surfaces an error
-- **WHEN** the PATCH request fails
-- **THEN** a translated error message SHALL be shown and the form SHALL retain the user's input
+- **WHEN** a timezone or week-start PATCH fails
+- **THEN** a translated toast error SHALL be shown (toast only; no success banner), and the failure SHALL NOT leave the rest of the app in an unrecoverable state
+
+#### Scenario: Language applies immediately
+- **WHEN** the user selects a different supported locale on `/settings`
+- **THEN** the UI language SHALL switch immediately and the locale cookie SHALL be updated; no account PATCH SHALL be required
+
+#### Scenario: Theme applies immediately
+- **WHEN** the user selects light, dark, or system on `/settings`
+- **THEN** the app theme SHALL switch immediately and the color-mode preference SHALL persist across reloads; no account PATCH SHALL be required
+
+#### Scenario: No Save button
+- **WHEN** an authenticated user views `/settings`
+- **THEN** the page SHALL NOT present a primary "Save settings" submit control for these preferences
+
+#### Scenario: Rapid successive changes last-write-wins
+- **WHEN** the user changes an account setting twice in quick succession before the first PATCH completes
+- **THEN** the system SHALL treat the latest requested value as authoritative once outstanding requests settle
 
 ### Requirement: REQ-168 Timezone-aware date-time foundation
 The application SHALL perform all timezone-sensitive date arithmetic (day keys, day/window boundaries, week starts, combining a wall-clock date and time into an instant) using the Temporal API via the `temporal-polyfill` package, and all human-readable formatting via `Intl` with an explicit `timeZone` option — replacing browser-local `Date` getter logic in the date utilities. These utilities SHALL be pure functions taking the effective `{ timeZone, weekStart }` as explicit parameters. Wall-clock→instant conversion SHALL use Temporal's `compatible` disambiguation so DST-ambiguous or skipped times resolve deterministically. Interop with PrimeVue `DatePicker` (which consumes browser-local `Date` objects) SHALL be confined to a dedicated adapter pair at the component boundary; no other code SHALL construct dates from browser-local getters. UTC ISO 8601 instants SHALL remain the only on-the-wire representation, so changing settings is a pure client-side re-render.

@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-export type WeekStart = 'monday' | 'sunday';
+export const weekStartSchema = z.enum(['monday', 'sunday'], {
+  error: 'errors.userSettings.invalidWeekStart',
+});
+
+export type WeekStart = z.infer<typeof weekStartSchema>;
+
+/** Stable display order for week-start selects. */
+export const WEEK_START_ORDER = ['monday', 'sunday'] as const satisfies readonly WeekStart[];
 
 const supportedTimeZones = new Set(Intl.supportedValuesOf('timeZone'));
 
@@ -12,11 +19,7 @@ export const userSettingsSchema = z.object({
     })
     .nullable()
     .optional(),
-  weekStart: z
-    .enum(['monday', 'sunday'], {
-      error: 'errors.userSettings.invalidWeekStart',
-    })
-    .optional(),
+  weekStart: weekStartSchema.optional(),
 });
 
 export interface UserSettingsDto {

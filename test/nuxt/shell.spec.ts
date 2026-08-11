@@ -211,11 +211,26 @@ describe('REQ-069: utility menu', () => {
     expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
   });
 
-  it('AppUtilityMenu exposes the utility menu trigger', async () => {
+  it('AppUtilityMenu exposes logout only (no locale or theme groups)', async () => {
+    let capturedItems: Array<Array<{ label?: string; type?: string }>> = [];
     const wrapper = await mountSuspended(AppUtilityMenu, {
       global: {
         stubs: {
-          UDropdownMenu: { template: '<div data-testid="utility-menu"><slot /></div>' },
+          UDropdownMenu: {
+            props: {
+              items: { type: Array, default: () => [] },
+            },
+            template: '<div data-testid="utility-menu"><slot /></div>',
+            watch: {
+              items: {
+                immediate: true,
+                deep: true,
+                handler(value: Array<Array<{ label?: string; type?: string }>>) {
+                  capturedItems = value;
+                },
+              },
+            },
+          },
           UButton: {
             template: '<button data-testid="utility-menu-button" v-bind="$attrs"><slot /></button>',
           },
@@ -223,6 +238,19 @@ describe('REQ-069: utility menu', () => {
       },
     });
     expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(true);
+
+    const flat = capturedItems.flat();
+    const labels = flat.map((item) => item.label ?? '');
+    expect(labels.some((label) => /log.?out/i.test(label) || label === 'utilityMenu.logout')).toBe(
+      true,
+    );
+    expect(
+      labels.some((label) => label === 'utilityMenu.locale' || label === 'utilityMenu.theme'),
+    ).toBe(false);
+    expect(flat.some((item) => item.type === 'checkbox')).toBe(false);
+    // Single group with logout only — no separate locale/theme sections.
+    expect(capturedItems).toHaveLength(1);
+    expect(flat).toHaveLength(1);
   });
 });
 

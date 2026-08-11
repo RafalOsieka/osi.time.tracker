@@ -2,10 +2,7 @@
 import { useI18n } from 'vue-i18n';
 import type { DropdownMenuItem } from '@nuxt/ui';
 
-type ColorModePreference = 'light' | 'dark' | 'system';
-
-const { t, locale, availableLocales, setLocale } = useI18n();
-const colorMode = useColorMode();
+const { t } = useI18n();
 const { logout, user } = useAuth();
 
 const avatarLabel = computed(() => {
@@ -27,40 +24,6 @@ async function onLogout() {
 }
 
 const items = computed<DropdownMenuItem[][]>(() => [
-  [
-    {
-      label: t('utilityMenu.locale'),
-      type: 'label',
-    },
-    ...availableLocales.map((code) => ({
-      label: t(`locale.${code}`),
-      type: 'checkbox' as const,
-      checked: locale.value === code,
-      onSelect: () => {
-        void setLocale(code);
-      },
-    })),
-  ],
-  [
-    {
-      label: t('utilityMenu.theme'),
-      type: 'label',
-    },
-    ...(
-      [
-        { value: 'light', label: t('theme.light') },
-        { value: 'dark', label: t('theme.dark') },
-        { value: 'system', label: t('theme.system') },
-      ] as Array<{ value: ColorModePreference; label: string }>
-    ).map((option) => ({
-      label: option.label,
-      type: 'checkbox' as const,
-      checked: colorMode.preference === option.value,
-      onSelect: () => {
-        colorMode.preference = option.value;
-      },
-    })),
-  ],
   [
     {
       label: t('utilityMenu.logout'),

@@ -10,6 +10,12 @@ export const remoteIssueSearchModeSchema = z.enum(['title', 'id'], {
 
 export type RemoteIssueSearchMode = z.infer<typeof remoteIssueSearchModeSchema>;
 
+/** Stable display order for remote-issue search mode selects. */
+export const REMOTE_ISSUE_SEARCH_MODE_ORDER = [
+  'title',
+  'id',
+] as const satisfies readonly RemoteIssueSearchMode[];
+
 /**
  * Client-side form schema for the remote issue picker popover (mode + query).
  * Business validation (e.g. title min length) stays in the search composable.
