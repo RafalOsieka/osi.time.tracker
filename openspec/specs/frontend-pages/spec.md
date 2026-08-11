@@ -30,15 +30,15 @@ The application SHALL expose a `/login` page that renders the login form within 
 - **THEN** an error message SHALL be shown via the `login-error` hook and the user SHALL remain on `/login`
 
 ### Requirement: REQ-061 Authenticated home page on the default layout
-The application SHALL expose a `/` page that renders an authenticated welcome placeholder (greeting plus the signed-in user) within the `default` layout, preserving the `auth-status` test hook.
+The application SHALL expose a `/` page that renders within the `default` layout (timer view / authenticated home). Logout reachability for authenticated pages is part of the shell (see `frontend-shell` REQ-064 / REQ-069): the sidebar footer account control opens a menu that includes Log out.
 
 #### Scenario: Authenticated user sees the welcome placeholder
 - **WHEN** an authenticated user navigates to `/`
-- **THEN** the home page SHALL render the greeting and signed-in user inside the `default` layout
+- **THEN** the home page SHALL render inside the `default` layout
 
 #### Scenario: Logout is available on every authenticated page
 - **WHEN** the `default` layout is rendered
-- **THEN** a logout control (`logout-button`) SHALL be present in the header, and triggering it SHALL clear the session and navigate to `/login`
+- **THEN** the sidebar footer SHALL expose an account control from which the user can open a menu and activate Log out, clearing the session and navigating to `/login`
 
 ### Requirement: REQ-062 Private-by-default navigation guard
 A single global middleware SHALL protect every route. A page is private unless it declares `public: true`. The guard SHALL run during SSR using the session cookie and SHALL NOT use browser-only APIs.

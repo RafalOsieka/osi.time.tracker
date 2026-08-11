@@ -29,8 +29,11 @@ describeAuthUI('authentication UI flow', async () => {
     await page.click('[data-testid="login-button"]');
 
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    const avatarLabel = await page.textContent('[data-testid="utility-menu-button"]');
-    expect(avatarLabel?.trim()).toBe('A');
+    await page.waitForSelector('[data-testid="app-user-footer"]');
+    const primary = await page.textContent('[data-testid="app-user-footer-primary"]');
+    expect(primary?.trim()).toBe('alice');
+    const email = await page.textContent('[data-testid="app-user-footer-email"]');
+    expect(email?.trim()).toBe('alice@example.com');
   });
 
   it('5.2 logout flow logs the user out and the UI reflects it', async () => {
@@ -47,7 +50,7 @@ describeAuthUI('authentication UI flow', async () => {
     await page.click('[data-testid="login-button"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
-    await page.click('[data-testid="utility-menu-button"]');
+    await page.click('[data-testid="app-user-footer-trigger"]');
     await page
       .getByRole('menuitem', { name: /log.?out/i })
       .first()

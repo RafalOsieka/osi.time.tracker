@@ -87,21 +87,31 @@ describe('preserved test hooks', () => {
         stubs: {
           UDashboardGroup: { template: '<div><slot /></div>' },
           UDashboardSidebar: {
-            template: '<aside data-testid="app-sidebar"><slot /><slot name="header" /></aside>',
+            template:
+              '<aside data-testid="app-sidebar">' +
+              '<slot name="header" :collapsed="false" />' +
+              '<slot :collapsed="false" />' +
+              '<slot name="footer" :collapsed="false" />' +
+              '</aside>',
           },
           UDashboardPanel: {
             template:
               '<div data-testid="app-content"><slot name="header" /><slot name="body" /></div>',
           },
           UDashboardNavbar: {
-            template: '<header data-testid="app-topbar"><slot /><slot name="right" /></header>',
+            template:
+              '<header data-testid="app-topbar"><slot name="left" /><slot /><slot name="right" /></header>',
           },
           UDashboardSidebarToggle: { template: '<button data-testid="sidebar-toggle" />' },
-          AppSidebar: { template: '<nav data-testid="app-sidebar" />' },
+          UDashboardSidebarCollapse: { template: '<button data-testid="sidebar-collapse" />' },
+          AppSidebar: { template: '<nav data-testid="app-sidebar-nav" />' },
           AppTimer: { template: '<div data-testid="app-timer" />' },
-          AppUtilityMenu: {
+          AppUserFooter: {
             template:
-              '<div data-testid="utility-menu-button"><a data-testid="logout-button">Log out</a></div>',
+              '<div data-testid="app-user-footer">' +
+              '<button data-testid="app-user-footer-trigger">User</button>' +
+              '<button data-testid="logout-button">Log out</button>' +
+              '</div>',
           },
           NuxtPage: { template: '<div data-testid="slotted">content</div>' },
         },
@@ -109,6 +119,7 @@ describe('preserved test hooks', () => {
     });
     expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="logout-button"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="utility-menu-button"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="slotted"]').exists()).toBe(true);
   });
 

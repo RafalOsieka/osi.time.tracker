@@ -97,8 +97,18 @@ const InputMenuStub = {
 };
 const ButtonStub = {
   template:
-    '<button :data-testid="$attrs[\'data-testid\'] ?? \'timer-toggle-button\'" :aria-label="$attrs[\'aria-label\']" :aria-pressed="ariaPressed" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
-  props: ['label', 'severity', 'loading', 'ariaPressed', 'disabled', 'icon', 'variant', 'color'],
+    '<button :data-testid="$attrs[\'data-testid\'] ?? \'timer-toggle-button\'" :aria-label="$attrs[\'aria-label\']" :aria-pressed="ariaPressed" :disabled="disabled" :data-icon="icon" :data-ui-leading="ui?.leadingIcon" :class="$attrs.class" @click="$emit(\'click\')">{{ label }}</button>',
+  props: [
+    'label',
+    'square',
+    'loading',
+    'ariaPressed',
+    'disabled',
+    'icon',
+    'variant',
+    'color',
+    'ui',
+  ],
   emits: ['click'],
 };
 const PopoverStub = {
@@ -151,17 +161,20 @@ describe('AppTimer', () => {
     vi.stubGlobal('$fetch', fetchMock);
   });
 
-  it('renders the idle state with a Start button', async () => {
+  it('renders the idle state with a play icon toggle', async () => {
     const wrapper = await mountSuspended(AppTimer, {
       global: { stubs: baseStubs },
     });
 
     expect(wrapper.find('[data-testid="app-timer"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="timer-toggle-button"]').text()).toBe('timer.start');
+    const toggle = wrapper.find('[data-testid="timer-toggle-button"]');
+    expect(toggle.attributes('aria-label')).toBe('timer.start');
+    expect(toggle.attributes('data-icon')).toBe('i-lucide-play');
+    expect(toggle.attributes('aria-pressed')).not.toBe('true');
     expect(wrapper.find('[data-testid="timer-elapsed"]').text()).toBe('00:00:00');
   });
 
-  it('renders the running state with a Stop button and elapsed time', async () => {
+  it('renders the running state with a square icon toggle and elapsed time', async () => {
     runningState.value = runningEntry();
     elapsedSecondsState.value = 65;
 
@@ -169,7 +182,12 @@ describe('AppTimer', () => {
       global: { stubs: baseStubs },
     });
 
-    expect(wrapper.find('[data-testid="timer-toggle-button"]').text()).toBe('timer.stop');
+    const toggle = wrapper.find('[data-testid="timer-toggle-button"]');
+    expect(toggle.attributes('aria-label')).toBe('timer.stop');
+    expect(toggle.attributes('data-icon')).toBe('i-lucide-square');
+    expect(toggle.attributes('aria-pressed')).toBe('true');
+    // Running state animates the leading icon color only (not button background).
+    expect(toggle.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);
     expect(wrapper.find('[data-testid="timer-elapsed"]').text()).toBe('00:01:05');
   });
 

@@ -50,9 +50,13 @@ describeShell('authenticated shell navigation', async () => {
     expect(await page.locator('[data-testid="placeholder-page-reports"]').isVisible()).toBe(true);
   });
 
-  it('logout is reachable via the utility menu', async () => {
+  it('logout is reachable via the sidebar account menu', async () => {
     const page = await loginAs('shell@example.com');
-    await page.click('[data-testid="utility-menu-button"]');
+    await page.waitForSelector('[data-testid="app-user-footer"]');
+    expect(await page.locator('[data-testid="app-user-footer-primary"]').textContent()).toMatch(
+      /shelluser/i,
+    );
+    await page.click('[data-testid="app-user-footer-trigger"]');
     await page
       .getByRole('menuitem', { name: /log.?out/i })
       .first()

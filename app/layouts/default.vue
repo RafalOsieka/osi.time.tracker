@@ -44,13 +44,27 @@ onMounted(() => {
       data-testid="app-sidebar"
     >
       <template #header="{ collapsed: isCollapsed }">
-        <div class="flex items-center gap-2 px-2 py-1" data-testid="app-sidebar-brand">
-          <span v-if="!isCollapsed" class="truncate font-semibold">{{ t('layout.title') }}</span>
+        <div
+          class="flex w-full min-w-0 items-center py-1"
+          :class="isCollapsed ? 'justify-center px-0' : 'gap-2 px-2'"
+          data-testid="app-sidebar-brand"
+        >
+          <!-- Collapsed: short brand mark until a real app icon exists -->
+          <span
+            class="font-semibold"
+            :class="isCollapsed ? 'text-sm tracking-tight text-center' : 'truncate'"
+          >
+            {{ isCollapsed ? t('layout.brandShort') : t('layout.title') }}
+          </span>
         </div>
       </template>
 
       <template #default="{ collapsed: isCollapsed }">
         <AppSidebar :collapsed="isCollapsed" />
+      </template>
+
+      <template #footer="{ collapsed: isCollapsed }">
+        <AppUserFooter :collapsed="isCollapsed" />
       </template>
     </UDashboardSidebar>
 
@@ -58,30 +72,28 @@ onMounted(() => {
       <template #header>
         <!--
           Center is `hidden lg:flex` in Nuxt UI by default; override so the timer stays
-          visible at every breakpoint. Toggle is mobile-only (`lg:hidden` on the control).
+          visible at every breakpoint. Mobile toggle is lg:hidden; desktop collapse is
+          hidden lg:flex (via UDashboardSidebarCollapse theme).
         -->
         <UDashboardNavbar
           data-testid="app-topbar"
           :toggle="sidebarToggle"
           :ui="{
             root: 'min-h-(--ui-header-height) h-auto py-2',
-            center: 'flex flex-1 justify-center min-w-0 px-2',
+            center: 'flex flex-1 min-w-0 px-2',
             left: 'flex items-center gap-1.5 shrink-0',
             right: 'flex items-center shrink-0 gap-1.5',
           }"
         >
-          <div
-            class="flex w-full max-w-3xl min-w-0 items-center justify-center"
-            data-testid="timer-region"
-          >
+          <template #left>
+            <UDashboardSidebarCollapse v-bind="sidebarToggle" data-testid="sidebar-collapse" />
+          </template>
+
+          <div class="flex w-full min-w-0 items-center" data-testid="timer-region">
             <div class="w-full min-w-0" data-testid="timer-region-inline">
               <AppTimer />
             </div>
           </div>
-
-          <template #right>
-            <AppUtilityMenu />
-          </template>
         </UDashboardNavbar>
       </template>
 

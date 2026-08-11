@@ -1,6 +1,24 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
 
+/*
+ * Running stop: breathe the icon color only (not the ghost button background).
+ * SVG icons use currentColor, so animating color on the leading icon is enough.
+ */
+@theme {
+  --animate-timer-stop-icon: timer-stop-icon 1.4s ease-in-out infinite;
+}
+
+@keyframes timer-stop-icon {
+  0%,
+  100% {
+    color: var(--ui-error);
+  }
+  50% {
+    color: color-mix(in oklab, var(--ui-error) 35%, transparent);
+  }
+}
+
 html,
 body,
 #__nuxt {
