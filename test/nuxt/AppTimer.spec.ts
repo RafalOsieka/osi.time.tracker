@@ -45,7 +45,7 @@ mockNuxtImport('useTimer', () => () => ({
 }));
 
 mockNuxtImport('useUserSettings', () => () => ({
-  effective: { value: { timeZone: 'UTC', weekStart: 'monday' } },
+  effective: { value: { timeZone: 'UTC' } },
 }));
 
 const InputMenuStub = {

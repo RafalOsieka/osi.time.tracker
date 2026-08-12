@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { WEEK_START_ORDER, type WeekStart } from '~~/shared/types/user-settings';
 
 type ColorModePreference = 'light' | 'dark' | 'system';
 type AppLocale = 'en' | 'pl';
@@ -19,7 +18,6 @@ const { settings, detectedTimeZone, save } = useUserSettings();
 const preferencesReady = ref(false);
 
 const timezone = ref(settings.value.timezone ?? detectedTimeZone.value);
-const weekStart = ref<WeekStart>(settings.value.weekStart);
 
 const timezones = Intl.supportedValuesOf('timeZone');
 const localeItems = computed(
@@ -36,16 +34,6 @@ const themeItems = computed(
       { label: t('theme.dark'), value: 'dark' },
       { label: t('theme.system'), value: 'system' },
     ] satisfies Array<{ label: string; value: ColorModePreference }>,
-);
-const weekStartLabelKeys = {
-  monday: 'settings.monday',
-  sunday: 'settings.sunday',
-} as const satisfies Record<WeekStart, string>;
-const weekStartItems = computed(() =>
-  WEEK_START_ORDER.map((value) => ({
-    label: t(weekStartLabelKeys[value]),
-    value,
-  })),
 );
 
 const selectedLocale = computed({
@@ -64,7 +52,6 @@ const selectedTheme = computed({
 
 function syncLocalAccountFields() {
   timezone.value = settings.value.timezone ?? detectedTimeZone.value;
-  weekStart.value = settings.value.weekStart;
 }
 
 function waitForColorMode(): Promise<void> {
@@ -112,18 +99,13 @@ watch(detectedTimeZone, () => {
 /** Latest-write-wins: only the most recent PATCH result is applied if requests overlap. */
 let accountPatchGeneration = 0;
 
-async function persistAccountField(
-  patch: { timezone: string } | { weekStart: WeekStart },
-  previous: { timezone: string; weekStart: WeekStart },
-) {
+async function persistTimezone(value: string, previousTimezone: string) {
   const generation = ++accountPatchGeneration;
   try {
-    await save(patch);
+    await save({ timezone: value });
   } catch {
-    // Revert only if this is still the latest attempt and nothing newer won.
     if (generation === accountPatchGeneration) {
-      timezone.value = previous.timezone;
-      weekStart.value = previous.weekStart;
+      timezone.value = previousTimezone;
       toast.error(t('settings.saveError'));
     }
   }
@@ -131,22 +113,9 @@ async function persistAccountField(
 
 function onTimezoneChange(value: string | undefined) {
   if (!value || value === (settings.value.timezone ?? detectedTimeZone.value)) return;
-  const previous = {
-    timezone: settings.value.timezone ?? detectedTimeZone.value,
-    weekStart: weekStart.value,
-  };
+  const previousTimezone = settings.value.timezone ?? detectedTimeZone.value;
   timezone.value = value;
-  void persistAccountField({ timezone: value }, previous);
-}
-
-function onWeekStartChange(value: WeekStart | undefined) {
-  if (!value || value === settings.value.weekStart) return;
-  const previous = {
-    timezone: timezone.value,
-    weekStart: settings.value.weekStart,
-  };
-  weekStart.value = value;
-  void persistAccountField({ weekStart: value }, previous);
+  void persistTimezone(value, previousTimezone);
 }
 </script>
 
@@ -163,7 +132,6 @@ function onWeekStartChange(value: WeekStart | undefined) {
       <USkeleton class="h-14 w-full" />
       <USkeleton class="h-14 w-full" />
       <USkeleton class="h-14 w-full" />
-      <USkeleton class="h-10 w-full" />
     </div>
 
     <div v-else class="grid gap-4" data-testid="settings-preferences">
@@ -212,23 +180,6 @@ function onWeekStartChange(value: WeekStart | undefined) {
         <template v-if="!settings.timezone" #hint>
           {{ t('settings.detectedTimezone', { timezone: detectedTimeZone }) }}
         </template>
-      </UFormField>
-
-      <UFormField
-        :label="t('settings.weekStart')"
-        name="weekStart"
-        data-testid="settings-week-start-field"
-      >
-        <URadioGroup
-          id="settings-week-start"
-          :model-value="weekStart"
-          :items="weekStartItems"
-          orientation="horizontal"
-          data-testid="settings-week-start"
-          value-key="value"
-          label-key="label"
-          @update:model-value="onWeekStartChange"
-        />
       </UFormField>
     </div>
   </div>

@@ -35,9 +35,6 @@
     "theme": "Theme",
     "timezone": "Time zone",
     "detectedTimezone": "Detected time zone: {timezone}",
-    "weekStart": "Week starts on",
-    "monday": "Monday",
-    "sunday": "Sunday",
     "saveError": "Settings could not be saved."
   },
   "theme": {
@@ -128,12 +125,8 @@
   },
   "timerView": {
     "pageTitle": "Timer",
-    "emptyState": "No time entries yet.",
-    "emptyWindowState": "No time entries in this period.",
     "neverTrackedEmptyState": "You haven't tracked any time yet. Start the timer above to begin.",
     "neverTrackedCta": "Start tracking",
-    "anchoredWeekBanner": "Showing week of {week}",
-    "resetToCurrentWeek": "Back to this week",
     "loadMore": "Load more",
     "dayTotal": "Total: {duration}",
     "noTask": "(no task)",
@@ -174,10 +167,11 @@
       "toastUpdatedDetail": "\"{name}\" has been updated."
     },
     "addEntry": {
-      "buttonLabel": "+ Add entry",
+      "buttonLabel": "New",
       "dialogTitle": "Add time entry",
       "titleLabel": "Title",
       "titlePlaceholder": "Task name (optional)",
+      "dateLabel": "Date",
       "startLabel": "Start time",
       "endLabel": "End time",
       "rangeError": "End time cannot be before the start time.",
@@ -442,8 +436,7 @@
       "invalidCredentials": "Invalid credentials."
     },
     "userSettings": {
-      "invalidTimezone": "Choose a valid time zone.",
-      "invalidWeekStart": "Choose Monday or Sunday as the week start."
+      "invalidTimezone": "Choose a valid time zone."
     },
     "unexpected": "An unexpected error occurred."
   }

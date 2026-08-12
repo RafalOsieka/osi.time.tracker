@@ -274,47 +274,77 @@ The system SHALL allow an authenticated user to assign a set of their untitled t
 - **WHEN** the submitted title is empty or whitespace-only, or `ids` is empty
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: REQ-236 Newest entry anchor endpoint
+### Requirement: REQ-264 Timer view feed API
+The system SHALL expose an authenticated timer-view feed at `GET /api/time-entries/feed` that returns a page of the caller's time entries together with pagination metadata. The response SHALL be a DTO of the form `{ entries: TimeEntryDto[], hasMore: boolean, nextBefore: string | null }` where each `TimeEntryDto` matches the list shape of REQ-148 (task/project context, optional remote issue ref, ISO timestamps, no client/tracker display name), `hasMore` is true when at least one of the user's entries belongs to a local calendar day strictly older than the oldest day represented in `entries`, and `nextBefore` is an opaque-or-ISO cursor the client MUST pass to load the next page (or `null` when `hasMore` is false).
 
-The system SHALL expose the instant of the authenticated user's most recent time entry via `GET /api/time-entries/latest`, returning `{ startedAt }` as an ISO 8601 instant for the entry with the greatest `startedAt`, or `null` when the user has no entries at all. A running entry SHALL be eligible as the newest entry. The query SHALL be scoped strictly to the authenticated user and SHALL be served by a single indexed read (`ORDER BY startedAt DESC LIMIT 1`). The endpoint SHALL take no parameters and SHALL perform no timezone or day-boundary logic, so callers remain responsible for converting the instant to their local week (mirroring REQ-148). The endpoint SHALL follow the shared `api-endpoint-conventions` for authentication and error contract.
+Day boundaries for the feed SHALL be computed in the **feed timezone**: the authenticated user's stored `timezone` when present, otherwise `UTC` (matching the SSR-safe effective timezone of REQ-165). The feed endpoint SHALL follow `api-endpoint-conventions` for authentication and errors.
 
-#### Scenario: Newest entry instant returned
-- **WHEN** an authenticated user with entries requests the endpoint
-- **THEN** the system SHALL return the `startedAt` of their entry with the greatest `startedAt` as an ISO 8601 instant
+**Initial page** (no `before` query parameter):
+1. If the user has no time entries at all, the response SHALL be `{ entries: [], hasMore: false, nextBefore: null }`.
+2. Otherwise the server SHALL collect every entry of the user whose local day (from `startedAt` in the feed timezone) falls within the inclusive rolling window of the most recent **30** local calendar days ending on "today" in that timezone.
+3. If that 30-day window yields zero entries while older entries exist, the server SHALL instead return **all** entries whose local day equals the local day of the user's newest entry (`max(startedAt)`), i.e. a single newest activity day.
+4. `hasMore` / `nextBefore` SHALL reflect whether any entry exists on a strictly older local day than the oldest day in the returned set.
 
-#### Scenario: Running entry is eligible
-- **WHEN** the user's most recent entry is still running (`stoppedAt` null)
-- **THEN** the system SHALL return that entry's `startedAt`
+**Subsequent page** (`before` required): the server SHALL return all entries belonging to the next **7** distinct local activity days (days with ≥1 entry) strictly older than the cursor, ordered newest day first within the page, and SHALL set `hasMore` / `nextBefore` from whether any older activity day remains. A missing, malformed, or foreign cursor SHALL be rejected with `{ messageKey, params }` (or equivalent 422 contract). Empty calendar gaps between activity days SHALL NOT consume a slot in the "7 days" budget.
 
-#### Scenario: User has never tracked anything
-- **WHEN** an authenticated user with no time entries requests the endpoint
-- **THEN** the system SHALL return `null`
+The existing range list (REQ-148) MAY remain for non-feed callers; the timer view page SHALL use the feed for its initial and load-more loads.
 
-#### Scenario: Other users' entries never considered
-- **WHEN** another user has a more recent entry
-- **THEN** the response SHALL be derived only from the authenticated user's entries
+#### Scenario: Initial feed returns last 30 days of work
+- **WHEN** an authenticated user with entries in the last 30 local days requests the feed without `before`
+- **THEN** the system SHALL return those entries, `hasMore` true only if older activity days exist, and a usable `nextBefore` when `hasMore` is true
 
-#### Scenario: Unauthenticated request rejected
-- **WHEN** an unauthenticated client requests the endpoint
-- **THEN** the system SHALL reject the request per the shared authentication conventions
+#### Scenario: Empty 30-day window falls back to newest activity day
+- **WHEN** the user has no entries in the last 30 local days but has at least one older entry
+- **THEN** the initial feed SHALL return all entries from the single local day of the newest entry and SHALL NOT return an empty list
+
+#### Scenario: Never tracked returns empty feed
+- **WHEN** the user has no time entries
+- **THEN** the initial feed SHALL return empty `entries`, `hasMore` false, and `nextBefore` null
+
+#### Scenario: Load more returns seven activity days
+- **WHEN** the client requests the feed with a valid `before` cursor after a page that left older activity days
+- **THEN** the system SHALL return entries for up to seven older distinct local days with entries, skipping empty calendar gaps, and set `hasMore` false when no older activity day remains
+
+#### Scenario: Load more with no older history
+- **WHEN** the client requests the next page but no older activity days exist
+- **THEN** the system SHALL return empty `entries` (or an equivalent no-op page) with `hasMore` false
+
+#### Scenario: Feed uses stored timezone then UTC
+- **WHEN** the user has a stored timezone `Europe/Warsaw`
+- **THEN** day windows and activity-day counts SHALL use that timezone; when timezone is null the feed SHALL use `UTC`
+
+#### Scenario: Other users never included
+- **WHEN** another user has entries that would fall in the window
+- **THEN** those entries SHALL NOT appear in the feed
+
+#### Scenario: Unauthenticated rejected
+- **WHEN** an unauthenticated client requests the feed
+- **THEN** the system SHALL reject the request per shared authentication conventions
 
 ### Requirement: REQ-150 Timer view page
-The application SHALL render the timer view as the home page at `/` (replacing the welcome placeholder). The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165, user-settings; day boundaries computed via the timezone-aware utilities of REQ-168) (grouping by each entry's `startedAt`), newest day first. Because the grouping depends on the effective timezone (which may fall back to browser detection), the day/group list (including the empty state) SHALL be rendered client-side only — the server SHALL NOT render day groups, so no hydration mismatch can occur. Each day SHALL show a localized date heading, the day's total duration, and an "add entry" action for creating a manual entry on that day. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its **project** context only when present (no client or tracker secondary label), the group's total duration, and the entry count; expanding a group SHALL list its entries with their start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group. Days without entries SHALL NOT render empty groups.
+The application SHALL render the timer view as the home page at `/`. The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165; day boundaries via REQ-168) from each entry's `startedAt`, newest day first. Days without entries SHALL NOT render empty sections. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its **project** context only when present (no client or tracker secondary label), the group's total duration, and the entry count; expanding a group SHALL list its entries with start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group.
 
-The initial 7-day window SHALL be **anchored on the user's most recent entry** rather than always on the current instant: on first load the page SHALL read the anchor instant via `GET /api/time-entries/latest` (REQ-236) and align its window start to the user's `weekStart` for the week containing that instant, so a user opening the app in a week with no entries yet still sees their latest tracked week instead of an empty page. When the anchor is `null` (the user has never tracked anything) the page SHALL NOT issue an entry-range request for a further window and SHALL render the never-tracked empty state. When the anchor falls inside the current week, the window SHALL be the current week exactly as before. The page SHALL provide a "load more" control that extends the window further back by the same step from the anchored window.
+The page SHALL load its list from the timer-view feed (REQ-264). The **initial feed page SHALL be fetched during SSR** (authenticated request-forwarding as with other list pages) so the day/group list can render on first paint from the payload. Client regrouping when the effective timezone upgrades after mount (unsaved timezone → browser) is allowed; hard hydration failures MAY be fixed in a follow-up if they appear.
 
-The page SHALL distinguish three states: (a) entries present, (b) **no entries in the loaded window but entries exist elsewhere**, and (c) **no entries at all**. State (c) SHALL render a dedicated empty state pointing to the timer widget. State (b) SHALL render an empty-window state offering "load more". When the anchored window is not the current week, the page SHALL render a localized indication of which week is shown together with a control that returns the window to the current week; activating it SHALL re-align the window to the current week without a full reload.
+**Initial content rules** (as delivered by REQ-264, reflected in the UI):
+- No entries at all → **never-tracked** empty state; the CTA SHALL focus the shell timer widget (`AppTimer`) and the page SHALL NOT show "load more".
+- Entries present (30-day window or single newest-day fallback) → day list; "load more" only when `hasMore` is true.
+- The page SHALL NOT render an "empty window with load more only" state and SHALL NOT render an anchored-week banner or "back to this week" control.
 
-The "add entry" action SHALL open a manual-entry form scoped to that day, accepting an optional title (same task autocomplete as the timer widget), a start time, and an end time entered via the shared smart time input (REQ-131, shared-ui-components; the date is fixed by the day section). The form SHALL convert the entered wall-clock times to instants using the effective timezone (REQ-168) and submit them via `POST /api/time-entries` (REQ-140 manual pair); an end time earlier than the start time SHALL be blocked client-side with an inline error. On success the page SHALL insert the entry into the correct day/task group.
+**Load more:** activating the control SHALL request the next feed page with the current `nextBefore` cursor and **append** the returned entries into the client list; when the response has `hasMore` false the control SHALL disappear. Load more SHALL add up to seven further **activity days**, not seven empty calendar days.
 
-Each listed entry SHALL be editable inline: its start time, stop time (via the shared smart time input, REQ-131), and title SHALL be individually editable, committed on blur or Enter and cancelled on Escape, via `PATCH /api/time-entries/[id]` (REQ-143). Activating one of the row's inline editors SHALL cancel any other editor active in that row without committing, and the swapped-in input SHALL receive focus so editing starts with a single click. Retitling a single entry SHALL re-resolve it to another (or a new) task, leaving the rest of the group unaffected. When an edited `startedAt` moves the entry to a different day in the effective timezone, the page SHALL regroup the entry under that day. Each listed entry SHALL also offer a delete action requiring an explicit confirmation before calling `DELETE /api/time-entries/[id]` (REQ-151); on success the entry SHALL be removed from the page and emptied groups SHALL disappear.
+Each day section SHALL show a localized date heading, the day's total duration, and a **Remote Sync** navigation action for that day (`/sync/{dayKey}`). Day sections SHALL NOT host a per-day "add entry" control.
 
-The page SHALL observe the shell's running-timer state: when the running entry stops (including a stop triggered from the top-bar widget or a stop-on-new-start), the page SHALL refresh its entry list so the finished entry appears in its day/task group immediately, without a manual reload.
+**Page-level add entry:** the page header SHALL provide a primary create action (same pattern as Trackers' "Add tracker" / shared table header). It SHALL open the manual-entry dialog with an optional title (task autocomplete), a **date** field defaulting to **today** in the effective timezone, and start/end times via the shared smart time input (REQ-131). Wall-clock date+times SHALL convert to instants in the effective timezone (REQ-168) and submit via `POST /api/time-entries` (REQ-140 manual pair); end before start SHALL be blocked client-side with an inline error. On success the page SHALL **smart-include** the new entry: if its local day is not yet in the loaded set, that day SHALL be added to the visible list so the entry is shown without requiring load more; `hasMore` SHALL remain consistent with whether older unloaded activity days still exist.
 
-When the user's timezone or week-start setting changes, the page SHALL regroup and re-render from the already-loaded entries (pure re-render); no data migration or refetch SHALL be required for correctness. A `weekStart` change SHALL re-align the anchored window without re-fetching the anchor.
+Each listed entry SHALL remain inline-editable (start, stop, title) and deletable with confirmation as previously required (REQ-143, REQ-151). Retitling a single entry SHALL re-resolve only that entry's task. Cross-midnight start edits SHALL regroup under the new local day. The page SHALL observe the shell running-timer state and refresh/merge the list when the running entry stops or is replaced so finished work appears without a full navigation.
+
+When the user's **timezone** setting changes, the page SHALL regroup already-loaded entries under the new day boundaries (pure re-render); a full feed refetch is NOT required for correctness of grouping of already-held entries.
+
+Group continue, bulk-assign for "(no task)", mini task editor, and remote-issue controls remain as specified in REQ-152, REQ-153, and related requirements (unchanged by this requirement's windowing rewrite).
 
 #### Scenario: Entries grouped by effective-timezone day and task
-- **WHEN** the authenticated user opens `/` with entries on multiple days
+- **WHEN** the authenticated user opens `/` with entries on multiple days in the feed
 - **THEN** the page SHALL show one section per day in the effective timezone, newest first, each with a day total and per-task groups showing name, project context only (when present), entry count, and group total
 
 #### Scenario: Group label omits tracker and client
@@ -323,27 +353,27 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 
 #### Scenario: Day list renders client-side only
 - **WHEN** the timer view is served with server-side rendering enabled
-- **THEN** the day/group list SHALL be rendered only on the client and the page SHALL produce no hydration mismatch for the grouped content
+- **THEN** the initial feed payload SHALL be resolved during SSR and the day/group list (or never-tracked empty state) SHALL render from that payload on first paint (client-only-only rendering is no longer required)
 
 #### Scenario: Fresh week opens on the latest tracked week
-- **WHEN** the user opens `/` in a week that contains no entries while earlier entries exist
-- **THEN** the initial window SHALL cover the `weekStart`-aligned week containing the newest entry and the page SHALL show that week's entries rather than an empty page
+- **WHEN** the user opens `/` with no entries in the last 30 local days while older entries exist
+- **THEN** the initial feed SHALL show the single newest local activity day rather than an empty week-aligned window
 
 #### Scenario: Anchored week is signposted with a way back
-- **WHEN** the initial window was anchored on a week other than the current one
-- **THEN** the page SHALL state which week is shown and offer a control that re-aligns the window to the current week
+- **WHEN** the initial feed uses the newest-day fallback or any period that is not "today's" rolling window alone
+- **THEN** the page SHALL NOT show an anchored-week banner or reset-to-current-week control
 
 #### Scenario: Current week is used when the newest entry is in it
-- **WHEN** the user's newest entry falls within the current `weekStart`-aligned week
-- **THEN** the initial window SHALL be the current week and no anchored-week indication SHALL be shown
+- **WHEN** the user's newest entries fall within the last 30 local days
+- **THEN** the initial list SHALL show the last-30-days feed content and SHALL NOT apply week-start alignment
 
 #### Scenario: Never-tracked user sees a start-tracking empty state
 - **WHEN** the user has no time entries at all
-- **THEN** the page SHALL render the empty state directing the user to the timer widget and SHALL NOT offer "load more"
+- **THEN** the page SHALL render the never-tracked empty state whose CTA focuses the timer widget and SHALL NOT offer "load more"
 
 #### Scenario: Empty window with entries elsewhere offers load more
-- **WHEN** the loaded window contains no entries but the user has entries outside it
-- **THEN** the page SHALL render the empty-window state whose action extends the window further back
+- **WHEN** the user has history only outside the last 30 days
+- **THEN** the page SHALL show the newest activity day (fallback) and SHALL NOT show a dedicated empty-window message whose only action is load more; further history uses load more only when `hasMore` is true after that fallback page
 
 #### Scenario: Expanding a task group lists its entries
 - **WHEN** the user expands a task group
@@ -354,12 +384,16 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 - **THEN** those entries SHALL appear in a "(no task)" group for that day
 
 #### Scenario: Load more pages further back
-- **WHEN** the user activates the "load more" control
-- **THEN** the page SHALL fetch and append the previous window of days below the existing ones, measured from the anchored window
+- **WHEN** the user activates "load more" while `hasMore` is true
+- **THEN** the page SHALL append entries for up to seven older activity days; when a response reports `hasMore` false the control SHALL not be shown
 
 #### Scenario: Add a manual entry to a day
-- **WHEN** the user activates a day's "add entry" action and submits a valid start/end time pair with an optional title
-- **THEN** a stopped entry SHALL be created for that day (times interpreted in the effective timezone) and appear in the matching task group
+- **WHEN** the user activates the page header add-entry action and submits a valid date, start/end pair, and optional title
+- **THEN** a stopped entry SHALL be created for that date (times in the effective timezone) and appear under the matching day/task group
+
+#### Scenario: Smart include outside loaded set
+- **WHEN** the user creates a manual entry on a local day not currently present in the loaded feed
+- **THEN** that day SHALL appear in the list with the new entry without requiring the user to press load more
 
 #### Scenario: Manual form accepts compact typed times
 - **WHEN** the user types `900` into the manual form's start-time field and commits
@@ -387,7 +421,7 @@ When the user's timezone or week-start setting changes, the page SHALL regroup a
 
 #### Scenario: Top-bar stop refreshes the list
 - **WHEN** the user stops the running timer from the top-bar widget while viewing the timer page
-- **THEN** the page SHALL refresh its entries and the finished entry SHALL appear in its day/task group without a manual reload
+- **THEN** the page SHALL refresh or merge its entries so the finished entry appears in its day/task group without a manual reload
 
 #### Scenario: Delete an entry with confirmation
 - **WHEN** the user activates an entry's delete action and confirms

@@ -30,7 +30,7 @@ describeSettings('user settings API integration', async () => {
 
     const initial = await fetch(url('/api/user/settings'), { headers: { cookie: jar.header() } });
     expect(initial.status).toBe(200);
-    expect(await initial.json()).toEqual({ timezone: null, weekStart: 'monday' });
+    expect(await initial.json()).toEqual({ timezone: null });
 
     const patch = await fetch(url('/api/user/settings'), {
       method: 'PATCH',
@@ -39,16 +39,15 @@ describeSettings('user settings API integration', async () => {
         'csrf-token': csrfToken,
         cookie: jar.header(),
       },
-      body: JSON.stringify({ timezone: 'America/New_York', weekStart: 'sunday' }),
+      body: JSON.stringify({ timezone: 'America/New_York' }),
     });
     expect(patch.status).toBe(200);
-    expect(await patch.json()).toEqual({ timezone: 'America/New_York', weekStart: 'sunday' });
+    expect(await patch.json()).toEqual({ timezone: 'America/New_York' });
     jar.capture(patch);
 
     const session = await fetch(url('/api/auth/session'), { headers: { cookie: jar.header() } });
     expect((await session.json()).user.settings).toEqual({
       timezone: 'America/New_York',
-      weekStart: 'sunday',
     });
 
     const invalid = await fetch(url('/api/user/settings'), {
@@ -63,23 +62,6 @@ describeSettings('user settings API integration', async () => {
     expect(invalid.status).toBe(422);
     expect((await invalid.json()).data.messageKey).toBe('errors.userSettings.invalidTimezone');
 
-    // Partial single-field body updates only that field and leaves the other intact.
-    const partialWeekStart = await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        'csrf-token': csrfToken,
-        cookie: jar.header(),
-      },
-      body: JSON.stringify({ weekStart: 'monday' }),
-    });
-    expect(partialWeekStart.status).toBe(200);
-    expect(await partialWeekStart.json()).toEqual({
-      timezone: 'America/New_York',
-      weekStart: 'monday',
-    });
-    jar.capture(partialWeekStart);
-
     const partialTimezone = await fetch(url('/api/user/settings'), {
       method: 'PATCH',
       headers: {
@@ -92,7 +74,6 @@ describeSettings('user settings API integration', async () => {
     expect(partialTimezone.status).toBe(200);
     expect(await partialTimezone.json()).toEqual({
       timezone: 'Europe/Warsaw',
-      weekStart: 'monday',
     });
 
     const unauthenticated = await fetch(url('/api/user/settings'));

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  computeRollingDayRange,
   fromPickerDate,
   instantToZoned,
   toPickerDate,
   wallClockToInstant,
 } from '../../app/utils/dateTime';
-import { computeWindowRange, localDayKey } from '../../app/utils/timerViewGrouping';
+import { localDayKey } from '../../app/utils/timerViewGrouping';
 
 describe('timezone date utilities', () => {
   it('buckets an instant using the configured timezone', () => {
@@ -14,12 +15,11 @@ describe('timezone date utilities', () => {
     expect(localDayKey(instant, 'Asia/Tokyo')).toBe('2024-03-16');
   });
 
-  it('honors Monday and Sunday week starts', () => {
+  it('computes a rolling N-day window without week alignment', () => {
     const reference = new Date('2024-03-17T12:00:00.000Z');
-    const monday = computeWindowRange(7, reference, { timeZone: 'UTC', weekStart: 'monday' });
-    const sunday = computeWindowRange(7, reference, { timeZone: 'UTC', weekStart: 'sunday' });
-    expect(monday.from).toBe('2024-03-11T00:00:00Z');
-    expect(sunday.from).toBe('2024-03-17T00:00:00Z');
+    const range = computeRollingDayRange(7, reference, 'UTC');
+    expect(range.from).toBe('2024-03-11T00:00:00Z');
+    expect(range.to).toBe('2024-03-18T00:00:00Z');
   });
 
   it('uses compatible DST disambiguation', () => {

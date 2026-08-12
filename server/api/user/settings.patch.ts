@@ -22,12 +22,11 @@ export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
     .update(users)
     .set(update)
     .where(eq(users.id, session.user.id))
-    .returning({ timezone: users.timezone, weekStart: users.weekStart });
+    .returning({ timezone: users.timezone });
   if (!updated) throw createError({ statusCode: 404, statusMessage: 'User not found' });
 
   const settings: UserSettingsDto = {
     timezone: updated.timezone,
-    weekStart: updated.weekStart as 'monday' | 'sunday',
   };
   await setUserSession(event, { ...session, user: { ...session.user, settings } });
   return settings;

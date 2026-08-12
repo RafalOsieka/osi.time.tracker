@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import type { FormErrorEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
-import { combineLocalDateAndTime } from '~/utils/timerViewGrouping';
+import { wallClockToInstant, localDayKeyFromInstant } from '~/utils/dateTime';
 import { buildTaskTitleMenuItems } from '~/utils/taskTitleMenu';
-import type { TimeEntryDto, TimerAddEntryFormDto } from '../../shared/types/time-entry';
+import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
+import { timerAddEntryFormSchema } from '~~/shared/types/time-entry';
 
 const props = defineProps<{
   visible: boolean;
-  date: Date | null;
   timeZone: string;
 }>();
 
@@ -22,8 +22,13 @@ const open = computed({
   set: (value: boolean) => emit('update:visible', value),
 });
 
+function todayKey(): string {
+  return localDayKeyFromInstant(new Date().toISOString(), props.timeZone);
+}
+
 const state = reactive<TimerAddEntryFormDto>({
   title: '',
+  date: todayKey(),
   startTime: '09:00',
   endTime: '10:00',
 });
@@ -38,6 +43,7 @@ watch(
     if (visible) {
       state.title = '';
       searchTerm.value = '';
+      state.date = todayKey();
       state.startTime = '09:00';
       state.endTime = '10:00';
       rangeError.value = '';
@@ -80,7 +86,7 @@ function close() {
 
 function onError(event: FormErrorEvent) {
   const range = event.errors.find(
-    (error) => error.name === 'endTime' || error.name === 'startTime',
+    (error) => error.name === 'endTime' || error.name === 'startTime' || error.name === 'date',
   );
   if (range && typeof range.message === 'string') {
     rangeError.value = t(range.message);
@@ -90,11 +96,10 @@ function onError(event: FormErrorEvent) {
 }
 
 async function onSave() {
-  if (!props.date) return;
   rangeError.value = '';
 
-  const startedAt = combineLocalDateAndTime(props.date, state.startTime, props.timeZone);
-  const stoppedAt = combineLocalDateAndTime(props.date, state.endTime, props.timeZone);
+  const startedAt = wallClockToInstant(state.date, state.startTime, props.timeZone);
+  const stoppedAt = wallClockToInstant(state.date, state.endTime, props.timeZone);
 
   saving.value = true;
   try {
@@ -139,6 +144,16 @@ async function onSave() {
             ignore-filter
             :placeholder="t('timerView.addEntry.titlePlaceholder')"
             data-testid="add-entry-title-input"
+          />
+        </div>
+
+        <div class="grid gap-1">
+          <label for="add-entry-date">{{ t('timerView.addEntry.dateLabel') }}</label>
+          <UInput
+            id="add-entry-date"
+            v-model="state.date"
+            type="date"
+            data-testid="add-entry-date-input"
           />
         </div>
 

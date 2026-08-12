@@ -2,7 +2,6 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 import { instantToZoned, wallClockToInstant } from './dateTime';
 import type { DateTimeSettings } from './dateTime';
-import { Temporal } from 'temporal-polyfill';
 
 export const UNTITLED_GROUP_KEY = 'untitled';
 
@@ -38,13 +37,12 @@ export function entryDurationSeconds(entry: TimeEntryDto, now: number = Date.now
   return Math.max(0, Math.floor((end - start) / 1000));
 }
 
-/** Groups a flat list of time entries by browser-local day, then by task within the day. */
+/** Groups a flat list of time entries by local day, then by task within the day. */
 export function groupTimeEntriesByDay(
   entries: TimeEntryDto[],
   now: number = Date.now(),
   settings: DateTimeSettings = {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    weekStart: 'monday' as const,
   },
 ): TimerViewDay[] {
   const dayMap = new Map<string, TimerViewDay>();
@@ -123,32 +121,4 @@ export function isoToLocalTime(
 ): string {
   const zoned = instantToZoned(iso, timeZone);
   return `${String(zoned.hour).padStart(2, '0')}:${String(zoned.minute).padStart(2, '0')}`;
-}
-
-/**
- * Computes the `[from, to)` instant window covering the most recent `daysBack`
- * local days (including the anchor day), relative to an optional anchor instant
- * (defaults to now). When `daysBack` is a multiple of 7 the window is aligned
- * to the user's `weekStart`.
- */
-export function computeWindowRange(
-  daysBack: number,
-  anchor: Date = new Date(),
-  settings: DateTimeSettings = {
-    timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-    weekStart: 'monday' as const,
-  },
-): { from: string; to: string } {
-  const anchorDay = Temporal.Instant.from(anchor.toISOString())
-    .toZonedDateTimeISO(settings.timeZone)
-    .toPlainDate();
-  const dayOfWeek = anchorDay.dayOfWeek;
-  const weekOffset = settings.weekStart === 'sunday' ? dayOfWeek % 7 : dayOfWeek - 1;
-  const windowStart =
-    daysBack % 7 === 0
-      ? anchorDay.subtract({ days: weekOffset + daysBack - 7 })
-      : anchorDay.subtract({ days: daysBack - 1 });
-  const start = windowStart.toZonedDateTime(settings.timeZone);
-  const to = windowStart.add({ days: daysBack }).toZonedDateTime(settings.timeZone);
-  return { from: start.toInstant().toString(), to: to.toInstant().toString() };
 }

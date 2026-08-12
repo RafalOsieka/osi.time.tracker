@@ -28,14 +28,12 @@ export function useUserSettings() {
 
   const settings = computed<UserSettingsDto>(() => ({
     timezone: user.value?.settings?.timezone ?? null,
-    weekStart: user.value?.settings?.weekStart ?? 'monday',
   }));
 
   const detectedTimeZone = computed(() => browserTimeZone.value ?? 'UTC');
 
   const effective = computed(() => ({
     timeZone: settings.value.timezone ?? browserTimeZone.value ?? 'UTC',
-    weekStart: settings.value.weekStart,
   }));
 
   async function save(update: UpdateUserSettingsDto) {

@@ -61,7 +61,7 @@ mockNuxtImport('useAppToast', () => () => ({
   error: toastErrorMock,
 }));
 mockNuxtImport('useUserSettings', () => () => ({
-  effective: { value: { timeZone: 'UTC', weekStart: 'monday' } },
+  effective: { value: { timeZone: 'UTC' } },
 }));
 mockNuxtImport('useTrackerSecret', () => () => ({
   get: vi.fn(() => ''),
