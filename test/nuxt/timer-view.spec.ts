@@ -26,27 +26,31 @@ type Entry = {
   stoppedAt: string | null;
 };
 
+type Feed = {
+  entries: Entry[];
+  hasMore: boolean;
+  nextBefore: string | null;
+};
+
 const settingsState = ref({
   timezone: 'America/Los_Angeles' as string | null,
-  weekStart: 'monday' as const,
 });
 const { entryFetches, fetchMock, mockState } = vi.hoisted(() => {
   const mockState: {
-    entries: Entry[];
+    feed: Feed;
     projects: unknown[];
-    latest: { startedAt: string } | null;
   } = {
-    entries: [],
+    feed: { entries: [], hasMore: false, nextBefore: null },
     projects: [],
-    latest: { startedAt: new Date().toISOString() },
   };
   const entryFetches = { count: 0 };
   const fetchMock = vi.fn((request: string) => {
-    if (String(request).includes('/api/time-entries/latest')) {
-      return Promise.resolve(mockState.latest);
+    if (String(request).includes('/api/time-entries/feed')) {
+      entryFetches.count += 1;
+      return Promise.resolve(mockState.feed);
     }
     if (String(request).includes('projects')) return Promise.resolve(mockState.projects);
-    return Promise.resolve(mockState.entries);
+    return Promise.resolve([]);
   });
   return { entryFetches, fetchMock, mockState };
 });
@@ -55,30 +59,37 @@ mockNuxtImport('useUserSettings', () => () => ({
   settings: computed(() => settingsState.value),
   effective: computed(() => ({
     timeZone: settingsState.value.timezone ?? 'UTC',
-    weekStart: settingsState.value.weekStart,
   })),
   detectedTimeZone: 'UTC',
   save: vi.fn(),
 }));
 
 mockNuxtImport('$fetch', () => fetchMock);
+mockNuxtImport('useRequestFetch', () => () => fetchMock);
 
 mockNuxtImport('useAsyncData', () => {
-  return (key: string, fetcher: () => Promise<Entry[] | unknown[]>) => {
-    const initial = key === 'timer-view-entries' ? mockState.entries : mockState.projects;
-    if (key === 'timer-view-entries') entryFetches.count += 1;
-    const data = ref<Entry[] | unknown[]>(initial);
+  return (key: string, fetcher: () => Promise<unknown>) => {
+    if (key === 'timer-view-feed') {
+      entryFetches.count += 1;
+      const data = ref(mockState.feed);
+      const refresh = vi.fn(async () => {
+        try {
+          data.value = (await fetcher()) as Feed;
+        } catch {
+          /* keep previous */
+        }
+      });
+      return { data, pending: ref(false), refresh };
+    }
+    const data = ref(mockState.projects);
     const refresh = vi.fn(async () => {
       try {
-        data.value = await fetcher();
+        data.value = (await fetcher()) as unknown[];
       } catch {
         /* keep previous */
       }
     });
-    // Don't auto-fetch entries: the page loads the anchor first, then calls refresh.
-    if (key !== 'timer-view-entries') {
-      void refresh();
-    }
+    void refresh();
     return { data, pending: ref(false), refresh };
   };
 });
@@ -102,7 +113,7 @@ mockNuxtImport('useTimer', () => () => ({
 const ButtonStub = {
   template:
     '<button v-bind="$attrs" :data-testid="$attrs[\'data-testid\']" @click="$emit(\'click\')"><slot />{{ label }}</button>',
-  props: ['label', 'icon', 'loading', 'text', 'rounded', 'severity'],
+  props: ['label', 'icon', 'loading', 'text', 'rounded', 'variant'],
   emits: ['click'],
 };
 const DialogStub = {
@@ -138,10 +149,33 @@ const TimerTaskGroupStub = {
   },
 };
 
+/** Entry payload the add-entry stub emits for smart-include tests. */
+const pendingAddedEntry = vi.hoisted(() => ({ value: null as Entry | null }));
+
+const TimerAddEntryDialogStub = {
+  name: 'TimerAddEntryDialog',
+  props: ['visible', 'timeZone'],
+  emits: ['added', 'update:visible'],
+  template: '<button type="button" data-testid="stub-emit-added" @click="onEmit" />',
+  setup(_: unknown, { emit }: { emit: (e: 'added', payload: Entry) => void }) {
+    return {
+      onEmit() {
+        if (pendingAddedEntry.value) emit('added', pendingAddedEntry.value);
+      },
+    };
+  },
+};
+
 const commonStubs = {
   UButton: ButtonStub,
+  TableHeader: {
+    template:
+      '<div data-testid="timer-view-header"><button data-testid="timer-view-add-entry" @click="$emit(\'create\')" /></div>',
+    props: ['title', 'newLabel', 'newTestid'],
+    emits: ['create'],
+  },
   TimerBulkAssignDialog: { template: '<div />' },
-  TimerAddEntryDialog: { template: '<div />' },
+  TimerAddEntryDialog: TimerAddEntryDialogStub,
   TimerEntryRow: { template: '<div />', props: ['entry', 'now'] },
   TimerTaskGroup: TimerTaskGroupStub,
   UModal: DialogStub,
@@ -163,29 +197,26 @@ function entry(overrides: Partial<Entry>): Entry {
 describe('timer view page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockState.entries = [];
+    mockState.feed = { entries: [], hasMore: false, nextBefore: null };
     mockState.projects = [];
-    mockState.latest = { startedAt: new Date().toISOString() };
-    settingsState.value = { timezone: 'America/Los_Angeles', weekStart: 'monday' };
+    settingsState.value = { timezone: 'America/Los_Angeles' };
     entryFetches.count = 0;
     runningState.value = null;
     elapsedSecondsState.value = 0;
+    pendingAddedEntry.value = null;
     fetchRunningMock.mockClear();
     fetchMock.mockClear();
     vi.stubGlobal('$fetch', fetchMock);
   });
 
-  it('renders the never-tracked empty state when the anchor is null', async () => {
-    mockState.latest = null;
+  it('renders the never-tracked empty state when the feed is empty', async () => {
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="timer-view-empty-state"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(false);
   });
 
   it('leaves the never-tracked state when the first timer starts', async () => {
-    mockState.latest = null;
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(true);
@@ -200,15 +231,6 @@ describe('timer view page', () => {
       startedAt,
       stoppedAt: null,
     };
-    mockState.entries = [
-      entry({
-        id: 'running-1',
-        taskId: 'task-1',
-        taskName: 'First Task',
-        startedAt,
-        stoppedAt: null,
-      }),
-    ];
     await flushPromises();
     await wrapper.vm.$nextTick();
 
@@ -216,73 +238,57 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
   });
 
-  it('renders the empty-window state when entries exist elsewhere', async () => {
-    mockState.latest = { startedAt: new Date().toISOString() };
-    mockState.entries = [];
+  it('shows newest-day fallback content without an empty-window state', async () => {
+    mockState.feed = {
+      entries: [
+        entry({
+          id: 'old-1',
+          taskId: 'task-old',
+          taskName: 'Old Task',
+          startedAt: '2024-01-10T09:00:00.000Z',
+          stoppedAt: '2024-01-10T10:00:00.000Z',
+        }),
+      ],
+      hasMore: true,
+      nextBefore: '2024-01-10T00:00:00.000Z',
+    };
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
-    expect(wrapper.find('[data-testid="timer-view-empty-state"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(false);
-  });
-
-  it('shows the anchored-week banner and resets to the current week', async () => {
-    const pastAnchor = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-    mockState.latest = { startedAt: pastAnchor.toISOString() };
-    mockState.entries = [
-      entry({
-        id: 'past-1',
-        taskId: 'task-past',
-        taskName: 'Past Week Task',
-        startedAt: new Date(
-          pastAnchor.getFullYear(),
-          pastAnchor.getMonth(),
-          pastAnchor.getDate(),
-          9,
-          0,
-        ).toISOString(),
-        stoppedAt: new Date(
-          pastAnchor.getFullYear(),
-          pastAnchor.getMonth(),
-          pastAnchor.getDate(),
-          10,
-          0,
-        ).toISOString(),
-      }),
-    ];
-
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
-    await flushPromises();
-
-    expect(wrapper.find('[data-testid="timer-view-anchored-week-banner"]').exists()).toBe(true);
-    expect(wrapper.find('[data-testid="timer-group-task-past"]').exists()).toBe(true);
-
-    mockState.entries = [];
-    await wrapper.find('[data-testid="timer-view-reset-to-current-week"]').trigger('click');
-    await flushPromises();
-
+    expect(wrapper.find('[data-testid="timer-group-task-old"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-view-anchored-week-banner"]').exists()).toBe(false);
   });
 
   it('groups entries by day and task, and renders totals', async () => {
     const now = new Date();
-    mockState.entries = [
-      entry({
-        id: '1',
-        taskId: 'task-1',
-        taskName: 'Task One',
-        projectId: 'proj-1',
-        projectName: 'Project One',
-        startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
-        stoppedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0).toISOString(),
-      }),
-    ];
+    mockState.feed = {
+      entries: [
+        entry({
+          id: '1',
+          taskId: 'task-1',
+          taskName: 'Task One',
+          projectId: 'proj-1',
+          projectName: 'Project One',
+          startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
+          stoppedAt: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            10,
+            0,
+          ).toISOString(),
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
 
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
-    expect(wrapper.find('[data-testid="timer-view-empty-state"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-group-total-task-1"]').text()).toBe('01:00:00');
+    expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(false);
   });
 
   it('regroups loaded entries when the timezone changes without refetching', async () => {
@@ -293,40 +299,53 @@ describe('timer view page', () => {
     const expectedTokyoDay = new Date(`${utcDate}T00:30:00Z`).toLocaleDateString('en-CA', {
       timeZone: 'Asia/Tokyo',
     });
-    mockState.entries = [
-      entry({
-        id: 'boundary',
-        taskId: 'task-1',
-        taskName: 'Boundary task',
-        startedAt: `${utcDate}T00:30:00.000Z`,
-        stoppedAt: `${utcDate}T01:30:00.000Z`,
-      }),
-    ];
+    mockState.feed = {
+      entries: [
+        entry({
+          id: 'boundary',
+          taskId: 'task-1',
+          taskName: 'Boundary task',
+          startedAt: `${utcDate}T00:30:00.000Z`,
+          stoppedAt: `${utcDate}T01:30:00.000Z`,
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
 
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find(`[data-testid="timer-day-${expectedLosAngelesDay}"]`).exists()).toBe(true);
-    // setup + explicit refresh after anchor load
-    expect(entryFetches.count).toBe(1);
+    const fetchesBefore = entryFetches.count;
 
-    settingsState.value = { timezone: 'Asia/Tokyo', weekStart: 'monday' };
+    settingsState.value = { timezone: 'Asia/Tokyo' };
     await wrapper.vm.$nextTick();
     expect(wrapper.find(`[data-testid="timer-day-${expectedTokyoDay}"]`).exists()).toBe(true);
     expect(wrapper.find(`[data-testid="timer-day-${expectedLosAngelesDay}"]`).exists()).toBe(false);
-    expect(entryFetches.count).toBe(1);
+    expect(entryFetches.count).toBe(fetchesBefore);
   });
 
-  it('renders grouped content client-side and refreshes the running state after a task edit', async () => {
+  it('refreshes the running state after a task edit', async () => {
     const now = new Date();
-    mockState.entries = [
-      entry({
-        id: '1',
-        taskId: 'task-1',
-        taskName: 'Task One',
-        startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
-        stoppedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0).toISOString(),
-      }),
-    ];
+    mockState.feed = {
+      entries: [
+        entry({
+          id: '1',
+          taskId: 'task-1',
+          taskName: 'Task One',
+          startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
+          stoppedAt: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            10,
+            0,
+          ).toISOString(),
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
 
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
@@ -339,15 +358,25 @@ describe('timer view page', () => {
 
   it('expand/collapse toggle exposes aria-expanded', async () => {
     const now = new Date();
-    mockState.entries = [
-      entry({
-        id: '1',
-        taskId: 'task-1',
-        taskName: 'Task One',
-        startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
-        stoppedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0).toISOString(),
-      }),
-    ];
+    mockState.feed = {
+      entries: [
+        entry({
+          id: '1',
+          taskId: 'task-1',
+          taskName: 'Task One',
+          startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
+          stoppedAt: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            10,
+            0,
+          ).toISOString(),
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
 
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
@@ -361,21 +390,82 @@ describe('timer view page', () => {
 
   it('continue action calls useTimer.start with the group task name and project', async () => {
     const now = new Date();
-    mockState.entries = [
-      entry({
-        id: '1',
-        taskId: 'task-1',
-        taskName: 'Task One',
-        projectId: 'proj-1',
-        startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
-        stoppedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0).toISOString(),
-      }),
-    ];
+    mockState.feed = {
+      entries: [
+        entry({
+          id: '1',
+          taskId: 'task-1',
+          taskName: 'Task One',
+          projectId: 'proj-1',
+          startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
+          stoppedAt: new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate(),
+            10,
+            0,
+          ).toISOString(),
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
 
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     await wrapper.find('[data-testid="timer-group-continue-task-1"]').trigger('click');
     expect(startMock).toHaveBeenCalledWith('Task One', 'proj-1');
+  });
+
+  it('exposes a page-level add entry control', async () => {
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-view-add-entry"]').exists()).toBe(true);
+  });
+
+  it('smart-includes a manual entry on a day outside the loaded feed without load more', async () => {
+    // Loaded window: a single June day in America/Los_Angeles (PDT, UTC-7).
+    mockState.feed = {
+      entries: [
+        entry({
+          id: 'loaded-1',
+          taskId: 'task-loaded',
+          taskName: 'Loaded Day Task',
+          startedAt: '2024-06-15T17:00:00.000Z',
+          stoppedAt: '2024-06-15T18:00:00.000Z',
+        }),
+      ],
+      hasMore: true,
+      nextBefore: '2024-06-15T07:00:00.000Z',
+    };
+
+    const outsideEntry = entry({
+      id: 'outside-1',
+      taskId: 'task-outside',
+      taskName: 'Outside Day Task',
+      // January day not present in the loaded feed; older than loadedFrom.
+      startedAt: '2024-01-05T18:00:00.000Z',
+      stoppedAt: '2024-01-05T19:00:00.000Z',
+    });
+    pendingAddedEntry.value = outsideEntry;
+
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="timer-group-task-loaded"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="timer-group-task-outside"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
+
+    const fetchesBefore = entryFetches.count;
+    await wrapper.find('[data-testid="stub-emit-added"]').trigger('click');
+    await flushPromises();
+    await wrapper.vm.$nextTick();
+
+    // Day appears without requiring load more, and without a full feed refresh.
+    expect(wrapper.find('[data-testid="timer-group-task-outside"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="timer-day-2024-01-05"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
+    expect(entryFetches.count).toBe(fetchesBefore);
   });
 });

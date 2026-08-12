@@ -1,80 +1,17 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
-import { computeWindowRange, groupTimeEntriesByDay } from '~/utils/timerViewGrouping';
+import { groupTimeEntriesByDay, localDayKey } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
-import { toPickerDate } from '~/utils/dateTime';
-import type { LatestTimeEntryDto, TimeEntryDto } from '../../shared/types/time-entry';
+import { localDayBounds } from '~/utils/dateTime';
+import type { TimerViewFeedDto, TimeEntryDto } from '~~/shared/types/time-entry';
 
 const { t, locale } = useI18n();
 const { running, elapsedSeconds, start, fetchRunning } = useTimer();
 const { effective } = useUserSettings();
+const requestFetch = useRequestFetch();
 
-const DEFAULT_WINDOW_DAYS = 7;
-const LOAD_MORE_DAYS = 7;
-
-const windowDays = ref(DEFAULT_WINDOW_DAYS);
-/** Cached newest-entry instant; `undefined` until loaded, `null` when never tracked. */
-const anchorStartedAt = ref<string | null | undefined>(undefined);
-const forceCurrentWeek = ref(false);
-
-// Freeze timezone for the range fetch so a timezone-only settings change regroups
-// without refetching (REQ-150). weekStart stays reactive so a change re-aligns.
-const initialTimeZone = effective.value.timeZone;
-
-const windowReference = computed(() => {
-  if (forceCurrentWeek.value || !anchorStartedAt.value) {
-    return new Date();
-  }
-  return new Date(anchorStartedAt.value);
-});
-
-const windowRange = computed(() =>
-  computeWindowRange(windowDays.value, windowReference.value, {
-    timeZone: initialTimeZone,
-    weekStart: effective.value.weekStart,
-  }),
-);
-
-const showAnchoredWeekBanner = computed(() => {
-  if (forceCurrentWeek.value || !anchorStartedAt.value) return false;
-  const settings = {
-    timeZone: initialTimeZone,
-    weekStart: effective.value.weekStart,
-  };
-  const currentFrom = computeWindowRange(DEFAULT_WINDOW_DAYS, new Date(), settings).from;
-  const anchorFrom = computeWindowRange(
-    DEFAULT_WINDOW_DAYS,
-    new Date(anchorStartedAt.value),
-    settings,
-  ).from;
-  return currentFrom !== anchorFrom;
-});
-
-const anchoredWeekLabel = computed(() => {
-  if (!anchorStartedAt.value) return '';
-  const { from } = computeWindowRange(DEFAULT_WINDOW_DAYS, new Date(anchorStartedAt.value), {
-    timeZone: initialTimeZone,
-    weekStart: effective.value.weekStart,
-  });
-  return new Date(from).toLocaleDateString(locale.value, {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: effective.value.timeZone,
-  });
-});
-
-// `immediate: false` + fetching in `onMounted` keeps `pending` at `false` during
-// hydration (matching the server-rendered markup) instead of flipping to `true`
-// synchronously during setup, which caused a hydration mismatch on the empty state.
-const {
-  data: entriesData,
-  pending: entriesPending,
-  refresh: refreshEntries,
-} = useAsyncData(
-  'timer-view-entries',
-  () => $fetch<TimeEntryDto[]>('/api/time-entries', { query: windowRange.value }),
-  { server: false, immediate: false, watch: [windowRange] },
+const { data: feedData, pending: feedPending } = await useAsyncData('timer-view-feed', () =>
+  requestFetch<TimerViewFeedDto>('/api/time-entries/feed'),
 );
 
 const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
@@ -83,18 +20,73 @@ const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
   { server: false, immediate: false },
 );
 
-onMounted(async () => {
-  try {
-    const latest = await $fetch<LatestTimeEntryDto>('/api/time-entries/latest');
-    anchorStartedAt.value = latest?.startedAt ?? null;
-  } catch {
-    anchorStartedAt.value = null;
-  }
-  if (anchorStartedAt.value) {
-    await refreshEntries();
-  }
+onMounted(() => {
   void refreshProjectOptions();
 });
+
+/**
+ * Client-owned feed state. Survives mutations so load-more expansion is not
+ * wiped when re-fetching after edit/create/delete.
+ */
+const entries = ref<TimeEntryDto[]>([]);
+const hasMore = ref(false);
+const nextBefore = ref<string | null>(null);
+/**
+ * Inclusive lower bound of the loaded window (ISO day start). Remembered so a
+ * refresh can re-walk load-more pages back to this depth without a new query param.
+ */
+const loadedFrom = ref<string | null>(null);
+const loadingMore = ref(false);
+const refreshing = ref(false);
+
+function oldestDayStart(list: TimeEntryDto[], timeZone: string): string | null {
+  if (list.length === 0) return null;
+  let oldestDay: string | null = null;
+  for (const entry of list) {
+    const day = localDayKey(entry.startedAt, timeZone);
+    if (oldestDay == null || day < oldestDay) oldestDay = day;
+  }
+  return oldestDay ? localDayBounds(oldestDay, timeZone).from : null;
+}
+
+function mergeById(base: TimeEntryDto[], extra: TimeEntryDto[]): TimeEntryDto[] {
+  const byId = new Map<string, TimeEntryDto>();
+  for (const entry of base) byId.set(entry.id, entry);
+  for (const entry of extra) byId.set(entry.id, entry);
+  return Array.from(byId.values());
+}
+
+function applyFeed(page: TimerViewFeedDto, mode: 'replace' | 'append') {
+  if (mode === 'append') {
+    entries.value = mergeById(entries.value, page.entries);
+  } else {
+    entries.value = page.entries;
+  }
+  hasMore.value = page.hasMore;
+  nextBefore.value = page.nextBefore;
+
+  // Expand or set the lower bound; never shrink it when appending.
+  const pageBound = page.nextBefore ?? oldestDayStart(page.entries, effective.value.timeZone);
+  if (pageBound) {
+    if (!loadedFrom.value || pageBound < loadedFrom.value) {
+      loadedFrom.value = pageBound;
+    }
+  } else if (mode === 'replace' && page.entries.length === 0) {
+    loadedFrom.value = null;
+  }
+}
+
+// Seed from SSR / first payload once.
+watch(
+  feedData,
+  (feed) => {
+    if (!feed) return;
+    if (entries.value.length === 0 && !loadedFrom.value) {
+      applyFeed(feed, 'replace');
+    }
+  },
+  { immediate: true },
+);
 
 const projectOptions = computed(() => projectsData.value ?? []);
 const activeEditorKey = ref<string | null>(null);
@@ -126,7 +118,7 @@ watch(elapsedSeconds, () => {
 });
 
 const displayEntries = computed<TimeEntryDto[]>(() => {
-  const list = entriesData.value ? [...entriesData.value] : [];
+  const list = [...entries.value];
   if (running.value) {
     const idx = list.findIndex((e) => e.id === running.value!.id);
     if (idx >= 0) {
@@ -138,6 +130,63 @@ const displayEntries = computed<TimeEntryDto[]>(() => {
   return list;
 });
 
+/**
+ * Re-fetch the currently loaded window using only existing feed endpoints:
+ * initial page, then load-more (`before`) until we reach the previous depth.
+ */
+async function refreshLoadedRange() {
+  if (refreshing.value) return;
+  refreshing.value = true;
+  const targetFrom = loadedFrom.value;
+  try {
+    let page = await $fetch<TimerViewFeedDto>('/api/time-entries/feed');
+    let merged = page.entries;
+    let pageHasMore = page.hasMore;
+    let pageNextBefore = page.nextBefore;
+
+    // Re-walk older pages until we cover the previously expanded lower bound.
+    // `nextBefore` is an ISO day-start; older bounds are lexicographically smaller.
+    const maxPages = 50;
+    let pages = 0;
+    while (
+      targetFrom &&
+      pageHasMore &&
+      pageNextBefore &&
+      pageNextBefore > targetFrom &&
+      pages < maxPages
+    ) {
+      page = await $fetch<TimerViewFeedDto>('/api/time-entries/feed', {
+        query: { before: pageNextBefore },
+      });
+      merged = mergeById(merged, page.entries);
+      pageHasMore = page.hasMore;
+      pageNextBefore = page.nextBefore;
+      pages += 1;
+    }
+
+    // One more page if we still haven't reached targetFrom but have more history
+    // (nextBefore may jump past targetFrom in a single 7-day step — that's fine;
+    // if nextBefore is still > targetFrom we already looped; if nextBefore <= targetFrom stop).
+    if (targetFrom && pageHasMore && pageNextBefore && pageNextBefore === targetFrom) {
+      // Already at the same cursor depth; no extra page needed.
+    }
+
+    entries.value = merged;
+    hasMore.value = pageHasMore;
+    nextBefore.value = pageNextBefore;
+
+    // Restore / recompute lower bound without shrinking past what we had.
+    const bound = pageNextBefore ?? oldestDayStart(merged, effective.value.timeZone);
+    if (targetFrom) {
+      loadedFrom.value = bound && bound < targetFrom ? bound : targetFrom;
+    } else {
+      loadedFrom.value = bound;
+    }
+  } finally {
+    refreshing.value = false;
+  }
+}
+
 let lastRunningId = running.value?.id ?? null;
 watch(
   () => running.value?.id ?? null,
@@ -145,22 +194,8 @@ watch(
     const previousId = lastRunningId;
     lastRunningId = runningId;
 
-    // First-ever start must leave the never-tracked empty state so the live
-    // (and later stopped) entry can render in the list.
-    if (runningId && running.value && anchorStartedAt.value == null) {
-      anchorStartedAt.value = running.value.startedAt;
-    }
-
     if ((previousId && !runningId) || (previousId && runningId && previousId !== runningId)) {
-      if (!runningId && anchorStartedAt.value == null) {
-        try {
-          const latest = await $fetch<LatestTimeEntryDto>('/api/time-entries/latest');
-          anchorStartedAt.value = latest?.startedAt ?? null;
-        } catch {
-          // Keep null; refresh below is still best-effort.
-        }
-      }
-      await refreshEntries();
+      await refreshLoadedRange();
     }
   },
 );
@@ -169,14 +204,13 @@ const days = computed(() =>
   groupTimeEntriesByDay(displayEntries.value, now.value, effective.value),
 );
 
-const anchorReady = computed(() => anchorStartedAt.value !== undefined);
-const isNeverTracked = computed(() => anchorReady.value && anchorStartedAt.value === null);
-const isEmptyWindow = computed(
+const isNeverTracked = computed(
   () =>
-    anchorReady.value &&
-    anchorStartedAt.value !== null &&
-    !entriesPending.value &&
-    days.value.length === 0,
+    !feedPending.value &&
+    !refreshing.value &&
+    entries.value.length === 0 &&
+    !running.value &&
+    !hasMore.value,
 );
 const hasEntries = computed(() => days.value.length > 0);
 
@@ -200,20 +234,20 @@ function startGroupEditing(groupKey: string) {
 
 async function onContinue(group: { taskName: string | null; projectId: string | null }) {
   await start(group.taskName ?? undefined, group.projectId ?? undefined);
-  await refreshEntries();
+  await refreshLoadedRange();
 }
 
-function loadMore() {
-  windowDays.value += LOAD_MORE_DAYS;
-  // Explicit refresh: watching a computed object source can miss updates depending on
-  // Nuxt/Vue timing; keep the watch as a belt-and-suspenders path.
-  void refreshEntries();
-}
-
-function resetToCurrentWeek() {
-  forceCurrentWeek.value = true;
-  windowDays.value = DEFAULT_WINDOW_DAYS;
-  void refreshEntries();
+async function loadMore() {
+  if (!hasMore.value || !nextBefore.value || loadingMore.value) return;
+  loadingMore.value = true;
+  try {
+    const page = await $fetch<TimerViewFeedDto>('/api/time-entries/feed', {
+      query: { before: nextBefore.value },
+    });
+    applyFeed(page, 'append');
+  } finally {
+    loadingMore.value = false;
+  }
 }
 
 function focusTimerWidget() {
@@ -234,133 +268,123 @@ function openBulkAssign(ids: string[]) {
 }
 
 async function onBulkAssigned() {
-  await refreshEntries();
+  await refreshLoadedRange();
   await fetchRunning();
 }
 
 // --- Add entry ---
 const addEntryVisible = ref(false);
-const addEntryDate = ref<Date | null>(null);
-function openAddEntry(dayKey: string) {
-  addEntryDate.value = toPickerDate(dayKey, effective.value.timeZone);
+
+function openAddEntry() {
   addEntryVisible.value = true;
 }
 
-async function onEntryAdded() {
-  await refreshEntries();
+function smartInclude(entry: TimeEntryDto) {
+  entries.value = mergeById(entries.value, [entry]);
+  const dayStart = localDayBounds(
+    localDayKey(entry.startedAt, effective.value.timeZone),
+    effective.value.timeZone,
+  ).from;
+  if (!loadedFrom.value || dayStart < loadedFrom.value) {
+    loadedFrom.value = dayStart;
+  }
+}
+
+async function onEntryAdded(entry: TimeEntryDto) {
+  const day = localDayKey(entry.startedAt, effective.value.timeZone);
+  const loadedDays = new Set(
+    entries.value.map((e) => localDayKey(e.startedAt, effective.value.timeZone)),
+  );
+  if (loadedDays.has(day) || (loadedFrom.value && entry.startedAt >= loadedFrom.value)) {
+    await refreshLoadedRange();
+  } else {
+    smartInclude(entry);
+  }
 }
 
 async function onEntryChanged() {
-  await refreshEntries();
+  await refreshLoadedRange();
   await fetchRunning();
 }
 
 async function onEntryDeleted() {
-  await refreshEntries();
+  await refreshLoadedRange();
   await fetchRunning();
 }
 </script>
 
 <template>
   <section class="grid gap-6" data-testid="timer-view-page">
-    <h2 class="text-2xl font-semibold">{{ t('timerView.pageTitle') }}</h2>
+    <TableHeader
+      :title="t('timerView.pageTitle')"
+      :new-label="t('timerView.addEntry.buttonLabel')"
+      new-testid="timer-view-add-entry"
+      @create="openAddEntry"
+    />
 
-    <ClientOnly>
-      <EmptyState
-        v-if="isNeverTracked"
-        :message="t('timerView.neverTrackedEmptyState')"
-        :cta-label="t('timerView.neverTrackedCta')"
-        testid="timer-view-never-tracked"
-        @create="focusTimerWidget"
-      />
+    <EmptyState
+      v-if="isNeverTracked"
+      :message="t('timerView.neverTrackedEmptyState')"
+      :cta-label="t('timerView.neverTrackedCta')"
+      testid="timer-view-never-tracked"
+      @create="focusTimerWidget"
+    />
 
-      <EmptyState
-        v-else-if="isEmptyWindow"
-        :message="t('timerView.emptyWindowState')"
-        :cta-label="t('timerView.loadMore')"
-        testid="timer-view-empty-state"
-        @create="loadMore"
-      />
-
-      <div v-else-if="hasEntries" class="grid gap-6">
+    <div v-else-if="hasEntries" class="grid gap-6">
+      <div
+        v-for="day in days"
+        :key="day.dayKey"
+        class="grid gap-1"
+        :data-testid="`timer-day-${day.dayKey}`"
+      >
         <div
-          v-if="showAnchoredWeekBanner"
-          class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-default bg-elevated px-3 py-2"
-          data-testid="timer-view-anchored-week-banner"
+          class="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-default pb-1 font-semibold"
         >
-          <p class="m-0 text-sm text-muted">
-            {{ t('timerView.anchoredWeekBanner', { week: anchoredWeekLabel }) }}
-          </p>
-          <UButton
-            :label="t('timerView.resetToCurrentWeek')"
-            variant="soft"
-            size="sm"
-            data-testid="timer-view-reset-to-current-week"
-            @click="resetToCurrentWeek"
-          />
-        </div>
-
-        <div
-          v-for="day in days"
-          :key="day.dayKey"
-          class="grid gap-1"
-          :data-testid="`timer-day-${day.dayKey}`"
-        >
-          <div
-            class="flex items-baseline justify-between border-b-2 border-default pb-1 font-semibold"
+          <span>{{ dayHeading(day.dayKey) }}</span>
+          <span
+            class="font-mono font-normal text-muted"
+            :data-testid="`timer-day-total-${day.dayKey}`"
           >
-            <span>{{ dayHeading(day.dayKey) }}</span>
-            <span
-              class="font-mono font-normal text-muted"
-              :data-testid="`timer-day-total-${day.dayKey}`"
-            >
-              {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
-            </span>
-            <UButton
-              :label="t('timerView.addEntry.buttonLabel')"
-              icon="i-lucide-plus"
-              variant="ghost"
-              :data-testid="`timer-day-add-entry-${day.dayKey}`"
-              @click="openAddEntry(day.dayKey)"
-            />
-            <NuxtLink
-              :to="`/sync/${day.dayKey}`"
-              class="text-sm text-primary no-underline"
-              :data-testid="`timer-day-remote-sync-${day.dayKey}`"
-            >
-              {{ t('timerView.remoteSyncAction') }}
-            </NuxtLink>
-          </div>
-
-          <TimerTaskGroup
-            v-for="group in day.groups"
-            :key="group.key"
-            :editor-key="`${day.dayKey}:${group.key}`"
-            :group="group"
-            :is-live="isGroupLive(group)"
-            :now="now"
-            :time-zone="effective.timeZone"
-            :active-editor-key="activeEditorKey"
-            :project-options="projectOptions"
-            :tracker="trackerForGroup(group)"
-            @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
-            @continue="onContinue(group)"
-            @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
-            @entry-changed="onEntryChanged"
-            @entry-deleted="onEntryDeleted"
-          />
+            {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
+          </span>
+          <NuxtLink
+            :to="`/sync/${day.dayKey}`"
+            class="text-sm text-primary no-underline"
+            :data-testid="`timer-day-remote-sync-${day.dayKey}`"
+          >
+            {{ t('timerView.remoteSyncAction') }}
+          </NuxtLink>
         </div>
 
-        <div class="flex justify-center">
-          <UButton
-            :label="t('timerView.loadMore')"
-            variant="ghost"
-            data-testid="timer-view-load-more"
-            @click="loadMore"
-          />
-        </div>
+        <TimerTaskGroup
+          v-for="group in day.groups"
+          :key="group.key"
+          :editor-key="`${day.dayKey}:${group.key}`"
+          :group="group"
+          :is-live="isGroupLive(group)"
+          :now="now"
+          :time-zone="effective.timeZone"
+          :active-editor-key="activeEditorKey"
+          :project-options="projectOptions"
+          :tracker="trackerForGroup(group)"
+          @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
+          @continue="onContinue(group)"
+          @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
+          @entry-changed="onEntryChanged"
+          @entry-deleted="onEntryDeleted"
+        />
       </div>
-    </ClientOnly>
+
+      <div v-if="hasMore" class="flex justify-center">
+        <UButton
+          :label="t('timerView.loadMore')"
+          variant="ghost"
+          :loading="loadingMore"
+          data-testid="timer-view-load-more"
+          @click="loadMore"
+        />
+      </div>
+    </div>
 
     <TimerBulkAssignDialog
       v-model:visible="bulkAssignVisible"
@@ -371,7 +395,6 @@ async function onEntryDeleted() {
 
     <TimerAddEntryDialog
       v-model:visible="addEntryVisible"
-      :date="addEntryDate"
       :time-zone="effective.timeZone"
       @added="onEntryAdded"
     />

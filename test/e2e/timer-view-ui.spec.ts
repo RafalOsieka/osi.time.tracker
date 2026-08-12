@@ -124,29 +124,12 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click('[data-testid="bulk-assign-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="bulk-assign-dialog"]', { state: 'hidden' });
     await page.waitForFunction(pageIncludesText, 'Bulk Assigned Task');
-
-    // --- Inline rename merge ---
-    // Create a second entry under a task with the same target name to force a merge on rename.
-    const other = await startEntry(jar, token, { title: 'UI Timer Task Duplicate' });
-    await stopEntry(jar, token, other.id);
-    await page.reload();
-    await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(pageIncludesText, 'UI Timer Task Duplicate');
-
-    expect(other.taskId).toBeTruthy();
-    const duplicateTitle = page.locator(`[data-testid="timer-group-title-${other.taskId}"]`);
-    await duplicateTitle.locator('input').or(duplicateTitle).first().click();
-    const renameInput = page.locator(`[data-testid="timer-group-title-input-${other.taskId}"]`);
-    await renameInput.locator('input').or(renameInput).first().fill('UI Timer Task');
-    await renameInput.locator('input').or(renameInput).first().press('Enter');
-    await page.waitForFunction(pageExcludesText, 'UI Timer Task Duplicate');
+    // Group rename/merge is covered by dedicated multi-day / inline-edit cases below.
 
     await page.close();
   });
 
-  it('load more extends the visible window to include older entries', async () => {
-    // Ensure the default window is non-empty (so the footer load-more control renders)
-    // and insert an entry older than that window via the DB.
+  it('load more extends the visible window to include older activity days', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
     const recent = await startEntry(jar, token, { title: 'Load More Anchor' });
     await stopEntry(jar, token, recent.id);
@@ -159,9 +142,8 @@ describeTimerViewUI('timer view UI flow', async () => {
         .where(eq(users.email, 'timerviewui@example.com'));
       if (!user) throw new Error('seeded user not found');
 
-      // Far enough back that week-aligned 7- and 14-day windows may still exclude it
-      // depending on the weekday the suite runs; the loop below loads until it appears.
-      const oldStart = new Date(Date.now() - 20 * 24 * 60 * 60 * 1000);
+      // Outside the default 30-day feed window.
+      const oldStart = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
       const oldStop = new Date(oldStart.getTime() + 30 * 60 * 1000);
       await db.insert(timeEntries).values({
         userId: user.id,
@@ -177,19 +159,9 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Load More Anchor');
 
-    // Not visible within the default week-aligned window.
     const beforeCount = await page.locator('[data-testid^="timer-day-"]').count();
-
-    // Week-aligned windows expand by full weeks; one click is not always enough.
-    const loadMore = page.locator(
-      '[data-testid="timer-view-load-more"], [data-testid="empty-state-cta"]',
-    );
-    for (let i = 0; i < 4; i++) {
-      const count = await page.locator('[data-testid^="timer-day-"]').count();
-      if (count > beforeCount) break;
-      await loadMore.first().click();
-      await page.waitForTimeout(500);
-    }
+    const loadMore = page.locator('[data-testid="timer-view-load-more"]');
+    await loadMore.click();
     await page.waitForFunction(
       (prev) => document.querySelectorAll('[data-testid^="timer-day-"]').length > prev,
       beforeCount,
@@ -198,13 +170,11 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
-  it('adds a manual entry from a day section and sees it grouped correctly', async () => {
+  it('adds a manual entry from the page header and sees it grouped correctly', async () => {
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
-    const addButtonSelector = '[data-testid^="timer-day-add-entry-"]';
-    await page.waitForSelector(addButtonSelector);
-    await page.click(addButtonSelector);
+    await page.click('[data-testid="timer-view-add-entry"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
     await page
@@ -233,9 +203,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
 
-    const addButtonSelector = '[data-testid^="timer-day-add-entry-"]';
-    await page.waitForSelector(addButtonSelector);
-    await page.click(addButtonSelector);
+    await page.click('[data-testid="timer-view-add-entry"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
     await page
@@ -364,11 +332,6 @@ describeTimerViewUI('timer view UI flow', async () => {
           .querySelector('[data-testid="timer-toggle-button"]')
           ?.getAttribute('aria-pressed') !== 'true',
     );
-    // After stop, the list refresh may still be on an older anchored week — reset if needed.
-    const reset = page.locator('[data-testid="timer-view-reset-to-current-week"]');
-    if ((await reset.count()) > 0) {
-      await reset.click();
-    }
     await page.waitForFunction(pageIncludesText, 'Topbar Stop Task');
 
     await page.close();
@@ -514,14 +477,14 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
-  it('opens on an earlier tracked week with a signpost and can reset to the current week', async () => {
+  it('falls back to the newest activity day when nothing is in the last 30 days', async () => {
     const email = 'timerviewanchor@example.com';
     await seedUsers(dbUrl, [{ email, displayName: 'timerviewanchoruser' }]);
     const { jar, token } = await apiLogin(email);
 
-    const oldStart = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const oldStart = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
     const oldStop = new Date(oldStart.getTime() + 30 * 60 * 1000);
-    const pastTitle = 'Anchored Week Task ' + Date.now();
+    const pastTitle = 'Newest Day Fallback Task ' + Date.now();
     await startEntry(jar, token, {
       title: pastTitle,
       startedAt: oldStart.toISOString(),
@@ -531,16 +494,8 @@ describeTimerViewUI('timer view UI flow', async () => {
     const page = await loginAs(email);
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, pastTitle);
-    await page.waitForSelector('[data-testid="timer-view-anchored-week-banner"]');
-    await page.waitForSelector('[data-testid="timer-view-reset-to-current-week"]');
-
-    await page.click('[data-testid="timer-view-reset-to-current-week"]');
-    await page.waitForSelector('[data-testid="timer-view-anchored-week-banner"]', {
-      state: 'hidden',
-    });
-    await page.waitForFunction(pageExcludesText, pastTitle);
-    // Current week is empty for this user — empty-window state (not never-tracked).
-    await page.waitForSelector('[data-testid="timer-view-empty-state"]');
+    expect(await page.locator('[data-testid="timer-view-anchored-week-banner"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="timer-view-never-tracked"]').count()).toBe(0);
 
     await page.close();
   });
@@ -550,7 +505,6 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForSelector('[data-testid="timer-view-never-tracked"]');
     expect(await page.locator('[data-testid="timer-view-load-more"]').count()).toBe(0);
-    expect(await page.locator('[data-testid="timer-view-empty-state"]').count()).toBe(0);
     await page.close();
   });
 

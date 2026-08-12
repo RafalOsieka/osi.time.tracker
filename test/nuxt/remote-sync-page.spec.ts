@@ -37,7 +37,7 @@ mockNuxtImport('useAppToast', () => () => ({
   error: toastErrorMock,
 }));
 mockNuxtImport('useUserSettings', () => () => ({
-  effective: { value: { timeZone: 'UTC', weekStart: 'monday' } },
+  effective: { value: { timeZone: 'UTC' } },
 }));
 
 let dayData: RemoteSyncDayDto;

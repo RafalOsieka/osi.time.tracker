@@ -2,12 +2,10 @@ import { Temporal } from 'temporal-polyfill';
 
 export interface DateTimeSettings {
   timeZone: string;
-  weekStart: 'monday' | 'sunday';
 }
 
 export const browserDateTimeSettings = (): DateTimeSettings => ({
   timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  weekStart: 'monday',
 });
 
 export function instantToZoned(iso: string, timeZone: string): Temporal.ZonedDateTime {
@@ -34,3 +32,35 @@ export function pickerDateToLocalDate(date: Date): string {
 
 export const toPickerDate = localDateToPickerDate;
 export const fromPickerDate = pickerDateToLocalDate;
+
+/** Local calendar day key (YYYY-MM-DD) for an ISO instant in `timeZone`. */
+export function localDayKeyFromInstant(iso: string, timeZone: string): string {
+  return instantToZoned(iso, timeZone).toPlainDate().toString();
+}
+
+/** Inclusive start / exclusive end instants for a local calendar day in `timeZone`. */
+export function localDayBounds(dayKey: string, timeZone: string): { from: string; to: string } {
+  const start = Temporal.PlainDate.from(dayKey).toZonedDateTime(timeZone);
+  return {
+    from: start.toInstant().toString(),
+    to: start.add({ days: 1 }).toInstant().toString(),
+  };
+}
+
+/**
+ * Rolling window of the most recent `days` local calendar days ending on the
+ * local day of `anchor` (inclusive of that day). Returns `[from, to)` instants.
+ */
+export function computeRollingDayRange(
+  days: number,
+  anchor: Date = new Date(),
+  timeZone = 'UTC',
+): { from: string; to: string } {
+  const anchorDay = Temporal.Instant.from(anchor.toISOString())
+    .toZonedDateTimeISO(timeZone)
+    .toPlainDate();
+  const windowStart = anchorDay.subtract({ days: days - 1 });
+  const start = windowStart.toZonedDateTime(timeZone);
+  const end = windowStart.add({ days }).toZonedDateTime(timeZone);
+  return { from: start.toInstant().toString(), to: end.toInstant().toString() };
+}

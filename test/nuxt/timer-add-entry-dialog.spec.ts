@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
-import { combineLocalDateAndTime } from '../../app/utils/timerViewGrouping';
+import { wallClockToInstant } from '../../app/utils/dateTime';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -42,13 +42,13 @@ const InputMenuStub = {
 const InputStub = {
   template:
     '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" @blur="$emit(\'blur\')" @keydown.enter="$emit(\'keydown\', $event)" />',
-  props: ['modelValue', 'inputmode'],
+  props: ['modelValue', 'inputmode', 'type'],
   emits: ['update:modelValue', 'blur', 'keydown'],
 };
 
 function mount() {
   return mountSuspended(TimerAddEntryDialog, {
-    props: { visible: true, date: new Date(2024, 2, 15), timeZone: 'UTC' },
+    props: { visible: true, timeZone: 'UTC' },
     global: {
       stubs: {
         UModal: ModalStub,
@@ -81,6 +81,7 @@ describe('TimerAddEntryDialog', () => {
     const created = { id: 'entry-1' };
     csrfFetchMock.mockResolvedValue(created);
     const wrapper = await mount();
+    await wrapper.find('[data-testid="add-entry-date-input"]').setValue('2024-03-15');
     await wrapper.find('[data-testid="add-entry-title-input"]').setValue('  Manual task  ');
     const start = wrapper.find('[data-testid="add-entry-start-input"]');
     const end = wrapper.find('[data-testid="add-entry-end-input"]');
@@ -95,8 +96,8 @@ describe('TimerAddEntryDialog', () => {
       method: 'POST',
       body: {
         title: 'Manual task',
-        startedAt: combineLocalDateAndTime(new Date(2024, 2, 15), '09:00', 'UTC'),
-        stoppedAt: combineLocalDateAndTime(new Date(2024, 2, 15), '10:30', 'UTC'),
+        startedAt: wallClockToInstant('2024-03-15', '09:00', 'UTC'),
+        stoppedAt: wallClockToInstant('2024-03-15', '10:30', 'UTC'),
       },
     });
     expect(wrapper.emitted('added')).toEqual([[created]]);

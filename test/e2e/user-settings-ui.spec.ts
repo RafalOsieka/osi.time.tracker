@@ -70,7 +70,7 @@ describeSettingsUI('user settings UI flow', async () => {
     return page;
   }
 
-  it('changes timezone and week start on /settings, persists across reload, and regroups the timer view', async () => {
+  it('changes timezone on /settings, persists across reload, and regroups the timer view', async () => {
     const { jar, token } = await apiLogin('settingsui@example.com');
 
     // Deterministic baseline so the "before" grouping doesn't depend on the
@@ -78,7 +78,7 @@ describeSettingsUI('user settings UI flow', async () => {
     await fetch(url('/api/user/settings'), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: BASELINE_TIME_ZONE, weekStart: 'monday' }),
+      body: JSON.stringify({ timezone: BASELINE_TIME_ZONE }),
     });
 
     // A recent (safely-in-the-past) instant: its calendar day under the
@@ -109,7 +109,7 @@ describeSettingsUI('user settings UI flow', async () => {
       }),
     ).toBe(true);
 
-    // --- Navigate to the settings page and change timezone + week start ---
+    // --- Navigate to the settings page and change timezone ---
     // Preferences auto-apply on change (no Save button).
     await page.click('a[href="/settings"]');
     await page.waitForSelector('[data-testid="page-settings"]');
@@ -117,6 +117,7 @@ describeSettingsUI('user settings UI flow', async () => {
     await page.waitForSelector('[data-testid="settings-preferences"]');
     expect(await page.locator('button:has-text("Save settings")').count()).toBe(0);
     expect(await page.locator('[data-testid="settings-saved-message"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="settings-week-start"]').count()).toBe(0);
 
     // Language and theme controls live on Settings (not the utility menu).
     expect(await page.locator('[data-testid="settings-language"]').count()).toBe(1);
@@ -125,21 +126,10 @@ describeSettingsUI('user settings UI flow', async () => {
     await page.click('#settings-timezone');
     await page.getByRole('option', { name: SHIFTED_TIME_ZONE }).click();
 
-    const weekStartGroup = page.locator('#settings-week-start');
-    await weekStartGroup.getByText('Sunday').click();
-
     // Wait for auto-persist: controls should keep the selected values after network settles.
     await expect
       .poll(() => page.locator('#settings-timezone').textContent())
       .toContain(SHIFTED_TIME_ZONE);
-    await expect
-      .poll(async () =>
-        page
-          .locator('#settings-week-start')
-          .getByRole('radio', { name: /sunday/i })
-          .getAttribute('aria-checked'),
-      )
-      .toBe('true');
 
     // --- Persistence across reload ---
     await page.reload();
@@ -147,15 +137,8 @@ describeSettingsUI('user settings UI flow', async () => {
     await expect
       .poll(() => page.locator('#settings-timezone').textContent())
       .toContain(SHIFTED_TIME_ZONE);
-    expect(
-      await page
-        .locator('#settings-week-start')
-        .getByRole('radio', { name: /sunday/i })
-        .getAttribute('aria-checked'),
-    ).toBe('true');
 
-    // --- The timer view regroups the same data under the new timezone,
-    // purely client-side (no data refetch) ---
+    // --- The timer view regroups the same data under the new timezone ---
     await page.goto(url('/'));
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Settings UI Task');
@@ -173,12 +156,13 @@ describeSettingsUI('user settings UI flow', async () => {
       ).toBe(false);
     }
 
-    // ...and re-appears grouped under the day computed for the new timezone
-    // (falling back to "load more" if that day sits outside the default
-    // window relative to the current week).
+    // ...and re-appears grouped under the day computed for the new timezone.
     const shiftedDayKey = dayKeyIn(startedAt, SHIFTED_TIME_ZONE);
     if ((await page.locator(`[data-testid="timer-day-${shiftedDayKey}"]`).count()) === 0) {
-      await page.click('[data-testid="timer-view-load-more"]');
+      const loadMore = page.locator('[data-testid="timer-view-load-more"]');
+      if ((await loadMore.count()) > 0) {
+        await loadMore.click();
+      }
     }
     await page.waitForSelector(`[data-testid="timer-day-${shiftedDayKey}"]`);
     expect(

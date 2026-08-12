@@ -69,9 +69,6 @@ export interface TimeEntryDto {
   remoteIssueRef?: RemoteIssueRefDto;
 }
 
-/** Newest entry instant for the authenticated user, or `null` when none exist. */
-export type LatestTimeEntryDto = { startedAt: string } | null;
-
 export const listTimeEntriesQuerySchema = z
   .object({
     from: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }),
@@ -83,6 +80,21 @@ export const listTimeEntriesQuerySchema = z
   });
 
 export type ListTimeEntriesQuery = z.infer<typeof listTimeEntriesQuerySchema>;
+
+export const timerViewFeedQuerySchema = z.object({
+  before: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }).optional(),
+});
+
+export type TimerViewFeedQuery = z.infer<typeof timerViewFeedQuerySchema>;
+
+export interface TimerViewFeedDto {
+  entries: TimeEntryDto[];
+  hasMore: boolean;
+  nextBefore: string | null;
+}
+
+export const TIMER_VIEW_FEED_INITIAL_DAYS = 30;
+export const TIMER_VIEW_FEED_LOAD_MORE_ACTIVITY_DAYS = 7;
 
 export const bulkAssignSchema = z.object({
   ids: z
@@ -147,13 +159,16 @@ const hhMmTimeSchema = z
   .regex(/^([01]\d|2[0-3]):[0-5]\d$/, { error: 'error.timeEntryStartedAtInvalid' });
 
 /**
- * Client-side form schema for the timer add-entry dialog (local HH:mm range).
+ * Client-side form schema for the timer add-entry dialog (local date + HH:mm range).
  */
 export const timerAddEntryFormSchema = z
   .object({
     title: z
       .string({ error: 'error.timeEntryTitleInvalid' })
       .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' }),
+    date: z
+      .string({ error: 'error.timeEntryStartedAtInvalid' })
+      .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'error.timeEntryStartedAtInvalid' }),
     startTime: hhMmTimeSchema,
     endTime: hhMmTimeSchema,
   })

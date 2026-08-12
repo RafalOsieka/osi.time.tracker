@@ -35,9 +35,6 @@
     "theme": "Motyw",
     "timezone": "Strefa czasowa",
     "detectedTimezone": "Wykryta strefa czasowa: {timezone}",
-    "weekStart": "Początek tygodnia",
-    "monday": "Poniedziałek",
-    "sunday": "Niedziela",
     "saveError": "Nie udało się zapisać ustawień."
   },
   "theme": {
@@ -128,12 +125,8 @@
   },
   "timerView": {
     "pageTitle": "Stoper",
-    "emptyState": "Brak wpisów czasu.",
-    "emptyWindowState": "Brak wpisów czasu w tym okresie.",
     "neverTrackedEmptyState": "Nie śledziłeś jeszcze czasu. Uruchom stoper powyżej, aby zacząć.",
     "neverTrackedCta": "Zacznij śledzenie",
-    "anchoredWeekBanner": "Wyświetlany tydzień od {week}",
-    "resetToCurrentWeek": "Wróć do bieżącego tygodnia",
     "loadMore": "Wczytaj więcej",
     "dayTotal": "Suma: {duration}",
     "noTask": "(brak zadania)",
@@ -174,10 +167,11 @@
       "toastUpdatedDetail": "\"{name}\" zostało zaktualizowane."
     },
     "addEntry": {
-      "buttonLabel": "+ Dodaj wpis",
+      "buttonLabel": "Nowy",
       "dialogTitle": "Dodaj wpis czasu",
       "titleLabel": "Tytuł",
       "titlePlaceholder": "Nazwa zadania (opcjonalnie)",
+      "dateLabel": "Data",
       "startLabel": "Czas rozpoczęcia",
       "endLabel": "Czas zakończenia",
       "rangeError": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia.",
@@ -442,8 +436,7 @@
       "invalidCredentials": "Nieprawidłowe dane logowania."
     },
     "userSettings": {
-      "invalidTimezone": "Wybierz prawidłową strefę czasową.",
-      "invalidWeekStart": "Wybierz poniedziałek lub niedzielę jako początek tygodnia."
+      "invalidTimezone": "Wybierz prawidłową strefę czasową."
     },
     "unexpected": "Wystąpił nieoczekiwany błąd."
   }

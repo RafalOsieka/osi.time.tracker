@@ -6,7 +6,7 @@ import { browserDateTimeSettings } from '../../app/utils/dateTime';
 import { useUserSettings } from '../../app/composables/useUserSettings';
 
 const sessionUser = ref<{
-  settings?: { timezone: string | null; weekStart: 'monday' | 'sunday' };
+  settings?: { timezone: string | null };
 } | null>(null);
 const csrfFetch = vi.fn();
 
@@ -29,7 +29,7 @@ mockNuxtImport('useUserSession', () => () => ({
 }));
 vi.mock('../../app/utils/dateTime', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../app/utils/dateTime')>()),
-  browserDateTimeSettings: vi.fn(() => ({ timeZone: 'America/Los_Angeles', weekStart: 'monday' })),
+  browserDateTimeSettings: vi.fn(() => ({ timeZone: 'America/Los_Angeles' })),
 }));
 
 describe('useUserSettings', () => {
@@ -61,10 +61,9 @@ describe('useUserSettings', () => {
 
     const composable = wrapper.vm.settings as unknown as ReturnType<typeof useUserSettings>;
     await nextTick();
-    expect(composable.settings.value).toEqual({ timezone: null, weekStart: 'monday' });
+    expect(composable.settings.value).toEqual({ timezone: null });
     expect(composable.effective.value).toEqual({
       timeZone: 'America/Los_Angeles',
-      weekStart: 'monday',
     });
     expect(composable.detectedTimeZone.value).toBe('America/Los_Angeles');
     expect(browserDateTimeSettings).toHaveBeenCalled();
@@ -72,7 +71,7 @@ describe('useUserSettings', () => {
   });
 
   it('prefers saved settings over browser detection with no post-mount upgrade', async () => {
-    sessionUser.value = { settings: { timezone: 'Europe/Warsaw', weekStart: 'sunday' } };
+    sessionUser.value = { settings: { timezone: 'Europe/Warsaw' } };
 
     const wrapper = mount({
       setup() {
@@ -84,11 +83,11 @@ describe('useUserSettings', () => {
     const composable = wrapper.vm.settings as unknown as ReturnType<typeof useUserSettings>;
     await nextTick();
 
-    expect(composable.effective.value).toEqual({ timeZone: 'Europe/Warsaw', weekStart: 'sunday' });
+    expect(composable.effective.value).toEqual({ timeZone: 'Europe/Warsaw' });
     expect(csrfFetch).not.toHaveBeenCalled();
   });
 
-  it('keeps weekStart default monday when unset and does not auto-persist timezone', async () => {
+  it('does not auto-persist timezone when unset', async () => {
     const wrapper = mount({
       setup() {
         const settings = useUserSettings();
@@ -99,7 +98,6 @@ describe('useUserSettings', () => {
     const composable = wrapper.vm.settings as unknown as ReturnType<typeof useUserSettings>;
     await nextTick();
 
-    expect(composable.effective.value.weekStart).toBe('monday');
     expect(composable.settings.value.timezone).toBeNull();
     expect(csrfFetch).not.toHaveBeenCalled();
   });
