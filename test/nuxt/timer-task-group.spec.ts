@@ -26,6 +26,9 @@ const ButtonStub = {
       :target="target"
       :title="title"
       :aria-label="ariaLabel || $attrs['aria-label']"
+      :disabled="disabled"
+      :data-icon="icon"
+      :data-ui-leading="ui?.leadingIcon"
       @click="$emit('click', $event)"
     >{{ label }}<slot /></component>
   `,
@@ -36,6 +39,9 @@ const ButtonStub = {
     'variant',
     'color',
     'square',
+    'size',
+    'disabled',
+    'ui',
     'to',
     'target',
     'title',
@@ -49,27 +55,51 @@ const InputStub = {
   props: ['modelValue'],
   emits: ['update:modelValue', 'blur', 'keydown'],
 };
-const SelectStub = {
+const PopoverStub = {
+  props: ['open', 'modal', 'content'],
+  emits: ['update:open'],
   template: `
-    <select v-bind="$attrs" :value="modelValue ?? ''" @change="$emit('update:modelValue', $event.target.value || null)">
-      <option value="">(no project)</option>
-      <option v-for="option in items" :key="option.id" :value="option.id">{{ option.name }}</option>
-    </select>
+    <div>
+      <div @click="$emit('update:open', true)"><slot /></div>
+      <div v-if="open"><slot name="content" /></div>
+    </div>
   `,
-  props: ['modelValue', 'items', 'labelKey', 'valueKey'],
-  emits: ['update:modelValue'],
+};
+
+const TooltipStub = {
+  props: ['text', 'content'],
+  template: '<span v-bind="$attrs" :data-tooltip-text="text"><slot /></span>',
+};
+const BadgeStub = {
+  props: ['label', 'color', 'variant', 'size'],
+  template: '<span v-bind="$attrs" :aria-label="$attrs[\'aria-label\']">{{ label }}<slot /></span>',
 };
 
 const stubs = {
   UButton: ButtonStub,
   UInput: InputStub,
-  USelect: SelectStub,
+  UPopover: PopoverStub,
+  UTooltip: TooltipStub,
+  UBadge: BadgeStub,
   TimerEntryRow: true,
   RemoteIssuePicker: {
-    props: ['config', 'currentRef'],
+    props: ['config', 'currentRef', 'linkTestid', 'cachedTestid', 'unlinkedTestid'],
     emits: ['link', 'unlink'],
     template: `
       <div v-bind="$attrs" data-remote-issue-picker="1">
+        <a
+          v-if="currentRef && currentRef.url"
+          :href="currentRef.url"
+          target="_blank"
+          :title="currentRef.cachedTitle"
+          :data-testid="linkTestid"
+        >#{{ currentRef.remoteIssueId }}</a>
+        <span v-else-if="currentRef" :data-testid="cachedTestid">#{{ currentRef.remoteIssueId }}</span>
+        <span
+          v-else
+          :data-testid="unlinkedTestid"
+          :aria-label="'timerView.remoteIssue.unlinked'"
+        ></span>
         <button type="button" data-testid="stub-link" @click="$emit('link', { remoteIssueId: '42', cachedTitle: 'Fix' })">link</button>
         <button type="button" data-testid="stub-unlink" @click="$emit('unlink')">unlink</button>
       </div>
@@ -197,10 +227,12 @@ describe('TimerTaskGroup', () => {
     await projectButton.trigger('click');
     await flushPromises();
 
-    const select = wrapper.find('[data-testid="timer-group-project-select-task-1"]');
-    expect(select.element.tagName).toBe('SELECT');
-    expect(select.text()).toContain('Archived project');
-    await select.setValue('project-2');
+    const list = wrapper.find('[data-testid="timer-group-project-select-task-1"]');
+    expect(list.exists()).toBe(true);
+    expect(list.text()).toContain('Archived project');
+    const current = list.findAll('button').find((node) => node.text().includes('Current project'));
+    expect(current).toBeDefined();
+    await current!.trigger('click');
     await flushPromises();
 
     expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/reassign', {
@@ -210,7 +242,12 @@ describe('TimerTaskGroup', () => {
 
     await wrapper.find('[data-testid="timer-group-project-task-1"]').trigger('click');
     await flushPromises();
-    await wrapper.find('[data-testid="timer-group-project-select-task-1"]').setValue('');
+    const clear = wrapper
+      .find('[data-testid="timer-group-project-select-task-1"]')
+      .findAll('button')
+      .find((node) => node.text().includes('timerView.noProject'));
+    expect(clear).toBeDefined();
+    await clear!.trigger('click');
     await flushPromises();
     expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/reassign', {
       method: 'POST',
@@ -220,10 +257,9 @@ describe('TimerTaskGroup', () => {
     const noProject = await mount({
       group: { ...group(), projectId: null, projectName: null, trackerName: null },
     });
-    expect(
-      (noProject.find('[data-testid="timer-group-project-task-1"]').element as HTMLInputElement)
-        .value,
-    ).toBe('timerView.noProject');
+    expect(noProject.find('[data-testid="timer-group-project-task-1"]').text()).toContain(
+      'timerView.noProject',
+    );
   });
 
   it('keeps header controls as sibling buttons and closes a previous group editor', async () => {
@@ -251,23 +287,45 @@ describe('TimerTaskGroup', () => {
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-group-title-input-task-a"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="timer-group-project-select-task-b"]').exists()).toBe(true);
+
+    await wrapper.find('[data-testid="timer-group-project-task-a"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-group-project-select-task-a"]').exists()).toBe(true);
+    await wrapper.find('[data-testid="timer-group-project-task-b"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-group-project-select-task-a"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="timer-group-project-select-task-b"]').exists()).toBe(true);
   });
 
-  it('omits the remote-issue control entirely when there is no active tracker', async () => {
+  it('shows a disabled remote-issue icon when there is no active tracker', async () => {
     const wrapper = await mount({ tracker: null });
-    expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').exists()).toBe(
-      false,
-    );
+    const disabled = wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]');
+    expect(disabled.exists()).toBe(true);
+    expect(disabled.classes()).toContain('w-6');
+    expect(disabled.classes()).toContain('text-dimmed');
+    expect(disabled.attributes('disabled')).toBeDefined();
+    expect(disabled.attributes('aria-label')).toBe('timerView.remoteIssue.unavailableNoTracker');
     expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
       false,
     );
   });
 
+  it('shows a disabled remote-issue icon when the task has no project', async () => {
+    const wrapper = await mount({
+      tracker: null,
+      group: { ...group(), projectId: null, projectName: null },
+    });
+    const disabled = wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]');
+    expect(disabled.exists()).toBe(true);
+    expect(disabled.attributes('aria-label')).toBe('timerView.remoteIssue.unavailableNoProject');
+  });
+
   it('shows an unlinked status and an enabled picker when an OpenProject tracker exists but no reference', async () => {
     const wrapper = await mount({ tracker: openProjectTracker });
-    expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').text()).toBe(
-      'timerView.remoteIssue.unlinked',
-    );
+    const unlinked = wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]');
+    expect(unlinked.exists()).toBe(true);
+    expect(unlinked.attributes('aria-label')).toBe('timerView.remoteIssue.unlinked');
+    expect(unlinked.text()).not.toContain('timerView.remoteIssue.unlinked');
     expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
       true,
     );
@@ -299,9 +357,11 @@ describe('TimerTaskGroup', () => {
 
   it('shows an enabled picker for a Redmine tracker', async () => {
     const wrapper = await mount({ tracker: redmineTracker });
-    expect(wrapper.find('[data-testid="timer-group-remote-issue-unlinked-task-1"]').text()).toBe(
-      'timerView.remoteIssue.unlinked',
-    );
+    expect(
+      wrapper
+        .find('[data-testid="timer-group-remote-issue-unlinked-task-1"]')
+        .attributes('aria-label'),
+    ).toBe('timerView.remoteIssue.unlinked');
     expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
       true,
     );
@@ -348,5 +408,136 @@ describe('TimerTaskGroup', () => {
       ),
     ).toBe(false);
     expect(wrapper.emitted('entry-changed')?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('indicates a live group with a stop control instead of a live phrase', async () => {
+    const wrapper = await mount({ isLive: true });
+    expect(wrapper.find('[data-testid="timer-group-live-task-1"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('timerView.liveLabel');
+    const action = wrapper.find('[data-testid="timer-group-continue-task-1"]');
+    expect(action.attributes('aria-pressed')).toBe('true');
+    expect(action.attributes('aria-label')).toBe('timer.stop');
+    expect(action.attributes('data-icon')).toBe('i-lucide-square');
+    expect(action.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);
+    await action.trigger('click');
+    expect(wrapper.emitted('continue')).toBeUndefined();
+    expect(wrapper.emitted('stop')).toHaveLength(1);
+  });
+
+  it('lets an untitled group edit its title and continue like a named group', async () => {
+    csrfFetchMock.mockResolvedValue({});
+    const wrapper = await mount({
+      group: {
+        key: 'untitled',
+        taskId: null,
+        taskName: null,
+        projectId: null,
+        projectName: null,
+        totalSeconds: 3600,
+        entries: [
+          {
+            id: 'entry-u',
+            taskId: null,
+            taskName: null,
+            projectId: null,
+            projectName: null,
+            startedAt: '2024-03-15T09:00:00.000Z',
+            stoppedAt: '2024-03-15T10:00:00.000Z',
+          },
+        ],
+      },
+    });
+    expect(wrapper.find('[data-testid="timer-group-bulk-assign-untitled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="timer-group-continue-untitled"]').exists()).toBe(true);
+    const project = wrapper.find('[data-testid="timer-group-project-untitled"]');
+    expect(project.exists()).toBe(true);
+    expect(project.attributes('disabled')).toBeDefined();
+    expect(project.attributes('title')).toBe('timerView.projectRequiresTitle');
+    await project.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-group-project-select-untitled"]').exists()).toBe(
+      false,
+    );
+
+    await wrapper.find('[data-testid="timer-group-title-untitled"]').trigger('click');
+    await flushPromises();
+    const input = wrapper.find('[data-testid="timer-group-title-input-untitled"]');
+    await input.setValue('Named from untitled');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries/reassign', {
+      method: 'POST',
+      body: { ids: ['entry-u'], name: 'Named from untitled' },
+    });
+  });
+
+  it('truncates long titles with a tooltip and shows a numeric count badge', async () => {
+    const longName = 'Implement a very long consultant task name that must not overflow';
+    const wrapper = await mount({
+      group: {
+        ...group(),
+        taskName: longName,
+        entries: [
+          {
+            id: 'entry-1',
+            taskId: 'task-1',
+            taskName: longName,
+            projectId: 'project-gone',
+            projectName: 'Archived project',
+            startedAt: '2024-03-15T09:00:00.000Z',
+            stoppedAt: '2024-03-15T10:00:00.000Z',
+          },
+          {
+            id: 'entry-2',
+            taskId: 'task-1',
+            taskName: longName,
+            projectId: 'project-gone',
+            projectName: 'Archived project',
+            startedAt: '2024-03-15T11:00:00.000Z',
+            stoppedAt: '2024-03-15T12:00:00.000Z',
+          },
+        ],
+      },
+    });
+
+    const title = wrapper.find('[data-testid="timer-group-title-task-1"]');
+    expect(title.attributes('style') ?? '').not.toMatch(/\d+ch/);
+    expect(wrapper.find('[data-tooltip-text]').attributes('data-tooltip-text')).toBe(longName);
+    expect(wrapper.find('[data-overflow-tooltip]').exists()).toBe(true);
+
+    const count = wrapper.find('[data-testid="timer-group-count-task-1"]');
+    expect(count.text()).toBe('2');
+    expect(count.text()).not.toContain('timerView.entryCount');
+    expect(count.attributes('aria-label')).toBe('timerView.entryCount');
+
+    await title.trigger('click');
+    await flushPromises();
+    const input = wrapper.find('[data-testid="timer-group-title-input-task-1"]');
+    expect(input.exists()).toBe(true);
+    expect(input.attributes('style') ?? '').not.toMatch(/\d+ch/);
+    expect((input.element as HTMLInputElement).value).toBe(longName);
+  });
+
+  it('caps the entry-count badge at 9+', async () => {
+    const entries = Array.from({ length: 10 }, (_, index) => ({
+      id: `entry-${index + 1}`,
+      taskId: 'task-1',
+      taskName: 'Build feature',
+      projectId: 'project-gone',
+      projectName: 'Archived project',
+      startedAt: '2024-03-15T09:00:00.000Z',
+      stoppedAt: '2024-03-15T10:00:00.000Z',
+    }));
+    const wrapper = await mount({ group: { ...group(), entries } });
+    const count = wrapper.find('[data-testid="timer-group-count-task-1"]');
+    expect(count.text()).toBe('9+');
+    expect(count.attributes('aria-label')).toBe('timerView.entryCount');
+  });
+
+  it('does not enable a title tooltip when the name fits the slot', async () => {
+    const wrapper = await mount({
+      group: { ...group(), taskName: 'Short' },
+    });
+    expect(wrapper.find('[data-overflow-tooltip]').attributes('data-overflow-tooltip')).toBe('off');
   });
 });

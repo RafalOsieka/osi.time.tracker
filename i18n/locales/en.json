@@ -129,31 +129,18 @@
     "neverTrackedCta": "Start tracking",
     "loadMore": "Load more",
     "dayTotal": "Total: {duration}",
-    "noTask": "(no task)",
-    "noProject": "No project",
+    "noTask": "(no title)",
+    "noProject": "(no project)",
+    "projectRequiresTitle": "Add a title before assigning a project",
     "entryCount": "{count} entries",
     "entryCountOne": "{count} entry",
     "continueLabel": "Continue",
     "editLabel": "Edit",
-    "liveLabel": "Running",
     "expandLabel": "Expand",
     "collapseLabel": "Collapse",
     "entryRangeLabel": "{start} – {end}",
     "entryRunningLabel": "{start} – now",
     "remoteSyncAction": "Remote Sync",
-    "bulkAssign": {
-      "buttonLabel": "Assign",
-      "dialogTitle": "Assign to a task",
-      "nameLabel": "Task name",
-      "namePlaceholder": "Task name",
-      "projectLabel": "Project",
-      "projectPlaceholder": "Select a project (optional)",
-      "saveButton": "Assign",
-      "cancelButton": "Cancel",
-      "nameRequiredError": "Name is required.",
-      "toastSuccessSummary": "Entries assigned",
-      "toastSuccessDetail": "Entries have been assigned to \"{name}\"."
-    },
     "editor": {
       "dialogTitle": "Edit task",
       "nameLabel": "Name",
@@ -192,10 +179,12 @@
       "deleteConfirmReject": "No"
     },
     "remoteIssue": {
-      "unlinked": "(unlinked)",
+      "unlinked": "This task is not linked to a remote issue",
       "editLabel": "Link remote issue for this day",
       "linkedTooltipPrefix": "Linked to",
-      "unlinkLabel": "Unlink remote issue for this day"
+      "unlinkLabel": "Unlink remote issue for this day",
+      "unavailableNoProject": "Assign a project with a tracker to link a remote issue",
+      "unavailableNoTracker": "This project has no tracker, so a remote issue cannot be linked"
     }
   },
   "timer": {

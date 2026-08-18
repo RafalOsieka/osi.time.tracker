@@ -129,31 +129,18 @@
     "neverTrackedCta": "Zacznij śledzenie",
     "loadMore": "Wczytaj więcej",
     "dayTotal": "Suma: {duration}",
-    "noTask": "(brak zadania)",
-    "noProject": "Brak projektu",
+    "noTask": "(brak tytułu)",
+    "noProject": "(brak projektu)",
+    "projectRequiresTitle": "Najpierw dodaj tytuł, aby przypisać projekt",
     "entryCount": "{count} wpisów",
     "entryCountOne": "{count} wpis",
     "continueLabel": "Kontynuuj",
     "editLabel": "Edytuj",
-    "liveLabel": "W toku",
     "expandLabel": "Rozwiń",
     "collapseLabel": "Zwiń",
     "entryRangeLabel": "{start} – {end}",
     "entryRunningLabel": "{start} – teraz",
     "remoteSyncAction": "Synchronizacja zdalna",
-    "bulkAssign": {
-      "buttonLabel": "Przypisz",
-      "dialogTitle": "Przypisz do zadania",
-      "nameLabel": "Nazwa zadania",
-      "namePlaceholder": "Nazwa zadania",
-      "projectLabel": "Projekt",
-      "projectPlaceholder": "Wybierz projekt (opcjonalnie)",
-      "saveButton": "Przypisz",
-      "cancelButton": "Anuluj",
-      "nameRequiredError": "Nazwa jest wymagana.",
-      "toastSuccessSummary": "Wpisy przypisane",
-      "toastSuccessDetail": "Wpisy zostały przypisane do \"{name}\"."
-    },
     "editor": {
       "dialogTitle": "Edytuj zadanie",
       "nameLabel": "Nazwa",
@@ -192,10 +179,12 @@
       "deleteConfirmReject": "Nie"
     },
     "remoteIssue": {
-      "unlinked": "(niepołączone)",
+      "unlinked": "To zadanie nie jest połączone ze zdalnym zgłoszeniem",
       "editLabel": "Połącz ze zdalnym zgłoszeniem na ten dzień",
       "linkedTooltipPrefix": "Połączone z",
-      "unlinkLabel": "Odłącz zdalne zgłoszenie na ten dzień"
+      "unlinkLabel": "Odłącz zdalne zgłoszenie na ten dzień",
+      "unavailableNoProject": "Przypisz projekt z trackerem, aby połączyć zdalne zgłoszenie",
+      "unavailableNoTracker": "Ten projekt nie ma trackera, więc nie można połączyć zdalnego zgłoszenia"
     }
   },
   "timer": {

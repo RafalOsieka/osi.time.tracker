@@ -25,9 +25,36 @@ function installFakeLocalStorage() {
 }
 
 const ButtonStub = {
-  template:
-    '<button v-bind="$attrs" :type="type || \'button\'" :aria-label="ariaLabel || $attrs[\'aria-label\']" :disabled="disabled" @click="$emit(\'click\', $event)">{{ label }}</button>',
-  props: ['label', 'ariaLabel', 'icon', 'variant', 'color', 'square', 'disabled', 'type'],
+  template: `
+    <component
+      :is="to ? 'a' : 'button'"
+      v-bind="$attrs"
+      :href="to"
+      :target="target"
+      :title="title"
+      :type="to ? undefined : type || 'button'"
+      :aria-label="ariaLabel || $attrs['aria-label']"
+      :disabled="disabled"
+      :data-icon="icon"
+      :data-size="size"
+      @click="$emit('click', $event)"
+    >{{ label }}</component>
+  `,
+  props: [
+    'label',
+    'ariaLabel',
+    'icon',
+    'variant',
+    'color',
+    'square',
+    'size',
+    'disabled',
+    'type',
+    'to',
+    'target',
+    'title',
+    'external',
+  ],
   emits: ['click'],
 };
 const InputStub = {
@@ -100,6 +127,53 @@ describe('RemoteIssuePicker', () => {
   beforeEach(() => {
     fetchMock.mockReset();
     installFakeLocalStorage();
+  });
+
+  it('shows a remote-issue link and keeps the edit trigger when a reference exists', async () => {
+    const wrapper = await mount({
+      currentRef: {
+        id: 'ref-1',
+        taskId: 'task-1',
+        userId: 'user-1',
+        trackerId: 'config-1',
+        remoteIssueId: '42',
+        cachedTitle: 'Fix login bug',
+        url: 'https://op.example.com/work_packages/42',
+        createdAt: '',
+        updatedAt: '',
+      },
+      linkTestid: 'issue-link',
+    });
+    const link = wrapper.find('[data-testid="issue-link"]');
+    expect(link.attributes('href')).toBe('https://op.example.com/work_packages/42');
+    expect(link.attributes('target')).toBe('_blank');
+    expect(link.attributes('title')).toContain('Fix login bug');
+    expect(link.classes()).toContain('min-w-6');
+    expect(link.classes()).toContain('px-0');
+    const menu = wrapper.find('[data-testid="remote-issue-picker-edit-menu"]');
+    expect(menu.exists()).toBe(true);
+    expect(menu.classes()).toContain('absolute');
+    expect(menu.classes()).toContain('top-full');
+    const trigger = wrapper.find('[data-testid="remote-issue-picker-trigger"]');
+    expect(trigger.exists()).toBe(true);
+    expect(trigger.text()).toContain('timerView.editLabel');
+    expect(trigger.classes()).not.toContain('absolute');
+  });
+
+  it('keeps the unlinked trigger in flow and leaves the popover open after click', async () => {
+    const wrapper = await mount();
+    const trigger = wrapper.find('[data-testid="remote-issue-picker-trigger"]');
+    expect(trigger.classes()).toContain('shrink-0');
+    expect(trigger.classes()).toContain('w-6');
+    expect(trigger.classes()).not.toContain('absolute');
+    expect(trigger.attributes('data-icon')).toBe('i-lucide-link-2-off');
+    expect(trigger.attributes('data-size')).toBe('xs');
+
+    await trigger.trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
   });
 
   it('opens the popover and emits link on selecting a title-search result', async () => {

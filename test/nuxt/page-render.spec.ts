@@ -73,7 +73,6 @@ describe('preserved test hooks', () => {
       global: {
         stubs: {
           EmptyState: { template: '<div data-testid="timer-view-empty-state" />' },
-          TimerBulkAssignDialog: { template: '<div />' },
           TimerAddEntryDialog: { template: '<div />' },
         },
       },

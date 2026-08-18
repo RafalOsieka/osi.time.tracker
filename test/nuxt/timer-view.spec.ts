@@ -97,6 +97,7 @@ mockNuxtImport('useAsyncData', () => {
 const runningState = ref<unknown>(null);
 const elapsedSecondsState = ref(0);
 const startMock = vi.fn();
+const stopMock = vi.fn();
 const fetchRunningMock = vi.fn().mockResolvedValue(undefined);
 
 mockNuxtImport('useTimer', () => () => ({
@@ -105,7 +106,7 @@ mockNuxtImport('useTimer', () => () => ({
   loading: ref(false),
   fetchRunning: fetchRunningMock,
   start: startMock,
-  stop: vi.fn(),
+  stop: stopMock,
   updateTitle: vi.fn(),
   updateStartedAt: vi.fn(),
 }));
@@ -135,12 +136,15 @@ const TimerTaskGroupStub = {
       />
       <div v-if="expanded" :data-testid="\`timer-group-entries-\${group.key}\`" />
       <span :data-testid="\`timer-group-total-\${group.key}\`">{{ total }}</span>
-      <button :data-testid="\`timer-group-continue-\${group.key}\`" @click="$emit('continue')" />
+      <button
+        :data-testid="\`timer-group-continue-\${group.key}\`"
+        @click="isLive ? $emit('stop') : $emit('continue')"
+      />
       <button data-testid="task-changed" @click="$emit('entry-changed')" />
     </div>
   `,
-  props: ['group'],
-  emits: ['continue', 'entry-changed'],
+  props: ['group', 'isLive'],
+  emits: ['continue', 'stop', 'entry-changed'],
   data: () => ({ expanded: false }),
   computed: {
     total() {
@@ -174,7 +178,6 @@ const commonStubs = {
     props: ['title', 'newLabel', 'newTestid'],
     emits: ['create'],
   },
-  TimerBulkAssignDialog: { template: '<div />' },
   TimerAddEntryDialog: TimerAddEntryDialogStub,
   TimerEntryRow: { template: '<div />', props: ['entry', 'now'] },
   TimerTaskGroup: TimerTaskGroupStub,
@@ -205,6 +208,8 @@ describe('timer view page', () => {
     elapsedSecondsState.value = 0;
     pendingAddedEntry.value = null;
     fetchRunningMock.mockClear();
+    startMock.mockClear();
+    stopMock.mockClear();
     fetchMock.mockClear();
     vi.stubGlobal('$fetch', fetchMock);
   });
@@ -416,6 +421,31 @@ describe('timer view page', () => {
 
     await wrapper.find('[data-testid="timer-group-continue-task-1"]').trigger('click');
     expect(startMock).toHaveBeenCalledWith('Task One', 'proj-1');
+  });
+
+  it('stop action on a live group calls useTimer.stop', async () => {
+    const now = new Date();
+    const runningEntry = entry({
+      id: 'running-1',
+      taskId: 'task-1',
+      taskName: 'Task One',
+      projectId: 'proj-1',
+      startedAt: new Date(now.getFullYear(), now.getMonth(), now.getDate(), 9, 0).toISOString(),
+      stoppedAt: null,
+    });
+    runningState.value = runningEntry;
+    mockState.feed = {
+      entries: [runningEntry],
+      hasMore: false,
+      nextBefore: null,
+    };
+
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+
+    await wrapper.find('[data-testid="timer-group-continue-task-1"]').trigger('click');
+    expect(stopMock).toHaveBeenCalledTimes(1);
+    expect(startMock).not.toHaveBeenCalled();
   });
 
   it('exposes a page-level add entry control', async () => {

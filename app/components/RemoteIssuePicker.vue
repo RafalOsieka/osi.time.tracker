@@ -12,6 +12,9 @@ import { useRemoteIssueSearch } from '~/composables/useRemoteIssueSearch';
 const props = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
+  linkTestid?: string;
+  cachedTestid?: string;
+  unlinkedTestid?: string;
 }>();
 
 const emit = defineEmits<{
@@ -22,13 +25,20 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
 
-const open = ref(false);
+const open = shallowRef(false);
+const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
   query: '',
 });
-const firstField = ref<HTMLElement | null>(null);
-let triggerElement: HTMLElement | null = null;
+const firstField = useTemplateRef<HTMLElement>('firstField');
+
+const showEditMenu = computed(() => !!props.currentRef && !open.value);
+const editMenuClass = computed(() => [
+  'pointer-events-none absolute top-full right-0 z-20 pt-1 opacity-0',
+  'group-hover/ri:pointer-events-auto group-hover/ri:opacity-100',
+  'group-focus-within/ri:pointer-events-auto group-focus-within/ri:opacity-100',
+]);
 
 const searchModeLabelKeys = {
   title: 'remoteIssuePicker.modeTitle',
@@ -54,17 +64,19 @@ const statusMessage = computed(() => {
   return t('remoteIssuePicker.emptyResults');
 });
 
-async function onOpen(event: Event) {
-  const target = event.currentTarget;
-  triggerElement = target instanceof HTMLElement ? target : null;
+function onTriggerClick() {
   open.value = true;
+}
+
+async function onOpenChange(value: boolean) {
+  open.value = value;
+  if (!value) return;
   await nextTick();
   firstField.value?.focus?.();
 }
 
 function onClose() {
   open.value = false;
-  triggerElement?.focus();
 }
 
 async function submit() {
@@ -83,17 +95,67 @@ function unlink() {
 </script>
 
 <template>
-  <span class="inline-flex">
-    <UPopover v-model:open="open">
-      <UButton
-        icon="i-lucide-pencil"
-        color="neutral"
-        variant="ghost"
-        square
-        :aria-label="t('timerView.remoteIssue.editLabel')"
-        data-testid="remote-issue-picker-trigger"
-        @click="onOpen"
-      />
+  <span
+    ref="rootEl"
+    class="group/ri relative inline-flex min-w-6 items-center justify-center"
+    :data-testid="currentRef ? undefined : unlinkedTestid"
+  >
+    <UButton
+      v-if="currentRef && currentRef.url"
+      :to="currentRef.url"
+      target="_blank"
+      external
+      variant="link"
+      size="xs"
+      class="min-w-6 justify-center px-0 font-mono text-sm tabular-nums"
+      :label="`#${currentRef.remoteIssueId}`"
+      :title="`${t('timerView.remoteIssue.linkedTooltipPrefix')} #${currentRef.remoteIssueId}: ${currentRef.cachedTitle}`"
+      :data-testid="linkTestid"
+    />
+    <span
+      v-else-if="currentRef"
+      :title="`${t('timerView.remoteIssue.linkedTooltipPrefix')} #${currentRef.remoteIssueId}: ${currentRef.cachedTitle}`"
+      class="inline-flex min-w-6 justify-center font-mono text-sm tabular-nums text-primary"
+      :data-testid="cachedTestid"
+    >
+      #{{ currentRef.remoteIssueId }}
+    </span>
+
+    <div v-if="showEditMenu" :class="editMenuClass" data-testid="remote-issue-picker-edit-menu">
+      <div class="rounded-md bg-default p-1 shadow-lg ring ring-default">
+        <UButton
+          icon="i-lucide-pencil"
+          color="neutral"
+          variant="ghost"
+          class="w-full justify-start"
+          :label="t('timerView.editLabel')"
+          :aria-label="t('timerView.remoteIssue.editLabel')"
+          data-testid="remote-issue-picker-trigger"
+          @click.stop="onTriggerClick"
+        />
+      </div>
+    </div>
+    <UButton
+      v-else-if="!currentRef"
+      icon="i-lucide-link-2-off"
+      color="neutral"
+      variant="ghost"
+      square
+      size="xs"
+      class="w-6 shrink-0 justify-center"
+      :aria-label="t('timerView.remoteIssue.unlinked')"
+      :title="t('timerView.remoteIssue.unlinked')"
+      data-testid="remote-issue-picker-trigger"
+      @click.stop="onTriggerClick"
+    />
+
+    <UPopover
+      :open="open"
+      :modal="false"
+      :reference="rootEl ?? undefined"
+      :content="{ side: 'bottom', align: 'end', sideOffset: 4 }"
+      @update:open="onOpenChange"
+    >
       <template #content>
         <div class="grid min-w-64 gap-3 p-3">
           <UForm

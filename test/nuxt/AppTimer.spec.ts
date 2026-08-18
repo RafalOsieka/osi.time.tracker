@@ -186,7 +186,6 @@ describe('AppTimer', () => {
     expect(toggle.attributes('aria-label')).toBe('timer.stop');
     expect(toggle.attributes('data-icon')).toBe('i-lucide-square');
     expect(toggle.attributes('aria-pressed')).toBe('true');
-    // Running state animates the leading icon color only (not button background).
     expect(toggle.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);
     expect(wrapper.find('[data-testid="timer-elapsed"]').text()).toBe('00:01:05');
   });

@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import type { Server } from 'node:http';
 import { afterAll, beforeAll, expect, it } from 'vitest';
 import { createPage, url } from '@nuxt/test-utils/e2e';
-import type { Page } from 'playwright-core';
+import type { Locator, Page } from 'playwright-core';
 import { requireBrowser } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
@@ -169,8 +169,16 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     if (!groupKey) throw new Error('group not found for label');
     const group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
+    async function openRemoteIssuePicker(target: Locator) {
+      const link = target.locator('[data-testid^="timer-group-remote-issue-link-"]');
+      if ((await link.count()) > 0) {
+        await link.first().hover();
+      }
+      await target.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    }
+
     // --- Title search through the proxy ---
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
     await page
       .locator(
@@ -197,7 +205,7 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     expect(linkText?.trim()).toBe('#333');
 
     // --- Exact issue-ID lookup through the proxy ---
-    await linkedGroup.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await openRemoteIssuePicker(linkedGroup);
     await page.waitForSelector('[data-testid="remote-issue-picker-mode"]');
     await page
       .locator('[data-testid="remote-issue-picker-mode"]')

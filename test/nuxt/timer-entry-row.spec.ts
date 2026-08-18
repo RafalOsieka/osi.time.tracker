@@ -46,9 +46,15 @@ const InputStub = {
   emits: ['update:modelValue', 'blur', 'keydown'],
 };
 
+const TooltipStub = {
+  props: ['text', 'content'],
+  template: '<span v-bind="$attrs" :data-tooltip-text="text"><slot /></span>',
+};
+
 const commonStubs = {
   UButton: ButtonStub,
   UInput: InputStub,
+  UTooltip: TooltipStub,
 };
 
 function makeEntry(overrides: Partial<TimeEntryDto> = {}): TimeEntryDto {
@@ -171,5 +177,67 @@ describe('TimerEntryRow', () => {
       expect.objectContaining({ method: 'DELETE' }),
     );
     expect(wrapper.emitted('deleted')).toHaveLength(1);
+  });
+
+  it('exposes a long title in a tooltip and keeps editors off ch-based widths', async () => {
+    const longName = 'A very long time entry title that should truncate in the row';
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: { entry: makeEntry({ taskName: longName }), now: Date.now(), timeZone: 'UTC' },
+      global: { stubs: commonStubs },
+    });
+
+    const title = wrapper.find('[data-testid="timer-entry-title-entry-1"]');
+    expect(title.attributes('style') ?? '').not.toMatch(/\d+ch/);
+    expect(wrapper.find('[data-tooltip-text]').attributes('data-tooltip-text')).toBe(longName);
+
+    await title.trigger('click');
+    await flushPromises();
+    const input = wrapper.find('[data-testid="timer-entry-title-input-entry-1"]');
+    expect((input.element as HTMLInputElement).value).toBe(longName);
+    expect(input.attributes('style') ?? '').not.toMatch(/\d+ch/);
+  });
+
+  it('patches start time on the same local day only', async () => {
+    csrfFetchMock.mockResolvedValue(makeEntry());
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: {
+        entry: makeEntry({ startedAt: '2024-03-15T09:00:00.000Z' }),
+        now: Date.now(),
+        timeZone: 'UTC',
+      },
+      global: { stubs: commonStubs },
+    });
+
+    await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
+    await flushPromises();
+    const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
+    await input.setValue('14:30');
+    await input.trigger('keydown', { key: 'Enter' });
+    await flushPromises();
+
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/time-entries/entry-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: { startedAt: '2024-03-15T14:30:00Z' },
+      }),
+    );
+  });
+
+  it('keeps start and stop times in a stable slot when swapping to the editor', async () => {
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: { entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
+      global: { stubs: commonStubs },
+    });
+
+    const start = wrapper.find('[data-testid="timer-entry-start-entry-1"]');
+    expect(start.classes()).toContain('w-full');
+    expect(start.element.closest('span')?.className ?? '').toContain('w-[10ch]');
+
+    await start.trigger('click');
+    await flushPromises();
+    const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
+    expect(input.exists()).toBe(true);
+    expect(input.element.closest('span')?.className ?? '').toContain('w-[10ch]');
   });
 });
