@@ -178,17 +178,3 @@ export const timerAddEntryFormSchema = z
   });
 
 export type TimerAddEntryFormDto = z.infer<typeof timerAddEntryFormSchema>;
-
-/**
- * Client-side form schema for the timer bulk-assign dialog.
- */
-export const timerBulkAssignFormSchema = z.object({
-  title: z
-    .string({ error: 'timerView.bulkAssign.nameRequiredError' })
-    .trim()
-    .min(1, { error: 'timerView.bulkAssign.nameRequiredError' })
-    .max(TIME_ENTRY_TITLE_MAX_LENGTH, { error: 'error.timeEntryTitleTooLong' }),
-  projectId: z.uuid({ error: 'error.timeEntryProjectInvalid' }).nullish(),
-});
-
-export type TimerBulkAssignFormDto = z.infer<typeof timerBulkAssignFormSchema>;

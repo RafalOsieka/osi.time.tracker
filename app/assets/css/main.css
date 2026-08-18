@@ -2,20 +2,44 @@
 @import '@nuxt/ui';
 
 /*
- * Running stop: breathe the icon color only (not the ghost button background).
- * SVG icons use currentColor, so animating color on the leading icon is enough.
+ * Running controls: pulse the icon (color + scale + glow), not the button chrome.
  */
 @theme {
   --animate-timer-stop-icon: timer-stop-icon 1.4s ease-in-out infinite;
+  --animate-timer-live-icon: timer-live-icon 1.4s ease-in-out infinite;
 }
 
 @keyframes timer-stop-icon {
   0%,
   100% {
     color: var(--ui-error);
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
   }
-  50% {
-    color: color-mix(in oklab, var(--ui-error) 35%, transparent);
+  40% {
+    color: color-mix(in oklab, var(--ui-error) 55%, white);
+    transform: scale(1.28);
+    filter: drop-shadow(0 0 0.45rem color-mix(in oklab, var(--ui-error) 75%, transparent));
+  }
+  70% {
+    transform: scale(0.94);
+  }
+}
+
+@keyframes timer-live-icon {
+  0%,
+  100% {
+    color: var(--ui-success);
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 transparent);
+  }
+  40% {
+    color: color-mix(in oklab, var(--ui-success) 55%, white);
+    transform: scale(1.28);
+    filter: drop-shadow(0 0 0.45rem color-mix(in oklab, var(--ui-success) 75%, transparent));
+  }
+  70% {
+    transform: scale(0.94);
   }
 }
 

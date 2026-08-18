@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { createPage, url } from '@nuxt/test-utils/e2e';
-import type { Page } from 'playwright-core';
+import type { Locator, Page } from 'playwright-core';
 import { requireBrowser } from './support/guards';
 import { provisionDatabase } from './support/database';
 import { seedUsers } from './support/seed';
@@ -152,6 +152,33 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     return { jar, token, taskId };
   }
 
+  async function dismissRemoteIssuePicker(page: Page) {
+    await page.keyboard.press('Escape');
+    await page.locator('[data-testid="remote-issue-picker-query"]').waitFor({ state: 'hidden' });
+  }
+
+  async function openRemoteIssuePicker(group: Locator) {
+    const page = group.page();
+    if ((await page.locator('[data-testid="remote-issue-picker-query"]').count()) > 0) {
+      await dismissRemoteIssuePicker(page);
+    }
+    const link = group.locator('[data-testid^="timer-group-remote-issue-link-"]');
+    if ((await link.count()) > 0) {
+      await link.first().hover();
+      await group.locator('[data-testid="remote-issue-picker-edit-menu"]').waitFor({
+        state: 'visible',
+      });
+      await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+      return;
+    }
+    await group
+      .locator(
+        '[data-testid="remote-issue-picker-trigger"], [data-testid^="timer-group-remote-issue-unlinked-"]',
+      )
+      .first()
+      .click();
+  }
+
   /**
    * After a day-scoped reassignment the task/group id changes. Read the new
    * key from the remote-issue link (or unlinked badge) test id suffix.
@@ -199,7 +226,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     let groupKey = taskId;
     let group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
 
     // Explicit submission: typing alone must not trigger a search.
@@ -215,6 +242,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-111"]');
     await page.click('[data-testid="remote-issue-picker-result-111"]');
+    await dismissRemoteIssuePicker(page);
 
     // Day-scoped reassignment changes the group key; wait by issue label.
     await page.waitForFunction(
@@ -247,7 +275,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
         body: workPackagesPayload([{ id: '222', subject: 'Second Match' }]),
       }),
     });
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
     await page
       .locator(
@@ -258,6 +286,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await page.click('[data-testid="remote-issue-picker-submit"]');
     await page.waitForSelector('[data-testid="remote-issue-picker-result-222"]');
     await page.click('[data-testid="remote-issue-picker-result-222"]');
+    await dismissRemoteIssuePicker(page);
 
     await page.waitForFunction(
       () =>
@@ -269,11 +298,13 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
     // --- Unlink ---
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-unlink"]');
-    await page.click('[data-testid="remote-issue-picker-unlink"]');
+    await page.locator('[data-testid="remote-issue-picker-unlink"]').last().click();
     await page.waitForFunction(
-      () => !!document.querySelector('[data-testid^="timer-group-remote-issue-unlinked-"]'),
+      () =>
+        !document.querySelector('[data-testid^="timer-group-remote-issue-link-"]') &&
+        !!document.querySelector('[data-testid^="timer-group-remote-issue-unlinked-"]'),
     );
 
     await page.close();
@@ -292,7 +323,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await mockOpenProject(page, {
       onById: (id) => ({ status: 200, body: { id, subject: 'Exact Issue' } }),
     });
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-mode"]');
     await page
       .locator('[data-testid="remote-issue-picker-mode"]')
@@ -321,7 +352,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await page.keyboard.press('Escape');
 
     async function openPickerOnCurrentGroup() {
-      await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+      await openRemoteIssuePicker(group);
       await page.waitForSelector('[data-testid="remote-issue-picker-query"]', {
         state: 'visible',
       });

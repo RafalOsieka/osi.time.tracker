@@ -358,8 +358,8 @@ async function onSaveStartedAt() {
       :ui="
         isRunning
           ? {
-              // Pulse icon color only — not the button chrome / background.
-              leadingIcon: 'motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
+              leadingIcon:
+                'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
             }
           : undefined
       "

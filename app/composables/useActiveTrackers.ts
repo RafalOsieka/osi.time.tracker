@@ -23,16 +23,16 @@ export function useActiveTrackers() {
       allLoaded.value = true;
     } catch {
       trackersById.value = {};
-      allLoaded.value = true;
+      allLoaded.value = false;
     } finally {
       loading.value = false;
     }
   }
 
   async function ensureLoaded(trackerId: string): Promise<void> {
-    if (trackerId in trackersById.value) return;
+    if (trackersById.value[trackerId]) return;
     await ensureAllLoaded();
-    if (!(trackerId in trackersById.value)) {
+    if (allLoaded.value && !(trackerId in trackersById.value)) {
       trackersById.value = { ...trackersById.value, [trackerId]: null };
     }
   }

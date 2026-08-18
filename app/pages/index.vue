@@ -6,7 +6,7 @@ import { localDayBounds } from '~/utils/dateTime';
 import type { TimerViewFeedDto, TimeEntryDto } from '~~/shared/types/time-entry';
 
 const { t, locale } = useI18n();
-const { running, elapsedSeconds, start, fetchRunning } = useTimer();
+const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useUserSettings();
 const requestFetch = useRequestFetch();
 
@@ -237,6 +237,10 @@ async function onContinue(group: { taskName: string | null; projectId: string | 
   await refreshLoadedRange();
 }
 
+async function onStop() {
+  await stop();
+}
+
 async function loadMore() {
   if (!hasMore.value || !nextBefore.value || loadingMore.value) return;
   loadingMore.value = true;
@@ -256,20 +260,6 @@ function focusTimerWidget() {
   if (input instanceof HTMLElement) {
     input.focus();
   }
-}
-
-// --- Bulk assign ---
-const bulkAssignVisible = ref(false);
-const bulkAssignIds = ref<string[]>([]);
-
-function openBulkAssign(ids: string[]) {
-  bulkAssignIds.value = ids;
-  bulkAssignVisible.value = true;
-}
-
-async function onBulkAssigned() {
-  await refreshLoadedRange();
-  await fetchRunning();
 }
 
 // --- Add entry ---
@@ -342,7 +332,7 @@ async function onEntryDeleted() {
         >
           <span>{{ dayHeading(day.dayKey) }}</span>
           <span
-            class="font-mono font-normal text-muted"
+            class="min-w-[4.5rem] font-mono text-sm font-medium tabular-nums text-muted"
             :data-testid="`timer-day-total-${day.dayKey}`"
           >
             {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
@@ -369,7 +359,7 @@ async function onEntryDeleted() {
           :tracker="trackerForGroup(group)"
           @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
           @continue="onContinue(group)"
-          @bulk-assign="openBulkAssign(group.entries.map((e) => e.id))"
+          @stop="onStop"
           @entry-changed="onEntryChanged"
           @entry-deleted="onEntryDeleted"
         />
@@ -385,13 +375,6 @@ async function onEntryDeleted() {
         />
       </div>
     </div>
-
-    <TimerBulkAssignDialog
-      v-model:visible="bulkAssignVisible"
-      :ids="bulkAssignIds"
-      :project-options="projectOptions"
-      @assigned="onBulkAssigned"
-    />
 
     <TimerAddEntryDialog
       v-model:visible="addEntryVisible"

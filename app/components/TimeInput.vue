@@ -62,8 +62,15 @@ function cancel() {
     :id="id"
     v-model="inputValue"
     inputmode="numeric"
-    class="time-input"
-    :class="{ 'time-input--compact': compact }"
+    class="time-input min-w-[10ch]"
+    :class="{ 'time-input--compact w-full min-w-[10ch]': compact }"
+    :size="compact ? 'xs' : undefined"
+    :variant="compact ? 'outline' : undefined"
+    :ui="
+      compact
+        ? { root: 'w-full min-w-0', base: 'w-full min-w-0 text-center text-sm/4 tabular-nums' }
+        : undefined
+    "
     :aria-label="label"
     :aria-describedby="describedby"
     :aria-invalid="invalid || undefined"
@@ -73,14 +80,3 @@ function cancel() {
     @keydown.esc.prevent="cancel"
   />
 </template>
-
-<style scoped>
-.time-input {
-  min-width: 5.5ch;
-}
-
-.time-input--compact {
-  width: 5.5ch;
-  text-align: center;
-}
-</style>

@@ -70,7 +70,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     });
   }
 
-  it('lists seeded entries grouped by day and task, and supports continue/bulk-assign/merge/load-more', async () => {
+  it('lists seeded entries grouped by day and task, and supports continue/inline-assign/merge/load-more', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
 
     // Seed a titled entry (today) and an untitled entry (today).
@@ -93,6 +93,10 @@ describeTimerViewUI('timer view UI flow', async () => {
       ),
     ).toBe(true);
 
+    const countBadge = page.locator('[data-testid^="timer-group-count-"]').first();
+    expect(await countBadge.count()).toBeGreaterThan(0);
+    expect((await countBadge.innerText()).trim()).toMatch(/^\d+$/);
+
     const untitledGroupSelector = '[data-testid="timer-group-untitled"]';
     await page.waitForSelector(untitledGroupSelector);
 
@@ -112,17 +116,16 @@ describeTimerViewUI('timer view UI flow', async () => {
     const running = await runningRes.json();
     if (running) await stopEntry(jar, token, running.id);
 
-    // --- Bulk-assign action ---
-    await page.click(`${untitledGroupSelector} [data-testid^="timer-group-bulk-assign-"]`);
-    await page.waitForSelector('[data-testid="bulk-assign-dialog"]');
-    await page
-      .locator(
-        '[data-testid="bulk-assign-name-input"] input, [data-testid="bulk-assign-name-input"]',
-      )
-      .first()
-      .fill('Bulk Assigned Task');
-    await page.click('[data-testid="bulk-assign-dialog"] [data-testid="save-button"]');
-    await page.waitForSelector('[data-testid="bulk-assign-dialog"]', { state: 'hidden' });
+    // --- Inline title assign on the untitled group ---
+    const untitledTitle = page.locator(
+      `${untitledGroupSelector} [data-testid="timer-group-title-untitled"]`,
+    );
+    await untitledTitle.locator('input').or(untitledTitle).first().click();
+    const untitledInput = page.locator(
+      `${untitledGroupSelector} [data-testid="timer-group-title-input-untitled"]`,
+    );
+    await untitledInput.locator('input').or(untitledInput).first().fill('Bulk Assigned Task');
+    await untitledInput.locator('input').or(untitledInput).first().press('Enter');
     await page.waitForFunction(pageIncludesText, 'Bulk Assigned Task');
     // Group rename/merge is covered by dedicated multi-day / inline-edit cases below.
 
@@ -234,7 +237,13 @@ describeTimerViewUI('timer view UI flow', async () => {
     const clientRes = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Inline Assign Client ' + Date.now() }),
+      body: JSON.stringify({
+        name: 'Inline Assign Client ' + Date.now(),
+        systemType: 'openproject',
+        baseUrl: 'https://inline-assign.example.com',
+        executionMode: 'client',
+        roundingRule: 'none',
+      }),
     });
     const tracker = await clientRes.json();
     const projectRes = await fetch(url('/api/projects'), {
@@ -253,26 +262,45 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Inline Project Assign Task');
 
-    // Click the project placeholder for this task group (testid is on UInput root).
     const projectDisplay = page.locator(`[data-testid="timer-group-project-${seeded.taskId}"]`);
-    await projectDisplay.locator('input').or(projectDisplay).first().click();
+    await projectDisplay.click();
     const projectSelect = page.locator(
       `[data-testid="timer-group-project-select-${seeded.taskId}"]`,
     );
     await projectSelect.waitFor();
-    await projectSelect.click();
-    await page.getByRole('option', { name: 'Inline Assign Project' }).click();
+    await page.locator(`[data-testid="timer-group-project-option-${project.id}"]`).click();
+    await projectSelect.waitFor({ state: 'hidden' });
 
-    await page.waitForFunction(pageIncludesText, 'Inline Assign Project');
-    expect(
-      await page.evaluate(
-        (t) =>
-          [...document.querySelectorAll('input')].some((el) =>
-            (el as HTMLInputElement).value.includes(t),
+    await page.waitForFunction(
+      ({ title, projectName }) => {
+        const titles = [
+          ...document.querySelectorAll(
+            '[data-testid^="timer-group-title-"]:not([data-testid*="title-input"])',
           ),
-        'Inline Assign Project',
-      ),
-    ).toBe(true);
+        ];
+        const titleNode = titles.find((node) => {
+          const input = (
+            node.matches('input') ? node : node.querySelector('input')
+          ) as HTMLInputElement | null;
+          return input?.value === title;
+        });
+        if (!titleNode) return false;
+        let group: Element | null = titleNode;
+        while (group) {
+          const tid = group.getAttribute('data-testid');
+          if (tid && /^timer-group-(untitled|[0-9a-f-]{36})$/i.test(tid)) break;
+          group = group.parentElement;
+        }
+        if (!group) return false;
+        const projectBtn = group.querySelector('[data-testid^="timer-group-project-"]');
+        const projectText = projectBtn?.textContent ?? '';
+        const unlinked = group.querySelector('[data-testid^="timer-group-remote-issue-unlinked-"]');
+        return projectText.includes(projectName) && !!unlinked;
+      },
+      { title: 'Inline Project Assign Task', projectName: 'Inline Assign Project' },
+    );
+    expect(await page.evaluate(pageExcludesText, '(unlinked)')).toBe(true);
+    expect(await page.evaluate(pageExcludesText, '(niepołączone)')).toBe(true);
 
     await page.close();
   });
@@ -452,6 +480,30 @@ describeTimerViewUI('timer view UI flow', async () => {
     const toggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
     await toggle.locator('button').or(toggle).first().click();
     await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
+
+    // Edit start time in place; the local calendar day must stay the same.
+    const startButton = page.locator(`[data-testid="timer-entry-start-${seeded.id}"]`);
+    await startButton.locator('button').or(startButton).first().click();
+    const startInput = page.locator(`[data-testid="timer-entry-start-input-${seeded.id}"]`);
+    const startPatch = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes(`/api/time-entries/${seeded.id}`) &&
+        response.ok(),
+    );
+    await startInput.locator('input').or(startInput).first().fill('08:15');
+    await startInput.locator('input').or(startInput).first().press('Enter');
+    await startPatch;
+    const from = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const to = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const patchedRows = await (
+      await fetch(
+        url(`/api/time-entries?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+        { headers: { cookie: jar.header() } },
+      )
+    ).json();
+    const patched = patchedRows.find((r: { id: string }) => r.id === seeded.id);
+    expect(patched.startedAt.slice(0, 10)).toBe(seeded.startedAt.slice(0, 10));
 
     // Retitle the entry (splits it into a new group on commit).
     const entryTitle = page.locator(`[data-testid="timer-entry-title-${seeded.id}"]`);

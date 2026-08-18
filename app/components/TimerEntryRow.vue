@@ -2,7 +2,7 @@
 import { useI18n } from 'vue-i18n';
 import { entryDurationSeconds, isoToLocalTime, localDayKey } from '~/utils/timerViewGrouping';
 import { wallClockToInstant } from '~/utils/dateTime';
-import { formatDuration, formatTime } from '~/utils/formatDuration';
+import { formatDuration } from '~/utils/formatDuration';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const props = withDefaults(
@@ -16,7 +16,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ changed: []; deleted: [] }>();
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
@@ -30,9 +30,12 @@ const stopValue = ref(
 const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
-const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 1}ch`);
 const titleDisplayValue = computed(() => props.entry.taskName ?? t('timerView.noTask'));
-const titleDisplayWidth = computed(() => `${Math.max(titleDisplayValue.value.length, 8) + 1}ch`);
+const titleInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
+const timeSlotUi = {
+  root: 'w-full min-w-0',
+  base: 'w-full min-w-0 px-2 py-1 text-center text-sm/4 tabular-nums',
+};
 
 async function startEditTitle() {
   editingField.value = null;
@@ -167,82 +170,96 @@ async function onDelete() {
         v-model="titleValue"
         type="text"
         variant="ghost"
+        size="xs"
         :aria-label="t('timerView.entryRow.titleLabel')"
-        class="max-w-full"
-        :style="{ width: titleInputWidth }"
+        class="w-full min-w-0 max-w-full"
+        :ui="titleInputUi"
         :data-testid="`timer-entry-title-input-${entry.id}`"
         @blur="commitTitle"
         @keydown.enter="commitTitle"
         @keydown.esc="cancelEdit"
       />
-      <UInput
-        v-else
-        :model-value="titleDisplayValue"
-        type="text"
-        variant="none"
-        readonly
-        :aria-label="t('timerView.entryRow.titleLabel')"
-        class="max-w-full cursor-pointer"
-        :style="{ width: titleDisplayWidth }"
-        :data-testid="`timer-entry-title-${entry.id}`"
-        @focus="startEditTitle"
-        @click="startEditTitle"
-      />
+      <OverflowTooltip v-else :text="titleDisplayValue">
+        <UInput
+          :model-value="titleDisplayValue"
+          type="text"
+          variant="none"
+          readonly
+          size="xs"
+          :aria-label="t('timerView.entryRow.titleLabel')"
+          class="w-full min-w-0 max-w-full cursor-pointer"
+          :ui="titleInputUi"
+          :data-testid="`timer-entry-title-${entry.id}`"
+          @focus="startEditTitle"
+          @click="startEditTitle"
+        />
+      </OverflowTooltip>
     </span>
 
-    <span class="flex items-center gap-1.5">
-      <template v-if="editingField === 'start'">
+    <span class="flex shrink-0 items-center gap-1.5">
+      <span class="inline-flex w-[10ch] shrink-0">
         <TimeInput
+          v-if="editingField === 'start'"
           v-model="startValue"
           :label="t('timerView.entryRow.startLabel')"
           :testid="`timer-entry-start-input-${entry.id}`"
           @commit="commitStart"
           @cancel="cancelEdit"
         />
-      </template>
-      <UButton
-        v-else
-        variant="link"
-        color="neutral"
-        class="px-0"
-        :label="formatTime(entry.startedAt, locale, timeZone)"
-        :aria-label="t('timerView.entryRow.startLabel')"
-        :data-testid="`timer-entry-start-${entry.id}`"
-        @click="startEditStart"
-      />
+        <UInput
+          v-else
+          :model-value="isoToLocalTime(entry.startedAt, timeZone)"
+          variant="none"
+          readonly
+          size="xs"
+          class="w-full min-w-0 cursor-pointer"
+          :ui="timeSlotUi"
+          :aria-label="t('timerView.entryRow.startLabel')"
+          :data-testid="`timer-entry-start-${entry.id}`"
+          @focus="startEditStart"
+          @click="startEditStart"
+        />
+      </span>
 
       <span aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
 
-      <template v-if="entry.stoppedAt">
-        <template v-if="editingField === 'stop'">
+      <span class="inline-flex w-[10ch] shrink-0">
+        <template v-if="entry.stoppedAt">
           <TimeInput
+            v-if="editingField === 'stop'"
             v-model="stopValue"
             :label="t('timerView.entryRow.stopLabel')"
             :testid="`timer-entry-stop-input-${entry.id}`"
             @commit="commitStop"
             @cancel="cancelEdit"
           />
+          <UInput
+            v-else
+            :model-value="isoToLocalTime(entry.stoppedAt, timeZone)"
+            variant="none"
+            readonly
+            size="xs"
+            class="w-full min-w-0 cursor-pointer"
+            :ui="timeSlotUi"
+            :aria-label="t('timerView.entryRow.stopLabel')"
+            :data-testid="`timer-entry-stop-${entry.id}`"
+            @focus="startEditStop"
+            @click="startEditStop"
+          />
         </template>
-        <UButton
-          v-else
-          variant="link"
-          color="neutral"
-          class="px-0"
-          :label="formatTime(entry.stoppedAt, locale, timeZone)"
-          :aria-label="t('timerView.entryRow.stopLabel')"
-          :data-testid="`timer-entry-stop-${entry.id}`"
-          @click="startEditStop"
-        />
-      </template>
-      <span v-else>{{ t('timerView.entryRow.nowLabel') }}</span>
+        <span v-else class="w-full text-center">{{ t('timerView.entryRow.nowLabel') }}</span>
+      </span>
     </span>
 
-    <span class="min-w-[4.5rem] text-right font-mono">{{ durationLabel }}</span>
+    <span class="min-w-[4.5rem] text-right font-mono text-sm font-medium tabular-nums text-muted">
+      {{ durationLabel }}
+    </span>
 
     <UButton
       icon="i-lucide-trash-2"
       variant="ghost"
       square
+      size="xs"
       color="error"
       :aria-label="t('timerView.entryRow.deleteLabel')"
       :loading="deleting"

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
-import { UNTITLED_GROUP_KEY } from '~/utils/timerViewGrouping';
 import { formatDuration } from '~/utils/formatDuration';
 import type { TrackerDto } from '../../shared/types/tracker';
 
@@ -21,7 +20,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   continue: [];
-  'bulk-assign': [];
+  stop: [];
   'entry-changed': [];
   'entry-deleted': [];
   'editing-started': [];
@@ -33,17 +32,15 @@ const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
 const entriesId = computed(() => `timer-group-entries-${props.group.key}`);
-const isUntitled = computed(() => props.group.key === UNTITLED_GROUP_KEY);
 const editingTitle = ref(false);
 const titleValue = ref('');
-const editingProject = ref(false);
-const projectValue = ref<string | undefined>(undefined);
+const projectSelectOpen = ref(false);
 watch(
   () => props.activeEditorKey,
   (activeKey) => {
     if (activeKey === props.editorKey) return;
     editingTitle.value = false;
-    editingProject.value = false;
+    projectSelectOpen.value = false;
   },
 );
 
@@ -67,7 +64,7 @@ const projectSelectOptions = computed(() => {
 
 async function beginTitleEdit() {
   emit('editing-started');
-  editingProject.value = false;
+  projectSelectOpen.value = false;
   titleValue.value = props.group.taskName ?? '';
   editingTitle.value = true;
   await nextTick();
@@ -81,10 +78,10 @@ function cancelTitleEdit() {
 }
 
 async function commitTitle() {
-  if (!editingTitle.value || !props.group.taskId) return;
+  if (!editingTitle.value) return;
   editingTitle.value = false;
   const name = titleValue.value.trim();
-  if (!name || name === props.group.taskName) return;
+  if (!name || name === (props.group.taskName ?? '')) return;
   const ids = props.group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
   try {
@@ -98,17 +95,22 @@ async function commitTitle() {
   }
 }
 
-async function beginProjectEdit() {
-  emit('editing-started');
-  editingTitle.value = false;
-  projectValue.value = props.group.projectId ?? undefined;
-  editingProject.value = true;
+function onProjectOpen(open: boolean) {
+  if (open && !canAssignProject.value) {
+    projectSelectOpen.value = false;
+    return;
+  }
+  projectSelectOpen.value = open;
+  if (open) {
+    emit('editing-started');
+    editingTitle.value = false;
+  }
 }
 
-async function commitProject(value: string | null | undefined) {
-  if (!editingProject.value || !props.group.taskId) return;
-  editingProject.value = false;
+async function commitProject(value: string | null) {
+  projectSelectOpen.value = false;
   if (value === props.group.projectId) return;
+  if (!props.group.taskId && !props.group.taskName) return;
   const ids = props.group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
   try {
@@ -122,32 +124,43 @@ async function commitProject(value: string | null | undefined) {
   }
 }
 
-const titleInputWidth = computed(() => `${Math.max(titleValue.value.length, 8) + 3}ch`);
-const titleDisplayValue = computed(() => props.group.taskName ?? '');
-const titleDisplayWidth = computed(() => `${Math.max(titleDisplayValue.value.length, 8) + 3}ch`);
+const titleDisplayValue = computed(() => props.group.taskName ?? t('timerView.noTask'));
 const projectDisplayValue = computed(() => contextLabel.value ?? t('timerView.noProject'));
-const projectSelectWidth = computed(() => {
-  const selected = projectSelectOptions.value.find((p) => p.id === projectValue.value);
-  const label = selected ? selected.name : t('timerView.noProject');
-  return `${Math.ceil(Math.max(label.length, projectDisplayValue.value.length, 8) + 4)}ch`;
-});
-const projectDisplayWidth = computed(
-  () => `${Math.max(projectDisplayValue.value.length, 8) + 4}ch`,
-);
+const canAssignProject = computed(() => !!(props.group.taskId || props.group.taskName));
+const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
 
+const entryCount = computed(() => props.group.entries.length);
 const countLabel = computed(() => {
-  const count = props.group.entries.length;
+  const count = entryCount.value;
   return count === 1
     ? t('timerView.entryCountOne', { count })
     : t('timerView.entryCount', { count });
 });
+const countDisplay = computed(() => (entryCount.value > 9 ? '9+' : String(entryCount.value)));
+
+const actionLabel = computed(() => (props.isLive ? t('timer.stop') : t('timerView.continueLabel')));
+const actionButtonUi = computed(() =>
+  props.isLive
+    ? {
+        leadingIcon: 'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
+      }
+    : undefined,
+);
+
+function onActionClick() {
+  if (props.isLive) {
+    emit('stop');
+    return;
+  }
+  emit('continue');
+}
 
 const showRemoteIssueControl = computed(() => !!props.tracker && !!props.group.taskId);
 const remoteIssueRef = computed(() => props.group.remoteIssueRef);
-const remoteIssueTooltip = computed(() =>
-  remoteIssueRef.value
-    ? `${t('timerView.remoteIssue.linkedTooltipPrefix')} #${remoteIssueRef.value.remoteIssueId}: ${remoteIssueRef.value.cachedTitle}`
-    : undefined,
+const remoteIssueUnavailableLabel = computed(() =>
+  props.group.projectId
+    ? t('timerView.remoteIssue.unavailableNoTracker')
+    : t('timerView.remoteIssue.unavailableNoProject'),
 );
 
 async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: string }) {
@@ -186,150 +199,186 @@ async function unlinkRemoteIssue() {
 </script>
 
 <template>
-  <div class="border-b border-default py-2" :data-testid="`timer-group-${group.key}`">
-    <div class="flex items-center gap-3">
-      <div
-        class="timer-group__toggle flex min-w-0 flex-1 items-center gap-2 text-left"
-        data-testid="timer-group-header-controls"
-      >
+  <div class="border-b border-default py-1" :data-testid="`timer-group-${group.key}`">
+    <div
+      class="grid grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1 [grid-template-areas:'toggle_title_duration_action'_'._project_meta_meta'] lg:flex lg:flex-nowrap lg:gap-3"
+      data-testid="timer-group-header-controls"
+    >
+      <div class="[grid-area:toggle] shrink-0">
         <UButton
           :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
           variant="ghost"
           square
+          size="xs"
           :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
           :aria-expanded="expanded"
           :aria-controls="entriesId"
           :data-testid="`timer-group-toggle-${group.key}`"
           @click="expanded = !expanded"
         />
-        <UInput
-          v-if="editingTitle"
-          v-model="titleValue"
+      </div>
+
+      <div class="flex min-w-0 items-center gap-2 [grid-area:title] lg:min-w-0 lg:flex-1">
+        <UBadge
+          color="neutral"
+          variant="subtle"
+          size="sm"
+          class="w-5 shrink-0 justify-center tabular-nums"
+          :aria-label="countLabel"
+          :data-testid="`timer-group-count-${group.key}`"
+        >
+          {{ countDisplay }}
+        </UBadge>
+        <div class="min-w-0 flex-1">
+          <UInput
+            v-if="editingTitle"
+            v-model="titleValue"
+            variant="ghost"
+            size="xs"
+            class="w-full min-w-0 max-w-full"
+            :ui="slotInputUi"
+            :placeholder="t('timerView.noTask')"
+            :aria-label="t('timerView.editLabel')"
+            :data-testid="`timer-group-title-input-${group.key}`"
+            @blur="commitTitle"
+            @keydown.enter="commitTitle"
+            @keydown.esc="cancelTitleEdit"
+          />
+          <OverflowTooltip v-else :text="titleDisplayValue">
+            <UInput
+              :model-value="titleDisplayValue"
+              variant="none"
+              readonly
+              size="xs"
+              class="w-full min-w-0 max-w-full cursor-pointer font-medium"
+              :ui="slotInputUi"
+              :aria-label="t('timerView.editLabel')"
+              :data-testid="`timer-group-title-${group.key}`"
+              @focus="beginTitleEdit"
+              @click.stop="beginTitleEdit"
+            />
+          </OverflowTooltip>
+        </div>
+      </div>
+
+      <div class="w-48 min-w-0 max-w-full shrink-0 justify-self-start [grid-area:project]">
+        <UButton
+          v-if="!canAssignProject"
           variant="ghost"
-          class="max-w-full"
-          :style="{ width: titleInputWidth }"
-          :aria-label="t('timerView.editLabel')"
-          :data-testid="`timer-group-title-input-${group.key}`"
-          @blur="commitTitle"
-          @keydown.enter="commitTitle"
-          @keydown.esc="cancelTitleEdit"
-        />
-        <UInput
-          v-else-if="!isUntitled"
-          :model-value="titleDisplayValue"
-          variant="none"
-          readonly
-          class="max-w-full cursor-pointer font-medium"
-          :style="{ width: titleDisplayWidth }"
-          :aria-label="t('timerView.editLabel')"
-          :data-testid="`timer-group-title-${group.key}`"
-          @focus="beginTitleEdit"
-          @click.stop="beginTitleEdit"
-        />
-        <span v-else class="font-medium">{{ t('timerView.noTask') }}</span>
-        <USelect
-          v-if="editingProject"
-          v-model="projectValue"
-          :items="projectSelectOptions"
-          label-key="name"
-          value-key="id"
-          class="max-w-full"
-          :style="{ width: projectSelectWidth }"
-          :aria-label="t('timerView.editor.projectLabel')"
-          :data-testid="`timer-group-project-select-${group.key}`"
-          @update:model-value="commitProject"
-        />
-        <UInput
-          v-else-if="!isUntitled"
-          :model-value="projectDisplayValue"
-          variant="none"
-          readonly
-          class="max-w-full cursor-pointer text-sm text-muted"
-          :style="{ width: projectDisplayWidth }"
-          :aria-label="t('timerView.editor.projectLabel')"
+          color="neutral"
+          size="xs"
+          disabled
+          class="w-full justify-start truncate text-muted disabled:opacity-40"
+          :label="projectDisplayValue"
+          :aria-label="t('timerView.projectRequiresTitle')"
+          :title="t('timerView.projectRequiresTitle')"
           :data-testid="`timer-group-project-${group.key}`"
-          @focus="beginProjectEdit"
-          @click.stop="beginProjectEdit"
+        />
+        <UPopover
+          v-else
+          :open="projectSelectOpen"
+          :modal="false"
+          :content="{ side: 'bottom', align: 'start', sideOffset: 4 }"
+          @update:open="onProjectOpen"
+        >
+          <OverflowTooltip class="w-full" :text="projectDisplayValue">
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              class="w-full justify-start truncate text-muted"
+              :label="projectDisplayValue"
+              :aria-label="t('timerView.editor.projectLabel')"
+              :data-testid="`timer-group-project-${group.key}`"
+            />
+          </OverflowTooltip>
+          <template #content>
+            <div
+              class="flex max-h-60 min-w-48 flex-col overflow-auto p-1"
+              role="listbox"
+              :aria-label="t('timerView.editor.projectLabel')"
+              :data-testid="`timer-group-project-select-${group.key}`"
+            >
+              <UButton
+                variant="ghost"
+                color="neutral"
+                class="w-full justify-start"
+                role="option"
+                :label="t('timerView.noProject')"
+                data-testid="timer-group-project-option-none"
+                @click.stop="commitProject(null)"
+              />
+              <UButton
+                v-for="option in projectSelectOptions"
+                :key="option.id"
+                variant="ghost"
+                color="neutral"
+                class="w-full justify-start"
+                role="option"
+                :label="option.name"
+                :data-testid="`timer-group-project-option-${option.id}`"
+                @click.stop="commitProject(option.id)"
+              />
+            </div>
+          </template>
+        </UPopover>
+      </div>
+
+      <div class="flex min-w-0 items-center gap-2 [grid-area:meta] lg:contents">
+        <RemoteIssuePicker
+          v-if="showRemoteIssueControl"
+          :config="tracker!"
+          :current-ref="remoteIssueRef"
+          class="shrink-0"
+          :link-testid="`timer-group-remote-issue-link-${group.key}`"
+          :cached-testid="`timer-group-remote-issue-cached-${group.key}`"
+          :unlinked-testid="`timer-group-remote-issue-unlinked-${group.key}`"
+          :data-testid="`timer-group-remote-issue-picker-${group.key}`"
+          @link="linkRemoteIssue"
+          @unlink="unlinkRemoteIssue"
+        />
+        <UButton
+          v-else
+          icon="i-lucide-link-2-off"
+          color="neutral"
+          variant="ghost"
+          square
+          size="xs"
+          disabled
+          class="w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
+          :aria-label="remoteIssueUnavailableLabel"
+          :title="remoteIssueUnavailableLabel"
+          :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
         />
       </div>
 
-      <span class="text-sm text-muted">{{ countLabel }}</span>
-
       <span
-        v-if="isLive"
-        class="text-sm font-semibold text-primary"
-        :data-testid="`timer-group-live-${group.key}`"
-      >
-        {{ t('timerView.liveLabel') }}
-      </span>
-
-      <span
-        class="min-w-[4.5rem] text-right font-mono"
+        class="min-w-[4.5rem] text-right font-mono text-sm font-medium tabular-nums text-muted [grid-area:duration]"
         :data-testid="`timer-group-total-${group.key}`"
       >
         {{ formatDuration(group.totalSeconds) }}
       </span>
 
-      <template v-if="showRemoteIssueControl">
+      <div class="shrink-0 [grid-area:action]">
         <UButton
-          v-if="remoteIssueRef && remoteIssueRef.url"
-          :to="remoteIssueRef.url"
-          target="_blank"
-          external
-          variant="link"
-          class="font-mono text-sm"
-          :label="`#${remoteIssueRef.remoteIssueId}`"
-          :title="remoteIssueTooltip"
-          :data-testid="`timer-group-remote-issue-link-${group.key}`"
+          :icon="isLive ? 'i-lucide-square' : 'i-lucide-play'"
+          variant="ghost"
+          square
+          size="xs"
+          :color="isLive ? 'error' : undefined"
+          :ui="actionButtonUi"
+          :aria-label="actionLabel"
+          :aria-pressed="isLive"
+          :data-testid="`timer-group-continue-${group.key}`"
+          @click="onActionClick"
         />
-        <span
-          v-else-if="remoteIssueRef"
-          :title="remoteIssueTooltip"
-          class="font-mono text-sm text-primary"
-          :data-testid="`timer-group-remote-issue-cached-${group.key}`"
-        >
-          #{{ remoteIssueRef.remoteIssueId }}
-        </span>
-        <span
-          v-else
-          class="text-sm text-muted"
-          :data-testid="`timer-group-remote-issue-unlinked-${group.key}`"
-        >
-          {{ t('timerView.remoteIssue.unlinked') }}
-        </span>
-
-        <RemoteIssuePicker
-          :config="tracker!"
-          :current-ref="remoteIssueRef"
-          :data-testid="`timer-group-remote-issue-picker-${group.key}`"
-          @link="linkRemoteIssue"
-          @unlink="unlinkRemoteIssue"
-        />
-      </template>
-
-      <UButton
-        v-if="!isUntitled"
-        icon="i-lucide-play"
-        variant="ghost"
-        square
-        :aria-label="t('timerView.continueLabel')"
-        :data-testid="`timer-group-continue-${group.key}`"
-        @click="emit('continue')"
-      />
-      <UButton
-        v-else
-        :label="t('timerView.bulkAssign.buttonLabel')"
-        icon="i-lucide-tag"
-        variant="ghost"
-        :data-testid="`timer-group-bulk-assign-${group.key}`"
-        @click="emit('bulk-assign')"
-      />
+      </div>
     </div>
 
     <div
       v-if="expanded"
       :id="entriesId"
-      class="grid gap-1 py-2 pr-0 pl-7"
+      class="grid gap-0.5 py-1 pr-0 pl-7"
       :data-testid="`timer-group-entries-${group.key}`"
     >
       <TimerEntryRow

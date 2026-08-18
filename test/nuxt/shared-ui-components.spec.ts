@@ -127,4 +127,15 @@ describe('TimeInput', () => {
     expect(wrapper.emitted('update:modelValue')).toBeUndefined();
     expect(input.element.value).toBe('08:00');
   });
+
+  it('reserves compact width for a full HH:mm plus input chrome', async () => {
+    const wrapper = await mount('09:00');
+    const root = wrapper.find('.time-input--compact');
+    expect(root.exists()).toBe(true);
+    expect(wrapper.html()).not.toContain('5.5ch');
+    expect(wrapper.html()).toContain('10ch');
+    expect(wrapper.find<HTMLInputElement>('[data-testid="time-input"]').element.value).toBe(
+      '09:00',
+    );
+  });
 });
