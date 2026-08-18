@@ -160,10 +160,11 @@ const inProgress = computed(() =>
           data-testid="remote-sync-export-progress"
         >
           {{
-            t('remoteSync.exportDialog.progress', {
-              completed: completedCount,
-              total: totalCount,
-            })
+            t(
+              'remoteSync.exportDialog.progress',
+              { completed: completedCount, total: totalCount },
+              totalCount,
+            )
           }}
         </div>
 

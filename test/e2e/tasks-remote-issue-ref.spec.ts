@@ -198,6 +198,39 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
     expect(secondBody[0]?.taskId).not.toBe(firstBody[0]?.taskId);
   });
 
+  it('persists a cached remote project title and allows linking without one', async () => {
+    const { jar, token, entryId } = await setupTaskWithOpenProjectConfig('ProjectTitle');
+
+    const withTitle = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '80',
+      cachedTitle: 'With project',
+      cachedRemoteProjectTitle: '  Acme Intranet  ',
+    });
+    expect(withTitle.status).toBe(200);
+    const withTitleBody = await withTitle.json();
+    expect(withTitleBody[0]?.remoteIssueRef?.cachedRemoteProjectTitle).toBe('Acme Intranet');
+    const [withTitleTask] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, withTitleBody[0]?.taskId));
+    expect(withTitleTask?.remoteIssueCachedProjectTitle).toBe('Acme Intranet');
+
+    const withoutTitle = await reassign(jar, token, {
+      ids: [entryId],
+      remoteIssueId: '81',
+      cachedTitle: 'No project',
+    });
+    expect(withoutTitle.status).toBe(200);
+    const withoutTitleBody = await withoutTitle.json();
+    expect(withoutTitleBody[0]?.remoteIssueRef?.cachedRemoteProjectTitle).toBeUndefined();
+    const [withoutTitleTask] = await db
+      .select()
+      .from(tasks)
+      .where(eq(tasks.id, withoutTitleBody[0]?.taskId));
+    expect(withoutTitleTask?.remoteIssueCachedProjectTitle).toBeNull();
+  });
+
   it('explicit null unlinks day-scoped and is idempotent', async () => {
     const { jar, token, entryId } = await setupTaskWithOpenProjectConfig('Unlink');
     await reassign(jar, token, {

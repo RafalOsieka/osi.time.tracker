@@ -38,7 +38,7 @@ const ButtonStub = {
       :data-icon="icon"
       :data-size="size"
       @click="$emit('click', $event)"
-    >{{ label }}</component>
+    >{{ label }}<slot /></component>
   `,
   props: [
     'label',
@@ -149,7 +149,9 @@ describe('RemoteIssuePicker', () => {
     expect(link.attributes('target')).toBe('_blank');
     expect(link.attributes('title')).toContain('Fix login bug');
     expect(link.classes()).toContain('min-w-6');
+    expect(link.classes()).toContain('h-6');
     expect(link.classes()).toContain('px-0');
+    expect(wrapper.find('.group\\/ri').classes()).toContain('h-6');
     const menu = wrapper.find('[data-testid="remote-issue-picker-edit-menu"]');
     expect(menu.exists()).toBe(true);
     expect(menu.classes()).toContain('absolute');
@@ -165,6 +167,8 @@ describe('RemoteIssuePicker', () => {
     const trigger = wrapper.find('[data-testid="remote-issue-picker-trigger"]');
     expect(trigger.classes()).toContain('shrink-0');
     expect(trigger.classes()).toContain('w-6');
+    expect(trigger.classes()).toContain('h-6');
+    expect(wrapper.find('.group\\/ri').classes()).toContain('h-6');
     expect(trigger.classes()).not.toContain('absolute');
     expect(trigger.attributes('data-icon')).toBe('i-lucide-link-2-off');
     expect(trigger.attributes('data-size')).toBe('xs');
@@ -176,15 +180,39 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
   });
 
+  it('defaults to issue-ID search and hides empty results until a search', async () => {
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    expect(modeButtons[0]?.attributes('aria-pressed')).toBe('true');
+    expect(modeButtons[0]?.text()).toContain('remoteIssuePicker.modeId');
+    expect(wrapper.text()).not.toContain('remoteIssuePicker.emptyResults');
+    expect(wrapper.find('[data-testid="remote-issue-picker-unlink"]').exists()).toBe(false);
+  });
+
   it('opens the popover and emits link on selecting a title-search result', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ _embedded: { elements: [{ id: 42, subject: 'Fix login bug' }] } }),
+      json: async () => ({
+        _embedded: {
+          elements: [
+            {
+              id: 42,
+              subject: 'Fix login bug',
+              _links: { project: { title: 'Acme Intranet' } },
+            },
+          ],
+        },
+      }),
     });
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
     await flushPromises();
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    await modeButtons[1]?.trigger('click');
     await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('login bug');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
@@ -192,10 +220,17 @@ describe('RemoteIssuePicker', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const result = wrapper.find('[data-testid="remote-issue-picker-result-42"]');
     expect(result.text()).toContain('Fix login bug');
+    expect(result.text()).toContain('Acme Intranet');
 
     await result.trigger('click');
     expect(wrapper.emitted('link')).toEqual([
-      [{ remoteIssueId: '42', cachedTitle: 'Fix login bug' }],
+      [
+        {
+          remoteIssueId: '42',
+          cachedTitle: 'Fix login bug',
+          cachedRemoteProjectTitle: 'Acme Intranet',
+        },
+      ],
     ]);
   });
 
@@ -203,19 +238,19 @@ describe('RemoteIssuePicker', () => {
     fetchMock.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ _embedded: { elements: [{ id: 7, subject: 'Closed issue' }] } }),
+      json: async () => ({ id: 7, subject: 'Closed issue' }),
     });
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
     await flushPromises();
-    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('anything');
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('7');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
     const result = wrapper.find('[data-testid="remote-issue-picker-result-7"]');
     await result.trigger('click');
     expect(wrapper.emitted('link')).toEqual([
-      [{ remoteIssueId: '7', cachedTitle: 'Closed issue' }],
+      [{ remoteIssueId: '7', cachedTitle: 'Closed issue', cachedRemoteProjectTitle: undefined }],
     ]);
   });
 
@@ -223,6 +258,8 @@ describe('RemoteIssuePicker', () => {
     const wrapper = await mount();
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
     await flushPromises();
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    await modeButtons[1]?.trigger('click');
     await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('ab');
     await wrapper.find('form').trigger('submit');
     await flushPromises();
@@ -231,12 +268,7 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.text()).toContain('error.remoteIssueSearchTitleTooShort');
   });
 
-  it('shows an empty-results state and an unlink button when a reference exists', async () => {
-    fetchMock.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => ({ _embedded: { elements: [] } }),
-    });
+  it('puts unlink in the linked dropdown and not in the popover', async () => {
     const wrapper = await mount({
       currentRef: {
         id: 'ref-1',
@@ -250,16 +282,20 @@ describe('RemoteIssuePicker', () => {
         updatedAt: '',
       },
     });
-    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
-    await flushPromises();
-    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('nothing here');
-    await wrapper.find('form').trigger('submit');
-    await flushPromises();
 
-    expect(wrapper.text()).toContain('remoteIssuePicker.emptyResults');
     const unlinkButton = wrapper.find('[data-testid="remote-issue-picker-unlink"]');
     expect(unlinkButton.exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-issue-picker-edit-menu"]').exists()).toBe(true);
     await unlinkButton.trigger('click');
     expect(wrapper.emitted('unlink')).toHaveLength(1);
+
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="popover-content"]').exists()).toBe(true);
+    expect(
+      wrapper
+        .find('[data-testid="popover-content"] [data-testid="remote-issue-picker-unlink"]')
+        .exists(),
+    ).toBe(false);
   });
 });

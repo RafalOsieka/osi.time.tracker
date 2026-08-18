@@ -229,6 +229,27 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
 
+    const idMode = page
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /id/i });
+    const idChecked =
+      (await idMode.getAttribute('aria-checked')) === 'true' ||
+      (await idMode.getAttribute('data-state')) === 'checked';
+    expect(idChecked).toBe(true);
+    const queryFocused = await page.evaluate(() => {
+      const active = document.activeElement;
+      return (
+        !!active?.closest('[data-testid="remote-issue-picker-query"]') ||
+        active?.getAttribute('data-testid') === 'remote-issue-picker-query'
+      );
+    });
+    expect(queryFocused).toBe(true);
+
+    await page
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /title/i })
+      .click();
+
     // Explicit submission: typing alone must not trigger a search.
     await page
       .locator(
@@ -278,6 +299,10 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
     await page
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /title/i })
+      .click();
+    await page
       .locator(
         '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
       )
@@ -297,10 +322,13 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     groupKey = await groupKeyFromIssueLink(page);
     group = page.locator(`[data-testid="timer-group-${groupKey}"]`);
 
-    // --- Unlink ---
-    await openRemoteIssuePicker(group);
-    await page.waitForSelector('[data-testid="remote-issue-picker-unlink"]');
-    await page.locator('[data-testid="remote-issue-picker-unlink"]').last().click();
+    // --- Unlink from the hover dropdown, not the popover ---
+    await group.locator('[data-testid^="timer-group-remote-issue-link-"]').first().hover();
+    await group.locator('[data-testid="remote-issue-picker-edit-menu"]').waitFor({
+      state: 'visible',
+    });
+    expect(await page.locator('[data-testid="remote-issue-picker-query"]').count()).toBe(0);
+    await group.locator('[data-testid="remote-issue-picker-unlink"]').click();
     await page.waitForFunction(
       () =>
         !document.querySelector('[data-testid^="timer-group-remote-issue-link-"]') &&
@@ -325,10 +353,6 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     });
     await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-mode"]');
-    await page
-      .locator('[data-testid="remote-issue-picker-mode"]')
-      .getByRole('radio', { name: /id/i })
-      .click();
 
     await page
       .locator(

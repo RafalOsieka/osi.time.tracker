@@ -240,4 +240,33 @@ describe('reassignTimeEntriesSchema', () => {
       reassignTimeEntriesSchema.parse({ ids: [validId], projectId: 'not-a-uuid' }),
     ).toThrow();
   });
+
+  it('accepts a cached remote project title when linking', () => {
+    const result = reassignTimeEntriesSchema.parse({
+      ids: [validId],
+      remoteIssueId: '4711',
+      cachedTitle: 'Fix login',
+      cachedRemoteProjectTitle: '  Acme Intranet  ',
+    });
+    expect(result.cachedRemoteProjectTitle).toBe('Acme Intranet');
+  });
+
+  it('accepts a link without a cached remote project title', () => {
+    const result = reassignTimeEntriesSchema.parse({
+      ids: [validId],
+      remoteIssueId: '4711',
+      cachedTitle: 'Fix login',
+    });
+    expect(result.cachedRemoteProjectTitle).toBeUndefined();
+  });
+
+  it('omits a blank cached remote project title', () => {
+    const result = reassignTimeEntriesSchema.parse({
+      ids: [validId],
+      remoteIssueId: '4711',
+      cachedTitle: 'Fix login',
+      cachedRemoteProjectTitle: '   ',
+    });
+    expect(result.cachedRemoteProjectTitle).toBeUndefined();
+  });
 });

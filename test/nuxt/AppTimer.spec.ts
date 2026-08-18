@@ -467,6 +467,7 @@ describe('AppTimer', () => {
     expect(items.some((item) => item.id === 'task-exact')).toBe(true);
     const createItem = items.find((item) => item.id === '__create_new_task__');
     expect(createItem).toBeTruthy();
+    expect(items[0]?.id).toBe('__create_new_task__');
     expect(createItem!.name).toBe('Exact Match');
     // Label is i18n-backed (`{title} (new task)`); accept translated or key fallback.
     expect(

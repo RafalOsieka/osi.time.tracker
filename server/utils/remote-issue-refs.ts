@@ -11,6 +11,7 @@ type TaskRefRow = {
   trackerId: string | null;
   remoteIssueId: string | null;
   remoteIssueCachedTitle: string | null;
+  remoteIssueCachedProjectTitle: string | null;
   remoteIssueCreatedAt: Date | null;
   remoteIssueUpdatedAt: Date | null;
 };
@@ -111,6 +112,7 @@ export function taskRowToRemoteIssueRefDto(
     trackerId: row.trackerId,
     remoteIssueId: row.remoteIssueId,
     cachedTitle: row.remoteIssueCachedTitle,
+    cachedRemoteProjectTitle: row.remoteIssueCachedProjectTitle?.trim() || undefined,
     url: isActive
       ? deriveIssueUrl(tracker.systemType as TrackerSystemType, tracker.baseUrl!, row.remoteIssueId)
       : undefined,
@@ -151,6 +153,7 @@ export async function getRemoteIssueRefsForTasks(
       trackerId: tasks.trackerId,
       remoteIssueId: tasks.remoteIssueId,
       remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
+      remoteIssueCachedProjectTitle: tasks.remoteIssueCachedProjectTitle,
       remoteIssueCreatedAt: tasks.remoteIssueCreatedAt,
       remoteIssueUpdatedAt: tasks.remoteIssueUpdatedAt,
       trackerBaseUrl: trackers.baseUrl,

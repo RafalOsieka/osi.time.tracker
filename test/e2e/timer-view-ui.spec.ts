@@ -595,6 +595,8 @@ describeTimerViewUI('timer view UI flow', async () => {
       .filter({ hasText: /new task/i })
       .first();
     await createOption.waitFor({ state: 'visible', timeout: 10000 });
+    const firstOptionText = await page.locator('[role="option"]').first().innerText();
+    expect(firstOptionText).toMatch(/new task/i);
     // Combobox options can re-render mid-click; use a DOM click for stability.
     await createOption.evaluate((el: HTMLElement) => el.click());
 

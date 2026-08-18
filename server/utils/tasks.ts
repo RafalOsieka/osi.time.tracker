@@ -17,6 +17,8 @@ export interface ResolveTaskRemoteIssueOptions {
   trackerId?: string | null;
   /** Cached issue title stored on a newly linked task. */
   cachedTitle?: string | null;
+  /** Cached remote project title stored on a newly linked task. */
+  cachedRemoteProjectTitle?: string | null;
 }
 
 /**
@@ -82,6 +84,9 @@ export async function resolveTaskId(
         remoteIssueId: linked ? remoteIssueId : null,
         trackerId: linked ? (options.trackerId ?? null) : null,
         remoteIssueCachedTitle: linked ? options.cachedTitle?.trim() || remoteIssueId : null,
+        remoteIssueCachedProjectTitle: linked
+          ? options.cachedRemoteProjectTitle?.trim() || null
+          : null,
         remoteIssueCreatedAt: linked ? now : null,
         remoteIssueUpdatedAt: linked ? now : null,
       })
@@ -117,6 +122,7 @@ export async function resolveTaskId(
       remoteIssueId: null,
       trackerId: null,
       remoteIssueCachedTitle: null,
+      remoteIssueCachedProjectTitle: null,
       remoteIssueCreatedAt: null,
       remoteIssueUpdatedAt: null,
     })

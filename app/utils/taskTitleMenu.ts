@@ -46,16 +46,9 @@ export function buildTaskTitleMenuItems(
     includeCreateRow = true,
   } = options;
 
-  const items: TaskTitleMenuItem[] = suggestions.map((task) => ({
-    id: task.id,
-    name: task.name,
-    label: formatTaskSuggestionLabel(task, noProjectLabel),
-    onSelect: () => {
-      onSelectTask(task);
-    },
-  }));
-
   const typed = searchText.trim();
+  const items: TaskTitleMenuItem[] = [];
+
   if (includeCreateRow && typed) {
     items.push({
       id: TASK_TITLE_CREATE_ITEM_ID,
@@ -63,6 +56,17 @@ export function buildTaskTitleMenuItems(
       label: createOptionLabel(typed),
       onSelect: () => {
         onSelectCreate(typed);
+      },
+    });
+  }
+
+  for (const task of suggestions) {
+    items.push({
+      id: task.id,
+      name: task.name,
+      label: formatTaskSuggestionLabel(task, noProjectLabel),
+      onSelect: () => {
+        onSelectTask(task);
       },
     });
   }

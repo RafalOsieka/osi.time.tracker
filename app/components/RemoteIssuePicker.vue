@@ -20,7 +20,13 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  link: [{ remoteIssueId: string; cachedTitle: string }];
+  link: [
+    {
+      remoteIssueId: string;
+      cachedTitle: string;
+      cachedRemoteProjectTitle?: string;
+    },
+  ];
   unlink: [];
 }>();
 
@@ -28,12 +34,13 @@ const { t } = useI18n();
 const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
 
 const open = shallowRef(false);
+const hasSearched = shallowRef(false);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
+const queryField = useTemplateRef<HTMLElement>('queryField');
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
   query: '',
 });
-const firstField = useTemplateRef<HTMLElement>('firstField');
 
 const showEditMenu = computed(() => !!props.currentRef && !open.value);
 const editMenuClass = computed(() => [
@@ -47,6 +54,12 @@ const searchModeLabelKeys = {
   id: 'remoteIssuePicker.modeId',
 } as const satisfies Record<RemoteIssueSearchMode, string>;
 
+const queryPlaceholderKey = computed(() =>
+  state.mode === 'id'
+    ? 'remoteIssuePicker.queryPlaceholderId'
+    : 'remoteIssuePicker.queryPlaceholderTitle',
+);
+
 const modeItems = computed(() =>
   REMOTE_ISSUE_SEARCH_MODE_ORDER.map((value) => ({
     label: t(searchModeLabelKeys[value]),
@@ -56,15 +69,37 @@ const modeItems = computed(() =>
 
 const statusMessage = computed(() => {
   if (loading.value) return t('remoteIssuePicker.loading');
+  if (!hasSearched.value) return '';
   if (errorKey.value) return t(errorKey.value);
-  if (results.value.length === 1) {
-    return t('remoteIssuePicker.resultCountOne', { count: 1 });
+  if (results.value.length === 0) {
+    return t('remoteIssuePicker.emptyResults');
   }
-  if (results.value.length > 1) {
-    return t('remoteIssuePicker.resultCount', { count: results.value.length });
-  }
-  return t('remoteIssuePicker.emptyResults');
+  return t('remoteIssuePicker.resultCount', { count: results.value.length }, results.value.length);
 });
+
+function linkedTooltip(ref: RemoteIssueRefDto): string {
+  const base = `${t('timerView.remoteIssue.linkedTooltipPrefix')} #${ref.remoteIssueId}: ${ref.cachedTitle}`;
+  return ref.cachedRemoteProjectTitle ? `${base} · ${ref.cachedRemoteProjectTitle}` : base;
+}
+
+function resultMeta(result: RemoteIssueSearchResult): string {
+  return result.remoteProjectTitle
+    ? `#${result.remoteIssueId} · ${result.remoteProjectTitle}`
+    : `#${result.remoteIssueId}`;
+}
+
+function resultAccessibleName(result: RemoteIssueSearchResult): string {
+  return result.remoteProjectTitle
+    ? `#${result.remoteIssueId} ${result.title} ${result.remoteProjectTitle}`
+    : `#${result.remoteIssueId} ${result.title}`;
+}
+
+function focusQueryInput() {
+  const root = queryField.value as HTMLElement | { $el?: HTMLElement } | null;
+  const host = root instanceof HTMLElement ? root : root?.$el;
+  const input = host?.querySelector?.('input') ?? (host instanceof HTMLInputElement ? host : null);
+  input?.focus?.();
+}
 
 function onTriggerClick() {
   open.value = true;
@@ -72,21 +107,32 @@ function onTriggerClick() {
 
 async function onOpenChange(value: boolean) {
   open.value = value;
-  if (!value) return;
+  if (!value) {
+    hasSearched.value = false;
+    return;
+  }
+  state.mode = REMOTE_ISSUE_SEARCH_MODE_ORDER[0];
+  hasSearched.value = false;
   await nextTick();
-  firstField.value?.focus?.();
+  focusQueryInput();
 }
 
 function onClose() {
   open.value = false;
+  hasSearched.value = false;
 }
 
 async function submit() {
+  hasSearched.value = true;
   await search({ mode: state.mode, query: state.query });
 }
 
 function selectResult(result: RemoteIssueSearchResult) {
-  emit('link', { remoteIssueId: result.remoteIssueId, cachedTitle: result.title });
+  emit('link', {
+    remoteIssueId: result.remoteIssueId,
+    cachedTitle: result.title,
+    cachedRemoteProjectTitle: result.remoteProjectTitle,
+  });
   onClose();
 }
 
@@ -104,7 +150,7 @@ onBeforeUnmount(() => {
   <span
     ref="rootEl"
     v-bind="$attrs"
-    class="group/ri relative inline-flex min-w-6 items-center justify-center"
+    class="group/ri relative inline-flex h-6 min-w-6 items-center justify-center"
   >
     <UButton
       v-if="currentRef && currentRef.url"
@@ -113,22 +159,22 @@ onBeforeUnmount(() => {
       external
       variant="link"
       size="xs"
-      class="min-w-6 justify-center px-0 font-mono text-sm tabular-nums"
+      class="h-6 min-h-6 min-w-6 justify-center px-0 font-mono text-xs leading-none tabular-nums"
       :label="`#${currentRef.remoteIssueId}`"
-      :title="`${t('timerView.remoteIssue.linkedTooltipPrefix')} #${currentRef.remoteIssueId}: ${currentRef.cachedTitle}`"
+      :title="linkedTooltip(currentRef)"
       :data-testid="linkTestid"
     />
     <span
       v-else-if="currentRef"
-      :title="`${t('timerView.remoteIssue.linkedTooltipPrefix')} #${currentRef.remoteIssueId}: ${currentRef.cachedTitle}`"
-      class="inline-flex min-w-6 justify-center font-mono text-sm tabular-nums text-primary"
+      :title="linkedTooltip(currentRef)"
+      class="inline-flex h-6 min-h-6 min-w-6 items-center justify-center font-mono text-xs leading-none tabular-nums text-primary"
       :data-testid="cachedTestid"
     >
       #{{ currentRef.remoteIssueId }}
     </span>
 
     <div v-if="showEditMenu" :class="editMenuClass" data-testid="remote-issue-picker-edit-menu">
-      <div class="rounded-md bg-default p-1 shadow-lg ring ring-default">
+      <div class="grid gap-0.5 rounded-md bg-default p-1 shadow-lg ring ring-default">
         <UButton
           icon="i-lucide-pencil"
           color="neutral"
@@ -139,6 +185,16 @@ onBeforeUnmount(() => {
           data-testid="remote-issue-picker-trigger"
           @click.stop="onTriggerClick"
         />
+        <UButton
+          icon="i-lucide-unlink"
+          color="error"
+          variant="ghost"
+          class="w-full justify-start"
+          :label="t('remoteIssuePicker.unlinkButton')"
+          :aria-label="t('remoteIssuePicker.unlinkButton')"
+          data-testid="remote-issue-picker-unlink"
+          @click.stop="unlink"
+        />
       </div>
     </div>
     <UButton
@@ -148,7 +204,7 @@ onBeforeUnmount(() => {
       variant="ghost"
       square
       size="xs"
-      class="w-6 shrink-0 justify-center"
+      class="h-6 w-6 shrink-0 justify-center"
       :aria-label="t('timerView.remoteIssue.unlinked')"
       :title="t('timerView.remoteIssue.unlinked')"
       :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
@@ -163,48 +219,52 @@ onBeforeUnmount(() => {
       @update:open="onOpenChange"
     >
       <template #content>
-        <div class="grid min-w-64 gap-3 p-3">
+        <div class="grid w-80 max-w-[min(20rem,calc(100vw-2rem))] gap-2 p-3">
           <UForm
             :schema="remoteIssuePickerFormSchema"
             :state="state"
-            class="grid gap-3"
+            class="grid gap-2"
             @submit="submit"
           >
-            <div class="grid gap-1">
-              <label for="remote-issue-mode">{{ t('remoteIssuePicker.modeLabel') }}</label>
-              <URadioGroup
-                id="remote-issue-mode"
-                ref="firstField"
-                v-model="state.mode"
-                :items="modeItems"
-                orientation="horizontal"
-                value-key="value"
-                label-key="label"
-                data-testid="remote-issue-picker-mode"
-              />
-            </div>
-            <div class="grid gap-1">
-              <label for="remote-issue-query">{{ t('remoteIssuePicker.queryLabel') }}</label>
+            <div class="flex items-center gap-1">
               <UInput
                 id="remote-issue-query"
+                ref="queryField"
                 v-model="state.query"
-                :placeholder="t('remoteIssuePicker.queryPlaceholder')"
+                class="min-w-0 flex-1"
+                :aria-label="t('remoteIssuePicker.queryLabel')"
+                :placeholder="t(queryPlaceholderKey)"
                 data-testid="remote-issue-picker-query"
               />
+              <UButton
+                type="submit"
+                icon="i-lucide-search"
+                color="neutral"
+                variant="ghost"
+                square
+                :loading="loading"
+                :aria-label="t('remoteIssuePicker.submitButton')"
+                data-testid="remote-issue-picker-submit"
+              />
             </div>
-            <UButton
-              type="submit"
-              :label="t('remoteIssuePicker.submitButton')"
-              data-testid="remote-issue-picker-submit"
+            <URadioGroup
+              id="remote-issue-mode"
+              v-model="state.mode"
+              :items="modeItems"
+              :aria-label="t('remoteIssuePicker.modeLabel')"
+              orientation="horizontal"
+              value-key="value"
+              label-key="label"
+              data-testid="remote-issue-picker-mode"
             />
           </UForm>
 
-          <p class="m-0 text-sm text-muted" role="status" aria-live="polite">
+          <p v-if="statusMessage" class="m-0 text-sm text-muted" role="status" aria-live="polite">
             {{ statusMessage }}
           </p>
 
           <ul
-            v-if="results.length > 0"
+            v-if="hasSearched && results.length > 0"
             class="m-0 max-h-48 list-none overflow-auto p-0"
             :aria-label="t('remoteIssuePicker.resultsLabel')"
             data-testid="remote-issue-picker-results"
@@ -215,23 +275,18 @@ onBeforeUnmount(() => {
                 color="neutral"
                 variant="ghost"
                 block
-                class="justify-start"
-                :label="`#${result.remoteIssueId} ${result.title}`"
+                class="h-auto justify-start py-1.5 text-left"
+                :aria-label="resultAccessibleName(result)"
                 :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
                 @click="selectResult(result)"
-              />
+              >
+                <span class="flex min-w-0 flex-col items-start gap-0.5">
+                  <span class="truncate">{{ result.title }}</span>
+                  <span class="truncate text-xs text-muted">{{ resultMeta(result) }}</span>
+                </span>
+              </UButton>
             </li>
           </ul>
-
-          <UButton
-            v-if="currentRef"
-            type="button"
-            color="error"
-            variant="ghost"
-            :label="t('remoteIssuePicker.unlinkButton')"
-            data-testid="remote-issue-picker-unlink"
-            @click.stop="unlink"
-          />
         </div>
       </template>
     </UPopover>

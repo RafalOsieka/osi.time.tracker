@@ -39,7 +39,7 @@ describe('buildTaskTitleMenuItems', () => {
     expect(onSelectCreate).not.toHaveBeenCalled();
   });
 
-  it('appends a synthetic create row for non-empty typed text', () => {
+  it('prepends a synthetic create row for non-empty typed text', () => {
     const onSelectTask = vi.fn();
     const onSelectCreate = vi.fn();
     const items = buildTaskTitleMenuItems({
@@ -52,12 +52,13 @@ describe('buildTaskTitleMenuItems', () => {
     });
 
     expect(items).toHaveLength(2);
-    const create = items[1];
+    const create = items[0];
     expect(create).toMatchObject({
       id: TASK_TITLE_CREATE_ITEM_ID,
       name: 'New task',
       label: 'Create "New task"',
     });
+    expect(items[1]?.id).toBe('task-1');
     create?.onSelect();
     expect(onSelectCreate).toHaveBeenCalledWith('New task');
     expect(onSelectTask).not.toHaveBeenCalled();

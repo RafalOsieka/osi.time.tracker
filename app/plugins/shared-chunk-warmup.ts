@@ -12,6 +12,10 @@ import { resolveExportComment } from '~~/shared/utils/export-comment';
 import { normalizeBaseUrl } from '~~/shared/utils/normalize-base-url';
 import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import { RemoteAdapterError } from '~~/shared/types/remote-adapter';
+import {
+  REMOTE_ISSUE_SEARCH_MODE_ORDER,
+  remoteIssuePickerFormSchema,
+} from '~~/shared/types/remote-issue-ref';
 import { OpenProjectAdapter } from '~~/shared/remote/openproject/adapter';
 import { OpenProjectClient } from '~~/shared/remote/openproject/client';
 import { RedmineAdapter } from '~~/shared/remote/redmine/adapter';
@@ -40,6 +44,8 @@ export default defineNuxtPlugin(() => {
     normalizeBaseUrl('');
     void REMOTE_SECRET_HEADER;
     void new RemoteAdapterError('');
+    void REMOTE_ISSUE_SEARCH_MODE_ORDER;
+    void remoteIssuePickerFormSchema;
     void OpenProjectAdapter;
     void OpenProjectClient;
     void RedmineAdapter;

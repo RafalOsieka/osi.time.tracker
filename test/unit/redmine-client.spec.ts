@@ -43,6 +43,47 @@ describe('RedmineClient', () => {
     expect(url.searchParams.get('subject')).toBe('~Fix bug');
   });
 
+  it('maps the issue project name when present and omits ids', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          issues: [{ id: 1, subject: 'Fix bug', project: { id: 9, name: '  Acme Intranet  ' } }],
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { results } = await client.searchByTitle('Fix bug', null);
+
+    expect(results).toEqual([
+      { remoteIssueId: '1', title: 'Fix bug', remoteProjectTitle: 'Acme Intranet' },
+    ]);
+    expect(JSON.stringify(results)).not.toContain('"id":9');
+  });
+
+  it('omits a missing or blank project name from title search', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          issues: [
+            { id: 2, subject: 'No project' },
+            { id: 3, subject: 'Blank project', project: { id: 1, name: '   ' } },
+          ],
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { results } = await client.searchByTitle('project', null);
+
+    expect(results).toEqual([
+      { remoteIssueId: '2', title: 'No project' },
+      { remoteIssueId: '3', title: 'Blank project' },
+    ]);
+  });
+
   it('skips malformed title-search elements and caps results', async () => {
     const elements = Array.from({ length: 30 }, (_, i) => ({
       id: i + 1,
@@ -78,6 +119,24 @@ describe('RedmineClient', () => {
     const { result } = await client.getIssueById('42', 'secret');
 
     expect(result).toEqual({ remoteIssueId: '42', title: 'Ship it' });
+  });
+
+  it('maps the project name on exact-id lookup', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: { issue: { id: 42, subject: 'Ship it', project: { id: 3, name: 'Portal' } } },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { result } = await client.getIssueById('42', 'secret');
+
+    expect(result).toEqual({
+      remoteIssueId: '42',
+      title: 'Ship it',
+      remoteProjectTitle: 'Portal',
+    });
   });
 
   it('fetches global time-entry activities and skips inactive entries', async () => {

@@ -142,6 +142,15 @@ export const reassignTimeEntriesSchema = z
       .trim()
       .min(1, { error: 'error.remoteIssueTitleRequired' })
       .optional(),
+    /**
+     * Cached remote project title from the client search result. Optional;
+     * blank or omitted values are dropped. Never a remote project id.
+     */
+    cachedRemoteProjectTitle: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => (value && value.length > 0 ? value : undefined)),
   })
   .refine(
     (value) =>
