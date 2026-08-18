@@ -173,8 +173,18 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
       const link = target.locator('[data-testid^="timer-group-remote-issue-link-"]');
       if ((await link.count()) > 0) {
         await link.first().hover();
+        await target.locator('[data-testid="remote-issue-picker-edit-menu"]').waitFor({
+          state: 'visible',
+        });
+        await target.locator('[data-testid="remote-issue-picker-trigger"]').click();
+        return;
       }
-      await target.locator('[data-testid="remote-issue-picker-trigger"]').click();
+      await target
+        .locator(
+          '[data-testid="remote-issue-picker-trigger"], [data-testid^="timer-group-remote-issue-unlinked-"]',
+        )
+        .first()
+        .click();
     }
 
     // --- Title search through the proxy ---

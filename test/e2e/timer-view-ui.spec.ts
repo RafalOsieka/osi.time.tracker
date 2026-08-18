@@ -268,12 +268,37 @@ describeTimerViewUI('timer view UI flow', async () => {
       `[data-testid="timer-group-project-select-${seeded.taskId}"]`,
     );
     await projectSelect.waitFor();
-    await page.getByRole('option', { name: 'Inline Assign Project' }).click();
+    await page.locator(`[data-testid="timer-group-project-option-${project.id}"]`).click();
+    await projectSelect.waitFor({ state: 'hidden' });
 
-    await page.waitForFunction(pageIncludesText, 'Inline Assign Project');
-
-    const unlinked = page.locator('[data-testid^="timer-group-remote-issue-unlinked-"]');
-    await unlinked.first().waitFor({ state: 'visible' });
+    await page.waitForFunction(
+      ({ title, projectName }) => {
+        const titles = [
+          ...document.querySelectorAll(
+            '[data-testid^="timer-group-title-"]:not([data-testid*="title-input"])',
+          ),
+        ];
+        const titleNode = titles.find((node) => {
+          const input = (
+            node.matches('input') ? node : node.querySelector('input')
+          ) as HTMLInputElement | null;
+          return input?.value === title;
+        });
+        if (!titleNode) return false;
+        let group: Element | null = titleNode;
+        while (group) {
+          const tid = group.getAttribute('data-testid');
+          if (tid && /^timer-group-(untitled|[0-9a-f-]{36})$/i.test(tid)) break;
+          group = group.parentElement;
+        }
+        if (!group) return false;
+        const projectBtn = group.querySelector('[data-testid^="timer-group-project-"]');
+        const projectText = projectBtn?.textContent ?? '';
+        const unlinked = group.querySelector('[data-testid^="timer-group-remote-issue-unlinked-"]');
+        return projectText.includes(projectName) && !!unlinked;
+      },
+      { title: 'Inline Project Assign Task', projectName: 'Inline Assign Project' },
+    );
     expect(await page.evaluate(pageExcludesText, '(unlinked)')).toBe(true);
     expect(await page.evaluate(pageExcludesText, '(niepołączone)')).toBe(true);
 

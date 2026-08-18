@@ -54,6 +54,8 @@ The application SHALL provide a reusable time-input component with an `HH:mm` st
 
 The component SHALL commit the normalized value on blur or Enter and cancel on Escape; input that cannot be normalized SHALL silently revert the field to the previous value without emitting a model update and without sending any request. The component SHALL accept an accessible label and `data-testid` via props, and SHALL be the single time-entry input used wherever the UI accepts an `HH:mm` time typed by the user.
 
+When the component is presented in a compact inline context, a committed `HH:mm` value SHALL be fully visible without clipping. Compact presentation SHALL reserve enough space for that five-character value together with the control's own padding and border.
+
 #### Scenario: Compact digits normalized on commit
 - **WHEN** the user types `900` and blurs the field or presses Enter
 - **THEN** the model SHALL update to `09:00`
@@ -73,6 +75,10 @@ The component SHALL commit the normalized value on blur or Enter and cancel on E
 #### Scenario: Escape cancels the edit
 - **WHEN** the user presses Escape while editing
 - **THEN** the field SHALL revert to the previous value and the model SHALL NOT update
+
+#### Scenario: Compact presentation shows a full HH:mm
+- **WHEN** the compact time input displays a committed value such as `09:00`
+- **THEN** all five characters SHALL be visible without clipping
 
 ### Requirement: REQ-174 Nuxt UI components for overlay dialog forms and interactive items
 Overlay dialogs (Nuxt UI `UModal` / `UPopover` bodies) that collect user input SHALL express their form using Nuxt UI's `UForm` bound to a Standard Schema (zod) `:schema`, consistent with the list/detail and settings pages, rather than a native `<form @submit.prevent>` element. Interactive result/list items rendered inside these dialogs (search-result rows, autocomplete suggestion labels) SHALL be Nuxt UI button components (e.g. `UButton variant="ghost"`) rather than native `<button>` elements. All existing `data-testid`, `id`, `<label for>`, `aria-*`, and `role="alert"` error wiring SHALL be preserved so current tests and accessibility contracts remain intact.
@@ -94,15 +100,23 @@ Overlay dialogs (Nuxt UI `UModal` / `UPopover` bodies) that collect user input S
 - **THEN** every existing `data-testid`, field `id`, associated `<label>`, and error-announcement wiring SHALL remain unchanged
 
 ### Requirement: REQ-178 Inline-edit affordance uses a Nuxt UI input
-Click-to-edit text fields (e.g. a time entry's title and its project selector on the timer surface) SHALL express their editable affordance with a Nuxt UI `UInput` — a seamless display state (`variant="none"`, styled like plain text) that becomes an editable state (`variant="ghost"`) on focus/activation — rather than a native `<button>` or a `UButton` styled with custom CSS to look like editable text. The affordance SHALL commit the normalized value on blur or Enter and revert on Escape or invalid input (no model update, no request), preserving the existing behavior. It SHALL retain its accessible label and `data-testid`, and MAY keep dynamic `ch`-based sizing via an inline `:style` (a legitimate dynamic style, not residual scoped CSS). No `<style scoped>` block SHALL be added to reset button chrome for this pattern.
+Click-to-edit **title** fields SHALL express their editable affordance with a Nuxt UI `UInput` — a seamless display state (`variant="none"`, styled like plain text) that becomes an editable state (`variant="ghost"`) on focus/activation — rather than a native `<button>` or a `UButton` styled with custom CSS to look like editable text. The group **project** control SHALL occupy a stable slot-owned `UButton` that opens a non-modal `UPopover` listbox on a single activation (not a `USelect`, whose dismiss overlay swallows the first click). The affordance SHALL commit the normalized value on blur or Enter (titles) or on option activate (project) and revert on Escape or invalid input (no model update, no request), preserving the existing behavior. It SHALL retain its accessible label and `data-testid`. The control SHALL occupy a stable layout slot whose width is determined by the surrounding layout, not by the current string length: dynamic `ch`-based sizing that grows or shrinks the control with the text SHALL NOT be used. When the display value exceeds the slot, the visible text SHALL be truncated. Activating the editor SHALL fill that same slot and SHALL NOT shift neighboring controls. No `<style scoped>` block SHALL be added to reset button chrome for this pattern.
 
 #### Scenario: Text field reads as plain text until edited
-- **WHEN** an inline-editable title or project field is displayed without focus
+- **WHEN** an inline-editable title field is displayed without focus
 - **THEN** it SHALL render as seamless plain text (`UInput variant="none"`) with no border, ring, or button chrome
 
 #### Scenario: Field becomes editable on activation and commits
-- **WHEN** the user focuses the field, edits the value, and blurs or presses Enter
+- **WHEN** the user focuses a title field, edits the value, and blurs or presses Enter
 - **THEN** the field SHALL present an editable `UInput` and SHALL commit the normalized value
+
+#### Scenario: Project listbox opens on one click
+- **WHEN** the user activates a group's project control
+- **THEN** a non-modal popover listbox SHALL open on that activation and SHALL NOT require a second click
+
+#### Scenario: Compact time editor is an outlined input
+- **WHEN** the compact time input is shown in an entry start/stop slot
+- **THEN** it SHALL render as an outlined `UInput` that still fits the reserved slot
 
 #### Scenario: Invalid input or Escape reverts without side effects
 - **WHEN** the user presses Escape or enters a value that cannot be normalized
@@ -111,6 +125,14 @@ Click-to-edit text fields (e.g. a time entry's title and its project selector on
 #### Scenario: No button-as-text CSS overrides remain
 - **WHEN** the inline-edit affordance is implemented
 - **THEN** it SHALL NOT rely on a `UButton`/`<button>` reset via `<style scoped>` (background/padding/font resets) to imitate editable text
+
+#### Scenario: Display width is not content-sized
+- **WHEN** an inline-editable title or project field is displayed
+- **THEN** its reserved width SHALL come from the surrounding layout slot and SHALL NOT be a `ch` width derived from the current string length
+
+#### Scenario: Activating the editor keeps the same slot
+- **WHEN** the user activates an inline-editable title or project field
+- **THEN** the editor SHALL occupy the same reserved width as the display state and neighboring controls SHALL NOT shift
 
 ### Requirement: REQ-263 Full-width form controls in dialogs and settings
 Overlay dialog forms (Nuxt UI `UModal` bodies that collect structured input, including project and tracker create/edit dialogs) and the `/settings` preferences surface SHALL render interactive form controls (`UInput`, `USelect`, `USelectMenu`, and equivalent Nuxt UI field controls) at full width of their form column. Form stacks SHALL use a consistent vertical grid gap. Project and tracker create/edit dialogs SHALL use a consistent modal content max-width appropriate for form dialogs (e.g. `sm:max-w-lg`). This requirement does not force full-width styling on dense inline editors (timer row inline edits, compact table cells) outside dialog and settings form contexts.

@@ -305,7 +305,8 @@ async function unlinkRemoteIssue() {
                 class="w-full justify-start"
                 role="option"
                 :label="t('timerView.noProject')"
-                @click="commitProject(null)"
+                data-testid="timer-group-project-option-none"
+                @click.stop="commitProject(null)"
               />
               <UButton
                 v-for="option in projectSelectOptions"
@@ -315,7 +316,8 @@ async function unlinkRemoteIssue() {
                 class="w-full justify-start"
                 role="option"
                 :label="option.name"
-                @click="commitProject(option.id)"
+                :data-testid="`timer-group-project-option-${option.id}`"
+                @click.stop="commitProject(option.id)"
               />
             </div>
           </template>

@@ -9,6 +9,8 @@ import {
 } from '../../shared/types/remote-issue-ref';
 import { useRemoteIssueSearch } from '~/composables/useRemoteIssueSearch';
 
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
@@ -92,13 +94,17 @@ function unlink() {
   emit('unlink');
   onClose();
 }
+
+onBeforeUnmount(() => {
+  open.value = false;
+});
 </script>
 
 <template>
   <span
     ref="rootEl"
+    v-bind="$attrs"
     class="group/ri relative inline-flex min-w-6 items-center justify-center"
-    :data-testid="currentRef ? undefined : unlinkedTestid"
   >
     <UButton
       v-if="currentRef && currentRef.url"
@@ -145,7 +151,7 @@ function unlink() {
       class="w-6 shrink-0 justify-center"
       :aria-label="t('timerView.remoteIssue.unlinked')"
       :title="t('timerView.remoteIssue.unlinked')"
-      data-testid="remote-issue-picker-trigger"
+      :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
       @click.stop="onTriggerClick"
     />
 
@@ -219,11 +225,12 @@ function unlink() {
 
           <UButton
             v-if="currentRef"
+            type="button"
             color="error"
             variant="ghost"
             :label="t('remoteIssuePicker.unlinkButton')"
             data-testid="remote-issue-picker-unlink"
-            @click="unlink"
+            @click.stop="unlink"
           />
         </div>
       </template>
