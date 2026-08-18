@@ -54,6 +54,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     let sourceRemoteIssueId: string | null = null;
     let sourceTrackerId: string | null = null;
     let sourceCachedTitle: string | null = null;
+    let sourceCachedRemoteProjectTitle: string | null = null;
     if (sourceTaskId) {
       const [sourceTask] = await tx
         .select({
@@ -62,6 +63,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
           remoteIssueId: tasks.remoteIssueId,
           trackerId: tasks.trackerId,
           remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
+          remoteIssueCachedProjectTitle: tasks.remoteIssueCachedProjectTitle,
         })
         .from(tasks)
         .where(and(eq(tasks.id, sourceTaskId), eq(tasks.userId, user.id)))
@@ -71,6 +73,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       sourceRemoteIssueId = sourceTask?.remoteIssueId ?? null;
       sourceTrackerId = sourceTask?.trackerId ?? null;
       sourceCachedTitle = sourceTask?.remoteIssueCachedTitle ?? null;
+      sourceCachedRemoteProjectTitle = sourceTask?.remoteIssueCachedProjectTitle ?? null;
     }
 
     const effectiveName = parsedBody.name ?? sourceName;
@@ -112,17 +115,20 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     let effectiveRemoteIssueId: string | null;
     let effectiveTrackerId: string | null;
     let effectiveCachedTitle: string | null;
+    let effectiveCachedRemoteProjectTitle: string | null;
 
     if (!remoteIssueProvided) {
       // Omitted: keep the source task's current remote issue.
       effectiveRemoteIssueId = sourceRemoteIssueId;
       effectiveTrackerId = sourceTrackerId;
       effectiveCachedTitle = sourceCachedTitle;
+      effectiveCachedRemoteProjectTitle = sourceCachedRemoteProjectTitle;
     } else if (parsedBody.remoteIssueId == null) {
       // Explicit null: target the unlinked twin.
       effectiveRemoteIssueId = null;
       effectiveTrackerId = null;
       effectiveCachedTitle = null;
+      effectiveCachedRemoteProjectTitle = null;
     } else {
       // Value: target the task carrying that remote issue. Derive tracker
       // provenance server-side from the target project's active tracker (REQ-179).
@@ -146,12 +152,14 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       effectiveRemoteIssueId = parsedBody.remoteIssueId;
       effectiveTrackerId = tracker.id;
       effectiveCachedTitle = parsedBody.cachedTitle ?? parsedBody.remoteIssueId;
+      effectiveCachedRemoteProjectTitle = parsedBody.cachedRemoteProjectTitle ?? null;
     }
 
     const targetTaskId = await resolveTaskId(tx, user.id, effectiveName, effectiveProjectId, {
       remoteIssueId: effectiveRemoteIssueId,
       trackerId: effectiveTrackerId,
       cachedTitle: effectiveCachedTitle,
+      cachedRemoteProjectTitle: effectiveCachedRemoteProjectTitle,
     });
     if (!targetTaskId) {
       throw createError({

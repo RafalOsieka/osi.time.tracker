@@ -1,13 +1,5 @@
-# remote-issue-linking Specification
+## MODIFIED Requirements
 
-## Purpose
-
-Define how a Task is linked to a single remote issue: searching the configured
-tracker (by title phrase or exact issue ID) under either execution mode, storing
-at most one adapter-neutral issue reference per Task, deriving its issue URL,
-unlinking locally, and presenting the reusable Timer-view issue picker. All rules
-are user-scoped and adapter-neutral.
-## Requirements
 ### Requirement: REQ-104 Persist one remote issue reference per Task
 The system SHALL store at most one remote issue reference per Task, held **inline on the task row** (REQ-237): the owning user, remote-system configuration provenance, remote issue ID as nullable text, cached issue title, optional cached remote project **title**, and timestamps. A Task with a null remote issue ID SHALL be unlinked. It SHALL NOT store a remote issue URL. It SHALL NOT store a remote project id or any other remote-project identifier. For an active matching configuration, the system SHALL derive the issue URL from its normalized base URL and remote issue ID using the URL pattern of the configuration's `systemType` (e.g. OpenProject work-package URLs, Redmine issue URLs), resolved through a per-provider abstraction rather than conditional branching.
 
@@ -42,44 +34,6 @@ When a newly linked Task is created, the system SHALL persist the remote project
 #### Scenario: Reference has no usable configuration
 - **WHEN** the reference's configuration is not active or available
 - **THEN** the system SHALL return its cached ID, cached issue title, and cached remote project title when present, without a generated URL or remote-search capability
-
-### Requirement: REQ-105 Unlink a remote issue locally
-An authenticated user SHALL be able to unlink the remote issue from their own work without touching the remote tracker. Unlinking SHALL be expressed as a **day-scoped move**: the listed entries SHALL be reassigned (REQ-179, explicit null remote issue) to the find-or-create Task with the same name and project and no remote issue, and the source Task SHALL be garbage-collected when it is left with no entries. Unlinking SHALL NOT call, update, or delete any remote issue, and SHALL NOT affect the same Task's entries on other days. The task-global endpoints `POST /api/tasks/[id]/remote-issue-ref` and `DELETE /api/tasks/[id]/remote-issue-ref` SHALL be removed.
-
-#### Scenario: Unlink one day's entries
-- **WHEN** the user unlinks the remote issue for a day's task group
-- **THEN** that day's entries SHALL move to the unlinked Task of the same name and project, the remote tracker SHALL be unchanged, and the same Task's entries on other days SHALL keep their reference
-
-#### Scenario: Unlink an already unlinked group
-- **WHEN** the user requests unlinking for entries already on an unlinked Task
-- **THEN** the operation SHALL succeed idempotently and the entries SHALL remain on that Task
-
-#### Scenario: Emptied source task is garbage-collected
-- **WHEN** unlinking moves the source Task's last remaining entries away
-- **THEN** the emptied source Task SHALL be hard-deleted in the same transaction
-
-#### Scenario: Task-global reference endpoints are gone
-- **WHEN** a client calls `POST` or `DELETE` on `/api/tasks/[id]/remote-issue-ref`
-- **THEN** the system SHALL respond with HTTP 404 or 405 (route absent)
-
-### Requirement: REQ-106 Remote issue linking is user-scoped and validated
-All local link and unlink operations SHALL require authentication, enforce CSRF protection for mutations, validate request bodies through shared boundary schemas, and scope Task and time-entry lookup to the authenticated user. Linking SHALL derive the active tracker from the owned source Task's Project (`project.trackerId` pointing at a non-deleted tracker) and SHALL reject project-less Tasks, local projects (null tracker), missing or soft-deleted trackers, foreign Tasks, unknown Tasks, and foreign or unknown time-entry ids without trusting client-supplied ownership or tracker identifiers. Any active tracker whose `systemType` has a registered adapter (OpenProject, Redmine) SHALL be eligible for linking. Because linking is performed by the day-scoped reassignment operation (REQ-179), these validations SHALL be enforced by that endpoint, and a rejected request SHALL leave every listed entry and Task unchanged.
-
-#### Scenario: Link an eligible owned Task
-- **WHEN** an authenticated user submits a valid issue selection for a day's entries of their own Task under a Project with an active supported tracker (OpenProject or Redmine)
-- **THEN** the system SHALL link it using the server-derived tracker provenance
-
-#### Scenario: Ineligible Task is rejected
-- **WHEN** the source Task is project-less, its project has no tracker, or its tracker is missing/soft-deleted
-- **THEN** the system SHALL reject linking with a translated `{ messageKey, params }` error, persist nothing, and move no entry
-
-#### Scenario: Foreign or unknown Task or entry is concealed
-- **WHEN** a user attempts to link or unlink using a foreign or unknown Task id or time-entry id
-- **THEN** the system SHALL respond with HTTP 404 without revealing whether it exists
-
-#### Scenario: Missing authentication or CSRF is rejected
-- **WHEN** a local mutation lacks a valid session or CSRF token
-- **THEN** the system SHALL reject it and SHALL persist nothing
 
 ### Requirement: REQ-107 Timer view remote issue picker
 For each Task whose Project resolves to an active tracker, the Timer view SHALL display a compact two-part remote-issue control. For a linked Task, the first part SHALL be a `#<remoteIssueId>` link to the remote issue, with its URL derived from the tracker and issue ID and a tooltip containing the cached issue title and, when present, the cached remote project title. For an unlinked Task, the first part SHALL be a compact status icon whose accessible name and tooltip are the localized unlinked phrase; that phrase SHALL NOT appear as visible text. For a linked Task, hover or focus of that identifier SHALL reveal a dropdown with two actions, in this order: Edit (pencil icon plus the localized Edit label) and Unlink (localized Unlink label). Activating Edit, or the unlinked status icon, SHALL open a reusable search-and-attach `Popover`. Activating Unlink SHALL immediately perform the day-scoped unlink (REQ-105) with no confirmation dialog and SHALL NOT open the popover. The popover SHALL NOT contain an unlink action.
@@ -198,4 +152,3 @@ For an owned Task whose Project has an active tracker with a registered adapter,
 #### Scenario: Remote search fails
 - **WHEN** the tracker rejects the credential, CORS blocks a client-mode request, or a client- or server-mode request otherwise fails
 - **THEN** the picker SHALL expose a translated accessible error state without changing the Task's existing reference
-

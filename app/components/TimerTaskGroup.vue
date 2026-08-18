@@ -132,9 +132,7 @@ const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate
 const entryCount = computed(() => props.group.entries.length);
 const countLabel = computed(() => {
   const count = entryCount.value;
-  return count === 1
-    ? t('timerView.entryCountOne', { count })
-    : t('timerView.entryCount', { count });
+  return t('timerView.entryCount', { count }, count);
 });
 const countDisplay = computed(() => (entryCount.value > 9 ? '9+' : String(entryCount.value)));
 
@@ -163,7 +161,11 @@ const remoteIssueUnavailableLabel = computed(() =>
     : t('timerView.remoteIssue.unavailableNoProject'),
 );
 
-async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: string }) {
+async function linkRemoteIssue(payload: {
+  remoteIssueId: string;
+  cachedTitle: string;
+  cachedRemoteProjectTitle?: string;
+}) {
   if (!props.group.taskId) return;
   const ids = props.group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
@@ -174,6 +176,7 @@ async function linkRemoteIssue(payload: { remoteIssueId: string; cachedTitle: st
         ids,
         remoteIssueId: payload.remoteIssueId,
         cachedTitle: payload.cachedTitle,
+        cachedRemoteProjectTitle: payload.cachedRemoteProjectTitle,
       },
     });
     emit('entry-changed');
@@ -345,7 +348,7 @@ async function unlinkRemoteIssue() {
           square
           size="xs"
           disabled
-          class="w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
+          class="h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
           :aria-label="remoteIssueUnavailableLabel"
           :title="remoteIssueUnavailableLabel"
           :data-testid="`timer-group-remote-issue-disabled-${group.key}`"

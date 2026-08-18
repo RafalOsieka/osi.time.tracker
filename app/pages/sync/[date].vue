@@ -512,7 +512,11 @@ async function retryRemoteLogs(row: RemoteSyncDayRowDto) {
 
 async function linkRemoteIssue(
   row: RemoteSyncDayRowDto,
-  payload: { remoteIssueId: string; cachedTitle: string },
+  payload: {
+    remoteIssueId: string;
+    cachedTitle: string;
+    cachedRemoteProjectTitle?: string;
+  },
 ) {
   const ids = row.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
@@ -524,6 +528,7 @@ async function linkRemoteIssue(
         ids,
         remoteIssueId: payload.remoteIssueId,
         cachedTitle: payload.cachedTitle,
+        cachedRemoteProjectTitle: payload.cachedRemoteProjectTitle,
       },
     });
     // Refresh so the row key (taskId) and issue ref flip in place after the move.

@@ -46,9 +46,17 @@ export interface OpenProjectTimeLogsPageResult {
   nextPageUrl: string | null;
 }
 
+interface OpenProjectHalLink {
+  href?: unknown;
+  title?: unknown;
+}
+
 interface OpenProjectWorkPackageElement {
   id?: unknown;
   subject?: unknown;
+  _links?: {
+    project?: OpenProjectHalLink;
+  };
 }
 
 interface OpenProjectCollectionPayload {
@@ -70,11 +78,6 @@ interface OpenProjectTimeEntrySchemaPayload {
 
 interface OpenProjectTimeEntryFormPayload {
   _embedded?: { schema?: OpenProjectTimeEntrySchemaPayload };
-}
-
-interface OpenProjectHalLink {
-  href?: unknown;
-  title?: unknown;
 }
 
 interface OpenProjectTimeEntryElement {
@@ -279,7 +282,7 @@ function parseTitleSearchResults(payload: unknown): RemoteIssueSearchResult[] {
     ) {
       continue;
     }
-    results.push({ remoteIssueId: String(element.id), title: element.subject });
+    results.push(toSearchResult(element));
   }
 
   return results;
@@ -311,7 +314,25 @@ function parseIssueByIdResult(
     return null;
   }
 
-  return { remoteIssueId: String(element.id), title: element.subject };
+  return toSearchResult(element);
+}
+
+function remoteProjectTitleFromWorkPackage(
+  element: OpenProjectWorkPackageElement,
+): string | undefined {
+  const title = element._links?.project?.title;
+  if (typeof title !== 'string') return undefined;
+  const trimmed = title.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function toSearchResult(element: OpenProjectWorkPackageElement): RemoteIssueSearchResult {
+  const remoteProjectTitle = remoteProjectTitleFromWorkPackage(element);
+  return {
+    remoteIssueId: String(element.id),
+    title: String(element.subject),
+    ...(remoteProjectTitle ? { remoteProjectTitle } : {}),
+  };
 }
 
 /**

@@ -181,6 +181,7 @@ export class RedmineClient {
 interface RedmineIssueElement {
   id?: unknown;
   subject?: unknown;
+  project?: { id?: unknown; name?: unknown };
 }
 
 interface RedmineIssuesPayload {
@@ -256,7 +257,7 @@ function parseTitleSearchResults(payload: unknown): RemoteIssueSearchResult[] {
     ) {
       continue;
     }
-    results.push({ remoteIssueId: String(element.id), title: element.subject });
+    results.push(toSearchResult(element));
   }
 
   return results;
@@ -285,7 +286,23 @@ function parseIssueByIdResult(
     return null;
   }
 
-  return { remoteIssueId: String(issue.id), title: issue.subject };
+  return toSearchResult(issue);
+}
+
+function remoteProjectTitleFromIssue(element: RedmineIssueElement): string | undefined {
+  const name = element.project?.name;
+  if (typeof name !== 'string') return undefined;
+  const trimmed = name.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function toSearchResult(element: RedmineIssueElement): RemoteIssueSearchResult {
+  const remoteProjectTitle = remoteProjectTitleFromIssue(element);
+  return {
+    remoteIssueId: String(element.id),
+    title: String(element.subject),
+    ...(remoteProjectTitle ? { remoteProjectTitle } : {}),
+  };
 }
 
 /**

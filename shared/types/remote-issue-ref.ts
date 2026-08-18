@@ -12,8 +12,8 @@ export type RemoteIssueSearchMode = z.infer<typeof remoteIssueSearchModeSchema>;
 
 /** Stable display order for remote-issue search mode selects. */
 export const REMOTE_ISSUE_SEARCH_MODE_ORDER = [
-  'title',
   'id',
+  'title',
 ] as const satisfies readonly RemoteIssueSearchMode[];
 
 /**
@@ -38,11 +38,13 @@ export interface RemoteIssueSearchQuery {
 
 /**
  * Adapter-neutral search/lookup result item. Regardless of adapter, only
- * the remote issue id and its title are exposed to shared/browser code.
+ * the remote issue id, title, and optional remote project title are exposed
+ * to shared/browser code — never a remote project id.
  */
 export interface RemoteIssueSearchResult {
   remoteIssueId: string;
   title: string;
+  remoteProjectTitle?: string;
 }
 
 /**
@@ -104,6 +106,7 @@ export interface RemoteIssueRefDto {
   trackerId: string;
   remoteIssueId: string;
   cachedTitle: string;
+  cachedRemoteProjectTitle?: string;
   url?: string;
   createdAt: string;
   updatedAt: string;

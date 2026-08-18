@@ -43,6 +43,79 @@ describe('OpenProjectClient', () => {
     expect(filters).toEqual([{ subject: { operator: '~', values: ['Fix bug'] } }]);
   });
 
+  it('maps the work-package project title when present and omits ids', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 1,
+                subject: 'Fix bug',
+                _links: { project: { href: '/api/v3/projects/9', title: '  Acme Intranet  ' } },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { results } = await client.searchByTitle('Fix bug', null);
+
+    expect(results).toEqual([
+      { remoteIssueId: '1', title: 'Fix bug', remoteProjectTitle: 'Acme Intranet' },
+    ]);
+    expect(JSON.stringify(results)).not.toContain('/api/v3/projects/9');
+  });
+
+  it('omits a missing or blank project title from title search', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              { id: 2, subject: 'No project' },
+              { id: 3, subject: 'Blank project', _links: { project: { title: '   ' } } },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { results } = await client.searchByTitle('project', null);
+
+    expect(results).toEqual([
+      { remoteIssueId: '2', title: 'No project' },
+      { remoteIssueId: '3', title: 'Blank project' },
+    ]);
+  });
+
+  it('maps the project title on exact-id lookup', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          id: 42,
+          subject: 'Ship it',
+          _links: { project: { href: '/api/v3/projects/1', title: 'Portal' } },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { result } = await client.getIssueById('42', 'secret');
+
+    expect(result).toEqual({
+      remoteIssueId: '42',
+      title: 'Ship it',
+      remoteProjectTitle: 'Portal',
+    });
+  });
+
   it('builds an exact-id lookup request and returns null for a 404 status', async () => {
     const transport = fakeTransport([{ status: 404, payload: {} }]);
     const client = new OpenProjectClient(transport, 'https://op.example.com');

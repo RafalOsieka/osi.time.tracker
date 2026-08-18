@@ -191,6 +191,10 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
     await page
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /title/i })
+      .click();
+    await page
       .locator(
         '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
       )

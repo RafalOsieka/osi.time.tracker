@@ -23,6 +23,7 @@ export const tasks = pgTable(
     trackerId: uuid('trackerId').references(() => trackers.id),
     remoteIssueId: text('remoteIssueId'),
     remoteIssueCachedTitle: text('remoteIssueCachedTitle'),
+    remoteIssueCachedProjectTitle: text('remoteIssueCachedProjectTitle'),
     remoteIssueCreatedAt: timestamp('remoteIssueCreatedAt', { withTimezone: true }),
     remoteIssueUpdatedAt: timestamp('remoteIssueUpdatedAt', { withTimezone: true }),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
