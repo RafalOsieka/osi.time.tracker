@@ -49,13 +49,8 @@ onMounted(() => {
           :class="isCollapsed ? 'justify-center px-0' : 'gap-2 px-2'"
           data-testid="app-sidebar-brand"
         >
-          <!-- Collapsed: short brand mark until a real app icon exists -->
-          <span
-            class="font-semibold"
-            :class="isCollapsed ? 'text-sm tracking-tight text-center' : 'truncate'"
-          >
-            {{ isCollapsed ? t('layout.brandShort') : t('layout.title') }}
-          </span>
+          <AppBrandMark :collapsed="isCollapsed" />
+          <span v-if="!isCollapsed" class="truncate font-semibold">{{ t('layout.title') }}</span>
         </div>
       </template>
 

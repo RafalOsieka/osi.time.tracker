@@ -98,3 +98,53 @@ The application SHALL NOT load a custom webfont or inject an external font style
 #### Scenario: Auto-registered fonts module only
 - **WHEN** Nuxt modules are configured
 - **THEN** `@nuxt/fonts` SHALL NOT appear as an explicit `modules` entry; configuration (if any) goes through the root `fonts` key or a future `@theme` token
+
+### Requirement: REQ-267 SVG-first brand mark and favicon
+The application SHALL provide an original brand mark as scalable vector graphics, distinct from any third-party framework default icon. The mark SHALL be a circular clock ring with a single hand and a hub, without letterforms, tick marks, or a play triangle, so it remains legible at favicon size (~16×16) and at sidebar size (~24px).
+
+In application chrome (sidebar brand region and auth-layout heading) the mark SHALL be a background-free glyph that inherits the configured brand `primary` color (REQ-160) so its effective shade adapts between light and dark mode. The document favicon SHALL be a colored rounded-square app icon with a white glyph on a cyan fill matching the brand ramp. Because a tab icon cannot inherit CSS color tokens, that fill MAY be a static color in the favicon asset; in-app chrome SHALL NOT use a raw hex class to tint the glyph.
+
+The document head SHALL advertise the app icon as the favicon (SVG plus a raster `.ico` fallback). The previous third-party default favicon SHALL NOT remain the tab icon.
+
+This requirement does not add a PWA manifest, service worker, or additional raster sizes (apple-touch, 192/512, maskable). Those remain a later PWA change; the SVG app icon SHALL remain the source for those sizes.
+
+#### Scenario: In-chrome mark follows the brand accent
+- **WHEN** the brand mark is rendered in the sidebar or on the login heading in light or dark mode
+- **THEN** its color SHALL derive from the configured `primary` token rather than a hardcoded hex class
+
+#### Scenario: Favicon is the app icon, not a framework default
+- **WHEN** a browser loads any application page
+- **THEN** the document favicon SHALL be the application brand app icon (SVG and `.ico` fallback) and SHALL NOT be a third-party framework default
+
+#### Scenario: Mark has no letterforms
+- **WHEN** the brand mark or favicon is rendered
+- **THEN** it SHALL not contain readable letters (including a short brand abbreviation)
+
+#### Scenario: Dark mode does not invert the favicon fill
+- **WHEN** the user is in dark mode
+- **THEN** the favicon SHALL remain the cyan rounded-square app icon with a white glyph (the in-chrome glyph still follows `primary`)
+
+### Requirement: REQ-268 Favicon reflects idle vs running timer
+The document favicon SHALL follow the shared running-timer state (the same `running` entry used by the shell widget, REQ-146 / REQ-258). When there is no running entry (including unauthenticated visits and an authenticated idle timer), the favicon SHALL be the default brand app icon from REQ-267. When a running entry is present, the favicon SHALL be a **static** variant of that same app icon with a green status dot in the bottom-right corner and a contrasting ring so the dot remains visible on the cyan square. The variant SHALL NOT pulse, animate, or replace the brand glyph with a play control.
+
+The running variant SHALL apply as soon as running state is known, including first paint of an authenticated page whose SSR seed already contains a running entry. Stopping the timer, or otherwise clearing the running entry, SHALL restore the default favicon in that tab. Other open tabs are not required to update until they next resolve running state. The in-app brand mark (sidebar and login heading) SHALL remain the unbadged glyph.
+
+#### Scenario: Idle and logged-out use the default favicon
+- **WHEN** there is no running entry (logged-out visitor, or authenticated user with an idle timer)
+- **THEN** the document favicon SHALL be the default brand app icon
+
+#### Scenario: Running entry shows a green-dot favicon
+- **WHEN** the authenticated user has a running entry
+- **THEN** the document favicon SHALL be the brand app icon with a static green corner dot
+
+#### Scenario: Stop restores the default favicon
+- **WHEN** the user stops the running timer in that tab
+- **THEN** the document favicon SHALL return to the default brand app icon
+
+#### Scenario: Reloading a running timer shows the badged favicon on first paint
+- **WHEN** an authenticated user with a running entry performs a full document load
+- **THEN** the initial document favicon SHALL be the running (green-dot) variant rather than flashing the idle icon until a client-only fetch
+
+#### Scenario: In-app mark is not badged
+- **WHEN** a timer is running
+- **THEN** the sidebar and login brand mark SHALL remain the unbadged glyph

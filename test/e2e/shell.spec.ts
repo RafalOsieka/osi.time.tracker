@@ -26,6 +26,13 @@ describeShell('authenticated shell navigation', async () => {
     return page;
   }
 
+  it('sidebar brand shows the mark and the application title when expanded', async () => {
+    const page = await loginAs('shell@example.com');
+    const brand = page.locator('[data-testid="app-sidebar-brand"]');
+    expect(await brand.locator('[data-testid="app-brand-mark"]').isVisible()).toBe(true);
+    expect((await brand.textContent()) ?? '').toMatch(/OSI Time Tracker/);
+  });
+
   it('shell renders top bar and sidebar after login', async () => {
     const page = await loginAs('shell@example.com');
     expect(await page.locator('[data-testid="app-topbar"]').isVisible()).toBe(true);
