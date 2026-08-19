@@ -43,7 +43,7 @@ The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Proje
 - **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
 
 ### Requirement: REQ-066 Desktop collapsible rail with persisted state
-On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static full-height rail that the user can toggle between a full (labelled) state and an icon-only (collapsed) state, using `UDashboardSidebar`'s built-in `collapsible` behavior. The desktop collapse/expand control SHALL be available in the top bar (navbar) left region. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed). When collapsed, the brand region SHALL show a short brand mark (`layout.brandShort`) centered in the header until a dedicated app icon exists; when expanded, it SHALL show the full application title.
+On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static full-height rail that the user can toggle between a full (labelled) state and an icon-only (collapsed) state, using `UDashboardSidebar`'s built-in `collapsible` behavior. The desktop collapse/expand control SHALL be available in the top bar (navbar) left region. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed). When expanded, the brand region SHALL show the application brand mark beside the full application title (`layout.title`). When collapsed, the brand region SHALL show the same brand mark centered in the header and SHALL NOT show the full title or a short letter-only substitute. The collapsed mark SHALL expose the full application title as its accessible name.
 
 #### Scenario: User collapses the rail
 - **WHEN** a desktop user activates the top-bar collapse control while the rail is full
@@ -52,6 +52,18 @@ On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a sta
 #### Scenario: Rail state survives reload
 - **WHEN** a desktop user has set the rail to icon-only and reloads the application
 - **THEN** the rail SHALL render in the icon-only state on first paint without flashing the full state
+
+#### Scenario: Expanded brand shows mark and title
+- **WHEN** the desktop sidebar is expanded
+- **THEN** the brand region SHALL show the application brand mark beside the full application title
+
+#### Scenario: Collapsed brand shows the mark only
+- **WHEN** the desktop sidebar is collapsed to icon-only
+- **THEN** the brand region SHALL show the application brand mark, SHALL NOT show the full title, and SHALL NOT show a short letter-only brand string
+
+#### Scenario: Collapsed mark is named
+- **WHEN** the desktop sidebar is collapsed to icon-only
+- **THEN** the brand mark SHALL expose the full application title as its accessible name
 
 ### Requirement: REQ-067 Off-canvas drawer below the lg breakpoint
 On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented as an off-canvas drawer (the `UDashboardSidebar` mobile slideover) opened by the top-bar menu toggle control (mobile-only), with a scrim, focus trapping while open, and dismissal via `Escape` or scrim activation. The reserved timer region SHALL remain present in the top bar at this tier. The mobile menu toggle SHALL appear in the top bar on viewports below `lg` and SHALL NOT appear on desktop. The desktop rail collapse control SHALL NOT appear below `lg`.

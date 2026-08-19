@@ -40,11 +40,15 @@ describe('theme UI and SSR head wiring', () => {
     expect(useHeadMock).toHaveBeenCalled();
     const headArg = useHeadMock.mock.calls[0]?.[0] as {
       htmlAttrs: { lang: { value: string }; dir?: unknown };
-      link?: Array<{ rel: string; href: string }>;
+      link?: Array<{ rel: string; href: string; type?: string }>;
     };
     expect(headArg.htmlAttrs.lang).toBe(localeState);
+    expect(headArg.link).toEqual([
+      { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+      { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+    ]);
     // No manual font <link>; typography uses Nuxt UI / Tailwind defaults.
-    expect(headArg.link).toBeUndefined();
+    expect(headArg.link?.some((item) => item.rel === 'stylesheet')).toBe(false);
     // UApp is present either as our stub or the real Nuxt UI root wrapper.
     expect(
       wrapper.find('[data-testid="u-app"]').exists() || wrapper.html().includes('UApp') || true,

@@ -130,4 +130,14 @@ describe('preserved test hooks', () => {
     expect(wrapper.find('[data-testid="theme-toggle-group"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="slotted"]').exists()).toBe(true);
   });
+
+  it('auth layout heading shows the brand mark beside the title', async () => {
+    const wrapper = await mountSuspended(AuthLayout, {
+      slots: { default: () => h('p', { 'data-testid': 'slotted' }, 'content') },
+    });
+    const heading = wrapper.get('h1');
+    expect(heading.find('[data-testid="app-brand-mark"]').exists()).toBe(true);
+    expect(heading.text()).toContain('OSI Time Tracker');
+    expect(heading.find('[data-testid="app-brand-mark"]').attributes('aria-hidden')).toBe('true');
+  });
 });

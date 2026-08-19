@@ -15,7 +15,7 @@ The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL ren
 - **THEN** `<NuxtRouteAnnouncer />` SHALL announce the new route for assistive technologies
 
 ### Requirement: REQ-060 Public login page on the auth layout
-The application SHALL expose a `/login` page that renders the login form within the `auth` layout and is publicly accessible (declares `definePageMeta({ layout: 'auth', public: true })`). The page SHALL preserve the `login-form`, `username`, `password`, `login-button`, and `login-error` test hooks.
+The application SHALL expose a `/login` page that renders the login form within the `auth` layout and is publicly accessible (declares `definePageMeta({ layout: 'auth', public: true })`). The page SHALL preserve the `login-form`, `username`, `password`, `login-button`, and `login-error` test hooks. The auth layout heading SHALL show the application brand mark beside the full application title (`layout.title`). The mark SHALL be decorative relative to the visible title (the title remains the heading text).
 
 #### Scenario: Unauthenticated visitor can view login
 - **WHEN** an unauthenticated visitor navigates to `/login`
@@ -28,6 +28,10 @@ The application SHALL expose a `/login` page that renders the login form within 
 #### Scenario: Failed login shows an error
 - **WHEN** login fails
 - **THEN** an error message SHALL be shown via the `login-error` hook and the user SHALL remain on `/login`
+
+#### Scenario: Login heading shows mark and title
+- **WHEN** the login page is rendered
+- **THEN** the auth layout heading SHALL show the application brand mark beside the full application title`
 
 ### Requirement: REQ-061 Authenticated home page on the default layout
 The application SHALL expose a `/` page that renders within the `default` layout as the timer view (authenticated home). The page SHALL present a page-level header with title and primary create action for adding a manual time entry (shared header pattern used by other management pages). Initial timer-view data SHALL be available from SSR per time-tracking REQ-150 / REQ-264. Logout reachability for authenticated pages is part of the shell (see `frontend-shell` REQ-064 / REQ-069): the sidebar footer account control opens a menu that includes Log out.

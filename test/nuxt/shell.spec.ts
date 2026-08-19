@@ -197,6 +197,35 @@ describe('REQ-066: desktop rail toggle', () => {
     const topbar = wrapper.find('[data-testid="app-topbar"]');
     expect(topbar.find('[data-testid="sidebar-collapse"]').exists()).toBe(true);
   });
+
+  it('expanded brand shows the mark beside the full title', async () => {
+    const wrapper = await mountShell();
+    const brand = wrapper.find('[data-testid="app-sidebar-brand"]');
+    expect(brand.find('[data-testid="app-brand-mark"]').exists()).toBe(true);
+    expect(brand.text()).toContain('OSI Time Tracker');
+    expect(brand.find('[data-testid="app-brand-mark"]').attributes('aria-hidden')).toBe('true');
+  });
+
+  it('collapsed brand shows the mark only, named with the full title', async () => {
+    const wrapper = await mountShell({
+      UDashboardSidebar: {
+        props: ['collapsed', 'open'],
+        template:
+          '<aside data-testid="app-sidebar" data-collapsed="true">' +
+          '<slot name="header" :collapsed="true" />' +
+          '<slot :collapsed="true" />' +
+          '<slot name="footer" :collapsed="true" />' +
+          '</aside>',
+      },
+    });
+    const brand = wrapper.find('[data-testid="app-sidebar-brand"]');
+    const mark = brand.find('[data-testid="app-brand-mark"]');
+    expect(mark.exists()).toBe(true);
+    expect(brand.text()).not.toContain('OSI Time Tracker');
+    expect(brand.text().trim()).not.toBe('OSI');
+    expect(mark.attributes('aria-label')).toBe('OSI Time Tracker');
+    expect(mark.attributes('role')).toBe('img');
+  });
 });
 
 describe('REQ-067: off-canvas drawer', () => {
