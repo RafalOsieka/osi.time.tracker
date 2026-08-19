@@ -619,4 +619,76 @@ describeTimerViewUI('timer view UI flow', async () => {
     await stopEntry(jar, token, running.id);
     await page.close();
   });
+
+  it('swaps the document favicon when the top-bar timer starts and stops', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const runningRes = await fetch(url('/api/time-entries/running'), {
+      headers: { cookie: jar.header() },
+    });
+    const leftover = await runningRes.json();
+    if (leftover?.id) {
+      await stopEntry(jar, token, leftover.id);
+    }
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') !== 'true',
+    );
+    await page.waitForFunction(() => {
+      const href = Array.from(document.querySelectorAll('link[rel="icon"]'))
+        .map((el) => el.getAttribute('href') ?? '')
+        .find((value) => value.includes('.svg'));
+      return href != null && href.endsWith('/favicon.svg');
+    });
+
+    const titleInput = page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first();
+    await titleInput.click();
+    await titleInput.fill('Favicon Running Task');
+    await titleInput.press('Escape');
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
+    );
+    await page.waitForFunction(() => {
+      const href = Array.from(document.querySelectorAll('link[rel="icon"]'))
+        .map((el) => el.getAttribute('href') ?? '')
+        .find((value) => value.includes('.svg'));
+      return href != null && href.endsWith('/favicon-running.svg');
+    });
+
+    await page.keyboard.press('Escape');
+    const stopResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/time-entries/') &&
+        response.ok(),
+    );
+    await page.locator('[data-testid="timer-toggle-button"]').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+    await stopResponse;
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') !== 'true',
+    );
+    await page.waitForFunction(() => {
+      const href = Array.from(document.querySelectorAll('link[rel="icon"]'))
+        .map((el) => el.getAttribute('href') ?? '')
+        .find((value) => value.includes('.svg'));
+      return href != null && href.endsWith('/favicon.svg');
+    });
+
+    await page.close();
+  });
 });
