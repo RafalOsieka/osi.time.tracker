@@ -247,6 +247,34 @@ describeProjects('projects API integration', async () => {
     expect(notFound.status).toBe(404);
   });
 
+  it('patch to a duplicate name in the same tracker scope is rejected', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'Dup Scope Tracker ' + Date.now());
+
+    const firstRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Keep Name', trackerId: tracker.id }),
+    });
+    expect(firstRes.status).toBe(200);
+
+    const secondRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Rename Me', trackerId: tracker.id }),
+    });
+    expect(secondRes.status).toBe(200);
+    const second = await secondRes.json();
+
+    const dupPatch = await fetch(url(`/api/projects/${second.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Keep Name', trackerId: tracker.id }),
+    });
+    expect(dupPatch.status).toBe(422);
+    expect((await dupPatch.json())?.data?.messageKey).toBe('error.projectNameDuplicate');
+  });
+
   it('rename a project whose tracker is soft-deleted succeeds when trackerId is unchanged', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const tracker = await createTracker(jar, token, 'Soft Delete Tracker ' + Date.now());

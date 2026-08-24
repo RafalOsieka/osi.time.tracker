@@ -24,6 +24,8 @@ E2E TypeScript files use kebab-case names (`setup-server.ts`, `helper-isolation.
 
 `c8` is only the converter for that child process: Node writes raw V8 JSON when `NODE_V8_COVERAGE` is set, and `test/e2e/harness/report-e2e-coverage.ts` runs `c8 report` to turn that dump into `lcov` for Codecov flag `e2e-api`. It is not a second test runner.
 
+Vitest `test:coverage` include/exclude (`app/**`, `server/**`, `shared/**`, plus migrations/SQL/JSON/warmup/`.output`) apply only to the in-process unit+nuxt run. `c8 report` must **not** reuse those globs: it filters compiled `.output` chunks before sourcemap remap, so `--include app/**` or `--exclude .output/**` would drop the Nitro dump. `c8` uses its defaults; the converter still refuses an lcov that has no first-party `app/`/`server/`/`shared/` paths. The ui job still does **not** upload Playwright/client coverage; journeys stay in `test/e2e/ui` without a Codecov flag.
+
 ## Follow-up: live OpenProject / Redmine e2e (not done)
 
 Current tests never talk to a real tracker:

@@ -76,7 +76,7 @@ pnpm test:e2e:api   # HTTP against a booted Nuxt server
 pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
 pnpm test:e2e       # db + api + ui
 pnpm test:nuxt      # component/integration tests (test/nuxt/*, nuxt env)
-pnpm test:coverage  # coverage for the unit + nuxt projects
+pnpm test:coverage  # Vitest v8 coverage for unit + nuxt (exclude migrations/sql/json/warmup plugin); e2e-api Nitro coverage is collected in CI via c8, not this script. UI e2e is not in coverage.
 ```
 
 - **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
