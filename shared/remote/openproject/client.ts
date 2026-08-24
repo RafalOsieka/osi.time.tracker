@@ -19,7 +19,7 @@ function encodeBasicAuth(secret: string): string {
   if (typeof btoa === 'function') {
     return btoa(`apikey:${secret}`);
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Node fallback (SSR/test) has no `btoa` global on older runtimes.
+  // oxlint-disable-next-line typescript/no-explicit-any -- Node fallback (SSR/test) has no `btoa` global on older runtimes.
   return (globalThis as any).Buffer.from(`apikey:${secret}`, 'utf-8').toString('base64');
 }
 

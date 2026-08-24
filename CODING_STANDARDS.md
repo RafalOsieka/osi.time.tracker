@@ -1,6 +1,6 @@
 # Coding Standards
 
-This document defines the coding style and conventions used across the application (`app/`) and server (`server/`) source. It is derived from the existing codebase and should be followed by all contributions unless a rule is explicitly overridden by a reviewer. It complements — and never contradicts — the tooling configuration (ESLint, Prettier, TypeScript).
+This document defines the coding style and conventions used across the application (`app/`) and server (`server/`) source. It is derived from the existing codebase and should be followed by all contributions unless a rule is explicitly overridden by a reviewer. It complements — and never contradicts — the tooling configuration (Oxlint, leftover ESLint, Oxfmt, TypeScript).
 
 ## 1. General Code Style
 
@@ -10,7 +10,7 @@ This document defines the coding style and conventions used across the applicati
 - Remove unused variables, imports, and dead code paths.
 - Explicit `any` is forbidden. When it is truly unavoidable, disable the rule on a single line with a trailing comment that justifies the exception:
   ```ts
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reason goes here.
+  // oxlint-disable-next-line typescript/no-explicit-any -- reason goes here.
   ```
 - Prefer `unknown` over `any` for values whose shape is not yet narrowed (e.g. caught errors are typed `err: unknown` and narrowed before use).
 
@@ -40,7 +40,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - **Trailing commas:** use them in multi-line arrays, objects, and parameter lists.
 - **Line length:** keep lines reasonably short (~100 characters); wrap long argument lists and object literals across multiple lines.
 - **Encoding:** UTF-8; end every file with a single trailing newline.
-- Let the formatter own whitespace — run the format and lint commands before committing rather than hand-aligning code.
+- Let Oxfmt own whitespace — run the format and lint commands before committing rather than hand-aligning code.
 
 ### Imports
 
@@ -133,6 +133,7 @@ Rules:
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
+- Anti-slop plugin tests live in `test/unit/anti-slop/` (`*.test.ts`, Oxlint `RuleTester`). Do not colocate those tests under `tools/oxlint/anti-slop/`.
 
 ## 11. Commits & Reviews
 
@@ -141,6 +142,10 @@ Rules:
 - Run linting, format checks, and the relevant test projects before opening a pull request.
 - Keep pull requests focused and reasonably small; be constructive in review.
 
-## 12. Changes to This Guide
+## 12. Anti-slop plugin is frozen unless requested
+
+The vendored Oxlint anti-slop plugin under `tools/oxlint/anti-slop/` (plugin entry, rules, and shared helpers) SHALL NOT be edited, rewritten, disabled, or “fixed” by coding agents unless the developer explicitly asks for that change. Diagnosing application code that fails `anti-slop/*` is allowed; changing the plugin to silence those diagnostics is not. Tests for the plugin belong in `test/unit/anti-slop/` only.
+
+## 13. Changes to This Guide
 
 Conventions evolve. Propose improvements by opening an issue or a pull request that updates this document, and align the change with the project's tooling configuration.

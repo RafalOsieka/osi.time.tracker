@@ -168,7 +168,7 @@ describe('TimerTaskGroup', () => {
   beforeEach(() => {
     csrfFetchMock.mockReset();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
       (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
     } catch {
       // ignore

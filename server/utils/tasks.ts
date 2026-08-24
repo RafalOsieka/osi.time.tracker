@@ -2,7 +2,7 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
 import { tasks, timeEntries } from '../db/schema';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- drizzle transaction type parameters vary by driver internals and aren't exported in a reusable form
+// oxlint-disable-next-line typescript/no-explicit-any -- drizzle transaction type parameters vary by driver internals and aren't exported in a reusable form
 type DrizzleTx = PgTransaction<any, any, any>;
 
 export interface ResolveTaskRemoteIssueOptions {

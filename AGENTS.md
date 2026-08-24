@@ -19,7 +19,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 - **Validation:** `zod` `^4` — single source of truth for boundary types.
 - **i18n:** `@nuxtjs/i18n` with `en` and `pl` catalogs kept in strict parity.
 - **Testing:** Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`.
-- **Tooling:** pnpm, ESLint, Prettier, Docker Compose.
+- **Tooling:** pnpm, Oxlint + leftover ESLint (Vue templates / a11y / i18n), Oxfmt, Docker Compose. Use `pnpm` / `pnpx`, not npm / npx.
 
 ## Setup Commands
 
@@ -95,7 +95,7 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 
 - **TypeScript everywhere**; Vue 3 SFCs use `<script setup lang="ts">`, ordered `<script setup>` → `<template>` → `<style scoped>`.
 - **No explicit `any`.** Prefer `unknown` and narrow. If unavoidable, disable the rule on a single line with a justifying comment.
-- **Formatting:** 2-space indentation, single quotes, semicolons, trailing commas on multi-line literals, ~100-char lines, UTF-8 with a trailing newline. Let Prettier/ESLint own whitespace.
+- **Formatting:** 2-space indentation, single quotes, semicolons, trailing commas on multi-line literals, ~100-char lines, UTF-8 with a trailing newline. Let Oxfmt own whitespace.
 - **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`). Other source/test files are kebab-case (`setup-server.ts`).
 - **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.
 - **UI:** prefer existing Nuxt UI components (`UButton`, `UForm`/`UFormField`, `UTable`, `UModal`, dashboard shell) over native elements; style with Tailwind utilities and `--ui-*` tokens; icons use `i-lucide-*`; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA.
@@ -105,11 +105,15 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 ### Linting & formatting
 
 ```bash
-pnpm lint           # ESLint (includes Vue i18n + accessibility rules)
-pnpm lint:fix       # auto-fix lint issues
-pnpm format         # format with Prettier
-pnpm format:check   # verify formatting
+pnpm lint           # oxlint then ESLint (Vue i18n + accessibility stay on ESLint)
+pnpm lint:fix       # auto-fix Oxlint + ESLint issues
+pnpm format         # format with Oxfmt
+pnpm format:check   # verify Oxfmt
 ```
+
+`pnpm lint` includes vendored anti-slop rules (`tools/oxlint/anti-slop`). Explicit `any` is an Oxlint `typescript/no-explicit-any` error; justified exceptions use `// oxlint-disable-next-line typescript/no-explicit-any -- reason`. Do not use npm or npx; one-off CLIs use `pnpx`.
+
+**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `test/unit/anti-slop/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
 
 Run lint, format check, and the relevant test projects before opening a PR. After moving files or changing imports, re-run `pnpm lint`.
 
@@ -120,7 +124,8 @@ app/       Nuxt app source (pages, layouts, middleware, composables, plugins, ut
 server/    Nitro server: api/ handlers, db/ (Drizzle client, schema, migrations), utils, types
 shared/    Cross-boundary code shared by client and server; boundary types live in shared/types
 i18n/      Translation catalogs (en.json, pl.json)
-test/      unit/, e2e/, and nuxt/ test suites
+test/      unit/ (including test/unit/anti-slop), e2e/, and nuxt/ test suites
+tools/     Vendored tooling (anti-slop Oxlint plugin under tools/oxlint/anti-slop — do not edit unless asked)
 docs/      Project vision and work-breakdown notes
 openspec/  OpenSpec change/spec documents (behavioral source of truth)
 ```
@@ -154,3 +159,4 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compos
 - The domain model is entry-first: tasks are derived automatically from time-entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
 - Never instantiate raw database drivers; always go through the shared lazy Drizzle client.
 - Do not weaken, skip, or disable tests to force a green run.
+- Never change the vendored anti-slop Oxlint plugin (`tools/oxlint/anti-slop/**`) unless the developer explicitly requests it. Do not rewrite, disable, or “fix” those rules on your own. Plugin tests live in `test/unit/anti-slop/`.

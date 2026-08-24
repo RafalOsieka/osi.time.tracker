@@ -11,7 +11,7 @@ vi.mock('../../app/composables/useTrackerSecret', () => ({
   }),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- imported after the mock is registered.
+// oxlint-disable-next-line typescript/no-explicit-any -- imported after the mock is registered.
 let useRemoteIssueSearch: any;
 
 const config: TrackerDto = {
@@ -145,7 +145,8 @@ describe('useRemoteIssueSearch', () => {
       const [url, init] = call;
       if (String(url).startsWith('/api/')) {
         const headers = (init as RequestInit | undefined)?.headers as
-          Record<string, string> | undefined;
+          | Record<string, string>
+          | undefined;
         expect(headers?.Authorization).toBeUndefined();
       } else {
         expect(String(url)).toContain('op.example.com');

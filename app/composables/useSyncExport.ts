@@ -11,7 +11,13 @@ import { resolveExportComment } from '../../shared/utils/export-comment';
 import { mapRemoteSyncClientError } from './useRemoteSyncClient';
 
 export type SyncExportProgressStatus =
-  'queued' | 'creating' | 'finalizing' | 'done' | 'failed' | 'uncertain' | 'not_attempted';
+  | 'queued'
+  | 'creating'
+  | 'finalizing'
+  | 'done'
+  | 'failed'
+  | 'uncertain'
+  | 'not_attempted';
 
 export interface SyncExportTaskInput {
   row: RemoteSyncDayRowDto;

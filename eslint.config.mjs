@@ -1,6 +1,7 @@
 // https://eslint.nuxt.com
 import withNuxt from './.nuxt/eslint.config.mjs';
 import prettier from 'eslint-config-prettier';
+import oxlint from 'eslint-plugin-oxlint';
 import vueA11y from 'eslint-plugin-vuejs-accessibility';
 import vueI18n from '@intlify/eslint-plugin-vue-i18n';
 import tsParser from '@typescript-eslint/parser';
@@ -82,12 +83,12 @@ export default withNuxt()
   .override('nuxt/typescript/rules', {
     rules: {
       // Enforce no-explicit-any rule to guarantee boundary types and avoid type erosion.
-      // Escape hatch: Use 'eslint-disable-next-line @typescript-eslint/no-explicit-any'
-      // accompanied by a clear comment justifying why 'any' is unavoidable.
+      // Escape hatch: oxlint-disable-next-line typescript/no-explicit-any -- reason.
       '@typescript-eslint/no-explicit-any': 'error',
     },
   })
-  .append(prettier) // Keep last: disables ESLint stylistic rules that conflict with Prettier.
+  .append(...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'))
+  .append(prettier) // Keep last: disables ESLint stylistic rules that conflict with Oxfmt.
   .append({
     ignores: ['.nuxt', '.output', 'node_modules', 'dist', 'server/db/migrations'],
   });

@@ -38,7 +38,7 @@ describe('useUserSettings', () => {
     csrfFetch.mockReset();
     useStateStore.clear();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
       (useNuxtApp() as any).$csrfFetch = csrfFetch;
     } catch {
       // The Nuxt app is not available until the test mount initializes it.

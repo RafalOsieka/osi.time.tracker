@@ -175,7 +175,7 @@ describe('projects page', () => {
       Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
     );
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
       (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
     } catch {
       // ignore
@@ -304,7 +304,7 @@ describe('projects page', () => {
     });
     await flushPromises();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
     (wrapper.vm as any).openEdit(mockProjects[0]);
     await flushPromises();
 
