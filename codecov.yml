@@ -9,3 +9,19 @@ coverage:
 
 comment:
   layout: 'reach, diff, flags, files'
+
+flag_management:
+  default_rules:
+    carryforward: true
+
+flags:
+  unit-nuxt:
+    paths:
+      - app/
+      - server/
+      - shared/
+  e2e-api:
+    paths:
+      - app/
+      - server/
+      - shared/

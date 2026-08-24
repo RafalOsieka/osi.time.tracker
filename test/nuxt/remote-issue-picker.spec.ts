@@ -159,6 +159,7 @@ describe('RemoteIssuePicker', () => {
     expect(link.attributes('href')).toBe('https://op.example.com/work_packages/42');
     expect(link.attributes('target')).toBe('_blank');
     expect(link.attributes('title')).toBeUndefined();
+    expect(link.attributes('aria-label')).toContain('Fix login bug');
     expect(hintFor(wrapper, 'issue-link')).toContain('Fix login bug');
     expect(link.classes()).toContain('min-w-6');
     expect(link.classes()).toContain('h-6');

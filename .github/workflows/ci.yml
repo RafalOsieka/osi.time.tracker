@@ -1,4 +1,4 @@
-name: CI
+name: PR CI
 
 on:
   push:
@@ -153,6 +153,23 @@ jobs:
 
       - name: Run build
         run: pnpm build
+        env:
+          # This job is the e2e skip-build artifact, not a production deploy
+          # image (that is the Dockerfile, which does not set IS_E2E). Baking
+          # e2e knobs here does not weaken hosted production.
+          #
+          # nuxt-security routeRules (login limiter, global limiter) compile
+          # at `pnpm build`; runtime IS_E2E in the api/ui jobs is too late.
+          NUXT_BUILD_SOURCEMAP: '1'
+          IS_E2E: 'true'
+
+      - name: Upload production output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nuxt-output
+          path: .output
+          retention-days: 1
+          include-hidden-files: true
 
   coverage:
     runs-on: ubuntu-latest
@@ -183,9 +200,36 @@ jobs:
         uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
         with:
           files: coverage/lcov.info
+          flags: unit-nuxt
           token: ${{ secrets.CODECOV_TOKEN }}
 
-  e2e:
+  db:
+    runs-on: ubuntu-latest
+    needs: [lint, format, type-check, unit, nuxt]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: '11.23.0'
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run database e2e tests
+        run: pnpm exec vitest run --project e2e-db
+        env:
+          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+
+  api:
     runs-on: ubuntu-latest
     needs: [lint, format, type-check, unit, nuxt, build]
     steps:
@@ -206,7 +250,66 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run E2E tests
-        run: pnpm test:e2e
+      - name: Download production output
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nuxt-output
+          path: .output
+
+      - name: Run API e2e tests
+        run: pnpm exec vitest run --project e2e-api
         env:
           NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+          NUXT_TEST_SKIP_BUILD: '1'
+          IS_E2E: 'true'
+          NODE_V8_COVERAGE: coverage-v8-e2e
+
+      - name: Convert Nitro coverage
+        run: pnpm exec tsx test/e2e/harness/report-e2e-coverage.ts
+        env:
+          NODE_V8_COVERAGE: coverage-v8-e2e
+
+      - name: Upload e2e-api coverage to Codecov
+        if: success()
+        uses: codecov/codecov-action@fb8b3582c8e4def4969c97caa2f19720cb33a72f # v7.0.0
+        with:
+          files: coverage-e2e-api/lcov.info
+          flags: e2e-api
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  ui:
+    runs-on: ubuntu-latest
+    needs: [lint, format, type-check, unit, nuxt, build]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+        with:
+          version: '11.23.0'
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download production output
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: nuxt-output
+          path: .output
+
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run UI e2e tests
+        run: pnpm exec vitest run --project e2e-ui
+        env:
+          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
+          NUXT_TEST_SKIP_BUILD: '1'
+          IS_E2E: 'true'

@@ -1,6 +1,8 @@
 allowBuilds:
   '@parcel/watcher': true
   esbuild: true
+  playwright: true
+  playwright-core: true
   unrs-resolver: true
   vue-demi: true
 minimumReleaseAgeExclude:

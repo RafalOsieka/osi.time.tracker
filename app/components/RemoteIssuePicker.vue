@@ -165,6 +165,7 @@ onBeforeUnmount(() => {
         size="xs"
         class="h-6 min-h-6 min-w-6 justify-center px-0 font-mono text-xs leading-none tabular-nums"
         :label="`#${currentRef.remoteIssueId}`"
+        :aria-label="linkedTooltip(currentRef)"
         :data-testid="linkTestid"
       />
     </UTooltip>

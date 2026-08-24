@@ -10,6 +10,10 @@
  * calls, and a too-tight bucket causes CI-only flakiness (fast, back-to-back
  * requests exhaust the bucket, silently dropping the session cookie and
  * cascading into unrelated 401s/500s in unrelated tests).
+ *
+ * These values are compiled into Nitro `routeRules` at `pnpm build` time.
+ * Local global-setup and the CI `build` job both set `IS_E2E=true` before
+ * building so skip-build reuse does not ship the production 5/60s bucket.
  */
 export const PROD_LOGIN_RATE_LIMIT = {
   tokensPerInterval: 5,
