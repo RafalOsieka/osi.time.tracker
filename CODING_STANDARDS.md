@@ -30,6 +30,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 | Module-level constants      | `UPPER_SNAKE_CASE`     | `ENTITY_NAME_MAX_LENGTH`          |
 | Database columns            | `camelCase` (quoted)   | `userId`, `createdAt`             |
 | Server route files          | `name.<method>.ts`     | `entity.post.ts`, `entity.get.ts` |
+| Other source / test files   | `kebab-case`           | `setup-server.ts`, `auth.spec.ts` |
 
 ## 3. Formatting Rules
 

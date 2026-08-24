@@ -115,7 +115,10 @@ Vitest is configured with three projects:
 
 ```bash
 pnpm test:unit      # unit tests   (test/unit/*.{test,spec}.ts, node env)
-pnpm test:e2e       # e2e tests    (test/e2e/*.{test,spec}.ts, node env)
+pnpm test:e2e:db    # Postgres schema/migrator/server-util tests
+pnpm test:e2e:api   # HTTP tests against a booted Nuxt server
+pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
+pnpm test:e2e       # db + api + ui
 pnpm test:nuxt      # component/integration tests (test/nuxt, nuxt env)
 pnpm test:coverage  # coverage for unit + nuxt projects
 ```
@@ -127,7 +130,7 @@ pnpm exec vitest run -t "<test name>"
 ```
 
 > [!TIP]
-> E2E tests run against a production build by default and require a running PostgreSQL (the harness uses `postgres:18-alpine`). For faster iteration, run them against the dev server with `NUXT_TEST_DEV=1` (`pnpm test:e2e:dev`).
+> API and UI e2e tests run against a production build by default and require PostgreSQL (the harness uses `postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. For faster API/UI iteration, use `NUXT_TEST_DEV=1` (`pnpm test:e2e:dev`). Set `NUXT_TEST_SKIP_BUILD=1` to reuse an existing `.output`. Locally, missing Docker or Chromium skips those suites; in CI a missing prerequisite fails the job.
 
 ## Deployment
 

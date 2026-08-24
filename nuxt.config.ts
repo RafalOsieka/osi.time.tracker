@@ -44,6 +44,7 @@ export default defineNuxtConfig({
     preference: 'system',
     fallback: 'light',
   },
+  sourcemap: process.env.NUXT_BUILD_SOURCEMAP === '1',
   compatibilityDate: '2025-07-15',
   devtools: { enabled: process.env.IS_E2E !== 'true' },
   routeRules: {
@@ -120,7 +121,7 @@ export default defineNuxtConfig({
     typeCheck: false,
     tsConfig: {
       // NOTE: nuxt tests are included by default
-      include: ['../test/e2e/*', '../test/unit/*'],
+      include: ['../test/e2e/**/*', '../test/unit/*'],
     },
   },
 });

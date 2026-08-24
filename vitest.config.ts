@@ -21,10 +21,33 @@ export default defineConfig({
       },
       {
         test: {
-          name: 'e2e',
-          include: ['test/e2e/*.{test,spec}.ts'],
+          name: 'e2e-db',
+          include: ['test/e2e/db/**/*.{test,spec}.ts'],
           environment: 'node',
-          globalSetup: ['test/e2e/support/global-setup.ts'],
+          globalSetup: ['test/e2e/harness/global-setup-db.ts'],
+          hookTimeout: 600_000,
+          testTimeout: 60_000,
+        },
+      },
+      {
+        test: {
+          name: 'e2e-api',
+          include: ['test/e2e/api/**/*.{test,spec}.ts'],
+          environment: 'node',
+          globalSetup: ['test/e2e/harness/global-setup-server.ts'],
+          hookTimeout: 600_000,
+          testTimeout: 60_000,
+          maxWorkers: Math.max(1, Math.min(4, Math.floor(cpus().length / 2))),
+          // Allows describe.concurrent in a file; @nuxt/test-utils url() needs bindTestOrigin().
+          maxConcurrency: 5,
+        },
+      },
+      {
+        test: {
+          name: 'e2e-ui',
+          include: ['test/e2e/ui/**/*.{test,spec}.ts'],
+          environment: 'node',
+          globalSetup: ['test/e2e/harness/global-setup-server.ts'],
           hookTimeout: 600_000,
           testTimeout: 60_000,
           maxWorkers: Math.max(1, Math.min(4, Math.floor(cpus().length / 2))),

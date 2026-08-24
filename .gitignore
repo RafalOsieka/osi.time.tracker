@@ -8,6 +8,8 @@ dist
 
 # Test coverage
 coverage
+coverage-e2e-api
+coverage-v8-e2e
 
 # Node dependencies
 node_modules

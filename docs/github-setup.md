@@ -93,8 +93,12 @@ To keep the `main` branch green and stable, a ruleset is enforced on `main`. Thi
        4. `unit` (defined in `ci.yml`)
        5. `nuxt` (defined in `ci.yml`)
        6. `build` (defined in `ci.yml`)
-       7. `e2e` (defined in `ci.yml`)
-       8. `Validate PR title` (defined in `pr-title.yml`)
+       7. `db` (defined in `ci.yml`)
+       8. `api` (defined in `ci.yml`)
+       9. `ui` (defined in `ci.yml`)
+       10. `Validate PR title` (defined in `pr-title.yml`)
+
+     After the first green run of the split jobs, **replace** the former `e2e` required check with `db`, `api`, and `ui`. A check is only selectable after it has run at least once. The `ui` job installs Playwright Chromium via `pnpm exec playwright install --with-deps chromium`.
 
    - **Require conversation resolution before merging:**
      - Enable this rule (requires all comments and discussions on the PR to be resolved before merge).

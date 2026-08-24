@@ -71,14 +71,21 @@ Vitest is configured with three projects (see `vitest.config.ts`):
 
 ```bash
 pnpm test:unit      # unit tests    (test/unit/*.{test,spec}.ts, node env)
-pnpm test:e2e       # e2e tests     (test/e2e/*.{test,spec}.ts, node env)
+pnpm test:e2e:db    # Postgres-only (schema, migrator, server-util)
+pnpm test:e2e:api   # HTTP against a booted Nuxt server
+pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
+pnpm test:e2e       # db + api + ui
 pnpm test:nuxt      # component/integration tests (test/nuxt/*, nuxt env)
 pnpm test:coverage  # coverage for the unit + nuxt projects
 ```
 
 - **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
 - **Naming:** test files use `*.spec.ts` under the matching `test/` project directory.
-- **E2E:** run against a production build by default and require a running PostgreSQL (the harness uses `postgres:18-alpine`). For faster iteration use `pnpm test:e2e:dev` (`NUXT_TEST_DEV=1`).
+- **E2E layout:** `test/e2e/api`, `test/e2e/ui`, `test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
+- **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `.output` with `NUXT_TEST_SKIP_BUILD=1`.
+- **Who owns a UI failure:** `test/nuxt` = component + mocks; `test/e2e/api` = HTTP contract; `test/e2e/ui` = journey + production wiring.
+- **Remote trackers:** unit + e2e mock OpenProject/Redmine (fake HTTP / `page.route`). There is **no** live integration suite against `docker-compose.openproject.yml` / `docker-compose.redmine.yml`. See `docs/e2e-guideline.md` (“Follow-up: live OpenProject / Redmine e2e”).
+- **E2E file names:** kebab-case (`setup-server.ts`).
 - **Determinism:** prefer deterministic tests; seed any randomness. Assert against stable `data-testid` selectors, not fragile markup.
 - Add or update tests alongside any code change, and keep the whole suite green.
 
@@ -89,7 +96,7 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 - **TypeScript everywhere**; Vue 3 SFCs use `<script setup lang="ts">`, ordered `<script setup>` → `<template>` → `<style scoped>`.
 - **No explicit `any`.** Prefer `unknown` and narrow. If unavoidable, disable the rule on a single line with a justifying comment.
 - **Formatting:** 2-space indentation, single quotes, semicolons, trailing commas on multi-line literals, ~100-char lines, UTF-8 with a trailing newline. Let Prettier/ESLint own whitespace.
-- **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`).
+- **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`). Other source/test files are kebab-case (`setup-server.ts`).
 - **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.
 - **UI:** prefer existing Nuxt UI components (`UButton`, `UForm`/`UFormField`, `UTable`, `UModal`, dashboard shell) over native elements; style with Tailwind utilities and `--ui-*` tokens; icons use `i-lucide-*`; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA.
 - **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with a single zod schema and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract (`params` may include `min`/`max`/`expected`/custom fields — never `received`). Never return rendered text — clients translate `messageKey`. Access the database only through the shared lazy client; emit timestamps as ISO strings.

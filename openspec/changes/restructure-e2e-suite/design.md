@@ -43,7 +43,7 @@ Constraints: keep per-file DB clone + per-file Nitro (REQ-052/054); GitHub-hoste
 
 ```
 test/e2e/
-  harness/     postgres, database, global-setup, setupServer, guards
+  harness/     postgres, database, global-setup, setup-server, guards
   helpers/     seedUser, apiLogin, loginAs, createTracker/createProject, fixtures, dom
   api/         HTTP specs
   ui/          Playwright specs
