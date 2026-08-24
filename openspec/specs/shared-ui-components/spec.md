@@ -20,6 +20,20 @@ The application SHALL provide reusable presentational components for the recurri
 - **WHEN** the row-actions component renders for a row
 - **THEN** the edit and delete buttons SHALL expose the supplied accessible names via `aria-label` and the supplied per-row `data-testid` values, and activating them SHALL emit `edit` / `delete`
 
+#### Scenario: Row actions show matching tooltips
+- **WHEN** the row-actions component renders for a row
+- **THEN** pointer hover or keyboard focus on the edit or delete button SHALL show a themed tooltip whose text matches that button's accessible name
+
+### Requirement: REQ-270 Shared truncated-text tooltip
+The application SHALL provide a reusable truncated-text hint for slots that ellipsize their displayed value. When the value overflows the slot, pointer hover and keyboard focus SHALL expose the complete string as a themed tooltip (REQ-269). When the value fits the slot, the tooltip SHALL be omitted. Call sites SHALL keep their existing accessible names and `data-testid` hooks.
+
+#### Scenario: Overflowing slot shows the full value
+- **WHEN** a slot using the shared truncated-text hint displays a value longer than the allocated space
+- **THEN** the visible text SHALL end with an ellipsis, and pointer hover or keyboard focus SHALL show the complete string
+
+#### Scenario: Fitting slot omits the tooltip
+- **WHEN** a slot using the shared truncated-text hint displays a value that fits entirely
+- **THEN** the slot SHALL NOT show a tooltip
 
 ### Requirement: REQ-129 Single app-level confirm dialog
 The application SHALL provide a single shared confirmation pattern built on Nuxt UI's `useOverlay()` and a small in-house `ConfirmModal` component; pages SHALL NOT mount their own per-page confirm instances and SHALL trigger confirmation via the shared overlay with page-specific copy, receiving the user's accept/reject decision as a resolved promise.
