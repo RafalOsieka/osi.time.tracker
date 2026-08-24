@@ -1,7 +1,7 @@
 ## 1. Backend: shared coverage exclude list
 
 - [x] 1.1 Add `server/db/migrations/**`, `**/*.{sql,json}`, and `app/plugins/shared-chunk-warmup.ts` to `vitest.config.ts` `test.coverage.exclude` (keep existing excludes). Verify `pnpm test:coverage` writes `coverage/lcov.info` with no `migrations/meta`, no `.sql` SF paths, and no `shared-chunk-warmup` (REQ-024, REQ-279)
-- [x] 1.2 Pass the same include (`app/**`, `server/**`, `shared/**`) and exclude globs to `c8 report` in `test/e2e/harness/report-e2e-coverage.ts`; keep the first-party-path fail-closed check. Verify the converter still accepts a dump that maps to `server/` and would reject a dump that only names `.output` chunks (REQ-277, REQ-279)
+- [x] 1.2 Keep `c8 report` without Vitest `--include`/`--exclude` globs (filter is pre-remap on `.output` chunks). Keep the first-party-path fail-closed check. Verify the converter still accepts a dump that maps to `server/` and would reject a dump that only names `.output` chunks (REQ-277, REQ-279)
 
 ## 2. Frontend: composable unit tests (no self-mock)
 

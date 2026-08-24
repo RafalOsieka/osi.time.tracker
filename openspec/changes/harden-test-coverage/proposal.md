@@ -4,7 +4,7 @@ Combined Codecov is 88.46% after e2e-api joined the report, but a large slice of
 
 ## What Changes
 
-- Exclude non-executable and never-run files from Vitest and Nitro (`c8`) coverage: `server/db/migrations/**`, `**/*.{sql,json}`, and the bundler-only warmup plugin.
+- Exclude non-executable and never-run files from **Vitest** coverage: `server/db/migrations/**`, `**/*.{sql,json}`, and the bundler-only warmup plugin. Nitro `c8` keeps default filters so compiled `.output` chunks can remap to sources.
 - Unit-test `useRemoteSyncClient` (and cheap siblings like `useActiveTrackers`) at their own boundary without mocking the SUT.
 - Add a nuxt mount of `/settings` covering timezone persist failure (toast + control restore). Playwright stays the journey owner; this is in-process coverage only.
 - Add API e2e for remaining handler error arms: project/tracker PATCH duplicate names, and remote time-log / time-entry proxy auth/connection failures.
@@ -18,7 +18,7 @@ None.
 
 ### Modified Capabilities
 
-- `coverage-reporting`: first-party coverage SHALL omit migrations, SQL/JSON, and the never-run warmup plugin; UI e2e SHALL remain uncounted.
+- `coverage-reporting`: unit-nuxt coverage SHALL omit migrations, SQL/JSON, and the never-run warmup plugin; e2e-api `c8` SHALL NOT reuse those Vitest globs; UI e2e SHALL remain uncounted.
 - `sync-day-composables`: capability composable tests SHALL exercise the module under test (no self-mock), including the browser-orchestrated remote client.
 
 ## Non-goals

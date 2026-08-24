@@ -17,15 +17,18 @@ describe('e2e-api coverage conversion', () => {
     expect(lcovHasFirstPartySources('SF:/repo/.output/server/index.mjs\n')).toBe(false);
   });
 
-  it('passes first-party include/exclude globs to c8 report', () => {
+  it('does not pass Vitest include/exclude globs to c8 report', () => {
     const args = c8ReportArgs('coverage-v8-e2e', 'coverage-e2e-api');
-    expect(args).toContain('--include');
-    expect(args).toContain('app/**');
-    expect(args).toContain('server/**');
-    expect(args).toContain('shared/**');
-    expect(args).toContain('--exclude');
-    expect(args).toContain('server/db/migrations/**');
-    expect(args).toContain('**/*.{sql,json}');
-    expect(args).toContain('app/plugins/shared-chunk-warmup.ts');
+    expect(args).toEqual([
+      'report',
+      '--temp-directory',
+      'coverage-v8-e2e',
+      '--reporter',
+      'lcov',
+      '--reports-dir',
+      'coverage-e2e-api',
+    ]);
+    expect(args).not.toContain('--include');
+    expect(args).not.toContain('--exclude');
   });
 });

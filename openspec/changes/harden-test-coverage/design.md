@@ -19,13 +19,13 @@ See `proposal.md` for why. Combined Codecov today merges flags `unit-nuxt` (Vite
 
 ## Decisions
 
-### 1. Exclude in both Vitest and `c8`, do not filter lcov after the fact
+### 1. Vitest exclude list is not applied to `c8`
 
-Add matching `exclude` globs to `vitest.config.ts` `test.coverage.exclude` and to the `c8 report` invocation in `test/e2e/harness/report-e2e-coverage.ts` (`--exclude` plus keep first-party `--include app/**,server/**,shared/**`). Keep the existing "must contain first-party SF: paths" fail-closed check.
+Add `server/db/migrations/**`, `**/*.{sql,json}`, and `app/plugins/shared-chunk-warmup.ts` to `vitest.config.ts` `test.coverage.exclude` (keep existing excludes). `c8 report` must **not** receive those globs or `--include app/**,server/**,shared/**`: c8 matches compiled `.output` chunks *before* sourcemap remap, so those patterns drop the Nitro dump (seen on PR #75: e2e-api collapsed to 1 file). Keep c8 defaults and the first-party-path fail-closed check.
+
+**Alternative considered:** pass the same include/exclude to both tools. Rejected after CI: `--include app/**` filtered `.output/server/chunks/*.mjs` before remap. `--exclude-after-remap` plus extra extensions (`.vue`) is more machinery than needed.
 
 **Alternative considered:** post-process `lcov.info` with a regex strip. Rejected: two reports would drift, and Codecov would still ingest junk if one converter is forgotten.
-
-**Globs:** `server/db/migrations/**`, `**/*.{sql,json}`, `app/plugins/shared-chunk-warmup.ts`. Keep existing excludes (tests, configs, `.nuxt`, `.output`, `*.d.ts`).
 
 ### 2. Cover the remote client by testing it, not by un-mocking page specs
 

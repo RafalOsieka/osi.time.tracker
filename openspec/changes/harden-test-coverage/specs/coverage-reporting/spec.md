@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: REQ-279 Non-executable sources are omitted from coverage
-First-party coverage reports (the in-process unit+nuxt run and the Nitro-side e2e-api conversion) SHALL omit files that are not executable application logic: SQL and JSON under the database migrations directory, other `*.sql` / `*.json` under `app/`, `server/`, or `shared/`, and the bundler-warmup plugin whose body is never executed at runtime. Those files SHALL NOT appear as uncovered rows in the uploaded lcov. Playwright/UI client coverage SHALL remain uncollected (REQ-277).
+The in-process unit+nuxt coverage run SHALL omit files that are not executable application logic: SQL and JSON under the database migrations directory, other `*.sql` / `*.json` under `app/`, `server/`, or `shared/`, and the bundler-warmup plugin whose body is never executed at runtime. Those files SHALL NOT appear as uncovered rows in the unit-nuxt lcov. The Nitro-side e2e-api `c8` conversion SHALL NOT apply that Vitest include/exclude list to compiled output chunks (those globs would drop remappable `.output` files before sourcemaps run). Playwright/UI client coverage SHALL remain uncollected (REQ-277).
 
 #### Scenario: Migration snapshots do not appear as misses
 - **WHEN** unit-nuxt or e2e-api coverage is generated
@@ -37,7 +37,7 @@ The project SHALL support code-coverage collection via Vitest's `v8` provider (`
 - **THEN** that report SHALL NOT include migration SQL/JSON or the bundler-warmup plugin
 
 ### Requirement: REQ-277 API e2e coverage from the Nitro process
-The `api` CI job SHALL collect code coverage from the Nuxt/Nitro process that serves HTTP tests (not from the Vitest worker that only calls `fetch`). Coverage sources SHALL be first-party `app/`, `server/`, and `shared/` paths after applying the same non-executable exclusions as REQ-279. The production output used for those tests SHALL include source maps so attributed files are the TypeScript/Vue sources, not opaque `.output` chunks. Playwright/UI client coverage SHALL NOT be collected. If the collected report cannot be attributed to those first-party sources, the coverage-upload step SHALL fail rather than publish an unusable report.
+The `api` CI job SHALL collect code coverage from the Nuxt/Nitro process that serves HTTP tests (not from the Vitest worker that only calls `fetch`). Coverage sources SHALL be first-party `app/`, `server/`, and `shared/` paths produced by sourcemap remap of the Nitro process. The `c8` conversion SHALL NOT apply the Vitest include/exclude list from REQ-279 to compiled `.output` chunks. The production output used for those tests SHALL include source maps so attributed files are the TypeScript/Vue sources, not opaque `.output` chunks. Playwright/UI client coverage SHALL NOT be collected. If the collected report cannot be attributed to those first-party sources, the coverage-upload step SHALL fail rather than publish an unusable report.
 
 #### Scenario: Http tests credit server routes
 - **WHEN** the api job runs HTTP specs against the booted server
@@ -51,6 +51,6 @@ The `api` CI job SHALL collect code coverage from the Nuxt/Nitro process that se
 - **WHEN** the ui job finishes
 - **THEN** it SHALL NOT upload a Playwright/client coverage report
 
-#### Scenario: Converted e2e-api lcov omits migration artifacts
+#### Scenario: Converted e2e-api lcov is not filtered with Vitest globs
 - **WHEN** the api job converts the Nitro V8 dump to lcov
-- **THEN** the uploaded report SHALL NOT list migration SQL/JSON files or the bundler-warmup plugin
+- **THEN** `c8 report` SHALL run without Vitest `--include`/`--exclude` globs, and the uploaded report SHALL still map to first-party `app/`/`server/`/`shared/` sources rather than only `.output` chunks

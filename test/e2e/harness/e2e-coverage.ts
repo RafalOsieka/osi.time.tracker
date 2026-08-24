@@ -1,17 +1,8 @@
-/** Shared first-party coverage globs for Vitest v8 and Nitro `c8 report`. */
-
-export const COVERAGE_INCLUDE = ['app/**', 'server/**', 'shared/**'] as const;
-
-export const COVERAGE_EXCLUDE = [
-  'test/**',
-  '**/*.config.{ts,js,mjs,cjs}',
-  '.nuxt/**',
-  '.output/**',
-  '**/*.d.ts',
-  'server/db/migrations/**',
-  '**/*.{sql,json}',
-  'app/plugins/shared-chunk-warmup.ts',
-] as const;
+/**
+ * Nitro `c8 report` args. Do not pass Vitest include/exclude globs: c8 filters
+ * compiled `.output` chunks *before* sourcemap remap, so `app/**` / `server/**`
+ * / `.output/**` would drop the dump instead of the remapped sources.
+ */
 
 export function lcovHasFirstPartySources(contents: string): boolean {
   return contents.split(/\r?\n/).some((line) => {
@@ -23,15 +14,5 @@ export function lcovHasFirstPartySources(contents: string): boolean {
 }
 
 export function c8ReportArgs(v8Dir: string, reportsDir: string): string[] {
-  return [
-    'report',
-    '--temp-directory',
-    v8Dir,
-    '--reporter',
-    'lcov',
-    '--reports-dir',
-    reportsDir,
-    ...COVERAGE_INCLUDE.flatMap((glob) => ['--include', glob]),
-    ...COVERAGE_EXCLUDE.flatMap((glob) => ['--exclude', glob]),
-  ];
+  return ['report', '--temp-directory', v8Dir, '--reporter', 'lcov', '--reports-dir', reportsDir];
 }
