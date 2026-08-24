@@ -22,7 +22,7 @@
     "format:check": "prettier --check ."
   },
   "dependencies": {
-    "@nuxt/ui": "^4.10.0",
+    "@nuxt/ui": "^4.11.0",
     "drizzle-orm": "^0.45.2",
     "nuxt": "^4.5.2",
     "nuxt-auth-utils": "^0.5.30",
@@ -35,7 +35,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.123",
+    "@iconify-json/lucide": "^1.2.125",
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/schema": "^4.5.2",
@@ -48,17 +48,17 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.4.2",
     "drizzle-kit": "^0.31.10",
-    "eslint": "^10.8.1",
+    "eslint": "^10.9.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
-    "happy-dom": "^20.11.2",
+    "happy-dom": "^20.11.6",
     "playwright": "^1.62.1",
     "playwright-core": "^1.62.1",
     "prettier": "^3.9.6",
-    "tsx": "^4.23.11",
+    "tsx": "^4.23.12",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.10",
-    "vue-tsc": "^3.3.9"
+    "vitest": "^4.1.11",
+    "vue-tsc": "^3.3.11"
   },
   "author": "Rafal Osieka",
   "repository": {
@@ -70,5 +70,5 @@
     "node": ">=24",
     "pnpm": "^11"
   },
-  "packageManager": "pnpm@11.21.0"
+  "packageManager": "pnpm@11.23.0"
 }
