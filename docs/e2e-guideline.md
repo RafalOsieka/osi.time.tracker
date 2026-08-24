@@ -24,6 +24,8 @@ E2E TypeScript files use kebab-case names (`setup-server.ts`, `helper-isolation.
 
 `c8` is only the converter for that child process: Node writes raw V8 JSON when `NODE_V8_COVERAGE` is set, and `test/e2e/harness/report-e2e-coverage.ts` runs `c8 report` to turn that dump into `lcov` for Codecov flag `e2e-api`. It is not a second test runner.
 
+Both reports use the same first-party include (`app/**`, `server/**`, `shared/**`) and exclude list: tests, config, generated Nuxt/output, `*.d.ts`, `server/db/migrations/**`, `*.sql` / `*.json`, and the never-run bundler-warmup plugin (`app/plugins/shared-chunk-warmup.ts`). The ui job still does **not** upload Playwright/client coverage; journeys stay in `test/e2e/ui` without a Codecov flag.
+
 ## Follow-up: live OpenProject / Redmine e2e (not done)
 
 Current tests never talk to a real tracker:

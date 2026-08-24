@@ -178,6 +178,22 @@ describeTrackers('trackers API integration', async () => {
     expect(notFound.status).toBe(404);
   });
 
+  it('patch rename into a colliding tracker name is rejected', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const kept = await createTracker(jar, token, 'Kept Tracker ' + Date.now());
+    const other = await createTracker(jar, token, 'Rename Tracker ' + Date.now(), {
+      baseUrl: 'https://rename.example.com',
+    });
+
+    const dupPatch = await fetch(url(`/api/trackers/${other.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(trackerBody(kept.name, { baseUrl: 'https://rename.example.com' })),
+    });
+    expect(dupPatch.status).toBe(422);
+    expect((await dupPatch.json())?.data?.messageKey).toBe('error.trackerNameDuplicate');
+  });
+
   it('delete soft-deletes (row retained) + foreign id → 404', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const tracker = await createTracker(jar, token, 'Delete Me');

@@ -199,4 +199,90 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
     });
     expect(unknown.status).toBe(404);
   });
+
+  it('maps auth and connection failures on time-logs and time-entries without echoing the secret', async () => {
+    const user = await seedAndLogin(dbUrl);
+    const config = await createTracker(user.jar, user.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: tracker.baseUrl,
+    });
+    const secret = 'rejected-secret';
+    const headers = {
+      'content-type': 'application/json',
+      'csrf-token': user.token,
+      cookie: user.jar.header(),
+      [REMOTE_SECRET_HEADER]: secret,
+    };
+
+    const logsAuth = await fetch(url('/api/remote/time-logs'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        trackerId: config.id,
+        spentOn: '2026-03-15',
+        workPackageIds: ['42'],
+        userId: '7',
+      }),
+    });
+    expect(logsAuth.status).toBe(502);
+    const logsAuthBody = await logsAuth.json();
+    expect(logsAuthBody?.data?.messageKey).toBe('error.remoteServerModeAuthRejected');
+    expect(JSON.stringify(logsAuthBody)).not.toContain(secret);
+
+    const createAuth = await fetch(url('/api/remote/time-entries'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        trackerId: config.id,
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 1800,
+        activityId: '1',
+      }),
+    });
+    expect(createAuth.status).toBe(502);
+    const createAuthBody = await createAuth.json();
+    expect(createAuthBody?.data?.messageKey).toBe('error.remoteServerModeAuthRejected');
+    expect(JSON.stringify(createAuthBody)).not.toContain(secret);
+
+    const unreachable = await createTracker(user.jar, user.token, 'Server Tracker ' + Date.now(), {
+      executionMode: 'server',
+      baseUrl: 'http://127.0.0.1:1',
+    });
+    const goodHeaders = {
+      ...headers,
+      [REMOTE_SECRET_HEADER]: 'good-secret',
+    };
+
+    const logsConn = await fetch(url('/api/remote/time-logs'), {
+      method: 'POST',
+      headers: goodHeaders,
+      body: JSON.stringify({
+        trackerId: unreachable.id,
+        spentOn: '2026-03-15',
+        workPackageIds: ['42'],
+        userId: '7',
+      }),
+    });
+    expect(logsConn.status).toBe(502);
+    expect((await logsConn.json())?.data?.messageKey).toBe(
+      'error.remoteServerModeConnectionFailed',
+    );
+
+    const createConn = await fetch(url('/api/remote/time-entries'), {
+      method: 'POST',
+      headers: goodHeaders,
+      body: JSON.stringify({
+        trackerId: unreachable.id,
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 1800,
+        activityId: '1',
+      }),
+    });
+    expect(createConn.status).toBe(502);
+    expect((await createConn.json())?.data?.messageKey).toBe(
+      'error.remoteServerModeConnectionFailed',
+    );
+  });
 });
