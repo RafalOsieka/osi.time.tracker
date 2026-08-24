@@ -6,6 +6,7 @@
 
 [![CI](https://github.com/RafalOsieka/osi.time.tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/RafalOsieka/osi.time.tracker/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
+[![codecov](https://codecov.io/gh/RafalOsieka/osi.time.tracker/branch/main/graph/badge.svg)](https://codecov.io/gh/RafalOsieka/osi.time.tracker)
 
 Built with [Nuxt 4](https://nuxt.com/) · [Vue 3](https://vuejs.org/) · [PrimeVue](https://primevue.org/) · [Drizzle ORM](https://orm.drizzle.team/) · [PostgreSQL](https://www.postgresql.org/)
 
