@@ -255,16 +255,18 @@ async function onDelete() {
       {{ durationLabel }}
     </span>
 
-    <UButton
-      icon="i-lucide-trash-2"
-      variant="ghost"
-      square
-      size="xs"
-      color="error"
-      :aria-label="t('timerView.entryRow.deleteLabel')"
-      :loading="deleting"
-      :data-testid="`timer-entry-delete-${entry.id}`"
-      @click="onDelete"
-    />
+    <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
+      <UButton
+        icon="i-lucide-trash-2"
+        variant="ghost"
+        square
+        size="xs"
+        color="error"
+        :aria-label="t('timerView.entryRow.deleteLabel')"
+        :loading="deleting"
+        :data-testid="`timer-entry-delete-${entry.id}`"
+        @click="onDelete"
+      />
+    </UTooltip>
   </div>
 </template>

@@ -152,26 +152,31 @@ onBeforeUnmount(() => {
     v-bind="$attrs"
     class="group/ri relative inline-flex h-6 min-w-6 items-center justify-center"
   >
-    <UButton
+    <UTooltip
       v-if="currentRef && currentRef.url"
-      :to="currentRef.url"
-      target="_blank"
-      external
-      variant="link"
-      size="xs"
-      class="h-6 min-h-6 min-w-6 justify-center px-0 font-mono text-xs leading-none tabular-nums"
-      :label="`#${currentRef.remoteIssueId}`"
-      :title="linkedTooltip(currentRef)"
-      :data-testid="linkTestid"
-    />
-    <span
-      v-else-if="currentRef"
-      :title="linkedTooltip(currentRef)"
-      class="inline-flex h-6 min-h-6 min-w-6 items-center justify-center font-mono text-xs leading-none tabular-nums text-primary"
-      :data-testid="cachedTestid"
+      :text="linkedTooltip(currentRef)"
+      :content="{ side: 'top' }"
     >
-      #{{ currentRef.remoteIssueId }}
-    </span>
+      <UButton
+        :to="currentRef.url"
+        target="_blank"
+        external
+        variant="link"
+        size="xs"
+        class="h-6 min-h-6 min-w-6 justify-center px-0 font-mono text-xs leading-none tabular-nums"
+        :label="`#${currentRef.remoteIssueId}`"
+        :data-testid="linkTestid"
+      />
+    </UTooltip>
+    <UTooltip v-else-if="currentRef" :text="linkedTooltip(currentRef)" :content="{ side: 'top' }">
+      <span
+        tabindex="0"
+        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-center font-mono text-xs leading-none tabular-nums text-primary"
+        :data-testid="cachedTestid"
+      >
+        #{{ currentRef.remoteIssueId }}
+      </span>
+    </UTooltip>
 
     <div v-if="showEditMenu" :class="editMenuClass" data-testid="remote-issue-picker-edit-menu">
       <div class="grid gap-0.5 rounded-md bg-default p-1 shadow-lg ring ring-default">
@@ -197,19 +202,23 @@ onBeforeUnmount(() => {
         />
       </div>
     </div>
-    <UButton
+    <UTooltip
       v-else-if="!currentRef"
-      icon="i-lucide-link-2-off"
-      color="neutral"
-      variant="ghost"
-      square
-      size="xs"
-      class="h-6 w-6 shrink-0 justify-center"
-      :aria-label="t('timerView.remoteIssue.unlinked')"
-      :title="t('timerView.remoteIssue.unlinked')"
-      :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
-      @click.stop="onTriggerClick"
-    />
+      :text="t('timerView.remoteIssue.unlinked')"
+      :content="{ side: 'top' }"
+    >
+      <UButton
+        icon="i-lucide-link-2-off"
+        color="neutral"
+        variant="ghost"
+        square
+        size="xs"
+        class="h-6 w-6 shrink-0 justify-center"
+        :aria-label="t('timerView.remoteIssue.unlinked')"
+        :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
+        @click.stop="onTriggerClick"
+      />
+    </UTooltip>
 
     <UPopover
       :open="open"
@@ -236,16 +245,18 @@ onBeforeUnmount(() => {
                 :placeholder="t(queryPlaceholderKey)"
                 data-testid="remote-issue-picker-query"
               />
-              <UButton
-                type="submit"
-                icon="i-lucide-search"
-                color="neutral"
-                variant="ghost"
-                square
-                :loading="loading"
-                :aria-label="t('remoteIssuePicker.submitButton')"
-                data-testid="remote-issue-picker-submit"
-              />
+              <UTooltip :text="t('remoteIssuePicker.submitButton')" :content="{ side: 'top' }">
+                <UButton
+                  type="submit"
+                  icon="i-lucide-search"
+                  color="neutral"
+                  variant="ghost"
+                  square
+                  :loading="loading"
+                  :aria-label="t('remoteIssuePicker.submitButton')"
+                  data-testid="remote-issue-picker-submit"
+                />
+              </UTooltip>
             </div>
             <URadioGroup
               id="remote-issue-mode"

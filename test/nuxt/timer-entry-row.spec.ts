@@ -168,7 +168,11 @@ describe('TimerEntryRow', () => {
       global: { stubs: commonStubs },
     });
 
-    await wrapper.find('[data-testid="timer-entry-delete-entry-1"]').trigger('click');
+    const deleteButton = wrapper.find('[data-testid="timer-entry-delete-entry-1"]');
+    expect(
+      deleteButton.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text'),
+    ).toBe('timerView.entryRow.deleteLabel');
+    await deleteButton.trigger('click');
     await flushPromises();
 
     expect(confirmMock).toHaveBeenCalled();

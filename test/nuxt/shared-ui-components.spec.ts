@@ -11,6 +11,10 @@ const ButtonStub = {
   template:
     '<button v-bind="$attrs" :aria-label="ariaLabel || $attrs[\'aria-label\']" @click="$emit(\'click\')">{{ label }}</button>',
 };
+const TooltipStub = {
+  props: ['text', 'content'],
+  template: '<span v-bind="$attrs" :data-tooltip-text="text"><slot /></span>',
+};
 const InputStub = {
   template:
     '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
@@ -60,13 +64,19 @@ describe('RowActions', () => {
         editTestid: 'edit-client-1',
         deleteTestid: 'delete-client-1',
       },
-      global: { stubs: { UButton: ButtonStub } },
+      global: { stubs: { UButton: ButtonStub, UTooltip: TooltipStub } },
     });
 
     const editButton = wrapper.find('[data-testid="edit-client-1"]');
     const deleteButton = wrapper.find('[data-testid="delete-client-1"]');
     expect(editButton.attributes('aria-label')).toBe('Edit');
     expect(deleteButton.attributes('aria-label')).toBe('Delete');
+    expect(
+      editButton.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text'),
+    ).toBe('Edit');
+    expect(
+      deleteButton.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text'),
+    ).toBe('Delete');
 
     await editButton.trigger('click');
     expect(wrapper.emitted('edit')).toHaveLength(1);

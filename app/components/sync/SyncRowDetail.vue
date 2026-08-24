@@ -235,16 +235,18 @@ function hasRealComment(log: RemoteTimeLogDto): boolean {
           })
         }}
       </span>
-      <UButton
-        icon="i-lucide-x"
-        color="neutral"
-        variant="ghost"
-        size="xs"
-        square
-        :aria-label="t('remoteSync.duplicateWarningDismiss')"
-        :data-testid="`remote-sync-duplicate-dismiss-${row.taskId}`"
-        @click="emit('dismissDuplicate')"
-      />
+      <UTooltip :text="t('remoteSync.duplicateWarningDismiss')" :content="{ side: 'top' }">
+        <UButton
+          icon="i-lucide-x"
+          color="neutral"
+          variant="ghost"
+          size="xs"
+          square
+          :aria-label="t('remoteSync.duplicateWarningDismiss')"
+          :data-testid="`remote-sync-duplicate-dismiss-${row.taskId}`"
+          @click="emit('dismissDuplicate')"
+        />
+      </UTooltip>
     </div>
 
     <div
@@ -295,14 +297,15 @@ function hasRealComment(log: RemoteTimeLogDto): boolean {
               })
             }}
           </span>
-          <span
-            class="max-w-prose truncate text-sm text-muted"
-            :title="commentText(log)"
-            :aria-label="commentText(log)"
-            :data-testid="`remote-sync-remote-log-comment-${log.remoteLogId}`"
-          >
-            {{ commentText(log) }}
-          </span>
+          <OverflowTooltip :text="commentText(log)">
+            <span
+              class="block max-w-prose truncate text-sm text-muted"
+              :aria-label="commentText(log)"
+              :data-testid="`remote-sync-remote-log-comment-${log.remoteLogId}`"
+            >
+              {{ commentText(log) }}
+            </span>
+          </OverflowTooltip>
         </li>
       </ul>
     </div>

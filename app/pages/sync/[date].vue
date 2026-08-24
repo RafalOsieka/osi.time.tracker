@@ -977,26 +977,35 @@ const columns = computed<TableColumn<SyncTableRow>[]>(() => [
       class="w-full"
     >
       <template #expand-cell="{ row: tableRow }">
-        <UButton
+        <UTooltip
           v-if="tableRow.original.kind === 'task'"
-          :icon="
-            isExpanded(taskOf(tableRow.original).taskId)
-              ? 'i-lucide-chevron-down'
-              : 'i-lucide-chevron-right'
-          "
-          variant="ghost"
-          square
-          size="xs"
-          :aria-expanded="isExpanded(taskOf(tableRow.original).taskId)"
-          :aria-controls="`remote-sync-detail-${taskOf(tableRow.original).taskId}`"
-          :aria-label="
+          :text="
             isExpanded(taskOf(tableRow.original).taskId)
               ? t('remoteSync.collapseRow')
               : t('remoteSync.expandRow')
           "
-          :data-testid="`remote-sync-expand-${taskOf(tableRow.original).taskId}`"
-          @click="toggleExpanded(taskOf(tableRow.original).taskId)"
-        />
+          :content="{ side: 'top' }"
+        >
+          <UButton
+            :icon="
+              isExpanded(taskOf(tableRow.original).taskId)
+                ? 'i-lucide-chevron-down'
+                : 'i-lucide-chevron-right'
+            "
+            variant="ghost"
+            square
+            size="xs"
+            :aria-expanded="isExpanded(taskOf(tableRow.original).taskId)"
+            :aria-controls="`remote-sync-detail-${taskOf(tableRow.original).taskId}`"
+            :aria-label="
+              isExpanded(taskOf(tableRow.original).taskId)
+                ? t('remoteSync.collapseRow')
+                : t('remoteSync.expandRow')
+            "
+            :data-testid="`remote-sync-expand-${taskOf(tableRow.original).taskId}`"
+            @click="toggleExpanded(taskOf(tableRow.original).taskId)"
+          />
+        </UTooltip>
       </template>
 
       <template #include-cell="{ row: tableRow }">

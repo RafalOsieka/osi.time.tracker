@@ -24,7 +24,6 @@ const ButtonStub = {
       v-bind="$attrs"
       :href="to"
       :target="target"
-      :title="title"
       :aria-label="ariaLabel || $attrs['aria-label']"
       :disabled="disabled"
       :data-icon="icon"
@@ -44,7 +43,6 @@ const ButtonStub = {
     'ui',
     'to',
     'target',
-    'title',
     'external',
   ],
   emits: ['click'],
@@ -91,7 +89,6 @@ const stubs = {
           v-if="currentRef && currentRef.url"
           :href="currentRef.url"
           target="_blank"
-          :title="currentRef.cachedTitle"
           :data-testid="linkTestid"
         >#{{ currentRef.remoteIssueId }}</a>
         <span v-else-if="currentRef" :data-testid="cachedTestid">#{{ currentRef.remoteIssueId }}</span>
@@ -181,6 +178,10 @@ describe('TimerTaskGroup', () => {
   it('commits a renamed title, while empty names silently revert and Escape cancels', async () => {
     csrfFetchMock.mockResolvedValue({});
     const wrapper = await mount();
+    const toggle = wrapper.find('[data-testid="timer-group-toggle-task-1"]');
+    expect(toggle.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'timerView.expandLabel',
+    );
     await wrapper.find('[data-testid="timer-group-title-task-1"]').trigger('click');
     await flushPromises();
     const title = wrapper.find('[data-testid="timer-group-title-input-task-1"]');
@@ -305,6 +306,10 @@ describe('TimerTaskGroup', () => {
     expect(disabled.classes()).toContain('text-dimmed');
     expect(disabled.attributes('disabled')).toBeDefined();
     expect(disabled.attributes('aria-label')).toBe('timerView.remoteIssue.unavailableNoTracker');
+    expect(disabled.attributes('title')).toBeUndefined();
+    expect(disabled.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'timerView.remoteIssue.unavailableNoTracker',
+    );
     expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
       false,
     );
@@ -352,7 +357,7 @@ describe('TimerTaskGroup', () => {
     const link = wrapper.find('[data-testid="timer-group-remote-issue-link-task-1"]');
     expect(link.attributes('href')).toBe('https://op.example.com/work_packages/42');
     expect(link.attributes('target')).toBe('_blank');
-    expect(link.attributes('title')).toContain('Fix login bug');
+    expect(link.attributes('title')).toBeUndefined();
   });
 
   it('shows an enabled picker for a Redmine tracker', async () => {
@@ -417,6 +422,9 @@ describe('TimerTaskGroup', () => {
     const action = wrapper.find('[data-testid="timer-group-continue-task-1"]');
     expect(action.attributes('aria-pressed')).toBe('true');
     expect(action.attributes('aria-label')).toBe('timer.stop');
+    expect(action.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'timer.stop',
+    );
     expect(action.attributes('data-icon')).toBe('i-lucide-square');
     expect(action.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);
     await action.trigger('click');
@@ -452,7 +460,10 @@ describe('TimerTaskGroup', () => {
     const project = wrapper.find('[data-testid="timer-group-project-untitled"]');
     expect(project.exists()).toBe(true);
     expect(project.attributes('disabled')).toBeDefined();
-    expect(project.attributes('title')).toBe('timerView.projectRequiresTitle');
+    expect(project.attributes('title')).toBeUndefined();
+    expect(project.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'timerView.projectRequiresTitle',
+    );
     await project.trigger('click');
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-group-project-select-untitled"]').exists()).toBe(
@@ -502,7 +513,9 @@ describe('TimerTaskGroup', () => {
 
     const title = wrapper.find('[data-testid="timer-group-title-task-1"]');
     expect(title.attributes('style') ?? '').not.toMatch(/\d+ch/);
-    expect(wrapper.find('[data-tooltip-text]').attributes('data-tooltip-text')).toBe(longName);
+    expect(title.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      longName,
+    );
     expect(wrapper.find('[data-overflow-tooltip]').exists()).toBe(true);
 
     const count = wrapper.find('[data-testid="timer-group-count-task-1"]');

@@ -260,9 +260,27 @@ describe('RemoteSync page', () => {
     dollarFetchMock.mockResolvedValue(dayData);
 
     const wrapper = await mount();
+    expect(
+      wrapper
+        .find('[data-testid="remote-sync-prev-day"]')
+        .element.closest('[data-tooltip-text]')
+        ?.getAttribute('data-tooltip-text'),
+    ).toBe('remoteSync.prevDay');
+    expect(
+      wrapper
+        .find('[data-testid="remote-sync-next-day"]')
+        .element.closest('[data-tooltip-text]')
+        ?.getAttribute('data-tooltip-text'),
+    ).toBe('remoteSync.nextDay');
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
       'remoteSync.state.noTracker',
     );
+    expect(
+      wrapper
+        .find('[data-testid="remote-sync-expand-task-1"]')
+        .element.closest('[data-tooltip-text]')
+        ?.getAttribute('data-tooltip-text'),
+    ).toBe('remoteSync.expandRow');
     await expandRow(wrapper, 'task-1');
     expect(wrapper.find('[data-testid="remote-sync-original-duration-task-1"]').exists()).toBe(
       true,
@@ -620,9 +638,10 @@ describe('RemoteSync page', () => {
     expect(
       wrapper.find('[data-testid="remote-sync-remote-logs-empty-task-redmine-logs"]').exists(),
     ).toBe(false);
-    expect(wrapper.find('[data-testid="remote-sync-remote-log-comment-11"]').text()).toContain(
-      'Redmine Task',
-    );
+    const comment = wrapper.find('[data-testid="remote-sync-remote-log-comment-11"]');
+    expect(comment.text()).toContain('Redmine Task');
+    expect(comment.attributes('title')).toBeUndefined();
+    expect(comment.element.closest('[data-overflow-tooltip]')).not.toBeNull();
     expect(
       wrapper.find('[data-testid="remote-sync-duplicate-warning-task-redmine-logs"]').exists(),
     ).toBe(true);

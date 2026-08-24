@@ -43,27 +43,31 @@ function onDateInputChange() {
 
 <template>
   <div class="flex flex-wrap items-center gap-2" data-testid="remote-sync-day-nav">
-    <UButton
-      icon="i-lucide-chevron-left"
-      color="neutral"
-      variant="ghost"
-      square
-      :aria-label="t('remoteSync.prevDay')"
-      data-testid="remote-sync-prev-day"
-      @click="shift(-1)"
-    />
+    <UTooltip :text="t('remoteSync.prevDay')" :content="{ side: 'top' }">
+      <UButton
+        icon="i-lucide-chevron-left"
+        color="neutral"
+        variant="ghost"
+        square
+        :aria-label="t('remoteSync.prevDay')"
+        data-testid="remote-sync-prev-day"
+        @click="shift(-1)"
+      />
+    </UTooltip>
     <h2 class="text-2xl font-semibold" data-testid="remote-sync-heading">
       {{ t('remoteSync.pageTitle', { date: heading }) }}
     </h2>
-    <UButton
-      icon="i-lucide-chevron-right"
-      color="neutral"
-      variant="ghost"
-      square
-      :aria-label="t('remoteSync.nextDay')"
-      data-testid="remote-sync-next-day"
-      @click="shift(1)"
-    />
+    <UTooltip :text="t('remoteSync.nextDay')" :content="{ side: 'top' }">
+      <UButton
+        icon="i-lucide-chevron-right"
+        color="neutral"
+        variant="ghost"
+        square
+        :aria-label="t('remoteSync.nextDay')"
+        data-testid="remote-sync-next-day"
+        @click="shift(1)"
+      />
+    </UTooltip>
     <UButton
       color="neutral"
       variant="ghost"

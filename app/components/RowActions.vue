@@ -11,25 +11,29 @@ const emit = defineEmits<{ edit: []; delete: [] }>();
 
 <template>
   <div class="flex shrink-0 justify-end gap-0.5">
-    <UButton
-      icon="i-lucide-pencil"
-      color="neutral"
-      variant="ghost"
-      size="sm"
-      square
-      :aria-label="editLabel"
-      :data-testid="editTestid"
-      @click="emit('edit')"
-    />
-    <UButton
-      icon="i-lucide-trash-2"
-      color="error"
-      variant="ghost"
-      size="sm"
-      square
-      :aria-label="deleteLabel"
-      :data-testid="deleteTestid"
-      @click="emit('delete')"
-    />
+    <UTooltip :text="editLabel" :content="{ side: 'top' }">
+      <UButton
+        icon="i-lucide-pencil"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        square
+        :aria-label="editLabel"
+        :data-testid="editTestid"
+        @click="emit('edit')"
+      />
+    </UTooltip>
+    <UTooltip :text="deleteLabel" :content="{ side: 'top' }">
+      <UButton
+        icon="i-lucide-trash-2"
+        color="error"
+        variant="ghost"
+        size="sm"
+        square
+        :aria-label="deleteLabel"
+        :data-testid="deleteTestid"
+        @click="emit('delete')"
+      />
+    </UTooltip>
   </div>
 </template>
