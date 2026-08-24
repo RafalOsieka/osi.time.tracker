@@ -14,6 +14,8 @@ without wasting time re-diagnosing the same root causes.
 
 Scripts: `pnpm test:e2e:db`, `pnpm test:e2e:api`, `pnpm test:e2e:ui`. `NUXT_TEST_SKIP_BUILD=1` reuses `.output` and fails if it is missing. In CI, missing Docker or Chromium **fails** (does not skip).
 
+The CI `build` job is the e2e artifact, not the production image: it sets `IS_E2E=true` and `NUXT_BUILD_SOURCEMAP=1` before `pnpm build`. nuxt-security login/global rate limits are compiled into `routeRules`, so a production-limit artifact reused under skip-build yields CI-only 429s, missing CSRF meta tags, login timeouts, and 401s. Local global-setup already sets `IS_E2E` before it builds.
+
 E2E TypeScript files use kebab-case names (`setup-server.ts`, `helper-isolation.spec.ts`). Function names stay `camelCase` (`setupServer()`).
 
 ## Coverage tools (`c8` vs Vitest v8)

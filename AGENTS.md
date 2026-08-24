@@ -82,7 +82,7 @@ pnpm test:coverage  # coverage for the unit + nuxt projects
 - **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
 - **Naming:** test files use `*.spec.ts` under the matching `test/` project directory.
 - **E2E layout:** `test/e2e/api`, `test/e2e/ui`, `test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
-- **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `.output` with `NUXT_TEST_SKIP_BUILD=1`.
+- **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `.output` with `NUXT_TEST_SKIP_BUILD=1` (the CI `build` artifact is built with `IS_E2E=true` so login rate limits match local e2e).
 - **Who owns a UI failure:** `test/nuxt` = component + mocks; `test/e2e/api` = HTTP contract; `test/e2e/ui` = journey + production wiring.
 - **Remote trackers:** unit + e2e mock OpenProject/Redmine (fake HTTP / `page.route`). There is **no** live integration suite against `docker-compose.openproject.yml` / `docker-compose.redmine.yml`. See `docs/e2e-guideline.md` (“Follow-up: live OpenProject / Redmine e2e”).
 - **E2E file names:** kebab-case (`setup-server.ts`).

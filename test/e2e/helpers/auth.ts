@@ -52,6 +52,9 @@ export async function primeCsrf(jar: CookieJar): Promise<string> {
   const res = await fetch(url('/'), { headers: { cookie: jar.header() } });
   jar.capture(res);
   const html = await res.text();
+  if (!res.ok) {
+    throw new Error(`CSRF prime GET / failed: HTTP ${res.status}`);
+  }
   const match = html.match(/<meta name="csrf-token" content="([^"]+)">/);
   if (!match) {
     throw new Error('CSRF token meta tag not found in rendered HTML');

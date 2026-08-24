@@ -15,6 +15,8 @@ export async function setup(): Promise<void> {
 
   const action = resolveProductionBuildAction({ outputExists: outputExists() });
   if (action === 'build') {
+    // IS_E2E is already set above so nuxt-security login/global rate limits
+    // compile as the e2e bucket. CI skip-build must bake the same env.
     execSync('pnpm build', { stdio: 'inherit', env: process.env });
   }
 }

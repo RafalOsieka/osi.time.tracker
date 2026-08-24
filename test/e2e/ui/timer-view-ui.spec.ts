@@ -7,7 +7,7 @@ import { provisionDatabase } from '../harness/database';
 import { seedUsers } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
-import { CookieJar, primeCsrf } from '../helpers/auth';
+import { apiLogin, type CookieJar } from '../helpers/auth';
 import {
   groupKeyForTitleScript,
   pageExcludesTextScript,
@@ -34,18 +34,6 @@ describeTimerViewUI('timer view UI flow', async () => {
     const page = await createPage('/');
     await fillLogin(page, email, 'secret', { height: 900 });
     return page;
-  }
-
-  async function apiLogin(email: string) {
-    const jar = new CookieJar();
-    const token = await primeCsrf(jar);
-    const res = await fetch(url('/api/auth/login'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ email, password: 'secret' }),
-    });
-    jar.capture(res);
-    return { jar, token };
   }
 
   async function startEntry(jar: CookieJar, token: string, body: Record<string, unknown> = {}) {

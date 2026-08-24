@@ -34,7 +34,7 @@
 
 ## 7. Backend: CI db/api jobs and artifact
 
-- [x] 7.1 Enable sourcemaps for the CI e2e artifact only (`NUXT_BUILD_SOURCEMAP` or equivalent in the `build` job); do not enable sourcemaps in the production Dockerfile (REQ-277, REQ-275)
+- [x] 7.1 Enable sourcemaps (`NUXT_BUILD_SOURCEMAP`) and `IS_E2E=true` on the CI e2e artifact only, so login/global rate limits compile as the e2e bucket; do not set either in the production Dockerfile (REQ-277, REQ-275)
 - [x] 7.2 Change `.github/workflows/ci.yml`: `build` uploads `.output`; add `db` job (`pnpm test:e2e:db`, needs cheap jobs except `build`); add `api` job that downloads `.output`, sets `NUXT_TEST_SKIP_BUILD=1`, runs `pnpm test:e2e:api`; remove the single `e2e` job after `ui` exists (section 8) (REQ-017, REQ-275)
 - [x] 7.3 Verify on a CI run (or act locally with skip-build): api does not invoke `pnpm build` when `.output` is present; missing artifact fails the job (REQ-275, REQ-054)
 

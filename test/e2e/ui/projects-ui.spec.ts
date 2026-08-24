@@ -6,7 +6,7 @@ import { provisionDatabase } from '../harness/database';
 import { seedUsers } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
-import { CookieJar, primeCsrf } from '../helpers/auth';
+import { apiLogin } from '../helpers/auth';
 
 const describeProjectsUI = requireBrowser();
 
@@ -17,14 +17,7 @@ describeProjectsUI('projects UI flow', async () => {
 
   /** Create a tracker via the API, used to seed data ahead of UI-driven project CRUD. */
   async function createTrackerViaApi(name: string): Promise<{ id: string; name: string }> {
-    const jar = new CookieJar();
-    const token = await primeCsrf(jar);
-    const loginRes = await fetch(url('/api/auth/login'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ email: 'projectsui@example.com', password: 'secret' }),
-    });
-    jar.capture(loginRes);
+    const { jar, token } = await apiLogin('projectsui@example.com');
     const res = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },

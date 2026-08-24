@@ -7,7 +7,7 @@ import { provisionDatabase } from '../harness/database';
 import { seedUsers } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
-import { CookieJar, primeCsrf } from '../helpers/auth';
+import { apiLogin, type CookieJar } from '../helpers/auth';
 
 const describeRemoteIssuePickerUI = requireBrowser();
 
@@ -19,18 +19,6 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     { email: 'remoteissuepickerui@example.com', displayName: 'remoteissuepickeruiuser' },
   ]);
   await setupServer({ databaseUrl: dbUrl, browser: true });
-
-  async function apiLogin(email: string) {
-    const jar = new CookieJar();
-    const token = await primeCsrf(jar);
-    const res = await fetch(url('/api/auth/login'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ email, password: 'secret' }),
-    });
-    jar.capture(res);
-    return { jar, token };
-  }
 
   async function createTracker(
     jar: CookieJar,
@@ -278,11 +266,11 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
       'href',
     );
     expect(href).toBe(`${OPENPROJECT_BASE_URL}/work_packages/111`);
-    const title = await page.getAttribute(
+    const accessibleName = await page.getAttribute(
       `[data-testid="timer-group-remote-issue-link-${groupKey}"]`,
-      'title',
+      'aria-label',
     );
-    expect(title).toContain('First Match');
+    expect(accessibleName).toContain('First Match');
 
     // --- Replace the link with a new selection ---
     await mockOpenProject(page, {
