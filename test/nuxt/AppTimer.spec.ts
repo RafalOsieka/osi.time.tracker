@@ -144,11 +144,17 @@ function runningEntry(taskName: string | null = 'My Task') {
   };
 }
 
+const TooltipStub = {
+  props: ['text', 'content'],
+  template: '<span v-bind="$attrs" :data-tooltip-text="text"><slot /></span>',
+};
+
 const baseStubs = {
   UInputMenu: InputMenuStub,
   UButton: ButtonStub,
   UPopover: PopoverStub,
   UInput: InputStub,
+  UTooltip: TooltipStub,
 };
 
 describe('AppTimer', () => {
@@ -169,6 +175,9 @@ describe('AppTimer', () => {
     expect(wrapper.find('[data-testid="app-timer"]').exists()).toBe(true);
     const toggle = wrapper.find('[data-testid="timer-toggle-button"]');
     expect(toggle.attributes('aria-label')).toBe('timer.start');
+    expect(toggle.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'timer.start',
+    );
     expect(toggle.attributes('data-icon')).toBe('i-lucide-play');
     expect(toggle.attributes('aria-pressed')).not.toBe('true');
     expect(wrapper.find('[data-testid="timer-elapsed"]').text()).toBe('00:00:00');
@@ -184,6 +193,9 @@ describe('AppTimer', () => {
 
     const toggle = wrapper.find('[data-testid="timer-toggle-button"]');
     expect(toggle.attributes('aria-label')).toBe('timer.stop');
+    expect(toggle.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'timer.stop',
+    );
     expect(toggle.attributes('data-icon')).toBe('i-lucide-square');
     expect(toggle.attributes('aria-pressed')).toBe('true');
     expect(toggle.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);

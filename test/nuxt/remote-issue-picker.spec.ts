@@ -31,7 +31,6 @@ const ButtonStub = {
       v-bind="$attrs"
       :href="to"
       :target="target"
-      :title="title"
       :type="to ? undefined : type || 'button'"
       :aria-label="ariaLabel || $attrs['aria-label']"
       :disabled="disabled"
@@ -52,7 +51,6 @@ const ButtonStub = {
     'type',
     'to',
     'target',
-    'title',
     'external',
   ],
   emits: ['click'],
@@ -87,12 +85,25 @@ const PopoverStub = {
     '<div><slot /><div v-if="open" data-testid="popover-content"><slot name="content" /></div></div>',
 };
 
+const TooltipStub = {
+  props: ['text', 'content'],
+  template: '<span v-bind="$attrs" :data-tooltip-text="text"><slot /></span>',
+};
+
 const stubs = {
   UButton: ButtonStub,
   UInput: InputStub,
   URadioGroup: RadioGroupStub,
   UPopover: PopoverStub,
+  UTooltip: TooltipStub,
 };
+
+function hintFor(wrapper: { find: (selector: string) => { element: Element } }, testid: string) {
+  return wrapper
+    .find(`[data-testid="${testid}"]`)
+    .element.closest('[data-tooltip-text]')
+    ?.getAttribute('data-tooltip-text');
+}
 
 function testI18n() {
   return createI18n({
@@ -147,7 +158,8 @@ describe('RemoteIssuePicker', () => {
     const link = wrapper.find('[data-testid="issue-link"]');
     expect(link.attributes('href')).toBe('https://op.example.com/work_packages/42');
     expect(link.attributes('target')).toBe('_blank');
-    expect(link.attributes('title')).toContain('Fix login bug');
+    expect(link.attributes('title')).toBeUndefined();
+    expect(hintFor(wrapper, 'issue-link')).toContain('Fix login bug');
     expect(link.classes()).toContain('min-w-6');
     expect(link.classes()).toContain('h-6');
     expect(link.classes()).toContain('px-0');
@@ -172,6 +184,8 @@ describe('RemoteIssuePicker', () => {
     expect(trigger.classes()).not.toContain('absolute');
     expect(trigger.attributes('data-icon')).toBe('i-lucide-link-2-off');
     expect(trigger.attributes('data-size')).toBe('xs');
+    expect(trigger.attributes('title')).toBeUndefined();
+    expect(hintFor(wrapper, 'remote-issue-picker-trigger')).toBe('timerView.remoteIssue.unlinked');
 
     await trigger.trigger('click');
     await flushPromises();

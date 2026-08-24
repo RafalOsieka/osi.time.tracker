@@ -53,6 +53,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Prefer existing Nuxt UI components (`UButton`, `UInput`, `UForm`/`UFormField`, `UTable`, `UModal`, `UDashboard*`, etc.) over native form controls. Reserve native elements for semantic structure or lightweight wrappers.
 - Keep all user-facing text in the i18n catalogs and render it via `t(...)`; never hard-code display strings in templates or scripts.
 - Provide accessibility affordances: `aria-label`, `role`, and `aria-live` where appropriate, and use stable `data-testid` hooks for testable elements.
+- Hover/focus hints use Nuxt UI `UTooltip`, not the HTML `title` attribute (leave modal/page/confirm `title` props alone). Icon-only or status-only controls pair `aria-label` with a matching tooltip; do not add a tooltip that only repeats an already-visible label. Disabled explanations wrap a `tabindex="0"` host so the tooltip still opens. Truncated overflow uses `OverflowTooltip`.
 - Prefer Tailwind utility classes and Nuxt UI `--ui-*` design tokens for layout/color. Icons use the Lucide set (`i-lucide-*`). Keep residual `<style scoped>` only when utilities are insufficient.
 - Forms use `UForm` with a shared zod `:schema` and labelled `UFormField`s. Confirmations use `useAppConfirm()` (`useOverlay` + `ConfirmModal`), not per-page dialog instances.
 

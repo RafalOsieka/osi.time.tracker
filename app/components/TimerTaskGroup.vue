@@ -208,17 +208,22 @@ async function unlinkRemoteIssue() {
       data-testid="timer-group-header-controls"
     >
       <div class="[grid-area:toggle] shrink-0">
-        <UButton
-          :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
-          variant="ghost"
-          square
-          size="xs"
-          :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
-          :aria-expanded="expanded"
-          :aria-controls="entriesId"
-          :data-testid="`timer-group-toggle-${group.key}`"
-          @click="expanded = !expanded"
-        />
+        <UTooltip
+          :text="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
+          :content="{ side: 'top' }"
+        >
+          <UButton
+            :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+            variant="ghost"
+            square
+            size="xs"
+            :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
+            :aria-expanded="expanded"
+            :aria-controls="entriesId"
+            :data-testid="`timer-group-toggle-${group.key}`"
+            @click="expanded = !expanded"
+          />
+        </UTooltip>
       </div>
 
       <div class="flex min-w-0 items-center gap-2 [grid-area:title] lg:min-w-0 lg:flex-1">
@@ -265,18 +270,24 @@ async function unlinkRemoteIssue() {
       </div>
 
       <div class="w-48 min-w-0 max-w-full shrink-0 justify-self-start [grid-area:project]">
-        <UButton
+        <UTooltip
           v-if="!canAssignProject"
-          variant="ghost"
-          color="neutral"
-          size="xs"
-          disabled
-          class="w-full justify-start truncate text-muted disabled:opacity-40"
-          :label="projectDisplayValue"
-          :aria-label="t('timerView.projectRequiresTitle')"
-          :title="t('timerView.projectRequiresTitle')"
-          :data-testid="`timer-group-project-${group.key}`"
-        />
+          :text="t('timerView.projectRequiresTitle')"
+          :content="{ side: 'top' }"
+        >
+          <span tabindex="0" class="inline-flex w-full min-w-0">
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              disabled
+              class="w-full justify-start truncate text-muted disabled:opacity-40"
+              :label="projectDisplayValue"
+              :aria-label="t('timerView.projectRequiresTitle')"
+              :data-testid="`timer-group-project-${group.key}`"
+            />
+          </span>
+        </UTooltip>
         <UPopover
           v-else
           :open="projectSelectOpen"
@@ -340,19 +351,21 @@ async function unlinkRemoteIssue() {
           @link="linkRemoteIssue"
           @unlink="unlinkRemoteIssue"
         />
-        <UButton
-          v-else
-          icon="i-lucide-link-2-off"
-          color="neutral"
-          variant="ghost"
-          square
-          size="xs"
-          disabled
-          class="h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
-          :aria-label="remoteIssueUnavailableLabel"
-          :title="remoteIssueUnavailableLabel"
-          :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
-        />
+        <UTooltip v-else :text="remoteIssueUnavailableLabel" :content="{ side: 'top' }">
+          <span tabindex="0" class="inline-flex">
+            <UButton
+              icon="i-lucide-link-2-off"
+              color="neutral"
+              variant="ghost"
+              square
+              size="xs"
+              disabled
+              class="h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
+              :aria-label="remoteIssueUnavailableLabel"
+              :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
+            />
+          </span>
+        </UTooltip>
       </div>
 
       <span
@@ -363,18 +376,20 @@ async function unlinkRemoteIssue() {
       </span>
 
       <div class="shrink-0 [grid-area:action]">
-        <UButton
-          :icon="isLive ? 'i-lucide-square' : 'i-lucide-play'"
-          variant="ghost"
-          square
-          size="xs"
-          :color="isLive ? 'error' : undefined"
-          :ui="actionButtonUi"
-          :aria-label="actionLabel"
-          :aria-pressed="isLive"
-          :data-testid="`timer-group-continue-${group.key}`"
-          @click="onActionClick"
-        />
+        <UTooltip :text="actionLabel" :content="{ side: 'top' }">
+          <UButton
+            :icon="isLive ? 'i-lucide-square' : 'i-lucide-play'"
+            variant="ghost"
+            square
+            size="xs"
+            :color="isLive ? 'error' : undefined"
+            :ui="actionButtonUi"
+            :aria-label="actionLabel"
+            :aria-pressed="isLive"
+            :data-testid="`timer-group-continue-${group.key}`"
+            @click="onActionClick"
+          />
+        </UTooltip>
       </div>
     </div>
 

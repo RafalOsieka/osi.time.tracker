@@ -349,25 +349,27 @@ async function onSaveStartedAt() {
       </template>
     </UPopover>
 
-    <UButton
-      square
-      variant="ghost"
-      :icon="isRunning ? 'i-lucide-square' : 'i-lucide-play'"
-      :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
-      :color="isRunning ? 'error' : 'primary'"
-      :ui="
-        isRunning
-          ? {
-              leadingIcon:
-                'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
-            }
-          : undefined
-      "
-      :loading="starting || stopping"
-      :disabled="isLoading"
-      :aria-pressed="isRunning"
-      data-testid="timer-toggle-button"
-      @click="onToggle"
-    />
+    <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
+      <UButton
+        square
+        variant="ghost"
+        :icon="isRunning ? 'i-lucide-square' : 'i-lucide-play'"
+        :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
+        :color="isRunning ? 'error' : 'primary'"
+        :ui="
+          isRunning
+            ? {
+                leadingIcon:
+                  'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
+              }
+            : undefined
+        "
+        :loading="starting || stopping"
+        :disabled="isLoading"
+        :aria-pressed="isRunning"
+        data-testid="timer-toggle-button"
+        @click="onToggle"
+      />
+    </UTooltip>
   </div>
 </template>
