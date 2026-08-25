@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TrackerDto } from '../../shared/types/tracker';
+import type { JsonValue } from '../../shared/types/json';
 
 const secretStore = new Map<string, string>();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
 vi.mock('../../app/composables/useTrackerSecret', () => ({
   useTrackerSecret: () => ({
     get: (trackerId: string) => secretStore.get(trackerId) ?? null,
@@ -26,7 +28,13 @@ const config: TrackerDto = {
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
-function jsonResponse(body: unknown, status = 200) {
+type JsonFetchResponse = {
+  ok: boolean;
+  status: number;
+  json: () => Promise<JsonValue>;
+};
+
+function jsonResponse(body: JsonValue, status = 200): JsonFetchResponse {
   return {
     ok: status >= 200 && status < 300,
     status,
@@ -64,6 +72,7 @@ describe('useRemoteIssueSearch', () => {
 
   it('builds a title-search request with a Basic apikey Authorization header', async () => {
     vi.mocked(fetch).mockResolvedValue(
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       jsonResponse({ _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } }) as never,
     );
     const { search, results } = useRemoteIssueSearch(config);
@@ -73,11 +82,15 @@ describe('useRemoteIssueSearch', () => {
     const [url, init] = vi.mocked(fetch).mock.calls[0]!;
     expect(String(url)).toContain('https://op.example.com/api/v3/work_packages?');
     const expectedAuth = `Basic ${Buffer.from('apikey:secret-api-key', 'utf-8').toString('base64')}`;
-    expect((init as RequestInit).headers).toMatchObject({ Authorization: expectedAuth });
+    // SAFETY: fetch init is the platform RequestInit; headers may be a Headers instance.
+    const headers = (init as RequestInit).headers;
+    const authorization = headers instanceof Headers ? headers.get('Authorization') : undefined;
+    expect(authorization).toBe(expectedAuth);
     expect(results.value).toEqual([{ remoteIssueId: '1', title: 'Fix bug' }]);
   });
 
   it('builds an exact-id lookup request', async () => {
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: 42, subject: 'Some issue' }) as never);
     const { search, results } = useRemoteIssueSearch(config);
     await search({ mode: 'id', query: '42' });
@@ -88,6 +101,7 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('maps a 404 id lookup to a not-found translated error', async () => {
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 404) as never);
     const { search, results, errorKey } = useRemoteIssueSearch(config);
     await search({ mode: 'id', query: '999' });
@@ -97,6 +111,7 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('maps a generic remote failure to a translated error key', async () => {
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 500) as never);
     const { search, errorKey } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'anything' });
@@ -113,10 +128,11 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('ignores a stale response that resolves after a newer request', async () => {
-    let resolveFirst!: (value: unknown) => void;
+    let resolveFirst!: (value: JsonFetchResponse) => void;
     const firstPromise = new Promise((resolve) => {
       resolveFirst = resolve;
     });
+    // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
     vi.mocked(fetch)
       .mockImplementationOnce(() => firstPromise as never)
       .mockImplementationOnce(
@@ -137,6 +153,7 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('never sends the credential to an OSI server API path', async () => {
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     vi.mocked(fetch).mockResolvedValue(jsonResponse({ _embedded: { elements: [] } }) as never);
     const { search } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'anything' });
@@ -144,10 +161,10 @@ describe('useRemoteIssueSearch', () => {
     for (const call of vi.mocked(fetch).mock.calls) {
       const [url, init] = call;
       if (String(url).startsWith('/api/')) {
-        const headers = (init as RequestInit | undefined)?.headers as
-          | Record<string, string>
-          | undefined;
-        expect(headers?.Authorization).toBeUndefined();
+        // SAFETY: fetch init is the platform RequestInit; headers may be a Headers instance.
+        const headers = (init as RequestInit | undefined)?.headers;
+        const authorization = headers instanceof Headers ? headers.get('Authorization') : undefined;
+        expect(authorization).toBeUndefined();
       } else {
         expect(String(url)).toContain('op.example.com');
       }

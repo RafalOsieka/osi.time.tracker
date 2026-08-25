@@ -49,6 +49,7 @@ describe('finalizeRemoteExportSchema', () => {
       throw new Error('expected parse to throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ZodError);
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       const mapped = mapZodError(err as ZodError);
       expect(mapped.messageKey).toBe('error.remoteExportRemoteLogIdRequired');
     }

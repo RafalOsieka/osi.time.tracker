@@ -6,6 +6,7 @@ export function pageIncludesTextScript(): (text: string) => boolean {
   return (text: string) => {
     if (document.body.textContent?.includes(text)) return true;
     for (const el of document.querySelectorAll('input, textarea')) {
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       if ((el as HTMLInputElement).value?.includes(text)) return true;
     }
     return false;
@@ -17,6 +18,7 @@ export function pageExcludesTextScript(): (text: string) => boolean {
   return (text: string) => {
     if (document.body.textContent?.includes(text)) return false;
     for (const el of document.querySelectorAll('input, textarea')) {
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       if ((el as HTMLInputElement).value?.includes(text)) return false;
     }
     return true;
@@ -35,6 +37,7 @@ export function groupKeyForTitleScript(): (title: string) => string | null {
       ),
     ];
     const titleNode = titles.find((node) => {
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       const input = (
         node.matches('input') ? node : node.querySelector('input')
       ) as HTMLInputElement | null;

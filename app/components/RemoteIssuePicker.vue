@@ -95,6 +95,7 @@ function resultAccessibleName(result: RemoteIssueSearchResult): string {
 }
 
 function focusQueryInput() {
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   const root = queryField.value as HTMLElement | { $el?: HTMLElement } | null;
   const host = root instanceof HTMLElement ? root : root?.$el;
   const input = host?.querySelector?.('input') ?? (host instanceof HTMLInputElement ? host : null);

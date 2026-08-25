@@ -6,14 +6,11 @@ import { createProject, createTracker } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeSyncDay = requireDocker();
 
-async function createEntry(
-  jar: CookieJar,
-  token: string,
-  body: Record<string, unknown>,
-): Promise<Response> {
+async function createEntry(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
   return fetch(url('/api/time-entries'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },

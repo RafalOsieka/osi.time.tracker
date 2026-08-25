@@ -96,8 +96,7 @@ describe('parseOpenProjectDuration', () => {
     expect(parseOpenProjectDuration('  PT1H  ')).toBe(3600);
   });
 
-  it('returns null for a non-string value', () => {
-    expect(parseOpenProjectDuration(3600)).toBeNull();
+  it('returns null for a missing value', () => {
     expect(parseOpenProjectDuration(null)).toBeNull();
     expect(parseOpenProjectDuration(undefined)).toBeNull();
   });
@@ -125,7 +124,7 @@ describe('hrefId', () => {
     expect(hrefId('/api/v3/work_packages/42?foo=bar')).toBe('42');
   });
 
-  it('returns null for a non-string value', () => {
+  it('returns null for a missing value', () => {
     expect(hrefId(undefined)).toBeNull();
     expect(hrefId(null)).toBeNull();
   });

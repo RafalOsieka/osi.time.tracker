@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import { extractRemoteErrorKey } from '../utils/remote/extract-remote-error-key';
+import { extractCaughtMessageKey } from '../utils/extractMessageKey';
 import type { RemoteFieldOption } from '../../shared/types/remote-field-option';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { useTrackerSecret } from './useTrackerSecret';
@@ -66,13 +66,13 @@ export function useRemoteActivities() {
             loaded: true,
           },
         };
-      } catch (err: unknown) {
+      } catch (err) {
         activitiesByScopeKey.value = {
           ...activitiesByScopeKey.value,
           [scopeKey]: {
             options: [],
             loading: false,
-            errorKey: extractRemoteErrorKey(err, 'error.remoteActivitiesFetchFailed'),
+            errorKey: extractCaughtMessageKey(err, 'error.remoteActivitiesFetchFailed'),
             loaded: true,
           },
         };

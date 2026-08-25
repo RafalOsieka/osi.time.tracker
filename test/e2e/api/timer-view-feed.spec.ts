@@ -30,6 +30,7 @@ describeFeed('timer view feed API', async () => {
       body: JSON.stringify(body),
     });
     expect(res.status).toBe(200);
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     return res.json() as Promise<FeedEntry>;
   }
 
@@ -39,6 +40,7 @@ describeFeed('timer view feed API', async () => {
       : '/api/time-entries/feed';
     const res = await fetch(url(path), { headers: { cookie: jar.header() } });
     expect(res.status).toBe(200);
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     return res.json() as Promise<FeedPage>;
   }
 

@@ -132,7 +132,7 @@ export default defineEventHandler(async (event): Promise<TimerViewFeedDto> => {
   let parsedQuery: TimerViewFeedQuery;
   try {
     parsedQuery = timerViewFeedQuerySchema.parse(query);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,

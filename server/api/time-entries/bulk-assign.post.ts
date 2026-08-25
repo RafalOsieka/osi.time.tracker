@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<{ success: true }> => {
   let parsedBody: BulkAssignDto;
   try {
     parsedBody = bulkAssignSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,

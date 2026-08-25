@@ -85,11 +85,14 @@ describe('RedmineClient', () => {
   });
 
   it('skips malformed title-search elements and caps results', async () => {
-    const elements = Array.from({ length: 30 }, (_, i) => ({
-      id: i + 1,
-      subject: `Issue ${i + 1}`,
-    }));
-    elements.push({ id: 'bad' as unknown as number, subject: 123 as unknown as string });
+    const elements: Array<{ id: number; subject?: string }> = Array.from(
+      { length: 30 },
+      (_, i) => ({
+        id: i + 1,
+        subject: `Issue ${i + 1}`,
+      }),
+    );
+    elements.push({ id: 99 });
     const transport = fakeTransport([{ status: 200, payload: { issues: elements } }]);
     const client = new RedmineClient(transport, 'https://rm.example.com');
 
@@ -148,7 +151,7 @@ describe('RedmineClient', () => {
             { id: 1, name: 'Development', active: true },
             { id: 2, name: 'Retired', active: false },
             { id: 3, name: 'Design' },
-            { id: 'bad', name: 123 },
+            { id: 'bad' },
           ],
         },
       },

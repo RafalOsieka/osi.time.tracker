@@ -1,3 +1,4 @@
+import type { JsonValue } from './json';
 import type { RemoteFieldOption } from './remote-field-option';
 import type { RemoteAccount } from './remote-account';
 import type { RemoteIssueSearchResult } from './remote-issue-ref';
@@ -8,7 +9,7 @@ export interface RemoteRequest {
   url: string;
   method: 'GET' | 'POST';
   /** JSON body for `POST`/form endpoints; unused by `GET` requests. */
-  body?: unknown;
+  body?: JsonValue;
   /**
    * Provider-built request headers (e.g. auth). Transports merge these as-is
    * and never construct provider-specific credentials themselves.
@@ -19,7 +20,7 @@ export interface RemoteRequest {
 /** A pure, transport-agnostic HTTP response description. */
 export interface RemoteResponse {
   status: number;
-  payload: unknown;
+  payload: JsonValue | null;
 }
 
 /**

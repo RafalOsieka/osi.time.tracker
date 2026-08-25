@@ -16,7 +16,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   let parsedBody: StartTimeEntryDto;
   try {
     parsedBody = startTimeEntrySchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,

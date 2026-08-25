@@ -3,12 +3,12 @@ import { normalizeBaseUrl } from '../utils/normalize-base-url';
 
 type IssueUrlBuilder = (baseUrl: string, remoteIssueId: string) => string;
 
-const ISSUE_URL_BUILDERS: Record<TrackerSystemType, IssueUrlBuilder> = {
+const ISSUE_URL_BUILDERS = {
   openproject: (baseUrl, remoteIssueId) =>
     `${normalizeBaseUrl(baseUrl)}/work_packages/${encodeURIComponent(remoteIssueId)}`,
   redmine: (baseUrl, remoteIssueId) =>
     `${normalizeBaseUrl(baseUrl)}/issues/${encodeURIComponent(remoteIssueId)}`,
-};
+} as const satisfies Record<TrackerSystemType, IssueUrlBuilder>;
 
 /**
  * Derives a usable issue URL from a configuration's `systemType`, normalized

@@ -8,6 +8,7 @@ import { seedUsers } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeRemoteIssuePickerUI = requireBrowser();
 
@@ -24,7 +25,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     jar: CookieJar,
     token: string,
     name: string,
-    overrides: Record<string, unknown> = {},
+    overrides: JsonObject = {},
   ): Promise<{ id: string; name: string }> {
     const res = await fetch(url('/api/trackers'), {
       method: 'POST',

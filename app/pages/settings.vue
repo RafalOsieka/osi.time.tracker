@@ -37,6 +37,7 @@ const themeItems = computed(
 );
 
 const selectedLocale = computed({
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   get: () => locale.value as AppLocale,
   set: (value: AppLocale) => {
     void setLocale(value);
@@ -44,6 +45,7 @@ const selectedLocale = computed({
 });
 
 const selectedTheme = computed({
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   get: () => colorMode.preference as ColorModePreference,
   set: (value: ColorModePreference) => {
     colorMode.preference = value;

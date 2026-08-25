@@ -4,6 +4,7 @@ import { REMOTE_SECRET_HEADER } from '../../shared/config/remote-secret';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return {
@@ -18,6 +19,7 @@ vi.mock('ofetch', async (importOriginal) => {
 
 const secretStore = new Map<string, string>();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
 vi.mock('../../app/composables/useTrackerSecret', () => ({
   useTrackerSecret: () => ({
     get: (trackerId: string) => secretStore.get(trackerId) ?? null,
@@ -81,9 +83,11 @@ describe('useRemoteIssueSearch (proxied transport)', () => {
   });
 
   it('maps a server-mapped error messageKey from the server-execution endpoint', async () => {
-    csrfFetchMock.mockRejectedValue({
+    const err = new Error('auth rejected');
+    Object.assign(err, {
       data: { data: { messageKey: 'error.remoteServerModeAuthRejected' } },
     });
+    csrfFetchMock.mockRejectedValue(err);
     const { search, errorKey } = useRemoteIssueSearch(config);
 
     await search({ mode: 'title', query: 'login bug' });

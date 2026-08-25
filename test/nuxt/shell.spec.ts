@@ -2,16 +2,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AppSidebar from '../../app/components/AppSidebar.vue';
+import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const fetchMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
 const seedRunningMock = vi.hoisted(() => vi.fn());
 const resumeTickerMock = vi.hoisted(() => vi.fn());
 
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
+type AsyncDataValue = TimeEntryDto | null;
 mockNuxtImport('useAsyncData', () => {
   // Match Nuxt's awaitable useAsyncData: resolve the fetcher before setup continues.
-  return async (_key: string, fetcher: () => Promise<unknown>) => {
-    const data = ref<unknown>(null);
+  return async (_key: string, fetcher: () => Promise<AsyncDataValue>) => {
+    const data = ref<AsyncDataValue>(null);
     try {
       data.value = await fetcher();
     } catch {
@@ -71,7 +73,13 @@ const userFooterStub = {
 
 const appTimerStub = { template: '<div data-testid="app-timer" />' };
 
-async function mountShell(overrideStubs: Record<string, unknown> = {}) {
+type VueTestStub = {
+  template?: string;
+  props?: readonly string[];
+};
+type StubMap = { [name: string]: VueTestStub };
+
+async function mountShell(overrideStubs: StubMap = {}) {
   return mountSuspended(DefaultLayout, {
     global: {
       stubs: {

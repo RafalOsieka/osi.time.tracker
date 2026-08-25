@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { isTextOverflowing } from '../../app/utils/isTextOverflowing';
+import { isTextOverflowing, type OverflowBox } from '../../app/utils/isTextOverflowing';
 
-function fakeBox(scrollWidth: number, clientWidth: number): HTMLElement {
+function fakeBox(scrollWidth: number, clientWidth: number): OverflowBox {
   return {
+    tagName: 'DIV',
     scrollWidth,
     clientWidth,
     querySelector: () => null,
-  } as unknown as HTMLElement;
+  };
 }
 
 describe('isTextOverflowing', () => {
@@ -19,12 +20,18 @@ describe('isTextOverflowing', () => {
   });
 
   it('measures a nested input when the host is a wrapper', () => {
-    const input = fakeBox(200, 50);
-    const host = {
+    const input: OverflowBox = {
+      tagName: 'INPUT',
+      scrollWidth: 200,
+      clientWidth: 50,
+      querySelector: () => null,
+    };
+    const host: OverflowBox = {
+      tagName: 'DIV',
       scrollWidth: 50,
       clientWidth: 50,
       querySelector: (selector: string) => (selector.includes('input') ? input : null),
-    } as unknown as HTMLElement;
+    };
     expect(isTextOverflowing(host)).toBe(true);
   });
 });

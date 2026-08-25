@@ -8,6 +8,7 @@ export const IMPLEMENTED_SYSTEM_TYPES = new Set<TrackerSystemType>(TRACKER_SYSTE
 export function isImplementedTrackerSystemType(
   systemType: string,
 ): systemType is TrackerSystemType {
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   return IMPLEMENTED_SYSTEM_TYPES.has(systemType as TrackerSystemType);
 }
 

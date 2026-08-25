@@ -1,5 +1,6 @@
 import type { ZodError } from 'zod';
 import type { ApiMessage } from '../types/api-message';
+import type { MessageParams } from '../../shared/types/message-params';
 
 export function mapZodError(error: ZodError): ApiMessage {
   const issue = error.issues[0];
@@ -14,21 +15,21 @@ export function mapZodError(error: ZodError): ApiMessage {
   }
 
   const messageKey = issue.message;
-  const params: Record<string, unknown> = {};
+  const params: MessageParams = {};
 
-  if ('minimum' in issue && issue.minimum !== undefined && issue.minimum !== null) {
-    params.min = issue.minimum;
+  if ('minimum' in issue && issue.minimum != null) {
+    params.min = Number(issue.minimum);
   }
-  if ('maximum' in issue && issue.maximum !== undefined && issue.maximum !== null) {
-    params.max = issue.maximum;
+  if ('maximum' in issue && issue.maximum != null) {
+    params.max = Number(issue.maximum);
   }
-  if ('expected' in issue) {
-    params.expected = issue.expected;
+  if ('expected' in issue && issue.expected !== undefined) {
+    params.expected = String(issue.expected);
   }
 
-  // Merge custom parameters if present
-  if ('params' in issue && typeof issue.params === 'object' && issue.params !== null) {
-    Object.assign(params, issue.params);
+  if ('params' in issue && issue.params) {
+    // SAFETY: custom zod issue.params are primitive interpolation values on this contract.
+    Object.assign(params, issue.params as MessageParams);
   }
 
   if (Object.keys(params).length > 0) {

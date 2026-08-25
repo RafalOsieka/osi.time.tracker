@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import { extractRemoteErrorKey } from '../utils/remote/extract-remote-error-key';
+import { extractCaughtMessageKey } from '../utils/extractMessageKey';
 import type { RemoteAccount } from '../../shared/types/remote-account';
 import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
 import type { TrackerDto } from '../../shared/types/tracker';
@@ -96,7 +96,8 @@ export function useRemoteSyncClient(config: TrackerDto) {
   };
 }
 
-/** Maps any failure (adapter or local) to a translation key. */
+/** Maps an adapter or Nitro failure to a translation key. */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- catch binding is implicitly unknown
 export function mapRemoteSyncClientError(err: unknown, fallback: string): string {
-  return extractRemoteErrorKey(err, fallback);
+  return extractCaughtMessageKey(err, fallback);
 }

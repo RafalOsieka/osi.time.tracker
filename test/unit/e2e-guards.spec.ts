@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import { describeOrSkip } from '../e2e/harness/guards';
 
+type DescribeFn = typeof describe;
+type SkipFn = typeof describe.skip;
+
 function fakeDescribe() {
-  const skip = (() => undefined) as unknown as typeof describe.skip;
-  const fn = (() => undefined) as unknown as typeof describe;
-  (fn as { skip: typeof describe.skip }).skip = skip;
+  // SAFETY: Vitest SuiteAPI is not constructible in a unit fake.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Vitest SuiteAPI is not constructible in a unit fake
+  const skip = (() => undefined) as unknown as SkipFn;
+  // SAFETY: Vitest SuiteAPI is not constructible in a unit fake.
+  // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Vitest SuiteAPI is not constructible in a unit fake
+  const fn = Object.assign(() => undefined, { skip }) as unknown as DescribeFn;
   return { fn, skip };
 }
 

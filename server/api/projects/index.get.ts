@@ -5,8 +5,8 @@ import type { ProjectDto } from '../../../shared/types/project';
 
 export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
   const { user } = await requireAuth(event);
-  const query = getQuery(event);
-  const trackerIdRaw = typeof query.trackerId === 'string' ? query.trackerId : undefined;
+  const query = getQuery<{ trackerId?: string }>(event);
+  const trackerIdRaw = query.trackerId;
 
   const conditions = [eq(projects.userId, user.id), isNull(projects.deletedAt)];
   if (trackerIdRaw === 'null' || trackerIdRaw === 'local') {

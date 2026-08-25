@@ -1,5 +1,5 @@
 import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
-import { extractMessageKey } from '../extractMessageKey';
+import { extractCaughtMessageKey } from '../extractMessageKey';
 import type { RemoteFieldOption } from '../../../shared/types/remote-field-option';
 import type { RemoteAccount } from '../../../shared/types/remote-account';
 import type {
@@ -20,13 +20,17 @@ import type {
   ProxiedRemoteActivitiesDto,
   ProxiedRemoteActivitiesResponseDto,
 } from '../../../shared/types/remote-activities';
-import type { RemoteTrackerAdapter } from '../../../shared/types/remote-adapter';
+import {
+  RemoteAdapterError,
+  type RemoteTrackerAdapter,
+} from '../../../shared/types/remote-adapter';
+import type { JsonObject } from '../../../shared/types/json';
 
 /**
  * `server` execution-mode adapter: a `RemoteTrackerAdapter` whose methods
  * each make one `$csrfFetch` call to the matching `/api/remote/*` endpoint
  * with the per-request secret header, and map any failure back to a
- * translation key via `extractMessageKey`. The Nitro handler on the other
+ * translation key via `RemoteAdapterError`. The Nitro handler on the other
  * end resolves the same provider adapter via `createServerRemoteAdapter`
  * (mirroring this side's `createRemoteAdapter`), so quirks and pagination
  * run once, server-side, regardless of provider.
@@ -109,31 +113,20 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
     );
   }
 
-  private async post<TBody extends Record<string, unknown>, TResponse>(
-    url: string,
-    body: TBody,
-  ): Promise<TResponse> {
+  private async post<TBody, TResponse>(url: string, body: TBody): Promise<TResponse> {
     if (!this.secret) {
-      throw toLocalError('error.remoteServerModeSecretRequired');
+      throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
     }
     const { $csrfFetch } = useNuxtApp();
     try {
       return await $csrfFetch<TResponse>(url, {
         method: 'POST',
         headers: { [REMOTE_SECRET_HEADER]: this.secret },
-        body,
+        // SAFETY: ofetch JSON body is a serializable DTO; FetchJsonBody is the nearest named map.
+        body: body as JsonObject,
       });
-    } catch (err: unknown) {
-      throw toLocalError(extractMessageKey(err, 'error.unknown'));
+    } catch (err) {
+      throw new RemoteAdapterError(extractCaughtMessageKey(err, 'error.unknown'));
     }
   }
-}
-
-/**
- * Wraps a failure in the same `data.data.messageKey` shape a Nitro
- * `createError` response carries, so `extractMessageKey` handles both
- * uniformly regardless of where the failure originated.
- */
-function toLocalError(messageKey: string): { data: { data: { messageKey: string } } } {
-  return { data: { data: { messageKey } } };
 }

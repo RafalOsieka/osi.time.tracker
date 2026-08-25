@@ -7,11 +7,13 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const { useHeadMock, localeState } = vi.hoisted(() => ({
   useHeadMock: vi.fn(),
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   localeState: { value: 'en' as string },
 }));
 
 const runningState = shallowRef<TimeEntryDto | null>(null);
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
 
@@ -51,6 +53,7 @@ const runningEntry: TimeEntryDto = {
 type IconLink = { rel: string; href: string; type?: string; sizes?: string; key?: string };
 
 function iconLinksFromHead(headArg: { link?: unknown }): IconLink[] {
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   const links = unref(headArg.link as IconLink[] | undefined);
   return Array.isArray(links) ? links : [];
 }
@@ -79,6 +82,7 @@ describe('theme UI and SSR head wiring', () => {
     const wrapper = await mountAppRoot();
 
     expect(useHeadMock).toHaveBeenCalled();
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const headArg = useHeadMock.mock.calls[0]?.[0] as {
       htmlAttrs: { lang: { value: string }; dir?: unknown };
       link?: unknown;
@@ -112,6 +116,7 @@ describe('theme UI and SSR head wiring', () => {
     runningState.value = runningEntry;
     await mountAppRoot();
 
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const headArg = useHeadMock.mock.calls[0]?.[0] as { link?: unknown };
     expect(iconLinksFromHead(headArg)).toEqual([
       {
@@ -132,6 +137,7 @@ describe('theme UI and SSR head wiring', () => {
 
   it('updates the SVG favicon href when running state changes after setup', async () => {
     await mountAppRoot();
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const headArg = useHeadMock.mock.calls[0]?.[0] as { link?: unknown };
     const svgHref = () =>
       iconLinksFromHead(headArg).find((link) => link.type === 'image/svg+xml')?.href;

@@ -33,6 +33,7 @@ describeDb('database integration', () => {
     const { db, sql } = createDatabaseClient(dbUrl, { max: 1 });
     try {
       const rows = await db.execute<{ value: number }>(drizzleSql`SELECT 1 AS value`);
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       expect(Number((rows as Array<{ value: number }>)[0]!.value)).toBe(1);
     } finally {
       await sql.end({ timeout: 5 });

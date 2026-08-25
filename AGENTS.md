@@ -94,7 +94,7 @@ pnpm test:coverage  # Vitest v8 coverage for unit + nuxt (exclude migrations/sql
 Follow `CODING_STANDARDS.md` — key rules summarized here:
 
 - **TypeScript everywhere**; Vue 3 SFCs use `<script setup lang="ts">`, ordered `<script setup>` → `<template>` → `<style scoped>`.
-- **No explicit `any`.** Prefer `unknown` and narrow. If unavoidable, disable the rule on a single line with a justifying comment.
+- **No explicit `any`.** Prefer named types. `catch (err)` is already `unknown` (omit `: unknown`). Narrow with `instanceof` on real classes (`FetchError`, `RemoteAdapterError`, `Error`) or schema parse — not `isStringValue` / `isJsonObject` wrappers. API `params` are `MessageParams`. Remaining `as` need `// SAFETY:`.
 - **Formatting:** 2-space indentation, single quotes, semicolons, trailing commas on multi-line literals, ~100-char lines, UTF-8 with a trailing newline. Let Oxfmt own whitespace.
 - **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`). Other source/test files are kebab-case (`setup-server.ts`).
 - **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.

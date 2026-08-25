@@ -65,6 +65,7 @@ describeSsrShell('SSR shell and list pages', async () => {
     // Title should be present without waiting solely on a post-mount client fetch.
     // Use the timer title input value / text content.
     await page.waitForFunction(() => {
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       const input = document.querySelector(
         '[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]',
       ) as HTMLInputElement | null;

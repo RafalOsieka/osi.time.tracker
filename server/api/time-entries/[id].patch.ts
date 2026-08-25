@@ -20,7 +20,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   let parsedBody: UpdateTimeEntryDto;
   try {
     parsedBody = updateTimeEntrySchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,
@@ -104,14 +104,22 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
       taskId = await resolveTaskId(tx, user.id, title, projectId);
     }
 
+    type TimeEntryPatch = {
+      taskId: typeof taskId;
+      updatedAt: Date;
+      stoppedAt?: Date | null;
+      startedAt?: Date;
+    };
+    const patch: TimeEntryPatch = {
+      taskId,
+      updatedAt: new Date(),
+    };
+    if (stoppedAt !== undefined) patch.stoppedAt = stoppedAt;
+    if (startedAt !== undefined) patch.startedAt = startedAt;
+
     const [row] = await tx
       .update(timeEntries)
-      .set({
-        taskId,
-        ...(stoppedAt !== undefined ? { stoppedAt } : {}),
-        ...(startedAt !== undefined ? { startedAt } : {}),
-        updatedAt: new Date(),
-      })
+      .set(patch)
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
       .returning();
 

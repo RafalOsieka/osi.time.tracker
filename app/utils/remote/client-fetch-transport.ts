@@ -3,6 +3,8 @@ import type {
   RemoteResponse,
   Transport,
 } from '../../../shared/types/remote-adapter';
+import type { JsonValue } from '../../../shared/types/json';
+import { UpstreamHttpError } from '../../../shared/remote/upstream-http-error';
 
 /**
  * `client` execution-mode transport (L4): queries the configured tracker
@@ -13,18 +15,21 @@ import type {
  */
 export const clientFetchTransport: Transport = {
   async execute(request: RemoteRequest): Promise<RemoteResponse> {
+    const headers = new Headers({
+      Accept: 'application/json',
+      ...request.headers,
+    });
+    if (request.body !== undefined) {
+      headers.set('Content-Type', 'application/json');
+    }
     const response = await fetch(request.url, {
       method: request.method,
-      headers: {
-        Accept: 'application/json',
-        ...(request.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...request.headers,
-      },
+      headers,
       body: request.body !== undefined ? JSON.stringify(request.body) : undefined,
     });
 
     if (!response.ok && response.status !== 403 && response.status !== 404) {
-      throw { statusCode: response.status };
+      throw new UpstreamHttpError(response.status);
     }
 
     const payload = await safeJson(response);
@@ -32,9 +37,10 @@ export const clientFetchTransport: Transport = {
   },
 };
 
-async function safeJson(response: Response): Promise<unknown> {
+async function safeJson(response: Response): Promise<JsonValue | null> {
   try {
-    return await response.json();
+    // SAFETY: fetch JSON is untyped at the platform boundary; provider clients parse named payloads.
+    return (await response.json()) as JsonValue;
   } catch {
     return null;
   }

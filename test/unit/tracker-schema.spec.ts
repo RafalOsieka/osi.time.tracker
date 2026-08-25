@@ -52,7 +52,8 @@ describe('tracker connection field schemas', () => {
 
   it('no longer exposes a transportMode field', () => {
     const result = createTrackerSchema.parse(valid);
-    expect((result as Record<string, unknown>).transportMode).toBeUndefined();
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
+    expect('transportMode' in result).toBe(false);
   });
 
   it('strips a secret field submitted alongside a valid body', () => {
@@ -61,8 +62,8 @@ describe('tracker connection field schemas', () => {
       apiKey: 'super-secret',
       secret: 'super-secret',
     });
-    expect((result as Record<string, unknown>).apiKey).toBeUndefined();
-    expect((result as Record<string, unknown>).secret).toBeUndefined();
+    expect('apiKey' in result).toBe(false);
+    expect('secret' in result).toBe(false);
   });
 
   it('maps validation failures to { messageKey, params } via mapZodError', () => {
@@ -71,6 +72,7 @@ describe('tracker connection field schemas', () => {
       throw new Error('expected parse to throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ZodError);
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       const mapped = mapZodError(err as ZodError);
       expect(mapped.messageKey).toBe('error.trackerBaseUrlInvalid');
     }

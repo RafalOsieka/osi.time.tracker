@@ -1,24 +1,30 @@
+import { RemoteAdapterError } from '../../shared/types/remote-adapter';
+
+type NitroErrorEnvelope = { data?: { messageKey?: string } };
+
 /**
- * Extracts a stable i18n messageKey from a server error response.
- * Falls back to the provided key if the error shape doesn't match.
- *
- * Nitro serialises `createError({ data: { messageKey } })` into the response
- * body as `{ statusCode, statusMessage, data: { messageKey } }`.
- * ofetch exposes the parsed body as `FetchError.data`, so the full path is:
- *   err.data.data.messageKey
+ * Reads a stable i18n messageKey from an ofetch-shaped error.
+ * Nitro serialises `createError({ data: { messageKey } })` as
+ * `{ statusCode, statusMessage, data: { messageKey } }`.
+ * ofetch exposes that body as `err.data.data.messageKey`.
  */
-export function extractMessageKey(err: unknown, fallback: string): string {
-  if (err === null || typeof err !== 'object') return fallback;
-  if (!('data' in err)) return fallback;
-  const top = err.data;
-  if (top === null || typeof top !== 'object') return fallback;
-  if (!('data' in top)) return fallback;
+export function extractMessageKey(
+  err: Error & { data?: NitroErrorEnvelope },
+  fallback: string,
+): string {
+  return err.data?.data?.messageKey ?? fallback;
+}
 
-  // Nitro createError shape: err.data.data.messageKey
-  const nested = top.data;
-  if (nested !== null && typeof nested === 'object' && 'messageKey' in nested) {
-    if (typeof nested.messageKey === 'string') return nested.messageKey;
+/**
+ * Maps a catch binding using real error classes (`RemoteAdapterError`, `Error`
+ * with a Nitro/ofetch `data` envelope).
+ */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- catch binding is implicitly unknown
+export function extractCaughtMessageKey(err: unknown, fallback: string): string {
+  if (err instanceof RemoteAdapterError) return err.messageKey;
+  if (err instanceof Error && 'data' in err) {
+    // SAFETY: ofetch FetchError is an Error with a Nitro `{ data: ApiMessage }` envelope.
+    return extractMessageKey(err as Error & { data?: NitroErrorEnvelope }, fallback);
   }
-
   return fallback;
 }

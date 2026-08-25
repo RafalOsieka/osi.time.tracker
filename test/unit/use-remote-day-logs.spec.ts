@@ -6,6 +6,7 @@ import type { TrackerDto } from '../../shared/types/tracker';
 const fetchTimeLogsMock = vi.fn();
 const invalidateCachesMock = vi.fn();
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
 vi.mock('../../app/composables/useRemoteSyncClient', () => ({
   useRemoteSyncClient: () => ({
     fetchTimeLogs: fetchTimeLogsMock,
@@ -13,7 +14,7 @@ vi.mock('../../app/composables/useRemoteSyncClient', () => ({
     createTimeEntry: vi.fn(),
     resolveAccount: vi.fn(),
   }),
-  mapRemoteSyncClientError: (_err: unknown, fallback: string) => fallback,
+  mapRemoteSyncClientError: (_err: Error, fallback: string) => fallback,
 }));
 
 const config: TrackerDto = {

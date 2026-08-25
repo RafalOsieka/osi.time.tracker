@@ -9,6 +9,7 @@ const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return {
@@ -77,6 +78,7 @@ mockNuxtImport('useAsyncData', () => {
   };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
@@ -175,6 +177,7 @@ describe('projects page', () => {
       Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
     );
     try {
+      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
       // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
       (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
     } catch {
@@ -304,7 +307,8 @@ describe('projects page', () => {
     });
     await flushPromises();
 
-    // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
+    // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
+    // oxlint-disable-next-line typescript/no-explicit-any -- Vue test wrapper does not expose page methods
     (wrapper.vm as any).openEdit(mockProjects[0]);
     await flushPromises();
 
@@ -313,6 +317,7 @@ describe('projects page', () => {
     const option = select.find('option[value="deleted-tracker"]');
     expect(option.exists()).toBe(true);
     expect(option.text()).toBe('Deleted Tracker');
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     expect((select.element as HTMLSelectElement).value).toBe('deleted-tracker');
   });
 

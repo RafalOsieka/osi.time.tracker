@@ -9,12 +9,30 @@ const root = useTemplateRef<HTMLElement>('root');
 const overflowing = ref(false);
 
 function measure() {
-  overflowing.value = root.value ? isTextOverflowing(root.value) : false;
+  const el = root.value;
+  if (!el) {
+    overflowing.value = false;
+    return;
+  }
+  overflowing.value = isTextOverflowing({
+    tagName: el.tagName,
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    querySelector: (sel) => {
+      const found = el.querySelector(sel);
+      if (!(found instanceof HTMLElement)) return null;
+      return {
+        tagName: found.tagName,
+        scrollWidth: found.scrollWidth,
+        clientWidth: found.clientWidth,
+      };
+    },
+  });
 }
 
 onMounted(() => {
   void nextTick(measure);
-  if (!root.value || typeof ResizeObserver === 'undefined') return;
+  if (!root.value || !('ResizeObserver' in globalThis)) return;
   const observer = new ResizeObserver(() => {
     measure();
   });

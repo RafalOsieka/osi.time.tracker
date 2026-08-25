@@ -1,4 +1,4 @@
-import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
+import type { RemoteAdapterError } from '../../../shared/types/remote-adapter';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
@@ -6,12 +6,9 @@ import type { ApiMessage } from '../../types/api-message';
  * regardless of execution mode) to the server's `{ messageKey, params }`
  * error contract. Rethrows anything else unchanged.
  */
-export function toApiError(err: unknown): never {
-  if (err instanceof RemoteAdapterError) {
-    throw createError({
-      statusCode: err.status ?? 502,
-      data: { messageKey: err.messageKey } satisfies ApiMessage,
-    });
-  }
-  throw err;
+export function toApiError(err: RemoteAdapterError): never {
+  throw createError({
+    statusCode: err.status ?? 502,
+    data: { messageKey: err.messageKey } satisfies ApiMessage,
+  });
 }

@@ -23,7 +23,6 @@ describe('normalizeEmail', () => {
     const password = 'mySecretPassword';
     const hashValue = await hasher.make(password);
     expect(hashValue).toBeDefined();
-    expect(typeof hashValue).toBe('string');
     expect(hashValue.startsWith('$scrypt$')).toBe(true);
 
     const match = await hasher.verify(hashValue, password);

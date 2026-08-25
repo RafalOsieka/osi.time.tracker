@@ -16,6 +16,7 @@ import {
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeTimerViewUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
@@ -36,7 +37,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     return page;
   }
 
-  async function startEntry(jar: CookieJar, token: string, body: Record<string, unknown> = {}) {
+  async function startEntry(jar: CookieJar, token: string, body: JsonObject = {}) {
     const res = await fetch(url('/api/time-entries'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -70,6 +71,7 @@ describeTimerViewUI('timer view UI flow', async () => {
       await page.evaluate(
         (t) =>
           [...document.querySelectorAll('input')].some((el) =>
+            // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
             (el as HTMLInputElement).value.includes(t),
           ),
         'UI Timer Task',
@@ -262,6 +264,7 @@ describeTimerViewUI('timer view UI flow', async () => {
           ),
         ];
         const titleNode = titles.find((node) => {
+          // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
           const input = (
             node.matches('input') ? node : node.querySelector('input')
           ) as HTMLInputElement | null;

@@ -3,10 +3,14 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import TimerTaskGroup from '../../app/components/TimerTaskGroup.vue';
+import type { TimerViewGroup } from '../../app/utils/timerViewGrouping';
+import type { ProjectDto } from '../../shared/types/project';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return { ...actual, $fetch: Object.assign(csrfFetchMock, { create: () => csrfFetchMock }) };
@@ -150,7 +154,18 @@ function group(key = 'task-1') {
   };
 }
 
-function mount(props: Record<string, unknown> = {}) {
+type TimerTaskGroupMountProps = {
+  group?: TimerViewGroup;
+  isLive?: boolean;
+  now?: number;
+  timeZone?: string;
+  editorKey?: string;
+  activeEditorKey?: string | null;
+  projectOptions?: ProjectDto[];
+  tracker?: TrackerDto | null;
+};
+
+function mount(props: TimerTaskGroupMountProps = {}) {
   return mountSuspended(TimerTaskGroup, {
     props: {
       group: group(),
@@ -168,6 +183,7 @@ describe('TimerTaskGroup', () => {
   beforeEach(() => {
     csrfFetchMock.mockReset();
     try {
+      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
       // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
       (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
     } catch {
@@ -219,6 +235,7 @@ describe('TimerTaskGroup', () => {
           id: 'project-2',
           name: 'Current project',
           trackerId: 'c',
+          trackerName: null,
           createdAt: '',
         },
       ],
@@ -256,7 +273,7 @@ describe('TimerTaskGroup', () => {
     });
 
     const noProject = await mount({
-      group: { ...group(), projectId: null, projectName: null, trackerName: null },
+      group: { ...group(), projectId: null, projectName: null },
     });
     expect(noProject.find('[data-testid="timer-group-project-task-1"]').text()).toContain(
       'timerView.noProject',
@@ -394,9 +411,7 @@ describe('TimerTaskGroup', () => {
       },
     });
     expect(
-      csrfFetchMock.mock.calls.some(
-        (call) => typeof call[0] === 'string' && call[0].includes('/remote-issue-ref'),
-      ),
+      csrfFetchMock.mock.calls.some((call) => String(call[0]).includes('/remote-issue-ref')),
     ).toBe(false);
     expect(wrapper.emitted('entry-changed')).toHaveLength(1);
 
@@ -408,9 +423,7 @@ describe('TimerTaskGroup', () => {
       body: { ids: ['entry-1'], remoteIssueId: null },
     });
     expect(
-      csrfFetchMock.mock.calls.some(
-        (call) => typeof call[0] === 'string' && call[0].includes('/remote-issue-ref'),
-      ),
+      csrfFetchMock.mock.calls.some((call) => String(call[0]).includes('/remote-issue-ref')),
     ).toBe(false);
     expect(wrapper.emitted('entry-changed')?.length).toBeGreaterThanOrEqual(2);
   });
@@ -528,6 +541,7 @@ describe('TimerTaskGroup', () => {
     const input = wrapper.find('[data-testid="timer-group-title-input-task-1"]');
     expect(input.exists()).toBe(true);
     expect(input.attributes('style') ?? '').not.toMatch(/\d+ch/);
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     expect((input.element as HTMLInputElement).value).toBe(longName);
   });
 

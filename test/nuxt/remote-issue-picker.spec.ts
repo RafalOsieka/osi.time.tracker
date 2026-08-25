@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import RemoteIssuePicker from '../../app/components/RemoteIssuePicker.vue';
+import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
@@ -127,7 +128,14 @@ const config = {
   updatedAt: '',
 };
 
-function mount(props: Record<string, unknown> = {}) {
+type PickerMountProps = {
+  currentRef?: RemoteIssueRefDto;
+  linkTestid?: string;
+  cachedTestid?: string;
+  unlinkedTestid?: string;
+};
+
+function mount(props: PickerMountProps = {}) {
   return mountSuspended(RemoteIssuePicker, {
     props: { config, ...props },
     global: { plugins: [testI18n()], stubs },

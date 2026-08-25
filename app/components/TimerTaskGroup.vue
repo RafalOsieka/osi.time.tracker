@@ -90,8 +90,8 @@ async function commitTitle() {
       body: { ids, name },
     });
     emit('entry-changed');
-  } catch (err: unknown) {
-    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
+  } catch (err) {
+    toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -119,8 +119,8 @@ async function commitProject(value: string | null) {
       body: { ids, projectId: value ?? null },
     });
     emit('entry-changed');
-  } catch (err: unknown) {
-    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
+  } catch (err) {
+    toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -180,8 +180,8 @@ async function linkRemoteIssue(payload: {
       },
     });
     emit('entry-changed');
-  } catch (err: unknown) {
-    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
+  } catch (err) {
+    toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
   }
 }
 
@@ -195,8 +195,8 @@ async function unlinkRemoteIssue() {
       body: { ids, remoteIssueId: null },
     });
     emit('entry-changed');
-  } catch (err: unknown) {
-    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
+  } catch (err) {
+    toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
   }
 }
 </script>

@@ -1,19 +1,9 @@
-import type { Component } from 'vue';
-
 export interface AppConfirmOptions {
   title: string;
   description?: string;
   confirmLabel?: string;
   cancelLabel?: string;
   confirmColor?: 'error' | 'primary' | 'neutral';
-}
-
-/**
- * Nuxt UI `useOverlay().create` expects a Vue `Component`; SFC default exports
- * are slightly wider, so adapt once here instead of casting at call sites.
- */
-function asOverlayComponent(component: unknown): Component {
-  return component as Component;
 }
 
 /**
@@ -26,7 +16,7 @@ export function useAppConfirm() {
   return async (options: AppConfirmOptions): Promise<boolean> => {
     // Resolve lazily so unit/nuxt tests can stub without a full Nuxt component registry.
     const { default: ConfirmModal } = await import('~/components/ConfirmModal.vue');
-    const modal = overlay.create(asOverlayComponent(ConfirmModal), {
+    const modal = overlay.create(ConfirmModal, {
       destroyOnClose: true,
       props: options,
     });

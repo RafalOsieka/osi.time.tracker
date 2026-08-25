@@ -5,6 +5,7 @@ import type { CreateTrackerDto, TrackerDto } from '../../../shared/types/tracker
 import { db } from '../../db/index';
 import { trackers } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
+import { isUniqueViolation } from '../../utils/is-unique-violation';
 import type { ApiMessage } from '../../types/api-message';
 
 function toTrackerDto(row: typeof trackers.$inferSelect): TrackerDto {
@@ -28,7 +29,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   let parsedBody: CreateTrackerDto;
   try {
     parsedBody = createTrackerSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,
@@ -79,13 +80,8 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
     }
 
     return toTrackerDto(created);
-  } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      (err as { code: string }).code === '23505'
-    ) {
+  } catch (err) {
+    if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
         statusCode: 422,
         data: { messageKey: 'error.trackerNameDuplicate' } satisfies ApiMessage,

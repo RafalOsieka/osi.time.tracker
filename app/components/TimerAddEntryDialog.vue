@@ -88,7 +88,7 @@ function onError(event: FormErrorEvent) {
   const range = event.errors.find(
     (error) => error.name === 'endTime' || error.name === 'startTime' || error.name === 'date',
   );
-  if (range && typeof range.message === 'string') {
+  if (range?.message) {
     rangeError.value = t(range.message);
     return;
   }
@@ -111,8 +111,8 @@ async function onSave() {
     toast.success(t('timerView.addEntry.toastSuccessSummary'));
     close();
     emit('added', created);
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   } finally {
     saving.value = false;

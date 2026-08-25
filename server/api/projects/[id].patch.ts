@@ -5,6 +5,7 @@ import type { UpdateProjectDto, ProjectDto } from '../../../shared/types/project
 import { db } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
+import { isUniqueViolation } from '../../utils/is-unique-violation';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ProjectDto> => {
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   let parsedBody: UpdateProjectDto;
   try {
     parsedBody = updateProjectSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,
@@ -117,13 +118,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       trackerName,
       createdAt: updated.createdAt.toISOString(),
     };
-  } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      (err as { code: string }).code === '23505'
-    ) {
+  } catch (err) {
+    if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
         statusCode: 422,
         data: { messageKey: 'error.projectNameDuplicate' } satisfies ApiMessage,

@@ -12,7 +12,8 @@ This document defines the coding style and conventions used across the applicati
   ```ts
   // oxlint-disable-next-line typescript/no-explicit-any -- reason goes here.
   ```
-- Prefer `unknown` over `any` for values whose shape is not yet narrowed (e.g. caught errors are typed `err: unknown` and narrowed before use).
+- Prefer named domain types over `unknown`. `catch (err)` is already `unknown` under TypeScript `strict` — omit `: unknown`. Narrow with `instanceof` on real classes (`FetchError`, `RemoteAdapterError`, `UpstreamHttpError`, `Error`), schema parse, or missing-field checks on named payloads. Do **not** add `isStringValue` / `isJsonObject` wrappers around `typeof` or `instanceof Object`. API error `params` use `MessageParams` (`string | number | boolean`), not `Record<string, unknown>`.
+- Do not edit `tools/oxlint/anti-slop/` unless the developer explicitly asks. Remaining `as` assertions need `// SAFETY:` immediately above.
 
 ## 2. Naming Conventions
 
@@ -88,8 +89,8 @@ Rules:
 
 - Export a single `defineEventHandler` per route file and annotate its return type with the response DTO.
 - Protect private endpoints by resolving the authenticated user through the shared auth helper before any other work.
-- Validate request bodies with a single `zod` schema; on `ZodError`, map the error to the `{ messageKey, params }` contract and throw a `422` `createError`.
-- The shared mapper keeps `min`, `max`, `expected`, and custom `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).
+- Validate request bodies with a single `zod` schema; on `ZodError`, map the error to the `{ messageKey, params }` contract (`params` is `MessageParams`) and throw a `422` `createError`.
+- The shared mapper keeps `min`, `max`, `expected`, and custom primitive `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).
 - Never return rendered text from the server. Error and message payloads use a translation `messageKey` (plus optional `params`) that the client translates.
 - Access the database exclusively through the shared lazy client; never instantiate raw drivers.
 - Serialize boundary values in their JSON form — timestamps are emitted as ISO strings, not `Date` objects.
@@ -121,7 +122,7 @@ Rules:
 
 ## 9. Error Handling
 
-- Type caught errors as `unknown` and narrow them before use.
+- Catch with `catch (err)` (no `: unknown` — TypeScript `strict` already types the binding as `unknown`). Narrow with `instanceof` on real error classes or schema parse — not `typeof` ladders or `isX` wrappers around them. API `{ messageKey, params }` uses `MessageParams` (`string | number | boolean` values).
 - Handle expected failure modes explicitly (validation, not-found, duplicates); avoid silent failures.
 - Re-throw unexpected errors rather than swallowing them.
 - Guard asynchronous flows against stale/superseded results where ordering matters.

@@ -155,8 +155,8 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
     }
     closeDialog();
     emit('saved');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     if (
       key === 'error.trackerNameRequired' ||
       key === 'error.trackerNameDuplicate' ||

@@ -83,13 +83,7 @@ export function useTimer() {
     projectId?: string | null,
     taskId?: string | null,
   ): Promise<void> {
-    const body: { title?: string | null; projectId?: string | null; taskId?: string | null } = {};
-    if (taskId) {
-      body.taskId = taskId;
-    } else {
-      body.title = title;
-      body.projectId = projectId;
-    }
+    const body = taskId ? { taskId } : { title, projectId };
     const entry = await $csrfFetch<TimeEntryDto>('/api/time-entries', {
       method: 'POST',
       body,
@@ -111,12 +105,7 @@ export function useTimer() {
 
   async function updateTitle(title: string | null, taskId?: string | null): Promise<void> {
     if (!running.value) return;
-    const body: { title?: string | null; taskId?: string } = {};
-    if (taskId) {
-      body.taskId = taskId;
-    } else {
-      body.title = title && title.trim().length > 0 ? title : null;
-    }
+    const body = taskId ? { taskId } : { title: title && title.trim().length > 0 ? title : null };
     const entry = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${running.value.id}`, {
       method: 'PATCH',
       body,

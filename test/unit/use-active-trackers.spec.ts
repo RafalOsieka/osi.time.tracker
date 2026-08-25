@@ -3,10 +3,11 @@ import { ref, type Ref } from 'vue';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const fetchMock = vi.fn();
-const useStateStore = new Map<string, Ref<unknown>>();
+type StateValue = TrackerDto[] | Map<string, TrackerDto | null> | undefined;
+const useStateStore = new Map<string, Ref<StateValue>>();
 
 vi.stubGlobal('$fetch', fetchMock);
-vi.stubGlobal('useState', (key: string, init?: () => unknown) => {
+vi.stubGlobal('useState', (key: string, init?: () => StateValue) => {
   if (!useStateStore.has(key)) {
     useStateStore.set(key, ref(init ? init() : undefined));
   }

@@ -26,7 +26,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   let parsed: FinalizeRemoteExportDto;
   try {
     parsed = finalizeRemoteExportSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,

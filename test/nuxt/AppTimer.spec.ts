@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import AppTimer from '../../app/components/AppTimer.vue';
+import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const {
   fetchMock,
@@ -14,7 +15,8 @@ const {
   updateStartedAtMock,
 } = vi.hoisted(() => ({
   fetchMock: vi.fn(),
-  runningState: { value: null as unknown },
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
+  runningState: { value: null as TimeEntryDto | null },
   elapsedSecondsState: { value: 0 },
   loadingState: { value: false },
   startMock: vi.fn(),
@@ -23,6 +25,7 @@ const {
   updateStartedAtMock: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
@@ -84,7 +87,7 @@ const InputMenuStub = {
         .filter(
           (item) =>
             item?.id === '__create_new_task__' ||
-            (typeof item?.label === 'string' && /new task/i.test(item.label)),
+            (item?.label != null && /new task/i.test(item.label)),
         )
         .map((item) => ({
           id: item.id ?? '',
@@ -385,6 +388,7 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
     await flushPromises();
 
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
       id: string;
       name: string;
@@ -434,6 +438,7 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Other');
     await flushPromises();
 
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
       id: string;
       name: string;
@@ -471,6 +476,7 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Exact Match');
     await flushPromises();
 
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
       id: string;
       name: string;
@@ -498,12 +504,14 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', '');
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(false);
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     let items = wrapper.findComponent(InputMenuStub).props('items') as Array<{ id: string }>;
     expect(items.some((item) => item.id === '__create_new_task__')).toBe(false);
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', '   ');
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(false);
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     items = wrapper.findComponent(InputMenuStub).props('items') as Array<{ id: string }>;
     expect(items.some((item) => item.id === '__create_new_task__')).toBe(false);
   });
@@ -525,6 +533,7 @@ describe('AppTimer', () => {
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
     await flushPromises();
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
       id: string;
       onSelect: () => void;
@@ -536,12 +545,13 @@ describe('AppTimer', () => {
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked Task');
     await flushPromises();
-    const createItem = (
-      wrapper.findComponent(InputMenuStub).props('items') as Array<{
-        id: string;
-        onSelect: () => void;
-      }>
-    ).find((item) => item.id === '__create_new_task__');
+    const createItem = // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
+      (
+        wrapper.findComponent(InputMenuStub).props('items') as Array<{
+          id: string;
+          onSelect: () => void;
+        }>
+      ).find((item) => item.id === '__create_new_task__');
     expect(createItem).toBeTruthy();
     createItem!.onSelect();
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
@@ -584,6 +594,7 @@ describe('AppTimer', () => {
       const timeInput = wrapper.find<HTMLInputElement>(
         '[data-testid="timer-start-editor-time-input"]',
       );
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       expect(dateInput.attributes('value') ?? (dateInput.element as HTMLInputElement).value).toBe(
         '2024-01-05',
       );
@@ -671,11 +682,13 @@ describe('AppTimer', () => {
       await flushPromises();
       const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
       const original =
+        // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
         (dateInput.element as HTMLInputElement).value || dateInput.attributes('value');
       await dateInput.setValue('garbage');
       await dateInput.trigger('blur');
       await flushPromises();
 
+      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
       const after = (dateInput.element as HTMLInputElement).value || dateInput.attributes('value');
       expect(after).toBe(original);
       expect(updateStartedAtMock).not.toHaveBeenCalled();

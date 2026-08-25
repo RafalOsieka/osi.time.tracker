@@ -5,12 +5,14 @@ import type { TrackerDto } from '../../shared/types/tracker';
 const getActivityOptionsMock = vi.fn();
 const getSecretMock = vi.fn(() => 'secret');
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
 vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   createRemoteAdapter: () => ({
     getActivityOptions: getActivityOptionsMock,
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
 vi.mock('../../app/composables/useTrackerSecret', () => ({
   useTrackerSecret: () => ({ get: getSecretMock }),
 }));

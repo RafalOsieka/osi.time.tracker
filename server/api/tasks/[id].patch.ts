@@ -16,7 +16,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   let parsedBody: UpdateTaskDto;
   try {
     parsedBody = updateTaskSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,

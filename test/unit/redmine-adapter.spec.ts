@@ -6,6 +6,7 @@ import {
   type RemoteResponse,
   type Transport,
 } from '../../shared/types/remote-adapter';
+import { UpstreamHttpError } from '../../shared/remote/upstream-http-error';
 import {
   REDMINE_TIME_LOGS_MAX_PAGES,
   REDMINE_TIME_LOGS_PAGE_SIZE,
@@ -19,7 +20,7 @@ function fakeTransport(
     async execute(request: RemoteRequest): Promise<RemoteResponse> {
       const response = await handler(request);
       if (response.status >= 400 && response.status !== 403 && response.status !== 404) {
-        throw { statusCode: response.status };
+        throw new UpstreamHttpError(response.status);
       }
       return response;
     },

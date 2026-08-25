@@ -23,10 +23,15 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
  * Exposed mainly for tests and the migrator; application code SHOULD use the
  * shared `db` client exported from `./index`.
  */
+export type DatabaseClientPair = {
+  db: PostgresJsDatabase<typeof schema>;
+  sql: Sql;
+};
+
 export function createDatabaseClient(
   connectionString: string = resolveDatabaseUrl(),
   options?: { max?: number },
-): { db: PostgresJsDatabase<typeof schema>; sql: Sql } {
+): DatabaseClientPair {
   const sql = postgres(connectionString, { max: options?.max ?? 10 });
   const db = drizzle(sql, { schema });
 

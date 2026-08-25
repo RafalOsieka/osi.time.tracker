@@ -46,8 +46,8 @@ async function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
     await $csrfFetch(`/api/projects/${project.id}`, { method: 'DELETE' });
     await fetchProjects();
     toast.success(t('projects.toastDeletedSummary'), t('projects.toastDeletedDetail'));
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   }
 }

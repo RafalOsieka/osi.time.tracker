@@ -6,10 +6,9 @@ import { Temporal } from 'temporal-polyfill';
  * view uses (`app/utils/timerViewGrouping.ts`). Falls back to `UTC` when
  * the user has not configured a timezone.
  */
-export function computeDayBoundary(
-  date: string,
-  timeZone: string | null,
-): { from: Date; to: Date } {
+export type DayBoundary = { from: Date; to: Date };
+
+export function computeDayBoundary(date: string, timeZone: string | null): DayBoundary {
   const zone = timeZone ?? 'UTC';
   const start = Temporal.PlainDate.from(date).toZonedDateTime(zone);
   const end = start.add({ days: 1 });

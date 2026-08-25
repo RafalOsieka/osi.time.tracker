@@ -2,10 +2,12 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { defineComponent, h } from 'vue';
 import { useTimer } from '../../app/composables/useTimer';
+import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return {
@@ -96,7 +98,7 @@ describe('useTimer', () => {
 
   it('fetchRunning updates running entry without clearing it before the response arrives', async () => {
     const startedAt = new Date(Date.now() - 5_000).toISOString();
-    let resolveFetch!: (value: unknown) => void;
+    let resolveFetch!: (value: TimeEntryDto | null) => void;
     fetchMock.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFetch = resolve;
@@ -136,7 +138,7 @@ describe('useTimer', () => {
 
   it('loading is true during the in-flight running fetch and false after it resolves (running entry)', async () => {
     const startedAt = new Date().toISOString();
-    let resolveFetch!: (value: unknown) => void;
+    let resolveFetch!: (value: TimeEntryDto | null) => void;
     fetchMock.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFetch = resolve;
@@ -164,7 +166,7 @@ describe('useTimer', () => {
   });
 
   it('loading is true during the in-flight running fetch and false after it resolves (no running entry)', async () => {
-    let resolveFetch!: (value: unknown) => void;
+    let resolveFetch!: (value: TimeEntryDto | null) => void;
     fetchMock.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveFetch = resolve;

@@ -9,13 +9,14 @@ import { setupServer } from '../harness/setup-server';
 import { createDatabaseClient } from '../../../server/db/client';
 import { remoteExportEntries, remoteExports } from '../../../server/db/schema';
 import { eq } from 'drizzle-orm';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeSyncExport = requireDocker();
 
 async function createEntry(
   jar: CookieJar,
   token: string,
-  body: Record<string, unknown>,
+  body: JsonObject,
 ): Promise<{ id: string; taskId: string | null }> {
   const res = await fetch(url('/api/time-entries'), {
     method: 'POST',
@@ -44,14 +45,11 @@ async function linkIssue(
   });
   expect(res.status).toBe(200);
   const body = await res.json();
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   return { taskId: body[0].taskId as string };
 }
 
-async function finalize(
-  jar: CookieJar,
-  token: string,
-  body: Record<string, unknown>,
-): Promise<Response> {
+async function finalize(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
   return fetch(url('/api/sync/export'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -89,7 +87,7 @@ describeSyncExport('sync export finalization API', async () => {
     return { date, entry, tracker, project };
   }
 
-  function withKey(body: Record<string, unknown>, key: string) {
+  function withKey(body: JsonObject, key: string) {
     return { ...body, exportRequestKey: key };
   }
 

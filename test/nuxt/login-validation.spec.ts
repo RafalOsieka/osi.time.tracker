@@ -5,6 +5,7 @@ import LoginPage from '../../app/pages/login.vue';
 const loginMock = vi.fn();
 mockNuxtImport('useAuth', () => () => ({ login: loginMock }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {

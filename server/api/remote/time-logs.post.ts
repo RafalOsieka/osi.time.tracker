@@ -7,6 +7,7 @@ import {
 } from '../../../shared/types/remote-export';
 import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
 import { resolveOwnedTracker } from '../../utils/remote/resolve-owned-tracker';
+import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
 import { toApiError } from '../../utils/remote/adapter-error';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
@@ -29,7 +30,7 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteTimeLogsRe
   let parsedBody: ProxiedRemoteTimeLogsDto;
   try {
     parsedBody = proxiedRemoteTimeLogsSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,
@@ -49,7 +50,10 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteTimeLogsRe
       userId: parsedBody.userId,
     });
     return { logs };
-  } catch (err: unknown) {
-    return toApiError(err);
+  } catch (err) {
+    if (err instanceof RemoteAdapterError) {
+      return toApiError(err);
+    }
+    throw err;
   }
 });

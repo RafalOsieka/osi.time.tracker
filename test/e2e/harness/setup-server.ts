@@ -34,16 +34,18 @@ export async function setupServer({
   process.env.NUXT_SESSION_PASSWORD = SESSION_PASSWORD;
   process.env.IS_E2E = 'true';
 
-  await setup({
-    browser,
-    dev: isDev,
-    ...(isDev ? {} : { build: false, nuxtConfig }),
-    env: {
-      DATABASE_URL: databaseUrl,
-      NUXT_SESSION_PASSWORD: SESSION_PASSWORD,
-      IS_E2E: 'true',
-      ...(process.env.NODE_V8_COVERAGE ? { NODE_V8_COVERAGE: process.env.NODE_V8_COVERAGE } : {}),
-    },
-  });
+  const env = {
+    DATABASE_URL: databaseUrl,
+    NUXT_SESSION_PASSWORD: SESSION_PASSWORD,
+    IS_E2E: 'true',
+  };
+  const coverage = process.env.NODE_V8_COVERAGE;
+  const setupEnv = coverage ? { ...env, NODE_V8_COVERAGE: coverage } : env;
+  const options = { browser, dev: isDev, env: setupEnv };
+  if (isDev) {
+    await setup(options);
+  } else {
+    await setup({ ...options, build: false, nuxtConfig });
+  }
   bindTestOrigin();
 }

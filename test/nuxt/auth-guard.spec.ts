@@ -4,7 +4,7 @@ import type { RouteLocationNormalized } from 'vue-router';
 
 const { sessionState, navigateToMock } = vi.hoisted(() => ({
   sessionState: { loggedIn: { value: false } },
-  navigateToMock: vi.fn((target: unknown) => target),
+  navigateToMock: vi.fn((target: string | RouteLocationNormalized) => target),
 }));
 
 mockNuxtImport('useUserSession', () => () => sessionState);
@@ -14,6 +14,7 @@ mockNuxtImport('navigateTo', () => navigateToMock);
 const { default: authGuard } = await import('../../app/middleware/auth.global');
 
 function route(partial: Partial<RouteLocationNormalized>): RouteLocationNormalized {
+  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   return {
     path: '/',
     fullPath: '/',

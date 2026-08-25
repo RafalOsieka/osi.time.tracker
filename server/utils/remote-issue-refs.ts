@@ -113,6 +113,7 @@ export function taskRowToRemoteIssueRefDto(
     remoteIssueId: row.remoteIssueId,
     cachedTitle: row.remoteIssueCachedTitle,
     cachedRemoteProjectTitle: row.remoteIssueCachedProjectTitle?.trim() || undefined,
+    // SAFETY: systemType is the tracker enum; baseUrl is present when the tracker row exists.
     url: isActive
       ? deriveIssueUrl(tracker.systemType as TrackerSystemType, tracker.baseUrl!, row.remoteIssueId)
       : undefined,

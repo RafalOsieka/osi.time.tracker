@@ -87,8 +87,8 @@ async function commitTitle() {
     if (updated.taskId !== props.entry.taskId) {
       emit('changed');
     }
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
     titleValue.value = props.entry.taskName ?? '';
   }
@@ -110,8 +110,8 @@ async function commitStart() {
       body: { startedAt },
     });
     emit('changed');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
     startValue.value = isoToLocalTime(props.entry.startedAt, props.timeZone);
   }
@@ -129,8 +129,8 @@ async function commitStop() {
       body: { stoppedAt },
     });
     emit('changed');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
     stopValue.value = props.entry.stoppedAt
       ? isoToLocalTime(props.entry.stoppedAt, props.timeZone)
@@ -150,8 +150,8 @@ async function onDelete() {
   try {
     await $csrfFetch(`/api/time-entries/${props.entry.id}`, { method: 'DELETE' });
     emit('deleted');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   } finally {
     deleting.value = false;

@@ -20,7 +20,7 @@ import { useRemoteDayLogs } from '~/composables/useRemoteDayLogs';
 import { useRoundedDurations } from '~/composables/useRoundedDurations';
 import { useSyncExport } from '~/composables/useSyncExport';
 import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
-import { extractMessageKey } from '~/utils/extractMessageKey';
+import { extractCaughtMessageKey } from '~/utils/extractMessageKey';
 import { isExpandedInMap, toggleExpandMap, type TableExpandMap } from '~/utils/tableExpandMap';
 import type {
   ActivityByTask,
@@ -537,8 +537,8 @@ async function linkRemoteIssue(
       void ensureActivitiesLoaded(toPickerConfig(row.config), payload.remoteIssueId);
       void ensureRemoteLogsLoaded(toPickerConfig(row.config), [payload.remoteIssueId], true);
     }
-  } catch (err: unknown) {
-    toast.error(t(extractMessageKey(err, 'errors.unexpected')));
+  } catch (err) {
+    toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
   }
 }
 

@@ -6,9 +6,9 @@ import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   const { user } = await requireAuth(event);
-  const query = getQuery(event);
-  const projectId = typeof query.projectId === 'string' ? query.projectId : undefined;
-  const search = typeof query.search === 'string' ? query.search.trim() : undefined;
+  const query = getQuery<{ projectId?: string; search?: string }>(event);
+  const projectId = query.projectId;
+  const search = query.search?.trim();
 
   const conditions = [eq(tasks.userId, user.id)];
   if (projectId === 'none') {

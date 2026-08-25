@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   let parsedQuery: ListTimeEntriesQuery;
   try {
     parsedQuery = listTimeEntriesQuerySchema.parse(query);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,

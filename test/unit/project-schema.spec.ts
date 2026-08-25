@@ -15,7 +15,8 @@ describe('createProjectSchema', () => {
       name: 'Website Redesign',
       trackerId: validTrackerId,
     });
-    expect((result as Record<string, unknown>).extraKey).toBeUndefined();
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
+    expect('extraKey' in result).toBe(false);
   });
 
   it('accepts a local project without trackerId', () => {

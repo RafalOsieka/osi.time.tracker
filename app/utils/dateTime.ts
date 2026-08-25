@@ -38,8 +38,11 @@ export function localDayKeyFromInstant(iso: string, timeZone: string): string {
   return instantToZoned(iso, timeZone).toPlainDate().toString();
 }
 
+/** Inclusive start / exclusive end ISO instants. */
+export type InstantRange = { from: string; to: string };
+
 /** Inclusive start / exclusive end instants for a local calendar day in `timeZone`. */
-export function localDayBounds(dayKey: string, timeZone: string): { from: string; to: string } {
+export function localDayBounds(dayKey: string, timeZone: string): InstantRange {
   const start = Temporal.PlainDate.from(dayKey).toZonedDateTime(timeZone);
   return {
     from: start.toInstant().toString(),
@@ -55,7 +58,7 @@ export function computeRollingDayRange(
   days: number,
   anchor: Date = new Date(),
   timeZone = 'UTC',
-): { from: string; to: string } {
+): InstantRange {
   const anchorDay = Temporal.Instant.from(anchor.toISOString())
     .toZonedDateTimeISO(timeZone)
     .toPlainDate();

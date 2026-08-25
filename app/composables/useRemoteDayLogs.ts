@@ -57,7 +57,7 @@ export function useRemoteDayLogs(date: Ref<string>) {
         ...remoteLogsByConfig.value,
         [key]: { logs, loading: false, errorKey: null, loaded: true },
       };
-    } catch (err: unknown) {
+    } catch (err) {
       remoteLogsByConfig.value = {
         ...remoteLogsByConfig.value,
         [key]: {

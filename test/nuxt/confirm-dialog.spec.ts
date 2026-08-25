@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import ConfirmModal from '../../app/components/ConfirmModal.vue';
+import type { AppConfirmOptions } from '../../app/composables/useAppConfirm';
 
-const confirmMock = vi.fn(async (_options?: unknown) => true);
+const confirmMock = vi.fn(async (_options?: AppConfirmOptions) => true);
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- overlay confirm has no test seam
 vi.mock('../../app/composables/useAppConfirm', () => ({
   useAppConfirm: () => confirmMock,
 }));

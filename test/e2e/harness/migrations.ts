@@ -28,10 +28,11 @@ export function readMigrationSql(fileName: string, migrationsDir?: string): stri
   return readFileSync(join(dir, fileName), 'utf8');
 }
 
-export async function applySqlFile(
-  sql: { unsafe: (statement: string) => Promise<unknown> },
-  contents: string,
-): Promise<void> {
+interface SqlExecutor {
+  unsafe: (statement: string) => Promise<object>;
+}
+
+export async function applySqlFile(sql: SqlExecutor, contents: string): Promise<void> {
   for (const statement of contents.split('--> statement-breakpoint')) {
     const trimmed = statement.trim();
     if (trimmed) await sql.unsafe(trimmed);

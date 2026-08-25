@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui';
 import { useI18n } from 'vue-i18n';
-import { extractMessageKey } from '~/utils/extractMessageKey';
+import { extractCaughtMessageKey } from '~/utils/extractMessageKey';
 import type { LoginDto } from '../../shared/types/auth';
 
 definePageMeta({ layout: 'auth', public: true });
@@ -24,7 +24,7 @@ async function onSubmit(event: FormSubmitEvent<LoginDto>) {
     const target = sanitizeRedirect(route.query.redirect);
     await navigateTo(target);
   } catch (err) {
-    error.value = t(extractMessageKey(err, 'auth.loginFailed'));
+    error.value = t(extractCaughtMessageKey(err, 'auth.loginFailed'));
   } finally {
     pending.value = false;
   }
@@ -32,7 +32,7 @@ async function onSubmit(event: FormSubmitEvent<LoginDto>) {
 
 function onError(event: FormErrorEvent) {
   const first = event.errors[0]?.message;
-  clientErrorKey.value = typeof first === 'string' ? first : '';
+  clientErrorKey.value = first ?? '';
 }
 
 const showError = computed(() => Boolean(error.value || clientErrorKey.value));

@@ -1,14 +1,14 @@
 import type { TrackerRoundingRule } from '../types/tracker';
 
 /** Increment in seconds for every non-passthrough rounding rule. */
-export const ROUNDING_INCREMENT_SECONDS: Record<Exclude<TrackerRoundingRule, 'none'>, number> = {
+export const ROUNDING_INCREMENT_SECONDS = {
   up_15m: 15 * 60,
   up_30m: 30 * 60,
   up_1h: 60 * 60,
   nearest_15m: 15 * 60,
   nearest_30m: 30 * 60,
   nearest_1h: 60 * 60,
-};
+} as const satisfies Record<Exclude<TrackerRoundingRule, 'none'>, number>;
 
 /**
  * Applies a tracker's configured rounding rule to a summed duration, once.

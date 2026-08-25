@@ -1,6 +1,6 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import { extractRemoteErrorKey } from '../utils/remote/extract-remote-error-key';
+import { extractCaughtMessageKey } from '../utils/extractMessageKey';
 import type {
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
@@ -76,10 +76,10 @@ export function useRemoteIssueSearch(config: TrackerDto) {
       if (input.mode === 'id' && searchResults.length === 0) {
         errorKey.value = 'error.remoteIssueSearchNotFound';
       }
-    } catch (err: unknown) {
+    } catch (err) {
       if (token !== requestToken) return;
       results.value = [];
-      errorKey.value = extractRemoteErrorKey(err, 'error.remoteIssueSearchFailed');
+      errorKey.value = extractCaughtMessageKey(err, 'error.remoteIssueSearchFailed');
     } finally {
       if (token === requestToken) {
         loading.value = false;

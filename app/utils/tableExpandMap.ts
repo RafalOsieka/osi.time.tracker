@@ -18,7 +18,7 @@ export function isExpandedInMap(value: TableExpandMap, key: string): boolean {
  * yields a map with that key set to false (other rows stay expanded only if
  * the consumer re-expands them individually — matches prior page behavior).
  */
-export function toggleExpandMap(value: TableExpandMap, key: string): Record<string, boolean> {
+export function toggleExpandMap(value: TableExpandMap, key: string) {
   if (value === true) {
     return { [key]: false };
   }

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event) => {
   let credentials: LoginDto;
   try {
     credentials = loginSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 400,

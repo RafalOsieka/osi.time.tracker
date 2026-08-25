@@ -131,7 +131,7 @@ export function useSyncExport(options: {
           ...knownRemoteLogIds.value,
           [row.taskId]: remoteLogId,
         };
-      } catch (err: unknown) {
+      } catch (err) {
         setProgress(row.taskId, 'failed');
         setOutcome({
           taskId: row.taskId,

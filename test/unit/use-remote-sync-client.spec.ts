@@ -8,6 +8,7 @@ const fetchTimeLogs = vi.fn();
 const createTimeEntry = vi.fn();
 const getSecret = vi.fn(() => 'secret');
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
 vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   createRemoteAdapter: () => ({
     getCurrentAccount,
@@ -16,6 +17,7 @@ vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   }),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
 vi.mock('../../app/composables/useTrackerSecret', () => ({
   useTrackerSecret: () => ({
     get: getSecret,

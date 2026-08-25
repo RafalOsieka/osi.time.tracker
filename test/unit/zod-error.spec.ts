@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { mapZodError } from '../../server/utils/zod-error';
+import type { MessageParams } from '../../shared/types/message-params';
 
 describe('mapZodError', () => {
   it('maps missing name (invalid_type) to error.trackerNameRequired', () => {
@@ -60,6 +61,8 @@ describe('mapZodError', () => {
       expect(mapped.messageKey).toBe('error.trackerNameRequired');
       expect(mapped.params).toEqual({ expected: 'string' });
       expect(mapped.params).not.toHaveProperty('received');
+      const params: MessageParams | undefined = mapped.params;
+      expect(params).toEqual({ expected: 'string' });
     }
   });
 

@@ -17,7 +17,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   let parsedBody: ReassignTimeEntriesDto;
   try {
     parsedBody = reassignTimeEntriesSchema.parse(body);
-  } catch (err: unknown) {
+  } catch (err) {
     if (err instanceof ZodError) {
       throw createError({
         statusCode: 422,
@@ -46,6 +46,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       });
     }
 
+    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     const sourceTaskIds = [...new Set(rows.map((row) => row.taskId).filter(Boolean))] as string[];
     const sourceTaskId = sourceTaskIds[0] ?? null;
 

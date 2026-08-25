@@ -6,10 +6,7 @@ import { faviconHeadLinks } from '~/utils/favicon';
 const { locale } = useI18n();
 const { running } = useTimer();
 
-const uiLocale = computed(() => {
-  const code = locale.value as keyof typeof locales;
-  return locales[code] ?? locales.en;
-});
+const uiLocale = computed(() => locales[locale.value] ?? locales.en);
 
 // Computed so Unhead serializes after default.vue seeds running on SSR.
 const faviconLinks = computed(() => faviconHeadLinks(running.value != null));

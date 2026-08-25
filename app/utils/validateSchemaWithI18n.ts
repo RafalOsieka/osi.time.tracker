@@ -1,24 +1,31 @@
 import type { FormError } from '@nuxt/ui';
 
+export type StandardSchemaPathItem =
+  | string
+  | number
+  | symbol
+  | { readonly key?: string | number | symbol };
+
+export type StandardSchemaIssue = {
+  message: string;
+  path?: readonly StandardSchemaPathItem[];
+};
+
+export type StandardSchemaResult = {
+  issues?: ReadonlyArray<StandardSchemaIssue>;
+};
+
 /** Minimal Standard Schema shape used by Nuxt UI form validation. */
-export type StandardSchemaLike = {
+export type StandardSchemaLike<TState> = {
   '~standard': {
-    validate: (
-      value: unknown,
-    ) =>
-      | { issues?: ReadonlyArray<{ message: string; path?: readonly unknown[] }> }
-      | Promise<{ issues?: ReadonlyArray<{ message: string; path?: readonly unknown[] }> }>;
+    validate: (value: TState) => StandardSchemaResult | Promise<StandardSchemaResult>;
   };
 };
 
-function pathToName(path: readonly unknown[] | undefined): string {
+function pathToName(path: readonly StandardSchemaPathItem[] | undefined): string {
   if (!path?.length) return '';
   return path
-    .map((item) =>
-      typeof item === 'object' && item !== null && 'key' in item
-        ? String((item as { key: unknown }).key)
-        : String(item),
-    )
+    .map((item) => (item instanceof Object && 'key' in item ? String(item.key) : String(item)))
     .join('.');
 }
 
@@ -27,9 +34,9 @@ function pathToName(path: readonly unknown[] | undefined): string {
  * messages already translated via `t`. Use as UForm `:validate` instead of
  * `:schema` so FormField never renders raw message keys.
  */
-export async function validateSchemaWithI18n(
-  state: unknown,
-  schema: StandardSchemaLike,
+export async function validateSchemaWithI18n<TState>(
+  state: TState,
+  schema: StandardSchemaLike<TState>,
   t: (key: string) => string,
 ): Promise<FormError[]> {
   const result = await schema['~standard'].validate(state);

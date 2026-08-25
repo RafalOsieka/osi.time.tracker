@@ -6,10 +6,11 @@ import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { UNKNOWN_ID } from '../helpers/fixtures';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeTrackers = requireDocker();
 
-function trackerBody(name: string, overrides: Record<string, unknown> = {}) {
+function trackerBody(name: string, overrides: JsonObject = {}) {
   return {
     name,
     systemType: 'openproject',
