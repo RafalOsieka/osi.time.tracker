@@ -1,3 +1,4 @@
+import type { ZodType } from 'zod';
 import type {
   RemoteRequest,
   RemoteResponse,
@@ -5,7 +6,6 @@ import type {
 } from '../../../shared/types/remote-adapter';
 import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
 import { normalizeBaseUrl } from '../../../shared/utils/normalize-base-url';
-import type { JsonValue } from '../../../shared/types/json';
 import { UpstreamHttpError } from '../../../shared/remote/upstream-http-error';
 
 /**
@@ -20,7 +20,7 @@ export function createServerFetchTransport(baseUrl: string): Transport {
   const allowedOrigin = new URL(normalizeBaseUrl(baseUrl)).origin;
 
   return {
-    async execute(request: RemoteRequest): Promise<RemoteResponse> {
+    async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
       assertSameOrigin(request.url, allowedOrigin);
 
       const headers = new Headers({
@@ -37,11 +37,10 @@ export function createServerFetchTransport(baseUrl: string): Transport {
           body: request.body !== undefined ? JSON.stringify(request.body) : undefined,
           headers,
         });
-        const data = response._data;
+        const parsed = schema.safeParse(response._data);
         return {
           status: response.status,
-          // SAFETY: $fetch.raw `_data` is untyped; provider clients parse named payloads.
-          payload: data === undefined ? null : (data as JsonValue),
+          payload: parsed.success ? parsed.data : null,
         };
       } catch (err) {
         if (err instanceof RemoteAdapterError) throw err;

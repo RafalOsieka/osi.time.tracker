@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { instantToZoned, wallClockToInstant, toPickerDate, fromPickerDate } from '~/utils/dateTime';
-import { buildTaskTitleMenuItems, TASK_TITLE_CREATE_ITEM_ID } from '~/utils/taskTitleMenu';
 import type { TaskDto } from '../../shared/types/task';
 
 const { t } = useI18n();
@@ -87,7 +84,7 @@ const elapsedLabel = computed(() => {
 });
 
 async function search(query: string) {
-  suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
+  suggestions.value = await searchTasks(query);
 }
 
 watch(searchTerm, (query) => {

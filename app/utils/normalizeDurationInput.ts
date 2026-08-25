@@ -20,11 +20,12 @@ export function normalizeDurationInput(raw: string): number | null {
   if (numbers.length === 1) {
     minutes = numbers[0]!;
   } else if (numbers.length === 2) {
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    [hours, minutes] = numbers as [number, number];
+    hours = numbers[0]!;
+    minutes = numbers[1]!;
   } else {
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    [hours, minutes, seconds] = numbers as [number, number, number];
+    hours = numbers[0]!;
+    minutes = numbers[1]!;
+    seconds = numbers[2]!;
   }
 
   if (minutes > 59 || seconds > 59) return null;

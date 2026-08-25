@@ -27,11 +27,6 @@ export function mapZodError(error: ZodError): ApiMessage {
     params.expected = String(issue.expected);
   }
 
-  if ('params' in issue && issue.params) {
-    // SAFETY: custom zod issue.params are primitive interpolation values on this contract.
-    Object.assign(params, issue.params as MessageParams);
-  }
-
   if (Object.keys(params).length > 0) {
     return { messageKey, params };
   }

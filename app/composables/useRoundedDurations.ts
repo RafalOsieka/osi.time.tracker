@@ -1,12 +1,5 @@
-import { ref } from 'vue';
-import {
-  applyRoundingRule,
-  roundingSuggestionsFor,
-  type RoundingSuggestion,
-} from '../../shared/utils/rounding';
+import type { RoundingSuggestion } from '../../shared/utils/rounding';
 import type { TrackerRoundingRule } from '../../shared/types/tracker';
-import { formatDuration } from '../utils/formatDuration';
-import { normalizeDurationInput } from '../utils/normalizeDurationInput';
 
 /**
  * Rounded-duration overrides + raw input text with commit/revert semantics (REQ-113).

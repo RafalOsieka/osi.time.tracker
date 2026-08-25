@@ -4,6 +4,9 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import AppTimer from '../../app/components/AppTimer.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
+type AppTimerRunning = { value: TimeEntryDto | null };
+type TimerMenuItem = { id: string; name: string; label: string; onSelect: () => void };
+
 const {
   fetchMock,
   runningState,
@@ -13,17 +16,19 @@ const {
   stopMock,
   updateTitleMock,
   updateStartedAtMock,
-} = vi.hoisted(() => ({
-  fetchMock: vi.fn(),
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-  runningState: { value: null as TimeEntryDto | null },
-  elapsedSecondsState: { value: 0 },
-  loadingState: { value: false },
-  startMock: vi.fn(),
-  stopMock: vi.fn(),
-  updateTitleMock: vi.fn(),
-  updateStartedAtMock: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const runningState: AppTimerRunning = { value: null };
+  return {
+    fetchMock: vi.fn(),
+    runningState,
+    elapsedSecondsState: { value: 0 },
+    loadingState: { value: false },
+    startMock: vi.fn(),
+    stopMock: vi.fn(),
+    updateTitleMock: vi.fn(),
+    updateStartedAtMock: vi.fn(),
+  };
+});
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
@@ -388,13 +393,7 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
     await flushPromises();
 
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
-      id: string;
-      name: string;
-      label: string;
-      onSelect: () => void;
-    }>;
+    const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     const suggestion = items.find((item) => item.id === 'task-42');
     expect(suggestion).toBeTruthy();
     expect(suggestion!.label).toContain('Linked Task');
@@ -438,12 +437,7 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Other');
     await flushPromises();
 
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
-      id: string;
-      name: string;
-      onSelect: () => void;
-    }>;
+    const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     const suggestion = items.find((item) => item.id === 'task-99');
     expect(suggestion).toBeTruthy();
     suggestion!.onSelect();
@@ -476,12 +470,7 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Exact Match');
     await flushPromises();
 
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
-      id: string;
-      name: string;
-      label: string;
-    }>;
+    const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     expect(items.some((item) => item.id === 'task-exact')).toBe(true);
     const createItem = items.find((item) => item.id === '__create_new_task__');
     expect(createItem).toBeTruthy();
@@ -504,15 +493,13 @@ describe('AppTimer', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', '');
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(false);
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    let items = wrapper.findComponent(InputMenuStub).props('items') as Array<{ id: string }>;
+    let items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     expect(items.some((item) => item.id === '__create_new_task__')).toBe(false);
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', '   ');
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-create-item"]').exists()).toBe(false);
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    items = wrapper.findComponent(InputMenuStub).props('items') as Array<{ id: string }>;
+    items = wrapper.findComponent(InputMenuStub).props('items');
     expect(items.some((item) => item.id === '__create_new_task__')).toBe(false);
   });
 
@@ -533,11 +520,7 @@ describe('AppTimer', () => {
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
     await flushPromises();
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const items = wrapper.findComponent(InputMenuStub).props('items') as Array<{
-      id: string;
-      onSelect: () => void;
-    }>;
+    const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     items.find((item) => item.id === 'task-42')!.onSelect();
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:open', true);
@@ -545,13 +528,8 @@ describe('AppTimer', () => {
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked Task');
     await flushPromises();
-    const createItem = // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      (
-        wrapper.findComponent(InputMenuStub).props('items') as Array<{
-          id: string;
-          onSelect: () => void;
-        }>
-      ).find((item) => item.id === '__create_new_task__');
+    const createItems: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
+    const createItem = createItems.find((item) => item.id === '__create_new_task__');
     expect(createItem).toBeTruthy();
     createItem!.onSelect();
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');
@@ -590,14 +568,13 @@ describe('AppTimer', () => {
       await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
       await flushPromises();
 
-      const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
+      const dateInput = wrapper.find<HTMLInputElement>(
+        '[data-testid="timer-start-editor-date-input"]',
+      );
       const timeInput = wrapper.find<HTMLInputElement>(
         '[data-testid="timer-start-editor-time-input"]',
       );
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      expect(dateInput.attributes('value') ?? (dateInput.element as HTMLInputElement).value).toBe(
-        '2024-01-05',
-      );
+      expect(dateInput.attributes('value') ?? dateInput.element.value).toBe('2024-01-05');
       expect(timeInput.element.value).toBe('10:30');
     });
 
@@ -680,16 +657,15 @@ describe('AppTimer', () => {
 
       await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
       await flushPromises();
-      const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
-      const original =
-        // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-        (dateInput.element as HTMLInputElement).value || dateInput.attributes('value');
+      const dateInput = wrapper.find<HTMLInputElement>(
+        '[data-testid="timer-start-editor-date-input"]',
+      );
+      const original = dateInput.element.value || dateInput.attributes('value');
       await dateInput.setValue('garbage');
       await dateInput.trigger('blur');
       await flushPromises();
 
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      const after = (dateInput.element as HTMLInputElement).value || dateInput.attributes('value');
+      const after = dateInput.element.value || dateInput.attributes('value');
       expect(after).toBe(original);
       expect(updateStartedAtMock).not.toHaveBeenCalled();
     });

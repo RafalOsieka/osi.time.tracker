@@ -1,15 +1,11 @@
-import { ZodError } from 'zod';
 import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
 import { proxiedRemoteActivitiesSchema } from '../../../shared/types/remote-activities';
-import type {
-  ProxiedRemoteActivitiesDto,
-  ProxiedRemoteActivitiesResponseDto,
-} from '../../../shared/types/remote-activities';
+import type { ProxiedRemoteActivitiesResponseDto } from '../../../shared/types/remote-activities';
 import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
 import { resolveOwnedTracker } from '../../utils/remote/resolve-owned-tracker';
 import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
 import { toApiError } from '../../utils/remote/adapter-error';
-import { mapZodError } from '../../utils/zod-error';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
@@ -29,20 +25,7 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteActivities
     });
   }
 
-  const body = await readBody(event);
-
-  let parsedBody: ProxiedRemoteActivitiesDto;
-  try {
-    parsedBody = proxiedRemoteActivitiesSchema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, proxiedRemoteActivitiesSchema);
 
   const config = await resolveOwnedTracker(user.id, parsedBody.trackerId);
   const adapter = createServerRemoteAdapter(config, secret);

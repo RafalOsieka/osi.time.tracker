@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { FormErrorEvent, FormSubmitEvent } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { extractCaughtMessageKey } from '~/utils/extractMessageKey';
 import type { LoginDto } from '../../shared/types/auth';
 
 definePageMeta({ layout: 'auth', public: true });

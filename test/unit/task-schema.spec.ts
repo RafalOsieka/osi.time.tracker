@@ -16,7 +16,6 @@ describe('updateTaskSchema', () => {
       name: 'Fix the bug',
       projectId: validProjectId,
     });
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     expect('extraKey' in result).toBe(false);
   });
 

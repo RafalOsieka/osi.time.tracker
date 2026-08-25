@@ -69,11 +69,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForFunction(pageIncludesText, 'UI Timer Task');
     expect(
       await page.evaluate(
-        (t) =>
-          [...document.querySelectorAll('input')].some((el) =>
-            // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-            (el as HTMLInputElement).value.includes(t),
-          ),
+        (t) => [...document.querySelectorAll('input')].some((el) => el.value.includes(t)),
         'UI Timer Task',
       ),
     ).toBe(true);
@@ -264,11 +260,8 @@ describeTimerViewUI('timer view UI flow', async () => {
           ),
         ];
         const titleNode = titles.find((node) => {
-          // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-          const input = (
-            node.matches('input') ? node : node.querySelector('input')
-          ) as HTMLInputElement | null;
-          return input?.value === title;
+          const input = node instanceof HTMLInputElement ? node : node.querySelector('input');
+          return input instanceof HTMLInputElement && input.value === title;
         });
         if (!titleNode) return false;
         let group: Element | null = titleNode;

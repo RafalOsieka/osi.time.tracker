@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import * as locales from '@nuxt/ui/locale';
-import { useI18n } from 'vue-i18n';
-import { faviconHeadLinks } from '~/utils/favicon';
 
 const { locale } = useI18n();
 const { running } = useTimer();

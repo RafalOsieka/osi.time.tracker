@@ -80,8 +80,8 @@ mockNuxtImport('useAsyncData', () => {
       const data = ref(mockState.feed);
       const refresh = vi.fn(async () => {
         try {
-          // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-          data.value = (await fetcher()) as Feed;
+          const next = await fetcher();
+          if (!Array.isArray(next) && 'entries' in next) data.value = next;
         } catch {
           /* keep previous */
         }
@@ -91,8 +91,8 @@ mockNuxtImport('useAsyncData', () => {
     const data = ref(mockState.projects);
     const refresh = vi.fn(async () => {
       try {
-        // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
-        data.value = (await fetcher()) as ProjectDto[];
+        const next = await fetcher();
+        if (Array.isArray(next)) data.value = next;
       } catch {
         /* keep previous */
       }
@@ -162,7 +162,6 @@ const TimerTaskGroupStub = {
 };
 
 /** Entry payload the add-entry stub emits for smart-include tests. */
-// SAFETY: Assertion documents a typed boundary the compiler cannot prove.
 interface PendingAddedEntry {
   value: Entry | null;
 }

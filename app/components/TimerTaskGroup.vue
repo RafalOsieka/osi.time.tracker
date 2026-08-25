@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { TimerViewGroup } from '~/utils/timerViewGrouping';
-import { formatDuration } from '~/utils/formatDuration';
 import type { TrackerDto } from '../../shared/types/tracker';
 
-const props = withDefaults(
-  defineProps<{
-    group: TimerViewGroup;
-    isLive: boolean;
-    now: number;
-    timeZone: string;
-    editorKey: string;
-    activeEditorKey?: string | null;
-    projectOptions?: ProjectDto[];
-    tracker?: TrackerDto | null;
-  }>(),
-  { activeEditorKey: null, projectOptions: () => [], tracker: null },
-);
+const {
+  group,
+  isLive,
+  now,
+  timeZone,
+  editorKey,
+  activeEditorKey = null,
+  projectOptions = [],
+  tracker = null,
+} = defineProps<{
+  group: TimerViewGroup;
+  isLive: boolean;
+  now: number;
+  timeZone: string;
+  editorKey: string;
+  activeEditorKey?: string | null;
+  projectOptions?: ProjectDto[];
+  tracker?: TrackerDto | null;
+}>();
 
 const emit = defineEmits<{
   continue: [];
@@ -31,30 +35,30 @@ const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
-const entriesId = computed(() => `timer-group-entries-${props.group.key}`);
+const entriesId = computed(() => `timer-group-entries-${group.key}`);
 const editingTitle = ref(false);
 const titleValue = ref('');
 const projectSelectOpen = ref(false);
 watch(
-  () => props.activeEditorKey,
+  () => activeEditorKey,
   (activeKey) => {
-    if (activeKey === props.editorKey) return;
+    if (activeKey === editorKey) return;
     editingTitle.value = false;
     projectSelectOpen.value = false;
   },
 );
 
-const contextLabel = computed(() => props.group.projectName ?? null);
+const contextLabel = computed(() => group.projectName ?? null);
 
 const projectSelectOptions = computed(() => {
-  if (!props.group.projectId || props.projectOptions.some((p) => p.id === props.group.projectId)) {
-    return props.projectOptions;
+  if (!group.projectId || projectOptions.some((p) => p.id === group.projectId)) {
+    return projectOptions;
   }
   return [
-    ...props.projectOptions,
+    ...projectOptions,
     {
-      id: props.group.projectId,
-      name: props.group.projectName ?? '',
+      id: group.projectId,
+      name: group.projectName ?? '',
       trackerId: null,
       trackerName: null,
       createdAt: '',
@@ -65,11 +69,11 @@ const projectSelectOptions = computed(() => {
 async function beginTitleEdit() {
   emit('editing-started');
   projectSelectOpen.value = false;
-  titleValue.value = props.group.taskName ?? '';
+  titleValue.value = group.taskName ?? '';
   editingTitle.value = true;
   await nextTick();
   document
-    .querySelector<HTMLInputElement>(`[data-testid="timer-group-title-input-${props.group.key}"]`)
+    .querySelector<HTMLInputElement>(`[data-testid="timer-group-title-input-${group.key}"]`)
     ?.focus();
 }
 
@@ -81,8 +85,8 @@ async function commitTitle() {
   if (!editingTitle.value) return;
   editingTitle.value = false;
   const name = titleValue.value.trim();
-  if (!name || name === (props.group.taskName ?? '')) return;
-  const ids = props.group.entries.map((entry) => entry.id);
+  if (!name || name === (group.taskName ?? '')) return;
+  const ids = group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
   try {
     await $csrfFetch('/api/time-entries/reassign', {
@@ -109,9 +113,9 @@ function onProjectOpen(open: boolean) {
 
 async function commitProject(value: string | null) {
   projectSelectOpen.value = false;
-  if (value === props.group.projectId) return;
-  if (!props.group.taskId && !props.group.taskName) return;
-  const ids = props.group.entries.map((entry) => entry.id);
+  if (value === group.projectId) return;
+  if (!group.taskId && !group.taskName) return;
+  const ids = group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
   try {
     await $csrfFetch('/api/time-entries/reassign', {
@@ -124,21 +128,21 @@ async function commitProject(value: string | null) {
   }
 }
 
-const titleDisplayValue = computed(() => props.group.taskName ?? t('timerView.noTask'));
+const titleDisplayValue = computed(() => group.taskName ?? t('timerView.noTask'));
 const projectDisplayValue = computed(() => contextLabel.value ?? t('timerView.noProject'));
-const canAssignProject = computed(() => !!(props.group.taskId || props.group.taskName));
+const canAssignProject = computed(() => !!(group.taskId || group.taskName));
 const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
 
-const entryCount = computed(() => props.group.entries.length);
+const entryCount = computed(() => group.entries.length);
 const countLabel = computed(() => {
   const count = entryCount.value;
   return t('timerView.entryCount', { count }, count);
 });
 const countDisplay = computed(() => (entryCount.value > 9 ? '9+' : String(entryCount.value)));
 
-const actionLabel = computed(() => (props.isLive ? t('timer.stop') : t('timerView.continueLabel')));
+const actionLabel = computed(() => (isLive ? t('timer.stop') : t('timerView.continueLabel')));
 const actionButtonUi = computed(() =>
-  props.isLive
+  isLive
     ? {
         leadingIcon: 'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
       }
@@ -146,17 +150,17 @@ const actionButtonUi = computed(() =>
 );
 
 function onActionClick() {
-  if (props.isLive) {
+  if (isLive) {
     emit('stop');
     return;
   }
   emit('continue');
 }
 
-const showRemoteIssueControl = computed(() => !!props.tracker && !!props.group.taskId);
-const remoteIssueRef = computed(() => props.group.remoteIssueRef);
+const showRemoteIssueControl = computed(() => !!tracker && !!group.taskId);
+const remoteIssueRef = computed(() => group.remoteIssueRef);
 const remoteIssueUnavailableLabel = computed(() =>
-  props.group.projectId
+  group.projectId
     ? t('timerView.remoteIssue.unavailableNoTracker')
     : t('timerView.remoteIssue.unavailableNoProject'),
 );
@@ -166,8 +170,8 @@ async function linkRemoteIssue(payload: {
   cachedTitle: string;
   cachedRemoteProjectTitle?: string;
 }) {
-  if (!props.group.taskId) return;
-  const ids = props.group.entries.map((entry) => entry.id);
+  if (!group.taskId) return;
+  const ids = group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
   try {
     await $csrfFetch('/api/time-entries/reassign', {
@@ -186,8 +190,8 @@ async function linkRemoteIssue(payload: {
 }
 
 async function unlinkRemoteIssue() {
-  if (!props.group.taskId) return;
-  const ids = props.group.entries.map((entry) => entry.id);
+  if (!group.taskId) return;
+  const ids = group.entries.map((entry) => entry.id);
   if (ids.length === 0) return;
   try {
     await $csrfFetch('/api/time-entries/reassign', {

@@ -44,9 +44,10 @@ async function linkIssue(
     }),
   });
   expect(res.status).toBe(200);
-  const body = await res.json();
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-  return { taskId: body[0].taskId as string };
+  const body: { taskId: string | null }[] = await res.json();
+  const taskId = body[0]?.taskId;
+  if (!taskId) throw new Error('expected taskId from reassign');
+  return { taskId };
 }
 
 async function finalize(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {

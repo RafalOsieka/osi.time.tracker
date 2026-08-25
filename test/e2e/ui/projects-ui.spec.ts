@@ -101,11 +101,9 @@ describeProjectsUI('projects UI flow', async () => {
       // Escape the select and force-clear via keyboard if clearable control is hard to hit
       await page.keyboard.press('Escape');
       await page.evaluate(() => {
-        // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-        const el = document.querySelector(
-          '[data-testid="project-tracker-select"]',
-        ) as HTMLElement | null;
-        el?.dispatchEvent(new Event('focus', { bubbles: true }));
+        document
+          .querySelector('[data-testid="project-tracker-select"]')
+          ?.dispatchEvent(new Event('focus', { bubbles: true }));
       });
     }
     await page.click('[data-testid="save-button"]');

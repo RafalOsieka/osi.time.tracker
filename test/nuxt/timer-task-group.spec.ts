@@ -183,9 +183,7 @@ describe('TimerTaskGroup', () => {
   beforeEach(() => {
     csrfFetchMock.mockReset();
     try {
-      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
-      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }
@@ -538,11 +536,10 @@ describe('TimerTaskGroup', () => {
 
     await title.trigger('click');
     await flushPromises();
-    const input = wrapper.find('[data-testid="timer-group-title-input-task-1"]');
+    const input = wrapper.find<HTMLInputElement>('[data-testid="timer-group-title-input-task-1"]');
     expect(input.exists()).toBe(true);
     expect(input.attributes('style') ?? '').not.toMatch(/\d+ch/);
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    expect((input.element as HTMLInputElement).value).toBe(longName);
+    expect(input.element.value).toBe(longName);
   });
 
   it('caps the entry-count badge at 9+', async () => {

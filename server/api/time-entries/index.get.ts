@@ -1,29 +1,14 @@
 import { and, desc, eq, lt, or, isNull, gte } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { listTimeEntriesQuerySchema } from '../../../shared/types/time-entry';
-import type { ListTimeEntriesQuery, TimeEntryDto } from '../../../shared/types/time-entry';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { db } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
-import type { ApiMessage } from '../../types/api-message';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
+import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   const { user } = await requireAuth(event);
-  const query = getQuery(event);
-
-  let parsedQuery: ListTimeEntriesQuery;
-  try {
-    parsedQuery = listTimeEntriesQuerySchema.parse(query);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedQuery = await getZodQuery(event, listTimeEntriesQuerySchema);
 
   const from = new Date(parsedQuery.from);
   const to = new Date(parsedQuery.to);

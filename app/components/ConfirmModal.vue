@@ -1,19 +1,17 @@
 <script setup lang="ts">
-const props = withDefaults(
-  defineProps<{
-    title: string;
-    description?: string;
-    confirmLabel?: string;
-    cancelLabel?: string;
-    confirmColor?: 'error' | 'primary' | 'neutral';
-  }>(),
-  {
-    description: undefined,
-    confirmLabel: undefined,
-    cancelLabel: undefined,
-    confirmColor: 'error',
-  },
-);
+const {
+  title,
+  description = undefined,
+  confirmLabel = undefined,
+  cancelLabel = undefined,
+  confirmColor = 'error',
+} = defineProps<{
+  title: string;
+  description?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  confirmColor?: 'error' | 'primary' | 'neutral';
+}>();
 
 const emit = defineEmits<{
   close: [value: boolean];
@@ -22,8 +20,8 @@ const emit = defineEmits<{
 
 <template>
   <UModal
-    :title="props.title"
-    :description="props.description"
+    :title="title"
+    :description="description"
     :dismissible="false"
     :ui="{ footer: 'justify-end gap-2' }"
   >
@@ -33,13 +31,13 @@ const emit = defineEmits<{
           color="neutral"
           variant="outline"
           data-testid="confirm-reject"
-          :label="props.cancelLabel"
+          :label="cancelLabel"
           @click="emit('close', false)"
         />
         <UButton
-          :color="props.confirmColor"
+          :color="confirmColor"
           data-testid="confirm-accept"
-          :label="props.confirmLabel"
+          :label="confirmLabel"
           @click="emit('close', true)"
         />
       </div>

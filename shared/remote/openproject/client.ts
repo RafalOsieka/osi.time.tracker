@@ -1,7 +1,7 @@
-import type { JsonValue } from '../../types/json';
 import type { RemoteFieldOption } from '../../types/remote-field-option';
 import type { RemoteAccount } from '../../types/remote-account';
 import type { RemoteIssueSearchResult } from '../../types/remote-issue-ref';
+import { z } from 'zod';
 import type { Transport } from '../../types/remote-adapter';
 import { normalizeBaseUrl } from '../../utils/normalize-base-url';
 import { coerceRemoteId } from '../remote-id';
@@ -107,6 +107,25 @@ interface OpenProjectAccountPayload {
   name?: string;
 }
 
+const openProjectCollectionPayloadSchema = z.custom<OpenProjectCollectionPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const openProjectWorkPackageElementSchema = z.custom<OpenProjectWorkPackageElement>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const openProjectTimeEntryFormPayloadSchema = z.custom<OpenProjectTimeEntryFormPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const openProjectAccountPayloadSchema = z.custom<OpenProjectAccountPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const openProjectTimeEntryCollectionSchema = z.custom<OpenProjectTimeEntryCollection>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const openProjectTimeEntryElementSchema = z.custom<OpenProjectTimeEntryElement>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+
 export interface OpenProjectFetchTimeLogsPageInput {
   /** Local calendar day `YYYY-MM-DD`. */
   spentOn: string;
@@ -152,11 +171,14 @@ export class OpenProjectClient {
       filters,
       pageSize: String(OPENPROJECT_TITLE_SEARCH_MAX_RESULTS),
     });
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/api/v3/work_packages?${params.toString()}`,
-      method: 'GET',
-      headers: authHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/work_packages?${params.toString()}`,
+        method: 'GET',
+        headers: authHeaders(secret),
+      },
+      openProjectCollectionPayloadSchema,
+    );
     return { status, results: parseTitleSearchResults(payload) };
   }
 
@@ -164,11 +186,14 @@ export class OpenProjectClient {
     remoteIssueId: string,
     secret: string | null,
   ): Promise<{ status: number; result: RemoteIssueSearchResult | null }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}`,
-      method: 'GET',
-      headers: authHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}`,
+        method: 'GET',
+        headers: authHeaders(secret),
+      },
+      openProjectWorkPackageElementSchema,
+    );
     return { status, result: parseIssueByIdResult(payload, status) };
   }
 
@@ -176,27 +201,33 @@ export class OpenProjectClient {
     remoteIssueId: string,
     secret: string | null,
   ): Promise<{ status: number; options: RemoteFieldOption[] }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/api/v3/time_entries/form`,
-      method: 'POST',
-      headers: authHeaders(secret),
-      body: {
-        _links: {
-          workPackage: { href: `/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}` },
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/time_entries/form`,
+        method: 'POST',
+        headers: authHeaders(secret),
+        body: {
+          _links: {
+            workPackage: { href: `/api/v3/work_packages/${encodeURIComponent(remoteIssueId)}` },
+          },
         },
       },
-    });
+      openProjectTimeEntryFormPayloadSchema,
+    );
     return { status, options: parseTimeEntryActivitiesResults(payload) };
   }
 
   async getCurrentAccount(
     secret: string | null,
   ): Promise<{ status: number; account: RemoteAccount | null }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/api/v3/users/me`,
-      method: 'GET',
-      headers: authHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/users/me`,
+        method: 'GET',
+        headers: authHeaders(secret),
+      },
+      openProjectAccountPayloadSchema,
+    );
     return { status, account: parseCurrentAccountResult(payload) };
   }
 
@@ -211,7 +242,10 @@ export class OpenProjectClient {
           method: 'GET' as const,
           headers: authHeaders(secret),
         };
-    const { status, payload } = await this.transport.execute(request);
+    const { status, payload } = await this.transport.execute(
+      request,
+      openProjectTimeEntryCollectionSchema,
+    );
     const parsed = parseTimeLogsPage(payload);
     return { status, logs: parsed.logs, nextPageUrl: parsed.nextPageUrl };
   }
@@ -220,37 +254,40 @@ export class OpenProjectClient {
     input: OpenProjectCreateTimeEntryInput,
     secret: string | null,
   ): Promise<{ status: number; result: { remoteLogId: string } | null }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/api/v3/time_entries`,
-      method: 'POST',
-      headers: authHeaders(secret),
-      body: input.comment
-        ? {
-            spentOn: input.spentOn,
-            hours: formatOpenProjectDuration(input.durationSeconds),
-            comment: { raw: input.comment },
-            _links: {
-              entity: {
-                href: `/api/v3/work_packages/${encodeURIComponent(input.remoteIssueId)}`,
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/time_entries`,
+        method: 'POST',
+        headers: authHeaders(secret),
+        body: input.comment
+          ? {
+              spentOn: input.spentOn,
+              hours: formatOpenProjectDuration(input.durationSeconds),
+              comment: { raw: input.comment },
+              _links: {
+                entity: {
+                  href: `/api/v3/work_packages/${encodeURIComponent(input.remoteIssueId)}`,
+                },
+                activity: {
+                  href: `/api/v3/time_entries/activities/${encodeURIComponent(input.activityId)}`,
+                },
               },
-              activity: {
-                href: `/api/v3/time_entries/activities/${encodeURIComponent(input.activityId)}`,
+            }
+          : {
+              spentOn: input.spentOn,
+              hours: formatOpenProjectDuration(input.durationSeconds),
+              _links: {
+                entity: {
+                  href: `/api/v3/work_packages/${encodeURIComponent(input.remoteIssueId)}`,
+                },
+                activity: {
+                  href: `/api/v3/time_entries/activities/${encodeURIComponent(input.activityId)}`,
+                },
               },
             },
-          }
-        : {
-            spentOn: input.spentOn,
-            hours: formatOpenProjectDuration(input.durationSeconds),
-            _links: {
-              entity: {
-                href: `/api/v3/work_packages/${encodeURIComponent(input.remoteIssueId)}`,
-              },
-              activity: {
-                href: `/api/v3/time_entries/activities/${encodeURIComponent(input.activityId)}`,
-              },
-            },
-          },
-    });
+      },
+      openProjectTimeEntryElementSchema,
+    );
     return { status, result: parseCreateTimeEntryResult(payload) };
   }
 
@@ -283,9 +320,10 @@ export class OpenProjectClient {
  * (missing `_embedded`, non-array `elements`, missing `id`/`subject`) are
  * handled by skipping the offending element rather than throwing.
  */
-function parseTitleSearchResults(payload: JsonValue | null): RemoteIssueSearchResult[] {
-  // SAFETY: transport JSON is untyped; OpenProject search is a HAL collection of work packages.
-  const elements = (payload as OpenProjectCollectionPayload | null)?._embedded?.elements;
+function parseTitleSearchResults(
+  payload: OpenProjectCollectionPayload | null,
+): RemoteIssueSearchResult[] {
+  const elements = payload?._embedded?.elements;
   if (!elements) {
     return [];
   }
@@ -311,15 +349,14 @@ function parseTitleSearchResults(payload: JsonValue | null): RemoteIssueSearchRe
  * `status` field, a resolvable payload is always returned.
  */
 function parseIssueByIdResult(
-  payload: JsonValue | null,
+  payload: OpenProjectWorkPackageElement | null,
   httpStatus: number,
 ): RemoteIssueSearchResult | null {
   if (httpStatus === 404) {
     return null;
   }
 
-  // SAFETY: transport JSON is untyped; exact-id lookup is a single work package.
-  const element = payload as OpenProjectWorkPackageElement | null;
+  const element = payload;
   if (element?.id == null || element.subject == null) {
     return null;
   }
@@ -353,9 +390,10 @@ function toSearchResult(element: OpenProjectWorkPackageElement): RemoteIssueSear
  * `_embedded.allowedValues`, non-array values, elements missing `id`/`name`)
  * are handled by skipping rather than throwing.
  */
-function parseTimeEntryActivitiesResults(payload: JsonValue | null): RemoteFieldOption[] {
-  // SAFETY: transport JSON is untyped; activities come from the time-entry form schema.
-  const activity = (payload as OpenProjectTimeEntryFormPayload | null)?._embedded?.schema?.activity;
+function parseTimeEntryActivitiesResults(
+  payload: OpenProjectTimeEntryFormPayload | null,
+): RemoteFieldOption[] {
+  const activity = payload?._embedded?.schema?.activity;
   const allowedValues = activity?._embedded?.allowedValues;
   if (!allowedValues) {
     return [];
@@ -376,9 +414,10 @@ function parseTimeEntryActivitiesResults(payload: JsonValue | null): RemoteField
  * Parses `/api/v3/users/me` into an adapter-neutral account identity.
  * Returns `null` for malformed payloads.
  */
-function parseCurrentAccountResult(payload: JsonValue | null): RemoteAccount | null {
-  // SAFETY: transport JSON is untyped; `/users/me` is an account identity payload.
-  const row = payload as OpenProjectAccountPayload | null;
+function parseCurrentAccountResult(
+  payload: OpenProjectAccountPayload | null,
+): RemoteAccount | null {
+  const row = payload;
   if (row?.id == null || row.name == null) {
     return null;
   }
@@ -394,9 +433,10 @@ type OpenProjectTimeLogsPage = {
   nextPageUrl: string | null;
 };
 
-function parseTimeLogsPage(payload: JsonValue | null): OpenProjectTimeLogsPage {
-  // SAFETY: transport JSON is untyped; time logs are a HAL collection of time entries.
-  const collection = payload as OpenProjectTimeEntryCollection | null;
+function parseTimeLogsPage(
+  payload: OpenProjectTimeEntryCollection | null,
+): OpenProjectTimeLogsPage {
+  const collection = payload;
   const elements = collection?._embedded?.elements;
   const logs: OpenProjectTimeLogEntry[] = [];
 
@@ -441,9 +481,10 @@ function timeEntryComment(comment: OpenProjectTimeEntryElement['comment']): stri
  * Parses a create-time-entry response into the remote log id. Returns `null`
  * when the payload is malformed.
  */
-function parseCreateTimeEntryResult(payload: JsonValue | null): { remoteLogId: string } | null {
-  // SAFETY: transport JSON is untyped; create returns a time-entry element.
-  const row = payload as OpenProjectTimeEntryElement | null;
+function parseCreateTimeEntryResult(
+  payload: OpenProjectTimeEntryElement | null,
+): { remoteLogId: string } | null {
+  const row = payload;
   if (!row) return null;
   const fromId = coerceRemoteId(row.id);
   if (fromId) return { remoteLogId: fromId };

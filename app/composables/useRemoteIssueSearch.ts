@@ -1,12 +1,9 @@
-import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import { extractCaughtMessageKey } from '../utils/extractMessageKey';
 import type {
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
 import type { TrackerDto } from '../../shared/types/tracker';
-import { useTrackerSecret } from './useTrackerSecret';
 
 export const REMOTE_ISSUE_SEARCH_MIN_TITLE_LENGTH = 3;
 

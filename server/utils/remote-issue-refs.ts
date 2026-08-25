@@ -3,7 +3,7 @@ import { db } from '../db/index';
 import { tasks, projects, trackers } from '../db/schema';
 import { deriveIssueUrl } from '../../shared/remote/issue-url';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
-import type { TrackerSystemType } from '../../shared/types/tracker';
+import { isImplementedTrackerSystemType } from '../../shared/utils/remote-sync-row-state';
 
 type TaskRefRow = {
   id: string;
@@ -99,11 +99,13 @@ export function taskRowToRemoteIssueRefDto(
     return null;
   }
 
-  const isActive =
-    !!tracker &&
+  const url =
+    tracker &&
     tracker.deletedAt === null &&
     tracker.baseUrl != null &&
-    tracker.systemType != null;
+    isImplementedTrackerSystemType(tracker.systemType)
+      ? deriveIssueUrl(tracker.systemType, tracker.baseUrl, row.remoteIssueId)
+      : undefined;
 
   return {
     id: row.id,
@@ -113,10 +115,7 @@ export function taskRowToRemoteIssueRefDto(
     remoteIssueId: row.remoteIssueId,
     cachedTitle: row.remoteIssueCachedTitle,
     cachedRemoteProjectTitle: row.remoteIssueCachedProjectTitle?.trim() || undefined,
-    // SAFETY: systemType is the tracker enum; baseUrl is present when the tracker row exists.
-    url: isActive
-      ? deriveIssueUrl(tracker.systemType as TrackerSystemType, tracker.baseUrl!, row.remoteIssueId)
-      : undefined,
+    url,
     createdAt: row.remoteIssueCreatedAt.toISOString(),
     updatedAt: row.remoteIssueUpdatedAt.toISOString(),
   };

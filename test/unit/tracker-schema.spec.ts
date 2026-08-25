@@ -52,7 +52,6 @@ describe('tracker connection field schemas', () => {
 
   it('no longer exposes a transportMode field', () => {
     const result = createTrackerSchema.parse(valid);
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     expect('transportMode' in result).toBe(false);
   });
 
@@ -72,8 +71,8 @@ describe('tracker connection field schemas', () => {
       throw new Error('expected parse to throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ZodError);
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      const mapped = mapZodError(err as ZodError);
+      if (!(err instanceof ZodError)) throw err;
+      const mapped = mapZodError(err);
       expect(mapped.messageKey).toBe('error.trackerBaseUrlInvalid');
     }
   });

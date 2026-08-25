@@ -1,34 +1,20 @@
 import { and, eq } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import {
   updateTimeEntrySchema,
   TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS,
 } from '../../../shared/types/time-entry';
-import type { UpdateTimeEntryDto, TimeEntryDto } from '../../../shared/types/time-entry';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { db } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
-  const body = await readBody(event);
-
-  let parsedBody: UpdateTimeEntryDto;
-  try {
-    parsedBody = updateTimeEntrySchema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, updateTimeEntrySchema);
 
   const [existing] = await db
     .select()

@@ -1,15 +1,13 @@
-import { ZodError } from 'zod';
 import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
 import {
   proxiedRemoteCreateTimeEntrySchema,
-  type ProxiedRemoteCreateTimeEntryDto,
   type ProxiedRemoteCreateTimeEntryResponseDto,
 } from '../../../shared/types/remote-export';
 import { createServerRemoteAdapter } from '../../utils/remote/create-server-remote-adapter';
 import { resolveOwnedTracker } from '../../utils/remote/resolve-owned-tracker';
 import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
 import { toApiError } from '../../utils/remote/adapter-error';
-import { mapZodError } from '../../utils/zod-error';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
@@ -27,19 +25,7 @@ export default defineEventHandler(
       });
     }
 
-    const body = await readBody(event);
-    let parsedBody: ProxiedRemoteCreateTimeEntryDto;
-    try {
-      parsedBody = proxiedRemoteCreateTimeEntrySchema.parse(body);
-    } catch (err) {
-      if (err instanceof ZodError) {
-        throw createError({
-          statusCode: 422,
-          data: mapZodError(err) satisfies ApiMessage,
-        });
-      }
-      throw err;
-    }
+    const parsedBody = await readZodBody(event, proxiedRemoteCreateTimeEntrySchema);
 
     const config = await resolveOwnedTracker(user.id, parsedBody.trackerId);
     const adapter = createServerRemoteAdapter(config, secret);

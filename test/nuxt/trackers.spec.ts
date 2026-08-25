@@ -151,9 +151,7 @@ describe('trackers page', () => {
     trackersListPending = false;
     useAsyncDataTrackers.length = 0;
     try {
-      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
-      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }

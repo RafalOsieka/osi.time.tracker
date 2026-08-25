@@ -14,14 +14,18 @@ mockNuxtImport('navigateTo', () => navigateToMock);
 const { default: authGuard } = await import('../../app/middleware/auth.global');
 
 function route(partial: Partial<RouteLocationNormalized>): RouteLocationNormalized {
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
   return {
     path: '/',
     fullPath: '/',
-    query: {},
+    hash: '',
+    name: undefined,
+    params: {},
+    matched: [],
+    redirectedFrom: undefined,
     meta: {},
+    query: {},
     ...partial,
-  } as RouteLocationNormalized;
+  };
 }
 
 const from = route({});

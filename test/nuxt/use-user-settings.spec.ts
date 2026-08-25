@@ -11,17 +11,16 @@ const sessionUser = ref<{
 const csrfFetch = vi.fn();
 
 /** Isolate Nuxt useState between tests without app-side test hooks. */
-type StateBox = Ref<string | null>;
-const useStateStore = vi.hoisted(() => new Map<string, StateBox>());
+const useStateStore = vi.hoisted(() => new Map<string, Ref<string | null>>());
 
 mockNuxtImport('useState', () => {
-  return <T>(key: string, init?: () => T): Ref<T> => {
-    if (!useStateStore.has(key)) {
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      useStateStore.set(key, ref(init ? init() : null) as StateBox);
+  return (key: string, init?: () => string | null): Ref<string | null> => {
+    let box = useStateStore.get(key);
+    if (!box) {
+      box = ref(init ? init() : null);
+      useStateStore.set(key, box);
     }
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    return useStateStore.get(key) as Ref<T>;
+    return box;
   };
 });
 
@@ -42,9 +41,7 @@ describe('useUserSettings', () => {
     csrfFetch.mockReset();
     useStateStore.clear();
     try {
-      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
-      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
-      (useNuxtApp() as any).$csrfFetch = csrfFetch;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetch });
     } catch {
       // The Nuxt app is not available until the test mount initializes it.
     }
@@ -52,21 +49,19 @@ describe('useUserSettings', () => {
 
   it('uses UTC before mount when no timezone is saved, then upgrades to browser after mount', async () => {
     let beforeMountTimeZone = '';
-    const wrapper = mount({
+    let composable!: ReturnType<typeof useUserSettings>;
+    mount({
       setup() {
-        const settings = useUserSettings();
+        composable = useUserSettings();
         // onMounted has not run yet during setup — effective must stay hydration-safe.
-        beforeMountTimeZone = settings.effective.value.timeZone;
-        return { settings };
+        beforeMountTimeZone = composable.effective.value.timeZone;
+        return {};
       },
       template: '<div />',
     });
 
     expect(beforeMountTimeZone).toBe('UTC');
 
-    // SAFETY: Vue wrapper.vm does not type setup returns; the fixture mounts useUserSettings.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Vue wrapper.vm does not type setup returns
-    const composable = wrapper.vm.settings as unknown as ReturnType<typeof useUserSettings>;
     await nextTick();
     expect(composable.settings.value).toEqual({ timezone: null });
     expect(composable.effective.value).toEqual({
@@ -80,16 +75,14 @@ describe('useUserSettings', () => {
   it('prefers saved settings over browser detection with no post-mount upgrade', async () => {
     sessionUser.value = { settings: { timezone: 'Europe/Warsaw' } };
 
-    const wrapper = mount({
+    let composable!: ReturnType<typeof useUserSettings>;
+    mount({
       setup() {
-        const settings = useUserSettings();
-        return { settings };
+        composable = useUserSettings();
+        return {};
       },
       template: '<div />',
     });
-    // SAFETY: Vue wrapper.vm does not type setup returns; the fixture mounts useUserSettings.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Vue wrapper.vm does not type setup returns
-    const composable = wrapper.vm.settings as unknown as ReturnType<typeof useUserSettings>;
     await nextTick();
 
     expect(composable.effective.value).toEqual({ timeZone: 'Europe/Warsaw' });
@@ -97,16 +90,14 @@ describe('useUserSettings', () => {
   });
 
   it('does not auto-persist timezone when unset', async () => {
-    const wrapper = mount({
+    let composable!: ReturnType<typeof useUserSettings>;
+    mount({
       setup() {
-        const settings = useUserSettings();
-        return { settings };
+        composable = useUserSettings();
+        return {};
       },
       template: '<div />',
     });
-    // SAFETY: Vue wrapper.vm does not type setup returns; the fixture mounts useUserSettings.
-    // oxlint-disable-next-line anti-slop/no-chained-type-assertions -- Vue wrapper.vm does not type setup returns
-    const composable = wrapper.vm.settings as unknown as ReturnType<typeof useUserSettings>;
     await nextTick();
 
     expect(composable.settings.value.timezone).toBeNull();

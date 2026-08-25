@@ -1,8 +1,6 @@
-import { ZodError } from 'zod';
 import { loginSchema } from '../../../shared/types/auth';
-import type { LoginDto } from '../../../shared/types/auth';
 import { findUserByEmail, DUMMY_HASH } from '../../utils/users';
-import { mapZodError } from '../../utils/zod-error';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
@@ -12,20 +10,7 @@ import type { ApiMessage } from '../../types/api-message';
  * cookie via `setUserSession`.
  */
 export default defineEventHandler(async (event) => {
-  const body = await readBody(event);
-
-  let credentials: LoginDto;
-  try {
-    credentials = loginSchema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 400,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const credentials = await readZodBody(event, loginSchema, 400);
 
   const { email: emailInput, password } = credentials;
 

@@ -77,9 +77,7 @@ describe('TimerEntryRow', () => {
     vi.clearAllMocks();
     confirmMock.mockResolvedValue(true);
     try {
-      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
-      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }
@@ -199,9 +197,8 @@ describe('TimerEntryRow', () => {
 
     await title.trigger('click');
     await flushPromises();
-    const input = wrapper.find('[data-testid="timer-entry-title-input-entry-1"]');
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    expect((input.element as HTMLInputElement).value).toBe(longName);
+    const input = wrapper.find<HTMLInputElement>('[data-testid="timer-entry-title-input-entry-1"]');
+    expect(input.element.value).toBe(longName);
     expect(input.attributes('style') ?? '').not.toMatch(/\d+ch/);
   });
 

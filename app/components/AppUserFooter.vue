@@ -1,10 +1,7 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { AvatarProps, DropdownMenuItem } from '@nuxt/ui';
 
-const props = withDefaults(defineProps<{ collapsed?: boolean }>(), {
-  collapsed: false,
-});
+const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
 
 const { t } = useI18n();
 const { logout, user } = useAuth();
@@ -66,7 +63,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
 <template>
   <div
     class="flex w-full min-w-0"
-    :class="props.collapsed ? 'justify-center' : undefined"
+    :class="collapsed ? 'justify-center' : undefined"
     data-testid="app-user-footer"
   >
     <!--
@@ -81,7 +78,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
     >
       <!-- Expanded: full UUser row is the clickable account control -->
       <UUser
-        v-if="!props.collapsed && primaryLabel"
+        v-if="!collapsed && primaryLabel"
         as="button"
         type="button"
         :name="primaryLabel"

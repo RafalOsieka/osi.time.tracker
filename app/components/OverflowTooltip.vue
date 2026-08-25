@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { isTextOverflowing } from '~/utils/isTextOverflowing';
-
 const props = defineProps<{
   text: string;
 }>();

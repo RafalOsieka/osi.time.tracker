@@ -236,9 +236,7 @@ describe('RemoteSync page', () => {
     vi.stubGlobal('fetch', fetchMock);
     installFakeLocalStorage();
     try {
-      // SAFETY: Test fixture asserts a typed boundary the compiler cannot prove.
-      // oxlint-disable-next-line typescript/no-explicit-any -- Nuxt $csrfFetch is not on the typed app payload in tests
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }
@@ -315,19 +313,18 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     await expandRow(wrapper, 'task-2');
     expect(
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      (wrapper.find('[data-testid="remote-sync-entry-check-entry-2"]').element as HTMLInputElement)
+      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-entry-check-entry-2"]').element
         .checked,
     ).toBe(true);
-    const roundedInput = wrapper.find('[data-testid="remote-sync-rounded-duration-task-2"]');
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    expect((roundedInput.element as HTMLInputElement).value).toBe('01:00:00');
+    const roundedInput = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-rounded-duration-task-2"]',
+    );
+    expect(roundedInput.element.value).toBe('01:00:00');
 
     await roundedInput.setValue('bad value');
     await roundedInput.trigger('blur');
     await flushPromises();
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    expect((roundedInput.element as HTMLInputElement).value).toBe('01:00:00');
+    expect(roundedInput.element.value).toBe('01:00:00');
 
     await roundedInput.setValue('0');
     await roundedInput.trigger('blur');
@@ -364,10 +361,11 @@ describe('RemoteSync page', () => {
 
     await toSendButton.trigger('click');
     await flushPromises();
-    const inlineInput = wrapper.find('[data-testid="remote-sync-to-send-input-task-inline"]');
+    const inlineInput = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-to-send-input-task-inline"]',
+    );
     expect(inlineInput.exists()).toBe(true);
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    expect((inlineInput.element as HTMLInputElement).value).toBe('01:00:00');
+    expect(inlineInput.element.value).toBe('01:00:00');
 
     await inlineInput.setValue('00:45:00');
     await inlineInput.trigger('blur');
@@ -406,9 +404,10 @@ describe('RemoteSync page', () => {
     );
 
     const wrapper = await mount();
-    const select = wrapper.find('[data-testid="remote-sync-activity-select-task-3"]');
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    expect((select.element as HTMLSelectElement).value).toBe('2');
+    const select = wrapper.find<HTMLSelectElement>(
+      '[data-testid="remote-sync-activity-select-task-3"]',
+    );
+    expect(select.element.value).toBe('2');
   });
 
   it('routes activities/account fetches through the server for a server-execution-mode config', async () => {

@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { TrackerDto } from '../../shared/types/tracker';
-import {
-  REMOTE_ISSUE_SEARCH_MODE_ORDER,
-  type RemoteIssueRefDto,
-  type RemoteIssueSearchMode,
-  type RemoteIssueSearchResult,
+import type {
+  RemoteIssueRefDto,
+  RemoteIssueSearchMode,
+  RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
-import { useRemoteIssueSearch } from '~/composables/useRemoteIssueSearch';
 
 defineOptions({ inheritAttrs: false });
 
@@ -36,7 +33,6 @@ const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
-const queryField = useTemplateRef<HTMLElement>('queryField');
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
   query: '',
@@ -95,11 +91,7 @@ function resultAccessibleName(result: RemoteIssueSearchResult): string {
 }
 
 function focusQueryInput() {
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-  const root = queryField.value as HTMLElement | { $el?: HTMLElement } | null;
-  const host = root instanceof HTMLElement ? root : root?.$el;
-  const input = host?.querySelector?.('input') ?? (host instanceof HTMLInputElement ? host : null);
-  input?.focus?.();
+  rootEl.value?.querySelector('input')?.focus();
 }
 
 function onTriggerClick() {
@@ -240,7 +232,6 @@ onBeforeUnmount(() => {
             <div class="flex items-center gap-1">
               <UInput
                 id="remote-issue-query"
-                ref="queryField"
                 v-model="state.query"
                 class="min-w-0 flex-1"
                 :aria-label="t('remoteIssuePicker.queryLabel')"

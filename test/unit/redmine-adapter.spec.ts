@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RedmineAdapter } from '../../shared/remote/redmine/adapter';
+import type { ZodType } from 'zod';
 import {
   RemoteAdapterError,
   type RemoteRequest,
@@ -17,12 +18,13 @@ function fakeTransport(
   handler: (request: RemoteRequest) => RemoteResponse | Promise<RemoteResponse>,
 ): Transport {
   return {
-    async execute(request: RemoteRequest): Promise<RemoteResponse> {
+    async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
       const response = await handler(request);
       if (response.status >= 400 && response.status !== 403 && response.status !== 404) {
         throw new UpstreamHttpError(response.status);
       }
-      return response;
+      const parsed = schema.safeParse(response.payload);
+      return { status: response.status, payload: parsed.success ? parsed.data : null };
     },
   };
 }
@@ -149,7 +151,7 @@ describe('RedmineAdapter', () => {
 
   it('maps a connection failure with no status to the connection-failed messageKey', async () => {
     const transport: Transport = {
-      async execute(): Promise<RemoteResponse> {
+      async execute<T>(_request: RemoteRequest, _schema: ZodType<T>): Promise<RemoteResponse<T>> {
         throw new Error('ECONNREFUSED');
       },
     };

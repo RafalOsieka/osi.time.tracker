@@ -6,10 +6,13 @@ export const IMPLEMENTED_SYSTEM_TYPES = new Set<TrackerSystemType>(TRACKER_SYSTE
 
 /** True when `systemType` has a registered remote adapter. */
 export function isImplementedTrackerSystemType(
-  systemType: string,
+  systemType: string | null | undefined,
 ): systemType is TrackerSystemType {
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-  return IMPLEMENTED_SYSTEM_TYPES.has(systemType as TrackerSystemType);
+  if (systemType == null) return false;
+  for (const implemented of TRACKER_SYSTEM_TYPE_ORDER) {
+    if (implemented === systemType) return true;
+  }
+  return false;
 }
 
 /**

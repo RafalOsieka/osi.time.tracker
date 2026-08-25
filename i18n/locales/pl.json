@@ -1,10 +1,4 @@
 ﻿{
-  "home": {
-    "welcome": "Witaj",
-    "statusLoggedOut": "Nie jesteś zalogowany",
-    "statusLoggedInAs": "Zalogowano jako {name}",
-    "statusLoggedIn": "Zalogowano"
-  },
   "auth": {
     "emailLabel": "E-mail",
     "passwordLabel": "Hasło",

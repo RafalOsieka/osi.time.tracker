@@ -34,10 +34,10 @@ describeIsolation('e2e helper isolation', async () => {
     expect(aliceList.status).toBe(200);
     expect(bobList.status).toBe(200);
 
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const aliceNames = ((await aliceList.json()) as { name: string }[]).map((row) => row.name);
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const bobNames = ((await bobList.json()) as { name: string }[]).map((row) => row.name);
+    const aliceRows: { name: string }[] = await aliceList.json();
+    const bobRows: { name: string }[] = await bobList.json();
+    const aliceNames = aliceRows.map((row) => row.name);
+    const bobNames = bobRows.map((row) => row.name);
     expect(aliceNames).toEqual(['Alice Only Tracker']);
     expect(bobNames).toEqual(['Bob Only Tracker']);
   });

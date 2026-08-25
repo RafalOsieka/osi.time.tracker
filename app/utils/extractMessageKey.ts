@@ -1,18 +1,18 @@
 import { RemoteAdapterError } from '../../shared/types/remote-adapter';
 
-type NitroErrorEnvelope = { data?: { messageKey?: string } };
-
 /**
  * Reads a stable i18n messageKey from an ofetch-shaped error.
- * Nitro serialises `createError({ data: { messageKey } })` as
+ * Nitro serializes `createError({ data: { messageKey } })` as
  * `{ statusCode, statusMessage, data: { messageKey } }`.
  * ofetch exposes that body as `err.data.data.messageKey`.
  */
-export function extractMessageKey(
-  err: Error & { data?: NitroErrorEnvelope },
-  fallback: string,
-): string {
-  return err.data?.data?.messageKey ?? fallback;
+export function extractMessageKey(err: Error & { data?: unknown }, fallback: string): string {
+  const outer = err.data;
+  if (!(outer instanceof Object) || !('data' in outer)) return fallback;
+  const inner = outer.data;
+  if (!(inner instanceof Object) || !('messageKey' in inner)) return fallback;
+  const key = inner.messageKey;
+  return key == null ? fallback : String(key);
 }
 
 /**
@@ -23,8 +23,7 @@ export function extractMessageKey(
 export function extractCaughtMessageKey(err: unknown, fallback: string): string {
   if (err instanceof RemoteAdapterError) return err.messageKey;
   if (err instanceof Error && 'data' in err) {
-    // SAFETY: ofetch FetchError is an Error with a Nitro `{ data: ApiMessage }` envelope.
-    return extractMessageKey(err as Error & { data?: NitroErrorEnvelope }, fallback);
+    return extractMessageKey(err, fallback);
   }
   return fallback;
 }

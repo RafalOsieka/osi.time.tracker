@@ -1,9 +1,9 @@
+import type { ZodType } from 'zod';
 import type {
   RemoteRequest,
   RemoteResponse,
   Transport,
 } from '../../../shared/types/remote-adapter';
-import type { JsonValue } from '../../../shared/types/json';
 import { UpstreamHttpError } from '../../../shared/remote/upstream-http-error';
 
 /**
@@ -14,7 +14,7 @@ import { UpstreamHttpError } from '../../../shared/remote/upstream-http-error';
  * client on each request.
  */
 export const clientFetchTransport: Transport = {
-  async execute(request: RemoteRequest): Promise<RemoteResponse> {
+  async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
     const headers = new Headers({
       Accept: 'application/json',
       ...request.headers,
@@ -32,16 +32,11 @@ export const clientFetchTransport: Transport = {
       throw new UpstreamHttpError(response.status);
     }
 
-    const payload = await safeJson(response);
-    return { status: response.status, payload };
+    try {
+      const parsed = schema.safeParse(await response.json());
+      return { status: response.status, payload: parsed.success ? parsed.data : null };
+    } catch {
+      return { status: response.status, payload: null };
+    }
   },
 };
-
-async function safeJson(response: Response): Promise<JsonValue | null> {
-  try {
-    // SAFETY: fetch JSON is untyped at the platform boundary; provider clients parse named payloads.
-    return (await response.json()) as JsonValue;
-  } catch {
-    return null;
-  }
-}

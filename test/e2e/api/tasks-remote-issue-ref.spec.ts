@@ -11,6 +11,7 @@ import { UNKNOWN_ID } from '../helpers/fixtures';
 import { createDatabaseClient } from '../../../server/db/client';
 import { trackers, timeEntries, tasks, remoteExports } from '../../../server/db/schema';
 import type { JsonObject } from '../../../shared/types/json';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
 
 const describeRemoteIssueRef = requireDocker();
 
@@ -49,6 +50,13 @@ function reassign(jar: CookieJar, token: string, body: JsonObject): Promise<Resp
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(body),
   });
+}
+
+async function taskIdFromReassign(res: Response): Promise<string> {
+  const body: TimeEntryDto[] = await res.json();
+  const taskId = body[0]?.taskId;
+  if (!taskId) throw new Error('expected taskId from reassign');
+  return taskId;
 }
 
 async function patchTask(
@@ -233,9 +241,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '55',
       cachedTitle: 'Keep me',
     });
-    const linkedBody = await linked.json();
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const linkedTaskId = linkedBody[0]?.taskId as string;
+    const linkedTaskId = await taskIdFromReassign(linked);
 
     const renamed = await reassign(jar, token, {
       ids: [entryId],
@@ -421,9 +427,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '300',
       cachedTitle: 'Exported',
     });
-    const linkedBody = await linked.json();
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const taskId = linkedBody[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     const [userRow] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     const [exportRow] = await db
@@ -466,9 +470,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '50',
       cachedTitle: 'Enriched',
     });
-    const linkedBody = await linked.json();
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const taskId = linkedBody[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows: { id: string; remoteIssueRef?: { url?: string; remoteIssueId: string } }[] =
@@ -485,8 +487,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '60',
       cachedTitle: 'Bare after delete',
     });
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const taskId = (await linked.json())[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     await fetch(url(`/api/trackers/${trackerId}`), {
       method: 'DELETE',
@@ -509,8 +510,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '300',
       cachedTitle: 'Rebase',
     });
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const taskId = (await linked.json())[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     const patchRes = await fetch(url(`/api/trackers/${trackerId}`), {
       method: 'PATCH',
@@ -540,8 +540,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '400',
       cachedTitle: 'Stale ref',
     });
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const taskId = (await linked.json())[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
     const [taskBefore] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     const oldConfigId = taskBefore!.trackerId!;
 

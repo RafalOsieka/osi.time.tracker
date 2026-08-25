@@ -34,8 +34,12 @@ function dayIncludesTitleScript(): (args: { dayKey: string; title: string }) => 
     if (!day) return false;
     if (day.textContent?.includes(title)) return true;
     for (const el of day.querySelectorAll('input, textarea')) {
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      if ((el as HTMLInputElement).value?.includes(title)) return true;
+      if (
+        (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
+        el.value.includes(title)
+      ) {
+        return true;
+      }
     }
     return false;
   };

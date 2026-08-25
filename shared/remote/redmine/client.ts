@@ -1,7 +1,7 @@
-import type { JsonValue } from '../../types/json';
 import type { RemoteFieldOption } from '../../types/remote-field-option';
 import type { RemoteAccount } from '../../types/remote-account';
 import type { RemoteIssueSearchResult } from '../../types/remote-issue-ref';
+import { z } from 'zod';
 import type { Transport } from '../../types/remote-adapter';
 import { normalizeBaseUrl } from '../../utils/normalize-base-url';
 import { coerceRemoteId } from '../remote-id';
@@ -76,11 +76,14 @@ export class RedmineClient {
       status_id: '*',
       limit: String(REDMINE_TITLE_SEARCH_MAX_RESULTS),
     });
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/issues.json?${params.toString()}`,
-      method: 'GET',
-      headers: redmineAuthHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/issues.json?${params.toString()}`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineIssuesPayloadSchema,
+    );
     return { status, results: parseTitleSearchResults(payload) };
   }
 
@@ -88,33 +91,42 @@ export class RedmineClient {
     remoteIssueId: string,
     secret: string | null,
   ): Promise<{ status: number; result: RemoteIssueSearchResult | null }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/issues/${encodeURIComponent(remoteIssueId)}.json`,
-      method: 'GET',
-      headers: redmineAuthHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/issues/${encodeURIComponent(remoteIssueId)}.json`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineIssuePayloadSchema,
+    );
     return { status, result: parseIssueByIdResult(payload, status) };
   }
 
   async getActivityOptions(
     secret: string | null,
   ): Promise<{ status: number; options: RemoteFieldOption[] }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/enumerations/time_entry_activities.json`,
-      method: 'GET',
-      headers: redmineAuthHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/enumerations/time_entry_activities.json`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineActivitiesPayloadSchema,
+    );
     return { status, options: parseActivityOptions(payload) };
   }
 
   async getCurrentAccount(
     secret: string | null,
   ): Promise<{ status: number; account: RemoteAccount | null }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/users/current.json`,
-      method: 'GET',
-      headers: redmineAuthHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/users/current.json`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineUserPayloadSchema,
+    );
     return { status, account: parseCurrentAccountResult(payload) };
   }
 
@@ -134,11 +146,14 @@ export class RedmineClient {
       params.set('issue_id', input.issueIds.join(','));
     }
 
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/time_entries.json?${params.toString()}`,
-      method: 'GET',
-      headers: redmineAuthHeaders(secret),
-    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/time_entries.json?${params.toString()}`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineTimeEntriesPayloadSchema,
+    );
 
     const parsed = parseTimeLogsPage(payload);
     const nextOffset =
@@ -158,27 +173,30 @@ export class RedmineClient {
     input: RedmineCreateTimeEntryInput,
     secret: string | null,
   ): Promise<{ status: number; result: { remoteLogId: string } | null }> {
-    const { status, payload } = await this.transport.execute({
-      url: `${this.base()}/time_entries.json`,
-      method: 'POST',
-      headers: redmineAuthHeaders(secret),
-      body: {
-        time_entry: input.comment
-          ? {
-              issue_id: Number(input.remoteIssueId) || input.remoteIssueId,
-              spent_on: input.spentOn,
-              hours: secondsToRedmineHours(input.durationSeconds),
-              activity_id: Number(input.activityId) || input.activityId,
-              comments: input.comment,
-            }
-          : {
-              issue_id: Number(input.remoteIssueId) || input.remoteIssueId,
-              spent_on: input.spentOn,
-              hours: secondsToRedmineHours(input.durationSeconds),
-              activity_id: Number(input.activityId) || input.activityId,
-            },
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/time_entries.json`,
+        method: 'POST',
+        headers: redmineAuthHeaders(secret),
+        body: {
+          time_entry: input.comment
+            ? {
+                issue_id: Number(input.remoteIssueId) || input.remoteIssueId,
+                spent_on: input.spentOn,
+                hours: secondsToRedmineHours(input.durationSeconds),
+                activity_id: Number(input.activityId) || input.activityId,
+                comments: input.comment,
+              }
+            : {
+                issue_id: Number(input.remoteIssueId) || input.remoteIssueId,
+                spent_on: input.spentOn,
+                hours: secondsToRedmineHours(input.durationSeconds),
+                activity_id: Number(input.activityId) || input.activityId,
+              },
+        },
       },
-    });
+      redmineCreateTimeEntryPayloadSchema,
+    );
     return { status, result: parseCreateTimeEntryResult(payload) };
   }
 
@@ -243,13 +261,31 @@ interface RedmineCreateTimeEntryPayload {
   time_entry?: { id?: string | number };
 }
 
+const redmineIssuesPayloadSchema = z.custom<RedmineIssuesPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const redmineIssuePayloadSchema = z.custom<RedmineIssuePayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const redmineActivitiesPayloadSchema = z.custom<RedmineActivitiesPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const redmineUserPayloadSchema = z.custom<RedmineUserPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const redmineTimeEntriesPayloadSchema = z.custom<RedmineTimeEntriesPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const redmineCreateTimeEntryPayloadSchema = z.custom<RedmineCreateTimeEntryPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+
 /**
  * Parses a Redmine issues collection into a bounded, adapter-neutral result
  * list. Malformed elements are skipped rather than throwing.
  */
-function parseTitleSearchResults(payload: JsonValue | null): RemoteIssueSearchResult[] {
-  // SAFETY: transport JSON is untyped; Redmine search is `{ issues: Issue[] }`.
-  const issues = (payload as RedmineIssuesPayload | null)?.issues;
+function parseTitleSearchResults(payload: RedmineIssuesPayload | null): RemoteIssueSearchResult[] {
+  const issues = payload?.issues;
   if (!issues) {
     return [];
   }
@@ -273,15 +309,14 @@ function parseTitleSearchResults(payload: JsonValue | null): RemoteIssueSearchRe
  * payload shape is unusable.
  */
 function parseIssueByIdResult(
-  payload: JsonValue | null,
+  payload: RedmineIssuePayload | null,
   httpStatus: number,
 ): RemoteIssueSearchResult | null {
   if (httpStatus === 404) {
     return null;
   }
 
-  // SAFETY: transport JSON is untyped; exact-id lookup is `{ issue: Issue }`.
-  const issue = (payload as RedmineIssuePayload | null)?.issue;
+  const issue = payload?.issue;
   if (issue?.id == null || issue.subject == null) {
     return null;
   }
@@ -310,9 +345,8 @@ function toSearchResult(element: RedmineIssueElement): RemoteIssueSearchResult {
  * Parses the global time-entry activities enumeration. Inactive or malformed
  * entries are skipped.
  */
-function parseActivityOptions(payload: JsonValue | null): RemoteFieldOption[] {
-  // SAFETY: transport JSON is untyped; activities are `{ time_entry_activities: Activity[] }`.
-  const activities = (payload as RedmineActivitiesPayload | null)?.time_entry_activities;
+function parseActivityOptions(payload: RedmineActivitiesPayload | null): RemoteFieldOption[] {
+  const activities = payload?.time_entry_activities;
   if (!activities) {
     return [];
   }
@@ -336,9 +370,8 @@ function parseActivityOptions(payload: JsonValue | null): RemoteFieldOption[] {
  * Parses `/users/current.json` into an adapter-neutral account identity.
  * Name is composed as `firstname + ' ' + lastname` when available.
  */
-function parseCurrentAccountResult(payload: JsonValue | null): RemoteAccount | null {
-  // SAFETY: transport JSON is untyped; current user is `{ user: User }`.
-  const user = (payload as RedmineUserPayload | null)?.user;
+function parseCurrentAccountResult(payload: RedmineUserPayload | null): RemoteAccount | null {
+  const user = payload?.user;
   if (user?.id == null) {
     return null;
   }
@@ -363,9 +396,8 @@ type RedmineTimeLogsPage = {
   totalCount: number;
 };
 
-function parseTimeLogsPage(payload: JsonValue | null): RedmineTimeLogsPage {
-  // SAFETY: transport JSON is untyped; time logs are `{ time_entries, total_count }`.
-  const collection = payload as RedmineTimeEntriesPayload | null;
+function parseTimeLogsPage(payload: RedmineTimeEntriesPayload | null): RedmineTimeLogsPage {
+  const collection = payload;
   const elements = collection?.time_entries;
   const logs: RedmineTimeLogEntry[] = [];
 
@@ -405,9 +437,10 @@ function parseTimeLogsPage(payload: JsonValue | null): RedmineTimeLogsPage {
  * Parses a create-time-entry response into the remote log id. Returns `null`
  * when the payload is malformed.
  */
-function parseCreateTimeEntryResult(payload: JsonValue | null): { remoteLogId: string } | null {
-  // SAFETY: transport JSON is untyped; create returns `{ time_entry: { id } }`.
-  const entry = (payload as RedmineCreateTimeEntryPayload | null)?.time_entry;
+function parseCreateTimeEntryResult(
+  payload: RedmineCreateTimeEntryPayload | null,
+): { remoteLogId: string } | null {
+  const entry = payload?.time_entry;
   const id = coerceRemoteId(entry?.id);
   return id ? { remoteLogId: id } : null;
 }

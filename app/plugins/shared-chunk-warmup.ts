@@ -3,52 +3,28 @@
 // being inlined into that page's own route chunk (where relative imports
 // into `shared/` are miscomputed by the production build). No runtime
 // behavior — this plugin performs no work of its own.
-import { applyRoundingRule, roundingSuggestionsFor } from '~~/shared/utils/rounding';
-import { deriveRemoteSyncRowState } from '~~/shared/utils/remote-sync-row-state';
-import { computeRemoteSyncDayTotals } from '~~/shared/utils/remote-sync-day-totals';
-import { findDuplicateRemoteLog } from '~~/shared/utils/find-duplicate-remote-log';
-import { buildExportRequestKey } from '~~/shared/utils/export-request-key';
-import { resolveExportComment } from '~~/shared/utils/export-comment';
-import { normalizeBaseUrl } from '~~/shared/utils/normalize-base-url';
 import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import { RemoteAdapterError } from '~~/shared/types/remote-adapter';
-import {
-  REMOTE_ISSUE_SEARCH_MODE_ORDER,
-  remoteIssuePickerFormSchema,
-} from '~~/shared/types/remote-issue-ref';
 import { OpenProjectAdapter } from '~~/shared/remote/openproject/adapter';
 import { OpenProjectClient } from '~~/shared/remote/openproject/client';
 import { RedmineAdapter } from '~~/shared/remote/redmine/adapter';
 import { RedmineClient } from '~~/shared/remote/redmine/client';
 
 export default defineNuxtPlugin(() => {
-  if (process.env.NODE_ENV === '__never__') {
-    // Referenced only to keep the imports live for bundlers; never executed.
-    applyRoundingRule(0, 'none');
-    roundingSuggestionsFor(0, 'none');
-    deriveRemoteSyncRowState({
-      hasProject: false,
-      hasTracker: false,
-      config: null,
-      hasIssueRef: false,
-    });
-    computeRemoteSyncDayTotals([], 0);
-    findDuplicateRemoteLog(0, []);
-    buildExportRequestKey({
-      taskId: '',
-      localDate: '1970-01-01',
-      entryIds: [],
-      exportDurationSeconds: 0,
-    });
-    resolveExportComment(undefined, '');
-    normalizeBaseUrl('');
-    void REMOTE_SECRET_HEADER;
-    void new RemoteAdapterError('');
-    void REMOTE_ISSUE_SEARCH_MODE_ORDER;
-    void remoteIssuePickerFormSchema;
-    void OpenProjectAdapter;
-    void OpenProjectClient;
-    void RedmineAdapter;
-    void RedmineClient;
-  }
+  void applyRoundingRule;
+  void roundingSuggestionsFor;
+  void deriveRemoteSyncRowState;
+  void computeRemoteSyncDayTotals;
+  void findDuplicateRemoteLog;
+  void buildExportRequestKey;
+  void resolveExportComment;
+  void normalizeBaseUrl;
+  void REMOTE_SECRET_HEADER;
+  void RemoteAdapterError;
+  void REMOTE_ISSUE_SEARCH_MODE_ORDER;
+  void remoteIssuePickerFormSchema;
+  void OpenProjectAdapter;
+  void OpenProjectClient;
+  void RedmineAdapter;
+  void RedmineClient;
 });

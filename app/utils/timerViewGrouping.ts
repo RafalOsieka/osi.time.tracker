@@ -1,6 +1,5 @@
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
-import { instantToZoned, wallClockToInstant } from './dateTime';
 import type { DateTimeSettings } from './dateTime';
 
 export const UNTITLED_GROUP_KEY = 'untitled';

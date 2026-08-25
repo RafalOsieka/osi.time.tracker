@@ -192,11 +192,8 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     // Wait until the row is pushable (activity default applied + non-zero duration).
     await page.waitForFunction(() => {
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      const btn = document.querySelector(
-        '[data-testid="remote-sync-export-button"]',
-      ) as HTMLButtonElement | null;
-      return !!btn && !btn.disabled;
+      const btn = document.querySelector('[data-testid="remote-sync-export-button"]');
+      return btn instanceof HTMLButtonElement && !btn.disabled;
     });
 
     // Open review dialog, cancel without sending.
@@ -439,14 +436,12 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     // Drive the native date input directly so Nuxt UI's wrapper cannot swallow events.
     await page
       .locator('[data-testid="remote-sync-calendar"] input[type="date"]')
-      .evaluate((el, value) => {
-        // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-        const input = el as HTMLInputElement;
+      .evaluate((el: HTMLInputElement, value) => {
         const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-        proto?.set?.call(input, value);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        proto?.set?.call(el, value);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       }, next);
     await page.waitForURL(`**/sync/${next}`);
     await page.waitForSelector('[data-testid="remote-sync-empty-state"]');

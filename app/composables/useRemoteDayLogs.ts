@@ -1,7 +1,6 @@
-import { ref, type Ref } from 'vue';
+import type { Ref } from 'vue';
 import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
 import type { TrackerDto } from '../../shared/types/tracker';
-import { mapRemoteSyncClientError, useRemoteSyncClient } from './useRemoteSyncClient';
 
 export interface RemoteDayLogsState {
   logs: RemoteTimeLogDto[];

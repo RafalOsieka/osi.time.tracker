@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 const STORAGE_KEY_PREFIX = 'rsc:';
 
 /**
@@ -16,7 +18,11 @@ export function useTrackerSecret() {
 
   function get(trackerId: string): string | null {
     if (!import.meta.client) return null;
-    return window.localStorage.getItem(key(trackerId));
+    const parsed = z
+      .string()
+      .nullable()
+      .safeParse(window.localStorage.getItem(key(trackerId)));
+    return parsed.success ? parsed.data : null;
   }
 
   function set(trackerId: string, secret: string) {

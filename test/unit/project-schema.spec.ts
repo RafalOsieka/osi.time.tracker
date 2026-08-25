@@ -15,7 +15,6 @@ describe('createProjectSchema', () => {
       name: 'Website Redesign',
       trackerId: validTrackerId,
     });
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
     expect('extraKey' in result).toBe(false);
   });
 

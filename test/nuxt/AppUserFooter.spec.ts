@@ -55,14 +55,12 @@ const DropdownMenuStub = {
   `,
   computed: {
     flatItems(this: { items?: DropdownMenuItem[][] | DropdownMenuItem[] }): DropdownMenuItem[] {
-      const raw = this.items ?? [];
-      if (!Array.isArray(raw) || raw.length === 0) return [];
-      if (Array.isArray(raw[0])) {
-        // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-        return (raw as DropdownMenuItem[][]).flat();
+      const out: DropdownMenuItem[] = [];
+      for (const item of this.items ?? []) {
+        if (Array.isArray(item)) out.push(...item);
+        else out.push(item);
       }
-      // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-      return raw as DropdownMenuItem[];
+      return out;
     },
   },
 };

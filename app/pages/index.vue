@@ -1,8 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { groupTimeEntriesByDay, localDayKey } from '~/utils/timerViewGrouping';
-import { formatDuration } from '~/utils/formatDuration';
-import { localDayBounds } from '~/utils/dateTime';
 import type { TimerViewFeedDto, TimeEntryDto } from '~~/shared/types/time-entry';
 
 const { t, locale } = useI18n();
@@ -14,11 +10,11 @@ const { data: feedData, pending: feedPending } = await useAsyncData('timer-view-
   requestFetch<TimerViewFeedDto>('/api/time-entries/feed'),
 );
 
-const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
-  'projects-for-timer-view',
-  () => $fetch<ProjectDto[]>('/api/projects'),
-  { server: false, immediate: false },
-);
+const projectsData = ref<ProjectDto[] | null>(null);
+
+async function refreshProjectOptions() {
+  projectsData.value = await fetchProjects();
+}
 
 onMounted(() => {
   void refreshProjectOptions();
@@ -112,7 +108,10 @@ function trackerForGroup(group: { projectId: string | null }) {
   return getTracker(trackerIdForProject(group.projectId));
 }
 
-const now = ref(Date.now());
+const now = ref(0);
+onMounted(() => {
+  now.value = Date.now();
+});
 watch(elapsedSeconds, () => {
   now.value = Date.now();
 });
@@ -139,7 +138,7 @@ async function refreshLoadedRange() {
   refreshing.value = true;
   const targetFrom = loadedFrom.value;
   try {
-    let page = await $fetch<TimerViewFeedDto>('/api/time-entries/feed');
+    let page = await fetchTimerViewFeed();
     let merged = page.entries;
     let pageHasMore = page.hasMore;
     let pageNextBefore = page.nextBefore;
@@ -155,9 +154,7 @@ async function refreshLoadedRange() {
       pageNextBefore > targetFrom &&
       pages < maxPages
     ) {
-      page = await $fetch<TimerViewFeedDto>('/api/time-entries/feed', {
-        query: { before: pageNextBefore },
-      });
+      page = await fetchTimerViewFeed(pageNextBefore);
       merged = mergeById(merged, page.entries);
       pageHasMore = page.hasMore;
       pageNextBefore = page.nextBefore;

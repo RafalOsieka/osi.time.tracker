@@ -1,4 +1,3 @@
-import { computed, ref } from 'vue';
 import type {
   FinalizeRemoteExportResultDto,
   RemoteExportTaskOutcomeDto,
@@ -6,9 +5,6 @@ import type {
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';
 import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/syncUiMaps';
-import { buildExportRequestKey } from '../../shared/utils/export-request-key';
-import { resolveExportComment } from '../../shared/utils/export-comment';
-import { mapRemoteSyncClientError } from './useRemoteSyncClient';
 
 export type SyncExportProgressStatus =
   | 'queued'

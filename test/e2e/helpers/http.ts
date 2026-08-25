@@ -30,8 +30,7 @@ export async function createTracker(
       ...overrides,
     }),
   });
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-  return res.json() as Promise<{ id: string; name: string }>;
+  return res.json();
 }
 
 export async function createProject(
@@ -45,8 +44,7 @@ export async function createProject(
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(trackerId === undefined ? { name } : { name, trackerId }),
   });
-  // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-  return res.json() as Promise<{ id: string; name: string; trackerId: string | null }>;
+  return res.json();
 }
 
 export async function startEntry(

@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { RemoteExportTaskOutcomeDto } from '~~/shared/types/remote-export';
 import type { RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
 import type { SyncExportProgressStatus } from '~/composables/useSyncExport';
-import { formatDuration } from '~/utils/formatDuration';
 
 export type ExportDialogPhase = 'review' | 'running' | 'report';
 

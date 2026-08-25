@@ -1,10 +1,8 @@
 import { and, eq, isNull, gte, lt, inArray } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { remoteSyncDayQuerySchema } from '../../../shared/types/remote-sync-day';
 import type {
   RemoteSyncDayDto,
   RemoteSyncDayEntryDto,
-  RemoteSyncDayQuery,
   RemoteSyncExportProvenanceDto,
 } from '../../../shared/types/remote-sync-day';
 import type {
@@ -24,8 +22,7 @@ import {
 } from '../../db/schema';
 import { computeDayBoundary } from '../../utils/day-boundary';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
-import { mapZodError } from '../../utils/zod-error';
-import type { ApiMessage } from '../../types/api-message';
+import { getZodQuery } from '../../utils/zod-input';
 
 /**
  * Returns the authenticated user's day-review aggregate (REQ-115):
@@ -36,20 +33,7 @@ import type { ApiMessage } from '../../types/api-message';
  */
 export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const { user } = await requireAuth(event);
-  const query = getQuery(event);
-
-  let parsedQuery: RemoteSyncDayQuery;
-  try {
-    parsedQuery = remoteSyncDayQuerySchema.parse(query);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedQuery = await getZodQuery(event, remoteSyncDayQuerySchema);
 
   const [userRow] = await db
     .select({ timezone: users.timezone })

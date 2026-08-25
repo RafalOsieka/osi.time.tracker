@@ -1,9 +1,6 @@
-import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import { extractCaughtMessageKey } from '../utils/extractMessageKey';
 import type { RemoteFieldOption } from '../../shared/types/remote-field-option';
 import type { TrackerDto } from '../../shared/types/tracker';
-import { useTrackerSecret } from './useTrackerSecret';
 
 export interface RemoteActivitiesState {
   options: RemoteFieldOption[];

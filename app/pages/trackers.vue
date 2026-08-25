@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { h, resolveComponent } from 'vue';
 
 const { t, locale } = useI18n();
 const toast = useAppToast();

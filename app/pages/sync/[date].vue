@@ -1,12 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { TableColumn } from '@nuxt/ui';
-import {
-  deriveRemoteSyncRowState,
-  isImplementedTrackerSystemType,
-} from '~~/shared/utils/remote-sync-row-state';
-import { computeRemoteSyncDayTotals } from '~~/shared/utils/remote-sync-day-totals';
-import { findDuplicateRemoteLog } from '~~/shared/utils/find-duplicate-remote-log';
 import type {
   RemoteSyncConfigSurfaceDto,
   RemoteSyncDayDto,
@@ -14,14 +7,7 @@ import type {
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
 import type { TrackerDto } from '~~/shared/types/tracker';
-import { formatDuration, formatSignedDuration } from '~/utils/formatDuration';
-import { useRemoteActivities } from '~/composables/useRemoteActivities';
-import { useRemoteDayLogs } from '~/composables/useRemoteDayLogs';
-import { useRoundedDurations } from '~/composables/useRoundedDurations';
-import { useSyncExport } from '~/composables/useSyncExport';
-import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
-import { extractCaughtMessageKey } from '~/utils/extractMessageKey';
-import { isExpandedInMap, toggleExpandMap, type TableExpandMap } from '~/utils/tableExpandMap';
+import type { TableExpandMap } from '~/utils/tableExpandMap';
 import type {
   ActivityByTask,
   DismissedDuplicatesByTask,
@@ -54,7 +40,7 @@ const {
   error: fetchError,
   refresh,
 } = useAsyncData<RemoteSyncDayDto>(
-  () => `sync-day-${date.value}`,
+  'sync-day',
   () =>
     requestFetch<RemoteSyncDayDto>('/api/sync/day', {
       query: { date: date.value },

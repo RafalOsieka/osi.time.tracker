@@ -1,30 +1,63 @@
+import { z, type ZodType } from 'zod';
 import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
-import { extractCaughtMessageKey } from '../extractMessageKey';
 import type { RemoteFieldOption } from '../../../shared/types/remote-field-option';
 import type { RemoteAccount } from '../../../shared/types/remote-account';
 import type {
   ProxiedRemoteIssueSearchDto,
-  ProxiedRemoteIssueSearchResponseDto,
   RemoteIssueSearchResult,
 } from '../../../shared/types/remote-issue-ref';
 import type {
   ProxiedRemoteAccountDto,
-  ProxiedRemoteAccountResponseDto,
   ProxiedRemoteCreateTimeEntryDto,
-  ProxiedRemoteCreateTimeEntryResponseDto,
   ProxiedRemoteTimeLogsDto,
-  ProxiedRemoteTimeLogsResponseDto,
   RemoteTimeLogDto,
 } from '../../../shared/types/remote-export';
-import type {
-  ProxiedRemoteActivitiesDto,
-  ProxiedRemoteActivitiesResponseDto,
-} from '../../../shared/types/remote-activities';
+import type { ProxiedRemoteActivitiesDto } from '../../../shared/types/remote-activities';
 import {
   RemoteAdapterError,
   type RemoteTrackerAdapter,
 } from '../../../shared/types/remote-adapter';
-import type { JsonObject } from '../../../shared/types/json';
+
+const issueSearchResponseSchema = z.object({
+  results: z.array(
+    z.object({
+      remoteIssueId: z.string(),
+      title: z.string(),
+      remoteProjectTitle: z.string().optional(),
+    }),
+  ),
+});
+const activitiesResponseSchema = z.object({
+  options: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+const accountResponseSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+});
+const timeLogsResponseSchema = z.object({
+  logs: z.array(
+    z.object({
+      remoteLogId: z.string(),
+      remoteIssueId: z.string(),
+      spentOn: z.string(),
+      durationSeconds: z.number(),
+      activityId: z.string().nullable(),
+      activityName: z.string().nullable(),
+      comment: z.string().nullable(),
+      remoteUserId: z.string().nullable(),
+    }),
+  ),
+});
+const createTimeEntryResponseSchema = z.object({
+  remoteLogId: z.string(),
+});
+
+type ProxiedRemotePostBody =
+  | ProxiedRemoteIssueSearchDto
+  | ProxiedRemoteActivitiesDto
+  | ProxiedRemoteAccountDto
+  | ProxiedRemoteTimeLogsDto
+  | ProxiedRemoteCreateTimeEntryDto;
 
 /**
  * `server` execution-mode adapter: a `RemoteTrackerAdapter` whose methods
@@ -42,45 +75,34 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
   ) {}
 
   async searchIssues(query: string): Promise<RemoteIssueSearchResult[]> {
-    const response = await this.post<
-      ProxiedRemoteIssueSearchDto,
-      ProxiedRemoteIssueSearchResponseDto
-    >('/api/remote/search', {
-      trackerId: this.trackerId,
-      mode: 'title',
-      query,
-    });
-    return response.results;
+    const { results } = await this.post(
+      '/api/remote/search',
+      { trackerId: this.trackerId, mode: 'title', query },
+      issueSearchResponseSchema,
+    );
+    return results;
   }
 
   async getIssueById(remoteIssueId: string): Promise<RemoteIssueSearchResult | null> {
-    const response = await this.post<
-      ProxiedRemoteIssueSearchDto,
-      ProxiedRemoteIssueSearchResponseDto
-    >('/api/remote/search', {
-      trackerId: this.trackerId,
-      mode: 'id',
-      query: remoteIssueId,
-    });
-    return response.results[0] ?? null;
+    const { results } = await this.post(
+      '/api/remote/search',
+      { trackerId: this.trackerId, mode: 'id', query: remoteIssueId },
+      issueSearchResponseSchema,
+    );
+    return results[0] ?? null;
   }
 
   async getActivityOptions(remoteIssueId: string): Promise<RemoteFieldOption[]> {
-    const response = await this.post<
-      ProxiedRemoteActivitiesDto,
-      ProxiedRemoteActivitiesResponseDto
-    >('/api/remote/activities', {
-      trackerId: this.trackerId,
-      remoteIssueId,
-    });
-    return response.options;
+    const { options } = await this.post(
+      '/api/remote/activities',
+      { trackerId: this.trackerId, remoteIssueId },
+      activitiesResponseSchema,
+    );
+    return options;
   }
 
   async getCurrentAccount(): Promise<RemoteAccount> {
-    return this.post<ProxiedRemoteAccountDto, ProxiedRemoteAccountResponseDto>(
-      '/api/remote/account',
-      { trackerId: this.trackerId },
-    );
+    return this.post('/api/remote/account', { trackerId: this.trackerId }, accountResponseSchema);
   }
 
   async fetchTimeLogs(input: {
@@ -88,7 +110,7 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
     workPackageIds: string[];
     userId?: string;
   }): Promise<RemoteTimeLogDto[]> {
-    const response = await this.post<ProxiedRemoteTimeLogsDto, ProxiedRemoteTimeLogsResponseDto>(
+    const { logs } = await this.post(
       '/api/remote/time-logs',
       {
         trackerId: this.trackerId,
@@ -96,8 +118,9 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
         workPackageIds: input.workPackageIds,
         userId: input.userId,
       },
+      timeLogsResponseSchema,
     );
-    return response.logs;
+    return logs;
   }
 
   async createTimeEntry(input: {
@@ -107,25 +130,30 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
     activityId: string;
     comment?: string;
   }): Promise<{ remoteLogId: string }> {
-    return this.post<ProxiedRemoteCreateTimeEntryDto, ProxiedRemoteCreateTimeEntryResponseDto>(
+    return this.post(
       '/api/remote/time-entries',
       { trackerId: this.trackerId, ...input },
+      createTimeEntryResponseSchema,
     );
   }
 
-  private async post<TBody, TResponse>(url: string, body: TBody): Promise<TResponse> {
+  private async post<T>(url: string, body: ProxiedRemotePostBody, schema: ZodType<T>): Promise<T> {
     if (!this.secret) {
       throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
     }
     const { $csrfFetch } = useNuxtApp();
     try {
-      return await $csrfFetch<TResponse>(url, {
-        method: 'POST',
-        headers: { [REMOTE_SECRET_HEADER]: this.secret },
-        // SAFETY: ofetch JSON body is a serializable DTO; FetchJsonBody is the nearest named map.
-        body: body as JsonObject,
-      });
+      const parsed = schema.safeParse(
+        await $csrfFetch(url, {
+          method: 'POST',
+          headers: { [REMOTE_SECRET_HEADER]: this.secret },
+          body,
+        }),
+      );
+      if (!parsed.success) throw new RemoteAdapterError('error.unknown');
+      return parsed.data;
     } catch (err) {
+      if (err instanceof RemoteAdapterError) throw err;
       throw new RemoteAdapterError(extractCaughtMessageKey(err, 'error.unknown'));
     }
   }

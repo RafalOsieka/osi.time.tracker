@@ -1,11 +1,10 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { updateTrackerSchema } from '../../../shared/types/tracker';
-import type { UpdateTrackerDto, TrackerDto } from '../../../shared/types/tracker';
+import type { TrackerDto } from '../../../shared/types/tracker';
 import { db } from '../../db/index';
 import { trackers } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 function toTrackerDto(row: typeof trackers.$inferSelect): TrackerDto {
@@ -25,20 +24,7 @@ function toTrackerDto(row: typeof trackers.$inferSelect): TrackerDto {
 export default defineEventHandler(async (event): Promise<TrackerDto> => {
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
-  const body = await readBody(event);
-
-  let parsedBody: UpdateTrackerDto;
-  try {
-    parsedBody = updateTrackerSchema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, updateTrackerSchema);
 
   const [existing] = await db
     .select({ id: trackers.id })

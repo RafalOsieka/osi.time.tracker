@@ -1,8 +1,4 @@
 import type { UserSettingsDto, UpdateUserSettingsDto } from '../../shared/types/user-settings';
-import { browserDateTimeSettings } from '../utils/dateTime';
-
-/** Nuxt payload key for the once-per-session browser zone detection cache. */
-const BROWSER_TIME_ZONE_STATE_KEY = 'user-settings-browser-time-zone';
 
 /**
  * Account settings plus hydration-safe effective timezone.
@@ -18,7 +14,7 @@ const BROWSER_TIME_ZONE_STATE_KEY = 'user-settings-browser-time-zone';
 export function useUserSettings() {
   const { user } = useUserSession();
   const { $csrfFetch } = useNuxtApp();
-  const browserTimeZone = useState<string | null>(BROWSER_TIME_ZONE_STATE_KEY, () => null);
+  const browserTimeZone = useState<string | null>('user-settings-browser-time-zone', () => null);
 
   onMounted(() => {
     if (browserTimeZone.value == null) {

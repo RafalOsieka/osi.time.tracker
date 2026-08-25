@@ -1,30 +1,16 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { updateProjectSchema } from '../../../shared/types/project';
-import type { UpdateProjectDto, ProjectDto } from '../../../shared/types/project';
+import type { ProjectDto } from '../../../shared/types/project';
 import { db } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
-  const body = await readBody(event);
-
-  let parsedBody: UpdateProjectDto;
-  try {
-    parsedBody = updateProjectSchema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, updateProjectSchema);
 
   const [existing] = await db
     .select({ id: projects.id, trackerId: projects.trackerId })

@@ -1,33 +1,18 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { reassignTimeEntriesSchema } from '../../../shared/types/time-entry';
-import type { ReassignTimeEntriesDto, TimeEntryDto } from '../../../shared/types/time-entry';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { db } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
 import { resolveActiveTrackerForProject } from '../../utils/remote-issue-refs';
 import { toTimeEntryDto } from '../../utils/time-entries';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   const { user } = await requireAuth(event);
-  const body = await readBody(event);
-
-  let parsedBody: ReassignTimeEntriesDto;
-  try {
-    parsedBody = reassignTimeEntriesSchema.parse(body);
-  } catch (err) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
-
-  const remoteIssueProvided = Object.prototype.hasOwnProperty.call(body ?? {}, 'remoteIssueId');
+  const parsedBody = await readZodBody(event, reassignTimeEntriesSchema);
+  const remoteIssueProvided = parsedBody.remoteIssueId !== undefined;
 
   const updatedRows = await db.transaction(async (tx) => {
     const rows = await tx
@@ -46,8 +31,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       });
     }
 
-    // SAFETY: Assertion documents a typed boundary the compiler cannot prove.
-    const sourceTaskIds = [...new Set(rows.map((row) => row.taskId).filter(Boolean))] as string[];
+    const sourceTaskIds = [...new Set(rows.flatMap((row) => (row.taskId ? [row.taskId] : [])))];
     const sourceTaskId = sourceTaskIds[0] ?? null;
 
     let sourceName: string | null = null;

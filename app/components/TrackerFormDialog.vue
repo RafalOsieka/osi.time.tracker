@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { validateSchemaWithI18n } from '~/utils/validateSchemaWithI18n';
 
 const props = defineProps<{
   open: boolean;

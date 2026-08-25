@@ -1,10 +1,6 @@
 <script setup lang="ts">
 import type { FormErrorEvent } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { wallClockToInstant, localDayKeyFromInstant } from '~/utils/dateTime';
-import { buildTaskTitleMenuItems } from '~/utils/taskTitleMenu';
 import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
-import { timerAddEntryFormSchema } from '~~/shared/types/time-entry';
 
 const props = defineProps<{
   visible: boolean;
@@ -52,7 +48,7 @@ watch(
 );
 
 async function search(query: string) {
-  suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
+  suggestions.value = await searchTasks(query);
 }
 
 watch(searchTerm, (query) => {
