@@ -9,6 +9,7 @@ const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return {
@@ -69,6 +70,7 @@ mockNuxtImport('useTrackerSecret', () => () => ({
   clear: vi.fn(),
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
@@ -149,8 +151,7 @@ describe('trackers page', () => {
     trackersListPending = false;
     useAsyncDataTrackers.length = 0;
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }

@@ -1,28 +1,16 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { createProjectSchema } from '../../../shared/types/project';
-import type { CreateProjectDto, ProjectDto } from '../../../shared/types/project';
-import { db } from '../../db/index';
+import type { ProjectDto } from '../../../shared/types/project';
+import { getDb } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
+import { isUniqueViolation } from '../../utils/is-unique-violation';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ProjectDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
-  const body = await readBody(event);
-
-  let parsedBody: CreateProjectDto;
-  try {
-    parsedBody = createProjectSchema.parse(body);
-  } catch (err: unknown) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, createProjectSchema);
 
   const trackerId = parsedBody.trackerId ?? null;
   let trackerName: string | null = null;
@@ -85,13 +73,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       trackerName,
       createdAt: created.createdAt.toISOString(),
     };
-  } catch (err: unknown) {
-    if (
-      err &&
-      typeof err === 'object' &&
-      'code' in err &&
-      (err as { code: string }).code === '23505'
-    ) {
+  } catch (err) {
+    if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
         statusCode: 422,
         data: { messageKey: 'error.projectNameDuplicate' } satisfies ApiMessage,

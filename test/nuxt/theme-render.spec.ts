@@ -1,4 +1,4 @@
-import { shallowRef, unref } from 'vue';
+import { shallowRef } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import AppRoot from '../../app/app.vue';
@@ -7,11 +7,12 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const { useHeadMock, localeState } = vi.hoisted(() => ({
   useHeadMock: vi.fn(),
-  localeState: { value: 'en' as string },
+  localeState: { value: 'en' },
 }));
 
 const runningState = shallowRef<TimeEntryDto | null>(null);
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
 
@@ -50,9 +51,13 @@ const runningEntry: TimeEntryDto = {
 
 type IconLink = { rel: string; href: string; type?: string; sizes?: string; key?: string };
 
-function iconLinksFromHead(headArg: { link?: unknown }): IconLink[] {
-  const links = unref(headArg.link as IconLink[] | undefined);
-  return Array.isArray(links) ? links : [];
+function iconLinksFromHead(
+  headArg: { htmlAttrs?: { lang?: unknown }; link?: unknown } | undefined,
+): IconLink[] {
+  const raw = headArg?.link;
+  if (Array.isArray(raw)) return raw;
+  if (raw instanceof Object && 'value' in raw && Array.isArray(raw.value)) return raw.value;
+  return [];
 }
 
 async function mountAppRoot() {
@@ -79,11 +84,8 @@ describe('theme UI and SSR head wiring', () => {
     const wrapper = await mountAppRoot();
 
     expect(useHeadMock).toHaveBeenCalled();
-    const headArg = useHeadMock.mock.calls[0]?.[0] as {
-      htmlAttrs: { lang: { value: string }; dir?: unknown };
-      link?: unknown;
-    };
-    expect(headArg.htmlAttrs.lang).toBe(localeState);
+    const headArg = useHeadMock.mock.calls[0]?.[0];
+    expect(headArg?.htmlAttrs?.lang).toBe(localeState);
     expect(iconLinksFromHead(headArg)).toEqual([
       {
         rel: 'icon',
@@ -112,7 +114,7 @@ describe('theme UI and SSR head wiring', () => {
     runningState.value = runningEntry;
     await mountAppRoot();
 
-    const headArg = useHeadMock.mock.calls[0]?.[0] as { link?: unknown };
+    const headArg = useHeadMock.mock.calls[0]?.[0];
     expect(iconLinksFromHead(headArg)).toEqual([
       {
         rel: 'icon',
@@ -132,7 +134,7 @@ describe('theme UI and SSR head wiring', () => {
 
   it('updates the SVG favicon href when running state changes after setup', async () => {
     await mountAppRoot();
-    const headArg = useHeadMock.mock.calls[0]?.[0] as { link?: unknown };
+    const headArg = useHeadMock.mock.calls[0]?.[0];
     const svgHref = () =>
       iconLinksFromHead(headArg).find((link) => link.type === 'image/svg+xml')?.href;
     expect(svgHref()).toBe('/favicon.svg');

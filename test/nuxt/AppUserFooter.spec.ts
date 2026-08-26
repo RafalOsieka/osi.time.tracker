@@ -5,13 +5,16 @@ import type { DropdownMenuItem } from '@nuxt/ui';
 
 const logoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const navigateToMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-const userState = vi.hoisted(() => ({
-  value: {
+type SessionUser = { email: string; displayName?: string | null };
+const userState = vi.hoisted(() => {
+  const value: SessionUser = {
     email: 'alice@example.com',
     displayName: 'Alice Liddell',
-  } as { email: string; displayName?: string | null },
-}));
+  };
+  return { value };
+});
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
@@ -52,12 +55,12 @@ const DropdownMenuStub = {
   `,
   computed: {
     flatItems(this: { items?: DropdownMenuItem[][] | DropdownMenuItem[] }): DropdownMenuItem[] {
-      const raw = this.items ?? [];
-      if (!Array.isArray(raw) || raw.length === 0) return [];
-      if (Array.isArray(raw[0])) {
-        return (raw as DropdownMenuItem[][]).flat();
+      const out: DropdownMenuItem[] = [];
+      for (const item of this.items ?? []) {
+        if (Array.isArray(item)) out.push(...item);
+        else out.push(item);
       }
-      return raw as DropdownMenuItem[];
+      return out;
     },
   },
 };
@@ -202,6 +205,6 @@ describe('AppUserFooter', () => {
     expect(flat).toHaveLength(1);
     expect(flat[0]?.icon).toBe('i-lucide-log-out');
     expect(flat[0]?.label).toBe('layout.logoutButton');
-    expect(typeof flat[0]?.onSelect).toBe('function');
+    expect(flat[0]?.onSelect).toEqual(expect.any(Function));
   });
 });

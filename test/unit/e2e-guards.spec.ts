@@ -1,10 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { describeOrSkip } from '../e2e/harness/guards';
+import { describeOrSkip, type DescribeSelection } from '../e2e/harness/guards';
 
 function fakeDescribe() {
-  const skip = (() => undefined) as unknown as typeof describe.skip;
-  const fn = (() => undefined) as unknown as typeof describe;
-  (fn as { skip: typeof describe.skip }).skip = skip;
+  const skip = () => undefined;
+  const fn: DescribeSelection = Object.assign(() => undefined, { skip });
   return { fn, skip };
 }
 

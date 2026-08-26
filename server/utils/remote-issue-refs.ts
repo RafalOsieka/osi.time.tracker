@@ -1,9 +1,9 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { db } from '../db/index';
+import { getDb } from '../db/index';
 import { tasks, projects, trackers } from '../db/schema';
 import { deriveIssueUrl } from '../../shared/remote/issue-url';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
-import type { TrackerSystemType } from '../../shared/types/tracker';
+import { isImplementedTrackerSystemType } from '../../shared/utils/remote-sync-row-state';
 
 type TaskRefRow = {
   id: string;
@@ -25,6 +25,7 @@ export async function resolveActiveTrackerForTask(
   userId: string,
   taskId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
+  const db = getDb();
   const [task] = await db
     .select({ id: tasks.id, projectId: tasks.projectId })
     .from(tasks)
@@ -47,6 +48,7 @@ export async function resolveActiveTrackerForProject(
   userId: string,
   projectId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
+  const db = getDb();
   const [project] = await db
     .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
@@ -99,11 +101,13 @@ export function taskRowToRemoteIssueRefDto(
     return null;
   }
 
-  const isActive =
-    !!tracker &&
+  const url =
+    tracker &&
     tracker.deletedAt === null &&
     tracker.baseUrl != null &&
-    tracker.systemType != null;
+    isImplementedTrackerSystemType(tracker.systemType)
+      ? deriveIssueUrl(tracker.systemType, tracker.baseUrl, row.remoteIssueId)
+      : undefined;
 
   return {
     id: row.id,
@@ -113,9 +117,7 @@ export function taskRowToRemoteIssueRefDto(
     remoteIssueId: row.remoteIssueId,
     cachedTitle: row.remoteIssueCachedTitle,
     cachedRemoteProjectTitle: row.remoteIssueCachedProjectTitle?.trim() || undefined,
-    url: isActive
-      ? deriveIssueUrl(tracker.systemType as TrackerSystemType, tracker.baseUrl!, row.remoteIssueId)
-      : undefined,
+    url,
     createdAt: row.remoteIssueCreatedAt.toISOString(),
     updatedAt: row.remoteIssueUpdatedAt.toISOString(),
   };
@@ -141,6 +143,7 @@ export async function getRemoteIssueRefsForTasks(
   userId: string,
   taskIds: string[],
 ): Promise<Map<string, RemoteIssueRefDto>> {
+  const db = getDb();
   const result = new Map<string, RemoteIssueRefDto>();
   if (taskIds.length === 0) {
     return result;

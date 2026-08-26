@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { validateSchemaWithI18n } from '~/utils/validateSchemaWithI18n';
 
-const props = defineProps<{
+const { open, project } = defineProps<{
   open: boolean;
   project: ProjectDto | null;
 }>();
@@ -20,7 +18,7 @@ const { $csrfFetch } = useNuxtApp();
 const requestFetch = useRequestFetch();
 
 const dialogOpen = computed({
-  get: () => props.open,
+  get: () => open,
   set: (value: boolean) => emit('update:open', value),
 });
 
@@ -76,10 +74,10 @@ function seedForm(project: ProjectDto | null) {
 }
 
 watch(
-  () => props.open,
+  () => open,
   (isOpen) => {
     if (!isOpen) return;
-    seedForm(props.project);
+    seedForm(project);
     void fetchTrackerOptions();
   },
 );
@@ -109,8 +107,8 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
   }
   const data = parsed.data;
   const nextTrackerId = data.trackerId ?? null;
-  const previousTrackerId = props.project?.trackerId ?? null;
-  if (props.project && previousTrackerId && nextTrackerId !== previousTrackerId) {
+  const previousTrackerId = project?.trackerId ?? null;
+  if (project && previousTrackerId && nextTrackerId !== previousTrackerId) {
     const accepted = await confirm({
       title: t('projects.detachConfirmHeader'),
       description: t('projects.detachConfirmMessage'),
@@ -126,8 +124,8 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
       name: data.name,
       trackerId: nextTrackerId,
     };
-    if (props.project) {
-      const updated = await $csrfFetch<ProjectDto>(`/api/projects/${props.project.id}`, {
+    if (project) {
+      const updated = await $csrfFetch<ProjectDto>(`/api/projects/${project.id}`, {
         method: 'PATCH',
         body: payload satisfies UpdateProjectDto,
       });
@@ -147,8 +145,8 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
     }
     closeDialog();
     emit('saved');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     if (
       key === 'error.projectNameRequired' ||
       key === 'error.projectNameDuplicate' ||

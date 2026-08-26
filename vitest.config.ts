@@ -1,6 +1,17 @@
 import { defineVitestProject } from '@nuxt/test-utils/config';
 import { cpus } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+
+const repoRoot = fileURLToPath(new URL('.', import.meta.url)).replaceAll('\\', '/');
+const appRoot = fileURLToPath(new URL('./app', import.meta.url)).replaceAll('\\', '/');
+
+const nuxtAliases = {
+  '~~/': `${repoRoot}/`,
+  '~~': repoRoot,
+  '~/': `${appRoot}/`,
+  '~': appRoot,
+};
 
 export default defineConfig({
   test: {
@@ -22,9 +33,10 @@ export default defineConfig({
     },
     projects: [
       {
+        resolve: { alias: nuxtAliases },
         test: {
           name: 'unit',
-          include: ['test/unit/*.{test,spec}.ts'],
+          include: ['test/unit/**/*.{test,spec}.ts'],
           environment: 'node',
         },
       },

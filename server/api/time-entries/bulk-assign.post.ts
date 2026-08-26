@@ -1,29 +1,15 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { bulkAssignSchema } from '../../../shared/types/time-entry';
-import type { BulkAssignDto } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<{ success: true }> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
-  const body = await readBody(event);
-
-  let parsedBody: BulkAssignDto;
-  try {
-    parsedBody = bulkAssignSchema.parse(body);
-  } catch (err: unknown) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, bulkAssignSchema);
 
   await db.transaction(async (tx) => {
     const rows = await tx

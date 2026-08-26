@@ -30,7 +30,8 @@ describeFeed('timer view feed API', async () => {
       body: JSON.stringify(body),
     });
     expect(res.status).toBe(200);
-    return res.json() as Promise<FeedEntry>;
+    const created: FeedEntry = await res.json();
+    return created;
   }
 
   async function getFeed(jar: CookieJar, before?: string): Promise<FeedPage> {
@@ -39,7 +40,8 @@ describeFeed('timer view feed API', async () => {
       : '/api/time-entries/feed';
     const res = await fetch(url(path), { headers: { cookie: jar.header() } });
     expect(res.status).toBe(200);
-    return res.json() as Promise<FeedPage>;
+    const page: FeedPage = await res.json();
+    return page;
   }
 
   /** Stopped entry spanning 30 minutes starting `daysAgo` calendar days before `now`. */

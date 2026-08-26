@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TrackerDto } from '../../shared/types/tracker';
+import type { JsonValue } from '../../shared/types/json';
 
 const secretStore = new Map<string, string>();
 
-vi.mock('../../app/composables/useTrackerSecret', () => ({
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
+vi.mock('../../app/composables/use-tracker-secret', () => ({
   useTrackerSecret: () => ({
     get: (trackerId: string) => secretStore.get(trackerId) ?? null,
     set: (trackerId: string, secret: string) => secretStore.set(trackerId, secret),
@@ -11,7 +13,7 @@ vi.mock('../../app/composables/useTrackerSecret', () => ({
   }),
 }));
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- imported after the mock is registered.
+// oxlint-disable-next-line typescript/no-explicit-any -- imported after the mock is registered.
 let useRemoteIssueSearch: any;
 
 const config: TrackerDto = {
@@ -26,12 +28,8 @@ const config: TrackerDto = {
   updatedAt: '2024-01-01T00:00:00.000Z',
 };
 
-function jsonResponse(body: unknown, status = 200) {
-  return {
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => body,
-  };
+function jsonResponse(body: JsonValue, status = 200): Response {
+  return new Response(JSON.stringify(body), { status });
 }
 
 describe('useRemoteIssueSearch', () => {
@@ -39,7 +37,7 @@ describe('useRemoteIssueSearch', () => {
     secretStore.clear();
     secretStore.set(config.id, 'secret-api-key');
     vi.stubGlobal('fetch', vi.fn());
-    ({ useRemoteIssueSearch } = await import('../../app/composables/useRemoteIssueSearch'));
+    ({ useRemoteIssueSearch } = await import('../../app/composables/use-remote-issue-search'));
   });
 
   afterEach(() => {
@@ -64,7 +62,7 @@ describe('useRemoteIssueSearch', () => {
 
   it('builds a title-search request with a Basic apikey Authorization header', async () => {
     vi.mocked(fetch).mockResolvedValue(
-      jsonResponse({ _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } }) as never,
+      jsonResponse({ _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } }),
     );
     const { search, results } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'Fix bug' });
@@ -73,12 +71,14 @@ describe('useRemoteIssueSearch', () => {
     const [url, init] = vi.mocked(fetch).mock.calls[0]!;
     expect(String(url)).toContain('https://op.example.com/api/v3/work_packages?');
     const expectedAuth = `Basic ${Buffer.from('apikey:secret-api-key', 'utf-8').toString('base64')}`;
-    expect((init as RequestInit).headers).toMatchObject({ Authorization: expectedAuth });
+    const headers = new Request('https://example.invalid', init ?? undefined).headers;
+    const authorization = headers instanceof Headers ? headers.get('Authorization') : undefined;
+    expect(authorization).toBe(expectedAuth);
     expect(results.value).toEqual([{ remoteIssueId: '1', title: 'Fix bug' }]);
   });
 
   it('builds an exact-id lookup request', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: 42, subject: 'Some issue' }) as never);
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ id: 42, subject: 'Some issue' }));
     const { search, results } = useRemoteIssueSearch(config);
     await search({ mode: 'id', query: '42' });
 
@@ -88,7 +88,7 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('maps a 404 id lookup to a not-found translated error', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 404) as never);
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 404));
     const { search, results, errorKey } = useRemoteIssueSearch(config);
     await search({ mode: 'id', query: '999' });
 
@@ -97,7 +97,7 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('maps a generic remote failure to a translated error key', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 500) as never);
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 500));
     const { search, errorKey } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'anything' });
 
@@ -113,15 +113,14 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('ignores a stale response that resolves after a newer request', async () => {
-    let resolveFirst!: (value: unknown) => void;
-    const firstPromise = new Promise((resolve) => {
+    let resolveFirst!: (value: Response) => void;
+    const firstPromise = new Promise<Response>((resolve) => {
       resolveFirst = resolve;
     });
     vi.mocked(fetch)
-      .mockImplementationOnce(() => firstPromise as never)
-      .mockImplementationOnce(
-        async () =>
-          jsonResponse({ _embedded: { elements: [{ id: 2, subject: 'Newer' }] } }) as never,
+      .mockImplementationOnce(() => firstPromise)
+      .mockImplementationOnce(async () =>
+        jsonResponse({ _embedded: { elements: [{ id: 2, subject: 'Newer' }] } }),
       );
 
     const { search, results } = useRemoteIssueSearch(config);
@@ -137,16 +136,17 @@ describe('useRemoteIssueSearch', () => {
   });
 
   it('never sends the credential to an OSI server API path', async () => {
-    vi.mocked(fetch).mockResolvedValue(jsonResponse({ _embedded: { elements: [] } }) as never);
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ _embedded: { elements: [] } }));
     const { search } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'anything' });
 
     for (const call of vi.mocked(fetch).mock.calls) {
       const [url, init] = call;
       if (String(url).startsWith('/api/')) {
-        const headers = (init as RequestInit | undefined)?.headers as
-          Record<string, string> | undefined;
-        expect(headers?.Authorization).toBeUndefined();
+        const authorization = new Request('https://example.invalid', init ?? undefined).headers.get(
+          'Authorization',
+        );
+        expect(authorization).toBeUndefined();
       } else {
         expect(String(url)).toContain('op.example.com');
       }

@@ -1,30 +1,17 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import { updateTaskSchema } from '../../../shared/types/task';
-import type { UpdateTaskDto, TaskDto } from '../../../shared/types/task';
-import { db } from '../../db/index';
+import type { TaskDto } from '../../../shared/types/task';
+import { getDb } from '../../db/index';
 import { tasks, projects, timeEntries } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TaskDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
-  const body = await readBody(event);
-
-  let parsedBody: UpdateTaskDto;
-  try {
-    parsedBody = updateTaskSchema.parse(body);
-  } catch (err: unknown) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, updateTaskSchema);
 
   // Verify ownership (404 for foreign/unknown id). Capture the unchanged
   // remoteIssueId so collision scope includes it (REQ-134).

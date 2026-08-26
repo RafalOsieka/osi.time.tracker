@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { Temporal } from 'temporal-polyfill';
-import { useI18n } from 'vue-i18n';
 
-const props = defineProps<{
+const { date, timeZone, heading } = defineProps<{
   date: string;
   timeZone: string;
   heading: string;
@@ -14,22 +13,22 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const calendarOpen = ref(false);
-const dateInput = ref(props.date);
+const dateInput = ref(date);
 
 watch(
-  () => props.date,
+  () => date,
   (value) => {
     dateInput.value = value;
   },
 );
 
 function shift(days: number) {
-  const next = Temporal.PlainDate.from(props.date).add({ days }).toString();
+  const next = Temporal.PlainDate.from(date).add({ days }).toString();
   emit('navigate', next);
 }
 
 function goToday() {
-  const today = Temporal.Now.zonedDateTimeISO(props.timeZone).toPlainDate().toString();
+  const today = Temporal.Now.zonedDateTimeISO(timeZone).toPlainDate().toString();
   emit('navigate', today);
 }
 

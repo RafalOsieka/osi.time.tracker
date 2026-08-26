@@ -1,15 +1,13 @@
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import {
   finalizeRemoteExportSchema,
-  type FinalizeRemoteExportDto,
   type FinalizeRemoteExportResultDto,
 } from '../../../shared/types/remote-export';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { users, tasks, timeEntries, remoteExports, remoteExportEntries } from '../../db/schema';
 import { computeDayBoundary } from '../../utils/day-boundary';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
-import { mapZodError } from '../../utils/zod-error';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 /**
@@ -20,21 +18,9 @@ import type { ApiMessage } from '../../types/api-message';
  * without creating another remote log or provenance row.
  */
 export default defineEventHandler(async (event): Promise<FinalizeRemoteExportResultDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
-  const body = await readBody(event);
-
-  let parsed: FinalizeRemoteExportDto;
-  try {
-    parsed = finalizeRemoteExportSchema.parse(body);
-  } catch (err: unknown) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsed = await readZodBody(event, finalizeRemoteExportSchema);
 
   const uniqueEntryIds = [...new Set(parsed.entryIds)];
   if (uniqueEntryIds.length !== parsed.entryIds.length) {

@@ -9,6 +9,7 @@ export default defineNuxtConfig({
     'nuxt-auth-utils',
     'nuxt-security',
     '@nuxtjs/i18n',
+    'vite-doctor/nuxt',
   ],
   i18n: {
     strategy: 'no_prefix',

@@ -18,8 +18,8 @@ export function formatOpenProjectDuration(totalSeconds: number): string {
  * Parses an OpenProject ISO-8601 duration (`PT1H30M`, `PT45M`, `PT90S`, …)
  * into whole seconds. Returns `null` when the value cannot be parsed.
  */
-export function parseOpenProjectDuration(value: unknown): number | null {
-  if (typeof value !== 'string') return null;
+export function parseOpenProjectDuration(value: string | null | undefined): number | null {
+  if (value == null) return null;
   const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/i.exec(value.trim());
   if (!match) return null;
   const hours = Number(match[1] ?? 0);
@@ -29,8 +29,8 @@ export function parseOpenProjectDuration(value: unknown): number | null {
   return hours * 3600 + minutes * 60 + seconds;
 }
 
-export function hrefId(href: unknown): string | null {
-  if (typeof href !== 'string') return null;
+export function hrefId(href: string | null | undefined): string | null {
+  if (href == null) return null;
   const match = /\/(\d+)(?:\?.*)?$/.exec(href);
   return match?.[1] ?? null;
 }

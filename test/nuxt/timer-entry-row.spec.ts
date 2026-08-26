@@ -8,6 +8,7 @@ const csrfFetchMock = vi.hoisted(() => vi.fn());
 const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return {
@@ -20,6 +21,7 @@ vi.mock('ofetch', async (importOriginal) => {
   };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
@@ -75,8 +77,7 @@ describe('TimerEntryRow', () => {
     vi.clearAllMocks();
     confirmMock.mockResolvedValue(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }
@@ -196,8 +197,8 @@ describe('TimerEntryRow', () => {
 
     await title.trigger('click');
     await flushPromises();
-    const input = wrapper.find('[data-testid="timer-entry-title-input-entry-1"]');
-    expect((input.element as HTMLInputElement).value).toBe(longName);
+    const input = wrapper.find<HTMLInputElement>('[data-testid="timer-entry-title-input-entry-1"]');
+    expect(input.element.value).toBe(longName);
     expect(input.attributes('style') ?? '').not.toMatch(/\d+ch/);
   });
 

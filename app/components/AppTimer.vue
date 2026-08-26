@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { instantToZoned, wallClockToInstant, toPickerDate, fromPickerDate } from '~/utils/dateTime';
-import { buildTaskTitleMenuItems, TASK_TITLE_CREATE_ITEM_ID } from '~/utils/taskTitleMenu';
 import type { TaskDto } from '../../shared/types/task';
 
 const { t } = useI18n();
@@ -87,7 +84,7 @@ const elapsedLabel = computed(() => {
 });
 
 async function search(query: string) {
-  suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
+  suggestions.value = await searchTasks(query);
 }
 
 watch(searchTerm, (query) => {
@@ -116,27 +113,8 @@ function applySelectedTitle(name: string, taskId: string) {
   searchTerm.value = name;
 }
 
-function onTitleModelUpdate(value: string | { name?: string; id?: string } | null | undefined) {
-  // Autocomplete + value-key="name" yields the task name string. Object
-  // payloads are still handled defensively (e.g. tests / future UI changes).
-  if (value && typeof value === 'object') {
-    const name = typeof value.name === 'string' ? value.name : '';
-    const taskId = typeof value.id === 'string' ? value.id : selectedTaskId.value;
-    if (taskId === TASK_TITLE_CREATE_ITEM_ID) {
-      applyFreeformTitle(name);
-      overlayOpen.value = false;
-      return;
-    }
-    if (taskId && name) {
-      applySelectedTitle(name, taskId);
-      if (isRunning.value) {
-        void updateTitle(name, taskId);
-      }
-      return;
-    }
-  }
-
-  const text = typeof value === 'string' ? value : '';
+function onTitleModelUpdate(value: string | null | undefined) {
+  const text = value ?? '';
 
   // Selection path: item onSelect already stashed the task id for this name.
   // Create-sentinel onSelect clears the id so this branch is skipped (freeform).
@@ -243,8 +221,8 @@ async function onSaveStartedAt() {
   try {
     await updateStartedAt(combined);
     startEditorOpen.value = false;
-  } catch (err: unknown) {
-    startEditorError.value = t(extractMessageKey(err, 'errors.unexpected'));
+  } catch (err) {
+    startEditorError.value = t(extractCaughtMessageKey(err, 'errors.unexpected'));
   } finally {
     savingStartedAt.value = false;
   }

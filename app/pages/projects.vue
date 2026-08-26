@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { h, resolveComponent } from 'vue';
 
 const { t, locale } = useI18n();
 const toast = useAppToast();
@@ -46,8 +44,8 @@ async function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
     await $csrfFetch(`/api/projects/${project.id}`, { method: 'DELETE' });
     await fetchProjects();
     toast.success(t('projects.toastDeletedSummary'), t('projects.toastDeletedDetail'));
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   }
 }

@@ -1,12 +1,8 @@
 <script setup lang="ts">
 import type { FormErrorEvent } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { wallClockToInstant, localDayKeyFromInstant } from '~/utils/dateTime';
-import { buildTaskTitleMenuItems } from '~/utils/taskTitleMenu';
 import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
-import { timerAddEntryFormSchema } from '~~/shared/types/time-entry';
 
-const props = defineProps<{
+const { visible, timeZone } = defineProps<{
   visible: boolean;
   timeZone: string;
 }>();
@@ -18,12 +14,12 @@ const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 
 const open = computed({
-  get: () => props.visible,
+  get: () => visible,
   set: (value: boolean) => emit('update:visible', value),
 });
 
 function todayKey(): string {
-  return localDayKeyFromInstant(new Date().toISOString(), props.timeZone);
+  return localDayKeyFromInstant(new Date().toISOString(), timeZone);
 }
 
 const state = reactive<TimerAddEntryFormDto>({
@@ -38,7 +34,7 @@ const rangeError = ref('');
 const saving = ref(false);
 
 watch(
-  () => props.visible,
+  () => visible,
   (visible) => {
     if (visible) {
       state.title = '';
@@ -52,7 +48,7 @@ watch(
 );
 
 async function search(query: string) {
-  suggestions.value = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
+  suggestions.value = await searchTasks(query);
 }
 
 watch(searchTerm, (query) => {
@@ -88,7 +84,7 @@ function onError(event: FormErrorEvent) {
   const range = event.errors.find(
     (error) => error.name === 'endTime' || error.name === 'startTime' || error.name === 'date',
   );
-  if (range && typeof range.message === 'string') {
+  if (range?.message) {
     rangeError.value = t(range.message);
     return;
   }
@@ -98,8 +94,8 @@ function onError(event: FormErrorEvent) {
 async function onSave() {
   rangeError.value = '';
 
-  const startedAt = wallClockToInstant(state.date, state.startTime, props.timeZone);
-  const stoppedAt = wallClockToInstant(state.date, state.endTime, props.timeZone);
+  const startedAt = wallClockToInstant(state.date, state.startTime, timeZone);
+  const stoppedAt = wallClockToInstant(state.date, state.endTime, timeZone);
 
   saving.value = true;
   try {
@@ -111,8 +107,8 @@ async function onSave() {
     toast.success(t('timerView.addEntry.toastSuccessSummary'));
     close();
     emit('added', created);
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   } finally {
     saving.value = false;

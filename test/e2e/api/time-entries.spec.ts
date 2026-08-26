@@ -7,14 +7,11 @@ import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { UNKNOWN_ID } from '../helpers/fixtures';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeTimeEntries = requireDocker();
 
-async function startEntry(
-  jar: CookieJar,
-  token: string,
-  body: Record<string, unknown> = {},
-): Promise<Response> {
+async function startEntry(jar: CookieJar, token: string, body: JsonObject = {}): Promise<Response> {
   return fetch(url('/api/time-entries'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -26,7 +23,7 @@ async function patchEntry(
   jar: CookieJar,
   token: string,
   id: string,
-  body: Record<string, unknown>,
+  body: JsonObject,
 ): Promise<Response> {
   return fetch(url(`/api/time-entries/${id}`), {
     method: 'PATCH',
@@ -55,11 +52,7 @@ async function listEntries(jar: CookieJar, from: string, to: string): Promise<Re
   );
 }
 
-async function bulkAssign(
-  jar: CookieJar,
-  token: string,
-  body: Record<string, unknown>,
-): Promise<Response> {
+async function bulkAssign(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
   return fetch(url('/api/time-entries/bulk-assign'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -615,11 +608,7 @@ describeTimeEntries('time-entries API integration', async () => {
     });
   });
 
-  async function reassign(
-    jar: CookieJar,
-    token: string,
-    body: Record<string, unknown>,
-  ): Promise<Response> {
+  async function reassign(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
     return fetch(url('/api/time-entries/reassign'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },

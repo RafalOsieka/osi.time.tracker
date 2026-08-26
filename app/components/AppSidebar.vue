@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { NavigationMenuItem } from '@nuxt/ui';
 
 const { t } = useI18n();
 const route = useRoute();
 
-const props = withDefaults(defineProps<{ collapsed?: boolean; iconOnly?: boolean }>(), {
-  collapsed: false,
-  iconOnly: false,
-});
+const { collapsed = false, iconOnly = false } = defineProps<{
+  collapsed?: boolean;
+  iconOnly?: boolean;
+}>();
 
-const isCollapsed = computed(() => props.collapsed || props.iconOnly);
+const isCollapsed = computed(() => collapsed || iconOnly);
 
 const navItems = computed<NavigationMenuItem[]>(() => [
   {

@@ -14,12 +14,7 @@ export class CookieJar {
   /** Absorb every `set-cookie` header from a response. */
   capture(response: Response): void {
     // `getSetCookie` returns each Set-Cookie header separately (Node 18.14+).
-    const raw =
-      typeof response.headers.getSetCookie === 'function'
-        ? response.headers.getSetCookie()
-        : response.headers.get('set-cookie')
-          ? [response.headers.get('set-cookie') as string]
-          : [];
+    const raw = response.headers.getSetCookie();
     for (const entry of raw) {
       const [pair] = entry.split(';');
       const eq = pair!.indexOf('=');

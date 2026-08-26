@@ -4,7 +4,7 @@ import type { RouteLocationNormalized } from 'vue-router';
 
 const { sessionState, navigateToMock } = vi.hoisted(() => ({
   sessionState: { loggedIn: { value: false } },
-  navigateToMock: vi.fn((target: unknown) => target),
+  navigateToMock: vi.fn((target: string | RouteLocationNormalized) => target),
 }));
 
 mockNuxtImport('useUserSession', () => () => sessionState);
@@ -17,10 +17,15 @@ function route(partial: Partial<RouteLocationNormalized>): RouteLocationNormaliz
   return {
     path: '/',
     fullPath: '/',
-    query: {},
+    hash: '',
+    name: undefined,
+    params: {},
+    matched: [],
+    redirectedFrom: undefined,
     meta: {},
+    query: {},
     ...partial,
-  } as RouteLocationNormalized;
+  };
 }
 
 const from = route({});

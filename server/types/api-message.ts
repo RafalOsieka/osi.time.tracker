@@ -1,3 +1,5 @@
+import type { MessageParams } from '../../shared/types/message-params';
+
 /**
  * Represents a user-facing message returned by server API responses.
  * The server stays locale-agnostic: it returns a stable translation key
@@ -5,5 +7,5 @@
  */
 export interface ApiMessage {
   messageKey: string;
-  params?: Record<string, unknown>;
+  params?: MessageParams;
 }

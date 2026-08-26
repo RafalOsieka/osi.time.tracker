@@ -1,5 +1,7 @@
 import { url } from './url';
 import type { CookieJar } from './auth';
+import type { CreateTrackerDto } from '../../../shared/types/tracker';
+import type { JsonObject } from '../../../shared/types/json';
 
 function trackerSlug(name: string): string {
   return (
@@ -14,7 +16,7 @@ export async function createTracker(
   jar: CookieJar,
   token: string,
   name: string,
-  overrides: Record<string, unknown> = {},
+  overrides: Partial<CreateTrackerDto> = {},
 ): Promise<{ id: string; name: string }> {
   const res = await fetch(url('/api/trackers'), {
     method: 'POST',
@@ -28,7 +30,7 @@ export async function createTracker(
       ...overrides,
     }),
   });
-  return res.json() as Promise<{ id: string; name: string }>;
+  return res.json();
 }
 
 export async function createProject(
@@ -42,13 +44,13 @@ export async function createProject(
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
     body: JSON.stringify(trackerId === undefined ? { name } : { name, trackerId }),
   });
-  return res.json() as Promise<{ id: string; name: string; trackerId: string | null }>;
+  return res.json();
 }
 
 export async function startEntry(
   jar: CookieJar,
   token: string,
-  body: Record<string, unknown> = {},
+  body: JsonObject = {},
 ): Promise<Response> {
   return fetch(url('/api/time-entries'), {
     method: 'POST',
@@ -61,7 +63,7 @@ export async function patchEntry(
   jar: CookieJar,
   token: string,
   id: string,
-  body: Record<string, unknown>,
+  body: JsonObject,
 ): Promise<Response> {
   return fetch(url(`/api/time-entries/${id}`), {
     method: 'PATCH',

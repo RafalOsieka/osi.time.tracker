@@ -1,18 +1,15 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { entryDurationSeconds, isoToLocalTime, localDayKey } from '~/utils/timerViewGrouping';
-import { wallClockToInstant } from '~/utils/dateTime';
-import { formatDuration } from '~/utils/formatDuration';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
-const props = withDefaults(
-  defineProps<{
-    entry: TimeEntryDto;
-    now: number;
-    timeZone?: string;
-  }>(),
-  { timeZone: 'UTC' },
-);
+const {
+  entry,
+  now,
+  timeZone = 'UTC',
+} = defineProps<{
+  entry: TimeEntryDto;
+  now: number;
+  timeZone?: string;
+}>();
 
 const emit = defineEmits<{ changed: []; deleted: [] }>();
 
@@ -22,15 +19,13 @@ const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 
 const editingField = ref<'title' | 'start' | 'stop' | null>(null);
-const titleValue = ref(props.entry.taskName ?? '');
-const startValue = ref(isoToLocalTime(props.entry.startedAt, props.timeZone));
-const stopValue = ref(
-  props.entry.stoppedAt ? isoToLocalTime(props.entry.stoppedAt, props.timeZone) : '',
-);
+const titleValue = ref(entry.taskName ?? '');
+const startValue = ref(isoToLocalTime(entry.startedAt, timeZone));
+const stopValue = ref(entry.stoppedAt ? isoToLocalTime(entry.stoppedAt, timeZone) : '');
 const deleting = ref(false);
 
-const durationLabel = computed(() => formatDuration(entryDurationSeconds(props.entry, props.now)));
-const titleDisplayValue = computed(() => props.entry.taskName ?? t('timerView.noTask'));
+const durationLabel = computed(() => formatDuration(entryDurationSeconds(entry, now)));
+const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask'));
 const titleInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
 const timeSlotUi = {
   root: 'w-full min-w-0',
@@ -39,33 +34,31 @@ const timeSlotUi = {
 
 async function startEditTitle() {
   editingField.value = null;
-  titleValue.value = props.entry.taskName ?? '';
+  titleValue.value = entry.taskName ?? '';
   editingField.value = 'title';
   await nextTick();
   document
-    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-title-input-${props.entry.id}"]`)
+    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-title-input-${entry.id}"]`)
     ?.focus();
 }
 
 async function startEditStart() {
   editingField.value = null;
-  startValue.value = isoToLocalTime(props.entry.startedAt, props.timeZone);
+  startValue.value = isoToLocalTime(entry.startedAt, timeZone);
   editingField.value = 'start';
   await nextTick();
   document
-    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-start-input-${props.entry.id}"]`)
+    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-start-input-${entry.id}"]`)
     ?.focus();
 }
 
 async function startEditStop() {
   editingField.value = null;
-  stopValue.value = props.entry.stoppedAt
-    ? isoToLocalTime(props.entry.stoppedAt, props.timeZone)
-    : '';
+  stopValue.value = entry.stoppedAt ? isoToLocalTime(entry.stoppedAt, timeZone) : '';
   editingField.value = 'stop';
   await nextTick();
   document
-    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-stop-input-${props.entry.id}"]`)
+    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-stop-input-${entry.id}"]`)
     ?.focus();
 }
 
@@ -78,63 +71,61 @@ async function commitTitle() {
   editingField.value = null;
   const trimmed = titleValue.value.trim();
   const normalized = trimmed.length > 0 ? trimmed : null;
-  if (normalized === (props.entry.taskName ?? null)) return;
+  if (normalized === (entry.taskName ?? null)) return;
   try {
-    const updated = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${props.entry.id}`, {
+    const updated = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${entry.id}`, {
       method: 'PATCH',
       body: { title: normalized },
     });
-    if (updated.taskId !== props.entry.taskId) {
+    if (updated.taskId !== entry.taskId) {
       emit('changed');
     }
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
-    titleValue.value = props.entry.taskName ?? '';
+    titleValue.value = entry.taskName ?? '';
   }
 }
 
 function combineWithEntryDay(iso: string, time: string): string {
-  const dateKey = localDayKey(iso, props.timeZone);
-  return wallClockToInstant(dateKey, time, props.timeZone);
+  const dateKey = localDayKey(iso, timeZone);
+  return wallClockToInstant(dateKey, time, timeZone);
 }
 
 async function commitStart() {
   if (editingField.value !== 'start') return;
   editingField.value = null;
-  const startedAt = combineWithEntryDay(props.entry.startedAt, startValue.value);
-  if (startedAt === props.entry.startedAt) return;
+  const startedAt = combineWithEntryDay(entry.startedAt, startValue.value);
+  if (startedAt === entry.startedAt) return;
   try {
-    await $csrfFetch<TimeEntryDto>(`/api/time-entries/${props.entry.id}`, {
+    await $csrfFetch<TimeEntryDto>(`/api/time-entries/${entry.id}`, {
       method: 'PATCH',
       body: { startedAt },
     });
     emit('changed');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
-    startValue.value = isoToLocalTime(props.entry.startedAt, props.timeZone);
+    startValue.value = isoToLocalTime(entry.startedAt, timeZone);
   }
 }
 
 async function commitStop() {
   if (editingField.value !== 'stop') return;
   editingField.value = null;
-  if (!props.entry.stoppedAt) return;
-  const stoppedAt = combineWithEntryDay(props.entry.stoppedAt, stopValue.value);
-  if (stoppedAt === props.entry.stoppedAt) return;
+  if (!entry.stoppedAt) return;
+  const stoppedAt = combineWithEntryDay(entry.stoppedAt, stopValue.value);
+  if (stoppedAt === entry.stoppedAt) return;
   try {
-    await $csrfFetch<TimeEntryDto>(`/api/time-entries/${props.entry.id}`, {
+    await $csrfFetch<TimeEntryDto>(`/api/time-entries/${entry.id}`, {
       method: 'PATCH',
       body: { stoppedAt },
     });
     emit('changed');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
-    stopValue.value = props.entry.stoppedAt
-      ? isoToLocalTime(props.entry.stoppedAt, props.timeZone)
-      : '';
+    stopValue.value = entry.stoppedAt ? isoToLocalTime(entry.stoppedAt, timeZone) : '';
   }
 }
 
@@ -148,10 +139,10 @@ async function onDelete() {
   if (!accepted) return;
   deleting.value = true;
   try {
-    await $csrfFetch(`/api/time-entries/${props.entry.id}`, { method: 'DELETE' });
+    await $csrfFetch(`/api/time-entries/${entry.id}`, { method: 'DELETE' });
     emit('deleted');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   } finally {
     deleting.value = false;

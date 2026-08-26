@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '../db/index';
+import { getDb } from '../db/index';
 import { tasks, projects } from '../db/schema';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 import { getRemoteIssueRefForTask } from './remote-issue-refs';
@@ -17,6 +17,7 @@ interface TimeEntryRow {
  * serializes timestamps to ISO strings for the API boundary.
  */
 export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
+  const db = getDb();
   let taskName: string | null = null;
   let projectId: string | null = null;
   let projectName: string | null = null;

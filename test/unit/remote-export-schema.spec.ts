@@ -49,7 +49,8 @@ describe('finalizeRemoteExportSchema', () => {
       throw new Error('expected parse to throw');
     } catch (err) {
       expect(err).toBeInstanceOf(ZodError);
-      const mapped = mapZodError(err as ZodError);
+      if (!(err instanceof ZodError)) throw err;
+      const mapped = mapZodError(err);
       expect(mapped.messageKey).toBe('error.remoteExportRemoteLogIdRequired');
     }
   });

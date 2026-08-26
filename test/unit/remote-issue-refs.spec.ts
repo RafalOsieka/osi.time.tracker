@@ -7,7 +7,7 @@ const linkedRow = {
   trackerId: 'tracker-1',
   remoteIssueId: '42',
   remoteIssueCachedTitle: 'Fix login',
-  remoteIssueCachedProjectTitle: null as string | null,
+  remoteIssueCachedProjectTitle: null,
   remoteIssueCreatedAt: new Date('2026-03-01T10:00:00.000Z'),
   remoteIssueUpdatedAt: new Date('2026-03-01T10:00:00.000Z'),
 };

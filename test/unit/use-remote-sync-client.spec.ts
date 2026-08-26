@@ -8,6 +8,7 @@ const fetchTimeLogs = vi.fn();
 const createTimeEntry = vi.fn();
 const getSecret = vi.fn(() => 'secret');
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
 vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   createRemoteAdapter: () => ({
     getCurrentAccount,
@@ -16,7 +17,8 @@ vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   }),
 }));
 
-vi.mock('../../app/composables/useTrackerSecret', () => ({
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
+vi.mock('../../app/composables/use-tracker-secret', () => ({
   useTrackerSecret: () => ({
     get: getSecret,
     set: vi.fn(),
@@ -25,7 +27,7 @@ vi.mock('../../app/composables/useTrackerSecret', () => ({
 }));
 
 const { mapRemoteSyncClientError, useRemoteSyncClient } =
-  await import('../../app/composables/useRemoteSyncClient');
+  await import('../../app/composables/use-remote-sync-client');
 
 const config: TrackerDto = {
   id: 'cfg-1',

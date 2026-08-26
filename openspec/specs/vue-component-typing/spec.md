@@ -7,7 +7,7 @@ Define client/Vue typing discipline for type assertions, form and keyed UI state
 ## Requirements
 
 ### Requirement: REQ-238 Double type assertions are forbidden in app components
-Application Vue components, pages, layouts, composables, and client utilities under `app/` SHALL NOT use `as unknown as` (or equivalent double assertions that erase then reassert a type). When a third-party component forces a type mismatch, the project SHALL isolate a single typed adapter (composable or util) rather than casting at call sites or in templates.
+Application Vue components, pages, layouts, composables, and client utilities under `app/` SHALL NOT use `as unknown as` (or equivalent double assertions that erase then reassert a type). Tests SHALL NOT use chained assertions when a typed fake, `satisfies`, or a single documented adapter can express the same setup. When a third-party component forces a type mismatch, the project SHALL isolate a single typed adapter (composable or util) rather than casting at call sites or in templates.
 
 #### Scenario: Task title autocomplete does not double-cast
 - **WHEN** a freeform task-title menu binds suggestions from task DTOs
@@ -16,6 +16,10 @@ Application Vue components, pages, layouts, composables, and client utilities un
 #### Scenario: New library friction uses one adapter
 - **WHEN** a Nuxt UI or DOM typing gap cannot be expressed without an assertion
 - **THEN** the assertion lives in one documented adapter returning the component’s or DOM’s intended type, and consuming components import that adapter instead of casting inline
+
+#### Scenario: Test chained assertion is reduced
+- **WHEN** a unit or nuxt spec previously used `as unknown as` to fake a Vitest or DOM type
+- **THEN** it SHALL use a typed stub or a single `as` with a `// SAFETY:` comment, not a chain, unless a justified anti-slop disable remains after review
 
 ### Requirement: REQ-239 Type assertions follow the preference ladder
 Client TypeScript SHALL prefer, in order: (1) annotating the reactive container or ref generic, (2) `satisfies` for literal structures, (3) `as const` for discriminant/literal narrowing, (4) runtime narrowing or type guards, (5) schema parse at submit/boundary, (6) a single documented adapter cast for library gaps. Value-level `as T` on form fields, union literals, or submit payloads SHALL NOT be used when container annotation or schema typing would remove the need.

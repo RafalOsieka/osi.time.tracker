@@ -65,10 +65,10 @@ describeSsrShell('SSR shell and list pages', async () => {
     // Title should be present without waiting solely on a post-mount client fetch.
     // Use the timer title input value / text content.
     await page.waitForFunction(() => {
-      const input = document.querySelector(
+      const el = document.querySelector(
         '[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]',
-      ) as HTMLInputElement | null;
-      const text = input?.value ?? input?.textContent ?? '';
+      );
+      const text = el instanceof HTMLInputElement ? el.value : (el?.textContent ?? '');
       return text.includes('SSR Running Title');
     });
 

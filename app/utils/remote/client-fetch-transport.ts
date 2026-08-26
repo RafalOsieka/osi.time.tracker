@@ -1,8 +1,10 @@
+import type { ZodType } from 'zod';
 import type {
   RemoteRequest,
   RemoteResponse,
   Transport,
 } from '../../../shared/types/remote-adapter';
+import { UpstreamHttpError } from '~~/shared/remote/upstream-http-error';
 
 /**
  * `client` execution-mode transport (L4): queries the configured tracker
@@ -12,30 +14,29 @@ import type {
  * client on each request.
  */
 export const clientFetchTransport: Transport = {
-  async execute(request: RemoteRequest): Promise<RemoteResponse> {
+  async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
+    const headers = new Headers({
+      Accept: 'application/json',
+      ...request.headers,
+    });
+    if (request.body !== undefined) {
+      headers.set('Content-Type', 'application/json');
+    }
     const response = await fetch(request.url, {
       method: request.method,
-      headers: {
-        Accept: 'application/json',
-        ...(request.body !== undefined ? { 'Content-Type': 'application/json' } : {}),
-        ...request.headers,
-      },
+      headers,
       body: request.body !== undefined ? JSON.stringify(request.body) : undefined,
     });
 
     if (!response.ok && response.status !== 403 && response.status !== 404) {
-      throw { statusCode: response.status };
+      throw new UpstreamHttpError(response.status);
     }
 
-    const payload = await safeJson(response);
-    return { status: response.status, payload };
+    try {
+      const parsed = schema.safeParse(await response.json());
+      return { status: response.status, payload: parsed.success ? parsed.data : null };
+    } catch {
+      return { status: response.status, payload: null };
+    }
   },
 };
-
-async function safeJson(response: Response): Promise<unknown> {
-  try {
-    return await response.json();
-  } catch {
-    return null;
-  }
-}

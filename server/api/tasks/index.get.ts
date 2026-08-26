@@ -1,14 +1,15 @@
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { tasks, projects } from '../../db/schema';
 import { eq, isNull, asc, and, ilike } from 'drizzle-orm';
-import type { TaskDto } from '../../../shared/types/task';
+import { listTasksQuerySchema, type TaskDto } from '../../../shared/types/task';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
+import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
-  const query = getQuery(event);
-  const projectId = typeof query.projectId === 'string' ? query.projectId : undefined;
-  const search = typeof query.search === 'string' ? query.search.trim() : undefined;
+  const { projectId, search: searchRaw } = await getZodQuery(event, listTasksQuerySchema);
+  const search = searchRaw?.trim();
 
   const conditions = [eq(tasks.userId, user.id)];
   if (projectId === 'none') {

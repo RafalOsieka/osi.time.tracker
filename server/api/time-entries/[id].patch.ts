@@ -1,34 +1,21 @@
 import { and, eq } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import {
   updateTimeEntrySchema,
   TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS,
 } from '../../../shared/types/time-entry';
-import type { UpdateTimeEntryDto, TimeEntryDto } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
 import { resolveTaskId } from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
+import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
-  const body = await readBody(event);
-
-  let parsedBody: UpdateTimeEntryDto;
-  try {
-    parsedBody = updateTimeEntrySchema.parse(body);
-  } catch (err: unknown) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedBody = await readZodBody(event, updateTimeEntrySchema);
 
   const [existing] = await db
     .select()
@@ -104,14 +91,22 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
       taskId = await resolveTaskId(tx, user.id, title, projectId);
     }
 
+    type TimeEntryPatch = {
+      taskId: typeof taskId;
+      updatedAt: Date;
+      stoppedAt?: Date | null;
+      startedAt?: Date;
+    };
+    const patch: TimeEntryPatch = {
+      taskId,
+      updatedAt: new Date(),
+    };
+    if (stoppedAt !== undefined) patch.stoppedAt = stoppedAt;
+    if (startedAt !== undefined) patch.startedAt = startedAt;
+
     const [row] = await tx
       .update(timeEntries)
-      .set({
-        taskId,
-        ...(stoppedAt !== undefined ? { stoppedAt } : {}),
-        ...(startedAt !== undefined ? { startedAt } : {}),
-        updatedAt: new Date(),
-      })
+      .set(patch)
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
       .returning();
 

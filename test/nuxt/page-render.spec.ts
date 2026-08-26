@@ -5,15 +5,21 @@ import LoginPage from '../../app/pages/login.vue';
 import IndexPage from '../../app/pages/index.vue';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AuthLayout from '../../app/layouts/auth.vue';
+type PageMeta = { layout?: string; public?: boolean };
 
 async function routeMeta() {
-  let routes: { path: string; meta: Record<string, unknown> }[] = [];
+  let routes: { path: string; meta: PageMeta }[] = [];
   const Probe = defineComponent({
     setup() {
       const router = useRouter();
-      routes = router
-        .getRoutes()
-        .map((r) => ({ path: r.path, meta: r.meta as Record<string, unknown> }));
+      routes = router.getRoutes().map((r) => ({
+        path: r.path,
+        meta: {
+          layout:
+            r.meta.layout == null || r.meta.layout === false ? undefined : String(r.meta.layout),
+          public: r.meta.public === true ? true : undefined,
+        },
+      }));
       return () => h('div');
     },
   });

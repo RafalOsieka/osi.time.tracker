@@ -1,9 +1,10 @@
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { trackers } from '../../db/schema';
 import { eq, isNull, asc, and } from 'drizzle-orm';
 import type { TrackerDto } from '../../../shared/types/tracker';
 
 export default defineEventHandler(async (event): Promise<TrackerDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
 
   const rows = await db

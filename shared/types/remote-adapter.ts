@@ -1,3 +1,5 @@
+import type { ZodType } from 'zod';
+import type { JsonValue } from './json';
 import type { RemoteFieldOption } from './remote-field-option';
 import type { RemoteAccount } from './remote-account';
 import type { RemoteIssueSearchResult } from './remote-issue-ref';
@@ -8,7 +10,7 @@ export interface RemoteRequest {
   url: string;
   method: 'GET' | 'POST';
   /** JSON body for `POST`/form endpoints; unused by `GET` requests. */
-  body?: unknown;
+  body?: JsonValue;
   /**
    * Provider-built request headers (e.g. auth). Transports merge these as-is
    * and never construct provider-specific credentials themselves.
@@ -17,18 +19,19 @@ export interface RemoteRequest {
 }
 
 /** A pure, transport-agnostic HTTP response description. */
-export interface RemoteResponse {
+export interface RemoteResponse<T = JsonValue> {
   status: number;
-  payload: unknown;
+  payload: T | null;
 }
 
 /**
  * L4: executes one neutral HTTP request and returns its status/payload,
  * without interpreting either. `clientFetchTransport` and `serverFetchTransport`
  * are the two concrete implementations selected by execution mode.
+ * `schema` is the evidence for `T` (Doctor TS0004).
  */
 export interface Transport {
-  execute(request: RemoteRequest): Promise<RemoteResponse>;
+  execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>>;
 }
 
 /**

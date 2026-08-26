@@ -1,3 +1,4 @@
+import type { ZodType } from 'zod';
 import type {
   RemoteRequest,
   RemoteResponse,
@@ -5,6 +6,7 @@ import type {
 } from '../../../shared/types/remote-adapter';
 import { RemoteAdapterError } from '../../../shared/types/remote-adapter';
 import { normalizeBaseUrl } from '../../../shared/utils/normalize-base-url';
+import { UpstreamHttpError } from '../../../shared/remote/upstream-http-error';
 
 /**
  * `server` execution-mode transport (L4): forwards one request to the
@@ -18,25 +20,35 @@ export function createServerFetchTransport(baseUrl: string): Transport {
   const allowedOrigin = new URL(normalizeBaseUrl(baseUrl)).origin;
 
   return {
-    async execute(request: RemoteRequest): Promise<RemoteResponse> {
+    async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
       assertSameOrigin(request.url, allowedOrigin);
+
+      const headers = new Headers({
+        Accept: 'application/json',
+        ...request.headers,
+      });
+      if (request.body !== undefined) {
+        headers.set('Content-Type', 'application/json');
+      }
 
       try {
         const response = await $fetch.raw(request.url, {
           method: request.method,
-          body: request.body as BodyInit | Record<string, unknown> | null | undefined,
-          headers: {
-            Accept: 'application/json',
-            ...request.headers,
-          },
+          body: request.body !== undefined ? JSON.stringify(request.body) : undefined,
+          headers,
         });
-        return { status: response.status, payload: response._data };
-      } catch (err: unknown) {
-        const statusCode = (err as { statusCode?: number; response?: { status?: number } })
-          ?.statusCode;
-        const status = statusCode ?? (err as { response?: { status?: number } })?.response?.status;
-        if (status !== undefined) {
-          throw { statusCode: status };
+        const parsed = schema.safeParse(response._data);
+        return {
+          status: response.status,
+          payload: parsed.success ? parsed.data : null,
+        };
+      } catch (err) {
+        if (err instanceof RemoteAdapterError) throw err;
+        if (err instanceof Error && 'statusCode' in err) {
+          const status = Number(err.statusCode);
+          if (Number.isFinite(status)) {
+            throw new UpstreamHttpError(status);
+          }
         }
         throw err;
       }

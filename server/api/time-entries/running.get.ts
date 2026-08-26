@@ -1,11 +1,12 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { send, setResponseHeader } from 'h3';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries } from '../../db/schema';
 import { toTimeEntryDto } from '../../utils/time-entries';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto | null | undefined> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
 
   const [running] = await db

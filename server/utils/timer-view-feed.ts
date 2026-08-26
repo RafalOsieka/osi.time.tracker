@@ -12,8 +12,11 @@ export function localDayStartInstant(dayKey: string, timeZone: string): string {
   return Temporal.PlainDate.from(dayKey).toZonedDateTime(timeZone).toInstant().toString();
 }
 
+/** Inclusive start / exclusive end ISO instants. */
+export type InstantRange = { from: string; to: string };
+
 /** Inclusive start / exclusive end of a local calendar day in `timeZone`. */
-export function localDayBounds(dayKey: string, timeZone: string): { from: string; to: string } {
+export function localDayBounds(dayKey: string, timeZone: string): InstantRange {
   const start = Temporal.PlainDate.from(dayKey).toZonedDateTime(timeZone);
   return {
     from: start.toInstant().toString(),
@@ -25,11 +28,7 @@ export function localDayBounds(dayKey: string, timeZone: string): { from: string
  * Rolling window of the most recent `days` local calendar days ending on the
  * local day of `now` (inclusive of that day). Returns `[from, to)` instants.
  */
-export function rollingWindowBounds(
-  days: number,
-  now: Date,
-  timeZone: string,
-): { from: string; to: string } {
+export function rollingWindowBounds(days: number, now: Date, timeZone: string): InstantRange {
   const today = Temporal.Instant.from(now.toISOString()).toZonedDateTimeISO(timeZone).toPlainDate();
   const fromDay = today.subtract({ days: days - 1 });
   return {

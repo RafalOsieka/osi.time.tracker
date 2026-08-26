@@ -7,6 +7,7 @@ import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { UNKNOWN_ID } from '../helpers/fixtures';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeTasks = requireDocker();
 
@@ -17,8 +18,13 @@ async function createTaskViaEntry(
   title: string,
   projectId?: string | null,
 ): Promise<{ id: string; name: string; projectId: string | null }> {
-  const body: Record<string, unknown> = { title };
-  if (projectId !== undefined) body.projectId = projectId;
+  const body =
+    projectId === undefined
+      ? { title }
+      : {
+          title,
+          projectId,
+        };
   const startRes = await fetch(url('/api/time-entries'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -42,7 +48,7 @@ async function patchTask(
   jar: CookieJar,
   token: string,
   id: string,
-  body: Record<string, unknown>,
+  body: JsonObject,
 ): Promise<Response> {
   return fetch(url(`/api/tasks/${id}`), {
     method: 'PATCH',

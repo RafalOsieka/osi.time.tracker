@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-
-const props = withDefaults(defineProps<{ collapsed?: boolean }>(), {
-  collapsed: false,
-});
+const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
 
 const { t } = useI18n();
 </script>
@@ -16,9 +12,9 @@ const { t } = useI18n();
     fill="currentColor"
     class="size-6 shrink-0 text-primary"
     data-testid="app-brand-mark"
-    :aria-hidden="props.collapsed ? undefined : true"
-    :aria-label="props.collapsed ? t('layout.title') : undefined"
-    :role="props.collapsed ? 'img' : undefined"
+    :aria-hidden="collapsed ? undefined : true"
+    :aria-label="collapsed ? t('layout.title') : undefined"
+    :role="collapsed ? 'img' : undefined"
   >
     <path
       transform="matrix(.98 0 0 .99 .35 .53)"

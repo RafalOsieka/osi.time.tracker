@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildTaskTitleMenuItems, TASK_TITLE_CREATE_ITEM_ID } from '../../app/utils/taskTitleMenu';
+import {
+  buildTaskTitleMenuItems,
+  TASK_TITLE_CREATE_ITEM_ID,
+} from '../../app/utils/task-title-menu';
 import type { TaskDto } from '../../shared/types/task';
 
 function task(overrides: Partial<TaskDto> = {}): TaskDto {

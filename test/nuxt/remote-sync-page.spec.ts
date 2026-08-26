@@ -15,18 +15,20 @@ const createTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ remoteL
 const fetchTimeLogsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 const invalidateCachesMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return { ...actual, $fetch: Object.assign(csrfFetchMock, { create: () => csrfFetchMock }) };
 });
-vi.mock('../../app/composables/useRemoteSyncClient', () => ({
+// oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
+vi.mock('../../app/composables/use-remote-sync-client', () => ({
   useRemoteSyncClient: () => ({
     resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
     fetchTimeLogs: fetchTimeLogsMock,
     createTimeEntry: createTimeEntryMock,
     invalidateCaches: invalidateCachesMock,
   }),
-  mapRemoteSyncClientError: (err: unknown, fallback: string) => fallback,
+  mapRemoteSyncClientError: (_err: Error, fallback: string) => fallback,
 }));
 
 mockNuxtImport('useRoute', () => () => ({ params: { date: '2026-03-15' } }));
@@ -234,8 +236,7 @@ describe('RemoteSync page', () => {
     vi.stubGlobal('fetch', fetchMock);
     installFakeLocalStorage();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }
@@ -312,16 +313,18 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     await expandRow(wrapper, 'task-2');
     expect(
-      (wrapper.find('[data-testid="remote-sync-entry-check-entry-2"]').element as HTMLInputElement)
+      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-entry-check-entry-2"]').element
         .checked,
     ).toBe(true);
-    const roundedInput = wrapper.find('[data-testid="remote-sync-rounded-duration-task-2"]');
-    expect((roundedInput.element as HTMLInputElement).value).toBe('01:00:00');
+    const roundedInput = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-rounded-duration-task-2"]',
+    );
+    expect(roundedInput.element.value).toBe('01:00:00');
 
     await roundedInput.setValue('bad value');
     await roundedInput.trigger('blur');
     await flushPromises();
-    expect((roundedInput.element as HTMLInputElement).value).toBe('01:00:00');
+    expect(roundedInput.element.value).toBe('01:00:00');
 
     await roundedInput.setValue('0');
     await roundedInput.trigger('blur');
@@ -358,9 +361,11 @@ describe('RemoteSync page', () => {
 
     await toSendButton.trigger('click');
     await flushPromises();
-    const inlineInput = wrapper.find('[data-testid="remote-sync-to-send-input-task-inline"]');
+    const inlineInput = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-to-send-input-task-inline"]',
+    );
     expect(inlineInput.exists()).toBe(true);
-    expect((inlineInput.element as HTMLInputElement).value).toBe('01:00:00');
+    expect(inlineInput.element.value).toBe('01:00:00');
 
     await inlineInput.setValue('00:45:00');
     await inlineInput.trigger('blur');
@@ -399,8 +404,10 @@ describe('RemoteSync page', () => {
     );
 
     const wrapper = await mount();
-    const select = wrapper.find('[data-testid="remote-sync-activity-select-task-3"]');
-    expect((select.element as HTMLSelectElement).value).toBe('2');
+    const select = wrapper.find<HTMLSelectElement>(
+      '[data-testid="remote-sync-activity-select-task-3"]',
+    );
+    expect(select.element.value).toBe('2');
   });
 
   it('routes activities/account fetches through the server for a server-execution-mode config', async () => {

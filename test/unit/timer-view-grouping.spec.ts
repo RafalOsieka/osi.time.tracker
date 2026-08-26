@@ -6,7 +6,7 @@ import {
   isoToLocalTime,
   localDayKey,
   UNTITLED_GROUP_KEY,
-} from '../../app/utils/timerViewGrouping';
+} from '../../app/utils/timer-view-grouping';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 function entry(overrides: Partial<TimeEntryDto>): TimeEntryDto {

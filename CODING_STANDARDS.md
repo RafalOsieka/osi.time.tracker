@@ -1,6 +1,6 @@
 # Coding Standards
 
-This document defines the coding style and conventions used across the application (`app/`) and server (`server/`) source. It is derived from the existing codebase and should be followed by all contributions unless a rule is explicitly overridden by a reviewer. It complements — and never contradicts — the tooling configuration (ESLint, Prettier, TypeScript).
+This document defines the coding style and conventions used across the application (`app/`) and server (`server/`) source. It is derived from the existing codebase and should be followed by all contributions unless a rule is explicitly overridden by a reviewer. It complements — and never contradicts — the tooling configuration (Oxlint, leftover ESLint, Oxfmt, TypeScript).
 
 ## 1. General Code Style
 
@@ -10,9 +10,10 @@ This document defines the coding style and conventions used across the applicati
 - Remove unused variables, imports, and dead code paths.
 - Explicit `any` is forbidden. When it is truly unavoidable, disable the rule on a single line with a trailing comment that justifies the exception:
   ```ts
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- reason goes here.
+  // oxlint-disable-next-line typescript/no-explicit-any -- reason goes here.
   ```
-- Prefer `unknown` over `any` for values whose shape is not yet narrowed (e.g. caught errors are typed `err: unknown` and narrowed before use).
+- Prefer named domain types over `unknown`. `catch (err)` is already `unknown` under TypeScript `strict` — omit `: unknown`. Narrow with `instanceof` on real classes (`FetchError`, `RemoteAdapterError`, `UpstreamHttpError`, `Error`), schema parse, or missing-field checks on named payloads. Do **not** add `isStringValue` / `isJsonObject` wrappers around `typeof` or `instanceof Object`. API error `params` use `MessageParams` (`string | number | boolean`), not `Record<string, unknown>`.
+- Do not edit `tools/oxlint/anti-slop/` unless the developer explicitly asks. Remaining `as` assertions need `// SAFETY:` immediately above.
 
 ## 2. Naming Conventions
 
@@ -23,6 +24,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 | Variables / parameters      | `camelCase`            | `parsedBody`, `requestToken`      |
 | Functions / methods         | `camelCase()`          | `formatDuration()`, `search()`    |
 | Composables                 | `useXxx()`             | `useTrackerSecret()`              |
+| Composable files            | `kebab-case`           | `use-timer.ts`                    |
 | Vue components (files/tags) | `PascalCase`           | `EntityPicker.vue`                |
 | Types / interfaces          | `PascalCase`           | `EntityRef`                       |
 | Response DTO types          | `PascalCase` + `Dto`   | `EntityDto`, `CreateEntityDto`    |
@@ -40,7 +42,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - **Trailing commas:** use them in multi-line arrays, objects, and parameter lists.
 - **Line length:** keep lines reasonably short (~100 characters); wrap long argument lists and object literals across multiple lines.
 - **Encoding:** UTF-8; end every file with a single trailing newline.
-- Let the formatter own whitespace — run the format and lint commands before committing rather than hand-aligning code.
+- Let Oxfmt own whitespace — run the format and lint commands before committing rather than hand-aligning code.
 
 ### Imports
 
@@ -50,7 +52,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 ## 4. Vue Component Conventions
 
 - Order blocks as `<script setup>`, then `<template>`, then `<style scoped>`.
-- Declare props and emits with typed generics (`defineProps<{ ... }>()`, `defineEmits<{ ... }>()`).
+- Declare props and emits with typed generics (`defineProps<{ ... }>()`, `defineEmits<{ ... }>()`). When props are used in `<script setup>`, destructure them (`const { open, project } = defineProps<{ ... }>()`). Do not assign `defineProps` to a `props` object. Vue 3.5 keeps destructured props reactive.
 - Prefer existing Nuxt UI components (`UButton`, `UInput`, `UForm`/`UFormField`, `UTable`, `UModal`, `UDashboard*`, etc.) over native form controls. Reserve native elements for semantic structure or lightweight wrappers.
 - Keep all user-facing text in the i18n catalogs and render it via `t(...)`; never hard-code display strings in templates or scripts.
 - Provide accessibility affordances: `aria-label`, `role`, and `aria-live` where appropriate, and use stable `data-testid` hooks for testable elements.
@@ -82,16 +84,16 @@ Rules:
 - **`as unknown as` is forbidden** in `app/` components, pages, layouts, composables, and client utilities. Isolate unavoidable library friction in one adapter util that returns the real prop or DOM type — never cast in templates.
 - Do not cast form fields or submit payloads (`clientId as string`) when container annotation or schema-typed `FormSubmitEvent` removes the need.
 - Do not use `as Record<string, unknown>` for “I don’t know the prop type”; prefer the component’s prop type or a narrow adapter.
-- Freeform task-title autocomplete (`UInputMenu` autocomplete mode) uses the shared builder in `app/utils/taskTitleMenu.ts`: object items with string model via `value-key` / `label-key` and `onSelect` closures over real `TaskDto` identity — never double-cast task DTOs to/from strings.
+- Freeform task-title autocomplete (`UInputMenu` autocomplete mode) uses the shared builder in `app/utils/task-title-menu.ts`: object items with string model via `value-key` / `label-key` and `onSelect` closures over real `TaskDto` identity — never double-cast task DTOs to/from strings.
 
 ## 5. Server / API Conventions
 
 - Export a single `defineEventHandler` per route file and annotate its return type with the response DTO.
 - Protect private endpoints by resolving the authenticated user through the shared auth helper before any other work.
-- Validate request bodies with a single `zod` schema; on `ZodError`, map the error to the `{ messageKey, params }` contract and throw a `422` `createError`.
-- The shared mapper keeps `min`, `max`, `expected`, and custom `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).
+- Validate request bodies with `readZodBody` and query strings with `getZodQuery`, each using a single `zod` schema from `shared/types`. On `ZodError`, map the error to the `{ messageKey, params }` contract (`params` is `MessageParams`) and throw a `422` `createError`.
+- The shared mapper keeps `min`, `max`, `expected`, and custom primitive `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).
 - Never return rendered text from the server. Error and message payloads use a translation `messageKey` (plus optional `params`) that the client translates.
-- Access the database exclusively through the shared lazy client; never instantiate raw drivers.
+- Access the database exclusively through `getDb()`; never instantiate raw drivers. `getDb()` returns the process-wide pooled client (first call creates it). Bind once per handler: `const db = getDb();`.
 - Serialize boundary values in their JSON form — timestamps are emitted as ISO strings, not `Date` objects.
 
 ## 6. Boundary Types & Validation
@@ -108,9 +110,9 @@ Rules:
 - All timezone-sensitive date arithmetic (day keys, day/week boundaries, combining a wall-clock date and time into an instant) MUST use the `Temporal` API (`temporal-polyfill`), never browser-local `Date` getters (`getFullYear()`, `getDay()`, etc.) or server-local `Date` math.
 - The effective timezone is the authenticated user's saved `timezone` setting (`useUserSettings().effective.timeZone` on the client, the `users.timezone` column on the server), falling back to the browser-detected timezone only when nothing is saved yet — never assume `UTC` or the host machine's timezone.
 - Every human-readable date/time format call (`Intl.DateTimeFormat`, `Date#toLocaleDateString`/`toLocaleTimeString`, and any wrapper such as `formatDate`) MUST pass an explicit `timeZone` option derived from the effective setting. Omitting `timeZone` silently falls back to the runtime's local timezone and will render the wrong day/time for users whose saved timezone differs.
-- Utilities that accept a `timeZone` parameter (e.g. `app/utils/dateTime.ts`, `app/utils/timerViewGrouping.ts`) may default it to the browser-detected timezone for convenience, but every call site with access to a signed-in user's settings MUST pass the effective timezone explicitly rather than relying on the default.
+- Utilities that accept a `timeZone` parameter (e.g. `app/utils/date-time.ts`, `app/utils/timer-view-grouping.ts`) may default it to the browser-detected timezone for convenience, but every call site with access to a signed-in user's settings MUST pass the effective timezone explicitly rather than relying on the default.
 - UTC ISO 8601 instants remain the only on-the-wire representation; the server performs no timezone-aware rendering, only timezone-aware bucketing/boundary math when explicitly given the user's timezone (see `server/utils/day-boundary.ts`).
-- Interop with browser-local `Date` objects (e.g. date inputs) is confined to the dedicated adapter pair (`toPickerDate`/`fromPickerDate` in `app/utils/dateTime.ts`); no other code should construct dates from browser-local getters.
+- Interop with browser-local `Date` objects (e.g. date inputs) is confined to the dedicated adapter pair (`toPickerDate`/`fromPickerDate` in `app/utils/date-time.ts`); no other code should construct dates from browser-local getters.
 
 ## 8. Comments & Documentation
 
@@ -121,7 +123,7 @@ Rules:
 
 ## 9. Error Handling
 
-- Type caught errors as `unknown` and narrow them before use.
+- Catch with `catch (err)` (no `: unknown` — TypeScript `strict` already types the binding as `unknown`). Narrow with `instanceof` on real error classes or schema parse — not `typeof` ladders or `isX` wrappers around them. API `{ messageKey, params }` uses `MessageParams` (`string | number | boolean` values).
 - Handle expected failure modes explicitly (validation, not-found, duplicates); avoid silent failures.
 - Re-throw unexpected errors rather than swallowing them.
 - Guard asynchronous flows against stale/superseded results where ordering matters.
@@ -133,6 +135,7 @@ Rules:
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
+- Anti-slop plugin tests live in `test/unit/anti-slop/` (`*.test.ts`, Oxlint `RuleTester`). Do not colocate those tests under `tools/oxlint/anti-slop/`.
 
 ## 11. Commits & Reviews
 
@@ -141,6 +144,10 @@ Rules:
 - Run linting, format checks, and the relevant test projects before opening a pull request.
 - Keep pull requests focused and reasonably small; be constructive in review.
 
-## 12. Changes to This Guide
+## 12. Anti-slop plugin is frozen unless requested
+
+The vendored Oxlint anti-slop plugin under `tools/oxlint/anti-slop/` (plugin entry, rules, and shared helpers) SHALL NOT be edited, rewritten, disabled, or “fixed” by coding agents unless the developer explicitly asks for that change. Diagnosing application code that fails `anti-slop/*` is allowed; changing the plugin to silence those diagnostics is not. Tests for the plugin belong in `test/unit/anti-slop/` only.
+
+## 13. Changes to This Guide
 
 Conventions evolve. Propose improvements by opening an issue or a pull request that updates this document, and align the change with the project's tooling configuration.

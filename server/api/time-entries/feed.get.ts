@@ -1,18 +1,15 @@
 import { and, desc, eq, gte, lt } from 'drizzle-orm';
-import { ZodError } from 'zod';
 import {
   TIMER_VIEW_FEED_INITIAL_DAYS,
   TIMER_VIEW_FEED_LOAD_MORE_ACTIVITY_DAYS,
   timerViewFeedQuerySchema,
   type TimerViewFeedDto,
-  type TimerViewFeedQuery,
   type TimeEntryDto,
 } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
-import { mapZodError } from '../../utils/zod-error';
-import type { ApiMessage } from '../../types/api-message';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
+import { getZodQuery } from '../../utils/zod-input';
 import {
   feedNextBefore,
   feedTimeZone,
@@ -50,6 +47,7 @@ async function toDtos(userId: string, rows: Row[]): Promise<TimeEntryDto[]> {
 
 /** Entries whose `startedAt` falls in `[from, to)` — uses `(userId, startedAt)` index. */
 async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promise<Row[]> {
+  const db = getDb();
   return db
     .select({
       id: timeEntries.id,
@@ -74,6 +72,7 @@ async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promis
 }
 
 async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
+  const db = getDb();
   const [row] = await db
     .select({ startedAt: timeEntries.startedAt })
     .from(timeEntries)
@@ -84,6 +83,7 @@ async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
 }
 
 async function existsStartedAtBefore(userId: string, before: Date): Promise<boolean> {
+  const db = getDb();
   const [row] = await db
     .select({ id: timeEntries.id })
     .from(timeEntries)
@@ -103,6 +103,7 @@ async function findLoadMoreRangeStart(
   timeZone: string,
   activityDays: number,
 ): Promise<Date | null> {
+  const db = getDb();
   let cursor = before;
   let oldestDayKey: string | null = null;
 
@@ -127,20 +128,7 @@ async function findLoadMoreRangeStart(
 
 export default defineEventHandler(async (event): Promise<TimerViewFeedDto> => {
   const { user } = await requireAuth(event);
-  const query = getQuery(event);
-
-  let parsedQuery: TimerViewFeedQuery;
-  try {
-    parsedQuery = timerViewFeedQuerySchema.parse(query);
-  } catch (err: unknown) {
-    if (err instanceof ZodError) {
-      throw createError({
-        statusCode: 422,
-        data: mapZodError(err) satisfies ApiMessage,
-      });
-    }
-    throw err;
-  }
+  const parsedQuery = await getZodQuery(event, timerViewFeedQuerySchema);
 
   const timeZone = feedTimeZone(user.settings?.timezone);
   let rows: Row[] = [];

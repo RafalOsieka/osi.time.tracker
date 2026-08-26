@@ -69,7 +69,7 @@ function startFakeTracker(): Promise<{ server: Server; baseUrl: string; seenAuth
     });
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
-      const port = typeof address === 'object' && address ? address.port : 0;
+      const port = address instanceof Object && 'port' in address ? address.port : 0;
       resolve({ server, baseUrl: `http://127.0.0.1:${port}`, seenAuth });
     });
   });

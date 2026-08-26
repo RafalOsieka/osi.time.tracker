@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { isTextOverflowing } from '~/utils/isTextOverflowing';
-
-const props = defineProps<{
+const { text } = defineProps<{
   text: string;
 }>();
 
@@ -9,12 +7,13 @@ const root = useTemplateRef<HTMLElement>('root');
 const overflowing = ref(false);
 
 function measure() {
-  overflowing.value = root.value ? isTextOverflowing(root.value) : false;
+  const el = root.value;
+  overflowing.value = el ? isTextOverflowing(el) : false;
 }
 
 onMounted(() => {
   void nextTick(measure);
-  if (!root.value || typeof ResizeObserver === 'undefined') return;
+  if (!root.value || !('ResizeObserver' in globalThis)) return;
   const observer = new ResizeObserver(() => {
     measure();
   });
@@ -27,7 +26,7 @@ onMounted(() => {
 });
 
 watch(
-  () => props.text,
+  () => text,
   () => {
     void nextTick(measure);
   },

@@ -6,7 +6,12 @@ export function pageIncludesTextScript(): (text: string) => boolean {
   return (text: string) => {
     if (document.body.textContent?.includes(text)) return true;
     for (const el of document.querySelectorAll('input, textarea')) {
-      if ((el as HTMLInputElement).value?.includes(text)) return true;
+      if (
+        (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
+        el.value.includes(text)
+      ) {
+        return true;
+      }
     }
     return false;
   };
@@ -17,7 +22,12 @@ export function pageExcludesTextScript(): (text: string) => boolean {
   return (text: string) => {
     if (document.body.textContent?.includes(text)) return false;
     for (const el of document.querySelectorAll('input, textarea')) {
-      if ((el as HTMLInputElement).value?.includes(text)) return false;
+      if (
+        (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
+        el.value.includes(text)
+      ) {
+        return false;
+      }
     }
     return true;
   };
@@ -35,10 +45,8 @@ export function groupKeyForTitleScript(): (title: string) => string | null {
       ),
     ];
     const titleNode = titles.find((node) => {
-      const input = (
-        node.matches('input') ? node : node.querySelector('input')
-      ) as HTMLInputElement | null;
-      return input?.value === title;
+      const input = node instanceof HTMLInputElement ? node : node.querySelector('input');
+      return input instanceof HTMLInputElement && input.value === title;
     });
     if (!titleNode) return null;
     let node: Element | null = titleNode;

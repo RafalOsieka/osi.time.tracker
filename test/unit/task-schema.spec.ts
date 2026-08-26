@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { updateTaskSchema, TASK_NAME_MAX_LENGTH } from '../../shared/types/task';
+import {
+  updateTaskSchema,
+  listTasksQuerySchema,
+  TASK_NAME_MAX_LENGTH,
+} from '../../shared/types/task';
 import { mapZodError } from '../../server/utils/zod-error';
 
 const validProjectId = '018f2f8a-1234-7abc-8def-123456789abc';
@@ -16,7 +20,7 @@ describe('updateTaskSchema', () => {
       name: 'Fix the bug',
       projectId: validProjectId,
     });
-    expect((result as Record<string, unknown>).extraKey).toBeUndefined();
+    expect('extraKey' in result).toBe(false);
   });
 
   it('fails parse if name is missing', () => {
@@ -54,7 +58,8 @@ describe('updateTaskSchema', () => {
   });
 
   it('does not accept a number field as part of the request body schema', () => {
-    expect('number' in updateTaskSchema.shape).toBe(false);
+    const parsed = updateTaskSchema.parse({ name: 'x', number: 1 });
+    expect('number' in parsed).toBe(false);
   });
 
   it('maps missing name to error.taskNameRequired via mapZodError', () => {
@@ -77,5 +82,21 @@ describe('updateTaskSchema', () => {
       const mapped = mapZodError(result.error);
       expect(mapped).toEqual({ messageKey: 'error.taskProjectInvalid' });
     }
+  });
+});
+
+describe('listTasksQuerySchema', () => {
+  it('accepts an empty query', () => {
+    expect(listTasksQuerySchema.parse({})).toEqual({});
+  });
+
+  it('accepts projectId and search filters', () => {
+    expect(listTasksQuerySchema.parse({ projectId: 'none', search: 'fix' })).toEqual({
+      projectId: 'none',
+      search: 'fix',
+    });
+    expect(listTasksQuerySchema.parse({ projectId: validProjectId })).toEqual({
+      projectId: validProjectId,
+    });
   });
 });

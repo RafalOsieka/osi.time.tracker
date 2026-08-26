@@ -1,9 +1,7 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { validateSchemaWithI18n } from '~/utils/validateSchemaWithI18n';
 
-const props = defineProps<{
+const { open, tracker } = defineProps<{
   open: boolean;
   tracker: TrackerDto | null;
 }>();
@@ -19,7 +17,7 @@ const { $csrfFetch } = useNuxtApp();
 const { get: getSecret, set: setSecret } = useTrackerSecret();
 
 const dialogOpen = computed({
-  get: () => props.open,
+  get: () => open,
   set: (value: boolean) => emit('update:open', value),
 });
 
@@ -62,7 +60,7 @@ const nameServerError = ref('');
 const baseUrlServerError = ref('');
 const systemTypeServerError = ref('');
 const saving = ref(false);
-const formKey = computed(() => props.tracker?.id ?? 'new');
+const formKey = computed(() => tracker?.id ?? 'new');
 
 function seedForm(tracker: TrackerDto | null) {
   state.name = tracker?.name ?? '';
@@ -77,10 +75,10 @@ function seedForm(tracker: TrackerDto | null) {
 }
 
 watch(
-  () => props.open,
+  () => open,
   (isOpen) => {
     if (!isOpen) return;
-    seedForm(props.tracker);
+    seedForm(tracker);
   },
 );
 
@@ -128,8 +126,8 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
       executionMode: data.executionMode,
       roundingRule: data.roundingRule,
     };
-    if (props.tracker) {
-      const updated = await $csrfFetch<TrackerDto>(`/api/trackers/${props.tracker.id}`, {
+    if (tracker) {
+      const updated = await $csrfFetch<TrackerDto>(`/api/trackers/${tracker.id}`, {
         method: 'PATCH',
         body: payload,
       });
@@ -155,8 +153,8 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
     }
     closeDialog();
     emit('saved');
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     if (
       key === 'error.trackerNameRequired' ||
       key === 'error.trackerNameDuplicate' ||

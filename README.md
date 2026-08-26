@@ -45,7 +45,7 @@ It solves a recurring problem for multi-client work: your clients run different 
 | Validation      | `zod` (single source of truth for boundary types)                       |
 | i18n            | `@nuxtjs/i18n` (`en`, `pl`)                                             |
 | Testing         | Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`          |
-| Tooling         | pnpm, ESLint, Prettier, Docker Compose                                  |
+| Tooling         | pnpm, Oxlint + leftover ESLint, Oxfmt, Docker Compose                   |
 
 ## Getting started
 
@@ -92,10 +92,10 @@ pnpm build          # production build (output in .output/)
 pnpm preview        # preview the production build locally
 pnpm generate       # generate a static site
 
-pnpm lint           # ESLint (includes Vue i18n + accessibility rules)
-pnpm lint:fix       # auto-fix lint issues
-pnpm format         # format with Prettier
-pnpm format:check   # verify formatting
+pnpm lint           # oxlint then ESLint (Vue i18n + accessibility stay on ESLint)
+pnpm lint:fix       # auto-fix Oxlint + ESLint issues
+pnpm format         # format with Oxfmt
+pnpm format:check   # verify Oxfmt
 ```
 
 ### Database

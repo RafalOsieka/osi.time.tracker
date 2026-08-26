@@ -31,6 +31,12 @@ export function isCi(): boolean {
   return Boolean(process.env.CI);
 }
 
+/** Minimal suite function the skip-guard needs — real Vitest `describe` or a unit fake. */
+export type DescribeSelection = {
+  (name: string, fn: () => void): void;
+  skip: (name: string, fn: () => void) => void;
+};
+
 /**
  * Selects `describe` or `describe.skip`, or throws in CI when a prerequisite is missing.
  */
@@ -43,8 +49,8 @@ export function describeOrSkip({
   available: boolean;
   missing: string;
   isCiEnv?: boolean;
-  describeFn?: typeof describe;
-}): typeof describe | typeof describe.skip {
+  describeFn?: DescribeSelection;
+}): (name: string, fn: () => void) => void {
   if (available) return describeFn;
   if (isCiEnv) {
     throw new Error(`${missing} is required in CI (skipping is only allowed locally)`);
@@ -68,8 +74,9 @@ export function requireDocker() {
  * Usage: `const describeAuthUI = requireBrowser();`
  */
 export function requireBrowser() {
+  const dockerAvailable = isDockerAvailable();
   return describeOrSkip({
-    available: isDockerAvailable() && isBrowserAvailable(),
-    missing: isDockerAvailable() ? 'Chromium' : 'Docker',
+    available: dockerAvailable && isBrowserAvailable(),
+    missing: dockerAvailable ? 'Chromium' : 'Docker',
   });
 }

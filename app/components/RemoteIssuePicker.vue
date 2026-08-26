@@ -1,17 +1,20 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { TrackerDto } from '../../shared/types/tracker';
-import {
-  REMOTE_ISSUE_SEARCH_MODE_ORDER,
-  type RemoteIssueRefDto,
-  type RemoteIssueSearchMode,
-  type RemoteIssueSearchResult,
+import type {
+  RemoteIssueRefDto,
+  RemoteIssueSearchMode,
+  RemoteIssueSearchResult,
 } from '../../shared/types/remote-issue-ref';
-import { useRemoteIssueSearch } from '~/composables/useRemoteIssueSearch';
 
 defineOptions({ inheritAttrs: false });
 
-const props = defineProps<{
+const {
+  config,
+  currentRef = undefined,
+  linkTestid = undefined,
+  cachedTestid = undefined,
+  unlinkedTestid = undefined,
+} = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
   linkTestid?: string;
@@ -31,18 +34,17 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
+const { search, results, loading, errorKey } = useRemoteIssueSearch(config);
 
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
-const queryField = useTemplateRef<HTMLElement>('queryField');
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
   query: '',
 });
 
-const showEditMenu = computed(() => !!props.currentRef && !open.value);
+const showEditMenu = computed(() => !!currentRef && !open.value);
 const editMenuClass = computed(() => [
   'pointer-events-none absolute top-full right-0 z-20 pt-1 opacity-0',
   'group-hover/ri:pointer-events-auto group-hover/ri:opacity-100',
@@ -95,10 +97,7 @@ function resultAccessibleName(result: RemoteIssueSearchResult): string {
 }
 
 function focusQueryInput() {
-  const root = queryField.value as HTMLElement | { $el?: HTMLElement } | null;
-  const host = root instanceof HTMLElement ? root : root?.$el;
-  const input = host?.querySelector?.('input') ?? (host instanceof HTMLInputElement ? host : null);
-  input?.focus?.();
+  rootEl.value?.querySelector('input')?.focus();
 }
 
 function onTriggerClick() {
@@ -239,7 +238,6 @@ onBeforeUnmount(() => {
             <div class="flex items-center gap-1">
               <UInput
                 id="remote-issue-query"
-                ref="queryField"
                 v-model="state.query"
                 class="min-w-0 flex-1"
                 :aria-label="t('remoteIssuePicker.queryLabel')"

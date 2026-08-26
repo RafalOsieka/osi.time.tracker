@@ -1,3 +1,6 @@
+/** Vue Router `query.redirect` value (single, repeated, or missing). */
+export type RedirectQuery = string | null | undefined | Array<string | null>;
+
 /**
  * Pure, framework-agnostic sanitizer for the `?redirect` query value.
  *
@@ -9,8 +12,8 @@
  * Shared by the global navigation guard and the login page; kept free of
  * Vue/Nuxt so it can be unit tested in isolation (see `test/unit/redirect.spec.ts`).
  */
-export function sanitizeRedirect(redirect: unknown, fallback = '/'): string {
-  if (typeof redirect !== 'string') {
+export function sanitizeRedirect(redirect: RedirectQuery, fallback = '/'): string {
+  if (redirect == null || Array.isArray(redirect)) {
     return fallback;
   }
   // Must be a path starting with exactly one `/`.

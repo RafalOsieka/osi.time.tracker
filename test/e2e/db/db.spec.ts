@@ -33,7 +33,8 @@ describeDb('database integration', () => {
     const { db, sql } = createDatabaseClient(dbUrl, { max: 1 });
     try {
       const rows = await db.execute<{ value: number }>(drizzleSql`SELECT 1 AS value`);
-      expect(Number((rows as Array<{ value: number }>)[0]!.value)).toBe(1);
+      const first = [...rows][0];
+      expect(first && 'value' in first ? Number(first.value) : undefined).toBe(1);
     } finally {
       await sql.end({ timeout: 5 });
     }

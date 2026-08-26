@@ -10,6 +10,8 @@ import { setupServer } from '../harness/setup-server';
 import { UNKNOWN_ID } from '../helpers/fixtures';
 import { createDatabaseClient } from '../../../server/db/client';
 import { trackers, timeEntries, tasks, remoteExports } from '../../../server/db/schema';
+import type { JsonObject } from '../../../shared/types/json';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
 
 const describeRemoteIssueRef = requireDocker();
 
@@ -20,14 +22,14 @@ async function createTaskViaEntry(
   projectId?: string | null,
   startedAt?: string,
 ): Promise<{ id: string; name: string; projectId: string | null; entryId: string }> {
-  const body: Record<string, unknown> = {
+  const times = {
     title,
     startedAt: startedAt ?? new Date().toISOString(),
     stoppedAt: startedAt
       ? new Date(new Date(startedAt).getTime() + 3600_000).toISOString()
       : new Date(Date.now() + 3600_000).toISOString(),
   };
-  if (projectId !== undefined) body.projectId = projectId;
+  const body = projectId === undefined ? times : { ...times, projectId };
   const startRes = await fetch(url('/api/time-entries'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -42,7 +44,7 @@ async function createTaskViaEntry(
   return { ...found, entryId: entry.id };
 }
 
-function reassign(jar: CookieJar, token: string, body: Record<string, unknown>): Promise<Response> {
+function reassign(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
   return fetch(url('/api/time-entries/reassign'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -50,11 +52,18 @@ function reassign(jar: CookieJar, token: string, body: Record<string, unknown>):
   });
 }
 
+async function taskIdFromReassign(res: Response): Promise<string> {
+  const body: TimeEntryDto[] = await res.json();
+  const taskId = body[0]?.taskId;
+  if (!taskId) throw new Error('expected taskId from reassign');
+  return taskId;
+}
+
 async function patchTask(
   jar: CookieJar,
   token: string,
   id: string,
-  body: Record<string, unknown>,
+  body: JsonObject,
 ): Promise<Response> {
   return fetch(url(`/api/tasks/${id}`), {
     method: 'PATCH',
@@ -64,17 +73,17 @@ async function patchTask(
 }
 
 const openProjectConfig = {
-  systemType: 'openproject',
+  systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
-  executionMode: 'client',
-  roundingRule: 'none',
+  executionMode: 'client' as const,
+  roundingRule: 'none' as const,
 };
 
 const redmineConfig = {
-  systemType: 'redmine',
+  systemType: 'redmine' as const,
   baseUrl: 'https://redmine.example.com',
-  executionMode: 'client',
-  roundingRule: 'none',
+  executionMode: 'client' as const,
+  roundingRule: 'none' as const,
 };
 
 describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () => {
@@ -232,8 +241,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '55',
       cachedTitle: 'Keep me',
     });
-    const linkedBody = await linked.json();
-    const linkedTaskId = linkedBody[0]?.taskId as string;
+    const linkedTaskId = await taskIdFromReassign(linked);
 
     const renamed = await reassign(jar, token, {
       ids: [entryId],
@@ -419,8 +427,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '300',
       cachedTitle: 'Exported',
     });
-    const linkedBody = await linked.json();
-    const taskId = linkedBody[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     const [userRow] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     const [exportRow] = await db
@@ -463,8 +470,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '50',
       cachedTitle: 'Enriched',
     });
-    const linkedBody = await linked.json();
-    const taskId = linkedBody[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     const listRes = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
     const rows: { id: string; remoteIssueRef?: { url?: string; remoteIssueId: string } }[] =
@@ -481,7 +487,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '60',
       cachedTitle: 'Bare after delete',
     });
-    const taskId = (await linked.json())[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     await fetch(url(`/api/trackers/${trackerId}`), {
       method: 'DELETE',
@@ -504,7 +510,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '300',
       cachedTitle: 'Rebase',
     });
-    const taskId = (await linked.json())[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
 
     const patchRes = await fetch(url(`/api/trackers/${trackerId}`), {
       method: 'PATCH',
@@ -534,7 +540,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       remoteIssueId: '400',
       cachedTitle: 'Stale ref',
     });
-    const taskId = (await linked.json())[0]?.taskId as string;
+    const taskId = await taskIdFromReassign(linked);
     const [taskBefore] = await db.select().from(tasks).where(eq(tasks.id, taskId));
     const oldConfigId = taskBefore!.trackerId!;
 

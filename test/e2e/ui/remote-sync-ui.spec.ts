@@ -9,6 +9,7 @@ import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
+import type { JsonObject } from '../../../shared/types/json';
 
 const describeRemoteSyncUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
@@ -24,7 +25,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     jar: CookieJar,
     token: string,
     name: string,
-    overrides: Record<string, unknown> = {},
+    overrides: JsonObject = {},
   ): Promise<{ id: string; name: string }> {
     const res = await fetch(url('/api/trackers'), {
       method: 'POST',
@@ -56,7 +57,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     return res.json();
   }
 
-  async function createEntry(jar: CookieJar, token: string, body: Record<string, unknown>) {
+  async function createEntry(jar: CookieJar, token: string, body: JsonObject) {
     const res = await fetch(url('/api/time-entries'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
@@ -191,10 +192,8 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     // Wait until the row is pushable (activity default applied + non-zero duration).
     await page.waitForFunction(() => {
-      const btn = document.querySelector(
-        '[data-testid="remote-sync-export-button"]',
-      ) as HTMLButtonElement | null;
-      return !!btn && !btn.disabled;
+      const btn = document.querySelector('[data-testid="remote-sync-export-button"]');
+      return btn instanceof HTMLButtonElement && !btn.disabled;
     });
 
     // Open review dialog, cancel without sending.
@@ -437,13 +436,12 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     // Drive the native date input directly so Nuxt UI's wrapper cannot swallow events.
     await page
       .locator('[data-testid="remote-sync-calendar"] input[type="date"]')
-      .evaluate((el, value) => {
-        const input = el as HTMLInputElement;
+      .evaluate((el: HTMLInputElement, value) => {
         const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-        proto?.set?.call(input, value);
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        proto?.set?.call(el, value);
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
       }, next);
     await page.waitForURL(`**/sync/${next}`);
     await page.waitForSelector('[data-testid="remote-sync-empty-state"]');

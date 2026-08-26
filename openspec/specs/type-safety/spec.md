@@ -62,21 +62,21 @@ Raw Zod (English) messages SHALL NOT be returned to the client.
 - **THEN** the translator returns `{ messageKey: 'errors.unexpected' }`
 
 ### Requirement: REQ-159 Explicit any is a lint error
-The lint configuration SHALL set `@typescript-eslint/no-explicit-any` to `error`, enforced by the existing `pnpm lint` gate. Use of `any` SHALL be permitted only via an explicit `// eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation carrying a justification. The `no-unsafe-*` rule family is out of scope for this change.
+The lint configuration SHALL treat explicit `any` as an error, enforced by the existing `pnpm lint` gate (Oxlint `typescript/no-explicit-any` when that rule is enabled there, otherwise `@typescript-eslint/no-explicit-any` on ESLint). Use of `any` SHALL be permitted only via an explicit next-line disable annotation for the engine that reports the rule, carrying a justification. The `no-unsafe-*` rule family is out of scope for this change.
 
 #### Scenario: Explicit any fails lint
 - **WHEN** code declares a value typed `any` without a disable annotation
 - **THEN** `pnpm lint` reports an error and fails
 
 #### Scenario: Justified exception passes lint
-- **WHEN** `any` is unavoidable and annotated with an eslint-disable comment and reason
+- **WHEN** `any` is unavoidable and annotated with a next-line disable comment and reason for the reporting engine
 - **THEN** `pnpm lint` passes for that line
 
 ### Requirement: REQ-036 Lint-disable exceptions carry a justification
-Every `// eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation SHALL be followed on the same line by a trailing comment (` -- <reason>`) explaining why the exception is unavoidable.
+Every next-line disable annotation for the `no-explicit-any` rule (ESLint `@typescript-eslint/no-explicit-any` or Oxlint `typescript/no-explicit-any`) SHALL be followed on the same line by a trailing comment (` -- <reason>`) explaining why the exception is unavoidable.
 
 #### Scenario: Justification comment is present
-- **WHEN** `test/e2e/support/seed.ts` declares `sharedHasher` with an `eslint-disable-next-line @typescript-eslint/no-explicit-any` annotation
+- **WHEN** a justified `any` uses a next-line disable for `no-explicit-any`
 - **THEN** the annotation includes a trailing `-- <reason>` comment explaining the exception
 
 ### Requirement: REQ-234 Boundary schemas use the zod 4 idiom
@@ -97,3 +97,40 @@ constructors `z.uuid()`, `z.url()`, and `z.iso.datetime()` rather than the depre
 #### Scenario: No deprecated zod options remain
 - **WHEN** the `shared/types` modules are inspected after the migration
 - **THEN** no occurrence of `required_error`, `invalid_type_error`, or the `message` option SHALL remain
+
+### Requirement: REQ-284 Catch bindings are unannotated
+`catch` bindings SHALL omit an explicit type annotation. Under TypeScript `strict`, the binding is already `unknown`. Function parameters, return types, and type aliases SHALL NOT use `unknown` except inside a named type-predicate (`isX`) that immediately narrows to a domain type.
+
+#### Scenario: Catch has no unknown annotation
+- **WHEN** a `try/catch` handles a thrown value
+- **THEN** the clause SHALL be `catch (err)` (or equivalent) without `: unknown`
+
+#### Scenario: Extractor does not take unknown
+- **WHEN** a helper such as `extractMessageKey` or `toAdapterError` is declared
+- **THEN** its input SHALL be a named domain or error type (or a type-predicate parameter), not `unknown`
+
+#### Scenario: Explicit unknown on catch fails lint
+- **WHEN** a file contains `catch (err: unknown)`
+- **THEN** `pnpm lint` SHALL report an anti-slop `no-unknown-parameters` diagnostic (or equivalent) and fail
+
+### Requirement: REQ-285 Runtime typeof narrowing is forbidden
+Application, server, and shared code SHALL NOT use `typeof` checks to narrow values. Narrowing SHALL use `instanceof`, `'key' in` after a named type, schema parse, or a named `isX` / `hasX` type predicate. Ad hoc `typeof err === 'object'` ladders SHALL NOT be used.
+
+#### Scenario: Error mapper uses instanceof or a named guard
+- **WHEN** `extractMessageKey` or an adapter error mapper classifies a caught value
+- **THEN** it SHALL NOT use `typeof` to decide the shape
+
+#### Scenario: Ad hoc typeof fails lint
+- **WHEN** a non-predicate function contains `typeof x === 'string'` (or `'object'` / `'number'`)
+- **THEN** `pnpm lint` SHALL fail with `anti-slop/no-runtime-typeof`
+
+### Requirement: REQ-286 Message params are a named primitive map
+The `{ messageKey, params }` contract SHALL type `params` as a named `MessageParams` type whose values are `string | number | boolean` (optional keys). `Record<string, unknown>` SHALL NOT appear on that contract, on `mapZodError` output, or on client `t()` interpolation objects for API errors. JSON keys already in use (`min`, `max`, `expected`, custom schema params) SHALL remain; `received` SHALL still be omitted.
+
+#### Scenario: Zod mapper emits primitive params
+- **WHEN** `mapZodError` maps a length or type issue
+- **THEN** `params` SHALL be typed as `MessageParams` and SHALL contain only `string | number | boolean` values
+
+#### Scenario: Record unknown on the error contract fails lint
+- **WHEN** `ApiMessage.params` or an equivalent is declared as `Record<string, unknown>`
+- **THEN** `pnpm lint` SHALL fail with `anti-slop/no-unsafe-dictionary-type`

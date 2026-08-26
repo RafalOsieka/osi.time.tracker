@@ -1,9 +1,10 @@
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { projects } from '../../db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event) => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
 

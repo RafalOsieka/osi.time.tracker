@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { useRoundedDurations } from '../../app/composables/useRoundedDurations';
+import { useRoundedDurations } from '../../app/composables/use-rounded-durations';
 
 describe('useRoundedDurations', () => {
   it('applies rounding until an override is committed', () => {

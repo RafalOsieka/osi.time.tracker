@@ -3,6 +3,7 @@ import {
   OpenProjectClient,
   OPENPROJECT_TITLE_SEARCH_MAX_RESULTS,
 } from '../../shared/remote/openproject/client';
+import type { ZodType } from 'zod';
 import type { RemoteRequest, RemoteResponse, Transport } from '../../shared/types/remote-adapter';
 
 /** Records every request it is asked to execute and returns canned responses in order. */
@@ -11,11 +12,12 @@ function fakeTransport(responses: RemoteResponse[]): Transport & { requests: Rem
   let index = 0;
   return {
     requests,
-    async execute(request: RemoteRequest): Promise<RemoteResponse> {
+    async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
       requests.push(request);
       const response = responses[Math.min(index, responses.length - 1)]!;
       index += 1;
-      return response;
+      const parsed = schema.safeParse(response.payload);
+      return { status: response.status, payload: parsed.success ? parsed.data : null };
     },
   };
 }

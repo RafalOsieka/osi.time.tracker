@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-import { sidebarToggleProps } from '~/utils/sidebarToggleProps';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const { t } = useI18n();

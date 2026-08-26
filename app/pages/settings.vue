@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
-
 type ColorModePreference = 'light' | 'dark' | 'system';
 type AppLocale = 'en' | 'pl';
 
@@ -37,14 +35,19 @@ const themeItems = computed(
 );
 
 const selectedLocale = computed({
-  get: () => locale.value as AppLocale,
+  get: (): AppLocale => (locale.value === 'pl' ? 'pl' : 'en'),
   set: (value: AppLocale) => {
     void setLocale(value);
   },
 });
 
 const selectedTheme = computed({
-  get: () => colorMode.preference as ColorModePreference,
+  get: (): ColorModePreference => {
+    const preference = colorMode.preference;
+    return preference === 'light' || preference === 'dark' || preference === 'system'
+      ? preference
+      : 'system';
+  },
   set: (value: ColorModePreference) => {
     colorMode.preference = value;
   },

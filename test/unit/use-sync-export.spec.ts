@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { useSyncExport } from '../../app/composables/useSyncExport';
+import { useSyncExport } from '../../app/composables/use-sync-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { buildExportRequestKey } from '../../shared/utils/export-request-key';

@@ -11,6 +11,7 @@ import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import { groupKeyForTitleScript, pageIncludesTextScript } from '../helpers/dom';
+import type { JsonObject } from '../../../shared/types/json';
 
 const pageIncludesText = pageIncludesTextScript();
 const groupKeyForTitle = groupKeyForTitleScript();
@@ -34,7 +35,7 @@ function startFakeTracker(): Promise<{ server: Server; baseUrl: string }> {
     });
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
-      const port = typeof address === 'object' && address ? address.port : 0;
+      const port = address instanceof Object && 'port' in address ? address.port : 0;
       resolve({ server, baseUrl: `http://127.0.0.1:${port}` });
     });
   });
@@ -59,7 +60,7 @@ describeRemoteIssuePickerProxiedUI('proxied remote issue picker UI flow', async 
     jar: CookieJar,
     token: string,
     name: string,
-    overrides: Record<string, unknown> = {},
+    overrides: JsonObject = {},
   ): Promise<{ id: string; name: string }> {
     const res = await fetch(url('/api/trackers'), {
       method: 'POST',

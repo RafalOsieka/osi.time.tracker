@@ -9,6 +9,7 @@ const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return {
@@ -34,7 +35,6 @@ let mockTrackers: Tracker[] = [];
 let mockProjects: Project[] = [];
 /** When true, the projects list mock reports pending with no data (loading gate tests). */
 let projectsListPending = false;
-const trackersRefreshMocks: ReturnType<typeof vi.fn>[] = [];
 
 mockNuxtImport('$fetch', () => fetchMock);
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
@@ -53,12 +53,8 @@ mockNuxtImport('useAsyncData', () => {
     fetcher: () => Promise<Tracker[] | Project[]>,
     opts?: { immediate?: boolean },
   ) => {
-    const isTrackers = key === 'trackers-for-projects';
-    // Projects list is SSR-loaded; tracker options stay lazy until dialog open.
-    const data = ref<Tracker[] | Project[] | null>(
-      isTrackers ? null : projectsListPending ? null : mockProjects,
-    );
-    const pending = ref(isTrackers ? false : projectsListPending);
+    const data = ref<Tracker[] | Project[] | null>(projectsListPending ? null : mockProjects);
+    const pending = ref(projectsListPending);
     const refresh = vi.fn(async () => {
       pending.value = true;
       try {
@@ -67,16 +63,14 @@ mockNuxtImport('useAsyncData', () => {
         pending.value = false;
       }
     });
-    if (isTrackers) {
-      trackersRefreshMocks.push(refresh);
-    } else if (opts?.immediate !== false && !projectsListPending) {
-      // Simulate SSR list resolution for the projects key.
+    if (opts?.immediate !== false && !projectsListPending) {
       data.value = mockProjects;
     }
     return { data, pending, refresh };
   };
 });
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
@@ -170,13 +164,11 @@ describe('projects page', () => {
     mockTrackers = [];
     mockProjects = [];
     projectsListPending = false;
-    trackersRefreshMocks.length = 0;
     fetchMock.mockImplementation((url: string) =>
       Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
     );
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }
@@ -255,13 +247,12 @@ describe('projects page', () => {
     });
     await flushPromises();
 
-    expect(trackersRefreshMocks.length).toBeGreaterThan(0);
-    expect(trackersRefreshMocks[0]).not.toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('trackers'))).toBe(false);
 
     await wrapper.find('[data-testid="new-project-button"]').trigger('click');
     await flushPromises();
 
-    expect(trackersRefreshMocks[0]).toHaveBeenCalled();
+    expect(fetchMock.mock.calls.some((call) => String(call[0]).includes('trackers'))).toBe(true);
     expect(wrapper.find('[data-testid="project-tracker-select"]').exists()).toBe(true);
   });
 
@@ -304,16 +295,17 @@ describe('projects page', () => {
     });
     await flushPromises();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (wrapper.vm as any).openEdit(mockProjects[0]);
+    const project = mockProjects[0];
+    if (!project) throw new Error('expected project fixture');
+    wrapper.vm.openEdit(project);
     await flushPromises();
 
-    const select = wrapper.find('[data-testid="project-tracker-select"]');
+    const select = wrapper.find<HTMLSelectElement>('[data-testid="project-tracker-select"]');
     expect(select.exists()).toBe(true);
     const option = select.find('option[value="deleted-tracker"]');
     expect(option.exists()).toBe(true);
     expect(option.text()).toBe('Deleted Tracker');
-    expect((select.element as HTMLSelectElement).value).toBe('deleted-tracker');
+    expect(select.element.value).toBe('deleted-tracker');
   });
 
   it('4.7c dialog opens on new button click', async () => {

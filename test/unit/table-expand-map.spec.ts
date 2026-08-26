@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { asExpandMap, isExpandedInMap, toggleExpandMap } from '../../app/utils/tableExpandMap';
+import { asExpandMap, isExpandedInMap, toggleExpandMap } from '../../app/utils/table-expand-map';
 
 describe('tableExpandMap', () => {
   it('asExpandMap normalizes expand-all to an empty map copy', () => {

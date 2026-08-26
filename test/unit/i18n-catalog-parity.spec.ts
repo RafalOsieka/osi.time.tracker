@@ -2,12 +2,12 @@ import { describe, expect, it } from 'vitest';
 import en from '../../i18n/locales/en.json';
 import pl from '../../i18n/locales/pl.json';
 
-function collectKeys(obj: Record<string, unknown>, prefix = ''): string[] {
+type CatalogNode = string | { readonly [key: string]: CatalogNode };
+
+function collectKeys(obj: { readonly [key: string]: CatalogNode }, prefix = ''): string[] {
   return Object.entries(obj).flatMap(([key, value]) => {
     const full = prefix ? `${prefix}.${key}` : key;
-    return value !== null && typeof value === 'object'
-      ? collectKeys(value as Record<string, unknown>, full)
-      : [full];
+    return value instanceof Object ? collectKeys(value, full) : [full];
   });
 }
 

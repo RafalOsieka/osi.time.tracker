@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "skills": {
+    "doctor": {
+      "source": "vite-doctor.onmax.me",
+      "sourceUrl": "https://vite-doctor.onmax.me/",
+      "sourceType": "well-known",
+      "computedHash": "aaab62d70fc30c3a429749234ffb707ccf334d5bf096fe711e2b4242b823cd13",
+      "wellKnownDigest": "sha256:a9a1db3ffb984f478d7452045eb50371f9e2eda3549819f470b691bcdc6fa6fe"
+    }
+  }
+}

@@ -1,7 +1,5 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
-import { useI18n } from 'vue-i18n';
-import { h, resolveComponent } from 'vue';
 
 const { t, locale } = useI18n();
 const toast = useAppToast();
@@ -47,8 +45,8 @@ async function onDelete(tracker: Pick<TrackerDto, 'id' | 'name'>) {
     clearSecret(tracker.id);
     await fetchTrackers();
     toast.success(t('trackers.toastDeletedSummary'), t('trackers.toastDeletedDetail'));
-  } catch (err: unknown) {
-    const key = extractMessageKey(err, 'errors.unexpected');
+  } catch (err) {
+    const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
   }
 }

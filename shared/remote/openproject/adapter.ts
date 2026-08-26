@@ -4,6 +4,7 @@ import type { RemoteIssueSearchResult } from '../../types/remote-issue-ref';
 import type { RemoteTimeLogDto } from '../../types/remote-export';
 import type { RemoteTrackerAdapter, Transport } from '../../types/remote-adapter';
 import { RemoteAdapterError } from '../../types/remote-adapter';
+import { rethrowAsAdapterError, UpstreamHttpError } from '../upstream-error';
 import { OpenProjectClient, OPENPROJECT_TIME_LOGS_MAX_PAGES } from './client';
 
 /**
@@ -29,8 +30,8 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
     try {
       const { results } = await this.client.searchByTitle(query, this.secret);
       return results;
-    } catch (err: unknown) {
-      throw toAdapterError(err, 'error.remoteIssueSearchFailed');
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteIssueSearchFailed');
     }
   }
 
@@ -38,11 +39,11 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
     try {
       const { result } = await this.client.getIssueById(remoteIssueId, this.secret);
       return result;
-    } catch (err: unknown) {
-      if (getUpstreamStatus(err) === 404) {
+    } catch (err) {
+      if (err instanceof UpstreamHttpError && err.statusCode === 404) {
         return null;
       }
-      throw toAdapterError(err, 'error.remoteIssueSearchFailed');
+      rethrowAsAdapterError(err, 'error.remoteIssueSearchFailed');
     }
   }
 
@@ -50,15 +51,15 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
     try {
       const { options } = await this.client.getActivityOptions(remoteIssueId, this.secret);
       return options;
-    } catch (err: unknown) {
+    } catch (err) {
       // OpenProject returns 403 for work packages whose type doesn't allow
       // time logging (e.g. a "Summary" item) — a per-work-package
       // permission outcome, not a rejected credential — so treat it as an
       // empty result rather than a hard failure.
-      if (getUpstreamStatus(err) === 403) {
+      if (err instanceof UpstreamHttpError && err.statusCode === 403) {
         return [];
       }
-      throw toAdapterError(err, 'error.remoteActivitiesFetchFailed');
+      rethrowAsAdapterError(err, 'error.remoteActivitiesFetchFailed');
     }
   }
 
@@ -69,8 +70,8 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
         throw new RemoteAdapterError('error.remoteAccountFetchFailed', 502);
       }
       return account;
-    } catch (err: unknown) {
-      throw toAdapterError(err, 'error.remoteAccountFetchFailed');
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteAccountFetchFailed');
     }
   }
 
@@ -97,8 +98,8 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
         if (!result.nextPageUrl) break;
         nextPageUrl = result.nextPageUrl;
       }
-    } catch (err: unknown) {
-      throw toAdapterError(err, 'error.remoteTimeLogsFetchFailed');
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteTimeLogsFetchFailed');
     }
 
     return logs;
@@ -117,36 +118,8 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
         throw new RemoteAdapterError('error.remoteExportCreateFailed', 502);
       }
       return result;
-    } catch (err: unknown) {
-      throw toAdapterError(err, 'error.remoteExportCreateFailed');
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteExportCreateFailed');
     }
   }
-}
-
-function getUpstreamStatus(err: unknown): number | undefined {
-  if (err instanceof RemoteAdapterError) return err.status;
-  return (
-    (err as { statusCode?: number; response?: { status?: number } })?.statusCode ??
-    (err as { response?: { status?: number } })?.response?.status
-  );
-}
-
-/** Passes a same-origin-guard `RemoteAdapterError` through unchanged; maps anything else. */
-function toAdapterError(err: unknown, failureMessageKey: string): RemoteAdapterError {
-  if (err instanceof RemoteAdapterError) return err;
-
-  const status = getUpstreamStatus(err);
-
-  if (status === 401 || status === 403) {
-    // Conceal the exact upstream status so the auth-rejection response
-    // never leaks provider-specific detail about the rejected credential.
-    return new RemoteAdapterError('error.remoteServerModeAuthRejected', 502);
-  }
-
-  if (status !== undefined) {
-    return new RemoteAdapterError(failureMessageKey, status);
-  }
-
-  // No HTTP status at all: connection refused, timeout, or DNS failure.
-  return new RemoteAdapterError('error.remoteServerModeConnectionFailed');
 }

@@ -2,17 +2,19 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
-import { wallClockToInstant } from '../../app/utils/dateTime';
+import { wallClockToInstant } from '../../app/utils/date-time';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ofetch')>();
   return { ...actual, $fetch: Object.assign(csrfFetchMock, { create: () => csrfFetchMock }) };
 });
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return { ...actual, useI18n: () => ({ t: (key: string) => key }) };
@@ -70,8 +72,7 @@ describe('TimerAddEntryDialog', () => {
     fetchMock.mockResolvedValue([]);
     vi.stubGlobal('$fetch', fetchMock);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (useNuxtApp() as any).$csrfFetch = csrfFetchMock;
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
       // ignore
     }

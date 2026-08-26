@@ -1,9 +1,7 @@
 <script setup lang="ts">
-import { useI18n } from 'vue-i18n';
 import type { RemoteSyncDayEntryDto, RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
 import type { RemoteTimeLogDto } from '~~/shared/types/remote-export';
 import type { RoundingSuggestion } from '~~/shared/utils/rounding';
-import { formatDuration, formatSignedDuration } from '~/utils/formatDuration';
 
 defineProps<{
   row: RemoteSyncDayRowDto;

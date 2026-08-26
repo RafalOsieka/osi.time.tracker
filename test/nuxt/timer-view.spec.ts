@@ -3,13 +3,17 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { ref } from 'vue';
 import IndexPage from '../../app/pages/index.vue';
+import type { MessageParams } from '../../shared/types/message-params';
+import type { ProjectDto } from '../../shared/types/project';
+import type { TimeEntryDto } from '../../shared/types/time-entry';
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   return {
     ...actual,
     useI18n: () => ({
-      t: (key: string, params?: Record<string, unknown>) =>
+      t: (key: string, params?: MessageParams) =>
         params ? `${key}:${JSON.stringify(params)}` : key,
       locale: { value: 'en-US' },
     }),
@@ -32,14 +36,16 @@ type Feed = {
   nextBefore: string | null;
 };
 
-const settingsState = ref({
-  timezone: 'America/Los_Angeles' as string | null,
+type SettingsState = { timezone: string | null };
+const settingsState = ref<SettingsState>({
+  timezone: 'America/Los_Angeles',
 });
+interface TimerViewMockState {
+  feed: Feed;
+  projects: ProjectDto[];
+}
 const { entryFetches, fetchMock, mockState } = vi.hoisted(() => {
-  const mockState: {
-    feed: Feed;
-    projects: unknown[];
-  } = {
+  const mockState: TimerViewMockState = {
     feed: { entries: [], hasMore: false, nextBefore: null },
     projects: [],
   };
@@ -68,13 +74,14 @@ mockNuxtImport('$fetch', () => fetchMock);
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
 
 mockNuxtImport('useAsyncData', () => {
-  return (key: string, fetcher: () => Promise<unknown>) => {
+  return (key: string, fetcher: () => Promise<Feed | ProjectDto[]>) => {
     if (key === 'timer-view-feed') {
       entryFetches.count += 1;
       const data = ref(mockState.feed);
       const refresh = vi.fn(async () => {
         try {
-          data.value = (await fetcher()) as Feed;
+          const next = await fetcher();
+          if (!Array.isArray(next) && 'entries' in next) data.value = next;
         } catch {
           /* keep previous */
         }
@@ -84,7 +91,8 @@ mockNuxtImport('useAsyncData', () => {
     const data = ref(mockState.projects);
     const refresh = vi.fn(async () => {
       try {
-        data.value = (await fetcher()) as unknown[];
+        const next = await fetcher();
+        if (Array.isArray(next)) data.value = next;
       } catch {
         /* keep previous */
       }
@@ -94,7 +102,7 @@ mockNuxtImport('useAsyncData', () => {
   };
 });
 
-const runningState = ref<unknown>(null);
+const runningState = ref<TimeEntryDto | null>(null);
 const elapsedSecondsState = ref(0);
 const startMock = vi.fn();
 const stopMock = vi.fn();
@@ -154,14 +162,20 @@ const TimerTaskGroupStub = {
 };
 
 /** Entry payload the add-entry stub emits for smart-include tests. */
-const pendingAddedEntry = vi.hoisted(() => ({ value: null as Entry | null }));
+interface PendingAddedEntry {
+  value: Entry | null;
+}
+const pendingAddedEntry = vi.hoisted((): PendingAddedEntry => ({ value: null }));
 
 const TimerAddEntryDialogStub = {
   name: 'TimerAddEntryDialog',
   props: ['visible', 'timeZone'],
   emits: ['added', 'update:visible'],
   template: '<button type="button" data-testid="stub-emit-added" @click="onEmit" />',
-  setup(_: unknown, { emit }: { emit: (e: 'added', payload: Entry) => void }) {
+  setup(
+    _props: { visible?: boolean; timeZone?: string },
+    { emit }: { emit: (e: 'added', payload: Entry) => void },
+  ) {
     return {
       onEmit() {
         if (pendingAddedEntry.value) emit('added', pendingAddedEntry.value);

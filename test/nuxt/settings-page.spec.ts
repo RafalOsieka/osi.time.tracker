@@ -1,18 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { flushPromises } from '@vue/test-utils';
-import type { Ref } from 'vue';
 import SettingsPage from '../../app/pages/settings.vue';
 
 const harness = vi.hoisted(() => ({
   saveMock: vi.fn(),
   toastAdd: vi.fn(),
-  settings: { value: { timezone: 'UTC' as string | null } } as Ref<{
-    timezone: string | null;
-  }>,
-  detectedTimeZone: { value: 'UTC' } as Ref<string>,
+  settings: { value: { timezone: 'UTC' } },
+  detectedTimeZone: { value: 'UTC' },
 }));
 
+// oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
 vi.mock('vue-i18n', async (importOriginal) => {
   const actual = await importOriginal<typeof import('vue-i18n')>();
   const { ref } = await import('vue');
@@ -26,9 +24,10 @@ vi.mock('vue-i18n', async (importOriginal) => {
   };
 });
 
-vi.mock('../../app/composables/useUserSettings', async () => {
+// oxlint-disable-next-line anti-slop/no-module-mocking -- cookie settings composable has no test seam
+vi.mock('../../app/composables/use-user-settings', async () => {
   const { ref } = await import('vue');
-  harness.settings = ref({ timezone: 'UTC' as string | null });
+  harness.settings = ref({ timezone: 'UTC' });
   harness.detectedTimeZone = ref('UTC');
   return {
     useUserSettings: () => ({

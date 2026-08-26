@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '../db';
+import { getDb } from '../db';
 import { users } from '../db/schema/users';
 
 /**
@@ -13,6 +13,7 @@ export function normalizeEmail(email: string): string {
  * Finds a user in the database by their email (normalizing it first).
  */
 export async function findUserByEmail(email: string) {
+  const db = getDb();
   const normalized = normalizeEmail(email);
   const result = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
   return result[0] || null;
@@ -30,6 +31,7 @@ export async function createUser({
   password: string;
   displayName?: string | null;
 }) {
+  const db = getDb();
   const normalized = normalizeEmail(email);
   const passwordHash = await hashPassword(password);
 

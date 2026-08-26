@@ -1,36 +1,32 @@
 <script setup lang="ts">
-import { normalizeTimeInput } from '~/utils/normalizeTimeInput';
-
-const props = withDefaults(
-  defineProps<{
-    modelValue: string | null;
-    label?: string;
-    testid?: string;
-    id?: string;
-    describedby?: string;
-    invalid?: boolean;
-    compact?: boolean;
-  }>(),
-  {
-    label: undefined,
-    testid: undefined,
-    id: undefined,
-    describedby: undefined,
-    invalid: false,
-    compact: true,
-  },
-);
+const {
+  modelValue,
+  label = undefined,
+  testid = undefined,
+  id = undefined,
+  describedby = undefined,
+  invalid = false,
+  compact = true,
+} = defineProps<{
+  modelValue: string | null;
+  label?: string;
+  testid?: string;
+  id?: string;
+  describedby?: string;
+  invalid?: boolean;
+  compact?: boolean;
+}>();
 
 const emit = defineEmits<{
   'update:modelValue': [string | null];
   commit: [];
   cancel: [];
 }>();
-const inputValue = ref(props.modelValue ?? '');
-const previousValue = ref(props.modelValue ?? '');
+const inputValue = ref(modelValue ?? '');
+const previousValue = ref(modelValue ?? '');
 
 watch(
-  () => props.modelValue,
+  () => modelValue,
   (value) => {
     if (value !== previousValue.value) {
       inputValue.value = value ?? '';
@@ -46,7 +42,7 @@ function commit() {
   } else {
     inputValue.value = normalized;
     previousValue.value = normalized;
-    if (normalized !== props.modelValue) emit('update:modelValue', normalized);
+    if (normalized !== modelValue) emit('update:modelValue', normalized);
     emit('commit');
   }
 }
@@ -68,7 +64,10 @@ function cancel() {
     :variant="compact ? 'outline' : undefined"
     :ui="
       compact
-        ? { root: 'w-full min-w-0', base: 'w-full min-w-0 text-center text-sm/4 tabular-nums' }
+        ? {
+            root: 'w-full min-w-0',
+            base: 'w-full min-w-0 text-center text-sm/4 tabular-nums',
+          }
         : undefined
     "
     :aria-label="label"
