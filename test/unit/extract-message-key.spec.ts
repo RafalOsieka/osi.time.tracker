@@ -3,7 +3,7 @@ import { extractCaughtMessageKey, extractMessageKey } from '../../app/utils/extr
 import { RemoteAdapterError } from '../../shared/types/remote-adapter';
 import type { MessageParams } from '../../shared/types/message-params';
 
-type NitroFetchError = Error & { data?: { data?: { messageKey?: string } } };
+type NitroFetchError = Error & { data?: { data?: { messageKey?: string | number | null } } };
 
 function nitroFetchError(messageKey: string): NitroFetchError {
   const err: NitroFetchError = new Error('request failed');
@@ -28,6 +28,18 @@ describe('extractMessageKey', () => {
     const err: NitroFetchError = new Error('request failed');
     err.data = {};
     expect(extractMessageKey(err, 'fallback')).toBe('fallback');
+  });
+
+  it('returns fallback when messageKey is null', () => {
+    const err: NitroFetchError = new Error('request failed');
+    err.data = { data: { messageKey: null } };
+    expect(extractMessageKey(err, 'fallback')).toBe('fallback');
+  });
+
+  it('stringifies a non-string messageKey', () => {
+    const err: NitroFetchError = new Error('request failed');
+    err.data = { data: { messageKey: 422 } };
+    expect(extractMessageKey(err, 'fallback')).toBe('422');
   });
 });
 

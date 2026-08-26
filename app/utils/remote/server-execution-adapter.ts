@@ -17,6 +17,7 @@ import {
   RemoteAdapterError,
   type RemoteTrackerAdapter,
 } from '../../../shared/types/remote-adapter';
+import { extractCaughtMessageKey } from '~/utils/extract-message-key';
 
 const issueSearchResponseSchema = z.object({
   results: z.array(
