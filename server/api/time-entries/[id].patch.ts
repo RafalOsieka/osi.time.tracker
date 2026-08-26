@@ -4,7 +4,7 @@ import {
   TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS,
 } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
 import { resolveTaskId } from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateTimeEntrySchema);
 
-  const [existing] = await db
+  const [existing] = await getDb()
     .select()
     .from(timeEntries)
     .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
@@ -59,7 +59,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
     });
   }
 
-  const updated = await db.transaction(async (tx) => {
+  const updated = await getDb().transaction(async (tx) => {
     let taskId = existing.taskId;
     if (parsedBody.taskId !== undefined && parsedBody.taskId !== null) {
       const [ownedTask] = await tx

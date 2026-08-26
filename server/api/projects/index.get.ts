@@ -1,12 +1,12 @@
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
 import { eq, isNull, asc, and } from 'drizzle-orm';
-import type { ProjectDto } from '../../../shared/types/project';
+import { listProjectsQuerySchema, type ProjectDto } from '../../../shared/types/project';
+import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
   const { user } = await requireAuth(event);
-  const query = getQuery<{ trackerId?: string }>(event);
-  const trackerIdRaw = query.trackerId;
+  const { trackerId: trackerIdRaw } = await getZodQuery(event, listProjectsQuerySchema);
 
   const conditions = [eq(projects.userId, user.id), isNull(projects.deletedAt)];
   if (trackerIdRaw === 'null' || trackerIdRaw === 'local') {
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
     conditions.push(eq(projects.trackerId, trackerIdRaw));
   }
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: projects.id,
       name: projects.name,

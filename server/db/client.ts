@@ -21,7 +21,7 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
 /**
  * Creates a new Drizzle client backed by a postgres.js connection.
  * Exposed mainly for tests and the migrator; application code SHOULD use the
- * shared `db` client exported from `./index`.
+ * shared `getDb()` client exported from `./index`.
  */
 export type DatabaseClientPair = {
   db: PostgresJsDatabase<typeof schema>;

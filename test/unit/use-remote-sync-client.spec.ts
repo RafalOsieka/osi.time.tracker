@@ -18,7 +18,7 @@ vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
 }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
-vi.mock('../../app/composables/useTrackerSecret', () => ({
+vi.mock('../../app/composables/use-tracker-secret', () => ({
   useTrackerSecret: () => ({
     get: getSecret,
     set: vi.fn(),
@@ -27,7 +27,7 @@ vi.mock('../../app/composables/useTrackerSecret', () => ({
 }));
 
 const { mapRemoteSyncClientError, useRemoteSyncClient } =
-  await import('../../app/composables/useRemoteSyncClient');
+  await import('../../app/composables/use-remote-sync-client');
 
 const config: TrackerDto = {
   id: 'cfg-1',

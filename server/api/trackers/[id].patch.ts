@@ -1,7 +1,7 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { updateTrackerSchema } from '../../../shared/types/tracker';
 import type { TrackerDto } from '../../../shared/types/tracker';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { trackers } from '../../db/schema';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
 import { readZodBody } from '../../utils/zod-input';
@@ -26,7 +26,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateTrackerSchema);
 
-  const [existing] = await db
+  const [existing] = await getDb()
     .select({ id: trackers.id })
     .from(trackers)
     .where(and(eq(trackers.id, id!), eq(trackers.userId, user.id), isNull(trackers.deletedAt)))
@@ -39,7 +39,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
     });
   }
 
-  const duplicate = await db
+  const duplicate = await getDb()
     .select({ id: trackers.id })
     .from(trackers)
     .where(
@@ -60,7 +60,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   }
 
   try {
-    const [updated] = await db
+    const [updated] = await getDb()
       .update(trackers)
       .set({
         name: parsedBody.name,

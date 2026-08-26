@@ -14,7 +14,7 @@ vi.stubGlobal('useState', (key: string, init?: () => StateValue) => {
   return useStateStore.get(key);
 });
 
-const { useActiveTrackers } = await import('../../app/composables/useActiveTrackers');
+const { useActiveTrackers } = await import('../../app/composables/use-active-trackers');
 
 const tracker: TrackerDto = {
   id: 'tr-1',

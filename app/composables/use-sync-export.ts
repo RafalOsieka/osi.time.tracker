@@ -1,10 +1,14 @@
+import { computed, ref } from 'vue';
 import type {
   FinalizeRemoteExportResultDto,
   RemoteExportTaskOutcomeDto,
 } from '../../shared/types/remote-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';
-import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/syncUiMaps';
+import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/sync-ui-maps';
+import { buildExportRequestKey } from '../../shared/utils/export-request-key';
+import { resolveExportComment } from '../../shared/utils/export-comment';
+import { mapRemoteSyncClientError } from './use-remote-sync-client';
 
 export type SyncExportProgressStatus =
   | 'queued'

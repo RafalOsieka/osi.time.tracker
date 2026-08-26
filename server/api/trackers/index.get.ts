@@ -1,4 +1,4 @@
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { trackers } from '../../db/schema';
 import { eq, isNull, asc, and } from 'drizzle-orm';
 import type { TrackerDto } from '../../../shared/types/tracker';
@@ -6,7 +6,7 @@ import type { TrackerDto } from '../../../shared/types/tracker';
 export default defineEventHandler(async (event): Promise<TrackerDto[]> => {
   const { user } = await requireAuth(event);
 
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(trackers)
     .where(and(eq(trackers.userId, user.id), isNull(trackers.deletedAt)))

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TimerViewGroup } from '~/utils/timerViewGrouping';
+import type { TimerViewGroup } from '~/utils/timer-view-grouping';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const {

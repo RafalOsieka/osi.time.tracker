@@ -25,7 +25,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
 });
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- cookie settings composable has no test seam
-vi.mock('../../app/composables/useUserSettings', async () => {
+vi.mock('../../app/composables/use-user-settings', async () => {
   const { ref } = await import('vue');
   harness.settings = ref({ timezone: 'UTC' });
   harness.detectedTimeZone = ref('UTC');

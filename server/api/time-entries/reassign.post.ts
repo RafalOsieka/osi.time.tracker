@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { reassignTimeEntriesSchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
 import { resolveTaskId } from '../../utils/tasks';
 import { resolveActiveTrackerForProject } from '../../utils/remote-issue-refs';
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   const parsedBody = await readZodBody(event, reassignTimeEntriesSchema);
   const remoteIssueProvided = parsedBody.remoteIssueId !== undefined;
 
-  const updatedRows = await db.transaction(async (tx) => {
+  const updatedRows = await getDb().transaction(async (tx) => {
     const rows = await tx
       .select({
         id: timeEntries.id,

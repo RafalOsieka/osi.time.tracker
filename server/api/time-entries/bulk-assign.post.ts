@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { bulkAssignSchema } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries } from '../../db/schema';
 import { resolveTaskId } from '../../utils/tasks';
 import { readZodBody } from '../../utils/zod-input';
@@ -10,7 +10,7 @@ export default defineEventHandler(async (event): Promise<{ success: true }> => {
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, bulkAssignSchema);
 
-  await db.transaction(async (tx) => {
+  await getDb().transaction(async (tx) => {
     const rows = await tx
       .select({ id: timeEntries.id, taskId: timeEntries.taskId })
       .from(timeEntries)

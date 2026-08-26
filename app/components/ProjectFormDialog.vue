@@ -15,23 +15,21 @@ const { t } = useI18n();
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
+const requestFetch = useRequestFetch();
 
 const dialogOpen = computed({
   get: () => props.open,
   set: (value: boolean) => emit('update:open', value),
 });
 
-const trackersData = ref<TrackerDto[] | null>(null);
-const trackersPending = ref(false);
-
-async function fetchTrackerOptions() {
-  trackersPending.value = true;
-  try {
-    trackersData.value = await fetchTrackers();
-  } finally {
-    trackersPending.value = false;
-  }
-}
+const {
+  data: trackersData,
+  pending: trackersPending,
+  refresh: fetchTrackerOptions,
+} = useAsyncData('trackers-for-projects', () => requestFetch<TrackerDto[]>('/api/trackers'), {
+  server: false,
+  immediate: false,
+});
 
 const extraTrackerOptions = ref<{ id: string; name: string }[]>([]);
 const trackerOptions = computed(() => {

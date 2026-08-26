@@ -18,18 +18,12 @@ function getClient(): DatabaseClientPair {
 
 /**
  * Shared Drizzle database client. All server-side database access SHALL go
- * through this client rather than instantiating raw drivers directly.
+ * through this getter rather than instantiating raw drivers directly.
+ * The client is created on first call so importing this module does not
+ * require `DATABASE_URL`.
  */
-export const db: PostgresJsDatabase<typeof schema> = new Proxy(
-  // SAFETY: empty target; every trap forwards to the lazily created live client.
-  {} as PostgresJsDatabase<typeof schema>,
-  {
-    get(_target, prop) {
-      const instance = getClient().db;
-      // SAFETY: Proxy traps receive string|symbol; the live client is the typed Drizzle database.
-      return instance[prop as keyof typeof instance];
-    },
-  },
-);
+export function getDb(): PostgresJsDatabase<typeof schema> {
+  return getClient().db;
+}
 
 export { createDatabaseClient, resolveDatabaseUrl } from './client';

@@ -17,6 +17,12 @@ export const updateProjectSchema = createProjectSchema;
 
 export type UpdateProjectDto = z.infer<typeof updateProjectSchema>;
 
+export const listProjectsQuerySchema = z.object({
+  trackerId: z.string().optional(),
+});
+
+export type ListProjectsQuery = z.infer<typeof listProjectsQuerySchema>;
+
 export interface ProjectDto {
   id: string;
   name: string;

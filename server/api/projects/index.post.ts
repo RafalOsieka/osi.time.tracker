@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { createProjectSchema } from '../../../shared/types/project';
 import type { ProjectDto } from '../../../shared/types/project';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
 import { readZodBody } from '../../utils/zod-input';
@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   let trackerName: string | null = null;
 
   if (trackerId) {
-    const [tracker] = await db
+    const [tracker] = await getDb()
       .select({ id: trackers.id, name: trackers.name })
       .from(trackers)
       .where(
@@ -32,7 +32,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     trackerName = tracker.name;
   }
 
-  const existing = await db
+  const existing = await getDb()
     .select({ id: projects.id })
     .from(projects)
     .where(
@@ -53,7 +53,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   }
 
   try {
-    const [created] = await db
+    const [created] = await getDb()
       .insert(projects)
       .values({ userId: user.id, trackerId, name: parsedBody.name })
       .returning();

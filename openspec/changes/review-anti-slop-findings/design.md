@@ -44,7 +44,7 @@ export type MessageParams = Partial<Record<string, MessageParamValue>>;
 
 ### D4 — Mechanical anti-slop fixes in application code
 
-Empty spreads → `if` assignment. Widening → `satisfies` or named aliases (including return types). `safeJson` → parse to a named type or generic with a schema. `db` Proxy: typed `get` using `keyof` on `getClient().db`, or replace Proxy with a documented getter if keyof still lies. Rename test `shape` (e.g. schema `keyof`).
+Empty spreads → `if` assignment. Widening → `satisfies` or named aliases (including return types). `safeJson` → parse to a named type or generic with a schema. Lazy DB access is `getDb()` (no `Proxy`). Rename test `shape` (e.g. schema `keyof`). Remote transports take a zod `schema` argument and `safeParse` the payload.
 
 - **Alternative:** Disable those rules. Rejected: user asked to fix.
 
@@ -64,7 +64,7 @@ No `test/**` override. Each leftover `vi.mock` / `jest.mock` gets `oxlint-disabl
 - [Named error types drift from ofetch/Nitro shapes] → Central `isApiError` / `RemoteAdapterError` only.
 - [MessageParams rejects nested objects] → API params today are primitives; if a nested param appears, add a named field, not `unknown`.
 - [Unmocking Nuxt `$fetch` / i18n is expensive] → Disable with reason rather than a fake DI rewrite in this change.
-- [Proxy `db` + `keyof` still needs a cast] → Prefer a thin getter over `Reflect.get`; one SAFETY comment beats Reflect.
+- [Lazy DB without connecting at import] → `getDb()` creates the client on first call; no Proxy.
 
 ## Migration Plan
 

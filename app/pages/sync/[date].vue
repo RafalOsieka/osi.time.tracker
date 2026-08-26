@@ -7,14 +7,14 @@ import type {
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
 import type { TrackerDto } from '~~/shared/types/tracker';
-import type { TableExpandMap } from '~/utils/tableExpandMap';
+import type { TableExpandMap } from '~/utils/table-expand-map';
 import type {
   ActivityByTask,
   DismissedDuplicatesByTask,
   ExportCommentsByTask,
   IssueRefByTask,
   SelectedEntryIdsByTask,
-} from '~/types/syncUiMaps';
+} from '~/types/sync-ui-maps';
 
 type ExportDialogPhase = 'review' | 'running' | 'report';
 
@@ -40,7 +40,7 @@ const {
   error: fetchError,
   refresh,
 } = useAsyncData<RemoteSyncDayDto>(
-  'sync-day',
+  () => `sync-day-${date.value}`,
   () =>
     requestFetch<RemoteSyncDayDto>('/api/sync/day', {
       query: { date: date.value },

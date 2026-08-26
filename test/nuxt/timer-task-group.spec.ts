@@ -3,7 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import TimerTaskGroup from '../../app/components/TimerTaskGroup.vue';
-import type { TimerViewGroup } from '../../app/utils/timerViewGrouping';
+import type { TimerViewGroup } from '../../app/utils/timer-view-grouping';
 import type { ProjectDto } from '../../shared/types/project';
 import type { TrackerDto } from '../../shared/types/tracker';
 

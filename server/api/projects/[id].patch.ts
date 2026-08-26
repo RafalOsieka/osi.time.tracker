@@ -1,7 +1,7 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { updateProjectSchema } from '../../../shared/types/project';
 import type { ProjectDto } from '../../../shared/types/project';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
 import { readZodBody } from '../../utils/zod-input';
@@ -12,7 +12,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateProjectSchema);
 
-  const [existing] = await db
+  const [existing] = await getDb()
     .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
     .where(and(eq(projects.id, id!), eq(projects.userId, user.id), isNull(projects.deletedAt)))
@@ -31,7 +31,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   // Only re-validate tracker ownership/soft-delete when attaching a different
   // non-null tracker, so rename works after the current tracker is soft-deleted.
   if (nextTrackerId && nextTrackerId !== existing.trackerId) {
-    const [tracker] = await db
+    const [tracker] = await getDb()
       .select({ id: trackers.id })
       .from(trackers)
       .where(
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     }
   }
 
-  const duplicate = await db
+  const duplicate = await getDb()
     .select({ id: projects.id })
     .from(projects)
     .where(
@@ -73,7 +73,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   }
 
   try {
-    const [updated] = await db
+    const [updated] = await getDb()
       .update(projects)
       .set({ name: parsedBody.name, trackerId: nextTrackerId, updatedAt: new Date() })
       .where(and(eq(projects.id, id!), eq(projects.userId, user.id)))
@@ -89,7 +89,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     // Name lookup must include soft-deleted trackers so the DTO keeps trackerName (REQ-084).
     let trackerName: string | null = null;
     if (updated.trackerId) {
-      const [tracker] = await db
+      const [tracker] = await getDb()
         .select({ name: trackers.name })
         .from(trackers)
         .where(eq(trackers.id, updated.trackerId))

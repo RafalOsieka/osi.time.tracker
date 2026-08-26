@@ -6,7 +6,7 @@ import {
   type TimerViewFeedDto,
   type TimeEntryDto,
 } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
@@ -47,7 +47,7 @@ async function toDtos(userId: string, rows: Row[]): Promise<TimeEntryDto[]> {
 
 /** Entries whose `startedAt` falls in `[from, to)` — uses `(userId, startedAt)` index. */
 async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promise<Row[]> {
-  return db
+  return getDb()
     .select({
       id: timeEntries.id,
       taskId: timeEntries.taskId,
@@ -71,7 +71,7 @@ async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promis
 }
 
 async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
-  const [row] = await db
+  const [row] = await getDb()
     .select({ startedAt: timeEntries.startedAt })
     .from(timeEntries)
     .where(eq(timeEntries.userId, userId))
@@ -81,7 +81,7 @@ async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
 }
 
 async function existsStartedAtBefore(userId: string, before: Date): Promise<boolean> {
-  const [row] = await db
+  const [row] = await getDb()
     .select({ id: timeEntries.id })
     .from(timeEntries)
     .where(and(eq(timeEntries.userId, userId), lt(timeEntries.startedAt, before)))
@@ -104,7 +104,7 @@ async function findLoadMoreRangeStart(
   let oldestDayKey: string | null = null;
 
   for (let i = 0; i < activityDays; i++) {
-    const [row] = await db
+    const [row] = await getDb()
       .select({ startedAt: timeEntries.startedAt })
       .from(timeEntries)
       .where(and(eq(timeEntries.userId, userId), lt(timeEntries.startedAt, cursor)))

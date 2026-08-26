@@ -21,7 +21,7 @@ vi.mock('ofetch', async (importOriginal) => {
   return { ...actual, $fetch: Object.assign(csrfFetchMock, { create: () => csrfFetchMock }) };
 });
 // oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
-vi.mock('../../app/composables/useRemoteSyncClient', () => ({
+vi.mock('../../app/composables/use-remote-sync-client', () => ({
   useRemoteSyncClient: () => ({
     resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
     fetchTimeLogs: fetchTimeLogsMock,

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createProjectSchema, PROJECT_NAME_MAX_LENGTH } from '../../shared/types/project';
+import {
+  createProjectSchema,
+  listProjectsQuerySchema,
+  PROJECT_NAME_MAX_LENGTH,
+} from '../../shared/types/project';
 
 const validTrackerId = '018f2f8a-1234-7abc-8def-123456789abc';
 
@@ -55,5 +59,19 @@ describe('createProjectSchema', () => {
     expect(() =>
       createProjectSchema.parse({ name: 'Valid Name', trackerId: 'not-a-uuid' }),
     ).toThrow();
+  });
+});
+
+describe('listProjectsQuerySchema', () => {
+  it('accepts an empty query', () => {
+    expect(listProjectsQuerySchema.parse({})).toEqual({});
+  });
+
+  it('accepts trackerId filter tokens used by the list endpoint', () => {
+    expect(listProjectsQuerySchema.parse({ trackerId: 'local' })).toEqual({ trackerId: 'local' });
+    expect(listProjectsQuerySchema.parse({ trackerId: 'null' })).toEqual({ trackerId: 'null' });
+    expect(listProjectsQuerySchema.parse({ trackerId: validTrackerId })).toEqual({
+      trackerId: validTrackerId,
+    });
   });
 });

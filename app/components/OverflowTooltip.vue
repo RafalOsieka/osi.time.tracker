@@ -8,24 +8,7 @@ const overflowing = ref(false);
 
 function measure() {
   const el = root.value;
-  if (!el) {
-    overflowing.value = false;
-    return;
-  }
-  overflowing.value = isTextOverflowing({
-    tagName: el.tagName,
-    scrollWidth: el.scrollWidth,
-    clientWidth: el.clientWidth,
-    querySelector: (sel) => {
-      const found = el.querySelector(sel);
-      if (!(found instanceof HTMLElement)) return null;
-      return {
-        tagName: found.tagName,
-        scrollWidth: found.scrollWidth,
-        clientWidth: found.clientWidth,
-      };
-    },
-  });
+  overflowing.value = el ? isTextOverflowing(el) : false;
 }
 
 onMounted(() => {

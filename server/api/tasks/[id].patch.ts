@@ -1,7 +1,7 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
 import { updateTaskSchema } from '../../../shared/types/task';
 import type { TaskDto } from '../../../shared/types/task';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { tasks, projects, timeEntries } from '../../db/schema';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
 import { readZodBody } from '../../utils/zod-input';
@@ -14,7 +14,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
   // Verify ownership (404 for foreign/unknown id). Capture the unchanged
   // remoteIssueId so collision scope includes it (REQ-134).
-  const [existing] = await db
+  const [existing] = await getDb()
     .select({
       id: tasks.id,
       projectId: tasks.projectId,
@@ -40,7 +40,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   // to a non-null project, so a rename works even after the current project
   // was soft-deleted, and clearing to null never needs validation.
   if (targetProjectId !== existing.projectId && targetProjectId !== null) {
-    const [project] = await db
+    const [project] = await getDb()
       .select({ id: projects.id })
       .from(projects)
       .where(
@@ -67,7 +67,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
       ? isNull(tasks.remoteIssueId)
       : eq(tasks.remoteIssueId, existing.remoteIssueId);
 
-  const updatedId = await db.transaction(async (tx) => {
+  const updatedId = await getDb().transaction(async (tx) => {
     // Detect a collision with another task already occupying the target
     // (userId, projectId, name, remoteIssueId) scope so the rename/move can
     // be merged instead of failing on the unique constraint. Differing
@@ -109,7 +109,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     return row!.id;
   });
 
-  const [updated] = await db.select().from(tasks).where(eq(tasks.id, updatedId)).limit(1);
+  const [updated] = await getDb().select().from(tasks).where(eq(tasks.id, updatedId)).limit(1);
 
   if (!updated) {
     throw createError({
@@ -121,7 +121,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   let projectName: string | null = null;
 
   if (updated.projectId) {
-    const [project] = await db
+    const [project] = await getDb()
       .select({ name: projects.name })
       .from(projects)
       .where(eq(projects.id, updated.projectId))

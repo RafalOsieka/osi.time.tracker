@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractCaughtMessageKey, extractMessageKey } from '../../app/utils/extractMessageKey';
+import { extractCaughtMessageKey, extractMessageKey } from '../../app/utils/extract-message-key';
 import { RemoteAdapterError } from '../../shared/types/remote-adapter';
 import type { MessageParams } from '../../shared/types/message-params';
 

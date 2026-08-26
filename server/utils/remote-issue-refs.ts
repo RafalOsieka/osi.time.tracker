@@ -1,5 +1,5 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
-import { db } from '../db/index';
+import { getDb } from '../db/index';
 import { tasks, projects, trackers } from '../db/schema';
 import { deriveIssueUrl } from '../../shared/remote/issue-url';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
@@ -25,7 +25,7 @@ export async function resolveActiveTrackerForTask(
   userId: string,
   taskId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
-  const [task] = await db
+  const [task] = await getDb()
     .select({ id: tasks.id, projectId: tasks.projectId })
     .from(tasks)
     .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
@@ -47,7 +47,7 @@ export async function resolveActiveTrackerForProject(
   userId: string,
   projectId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
-  const [project] = await db
+  const [project] = await getDb()
     .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
     .where(and(eq(projects.id, projectId), eq(projects.userId, userId), isNull(projects.deletedAt)))
@@ -57,7 +57,7 @@ export async function resolveActiveTrackerForProject(
     return null;
   }
 
-  const [tracker] = await db
+  const [tracker] = await getDb()
     .select({
       id: trackers.id,
       systemType: trackers.systemType,
@@ -146,7 +146,7 @@ export async function getRemoteIssueRefsForTasks(
     return result;
   }
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: tasks.id,
       userId: tasks.userId,

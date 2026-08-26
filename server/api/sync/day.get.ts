@@ -10,7 +10,7 @@ import type {
   TrackerRoundingRule,
   TrackerSystemType,
 } from '../../../shared/types/tracker';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import {
   timeEntries,
   tasks,
@@ -35,7 +35,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const { user } = await requireAuth(event);
   const parsedQuery = await getZodQuery(event, remoteSyncDayQuerySchema);
 
-  const [userRow] = await db
+  const [userRow] = await getDb()
     .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))
@@ -43,7 +43,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
 
   const { from, to } = computeDayBoundary(parsedQuery.date, userRow?.timezone ?? null);
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       entryId: timeEntries.id,
       taskId: timeEntries.taskId,
@@ -80,7 +80,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
     }
   >();
   if (trackerIds.length > 0) {
-    const trackerRows = await db
+    const trackerRows = await getDb()
       .select()
       .from(trackers)
       .where(and(eq(trackers.userId, user.id), isNull(trackers.deletedAt)));
@@ -107,7 +107,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const exportsByTaskId = new Map<string, RemoteSyncExportProvenanceDto[]>();
 
   if (taskIds.length > 0) {
-    const exportRows = await db
+    const exportRows = await getDb()
       .select({
         exportId: remoteExports.id,
         taskId: remoteExports.taskId,
@@ -160,7 +160,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
 
   // Mark entries with any prior provenance (not limited to this local day).
   if (completedEntryIds.length > 0) {
-    const links = await db
+    const links = await getDb()
       .select({ entryId: remoteExportEntries.entryId })
       .from(remoteExportEntries)
       .where(

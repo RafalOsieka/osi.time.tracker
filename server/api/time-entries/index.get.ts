@@ -1,7 +1,7 @@
 import { and, desc, eq, lt, or, isNull, gte } from 'drizzle-orm';
 import { listTimeEntriesQuerySchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
@@ -13,7 +13,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
   const from = new Date(parsedQuery.from);
   const to = new Date(parsedQuery.to);
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: timeEntries.id,
       taskId: timeEntries.taskId,

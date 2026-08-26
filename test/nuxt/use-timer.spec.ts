@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { defineComponent, h } from 'vue';
-import { useTimer } from '../../app/composables/useTimer';
+import { useTimer } from '../../app/composables/use-timer';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());

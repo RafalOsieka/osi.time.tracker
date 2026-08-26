@@ -3,7 +3,7 @@ import { Temporal } from 'temporal-polyfill';
 /**
  * Computes the `[from, to)` instant window for a single calendar day in a
  * given timezone, mirroring the browser-local day-boundary rule the Timer
- * view uses (`app/utils/timerViewGrouping.ts`). Falls back to `UTC` when
+ * view uses (`app/utils/timer-view-grouping.ts`). Falls back to `UTC` when
  * the user has not configured a timezone.
  */
 export type DayBoundary = { from: Date; to: Date };

@@ -1,5 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { trackers } from '../../db/schema';
 import type { ApiMessage } from '../../types/api-message';
 import type { TrackerSystemType } from '../../../shared/types/tracker';
@@ -13,7 +13,7 @@ export async function resolveOwnedTracker(
   userId: string,
   trackerId: string,
 ): Promise<{ id: string; systemType: TrackerSystemType; baseUrl: string }> {
-  const [tracker] = await db
+  const [tracker] = await getDb()
     .select({
       id: trackers.id,
       systemType: trackers.systemType,

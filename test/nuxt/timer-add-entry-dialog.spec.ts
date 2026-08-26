@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
-import { wallClockToInstant } from '../../app/utils/dateTime';
+import { wallClockToInstant } from '../../app/utils/date-time';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());

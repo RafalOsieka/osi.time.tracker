@@ -5,8 +5,8 @@ import {
   instantToZoned,
   toPickerDate,
   wallClockToInstant,
-} from '../../app/utils/dateTime';
-import { localDayKey } from '../../app/utils/timerViewGrouping';
+} from '../../app/utils/date-time';
+import { localDayKey } from '../../app/utils/timer-view-grouping';
 
 describe('timezone date utilities', () => {
   it('buckets an instant using the configured timezone', () => {

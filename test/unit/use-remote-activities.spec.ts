@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { useRemoteActivities } from '../../app/composables/useRemoteActivities';
+import { useRemoteActivities } from '../../app/composables/use-remote-activities';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const getActivityOptionsMock = vi.fn();
@@ -13,7 +13,7 @@ vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
 }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
-vi.mock('../../app/composables/useTrackerSecret', () => ({
+vi.mock('../../app/composables/use-tracker-secret', () => ({
   useTrackerSecret: () => ({ get: getSecretMock }),
 }));
 

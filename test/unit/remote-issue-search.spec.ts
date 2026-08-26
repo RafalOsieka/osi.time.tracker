@@ -5,7 +5,7 @@ import type { JsonValue } from '../../shared/types/json';
 const secretStore = new Map<string, string>();
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- cookie secret composable has no test seam
-vi.mock('../../app/composables/useTrackerSecret', () => ({
+vi.mock('../../app/composables/use-tracker-secret', () => ({
   useTrackerSecret: () => ({
     get: (trackerId: string) => secretStore.get(trackerId) ?? null,
     set: (trackerId: string, secret: string) => secretStore.set(trackerId, secret),
@@ -37,7 +37,7 @@ describe('useRemoteIssueSearch', () => {
     secretStore.clear();
     secretStore.set(config.id, 'secret-api-key');
     vi.stubGlobal('fetch', vi.fn());
-    ({ useRemoteIssueSearch } = await import('../../app/composables/useRemoteIssueSearch'));
+    ({ useRemoteIssueSearch } = await import('../../app/composables/use-remote-issue-search'));
   });
 
   afterEach(() => {

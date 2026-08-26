@@ -3,7 +3,7 @@ import {
   finalizeRemoteExportSchema,
   type FinalizeRemoteExportResultDto,
 } from '../../../shared/types/remote-export';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { users, tasks, timeEntries, remoteExports, remoteExportEntries } from '../../db/schema';
 import { computeDayBoundary } from '../../utils/day-boundary';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
@@ -37,7 +37,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     const links =
       entryIdsOverride ??
       (
-        await db
+        await getDb()
           .select({ entryId: remoteExportEntries.entryId })
           .from(remoteExportEntries)
           .where(eq(remoteExportEntries.exportId, record.id))
@@ -59,7 +59,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   }
 
   // Key-based reconciliation: identical logical export already stored (REQ-233).
-  const [byKey] = await db
+  const [byKey] = await getDb()
     .select()
     .from(remoteExports)
     .where(
@@ -75,7 +75,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   }
 
   // Known-result replay: never recreate provenance for an already-finalized remote log.
-  const [existing] = await db
+  const [existing] = await getDb()
     .select()
     .from(remoteExports)
     .where(
@@ -87,7 +87,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     return toResult(existing, undefined, true);
   }
 
-  const [task] = await db
+  const [task] = await getDb()
     .select({ id: tasks.id })
     .from(tasks)
     .where(and(eq(tasks.id, parsed.taskId), eq(tasks.userId, user.id)))
@@ -108,7 +108,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     });
   }
 
-  const [userRow] = await db
+  const [userRow] = await getDb()
     .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))
@@ -116,7 +116,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
 
   const { from, to } = computeDayBoundary(parsed.localDate, userRow?.timezone ?? null);
 
-  const entryRows = await db
+  const entryRows = await getDb()
     .select({
       id: timeEntries.id,
       taskId: timeEntries.taskId,
@@ -155,7 +155,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     }
   }
 
-  const result = await db.transaction(async (tx) => {
+  const result = await getDb().transaction(async (tx) => {
     const [inserted] = await tx
       .insert(remoteExports)
       .values({

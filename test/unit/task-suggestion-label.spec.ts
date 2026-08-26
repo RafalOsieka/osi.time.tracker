@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatTaskSuggestionLabel } from '../../app/utils/taskSuggestionLabel';
+import { formatTaskSuggestionLabel } from '../../app/utils/task-suggestion-label';
 import type { TaskDto } from '../../shared/types/task';
 
 function task(overrides: Partial<TaskDto> = {}): TaskDto {

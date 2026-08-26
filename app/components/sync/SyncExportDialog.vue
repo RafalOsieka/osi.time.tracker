@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { RemoteExportTaskOutcomeDto } from '~~/shared/types/remote-export';
 import type { RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
-import type { SyncExportProgressStatus } from '~/composables/useSyncExport';
+import type { SyncExportProgressStatus } from '~/composables/use-sync-export';
 
 export type ExportDialogPhase = 'review' | 'running' | 'report';
 

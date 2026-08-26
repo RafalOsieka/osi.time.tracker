@@ -1,14 +1,14 @@
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { tasks, projects } from '../../db/schema';
 import { eq, isNull, asc, and, ilike } from 'drizzle-orm';
-import type { TaskDto } from '../../../shared/types/task';
+import { listTasksQuerySchema, type TaskDto } from '../../../shared/types/task';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
+import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   const { user } = await requireAuth(event);
-  const query = getQuery<{ projectId?: string; search?: string }>(event);
-  const projectId = query.projectId;
-  const search = query.search?.trim();
+  const { projectId, search: searchRaw } = await getZodQuery(event, listTasksQuerySchema);
+  const search = searchRaw?.trim();
 
   const conditions = [eq(tasks.userId, user.id)];
   if (projectId === 'none') {
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     conditions.push(ilike(tasks.name, `%${search}%`));
   }
 
-  const rows = await db
+  const rows = await getDb()
     .select({
       id: tasks.id,
       name: tasks.name,

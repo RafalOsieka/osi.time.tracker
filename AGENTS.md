@@ -99,7 +99,7 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 - **Naming:** `camelCase` for variables/functions, `useXxx()` composables, `PascalCase` components/types, `PascalCase` + `Dto` for response DTOs, `camelCase` + `Schema` for zod schemas, `UPPER_SNAKE_CASE` constants. Server route files are `name.<method>.ts` (e.g. `entity.post.ts`). Other source/test files are kebab-case (`setup-server.ts`).
 - **i18n:** never hard-code user-facing text; use `t(...)` and keep `en`/`pl` catalogs in parity.
 - **UI:** prefer existing Nuxt UI components (`UButton`, `UForm`/`UFormField`, `UTable`, `UModal`, dashboard shell) over native elements; style with Tailwind utilities and `--ui-*` tokens; icons use `i-lucide-*`; provide accessibility affordances (`aria-label`, `role`, `aria-live`) targeting WCAG 2.1 AA.
-- **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with a single zod schema and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract (`params` may include `min`/`max`/`expected`/custom fields — never `received`). Never return rendered text — clients translate `messageKey`. Access the database only through the shared lazy client; emit timestamps as ISO strings.
+- **Server/API:** one `defineEventHandler` per route file annotated with its response DTO; resolve the authenticated user via the shared auth helper before other work; validate bodies with `readZodBody` and query strings with `getZodQuery` (single zod schema from `shared/types`) and, on `ZodError`, throw a `422` `createError` mapped to a `{ messageKey, params }` contract (`params` may include `min`/`max`/`expected`/custom fields — never `received`). Never return rendered text — clients translate `messageKey`. Access the database only through `getDb()`; emit timestamps as ISO strings.
 - **Boundary types:** define each cross-boundary shape once in `shared/types`, decoupled from the DB schema; derive input types with `z.infer<typeof schema>`. Use the unified zod 4 `error` option and `z.uuid()` / `z.url()` / `z.iso.datetime()` for identifier and format fields.
 
 ### Linting & formatting
@@ -157,6 +157,6 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compos
 
 - `openspec/` is the behavioral source of truth — consult existing specs/change proposals before implementing domain features, and align changes with them.
 - The domain model is entry-first: tasks are derived automatically from time-entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
-- Never instantiate raw database drivers; always go through the shared lazy Drizzle client.
+- Never instantiate raw database drivers; always go through `getDb()`.
 - Do not weaken, skip, or disable tests to force a green run.
 - Never change the vendored anti-slop Oxlint plugin (`tools/oxlint/anti-slop/**`) unless the developer explicitly requests it. Do not rewrite, disable, or “fix” those rules on your own. Plugin tests live in `test/unit/anti-slop/`.

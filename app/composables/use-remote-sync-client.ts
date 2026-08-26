@@ -1,7 +1,10 @@
+import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import type { RemoteAccount } from '../../shared/types/remote-account';
 import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
 import type { TrackerDto } from '../../shared/types/tracker';
+import { extractCaughtMessageKey } from '../utils/extract-message-key';
+import { useTrackerSecret } from './use-tracker-secret';
 
 /**
  * Feature composable for browser-orchestrated remote sync: current account,

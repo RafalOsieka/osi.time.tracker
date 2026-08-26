@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import { userSettingsSchema, type UserSettingsDto } from '../../../shared/types/user-settings';
-import { db } from '../../db';
+import { getDb } from '../../db';
 import { users } from '../../db/schema';
 import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
@@ -18,7 +18,7 @@ export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
     throw error;
   }
 
-  const [updated] = await db
+  const [updated] = await getDb()
     .update(users)
     .set(update)
     .where(eq(users.id, session.user.id))

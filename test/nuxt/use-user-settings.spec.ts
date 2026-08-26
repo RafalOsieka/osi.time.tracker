@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { nextTick, ref, type Ref } from 'vue';
 import { mount } from '@vue/test-utils';
-import { browserDateTimeSettings } from '../../app/utils/dateTime';
-import { useUserSettings } from '../../app/composables/useUserSettings';
+import { browserDateTimeSettings } from '../../app/utils/date-time';
+import { useUserSettings } from '../../app/composables/use-user-settings';
 
 const sessionUser = ref<{
   settings?: { timezone: string | null };
@@ -30,8 +30,8 @@ mockNuxtImport('useUserSession', () => () => ({
   fetch: vi.fn().mockResolvedValue(undefined),
 }));
 // oxlint-disable-next-line anti-slop/no-module-mocking -- timezone helpers stubbed for clock control
-vi.mock('../../app/utils/dateTime', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../../app/utils/dateTime')>()),
+vi.mock('../../app/utils/date-time', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../app/utils/date-time')>()),
   browserDateTimeSettings: vi.fn(() => ({ timeZone: 'America/Los_Angeles' })),
 }));
 

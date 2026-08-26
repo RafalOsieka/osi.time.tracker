@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeTimeInput } from '../../app/utils/normalizeTimeInput';
+import { normalizeTimeInput } from '../../app/utils/normalize-time-input';
 
 describe('normalizeTimeInput', () => {
   it.each([

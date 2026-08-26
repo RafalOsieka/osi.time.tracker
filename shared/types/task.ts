@@ -23,7 +23,9 @@ export interface TaskDto {
   remoteIssueRef?: RemoteIssueRefDto;
 }
 
-export interface ListTasksQuery {
-  projectId?: string;
-  search?: string;
-}
+export const listTasksQuerySchema = z.object({
+  projectId: z.string().optional(),
+  search: z.string().optional(),
+});
+
+export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;

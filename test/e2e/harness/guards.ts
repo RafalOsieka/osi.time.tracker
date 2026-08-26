@@ -74,8 +74,9 @@ export function requireDocker() {
  * Usage: `const describeAuthUI = requireBrowser();`
  */
 export function requireBrowser() {
+  const dockerAvailable = isDockerAvailable();
   return describeOrSkip({
-    available: isDockerAvailable() && isBrowserAvailable(),
-    missing: isDockerAvailable() ? 'Chromium' : 'Docker',
+    available: dockerAvailable && isBrowserAvailable(),
+    missing: dockerAvailable ? 'Chromium' : 'Docker',
   });
 }

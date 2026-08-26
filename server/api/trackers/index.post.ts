@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { createTrackerSchema } from '../../../shared/types/tracker';
 import type { TrackerDto } from '../../../shared/types/tracker';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { trackers } from '../../db/schema';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
 import { readZodBody } from '../../utils/zod-input';
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, createTrackerSchema);
 
-  const existing = await db
+  const existing = await getDb()
     .select({ id: trackers.id })
     .from(trackers)
     .where(
@@ -45,7 +45,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   }
 
   try {
-    const [created] = await db
+    const [created] = await getDb()
       .insert(trackers)
       .values({
         userId: user.id,

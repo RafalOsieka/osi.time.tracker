@@ -62,8 +62,9 @@ with HTTP 422 and the `{ messageKey, params }` contract before any data access o
 
 ### Requirement: REQ-173 Boundary validation and ISO serialization
 Each route SHALL validate its input through a single zod schema defined once in
-`shared/types`, access the database only through the shared lazy Drizzle client,
-and emit all timestamps as ISO 8601 strings.
+`shared/types` (request body via `readZodBody`, query string via `getZodQuery`
+when the route reads query parameters), access the database only through
+`getDb()`, and emit all timestamps as ISO 8601 strings.
 
 #### Scenario: Timestamps serialized as ISO strings
 - **WHEN** a route returns a payload containing timestamps
@@ -72,3 +73,7 @@ and emit all timestamps as ISO 8601 strings.
 #### Scenario: Single schema per route
 - **WHEN** a route validates a request body
 - **THEN** it SHALL use one zod schema sourced from `shared/types`
+
+#### Scenario: Query string uses a zod schema
+- **WHEN** a GET route reads query parameters
+- **THEN** it SHALL validate them with `getZodQuery` and a schema from `shared/types`

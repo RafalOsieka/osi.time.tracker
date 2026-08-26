@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
-import { useRemoteDayLogs } from '../../app/composables/useRemoteDayLogs';
+import { useRemoteDayLogs } from '../../app/composables/use-remote-day-logs';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const fetchTimeLogsMock = vi.fn();
 const invalidateCachesMock = vi.fn();
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
-vi.mock('../../app/composables/useRemoteSyncClient', () => ({
+vi.mock('../../app/composables/use-remote-sync-client', () => ({
   useRemoteSyncClient: () => ({
     fetchTimeLogs: fetchTimeLogsMock,
     invalidateCaches: invalidateCachesMock,

@@ -10,9 +10,7 @@ import type { ApiMessage } from '../../types/api-message';
  * cookie via `setUserSession`.
  */
 export default defineEventHandler(async (event) => {
-  const credentials = await readZodBody(event, loginSchema, 400);
-
-  const { email: emailInput, password } = credentials;
+  const { email: emailInput, password } = await readZodBody(event, loginSchema, 400);
 
   const user = await findUserByEmail(emailInput);
   let isPasswordValid = false;

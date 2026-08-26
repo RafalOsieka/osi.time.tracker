@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '../db/index';
+import { getDb } from '../db/index';
 import { tasks, projects } from '../db/schema';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 import { getRemoteIssueRefForTask } from './remote-issue-refs';
@@ -27,7 +27,7 @@ export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
   }
 
   if (row.taskId) {
-    const [task] = await db
+    const [task] = await getDb()
       .select({ name: tasks.name, projectId: tasks.projectId })
       .from(tasks)
       .where(eq(tasks.id, row.taskId))
@@ -38,7 +38,7 @@ export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
       projectId = task.projectId;
 
       if (projectId) {
-        const [project] = await db
+        const [project] = await getDb()
           .select({ name: projects.name })
           .from(projects)
           .where(eq(projects.id, projectId))

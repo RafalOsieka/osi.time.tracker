@@ -1,7 +1,7 @@
 import { and, eq, isNull } from 'drizzle-orm';
 import { startTimeEntrySchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
-import { db } from '../../db/index';
+import { getDb } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
 import { resolveTaskId } from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
@@ -16,7 +16,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   const startedAt = isManual ? new Date(parsedBody.startedAt!) : new Date();
   const stoppedAt = isManual ? new Date(parsedBody.stoppedAt!) : null;
 
-  const created = await db.transaction(async (tx) => {
+  const created = await getDb().transaction(async (tx) => {
     if (!isManual) {
       await tx
         .update(timeEntries)

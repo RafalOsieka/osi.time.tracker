@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createProjectSchema } from '../../shared/types/project';
-import { validateSchemaWithI18n } from '../../app/utils/validateSchemaWithI18n';
+import { validateSchemaWithI18n } from '../../app/utils/validate-schema-with-i18n';
 
 describe('validateSchemaWithI18n', () => {
   it('returns translated form errors for invalid project state', async () => {

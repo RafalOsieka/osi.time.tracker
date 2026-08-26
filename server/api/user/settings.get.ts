@@ -1,11 +1,11 @@
 import type { UserSettingsDto } from '../../../shared/types/user-settings';
 import { eq } from 'drizzle-orm';
-import { db } from '../../db';
+import { getDb } from '../../db';
 import { users } from '../../db/schema';
 
 export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
   const { user } = await requireAuth(event);
-  const [row] = await db
+  const [row] = await getDb()
     .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))

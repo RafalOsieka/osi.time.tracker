@@ -1,4 +1,5 @@
 import type { TaskDto } from '../../shared/types/task';
+import { formatTaskSuggestionLabel } from './task-suggestion-label';
 
 /** Sentinel id for the synthetic "create new task" row (not a real task). */
 export const TASK_TITLE_CREATE_ITEM_ID = '__create_new_task__';

@@ -10,6 +10,10 @@ export function toAdapterError(
 ): RemoteAdapterError {
   if (err instanceof RemoteAdapterError) return err;
 
+  // TODO: add debug-level logging for mapped/swallowed upstream errors so
+  // connection failures and non-auth HTTP statuses leave a trace without
+  // leaking provider-specific credential detail to clients.
+
   const status = err instanceof UpstreamHttpError ? err.statusCode : undefined;
 
   if (status === 401 || status === 403) {

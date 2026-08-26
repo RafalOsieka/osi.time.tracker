@@ -5,8 +5,10 @@ API errors SHALL use the `{ messageKey, params }` contract and SHALL NOT return
 rendered, human-readable text; clients translate `messageKey` via `t()`. `params`,
 when present, SHALL conform to `MessageParams` (optional keys whose values are
 `string | number | boolean`) and SHALL NOT use `Record<string, unknown>`. Body
-validation SHALL use a single zod schema per route, and a `ZodError` SHALL map to
-HTTP 422. Server or network failures SHALL surface client-side as a Toast.
+validation SHALL use a single zod schema per route (request body via `readZodBody`,
+query string via `getZodQuery` when the route reads query parameters), and a
+`ZodError` SHALL map to HTTP 422. Server or network failures SHALL surface
+client-side as a Toast.
 
 #### Scenario: Validation failure returns 422 with a messageKey
 - **WHEN** a request body fails the route's zod schema
@@ -19,3 +21,7 @@ HTTP 422. Server or network failures SHALL surface client-side as a Toast.
 #### Scenario: Params values are primitives
 - **WHEN** a 422 body includes `params`
 - **THEN** every `params` value SHALL be a `string`, `number`, or `boolean` (no nested objects, no `unknown`)
+
+#### Scenario: Query string uses a zod schema
+- **WHEN** a GET route reads query parameters
+- **THEN** it SHALL validate them with `getZodQuery` and a schema from `shared/types`, not an untyped `getQuery` cast

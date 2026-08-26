@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useTrackerSecret } from '../../app/composables/useTrackerSecret';
+import { useTrackerSecret } from '../../app/composables/use-tracker-secret';
 
 /**
  * Node's own global `localStorage` (added in recent Node versions) is a
