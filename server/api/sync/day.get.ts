@@ -32,10 +32,11 @@ import { getZodQuery } from '../../utils/zod-input';
  * plus the untitled-entries total. Never includes credential material.
  */
 export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedQuery = await getZodQuery(event, remoteSyncDayQuerySchema);
 
-  const [userRow] = await getDb()
+  const [userRow] = await db
     .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))
@@ -43,7 +44,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
 
   const { from, to } = computeDayBoundary(parsedQuery.date, userRow?.timezone ?? null);
 
-  const rows = await getDb()
+  const rows = await db
     .select({
       entryId: timeEntries.id,
       taskId: timeEntries.taskId,
@@ -80,7 +81,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
     }
   >();
   if (trackerIds.length > 0) {
-    const trackerRows = await getDb()
+    const trackerRows = await db
       .select()
       .from(trackers)
       .where(and(eq(trackers.userId, user.id), isNull(trackers.deletedAt)));
@@ -107,7 +108,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const exportsByTaskId = new Map<string, RemoteSyncExportProvenanceDto[]>();
 
   if (taskIds.length > 0) {
-    const exportRows = await getDb()
+    const exportRows = await db
       .select({
         exportId: remoteExports.id,
         taskId: remoteExports.taskId,
@@ -160,7 +161,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
 
   // Mark entries with any prior provenance (not limited to this local day).
   if (completedEntryIds.length > 0) {
-    const links = await getDb()
+    const links = await db
       .select({ entryId: remoteExportEntries.entryId })
       .from(remoteExportEntries)
       .where(

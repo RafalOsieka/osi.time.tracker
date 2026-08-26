@@ -47,7 +47,8 @@ async function toDtos(userId: string, rows: Row[]): Promise<TimeEntryDto[]> {
 
 /** Entries whose `startedAt` falls in `[from, to)` — uses `(userId, startedAt)` index. */
 async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promise<Row[]> {
-  return getDb()
+  const db = getDb();
+  return db
     .select({
       id: timeEntries.id,
       taskId: timeEntries.taskId,
@@ -71,7 +72,8 @@ async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promis
 }
 
 async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
-  const [row] = await getDb()
+  const db = getDb();
+  const [row] = await db
     .select({ startedAt: timeEntries.startedAt })
     .from(timeEntries)
     .where(eq(timeEntries.userId, userId))
@@ -81,7 +83,8 @@ async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
 }
 
 async function existsStartedAtBefore(userId: string, before: Date): Promise<boolean> {
-  const [row] = await getDb()
+  const db = getDb();
+  const [row] = await db
     .select({ id: timeEntries.id })
     .from(timeEntries)
     .where(and(eq(timeEntries.userId, userId), lt(timeEntries.startedAt, before)))
@@ -100,11 +103,12 @@ async function findLoadMoreRangeStart(
   timeZone: string,
   activityDays: number,
 ): Promise<Date | null> {
+  const db = getDb();
   let cursor = before;
   let oldestDayKey: string | null = null;
 
   for (let i = 0; i < activityDays; i++) {
-    const [row] = await getDb()
+    const [row] = await db
       .select({ startedAt: timeEntries.startedAt })
       .from(timeEntries)
       .where(and(eq(timeEntries.userId, userId), lt(timeEntries.startedAt, cursor)))

@@ -4,8 +4,9 @@ import { getDb } from '../../db';
 import { users } from '../../db/schema';
 
 export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
-  const [row] = await getDb()
+  const [row] = await db
     .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))

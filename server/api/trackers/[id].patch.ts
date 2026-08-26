@@ -22,11 +22,12 @@ function toTrackerDto(row: typeof trackers.$inferSelect): TrackerDto {
 }
 
 export default defineEventHandler(async (event): Promise<TrackerDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateTrackerSchema);
 
-  const [existing] = await getDb()
+  const [existing] = await db
     .select({ id: trackers.id })
     .from(trackers)
     .where(and(eq(trackers.id, id!), eq(trackers.userId, user.id), isNull(trackers.deletedAt)))
@@ -39,7 +40,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
     });
   }
 
-  const duplicate = await getDb()
+  const duplicate = await db
     .select({ id: trackers.id })
     .from(trackers)
     .where(
@@ -60,7 +61,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   }
 
   try {
-    const [updated] = await getDb()
+    const [updated] = await db
       .update(trackers)
       .set({
         name: parsedBody.name,

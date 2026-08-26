@@ -8,7 +8,13 @@ import type {
 
 defineOptions({ inheritAttrs: false });
 
-const props = defineProps<{
+const {
+  config,
+  currentRef = undefined,
+  linkTestid = undefined,
+  cachedTestid = undefined,
+  unlinkedTestid = undefined,
+} = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
   linkTestid?: string;
@@ -28,7 +34,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { search, results, loading, errorKey } = useRemoteIssueSearch(props.config);
+const { search, results, loading, errorKey } = useRemoteIssueSearch(config);
 
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
@@ -38,7 +44,7 @@ const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   query: '',
 });
 
-const showEditMenu = computed(() => !!props.currentRef && !open.value);
+const showEditMenu = computed(() => !!currentRef && !open.value);
 const editMenuClass = computed(() => [
   'pointer-events-none absolute top-full right-0 z-20 pt-1 opacity-0',
   'group-hover/ri:pointer-events-auto group-hover/ri:opacity-100',

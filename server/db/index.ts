@@ -17,10 +17,11 @@ function getClient(): DatabaseClientPair {
 }
 
 /**
- * Shared Drizzle database client. All server-side database access SHALL go
- * through this getter rather than instantiating raw drivers directly.
- * The client is created on first call so importing this module does not
- * require `DATABASE_URL`.
+ * Shared Drizzle database client (one connection pool per process).
+ * All server-side database access SHALL go through this getter rather than
+ * instantiating raw drivers. The first call creates the postgres.js pool;
+ * later calls return the same client — they do not open extra connections.
+ * Bind once per handler (`const db = getDb()`) and reuse that local.
  */
 export function getDb(): PostgresJsDatabase<typeof schema> {
   return getClient().db;

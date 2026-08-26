@@ -4,11 +4,12 @@ import { eq, isNull, and } from 'drizzle-orm';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event) => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
 
   // Verify ownership (404 for foreign/unknown id)
-  const [existing] = await getDb()
+  const [existing] = await db
     .select({ id: projects.id })
     .from(projects)
     .where(and(eq(projects.id, id!), eq(projects.userId, user.id), isNull(projects.deletedAt)))
@@ -21,7 +22,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  await getDb()
+  await db
     .update(projects)
     .set({ deletedAt: new Date(), updatedAt: new Date() })
     .where(and(eq(projects.id, id!), eq(projects.userId, user.id)));

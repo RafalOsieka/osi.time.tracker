@@ -13,8 +13,9 @@ export function normalizeEmail(email: string): string {
  * Finds a user in the database by their email (normalizing it first).
  */
 export async function findUserByEmail(email: string) {
+  const db = getDb();
   const normalized = normalizeEmail(email);
-  const result = await getDb().select().from(users).where(eq(users.email, normalized)).limit(1);
+  const result = await db.select().from(users).where(eq(users.email, normalized)).limit(1);
   return result[0] || null;
 }
 
@@ -30,10 +31,11 @@ export async function createUser({
   password: string;
   displayName?: string | null;
 }) {
+  const db = getDb();
   const normalized = normalizeEmail(email);
   const passwordHash = await hashPassword(password);
 
-  const [user] = await getDb()
+  const [user] = await db
     .insert(users)
     .values({
       email: normalized,

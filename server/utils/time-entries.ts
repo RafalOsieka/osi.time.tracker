@@ -17,6 +17,7 @@ interface TimeEntryRow {
  * serializes timestamps to ISO strings for the API boundary.
  */
 export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
+  const db = getDb();
   let taskName: string | null = null;
   let projectId: string | null = null;
   let projectName: string | null = null;
@@ -27,7 +28,7 @@ export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
   }
 
   if (row.taskId) {
-    const [task] = await getDb()
+    const [task] = await db
       .select({ name: tasks.name, projectId: tasks.projectId })
       .from(tasks)
       .where(eq(tasks.id, row.taskId))
@@ -38,7 +39,7 @@ export async function toTimeEntryDto(row: TimeEntryRow): Promise<TimeEntryDto> {
       projectId = task.projectId;
 
       if (projectId) {
-        const [project] = await getDb()
+        const [project] = await db
           .select({ name: projects.name })
           .from(projects)
           .where(eq(projects.id, projectId))

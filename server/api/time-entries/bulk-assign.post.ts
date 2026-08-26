@@ -7,10 +7,11 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<{ success: true }> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, bulkAssignSchema);
 
-  await getDb().transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const rows = await tx
       .select({ id: timeEntries.id, taskId: timeEntries.taskId })
       .from(timeEntries)

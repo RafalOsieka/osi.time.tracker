@@ -9,6 +9,7 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, startTimeEntrySchema);
 
@@ -16,7 +17,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
   const startedAt = isManual ? new Date(parsedBody.startedAt!) : new Date();
   const stoppedAt = isManual ? new Date(parsedBody.stoppedAt!) : null;
 
-  const created = await getDb().transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     if (!isManual) {
       await tx
         .update(timeEntries)

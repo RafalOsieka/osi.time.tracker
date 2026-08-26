@@ -8,11 +8,12 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ProjectDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateProjectSchema);
 
-  const [existing] = await getDb()
+  const [existing] = await db
     .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
     .where(and(eq(projects.id, id!), eq(projects.userId, user.id), isNull(projects.deletedAt)))
@@ -31,7 +32,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   // Only re-validate tracker ownership/soft-delete when attaching a different
   // non-null tracker, so rename works after the current tracker is soft-deleted.
   if (nextTrackerId && nextTrackerId !== existing.trackerId) {
-    const [tracker] = await getDb()
+    const [tracker] = await db
       .select({ id: trackers.id })
       .from(trackers)
       .where(
@@ -51,7 +52,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     }
   }
 
-  const duplicate = await getDb()
+  const duplicate = await db
     .select({ id: projects.id })
     .from(projects)
     .where(
@@ -73,7 +74,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   }
 
   try {
-    const [updated] = await getDb()
+    const [updated] = await db
       .update(projects)
       .set({ name: parsedBody.name, trackerId: nextTrackerId, updatedAt: new Date() })
       .where(and(eq(projects.id, id!), eq(projects.userId, user.id)))
@@ -89,7 +90,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     // Name lookup must include soft-deleted trackers so the DTO keeps trackerName (REQ-084).
     let trackerName: string | null = null;
     if (updated.trackerId) {
-      const [tracker] = await getDb()
+      const [tracker] = await db
         .select({ name: trackers.name })
         .from(trackers)
         .where(eq(trackers.id, updated.trackerId))

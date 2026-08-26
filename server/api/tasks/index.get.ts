@@ -6,6 +6,7 @@ import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const { projectId, search: searchRaw } = await getZodQuery(event, listTasksQuerySchema);
   const search = searchRaw?.trim();
@@ -20,7 +21,7 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     conditions.push(ilike(tasks.name, `%${search}%`));
   }
 
-  const rows = await getDb()
+  const rows = await db
     .select({
       id: tasks.id,
       name: tasks.name,

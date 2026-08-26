@@ -8,6 +8,7 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ProjectDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, createProjectSchema);
 
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   let trackerName: string | null = null;
 
   if (trackerId) {
-    const [tracker] = await getDb()
+    const [tracker] = await db
       .select({ id: trackers.id, name: trackers.name })
       .from(trackers)
       .where(
@@ -32,7 +33,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
     trackerName = tracker.name;
   }
 
-  const existing = await getDb()
+  const existing = await db
     .select({ id: projects.id })
     .from(projects)
     .where(
@@ -53,7 +54,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   }
 
   try {
-    const [created] = await getDb()
+    const [created] = await db
       .insert(projects)
       .values({ userId: user.id, trackerId, name: parsedBody.name })
       .returning();

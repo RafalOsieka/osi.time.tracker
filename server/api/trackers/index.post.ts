@@ -22,10 +22,11 @@ function toTrackerDto(row: typeof trackers.$inferSelect): TrackerDto {
 }
 
 export default defineEventHandler(async (event): Promise<TrackerDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, createTrackerSchema);
 
-  const existing = await getDb()
+  const existing = await db
     .select({ id: trackers.id })
     .from(trackers)
     .where(
@@ -45,7 +46,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   }
 
   try {
-    const [created] = await getDb()
+    const [created] = await db
       .insert(trackers)
       .values({
         userId: user.id,

@@ -18,6 +18,7 @@ import type { ApiMessage } from '../../types/api-message';
  * without creating another remote log or provenance row.
  */
 export default defineEventHandler(async (event): Promise<FinalizeRemoteExportResultDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsed = await readZodBody(event, finalizeRemoteExportSchema);
 
@@ -37,7 +38,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     const links =
       entryIdsOverride ??
       (
-        await getDb()
+        await db
           .select({ entryId: remoteExportEntries.entryId })
           .from(remoteExportEntries)
           .where(eq(remoteExportEntries.exportId, record.id))
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   }
 
   // Key-based reconciliation: identical logical export already stored (REQ-233).
-  const [byKey] = await getDb()
+  const [byKey] = await db
     .select()
     .from(remoteExports)
     .where(
@@ -75,7 +76,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   }
 
   // Known-result replay: never recreate provenance for an already-finalized remote log.
-  const [existing] = await getDb()
+  const [existing] = await db
     .select()
     .from(remoteExports)
     .where(
@@ -87,7 +88,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     return toResult(existing, undefined, true);
   }
 
-  const [task] = await getDb()
+  const [task] = await db
     .select({ id: tasks.id })
     .from(tasks)
     .where(and(eq(tasks.id, parsed.taskId), eq(tasks.userId, user.id)))
@@ -108,7 +109,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     });
   }
 
-  const [userRow] = await getDb()
+  const [userRow] = await db
     .select({ timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))
@@ -116,7 +117,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
 
   const { from, to } = computeDayBoundary(parsed.localDate, userRow?.timezone ?? null);
 
-  const entryRows = await getDb()
+  const entryRows = await db
     .select({
       id: timeEntries.id,
       taskId: timeEntries.taskId,
@@ -155,7 +156,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     }
   }
 
-  const result = await getDb().transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(remoteExports)
       .values({

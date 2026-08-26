@@ -4,9 +4,10 @@ import { eq, isNull, asc, and } from 'drizzle-orm';
 import type { TrackerDto } from '../../../shared/types/tracker';
 
 export default defineEventHandler(async (event): Promise<TrackerDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
 
-  const rows = await getDb()
+  const rows = await db
     .select()
     .from(trackers)
     .where(and(eq(trackers.userId, user.id), isNull(trackers.deletedAt)))

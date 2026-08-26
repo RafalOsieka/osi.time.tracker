@@ -6,9 +6,10 @@ import { toTimeEntryDto } from '../../utils/time-entries';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto | null | undefined> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
 
-  const [running] = await getDb()
+  const [running] = await db
     .select()
     .from(timeEntries)
     .where(and(eq(timeEntries.userId, user.id), isNull(timeEntries.stoppedAt)))

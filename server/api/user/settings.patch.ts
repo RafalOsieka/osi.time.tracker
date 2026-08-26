@@ -7,6 +7,7 @@ import { mapZodError } from '../../utils/zod-error';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
+  const db = getDb();
   const session = await requireAuth(event);
   let update;
   try {
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
     throw error;
   }
 
-  const [updated] = await getDb()
+  const [updated] = await db
     .update(users)
     .set(update)
     .where(eq(users.id, session.user.id))

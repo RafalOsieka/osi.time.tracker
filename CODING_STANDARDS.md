@@ -52,7 +52,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 ## 4. Vue Component Conventions
 
 - Order blocks as `<script setup>`, then `<template>`, then `<style scoped>`.
-- Declare props and emits with typed generics (`defineProps<{ ... }>()`, `defineEmits<{ ... }>()`).
+- Declare props and emits with typed generics (`defineProps<{ ... }>()`, `defineEmits<{ ... }>()`). When props are used in `<script setup>`, destructure them (`const { open, project } = defineProps<{ ... }>()`). Do not assign `defineProps` to a `props` object. Vue 3.5 keeps destructured props reactive.
 - Prefer existing Nuxt UI components (`UButton`, `UInput`, `UForm`/`UFormField`, `UTable`, `UModal`, `UDashboard*`, etc.) over native form controls. Reserve native elements for semantic structure or lightweight wrappers.
 - Keep all user-facing text in the i18n catalogs and render it via `t(...)`; never hard-code display strings in templates or scripts.
 - Provide accessibility affordances: `aria-label`, `role`, and `aria-live` where appropriate, and use stable `data-testid` hooks for testable elements.
@@ -93,7 +93,7 @@ Rules:
 - Validate request bodies with `readZodBody` and query strings with `getZodQuery`, each using a single `zod` schema from `shared/types`. On `ZodError`, map the error to the `{ messageKey, params }` contract (`params` is `MessageParams`) and throw a `422` `createError`.
 - The shared mapper keeps `min`, `max`, `expected`, and custom primitive `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).
 - Never return rendered text from the server. Error and message payloads use a translation `messageKey` (plus optional `params`) that the client translates.
-- Access the database exclusively through `getDb()`; never instantiate raw drivers.
+- Access the database exclusively through `getDb()`; never instantiate raw drivers. `getDb()` returns the process-wide pooled client (first call creates it). Bind once per handler: `const db = getDb();`.
 - Serialize boundary values in their JSON form — timestamps are emitted as ISO strings, not `Date` objects.
 
 ## 6. Boundary Types & Validation

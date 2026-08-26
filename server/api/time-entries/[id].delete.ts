@@ -4,11 +4,12 @@ import { timeEntries, tasks } from '../../db/schema';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event) => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
 
   // Verify ownership (404 for foreign/unknown id)
-  const [existing] = await getDb()
+  const [existing] = await db
     .select({ id: timeEntries.id, taskId: timeEntries.taskId })
     .from(timeEntries)
     .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
@@ -21,7 +22,7 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  await getDb().transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     await tx
       .delete(timeEntries)
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)));

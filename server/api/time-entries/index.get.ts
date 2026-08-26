@@ -7,13 +7,14 @@ import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedQuery = await getZodQuery(event, listTimeEntriesQuerySchema);
 
   const from = new Date(parsedQuery.from);
   const to = new Date(parsedQuery.to);
 
-  const rows = await getDb()
+  const rows = await db
     .select({
       id: timeEntries.id,
       taskId: timeEntries.taskId,

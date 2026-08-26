@@ -25,7 +25,20 @@ export interface ExportDialogSkippedRow {
   reason: string;
 }
 
-const props = defineProps<{
+const {
+  open,
+  phase,
+  included,
+  skipped,
+  dayTotalSeconds,
+  trackedSeconds,
+  toSendSeconds,
+  progress,
+  outcomes,
+  completedCount,
+  totalCount,
+  isRunning,
+} = defineProps<{
   open: boolean;
   phase: ExportDialogPhase;
   included: ExportDialogIncludedRow[];
@@ -52,17 +65,17 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const dialogOpen = computed({
-  get: () => props.open,
+  get: () => open,
   set: (value: boolean) => {
-    if (!value && props.phase === 'running') return;
+    if (!value && phase === 'running') return;
     emit('update:open', value);
-    if (!value && props.phase === 'report') emit('close');
-    if (!value && props.phase === 'review') emit('cancel');
+    if (!value && phase === 'report') emit('close');
+    if (!value && phase === 'review') emit('cancel');
   },
 });
 
 const title = computed(() => {
-  switch (props.phase) {
+  switch (phase) {
     case 'running':
       return t('remoteSync.exportDialog.titleRunning');
     case 'report':
@@ -93,7 +106,7 @@ function statusLabel(status: SyncExportProgressStatus | undefined): string {
 }
 
 function outcomeText(taskId: string): string | null {
-  const outcome = props.outcomes[taskId];
+  const outcome = outcomes[taskId];
   if (!outcome?.messageKey) return null;
   return t(outcome.messageKey, outcome.messageParams ?? {});
 }
@@ -104,21 +117,15 @@ function remoteLogHref(baseUrl: string | null, remoteLogId: string | undefined):
   return `${root}/time_entries/${encodeURIComponent(remoteLogId)}`;
 }
 
-const succeeded = computed(() =>
-  props.included.filter((row) => props.progress[row.taskId] === 'done'),
-);
-const failed = computed(() =>
-  props.included.filter((row) => props.progress[row.taskId] === 'failed'),
-);
-const uncertain = computed(() =>
-  props.included.filter((row) => props.progress[row.taskId] === 'uncertain'),
-);
+const succeeded = computed(() => included.filter((row) => progress[row.taskId] === 'done'));
+const failed = computed(() => included.filter((row) => progress[row.taskId] === 'failed'));
+const uncertain = computed(() => included.filter((row) => progress[row.taskId] === 'uncertain'));
 const notAttempted = computed(() =>
-  props.included.filter((row) => props.progress[row.taskId] === 'not_attempted'),
+  included.filter((row) => progress[row.taskId] === 'not_attempted'),
 );
 const inProgress = computed(() =>
-  props.included.filter((row) => {
-    const status = props.progress[row.taskId];
+  included.filter((row) => {
+    const status = progress[row.taskId];
     return status === 'queued' || status === 'creating' || status === 'finalizing';
   }),
 );

@@ -25,7 +25,8 @@ export async function resolveActiveTrackerForTask(
   userId: string,
   taskId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
-  const [task] = await getDb()
+  const db = getDb();
+  const [task] = await db
     .select({ id: tasks.id, projectId: tasks.projectId })
     .from(tasks)
     .where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)))
@@ -47,7 +48,8 @@ export async function resolveActiveTrackerForProject(
   userId: string,
   projectId: string,
 ): Promise<{ id: string; systemType: string; baseUrl: string } | null> {
-  const [project] = await getDb()
+  const db = getDb();
+  const [project] = await db
     .select({ id: projects.id, trackerId: projects.trackerId })
     .from(projects)
     .where(and(eq(projects.id, projectId), eq(projects.userId, userId), isNull(projects.deletedAt)))
@@ -57,7 +59,7 @@ export async function resolveActiveTrackerForProject(
     return null;
   }
 
-  const [tracker] = await getDb()
+  const [tracker] = await db
     .select({
       id: trackers.id,
       systemType: trackers.systemType,
@@ -141,12 +143,13 @@ export async function getRemoteIssueRefsForTasks(
   userId: string,
   taskIds: string[],
 ): Promise<Map<string, RemoteIssueRefDto>> {
+  const db = getDb();
   const result = new Map<string, RemoteIssueRefDto>();
   if (taskIds.length === 0) {
     return result;
   }
 
-  const rows = await getDb()
+  const rows = await db
     .select({
       id: tasks.id,
       userId: tasks.userId,

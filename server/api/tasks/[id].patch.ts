@@ -8,13 +8,14 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TaskDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateTaskSchema);
 
   // Verify ownership (404 for foreign/unknown id). Capture the unchanged
   // remoteIssueId so collision scope includes it (REQ-134).
-  const [existing] = await getDb()
+  const [existing] = await db
     .select({
       id: tasks.id,
       projectId: tasks.projectId,
@@ -40,7 +41,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   // to a non-null project, so a rename works even after the current project
   // was soft-deleted, and clearing to null never needs validation.
   if (targetProjectId !== existing.projectId && targetProjectId !== null) {
-    const [project] = await getDb()
+    const [project] = await db
       .select({ id: projects.id })
       .from(projects)
       .where(
@@ -67,7 +68,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
       ? isNull(tasks.remoteIssueId)
       : eq(tasks.remoteIssueId, existing.remoteIssueId);
 
-  const updatedId = await getDb().transaction(async (tx) => {
+  const updatedId = await db.transaction(async (tx) => {
     // Detect a collision with another task already occupying the target
     // (userId, projectId, name, remoteIssueId) scope so the rename/move can
     // be merged instead of failing on the unique constraint. Differing
@@ -109,7 +110,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     return row!.id;
   });
 
-  const [updated] = await getDb().select().from(tasks).where(eq(tasks.id, updatedId)).limit(1);
+  const [updated] = await db.select().from(tasks).where(eq(tasks.id, updatedId)).limit(1);
 
   if (!updated) {
     throw createError({
@@ -121,7 +122,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   let projectName: string | null = null;
 
   if (updated.projectId) {
-    const [project] = await getDb()
+    const [project] = await db
       .select({ name: projects.name })
       .from(projects)
       .where(eq(projects.id, updated.projectId))

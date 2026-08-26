@@ -13,7 +13,8 @@ export async function resolveOwnedTracker(
   userId: string,
   trackerId: string,
 ): Promise<{ id: string; systemType: TrackerSystemType; baseUrl: string }> {
-  const [tracker] = await getDb()
+  const db = getDb();
+  const [tracker] = await db
     .select({
       id: trackers.id,
       systemType: trackers.systemType,

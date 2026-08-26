@@ -2,7 +2,7 @@
 import type { FormErrorEvent } from '@nuxt/ui';
 import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
 
-const props = defineProps<{
+const { visible, timeZone } = defineProps<{
   visible: boolean;
   timeZone: string;
 }>();
@@ -14,12 +14,12 @@ const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 
 const open = computed({
-  get: () => props.visible,
+  get: () => visible,
   set: (value: boolean) => emit('update:visible', value),
 });
 
 function todayKey(): string {
-  return localDayKeyFromInstant(new Date().toISOString(), props.timeZone);
+  return localDayKeyFromInstant(new Date().toISOString(), timeZone);
 }
 
 const state = reactive<TimerAddEntryFormDto>({
@@ -34,7 +34,7 @@ const rangeError = ref('');
 const saving = ref(false);
 
 watch(
-  () => props.visible,
+  () => visible,
   (visible) => {
     if (visible) {
       state.title = '';
@@ -94,8 +94,8 @@ function onError(event: FormErrorEvent) {
 async function onSave() {
   rangeError.value = '';
 
-  const startedAt = wallClockToInstant(state.date, state.startTime, props.timeZone);
-  const stoppedAt = wallClockToInstant(state.date, state.endTime, props.timeZone);
+  const startedAt = wallClockToInstant(state.date, state.startTime, timeZone);
+  const stoppedAt = wallClockToInstant(state.date, state.endTime, timeZone);
 
   saving.value = true;
   try {

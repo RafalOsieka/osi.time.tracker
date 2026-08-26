@@ -12,11 +12,12 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
   const parsedBody = await readZodBody(event, updateTimeEntrySchema);
 
-  const [existing] = await getDb()
+  const [existing] = await db
     .select()
     .from(timeEntries)
     .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
     });
   }
 
-  const updated = await getDb().transaction(async (tx) => {
+  const updated = await db.transaction(async (tx) => {
     let taskId = existing.taskId;
     if (parsedBody.taskId !== undefined && parsedBody.taskId !== null) {
       const [ownedTask] = await tx

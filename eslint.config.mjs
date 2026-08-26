@@ -80,6 +80,20 @@ export default withNuxt()
       },
     },
   })
+  .append({
+    files: ['**/*.vue'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'VariableDeclarator[id.name="props"] > CallExpression[callee.name="defineProps"]',
+          message:
+            'Destructure defineProps() instead of assigning to `props` (Vue 3.5 keeps destructured props reactive).',
+        },
+      ],
+    },
+  })
   .override('nuxt/typescript/rules', {
     rules: {
       // Enforce no-explicit-any rule to guarantee boundary types and avoid type erosion.

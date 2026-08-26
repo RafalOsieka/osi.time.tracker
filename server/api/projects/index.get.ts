@@ -5,6 +5,7 @@ import { listProjectsQuerySchema, type ProjectDto } from '../../../shared/types/
 import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const { trackerId: trackerIdRaw } = await getZodQuery(event, listProjectsQuerySchema);
 
@@ -15,7 +16,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
     conditions.push(eq(projects.trackerId, trackerIdRaw));
   }
 
-  const rows = await getDb()
+  const rows = await db
     .select({
       id: projects.id,
       name: projects.name,

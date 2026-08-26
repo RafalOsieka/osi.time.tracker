@@ -1,5 +1,5 @@
 <script setup lang="ts">
-const props = defineProps<{
+const { text } = defineProps<{
   text: string;
 }>();
 
@@ -26,7 +26,7 @@ onMounted(() => {
 });
 
 watch(
-  () => props.text,
+  () => text,
   () => {
     void nextTick(measure);
   },

@@ -10,11 +10,12 @@ import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
+  const db = getDb();
   const { user } = await requireAuth(event);
   const parsedBody = await readZodBody(event, reassignTimeEntriesSchema);
   const remoteIssueProvided = parsedBody.remoteIssueId !== undefined;
 
-  const updatedRows = await getDb().transaction(async (tx) => {
+  const updatedRows = await db.transaction(async (tx) => {
     const rows = await tx
       .select({
         id: timeEntries.id,
