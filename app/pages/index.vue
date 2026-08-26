@@ -10,11 +10,11 @@ const { data: feedData, pending: feedPending } = await useAsyncData('timer-view-
   requestFetch<TimerViewFeedDto>('/api/time-entries/feed'),
 );
 
-const projectsData = ref<ProjectDto[] | null>(null);
-
-async function refreshProjectOptions() {
-  projectsData.value = await fetchProjects();
-}
+const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
+  'projects-for-timer-view',
+  () => requestFetch<ProjectDto[]>('/api/projects'),
+  { server: false, immediate: false },
+);
 
 onMounted(() => {
   void refreshProjectOptions();

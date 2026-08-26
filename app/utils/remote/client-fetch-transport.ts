@@ -4,7 +4,7 @@ import type {
   RemoteResponse,
   Transport,
 } from '../../../shared/types/remote-adapter';
-import { UpstreamHttpError } from '../../../shared/remote/upstream-http-error';
+import { UpstreamHttpError } from '~~/shared/remote/upstream-http-error';
 
 /**
  * `client` execution-mode transport (L4): queries the configured tracker

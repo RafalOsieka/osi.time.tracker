@@ -3,10 +3,10 @@ import {
   applyRoundingRule,
   roundingSuggestionsFor,
   type RoundingSuggestion,
-} from '../../shared/utils/rounding';
+} from '~~/shared/utils/rounding';
 import type { TrackerRoundingRule } from '../../shared/types/tracker';
-import { formatDuration } from '../utils/format-duration';
-import { normalizeDurationInput } from '../utils/normalize-duration-input';
+import { formatDuration } from '~/utils/format-duration';
+import { normalizeDurationInput } from '~/utils/normalize-duration-input';
 
 /**
  * Rounded-duration overrides + raw input text with commit/revert semantics (REQ-113).

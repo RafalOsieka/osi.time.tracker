@@ -1,4 +1,4 @@
-import { RemoteAdapterError } from '../../shared/types/remote-adapter';
+import { RemoteAdapterError } from '~~/shared/types/remote-adapter';
 
 /**
  * Reads a stable i18n messageKey from an ofetch-shaped error.

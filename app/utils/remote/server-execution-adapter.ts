@@ -1,5 +1,5 @@
 import { z, type ZodType } from 'zod';
-import { REMOTE_SECRET_HEADER } from '../../../shared/config/remote-secret';
+import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import type { RemoteFieldOption } from '../../../shared/types/remote-field-option';
 import type { RemoteAccount } from '../../../shared/types/remote-account';
 import type {

@@ -13,6 +13,7 @@ import { resolveExportComment } from '~~/shared/utils/export-comment';
 import { normalizeBaseUrl } from '~~/shared/utils/normalize-base-url';
 import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import { RemoteAdapterError } from '~~/shared/types/remote-adapter';
+import { UpstreamHttpError } from '~~/shared/remote/upstream-http-error';
 import {
   REMOTE_ISSUE_SEARCH_MODE_ORDER,
   remoteIssuePickerFormSchema,
@@ -33,6 +34,7 @@ export default defineNuxtPlugin(() => {
   void normalizeBaseUrl;
   void REMOTE_SECRET_HEADER;
   void RemoteAdapterError;
+  void UpstreamHttpError;
   void REMOTE_ISSUE_SEARCH_MODE_ORDER;
   void remoteIssuePickerFormSchema;
   void OpenProjectAdapter;

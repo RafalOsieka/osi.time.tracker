@@ -6,9 +6,9 @@ import type {
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';
 import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/sync-ui-maps';
-import { buildExportRequestKey } from '../../shared/utils/export-request-key';
-import { resolveExportComment } from '../../shared/utils/export-comment';
-import { mapRemoteSyncClientError } from './use-remote-sync-client';
+import { buildExportRequestKey } from '~~/shared/utils/export-request-key';
+import { resolveExportComment } from '~~/shared/utils/export-comment';
+import { extractCaughtMessageKey } from '~/utils/extract-message-key';
 
 export type SyncExportProgressStatus =
   | 'queued'
@@ -136,7 +136,7 @@ export function useSyncExport(options: {
         setOutcome({
           taskId: row.taskId,
           status: 'remote_failure',
-          messageKey: mapRemoteSyncClientError(err, 'remoteSync.outcomeRemoteFailure'),
+          messageKey: extractCaughtMessageKey(err, 'remoteSync.outcomeRemoteFailure'),
         });
         return;
       }

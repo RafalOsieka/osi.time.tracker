@@ -1,5 +1,5 @@
-import { OpenProjectAdapter } from '../../../shared/remote/openproject/adapter';
-import { RedmineAdapter } from '../../../shared/remote/redmine/adapter';
+import { OpenProjectAdapter } from '~~/shared/remote/openproject/adapter';
+import { RedmineAdapter } from '~~/shared/remote/redmine/adapter';
 import type { RemoteTrackerAdapter } from '../../../shared/types/remote-adapter';
 import type { TrackerDto } from '../../../shared/types/tracker';
 import { clientFetchTransport } from './client-fetch-transport';
