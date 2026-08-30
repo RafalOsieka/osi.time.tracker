@@ -11,7 +11,6 @@ const config: TrackerDto = {
   baseUrl: 'https://op.example.com',
   executionMode: 'client',
   roundingRule: 'none',
-  requiredFieldDefaults: {},
   createdAt: '',
   updatedAt: '',
 };
@@ -31,7 +30,6 @@ function row(taskId = 'task-1', taskName = 'Ship it'): RemoteSyncDayRowDto {
       baseUrl: config.baseUrl,
       executionMode: 'client',
       roundingRule: 'none',
-      requiredFieldDefaults: {},
     },
     issueRef: {
       remoteIssueId: '42',

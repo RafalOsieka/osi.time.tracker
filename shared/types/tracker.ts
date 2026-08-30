@@ -78,7 +78,6 @@ export const createTrackerSchema = z.object({
     .trim(),
   executionMode: trackerExecutionModeSchema.default('client'),
   roundingRule: trackerRoundingRuleSchema,
-  requiredFieldDefaults: z.record(z.string(), z.string()).optional(),
 });
 
 export type CreateTrackerDto = z.infer<typeof createTrackerSchema>;
@@ -94,7 +93,6 @@ export interface TrackerDto {
   baseUrl: string;
   executionMode: TrackerExecutionMode;
   roundingRule: TrackerRoundingRule;
-  requiredFieldDefaults: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }

@@ -94,6 +94,21 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     });
   }
 
+  async function chooseDevelopment(page: Page, taskId: string) {
+    const activitySelect = `[data-testid="remote-sync-activity-select-${taskId}"]`;
+    const activityError = `[data-testid="remote-sync-activity-error-${taskId}"]`;
+    await page.waitForFunction(
+      ({ select, error }) => !!(document.querySelector(select) || document.querySelector(error)),
+      { select: activitySelect, error: activityError },
+    );
+    if ((await page.locator(activityError).count()) > 0) {
+      await page.click(`[data-testid="remote-sync-activity-retry-${taskId}"]`);
+      await page.waitForSelector(activitySelect);
+    }
+    await page.locator(activitySelect).click();
+    await page.getByRole('option', { name: 'Development' }).click();
+  }
+
   async function seedBrowserSecret(page: Page, configId: string) {
     await page.evaluate(({ id, secret }) => window.localStorage.setItem(`rsc:${id}`, secret), {
       id: configId,
@@ -118,7 +133,6 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const tracker = await createTracker(jar, token, 'Sync UI Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
       roundingRule: 'up_15m',
-      requiredFieldDefaults: { activity: '1' },
     });
     const project = await createProject(jar, token, 'Sync UI Project ' + Date.now(), tracker.id);
     const config = tracker;
@@ -164,17 +178,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const stateText = await page.textContent(`[data-testid="remote-sync-state-${entry.taskId}"]`);
     expect(stateText).toBeTruthy();
 
-    // Activities must resolve before the expanded detail exposes duration controls.
-    const activitySelect = `[data-testid="remote-sync-activity-select-${entry.taskId}"]`;
-    const activityError = `[data-testid="remote-sync-activity-error-${entry.taskId}"]`;
-    await page.waitForFunction(
-      ({ select, error }) => !!(document.querySelector(select) || document.querySelector(error)),
-      { select: activitySelect, error: activityError },
-    );
-    if ((await page.locator(activityError).count()) > 0) {
-      await page.click(`[data-testid="remote-sync-activity-retry-${entry.taskId}"]`);
-      await page.waitForSelector(activitySelect);
-    }
+    await chooseDevelopment(page, entry.taskId);
 
     // Expand the row so detail controls (rounded duration, entries) are available.
     await page.click(`[data-testid="remote-sync-expand-${entry.taskId}"]`);
@@ -249,7 +253,6 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const tracker = await createTracker(jar, token, 'Suggestion Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
       roundingRule: 'nearest_15m',
-      requiredFieldDefaults: { activity: '1' },
     });
     const project = await createProject(jar, token, 'Suggestion Project ' + Date.now(), tracker.id);
     const config = tracker;
@@ -357,7 +360,6 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const tracker = await createTracker(jar, token, 'Sync Nav Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
       roundingRule: 'none',
-      requiredFieldDefaults: { activity: '1' },
     });
     const project = await createProject(jar, token, 'Sync Nav Project ' + Date.now(), tracker.id);
     const config = tracker;
@@ -401,7 +403,9 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await openSyncDay(page, day, title);
     await page.waitForSelector(`[data-testid="remote-sync-row-${entry.taskId}"]`);
 
-    // Wait until activities make the row pushable so tracked includes the hour.
+    await chooseDevelopment(page, entry.taskId);
+
+    // Wait until the row is pushable so tracked includes the hour.
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
       return !!el && el.textContent?.includes('01:00:00');
@@ -425,6 +429,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.click('[data-testid="remote-sync-prev-day"]');
     await page.waitForURL(`**/sync/${day}`);
     await page.waitForSelector(`[data-testid="remote-sync-row-${entry.taskId}"]`);
+    await chooseDevelopment(page, entry.taskId);
     // Review state must not carry over from the empty day (defaults restore).
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');

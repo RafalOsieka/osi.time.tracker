@@ -43,6 +43,7 @@ describeTrackers('trackers API integration', async () => {
     expect(rows[1].name).toBe('Zebra Tracker');
     expect(rows[0].apiKey).toBeUndefined();
     expect(rows[0].secret).toBeUndefined();
+    expect(rows[0].requiredFieldDefaults).toBeUndefined();
 
     const deleteRes = await fetch(url(`/api/trackers/${rows[0].id}`), {
       method: 'DELETE',
@@ -72,6 +73,30 @@ describeTrackers('trackers API integration', async () => {
     expect(created.executionMode).toBe('client');
     expect(created.apiKey).toBeUndefined();
     expect(created.secret).toBeUndefined();
+    expect(created.requiredFieldDefaults).toBeUndefined();
+
+    const leftover = await fetch(url('/api/trackers'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(
+        trackerBody('Leftover Defaults ' + Date.now(), {
+          requiredFieldDefaults: { activity: '1' },
+        }),
+      ),
+    });
+    expect(leftover.status).toBe(200);
+    const leftoverBody = await leftover.json();
+    expect(leftoverBody.requiredFieldDefaults).toBeUndefined();
+
+    const leftoverPatch = await fetch(url(`/api/trackers/${leftoverBody.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(
+        trackerBody(leftoverBody.name, { requiredFieldDefaults: { activity: '9' } }),
+      ),
+    });
+    expect(leftoverPatch.status).toBe(200);
+    expect((await leftoverPatch.json()).requiredFieldDefaults).toBeUndefined();
 
     const emptyRes = await fetch(url('/api/trackers'), {
       method: 'POST',
@@ -170,6 +195,7 @@ describeTrackers('trackers API integration', async () => {
     expect(patched.baseUrl).toBe('https://rm.example.com');
     expect(patched.roundingRule).toBe('up_15m');
     expect(patched.secret).toBeUndefined();
+    expect(patched.requiredFieldDefaults).toBeUndefined();
 
     const notFound = await fetch(url(`/api/trackers/${UNKNOWN_ID}`), {
       method: 'PATCH',

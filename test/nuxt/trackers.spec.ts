@@ -29,7 +29,6 @@ type Tracker = {
   baseUrl: string;
   executionMode: string;
   roundingRule: string;
-  requiredFieldDefaults: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 };
@@ -193,7 +192,6 @@ describe('trackers page', () => {
         baseUrl: 'https://a.example.com',
         executionMode: 'client',
         roundingRule: 'none',
-        requiredFieldDefaults: {},
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },
@@ -204,7 +202,6 @@ describe('trackers page', () => {
         baseUrl: 'https://z.example.com',
         executionMode: 'client',
         roundingRule: 'none',
-        requiredFieldDefaults: {},
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       },

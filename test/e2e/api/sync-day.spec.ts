@@ -67,8 +67,12 @@ describeSyncDay('sync day-review API integration', async () => {
     const row = body.rows.find((r: { totalSeconds: number }) => r.totalSeconds === 30 * 60);
     expect(row).toBeDefined();
     expect(row.config).not.toBeNull();
+    expect(row.config.id).toBe(tracker.id);
     expect(row.config.systemType).toBe('openproject');
     expect(row.config.executionMode).toBe('client');
+    expect(row.config.roundingRule).toBe('none');
+    expect(row.config.baseUrl).toBe('https://op.example.com');
+    expect(row.config.requiredFieldDefaults).toBeUndefined();
     expect(row.entries).toHaveLength(1);
     expect(row.entries[0].id).toBe(entry.id);
     expect(row.entries[0].durationSeconds).toBe(30 * 60);
