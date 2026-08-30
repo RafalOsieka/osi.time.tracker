@@ -23,7 +23,6 @@ const tracker: TrackerDto = {
   baseUrl: 'https://op.example.com',
   executionMode: 'client',
   roundingRule: 'none',
-  requiredFieldDefaults: {},
   createdAt: '',
   updatedAt: '',
 };

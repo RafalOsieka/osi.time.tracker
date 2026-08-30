@@ -25,8 +25,7 @@ export type RemoteSyncRowState = z.infer<typeof remoteSyncRowStateSchema>;
 
 /**
  * Minimal config surface needed for row-state derivation and, on
- * manageable rows, for rounding and required-field pre-fill. Never carries
- * credential material.
+ * manageable rows, for rounding. Never carries credential material.
  */
 export interface RemoteSyncConfigSurfaceDto {
   id: string;
@@ -34,7 +33,6 @@ export interface RemoteSyncConfigSurfaceDto {
   baseUrl: string;
   executionMode: TrackerExecutionMode;
   roundingRule: TrackerRoundingRule;
-  requiredFieldDefaults: Record<string, string>;
 }
 
 /** A `RemoteIssueRefDto` shorn down to the fields the Remote Sync page needs. */

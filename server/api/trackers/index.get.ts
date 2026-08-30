@@ -20,7 +20,6 @@ export default defineEventHandler(async (event): Promise<TrackerDto[]> => {
     baseUrl: row.baseUrl,
     executionMode: row.executionMode,
     roundingRule: row.roundingRule,
-    requiredFieldDefaults: row.requiredFieldDefaults,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }));

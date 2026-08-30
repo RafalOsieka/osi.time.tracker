@@ -10,6 +10,10 @@ const STORAGE_KEY_PREFIX = 'rsc:';
  * performing the on-demand push of a time entry to the remote system.
  * The `rsc:` prefix is retained for backward compatibility with secrets stored
  * before the Clients → Trackers rename.
+ *
+ * Plaintext `localStorage` is accepted: same-origin JavaScript can always use
+ * the token (client-side encryption would not change that), CSP is the XSS
+ * control, and encrypted server-side credentials remain WBS 5.4.
  */
 export function useTrackerSecret() {
   function key(trackerId: string) {

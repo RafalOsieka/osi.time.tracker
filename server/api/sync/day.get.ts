@@ -77,7 +77,6 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       baseUrl: string;
       executionMode: TrackerExecutionMode;
       roundingRule: TrackerRoundingRule;
-      requiredFieldDefaults: Record<string, string>;
     }
   >();
   if (trackerIds.length > 0) {
@@ -93,7 +92,6 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
           baseUrl: tracker.baseUrl,
           executionMode: tracker.executionMode,
           roundingRule: tracker.roundingRule,
-          requiredFieldDefaults: tracker.requiredFieldDefaults,
         });
       }
     }

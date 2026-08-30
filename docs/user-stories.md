@@ -133,7 +133,6 @@ Conventions that apply to every story:
 - I can configure a Tracker: system type (redmine/openproject), base URL, API credentials, execution mode (backend/client), and rounding rule. The full config except the API secret is stored in the database.
 - For **client-side** trackers (**the only MVP mode**), my credentials are entered and kept **only in my browser** (keyed by tracker id) and are never persisted to the server, while the rest of the tracker is still stored in the database.
 - (Post-MVP) For **backend-side** trackers, my credentials are stored encrypted and never returned to the client in plaintext.
-- I can optionally set defaults for the remote system's **required fields** (e.g. Redmine activity), used to pre-fill the Remote Sync page.
 - I can edit and remove a Tracker.
 
 ---

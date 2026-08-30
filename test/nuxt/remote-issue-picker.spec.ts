@@ -123,7 +123,6 @@ const config = {
   baseUrl: 'https://op.example.com',
   executionMode: 'client' as const,
   roundingRule: 'none' as const,
-  requiredFieldDefaults: {},
   createdAt: '',
   updatedAt: '',
 };

@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Define how authenticated users manage first-class Trackers: named remote issue-tracker connections (system type, base URL, execution mode, rounding, required-field defaults) with browser-only API secrets, list/create/edit/soft-delete APIs and an accessible Trackers UI, plus server-execution proxy behavior for tracker operations.
+Define how authenticated users manage first-class Trackers: named remote issue-tracker connections (system type, base URL, execution mode, rounding) with browser-only API secrets, list/create/edit/soft-delete APIs and an accessible Trackers UI, plus server-execution proxy behavior for tracker operations.
 
 ## Requirements
 
 ### Requirement: REQ-244 List own trackers
-The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `executionMode`, `roundingRule`, `requiredFieldDefaults`, timestamps) and SHALL never include an API secret.
+The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `executionMode`, `roundingRule`, timestamps) and SHALL never include an API secret or required-field defaults.
 
 #### Scenario: User sees only their own trackers
 - **WHEN** an authenticated user requests their trackers
@@ -25,8 +25,12 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** a user lists or reads a tracker
 - **THEN** the response DTO SHALL contain no credential or secret field
 
+#### Scenario: Response never includes required-field defaults
+- **WHEN** a user lists or reads a tracker
+- **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
+
 ### Requirement: REQ-245 Create a tracker
-The system SHALL allow an authenticated user to create a tracker via `POST /api/trackers` with a required `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`, plus optional `requiredFieldDefaults`. `executionMode` SHALL accept `client` or `server` and SHALL default to `client` when omitted. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user among non-deleted trackers. `baseUrl` SHALL be a valid URL. On success the created tracker SHALL be returned and a success Toast SHALL be shown. The API secret SHALL NOT be accepted as a stored field.
+The system SHALL allow an authenticated user to create a tracker via `POST /api/trackers` with a required `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`. `executionMode` SHALL accept `client` or `server` and SHALL default to `client` when omitted. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user among non-deleted trackers. `baseUrl` SHALL be a valid URL. On success the created tracker SHALL be returned and a success Toast SHALL be shown. The API secret SHALL NOT be accepted as a stored field. Create and update bodies SHALL NOT accept `requiredFieldDefaults` as a stored field.
 
 #### Scenario: Successful creation
 - **WHEN** an authenticated user submits a valid unique name and valid connection fields
@@ -59,6 +63,10 @@ The system SHALL allow an authenticated user to create a tracker via `POST /api/
 #### Scenario: Secret is not accepted as a stored field
 - **WHEN** a create or update body includes a credential/secret field intended for storage
 - **THEN** the server SHALL ignore or reject that field and SHALL never persist it
+
+#### Scenario: Required-field defaults are not accepted as a stored field
+- **WHEN** a create or update body includes `requiredFieldDefaults`
+- **THEN** the server SHALL ignore or reject that field and SHALL NOT persist required-field defaults
 
 ### Requirement: REQ-246 Edit a tracker
 The system SHALL allow an authenticated user to update their own tracker via `PATCH /api/trackers/[id]`, applying the same validation as creation for provided fields. Editing SHALL be scoped by `userId`. Editing any configuration field, including `systemType` or normalized `baseUrl`, SHALL retain the tracker identity and existing Task remote issue references without remote validation, cleanup, or metadata migration. On success the updated tracker SHALL be returned and the row SHALL reflect the change.
@@ -123,17 +131,6 @@ The API secret SHALL be entered and kept only in the user's browser and SHALL ne
 #### Scenario: Server execution forwarding does not persist the secret
 - **WHEN** the browser forwards the secret to the OSI server for a `server` execution-mode request
 - **THEN** the server SHALL use it only for the immediate upstream request and SHALL NOT persist, log, or return it
-
-### Requirement: REQ-250 Default values for the tracker's required fields
-A user SHALL be able to store default values for the remote system's required fields as an adapter-agnostic key–value map (`requiredFieldDefaults`) on the tracker, so they can later pre-fill the Remote Sync page.
-
-#### Scenario: Store required-field defaults
-- **WHEN** a user saves a tracker including one or more required-field defaults (e.g. an activity id)
-- **THEN** the system SHALL persist them as a string key–value map on the tracker
-
-#### Scenario: Defaults are optional
-- **WHEN** a user saves a tracker with no required-field defaults
-- **THEN** the system SHALL persist the tracker with an empty defaults map and SHALL NOT treat the absence as an error
 
 ### Requirement: REQ-251 Accessible, tokenized Trackers UI
 The Trackers page SHALL meet WCAG 2.1 AA: form fields SHALL be labelled, the create/edit modal and confirm modal SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error. Styling SHALL derive from Tailwind utilities and Nuxt UI `--ui-*` design tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity. The create/edit form SHALL be a single surface covering name and all connection fields plus the browser-only secret input.

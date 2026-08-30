@@ -65,6 +65,15 @@ describe('tracker connection field schemas', () => {
     expect('secret' in result).toBe(false);
   });
 
+  it('strips requiredFieldDefaults submitted alongside a valid body', () => {
+    const result = createTrackerSchema.parse({
+      ...valid,
+      requiredFieldDefaults: { activity: '1' },
+    });
+    expect('requiredFieldDefaults' in result).toBe(false);
+    expect(result).toEqual(valid);
+  });
+
   it('maps validation failures to { messageKey, params } via mapZodError', () => {
     try {
       createTrackerSchema.parse({ ...valid, baseUrl: 'not-a-url' });

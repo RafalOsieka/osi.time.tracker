@@ -3,7 +3,11 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import RemoteSyncPage from '../../app/pages/sync/[date].vue';
-import type { RemoteSyncDayDto, RemoteSyncDayEntryDto } from '../../shared/types/remote-sync-day';
+import type {
+  RemoteSyncDayDto,
+  RemoteSyncDayEntryDto,
+  RemoteSyncExportProvenanceDto,
+} from '../../shared/types/remote-sync-day';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const dollarFetchMock = vi.hoisted(() => vi.fn());
@@ -166,7 +170,6 @@ const baseConfig = {
   baseUrl: 'https://op.example.com',
   executionMode: 'client' as const,
   roundingRule: 'up_15m' as const,
-  requiredFieldDefaults: {},
 };
 
 function entry(partial: Partial<RemoteSyncDayEntryDto> & { id: string }): RemoteSyncDayEntryDto {
@@ -176,6 +179,22 @@ function entry(partial: Partial<RemoteSyncDayEntryDto> & { id: string }): Remote
     durationSeconds: 50 * 60,
     previouslyExported: false,
     ...partial,
+  };
+}
+
+function priorExport(
+  activityId: string,
+  overrides: Partial<RemoteSyncExportProvenanceDto> = {},
+): RemoteSyncExportProvenanceDto {
+  return {
+    exportId: 'exp-prior',
+    remoteLogId: '8000',
+    remoteIssueId: '42',
+    exportDurationSeconds: 3600,
+    requiredFieldValues: { activity: activityId },
+    entryIds: [],
+    createdAt: '2026-03-14T12:00:00.000Z',
+    ...overrides,
   };
 }
 
@@ -341,10 +360,10 @@ describe('RemoteSync page', () => {
           projectName: 'Project',
           trackerName: 'Client',
           totalSeconds: 50 * 60,
-          config: { ...baseConfig, requiredFieldDefaults: { activity: '1' } },
+          config: { ...baseConfig },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Fix bug' },
           entries: [entry({ id: 'entry-inline' })],
-          exports: [],
+          exports: [priorExport('1')],
         },
       ],
     });
@@ -379,7 +398,7 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('00:45:00');
   });
 
-  it('pre-selects the activity matching requiredFieldDefaults', async () => {
+  it('pre-selects the activity matching last-export provenance', async () => {
     dayData = makeDay({
       rows: [
         {
@@ -388,10 +407,10 @@ describe('RemoteSync page', () => {
           projectName: 'Project',
           trackerName: 'Client',
           totalSeconds: 3600,
-          config: { ...baseConfig, id: 'config-3', requiredFieldDefaults: { activity: '2' } },
+          config: { ...baseConfig, id: 'config-3' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
           entries: [entry({ id: 'entry-3', durationSeconds: 3600 })],
-          exports: [],
+          exports: [priorExport('2')],
         },
       ],
     });
@@ -408,6 +427,37 @@ describe('RemoteSync page', () => {
       '[data-testid="remote-sync-activity-select-task-3"]',
     );
     expect(select.element.value).toBe('2');
+  });
+
+  it('leaves the activity unselected when there is no last-export match', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-3b',
+          taskName: 'No Provenance Activity',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-3b' },
+          issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-3b', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(
+      activitiesPayload([
+        { id: 1, name: 'Development' },
+        { id: 2, name: 'Management' },
+      ]),
+    );
+
+    const wrapper = await mount();
+    const select = wrapper.find<HTMLSelectElement>(
+      '[data-testid="remote-sync-activity-select-task-3b"]',
+    );
+    expect(select.element.value).toBe('');
   });
 
   it('routes activities/account fetches through the server for a server-execution-mode config', async () => {
@@ -666,11 +716,10 @@ describe('RemoteSync page', () => {
           config: {
             ...baseConfig,
             id: 'config-export',
-            requiredFieldDefaults: { activity: '1' },
           },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
           entries: [entry({ id: 'entry-export', durationSeconds: 3600 })],
-          exports: [],
+          exports: [priorExport('1')],
         },
       ],
     });
@@ -742,10 +791,10 @@ describe('RemoteSync page', () => {
           projectName: 'Project',
           trackerName: 'Client',
           totalSeconds: 3600,
-          config: { ...baseConfig, id: 'config-sum', requiredFieldDefaults: { activity: '1' } },
+          config: { ...baseConfig, id: 'config-sum' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
           entries: [entry({ id: 'e-sum-ok', durationSeconds: 3600 })],
-          exports: [],
+          exports: [priorExport('1')],
         },
         {
           taskId: 'task-sum-blocked',
@@ -797,7 +846,7 @@ describe('RemoteSync page', () => {
           projectName: 'Project',
           trackerName: 'Client',
           totalSeconds: 1800,
-          config: { ...baseConfig, id: 'config-comment', requiredFieldDefaults: { activity: '1' } },
+          config: { ...baseConfig, id: 'config-comment' },
           issueRef: { remoteIssueId: '55', cachedTitle: 'Issue' },
           entries: [entry({ id: 'entry-comment', durationSeconds: 1800 })],
           exports: [],

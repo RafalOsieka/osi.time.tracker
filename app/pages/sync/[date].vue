@@ -80,7 +80,6 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): TrackerDto {
     baseUrl: config.baseUrl,
     executionMode: config.executionMode,
     roundingRule: config.roundingRule,
-    requiredFieldDefaults: config.requiredFieldDefaults,
     createdAt: '',
     updatedAt: '',
   };
@@ -442,9 +441,7 @@ function selectedActivity(row: RemoteSyncDayRowDto): string | undefined {
   const options = activitiesFor(row).options;
   const previous = row.exports[0]?.requiredFieldValues?.activity;
   if (previous && options.some((option) => option.id === previous)) return previous;
-  const defaultId = row.config?.requiredFieldDefaults?.activity;
-  const match = defaultId ? options.find((option) => option.id === defaultId) : undefined;
-  return match ? match.id : undefined;
+  return undefined;
 }
 
 function onActivityChange(row: RemoteSyncDayRowDto, value: string | null | undefined) {

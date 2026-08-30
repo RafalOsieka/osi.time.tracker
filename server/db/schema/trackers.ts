@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, jsonb, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import type {
@@ -21,10 +21,6 @@ export const trackers = pgTable(
     baseUrl: text('baseUrl').notNull(),
     executionMode: text('executionMode').notNull().$type<TrackerExecutionMode>(),
     roundingRule: text('roundingRule').notNull().$type<TrackerRoundingRule>(),
-    requiredFieldDefaults: jsonb('requiredFieldDefaults')
-      .notNull()
-      .default({})
-      .$type<Record<string, string>>(),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),
     deletedAt: timestamp('deletedAt', { withTimezone: true }),

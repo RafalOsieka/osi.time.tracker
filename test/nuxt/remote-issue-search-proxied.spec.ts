@@ -35,7 +35,6 @@ const config = {
   baseUrl: 'https://op.example.com',
   executionMode: 'server' as const,
   roundingRule: 'none' as const,
-  requiredFieldDefaults: {},
   createdAt: '',
   updatedAt: '',
 };

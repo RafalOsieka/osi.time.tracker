@@ -127,6 +127,13 @@
       "when": 1786560000000,
       "tag": "0017_add_remote_issue_cached_project_title",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787846400000,
+      "tag": "0018_drop_required_field_defaults",
+      "breakpoints": true
     }
   ]
 }
