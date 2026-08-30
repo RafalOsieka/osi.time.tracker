@@ -40,16 +40,28 @@ describeShell('authenticated shell navigation', async () => {
     expect(await nav.locator('a[href="/trackers"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/projects"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/tasks"]').count()).toBe(0);
-    expect(await nav.locator('a[href="/reports"]').isVisible()).toBe(true);
+    expect(await nav.locator('a[href="/reports"]').count()).toBe(0);
+    expect(await nav.locator('a[href="/reports/monthly"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/settings"]').isVisible()).toBe(true);
   });
 
-  it('navigating to Reports opens the reports hub', async () => {
+  it('navigating to Monthly opens the monthly timesheet', async () => {
     const page = await openAuthed();
-    await page.click('[data-testid="app-sidebar"] a[href="/reports"]');
-    await page.waitForSelector('[data-testid="reports-hub"]');
-    expect(await page.locator('[data-testid="reports-hub"]').isVisible()).toBe(true);
-    expect(await page.locator('[data-testid="reports-card-monthly"]').isVisible()).toBe(true);
+    await page.click('[data-testid="app-sidebar"] a[href="/reports/monthly"]');
+    await page.waitForSelector('[data-testid="reports-monthly"]');
+    expect(await page.locator('[data-testid="reports-monthly"]').isVisible()).toBe(true);
+    expect(await page.locator('[data-testid="reports-hub"]').count()).toBe(0);
+    const monthlyLink = page.locator('[data-testid="app-sidebar"] a[href="/reports/monthly"]');
+    expect(await monthlyLink.getAttribute('aria-current')).toBe('page');
+    expect(await page.locator('[data-testid="app-sidebar"] [aria-current="page"]').count()).toBe(1);
+  });
+
+  it('authenticated /reports is not found', async () => {
+    const page = await openAuthed();
+    const response = await page.goto(new URL('/reports', page.url()).href);
+    expect(response?.status()).toBe(404);
+    expect(await page.locator('[data-testid="reports-hub"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="reports-monthly"]').count()).toBe(0);
   });
 
   it('logout is reachable via the sidebar account menu', async () => {

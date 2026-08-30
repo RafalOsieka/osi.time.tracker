@@ -7,6 +7,7 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 const fetchMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
 const seedRunningMock = vi.hoisted(() => vi.fn());
 const resumeTickerMock = vi.hoisted(() => vi.fn());
+const routePath = vi.hoisted(() => ({ current: '/' }));
 
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
 type AsyncDataValue = TimeEntryDto | null;
@@ -22,6 +23,12 @@ mockNuxtImport('useAsyncData', () => {
     return { data, pending: ref(false), refresh: vi.fn() };
   };
 });
+mockNuxtImport('useRoute', () => () => ({
+  path: routePath.current,
+  fullPath: routePath.current,
+  query: {},
+  params: {},
+}));
 mockNuxtImport('useTimer', () => () => ({
   seedRunning: seedRunningMock,
   resumeTickerIfNeeded: resumeTickerMock,
@@ -38,6 +45,7 @@ mockNuxtImport('useTimer', () => () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   fetchMock.mockResolvedValue(null);
+  routePath.current = '/';
 });
 
 const topBarStub = {
@@ -165,7 +173,14 @@ describe('REQ-065: sidebar nav skeleton', () => {
             props: ['items'],
             template: `
               <div>
-                <a v-for="item in items" :key="item.to" :href="item.to">{{ item.label }}</a>
+                <template v-for="item in items" :key="item.label">
+                  <a v-if="item.to" :href="item.to">{{ item.label }}</a>
+                  <a
+                    v-for="child in item.children ?? []"
+                    :key="child.to"
+                    :href="child.to"
+                  >{{ child.label }}</a>
+                </template>
               </div>
             `,
           },
@@ -184,8 +199,33 @@ describe('REQ-065: sidebar nav skeleton', () => {
     expect(hrefs).toContain('/projects');
     expect(hrefs).not.toContain('/tasks');
     expect(hrefs).not.toContain('/clients');
-    expect(hrefs).toContain('/reports');
+    expect(hrefs).not.toContain('/reports');
+    expect(hrefs).toContain('/reports/monthly');
     expect(hrefs).toContain('/settings');
+  });
+
+  it('does not mark the Reports group as active when Monthly is current', async () => {
+    routePath.current = '/reports/monthly';
+    const wrapper = await mountSuspended(AppSidebar, {
+      global: {
+        stubs: {
+          UNavigationMenu: {
+            props: ['items'],
+            template: `
+              <div
+                :data-reports-active="String(items.find((item) => item.children)?.active)"
+                :data-monthly-active="String(
+                  items.find((item) => item.children)?.children?.find((child) => child.to === '/reports/monthly')?.active
+                )"
+              />
+            `,
+          },
+          UIcon: true,
+        },
+      },
+    });
+    expect(wrapper.find('[data-reports-active]').attributes('data-reports-active')).toBe('false');
+    expect(wrapper.find('[data-monthly-active]').attributes('data-monthly-active')).toBe('true');
   });
 });
 

@@ -2,25 +2,21 @@
 
 ## Purpose
 
-Give the authenticated user a reports hub and a monthly timesheet that reconciles local logged hours with live remote tracker hours, split into app-exported versus logged-directly, so a consultant can see what actually landed on each tracker for a month.
+Give the authenticated user a monthly timesheet that reconciles local logged hours with live remote tracker hours, split into app-exported versus logged-directly, so a consultant can see what actually landed on each tracker for a month. Reports are reached from the sidebar Reports group; there is no `/reports` hub.
 
 ## Requirements
 
-### Requirement: REQ-288 Reports hub at `/reports`
+### Requirement: REQ-300 No reports hub at `/reports`
 
-The application SHALL replace the `/reports` coming-soon placeholder with a private reports hub. The hub SHALL list each available report as a card. The first (and, in this slice, only) card SHALL navigate to the monthly timesheet. The sidebar SHALL continue to expose a single Reports link to `/reports` and SHALL NOT nest report types under that link.
+The application SHALL NOT expose a reports hub page at `/reports`. There SHALL be no redirect from `/reports` to `/reports/monthly`. An authenticated request for `/reports` SHALL be a not-found response (HTTP 404), not a hub, placeholder, or monthly timesheet. Unauthenticated requests remain subject to the private-by-default guard.
 
-#### Scenario: Authenticated user opens the hub
-- **WHEN** an authenticated user navigates to `/reports`
-- **THEN** the application SHALL render the reports hub with a monthly-timesheet card and SHALL NOT render the coming-soon placeholder
+#### Scenario: Authenticated `/reports` is not found
+- **WHEN** an authenticated user requests `/reports`
+- **THEN** the application SHALL respond with 404 and SHALL NOT render a reports hub or the monthly timesheet
 
-#### Scenario: Hub card opens the monthly timesheet
-- **WHEN** the user activates the monthly-timesheet card
-- **THEN** the application SHALL navigate to `/reports/monthly`
-
-#### Scenario: Unauthenticated access is redirected
+#### Scenario: Unauthenticated `/reports` is still gated
 - **WHEN** an unauthenticated visitor requests `/reports`
-- **THEN** the global guard SHALL redirect to `/login` with the hub as the redirect target before any protected markup is sent
+- **THEN** the global guard SHALL redirect to `/login` with that path as the redirect target before any protected markup is sent
 
 ### Requirement: REQ-289 Monthly timesheet month selection
 
@@ -160,11 +156,11 @@ All durations on the reports hub (if any) and the monthly timesheet SHALL be dis
 
 ### Requirement: REQ-295 Reports i18n and page chrome
 
-All user-visible reports copy SHALL come from the `en` and `pl` catalogs in parity. The monthly page SHALL use the shared authenticated page header pattern (title plus month controls). Attention icons, month controls, and the hub card SHALL be keyboard operable with visible focus and accessible names.
+All user-visible reports copy SHALL come from the `en` and `pl` catalogs in parity. The monthly page SHALL use the shared authenticated page header pattern (title plus month controls). Attention icons and month controls SHALL be keyboard operable with visible focus and accessible names.
 
 #### Scenario: Polish catalog covers new strings
 - **WHEN** the UI locale is `pl`
-- **THEN** hub, month picker, table headers, empty state, errors, and attention tooltips SHALL render Polish strings with no raw English keys
+- **THEN** month picker, table headers, empty state, errors, and attention tooltips SHALL render Polish strings with no raw English keys
 
 #### Scenario: Month controls are keyboard operable
 - **WHEN** a keyboard user tabs to previous/next month

@@ -33,9 +33,19 @@ const navItems = computed<NavigationMenuItem[]>(() => [
   },
   {
     label: t('nav.reports'),
-    to: '/reports',
     icon: 'i-lucide-chart-column',
-    active: route.path.startsWith('/reports'),
+    type: 'trigger',
+    open: true,
+    defaultOpen: true,
+    active: false,
+    children: [
+      {
+        label: t('reports.monthly.pageTitle'),
+        to: '/reports/monthly',
+        icon: 'i-lucide-calendar-days',
+        active: route.path.startsWith('/reports/monthly'),
+      },
+    ],
   },
   {
     label: t('nav.settings'),
@@ -51,6 +61,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     <UNavigationMenu
       :collapsed="isCollapsed"
       :tooltip="isCollapsed"
+      :popover="isCollapsed"
       :items="navItems"
       orientation="vertical"
       class="w-full"

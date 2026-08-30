@@ -24,10 +24,7 @@
     "comingSoon": "Wkrótce."
   },
   "reports": {
-    "hubTitle": "Raporty",
     "monthly": {
-      "cardTitle": "Zestawienie miesięczne",
-      "cardDescription": "Godziny z każdego dnia w porównaniu z każdym zdalnym trackerem.",
       "pageTitle": "Zestawienie miesięczne",
       "previousMonth": "Poprzedni miesiąc",
       "nextMonth": "Następny miesiąc",
