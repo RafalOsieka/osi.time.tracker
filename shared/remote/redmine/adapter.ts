@@ -100,6 +100,36 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
     return logs;
   }
 
+  async fetchTimeLogsInRange(input: {
+    from: string;
+    to: string;
+    userId?: string;
+  }): Promise<RemoteTimeLogDto[]> {
+    const logs: RemoteTimeLogDto[] = [];
+    let offset = 0;
+
+    try {
+      for (let page = 0; page < REDMINE_TIME_LOGS_MAX_PAGES; page += 1) {
+        const result = await this.client.fetchTimeLogsRangePage(
+          {
+            from: input.from,
+            to: input.to,
+            userId: input.userId,
+            offset,
+          },
+          this.secret,
+        );
+        logs.push(...result.logs);
+        if (result.nextOffset == null) break;
+        offset = result.nextOffset;
+      }
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteTimeLogsFetchFailed');
+    }
+
+    return logs;
+  }
+
   async createTimeEntry(input: {
     remoteIssueId: string;
     spentOn: string;

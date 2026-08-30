@@ -23,6 +23,36 @@
   "page": {
     "comingSoon": "Coming soon."
   },
+  "reports": {
+    "hubTitle": "Reports",
+    "monthly": {
+      "cardTitle": "Monthly timesheet",
+      "cardDescription": "Hours per day compared with each remote tracker.",
+      "pageTitle": "Monthly timesheet",
+      "previousMonth": "Previous month",
+      "nextMonth": "Next month",
+      "columnDate": "Date",
+      "columnLocal": "Local",
+      "columnApp": "App",
+      "columnExported": "Exported",
+      "columnDirect": "Direct",
+      "columnTotal": "Total",
+      "empty": "No hours logged this month.",
+      "loadError": "The report could not be loaded.",
+      "trackerError": "Could not load",
+      "trackerErrorAria": "Could not load remote hours for {name}",
+      "totals": "Total",
+      "summaryLocal": "Local",
+      "summaryRemote": "Remote",
+      "summaryRemotePartial": "Some trackers could not be loaded. This total includes only hours that were fetched.",
+      "summaryRemoteFailed": "Remote hours could not be loaded.",
+      "attentionLabel": "Needs attention",
+      "reasonDirect": "Remote hours were not exported from this app.",
+      "reasonUnexported": "Local hours did not land on any tracker.",
+      "reasonRemoteOnly": "Hours exist only on a remote tracker.",
+      "reasonFetchFailed": "Remote hours could not be loaded for a tracker."
+    }
+  },
   "settings": {
     "language": "Language",
     "theme": "Theme",
@@ -410,7 +440,8 @@
     "remoteAccountFetchFailed": "The remote account could not be resolved. Please try again.",
     "remoteTimeLogsFetchFailed": "Remote time logs could not be loaded. Please try again.",
     "remoteExportCreateFailed": "The remote time log could not be created. Please try again.",
-    "remoteServerModeOriginRejected": "The request target is not allowed for this tracker."
+    "remoteServerModeOriginRejected": "The request target is not allowed for this tracker.",
+    "reportMonthInvalid": "Enter a valid month."
   },
   "errors": {
     "auth": {

@@ -9,6 +9,7 @@ Consultants need a month view of hours they logged in OSI versus hours that actu
 - Day table: **Local** hours from time entries; **every active tracker** as App / Direct / Total even when `0:00`; **only days with local or remote hours**; month totals row.
 - Split remote hours by matching live `remoteLogId` to `remote_exports` (App = known export, Direct = unmatched).
 - Attention (color + icon + tooltip, not color-only): Direct hours, unexported local, remote-only, tracker fetch failure. Rounding `local ≠ App` is tooltip **info only**.
+- Month-level Local and Remote summaries; Remote is all fetched tracker hours combined (no App/Direct split).
 - Durations as unpadded `H:MM` (seconds floored). Running timers are excluded from Local.
 - **New** adapter operation: date-range time-log fetch (one bounded-pagination call per tracker, current user, **no** issue filter). OpenProject, Redmine, and the server-mode proxy implement it. Same-day `fetchTimeLogs` is unchanged.
 - Sidebar stays a single Reports link to the hub.

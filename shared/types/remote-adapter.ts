@@ -49,6 +49,11 @@ export interface RemoteTrackerAdapter {
     workPackageIds: string[];
     userId?: string;
   }): Promise<RemoteTimeLogDto[]>;
+  fetchTimeLogsInRange(input: {
+    from: string;
+    to: string;
+    userId?: string;
+  }): Promise<RemoteTimeLogDto[]>;
   createTimeEntry(input: {
     remoteIssueId: string;
     spentOn: string;

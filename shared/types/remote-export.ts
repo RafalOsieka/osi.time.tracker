@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const isoDateSchema = z
+export const isoDateSchema = z
   .string({ error: 'error.remoteSyncDateRequired' })
   .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'error.remoteSyncDateInvalid' })
   .refine((value) => !Number.isNaN(new Date(`${value}T00:00:00Z`).getTime()), {
@@ -135,6 +135,25 @@ export const proxiedRemoteTimeLogsSchema = z.object({
 export type ProxiedRemoteTimeLogsDto = z.infer<typeof proxiedRemoteTimeLogsSchema>;
 
 export interface ProxiedRemoteTimeLogsResponseDto {
+  logs: RemoteTimeLogDto[];
+}
+
+/** Proxied date-range time-log fetch body (reports; no issue filter). */
+export const proxiedRemoteTimeLogsRangeSchema = z
+  .object({
+    trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
+    from: isoDateSchema,
+    to: isoDateSchema,
+    userId: z.string().min(1).optional(),
+  })
+  .refine((value) => value.from <= value.to, {
+    path: ['from'],
+    error: 'error.remoteSyncDateInvalid',
+  });
+
+export type ProxiedRemoteTimeLogsRangeDto = z.infer<typeof proxiedRemoteTimeLogsRangeSchema>;
+
+export interface ProxiedRemoteTimeLogsRangeResponseDto {
   logs: RemoteTimeLogDto[];
 }
 

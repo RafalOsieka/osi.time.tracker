@@ -64,6 +64,18 @@ The monthly timesheet SHALL present a table with a Local column (OSI time-entry 
 - **WHEN** the user has a soft-deleted tracker with historical exports
 - **THEN** that tracker SHALL NOT appear as a column group
 
+### Requirement: REQ-299 Combined remote-hours summary
+
+The monthly timesheet SHALL show a month-level Remote summary equal to the sum of all fetched remote time-log durations across every active tracker, without splitting App and Direct. The value SHALL use unpadded `H:MM` (REQ-294). A Local summary of the month's local hours SHALL appear beside it. A tracker fetch failure SHALL NOT be treated as `0:00`: when every tracker fails the Remote summary SHALL show the fetch-failure state; when some succeed the summary SHALL show the sum of successful fetches and SHALL mark the total as incomplete (color plus tooltip, not color-only).
+
+#### Scenario: Remote summary is all tracker hours combined
+- **WHEN** two trackers have 1:00 App and 2:00 Direct in the month
+- **THEN** the Remote summary SHALL display `3:00`
+
+#### Scenario: Failed fetches are not silent zeros
+- **WHEN** one tracker range fetch fails and another returns 2:00
+- **THEN** the Remote summary SHALL display `2:00` with an incomplete-total cue and SHALL NOT display `0:00` as if the failed tracker had no hours
+
 ### Requirement: REQ-291 Server aggregation of local hours and export provenance
 
 The system SHALL expose `GET /api/reports/monthly?month=YYYY-MM` for the authenticated user. The response SHALL include: the resolved month; the timezone used to bucket days; per-day Local totals for stopped time entries whose `startedAt` falls on that local calendar day; the user's active trackers (id and name); and finalized `remote_exports` for that month (at least `localDate`, `remoteLogId`, and `exportDurationSeconds`). Duration for Local SHALL be `stoppedAt - startedAt`. Entries with `stoppedAt` null (running timers) SHALL be excluded. An entry that spans local midnight SHALL be attributed entirely to the local day of `startedAt`, matching Timer View. The endpoint SHALL require authentication, isolate rows to the authenticated user, and emit timestamps as ISO strings where timestamps appear.
@@ -110,15 +122,19 @@ After the monthly aggregation is loaded, the client SHALL fetch date-range time 
 
 ### Requirement: REQ-293 Attention indicators
 
-The monthly table SHALL mark a day as needing attention when any of these hold after successful fetches: Direct hours > 0 on any tracker; Local > 0 and every successfully fetched tracker has App + Direct = 0 (or the user has no trackers); Local = 0 and any tracker has App or Direct > 0. A tracker fetch failure SHALL mark that tracker (and the day, when the day is listed) as unknown, not as unexported. A Local vs App difference caused only by export rounding SHALL NOT by itself mark the day as needing attention; that difference MAY appear as informational text in a tooltip. Attention SHALL use color plus a non-color cue (icon) and a tooltip that lists the translated reasons; color alone SHALL NOT be the only signal (accessibility REQ-004). Icon-only markers SHALL have an accessible name (REQ-001). Tooltips SHALL be the themed hover/focus tooltip (REQ-269), not the native `title` attribute.
+The monthly table SHALL mark the affected duration (not a dedicated status column and not a separate icon) when any of these hold after successful fetches: Direct hours > 0 on a tracker (that Direct duration); Local > 0 and every successfully fetched tracker has App + Direct = 0 (or the user has no trackers) (the Local duration); Local = 0 and a tracker has App hours with no Direct (that App duration). A tracker fetch failure SHALL mark that tracker’s cells as unknown, not as unexported. A Local vs App difference caused only by export rounding SHALL NOT by itself mark a cell. A flagged duration SHALL use warning-colored **semibold** text (weight plus color, not color alone — REQ-004) and a themed hover/focus tooltip with the reason (REQ-269). Zero durations (`0:00`) that are not flagged SHALL use dimmed text. The table SHALL NOT include a trailing attention column.
 
-#### Scenario: Direct hours flag the day
+#### Scenario: Direct hours flag that duration
 - **WHEN** a tracker has Direct hours on a day
-- **THEN** that tracker cell and the day SHALL show an attention icon and tooltip stating that remote hours were not exported from the app
+- **THEN** that Direct duration SHALL be semibold warning text with a tooltip stating that remote hours were not exported from the app
 
-#### Scenario: Unexported local flags the day
+#### Scenario: Unexported local flags the Local duration
 - **WHEN** Local is 8:00, every tracker range fetch succeeded, and every tracker App and Direct are 0:00
-- **THEN** the day SHALL show attention stating local hours did not land on any tracker
+- **THEN** the Local duration SHALL be semibold warning text with a tooltip stating local hours did not land on any tracker
+
+#### Scenario: Zero durations recede
+- **WHEN** a cell is `0:00` and is not flagged
+- **THEN** that duration SHALL use dimmed text and SHALL NOT use warning styling
 
 #### Scenario: Fetch failure is not treated as unexported
 - **WHEN** Local is 8:00 and one tracker range fetch failed

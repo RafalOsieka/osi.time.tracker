@@ -5,6 +5,7 @@ import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
 
 const getCurrentAccount = vi.fn();
 const fetchTimeLogs = vi.fn();
+const fetchTimeLogsInRange = vi.fn();
 const createTimeEntry = vi.fn();
 const getSecret = vi.fn(() => 'secret');
 
@@ -13,6 +14,7 @@ vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
   createRemoteAdapter: () => ({
     getCurrentAccount,
     fetchTimeLogs,
+    fetchTimeLogsInRange,
     createTimeEntry,
   }),
 }));
@@ -58,10 +60,12 @@ describe('useRemoteSyncClient', () => {
   beforeEach(() => {
     getCurrentAccount.mockReset();
     fetchTimeLogs.mockReset();
+    fetchTimeLogsInRange.mockReset();
     createTimeEntry.mockReset();
     getSecret.mockClear();
     getCurrentAccount.mockResolvedValue({ id: '7', name: 'Ada' });
     fetchTimeLogs.mockResolvedValue([log()]);
+    fetchTimeLogsInRange.mockResolvedValue([log()]);
     createTimeEntry.mockResolvedValue({ remoteLogId: '99' });
   });
 
@@ -127,6 +131,37 @@ describe('useRemoteSyncClient', () => {
       activityId: '1',
       comment: 'ship it',
     });
+  });
+
+  it('caches range fetches by from/to rather than per day', async () => {
+    const client = useRemoteSyncClient(config);
+    const input = { from: '2026-08-01', to: '2026-08-31' };
+    const first = await client.fetchTimeLogsInRange(input);
+    const second = await client.fetchTimeLogsInRange(input);
+    expect(first).toEqual([log()]);
+    expect(second).toBe(first);
+    expect(fetchTimeLogsInRange).toHaveBeenCalledTimes(1);
+    expect(fetchTimeLogsInRange).toHaveBeenCalledWith({
+      from: '2026-08-01',
+      to: '2026-08-31',
+      userId: '7',
+    });
+  });
+
+  it('maps range-fetch adapter errors to translation keys', async () => {
+    fetchTimeLogsInRange.mockRejectedValueOnce(
+      new RemoteAdapterError('error.remoteTimeLogsFetchFailed'),
+    );
+    const client = useRemoteSyncClient(config);
+    await expect(
+      client.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteTimeLogsFetchFailed' });
+    expect(
+      mapRemoteSyncClientError(
+        new RemoteAdapterError('error.remoteTimeLogsFetchFailed'),
+        'error.remoteTimeLogsFetchFailed',
+      ),
+    ).toBe('error.remoteTimeLogsFetchFailed');
   });
 
   it('maps adapter errors to translation keys', () => {
