@@ -105,6 +105,36 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
     return logs;
   }
 
+  async fetchTimeLogsInRange(input: {
+    from: string;
+    to: string;
+    userId?: string;
+  }): Promise<RemoteTimeLogDto[]> {
+    const logs: RemoteTimeLogDto[] = [];
+    let nextPageUrl: string | undefined;
+
+    try {
+      for (let page = 0; page < OPENPROJECT_TIME_LOGS_MAX_PAGES; page += 1) {
+        const result = await this.client.fetchTimeLogsRangePage(
+          {
+            from: input.from,
+            to: input.to,
+            userId: input.userId,
+            nextPageUrl,
+          },
+          this.secret,
+        );
+        logs.push(...result.logs);
+        if (!result.nextPageUrl) break;
+        nextPageUrl = result.nextPageUrl;
+      }
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteTimeLogsFetchFailed');
+    }
+
+    return logs;
+  }
+
   async createTimeEntry(input: {
     remoteIssueId: string;
     spentOn: string;

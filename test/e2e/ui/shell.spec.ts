@@ -44,11 +44,12 @@ describeShell('authenticated shell navigation', async () => {
     expect(await nav.locator('a[href="/settings"]').isVisible()).toBe(true);
   });
 
-  it('navigating to an unbuilt destination shows a placeholder page', async () => {
+  it('navigating to Reports opens the reports hub', async () => {
     const page = await openAuthed();
     await page.click('[data-testid="app-sidebar"] a[href="/reports"]');
-    await page.waitForSelector('[data-testid="placeholder-page-reports"]');
-    expect(await page.locator('[data-testid="placeholder-page-reports"]').isVisible()).toBe(true);
+    await page.waitForSelector('[data-testid="reports-hub"]');
+    expect(await page.locator('[data-testid="reports-hub"]').isVisible()).toBe(true);
+    expect(await page.locator('[data-testid="reports-card-monthly"]').isVisible()).toBe(true);
   });
 
   it('logout is reachable via the sidebar account menu', async () => {

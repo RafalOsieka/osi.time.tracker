@@ -138,6 +138,14 @@ export interface OpenProjectFetchTimeLogsPageInput {
   pageSize?: number;
 }
 
+export interface OpenProjectFetchTimeLogsRangePageInput {
+  from: string;
+  to: string;
+  userId?: string;
+  nextPageUrl?: string;
+  pageSize?: number;
+}
+
 export interface OpenProjectCreateTimeEntryInput {
   remoteIssueId: string;
   /** Local calendar day `YYYY-MM-DD`. */
@@ -235,19 +243,22 @@ export class OpenProjectClient {
     input: OpenProjectFetchTimeLogsPageInput,
     secret: string | null,
   ): Promise<OpenProjectTimeLogsPageResult> {
-    const request = input.nextPageUrl
-      ? { url: input.nextPageUrl, method: 'GET' as const, headers: authHeaders(secret) }
-      : {
-          url: `${this.base()}/api/v3/time_entries?${this.buildTimeLogsQuery(input).toString()}`,
-          method: 'GET' as const,
-          headers: authHeaders(secret),
-        };
-    const { status, payload } = await this.transport.execute(
-      request,
-      openProjectTimeEntryCollectionSchema,
+    return this.executeTimeLogsPage(
+      input.nextPageUrl,
+      this.buildTimeLogsQuery(input).toString(),
+      secret,
     );
-    const parsed = parseTimeLogsPage(payload);
-    return { status, logs: parsed.logs, nextPageUrl: parsed.nextPageUrl };
+  }
+
+  async fetchTimeLogsRangePage(
+    input: OpenProjectFetchTimeLogsRangePageInput,
+    secret: string | null,
+  ): Promise<OpenProjectTimeLogsPageResult> {
+    return this.executeTimeLogsPage(
+      input.nextPageUrl,
+      this.buildTimeLogsRangeQuery(input).toString(),
+      secret,
+    );
   }
 
   async createTimeEntry(
@@ -295,6 +306,26 @@ export class OpenProjectClient {
     return normalizeBaseUrl(this.baseUrl);
   }
 
+  private async executeTimeLogsPage(
+    nextPageUrl: string | undefined,
+    query: string,
+    secret: string | null,
+  ): Promise<OpenProjectTimeLogsPageResult> {
+    const request = nextPageUrl
+      ? { url: nextPageUrl, method: 'GET' as const, headers: authHeaders(secret) }
+      : {
+          url: `${this.base()}/api/v3/time_entries?${query}`,
+          method: 'GET' as const,
+          headers: authHeaders(secret),
+        };
+    const { status, payload } = await this.transport.execute(
+      request,
+      openProjectTimeEntryCollectionSchema,
+    );
+    const parsed = parseTimeLogsPage(payload);
+    return { status, logs: parsed.logs, nextPageUrl: parsed.nextPageUrl };
+  }
+
   private buildTimeLogsQuery(input: OpenProjectFetchTimeLogsPageInput): URLSearchParams {
     const filters: Array<Record<string, { operator: string; values: string[] }>> = [
       { spent_on: { operator: '=d', values: [input.spentOn] } },
@@ -307,6 +338,18 @@ export class OpenProjectClient {
     // Prefer an explicit account id; fall back to OpenProject's `me` sentinel.
     filters.push({ user_id: { operator: '=', values: [input.userId ?? 'me'] } });
 
+    return new URLSearchParams({
+      filters: JSON.stringify(filters),
+      pageSize: String(input.pageSize ?? 100),
+    });
+  }
+
+  private buildTimeLogsRangeQuery(input: OpenProjectFetchTimeLogsRangePageInput): URLSearchParams {
+    const filters: Array<Record<string, { operator: string; values: string[] }>> = [
+      { spent_on: { operator: '<>d', values: [input.from, input.to] } },
+      { entity_type: { operator: '=', values: ['WorkPackage'] } },
+      { user_id: { operator: '=', values: [input.userId ?? 'me'] } },
+    ];
     return new URLSearchParams({
       filters: JSON.stringify(filters),
       pageSize: String(input.pageSize ?? 100),

@@ -29,6 +29,7 @@ vi.mock('../../app/composables/use-remote-sync-client', () => ({
   useRemoteSyncClient: () => ({
     resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
     fetchTimeLogs: fetchTimeLogsMock,
+    fetchTimeLogsInRange: vi.fn().mockResolvedValue([]),
     createTimeEntry: createTimeEntryMock,
     invalidateCaches: invalidateCachesMock,
   }),

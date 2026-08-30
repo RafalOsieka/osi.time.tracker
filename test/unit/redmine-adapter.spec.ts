@@ -107,6 +107,63 @@ describe('RedmineAdapter', () => {
     expect(logs).toHaveLength(REDMINE_TIME_LOGS_MAX_PAGES);
   });
 
+  it('paginates a date-range fetch without filtering issues and includes unlinked logs', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          status: 200,
+          payload: {
+            time_entries: [
+              {
+                id: 1,
+                spent_on: '2026-08-03',
+                hours: 1,
+                issue: { id: 99 },
+              },
+            ],
+            total_count: 2,
+            offset: 0,
+            limit: REDMINE_TIME_LOGS_PAGE_SIZE,
+          },
+        };
+      }
+      return {
+        status: 200,
+        payload: {
+          time_entries: [
+            {
+              id: 2,
+              spent_on: '2026-08-12',
+              hours: 0.5,
+              issue: { id: 99 },
+            },
+          ],
+          total_count: 2,
+          offset: REDMINE_TIME_LOGS_PAGE_SIZE,
+          limit: REDMINE_TIME_LOGS_PAGE_SIZE,
+        },
+      };
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const logs = await adapter.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' });
+
+    expect(calls).toBe(2);
+    expect(logs.map((log) => log.remoteLogId)).toEqual(['1', '2']);
+    expect(logs[0]?.remoteIssueId).toBe('99');
+  });
+
+  it('maps a range-fetch upstream failure to RemoteAdapterError', async () => {
+    const transport = fakeTransport(() => ({ status: 500, payload: {} }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    await expect(
+      adapter.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteTimeLogsFetchFailed' });
+  });
+
   it('resolves a 404 exact-id lookup to null rather than throwing', async () => {
     const transport = fakeTransport(() => ({ status: 404, payload: {} }));
     const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);

@@ -250,6 +250,45 @@ describe('RedmineClient', () => {
     expect(url.searchParams.get('limit')).toBe(String(REDMINE_TIME_LOGS_PAGE_SIZE));
   });
 
+  it('builds a date-range time-log query without an issue filter', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          time_entries: [
+            {
+              id: 88,
+              spent_on: '2026-08-12',
+              hours: 2,
+              issue: { id: 99 },
+              user: { id: 7 },
+            },
+          ],
+          total_count: 1,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.fetchTimeLogsRangePage(
+      { from: '2026-08-01', to: '2026-08-31', userId: '7' },
+      null,
+    );
+
+    expect(page.logs[0]).toMatchObject({
+      remoteLogId: '88',
+      remoteIssueId: '99',
+      spentOn: '2026-08-12',
+      durationSeconds: 7200,
+    });
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.searchParams.get('from')).toBe('2026-08-01');
+    expect(url.searchParams.get('to')).toBe('2026-08-31');
+    expect(url.searchParams.get('user_id')).toBe('7');
+    expect(url.searchParams.get('issue_id')).toBeNull();
+    expect(url.searchParams.get('spent_on')).toBeNull();
+  });
+
   it('returns a null next offset when the page covers the total', async () => {
     const transport = fakeTransport([
       {

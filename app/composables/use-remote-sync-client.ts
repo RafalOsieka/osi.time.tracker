@@ -20,6 +20,8 @@ export function useRemoteSyncClient(config: TrackerDto) {
   const accountCache = ref<RemoteAccount | null>(null);
   const logsCache = new Map<string, RemoteTimeLogDto[]>();
   const inFlightLogs = new Map<string, Promise<RemoteTimeLogDto[]>>();
+  const rangeLogsCache = new Map<string, RemoteTimeLogDto[]>();
+  const inFlightRangeLogs = new Map<string, Promise<RemoteTimeLogDto[]>>();
   let accountInFlight: Promise<RemoteAccount> | null = null;
 
   function adapter() {
@@ -73,6 +75,36 @@ export function useRemoteSyncClient(config: TrackerDto) {
     }
   }
 
+  async function fetchTimeLogsInRange(input: {
+    from: string;
+    to: string;
+  }): Promise<RemoteTimeLogDto[]> {
+    const account = await resolveAccount();
+    const key = `${input.from}:${input.to}:${account.id}`;
+    const cached = rangeLogsCache.get(key);
+    if (cached) return cached;
+
+    const existing = inFlightRangeLogs.get(key);
+    if (existing) return existing;
+
+    const promise = (async () => {
+      const logs = await adapter().fetchTimeLogsInRange({
+        from: input.from,
+        to: input.to,
+        userId: account.id,
+      });
+      rangeLogsCache.set(key, logs);
+      return logs;
+    })();
+
+    inFlightRangeLogs.set(key, promise);
+    try {
+      return await promise;
+    } finally {
+      inFlightRangeLogs.delete(key);
+    }
+  }
+
   async function createTimeEntry(input: {
     remoteIssueId: string;
     spentOn: string;
@@ -86,11 +118,13 @@ export function useRemoteSyncClient(config: TrackerDto) {
   function invalidateCaches(): void {
     accountCache.value = null;
     logsCache.clear();
+    rangeLogsCache.clear();
   }
 
   return {
     resolveAccount,
     fetchTimeLogs,
+    fetchTimeLogsInRange,
     createTimeEntry,
     invalidateCaches,
   };

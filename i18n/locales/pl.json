@@ -23,6 +23,36 @@
   "page": {
     "comingSoon": "Wkrótce."
   },
+  "reports": {
+    "hubTitle": "Raporty",
+    "monthly": {
+      "cardTitle": "Zestawienie miesięczne",
+      "cardDescription": "Godziny z każdego dnia w porównaniu z każdym zdalnym trackerem.",
+      "pageTitle": "Zestawienie miesięczne",
+      "previousMonth": "Poprzedni miesiąc",
+      "nextMonth": "Następny miesiąc",
+      "columnDate": "Data",
+      "columnLocal": "Lokalne",
+      "columnApp": "Aplikacja",
+      "columnExported": "Wyeksportowane",
+      "columnDirect": "Bezpośrednio",
+      "columnTotal": "Razem",
+      "empty": "W tym miesiącu nie ma zalogowanych godzin.",
+      "loadError": "Nie udało się wczytać raportu.",
+      "trackerError": "Nie wczytano",
+      "trackerErrorAria": "Nie udało się wczytać zdalnych godzin dla {name}",
+      "totals": "Razem",
+      "summaryLocal": "Lokalne",
+      "summaryRemote": "Zdalne",
+      "summaryRemotePartial": "Nie udało się wczytać części trackerów. Ta suma obejmuje tylko pobrane godziny.",
+      "summaryRemoteFailed": "Nie udało się wczytać zdalnych godzin.",
+      "attentionLabel": "Wymaga uwagi",
+      "reasonDirect": "Zdalne godziny nie zostały wyeksportowane z tej aplikacji.",
+      "reasonUnexported": "Lokalne godziny nie trafiły do żadnego trackera.",
+      "reasonRemoteOnly": "Godziny istnieją tylko w zdalnym trackerze.",
+      "reasonFetchFailed": "Nie udało się wczytać zdalnych godzin dla trackera."
+    }
+  },
   "settings": {
     "language": "Język",
     "theme": "Motyw",
@@ -410,7 +440,8 @@
     "remoteAccountFetchFailed": "Nie udało się ustalić konta zdalnego. Spróbuj ponownie.",
     "remoteTimeLogsFetchFailed": "Nie udało się wczytać zdalnych wpisów czasu. Spróbuj ponownie.",
     "remoteExportCreateFailed": "Nie udało się utworzyć zdalnego wpisu czasu. Spróbuj ponownie.",
-    "remoteServerModeOriginRejected": "Cel żądania nie jest dozwolony dla tego trackera."
+    "remoteServerModeOriginRejected": "Cel żądania nie jest dozwolony dla tego trackera.",
+    "reportMonthInvalid": "Wprowadź prawidłowy miesiąc."
   },
   "errors": {
     "auth": {

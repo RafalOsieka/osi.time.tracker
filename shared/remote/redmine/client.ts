@@ -46,6 +46,14 @@ export interface RedmineFetchTimeLogsPageInput {
   limit?: number;
 }
 
+export interface RedmineFetchTimeLogsRangePageInput {
+  from: string;
+  to: string;
+  userId?: string;
+  offset?: number;
+  limit?: number;
+}
+
 export interface RedmineCreateTimeEntryInput {
   remoteIssueId: string;
   /** Local calendar day `YYYY-MM-DD`. */
@@ -145,6 +153,43 @@ export class RedmineClient {
     if (input.issueIds.length > 0) {
       params.set('issue_id', input.issueIds.join(','));
     }
+
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/time_entries.json?${params.toString()}`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineTimeEntriesPayloadSchema,
+    );
+
+    const parsed = parseTimeLogsPage(payload);
+    const nextOffset =
+      parsed.totalCount > offset + parsed.logs.length && parsed.logs.length > 0
+        ? offset + limit
+        : null;
+
+    return {
+      status,
+      logs: parsed.logs,
+      nextOffset,
+      totalCount: parsed.totalCount,
+    };
+  }
+
+  async fetchTimeLogsRangePage(
+    input: RedmineFetchTimeLogsRangePageInput,
+    secret: string | null,
+  ): Promise<RedmineTimeLogsPageResult> {
+    const limit = input.limit ?? REDMINE_TIME_LOGS_PAGE_SIZE;
+    const offset = input.offset ?? 0;
+    const params = new URLSearchParams({
+      from: input.from,
+      to: input.to,
+      user_id: input.userId ?? 'me',
+      limit: String(limit),
+      offset: String(offset),
+    });
 
     const { status, payload } = await this.transport.execute(
       {

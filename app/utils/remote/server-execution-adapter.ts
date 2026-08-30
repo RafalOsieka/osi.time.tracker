@@ -10,6 +10,7 @@ import type {
   ProxiedRemoteAccountDto,
   ProxiedRemoteCreateTimeEntryDto,
   ProxiedRemoteTimeLogsDto,
+  ProxiedRemoteTimeLogsRangeDto,
   RemoteTimeLogDto,
 } from '../../../shared/types/remote-export';
 import type { ProxiedRemoteActivitiesDto } from '../../../shared/types/remote-activities';
@@ -58,6 +59,7 @@ type ProxiedRemotePostBody =
   | ProxiedRemoteActivitiesDto
   | ProxiedRemoteAccountDto
   | ProxiedRemoteTimeLogsDto
+  | ProxiedRemoteTimeLogsRangeDto
   | ProxiedRemoteCreateTimeEntryDto;
 
 /**
@@ -117,6 +119,24 @@ export class ServerExecutionAdapter implements RemoteTrackerAdapter {
         trackerId: this.trackerId,
         spentOn: input.spentOn,
         workPackageIds: input.workPackageIds,
+        userId: input.userId,
+      },
+      timeLogsResponseSchema,
+    );
+    return logs;
+  }
+
+  async fetchTimeLogsInRange(input: {
+    from: string;
+    to: string;
+    userId?: string;
+  }): Promise<RemoteTimeLogDto[]> {
+    const { logs } = await this.post(
+      '/api/remote/time-logs-range',
+      {
+        trackerId: this.trackerId,
+        from: input.from,
+        to: input.to,
         userId: input.userId,
       },
       timeLogsResponseSchema,
