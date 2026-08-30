@@ -24,10 +24,7 @@
     "comingSoon": "Coming soon."
   },
   "reports": {
-    "hubTitle": "Reports",
     "monthly": {
-      "cardTitle": "Monthly timesheet",
-      "cardDescription": "Hours per day compared with each remote tracker.",
       "pageTitle": "Monthly timesheet",
       "previousMonth": "Previous month",
       "nextMonth": "Next month",
