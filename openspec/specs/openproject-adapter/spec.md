@@ -11,7 +11,7 @@ shared translated error contract.
 ## Requirements
 ### Requirement: REQ-210 OpenProject adapter implements the neutral remote-tracker contract
 
-For a Client with an active OpenProject configuration, the system SHALL provide an OpenProject implementation of the neutral remote-tracker adapter contract (`remote-adapter-contract`, REQ-200) supporting work-package title search, exact work-package-ID lookup, activity options, current-account resolution, same-day time-log fetch, and time-entry creation. The adapter SHALL speak only adapter-neutral DTOs, SHALL work identically under both `client` and `server` execution modes (REQ-201), and SHALL map upstream failures to the shared translated `{ messageKey, params }` error contract (REQ-206). Exact work-package-ID lookups answered with an upstream 404 SHALL resolve to an empty (not-found) result rather than an error (REQ-204). Title search and exact-ID lookup SHALL map the work package's project display name, when present, into the adapter-neutral optional remote project title (REQ-266) and SHALL NOT expose an OpenProject project id or href.
+For a Client with an active OpenProject configuration, the system SHALL provide an OpenProject implementation of the neutral remote-tracker adapter contract (`remote-adapter-contract`, REQ-200) supporting work-package title search, exact work-package-ID lookup, activity options, current-account resolution, same-day time-log fetch, date-range time-log fetch, and time-entry creation. The adapter SHALL speak only adapter-neutral DTOs, SHALL work identically under both `client` and `server` execution modes (REQ-201), and SHALL map upstream failures to the shared translated `{ messageKey, params }` error contract (REQ-206). Exact work-package-ID lookups answered with an upstream 404 SHALL resolve to an empty (not-found) result rather than an error (REQ-204). Title search and exact-ID lookup SHALL map the work package's project display name, when present, into the adapter-neutral optional remote project title (REQ-266) and SHALL NOT expose an OpenProject project id or href.
 
 #### Scenario: Title search returns matching OpenProject work packages
 - **WHEN** the user submits a valid title search for an eligible Task under an active OpenProject configuration
@@ -32,6 +32,22 @@ For a Client with an active OpenProject configuration, the system SHALL provide 
 #### Scenario: Works in both execution modes
 - **WHEN** the same operation runs under a `client` configuration and under a `server` configuration
 - **THEN** results, quirk handling, and error classification SHALL be identical, with only the transport differing
+
+### Requirement: REQ-297 OpenProject date-range time-log fetch
+
+The OpenProject adapter SHALL implement the contract's date-range time-log operation (REQ-296) by querying OpenProject time entries for the current account with `spent_on` between the inclusive `from` and `to` dates, without an entity/work-package id filter, following OpenProject pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
+
+#### Scenario: Month range is a single filtered query loop
+- **WHEN** reports request OpenProject logs from `2026-08-01` through `2026-08-31`
+- **THEN** the adapter SHALL filter on the date range and current user, SHALL NOT add a work-package id filter, and SHALL follow bounded pagination until complete or the page cap
+
+#### Scenario: Logs on unlinked work packages are included
+- **WHEN** the current account has a time log in range on a work package that is not linked in OSI
+- **THEN** that log SHALL be present in the adapter-neutral result
+
+#### Scenario: Upstream failure is classified
+- **WHEN** OpenProject rejects or fails the range fetch
+- **THEN** the adapter SHALL raise a `RemoteAdapterError` with `error.remoteTimeLogsFetchFailed` (or the shared logs-fetch key) and SHALL NOT return a silent empty list
 
 ### Requirement: REQ-211 OpenProject authentication uses the Basic auth header
 
