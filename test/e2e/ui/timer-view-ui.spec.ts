@@ -13,6 +13,7 @@ import {
   pageExcludesTextScript,
   pageIncludesTextScript,
 } from '../helpers/dom';
+import { createProject, createTracker } from '../helpers/http';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
@@ -667,6 +668,139 @@ describeTimerViewUI('timer view UI flow', async () => {
         .find((value) => value.includes('.svg'));
       return href != null && href.endsWith('/favicon.svg');
     });
+
+    await page.close();
+  });
+
+  async function reassign(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
+    return fetch(url('/api/time-entries/reassign'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it('keeps the remote issue when retitling a stopped entry row', async () => {
+    const email = `timerviewretitleentry-${Date.now()}@example.com`;
+    await seedUsers(dbUrl, [{ email, displayName: 'timerviewretitleentry' }]);
+    const { jar, token } = await apiLogin(email);
+    const tracker = await createTracker(jar, token, 'Entry Retitle Tracker ' + Date.now());
+    const project = await createProject(
+      jar,
+      token,
+      'Entry Retitle Project ' + Date.now(),
+      tracker.id,
+    );
+    const sourceTitle = 'Entry Retitle Source ' + Date.now();
+    const targetTitle = 'Entry Retitle Target ' + Date.now();
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const seeded = await startEntry(jar, token, {
+      title: sourceTitle,
+      projectId: project.id,
+      startedAt,
+      stoppedAt,
+    });
+    const linked = await reassign(jar, token, {
+      ids: [seeded.id],
+      remoteIssueId: '88',
+      cachedTitle: 'Keep on entry retitle',
+    });
+    expect(linked.status).toBe(200);
+    const linkedRow = (await linked.json())[0];
+    expect(linkedRow?.remoteIssueRef?.remoteIssueId).toBe('88');
+    const groupTaskId = linkedRow.taskId;
+
+    const page = await loginAs(email);
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(pageIncludesText, sourceTitle);
+    await page.waitForSelector(`[data-testid="timer-group-remote-issue-link-${groupTaskId}"]`);
+
+    const toggle = page.locator(`[data-testid="timer-group-toggle-${groupTaskId}"]`);
+    await toggle.locator('button').or(toggle).first().click();
+    await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
+
+    const entryTitle = page.locator(`[data-testid="timer-entry-title-${seeded.id}"]`);
+    await entryTitle.locator('input').or(entryTitle).first().click();
+    const titleInput = page.locator(`[data-testid="timer-entry-title-input-${seeded.id}"]`);
+    const titlePatch = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes(`/api/time-entries/${seeded.id}`) &&
+        response.ok(),
+    );
+    await titleInput.locator('input').or(titleInput).first().fill(targetTitle);
+    await titleInput.locator('input').or(titleInput).first().press('Enter');
+    await titlePatch;
+    await page.waitForFunction(pageIncludesText, targetTitle);
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid^="timer-group-remote-issue-link-"]')
+          ?.textContent?.trim() === '#88',
+    );
+
+    await page.close();
+  });
+
+  it('keeps the remote issue when retitling a running timer in the top bar', async () => {
+    const email = `timerviewretitlerun-${Date.now()}@example.com`;
+    await seedUsers(dbUrl, [{ email, displayName: 'timerviewretitlerun' }]);
+    const { jar, token } = await apiLogin(email);
+    const tracker = await createTracker(jar, token, 'Running Retitle Tracker ' + Date.now());
+    const project = await createProject(
+      jar,
+      token,
+      'Running Retitle Project ' + Date.now(),
+      tracker.id,
+    );
+    const sourceTitle = 'Running Retitle Source ' + Date.now();
+    const targetTitle = 'Running Retitle Target ' + Date.now();
+    const seeded = await startEntry(jar, token, { title: sourceTitle, projectId: project.id });
+    const linked = await reassign(jar, token, {
+      ids: [seeded.id],
+      remoteIssueId: '89',
+      cachedTitle: 'Keep on running retitle',
+    });
+    expect(linked.status).toBe(200);
+    expect((await linked.json())[0]?.remoteIssueRef?.remoteIssueId).toBe('89');
+
+    const page = await loginAs(email);
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
+    );
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid^="timer-group-remote-issue-link-"]')
+          ?.textContent?.trim() === '#89',
+    );
+
+    const titleInput = page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first();
+    await titleInput.click();
+    await titleInput.fill(targetTitle);
+    await page.keyboard.press('Escape');
+    const titlePatch = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes(`/api/time-entries/${seeded.id}`) &&
+        response.ok(),
+    );
+    await titleInput.blur();
+    await titlePatch;
+    await page.waitForFunction(pageIncludesText, targetTitle);
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid^="timer-group-remote-issue-link-"]')
+          ?.textContent?.trim() === '#89',
+    );
 
     await page.close();
   });

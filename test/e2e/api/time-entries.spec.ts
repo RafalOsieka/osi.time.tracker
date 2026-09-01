@@ -476,6 +476,105 @@ describeTimeEntries('time-entries API integration', async () => {
     await patchEntry(jar, token, created.id, { stoppedAt: new Date().toISOString() });
   });
 
+  it('patch title only keeps the current remote issue and cache', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'TE Keep Issue Tracker ' + Date.now());
+    const project = await createProject(
+      jar,
+      token,
+      'TE Keep Issue Project ' + Date.now(),
+      tracker.id,
+    );
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const created = await (
+      await startEntry(jar, token, {
+        title: 'Linked Entry ' + Date.now(),
+        projectId: project.id,
+        startedAt,
+        stoppedAt,
+      })
+    ).json();
+
+    const linked = await reassign(jar, token, {
+      ids: [created.id],
+      remoteIssueId: '55',
+      cachedTitle: 'Keep me',
+      cachedRemoteProjectTitle: 'Acme Intranet',
+    });
+    expect(linked.status).toBe(200);
+    expect((await linked.json())[0]?.remoteIssueRef?.remoteIssueId).toBe('55');
+
+    const retitled = await patchEntry(jar, token, created.id, {
+      title: 'Retitled Linked ' + Date.now(),
+    });
+    expect(retitled.status).toBe(200);
+    const body = await retitled.json();
+    expect(body.projectId).toBe(project.id);
+    expect(body.remoteIssueRef?.remoteIssueId).toBe('55');
+    expect(body.remoteIssueRef?.cachedTitle).toBe('Keep me');
+    expect(body.remoteIssueRef?.cachedRemoteProjectTitle).toBe('Acme Intranet');
+  });
+
+  it('patch title of an unlinked entry stays unlinked and does not bind a linked twin', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'TE Twin Tracker ' + Date.now());
+    const project = await createProject(jar, token, 'TE Twin Project ' + Date.now(), tracker.id);
+    const sharedName = 'Twin Name ' + Date.now();
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+
+    const linkedEntry = await (
+      await startEntry(jar, token, {
+        title: sharedName,
+        projectId: project.id,
+        startedAt,
+        stoppedAt,
+      })
+    ).json();
+    const linked = await reassign(jar, token, {
+      ids: [linkedEntry.id],
+      remoteIssueId: '4711',
+      cachedTitle: 'Issue 4711',
+    });
+    expect(linked.status).toBe(200);
+    const linkedTaskId = (await linked.json())[0]?.taskId;
+
+    const unlinkedEntry = await (
+      await startEntry(jar, token, {
+        title: 'Unlinked Source ' + Date.now(),
+        projectId: project.id,
+        startedAt,
+        stoppedAt,
+      })
+    ).json();
+    expect(unlinkedEntry.remoteIssueRef).toBeUndefined();
+
+    const retitled = await patchEntry(jar, token, unlinkedEntry.id, { title: sharedName });
+    expect(retitled.status).toBe(200);
+    const body = await retitled.json();
+    expect(body.taskName).toBe(sharedName);
+    expect(body.projectId).toBe(project.id);
+    expect(body.remoteIssueRef).toBeUndefined();
+    expect(body.taskId).not.toBe(linkedTaskId);
+  });
+
+  it('patch title of an untitled entry invents no remote issue', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const untitled = await (await startEntry(jar, token, { startedAt, stoppedAt })).json();
+    expect(untitled.taskId).toBeNull();
+
+    const retitled = await patchEntry(jar, token, untitled.id, {
+      title: 'Titled From Untitled ' + Date.now(),
+    });
+    expect(retitled.status).toBe(200);
+    const body = await retitled.json();
+    expect(body.taskName).toBeDefined();
+    expect(body.remoteIssueRef).toBeUndefined();
+  });
+
   it('patch projectId: null moves the entry to the project-less scope', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const tracker = await createTracker(jar, token, 'TE Clear Client ' + Date.now());
