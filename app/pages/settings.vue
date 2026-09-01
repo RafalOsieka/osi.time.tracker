@@ -3,6 +3,7 @@ type ColorModePreference = 'light' | 'dark' | 'system';
 type AppLocale = 'en' | 'pl';
 
 const { t, locale, setLocale } = useI18n();
+usePageTitle(() => t('nav.settings'));
 const colorMode = useColorMode();
 const toast = useAppToast();
 const { settings, detectedTimeZone, save } = useUserSettings();

@@ -22,6 +22,7 @@ describeAuthUI('authentication UI flow', async () => {
     const heading = page.getByRole('heading', { name: 'OSI Time Tracker' });
     expect(await heading.isVisible()).toBe(true);
     expect(await heading.locator('[data-testid="app-brand-mark"]').isVisible()).toBe(true);
+    expect(await page.title()).toBe('Log in | OSI Time Tracker');
   });
 
   it('5.1 login flow logs the user in and the UI reflects it', async () => {
@@ -30,6 +31,7 @@ describeAuthUI('authentication UI flow', async () => {
 
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForSelector('[data-testid="app-user-footer"]');
+    expect(await page.title()).toBe('Timer | OSI Time Tracker');
     const primary = await page.textContent('[data-testid="app-user-footer-primary"]');
     expect(primary?.trim()).toBe('alice');
     const email = await page.textContent('[data-testid="app-user-footer-email"]');
