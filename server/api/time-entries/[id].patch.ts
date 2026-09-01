@@ -6,7 +6,7 @@ import {
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
-import { resolveTaskId } from '../../utils/tasks';
+import { resolveTaskId, type ResolveTaskRemoteIssueOptions } from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
 import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
@@ -78,17 +78,33 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
     } else if (parsedBody.title !== undefined || parsedBody.projectId !== undefined) {
       let title = parsedBody.title;
       let projectId = parsedBody.projectId;
-      if (existing.taskId && (title === undefined || projectId === undefined)) {
+      let remoteOptions: ResolveTaskRemoteIssueOptions | undefined;
+      if (existing.taskId) {
         const [currentTask] = await tx
-          .select({ name: tasks.name, projectId: tasks.projectId })
+          .select({
+            name: tasks.name,
+            projectId: tasks.projectId,
+            remoteIssueId: tasks.remoteIssueId,
+            trackerId: tasks.trackerId,
+            remoteIssueCachedTitle: tasks.remoteIssueCachedTitle,
+            remoteIssueCachedProjectTitle: tasks.remoteIssueCachedProjectTitle,
+          })
           .from(tasks)
           .where(eq(tasks.id, existing.taskId))
           .limit(1);
         if (title === undefined) title = currentTask?.name;
         if (projectId === undefined) projectId = currentTask?.projectId;
+        if (currentTask) {
+          remoteOptions = {
+            remoteIssueId: currentTask.remoteIssueId,
+            trackerId: currentTask.trackerId,
+            cachedTitle: currentTask.remoteIssueCachedTitle,
+            cachedRemoteProjectTitle: currentTask.remoteIssueCachedProjectTitle,
+          };
+        }
       }
 
-      taskId = await resolveTaskId(tx, user.id, title, projectId);
+      taskId = await resolveTaskId(tx, user.id, title, projectId, remoteOptions);
     }
 
     type TimeEntryPatch = {
