@@ -2,6 +2,7 @@
 import type { TableColumn } from '@nuxt/ui';
 
 const { t, locale } = useI18n();
+usePageTitle(() => t('trackers.pageTitle'));
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();

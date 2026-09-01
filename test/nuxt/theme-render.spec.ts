@@ -5,8 +5,14 @@ import AppRoot from '../../app/app.vue';
 import AppBrandMark from '../../app/components/AppBrandMark.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
+type HeadOptions = {
+  htmlAttrs?: { lang?: unknown };
+  link?: unknown;
+  titleTemplate?: (title?: string) => string;
+};
+
 const { useHeadMock, localeState } = vi.hoisted(() => ({
-  useHeadMock: vi.fn(),
+  useHeadMock: vi.fn<(opts: HeadOptions) => void>(),
   localeState: { value: 'en' },
 }));
 
@@ -102,6 +108,10 @@ describe('theme UI and SSR head wiring', () => {
       },
     ]);
     // No manual font <link>; typography uses Nuxt UI / Tailwind defaults.
+    const resolveTitle = headArg?.titleTemplate;
+    expect(resolveTitle?.('Timer')).toBe('Timer | layout.title');
+    expect(resolveTitle?.('')).toBe('layout.title');
+    expect(resolveTitle?.(undefined)).toBe('layout.title');
     expect(iconLinksFromHead(headArg).some((item) => item.rel === 'stylesheet')).toBe(false);
     // UApp is present either as our stub or the real Nuxt UI root wrapper.
     expect(

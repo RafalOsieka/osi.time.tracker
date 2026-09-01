@@ -3,7 +3,8 @@
     "emailLabel": "E-mail",
     "passwordLabel": "Hasło",
     "loginButton": "Zaloguj się",
-    "loginFailed": "Logowanie nie powiodło się. Sprawdź swoje dane."
+    "loginFailed": "Logowanie nie powiodło się. Sprawdź swoje dane.",
+    "pageTitle": "Logowanie"
   },
   "layout": {
     "title": "OSI Time Tracker",

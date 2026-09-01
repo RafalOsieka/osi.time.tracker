@@ -5,6 +5,7 @@ import type { LoginDto } from '../../shared/types/auth';
 definePageMeta({ layout: 'auth', public: true });
 
 const { t } = useI18n();
+usePageTitle(() => t('auth.pageTitle'));
 const { login } = useAuth();
 const route = useRoute();
 

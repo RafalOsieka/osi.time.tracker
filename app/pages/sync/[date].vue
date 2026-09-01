@@ -33,6 +33,7 @@ const { effective } = useUserSettings();
 const requestFetch = useRequestFetch();
 
 const date = computed(() => String(route.params.date));
+usePageTitle(() => t('remoteSync.pageTitle', { date: date.value }));
 
 const {
   data,

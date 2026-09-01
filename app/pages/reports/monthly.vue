@@ -33,6 +33,7 @@ interface TimesheetRow {
 }
 
 const { t, locale } = useI18n();
+usePageTitle(() => t('reports.monthly.pageTitle'));
 const route = useRoute();
 const router = useRouter();
 const requestFetch = useRequestFetch();

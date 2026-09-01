@@ -2,6 +2,7 @@
 import type { TimerViewFeedDto, TimeEntryDto } from '~~/shared/types/time-entry';
 
 const { t, locale } = useI18n();
+usePageTitle(() => t('timerView.pageTitle'));
 const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useUserSettings();
 const requestFetch = useRequestFetch();
