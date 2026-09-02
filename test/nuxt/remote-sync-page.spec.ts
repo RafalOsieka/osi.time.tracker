@@ -293,6 +293,14 @@ describe('RemoteSync page', () => {
         .element.closest('[data-tooltip-text]')
         ?.getAttribute('data-tooltip-text'),
     ).toBe('remoteSync.nextDay');
+    expect(wrapper.find('[data-testid="remote-sync-heading"]').text()).toBe('remoteSync.pageTitle');
+    expect(wrapper.find('[data-testid="remote-sync-date-label"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-sync-today"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-pick-date"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-include-all"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-exclude-all"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-export-button"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-sync-calendar"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
       'remoteSync.state.noTracker',
     );
