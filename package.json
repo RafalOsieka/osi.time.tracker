@@ -62,7 +62,7 @@
     "oxlint": "^1.80.0",
     "playwright": "^1.62.1",
     "playwright-core": "^1.62.1",
-    "tsx": "^4.23.12",
+    "tsx": "^4.23.13",
     "typescript": "^6.0.3",
     "vite-doctor": "^0.0.7",
     "vitest": "^4.1.11",
