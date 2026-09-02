@@ -33,7 +33,7 @@ const { effective } = useUserSettings();
 const requestFetch = useRequestFetch();
 
 const date = computed(() => String(route.params.date));
-usePageTitle(() => t('remoteSync.pageTitle', { date: date.value }));
+usePageTitle(() => t('remoteSync.pageTitle'));
 
 const {
   data,
@@ -62,9 +62,9 @@ const isEmpty = computed(
 const dayHeadingText = ref(date.value);
 function refreshDayHeading() {
   dayHeadingText.value = new Date(`${date.value}T12:00:00Z`).toLocaleDateString(locale.value, {
-    weekday: 'long',
+    weekday: 'short',
     year: 'numeric',
-    month: 'long',
+    month: 'short',
     day: 'numeric',
     timeZone: effective.value.timeZone,
   });
@@ -534,28 +534,6 @@ function pushableRows(): RemoteSyncDayRowDto[] {
   return rows.value.filter((row) => isPushable(row));
 }
 
-function exportableRows(): RemoteSyncDayRowDto[] {
-  return rows.value.filter((row) => canManageEntries(row) || stateFor(row) === 'manageable');
-}
-
-function includeAllTasks() {
-  const next = { ...selectedEntryIds.value };
-  for (const row of rows.value) {
-    if (!canManageEntries(row) && stateFor(row) !== 'manageable') continue;
-    next[row.taskId] = row.entries.map((entry) => entry.id);
-  }
-  selectedEntryIds.value = next;
-}
-
-function excludeAllTasks() {
-  const next = { ...selectedEntryIds.value };
-  for (const row of rows.value) {
-    if (!canManageEntries(row) && stateFor(row) !== 'manageable') continue;
-    next[row.taskId] = [];
-  }
-  selectedEntryIds.value = next;
-}
-
 function toggleRowInclusion(row: RemoteSyncDayRowDto, checked: boolean) {
   if (!canManageEntries(row) && stateFor(row) !== 'manageable') return;
   if (checked) selectAllEntries(row);
@@ -767,8 +745,6 @@ function navigateToDate(iso: string) {
   void router.push(`/sync/${iso}`);
 }
 
-const timeZone = computed(() => effective.value.timeZone);
-
 const tableRows = computed<SyncTableRow[]>(() => {
   const actionable: SyncTableRow[] = [];
   const blocked: SyncTableRow[] = [];
@@ -819,38 +795,14 @@ const columns = computed<TableColumn<SyncTableRow>[]>(() => [
 
 <template>
   <section class="grid gap-5" data-testid="remote-sync-page">
-    <div class="flex flex-wrap items-start justify-between gap-4">
-      <SyncDayHeader
-        :date="date"
-        :time-zone="timeZone"
-        :heading="dayHeadingText"
-        @navigate="navigateToDate"
-      />
-      <div class="flex flex-wrap items-center gap-2">
-        <UButton
-          variant="ghost"
-          size="sm"
-          :label="t('remoteSync.includeAllTasks')"
-          data-testid="remote-sync-include-all"
-          :disabled="exportableRows().length === 0"
-          @click="includeAllTasks"
-        />
-        <UButton
-          variant="ghost"
-          size="sm"
-          :label="t('remoteSync.excludeAllTasks')"
-          data-testid="remote-sync-exclude-all"
-          :disabled="exportableRows().length === 0"
-          @click="excludeAllTasks"
-        />
-        <UButton
-          :label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
-          :disabled="exporting || pushableRows().length === 0"
-          data-testid="remote-sync-export-button"
-          @click="openExportDialog"
-        />
-      </div>
-    </div>
+    <SyncDayHeader
+      :date="date"
+      :date-label="dayHeadingText"
+      :export-label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
+      :export-disabled="exporting || pushableRows().length === 0"
+      @navigate="navigateToDate"
+      @export="openExportDialog"
+    />
 
     <div
       class="flex flex-wrap items-center gap-2"

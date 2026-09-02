@@ -411,12 +411,18 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       return !!el && el.textContent?.includes('01:00:00');
     });
 
-    await page.click('[data-testid="remote-sync-exclude-all"]');
+    expect(await page.locator('[data-testid="remote-sync-include-all"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="remote-sync-exclude-all"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="remote-sync-today"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="remote-sync-pick-date"]').count()).toBe(0);
+    expect(await page.locator('[data-testid="remote-sync-export-button"]').count()).toBe(1);
+
+    await page.click(`[data-testid="remote-sync-include-${entry.taskId}"]`);
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
       return !!el && el.textContent?.includes('00:00:00');
     });
-    await page.click('[data-testid="remote-sync-include-all"]');
+    await page.click(`[data-testid="remote-sync-include-${entry.taskId}"]`);
     await page.waitForFunction(() => {
       const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
       return !!el && el.textContent?.includes('01:00:00');
@@ -436,7 +442,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       return !!el && el.textContent?.includes('01:00:00');
     });
 
-    await page.click('[data-testid="remote-sync-pick-date"]');
+    await page.click('[data-testid="remote-sync-date-label"]');
     await page.waitForSelector('[data-testid="remote-sync-calendar"]');
     // Drive the native date input directly so Nuxt UI's wrapper cannot swallow events.
     await page

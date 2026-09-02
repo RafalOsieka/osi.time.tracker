@@ -14,14 +14,14 @@ const catalogs = {
     'timerView.pageTitle': 'Timer',
     'nav.settings': 'Settings',
     'auth.pageTitle': 'Log in',
-    'remoteSync.pageTitle': 'Remote Sync – {date}',
+    'remoteSync.pageTitle': 'Remote Sync',
     'layout.title': 'OSI Time Tracker',
   },
   pl: {
     'timerView.pageTitle': 'Stoper',
     'nav.settings': 'Ustawienia',
     'auth.pageTitle': 'Logowanie',
-    'remoteSync.pageTitle': 'Synchronizacja zdalna – {date}',
+    'remoteSync.pageTitle': 'Synchronizacja zdalna',
     'layout.title': 'OSI Time Tracker',
   },
 } as const;
@@ -86,8 +86,8 @@ describe('document title page segment', () => {
     await mountTitledPage('auth.pageTitle');
     expect(titleFromHead()).toBe('Log in');
 
-    await mountTitledPage('remoteSync.pageTitle', { date: '2026-09-01' });
-    expect(titleFromHead()).toBe('Remote Sync – 2026-09-01');
+    await mountTitledPage('remoteSync.pageTitle');
+    expect(titleFromHead()).toBe('Remote Sync');
   });
 
   it('updates both page and brand segments when locale changes', async () => {
