@@ -52,7 +52,7 @@ It solves a recurring problem for multi-client work: your clients run different 
 ### Prerequisites
 
 - [Node.js](https://nodejs.org/) (latest LTS recommended)
-- [pnpm](https://pnpm.io/) `^11`
+- [pnpm](https://pnpm.io/) `^12`
 - [Docker](https://www.docker.com/) (for a local PostgreSQL 18 instance)
 
 ### Installation

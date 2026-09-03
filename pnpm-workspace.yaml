@@ -5,9 +5,5 @@ allowBuilds:
   playwright-core: true
   unrs-resolver: true
   vue-demi: true
-minimumReleaseAgeExclude:
-  - '@nuxt/kit@4.5.0'
-  - '@nuxt/nitro-server@4.5.0'
-  - '@nuxt/schema@4.5.0'
-  - '@nuxt/vite-builder@4.5.0'
-  - nuxt@4.5.0
+update:
+  githubActions: true
