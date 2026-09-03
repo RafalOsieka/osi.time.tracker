@@ -23,7 +23,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 
 ## Setup Commands
 
-The package manager is **pnpm** (`^11`). Do not use `npm` or `yarn`.
+The package manager is **pnpm** (`^12`). Do not use `npm` or `yarn`.
 
 ```bash
 pnpm install            # install deps (also runs `nuxt prepare` via postinstall)
