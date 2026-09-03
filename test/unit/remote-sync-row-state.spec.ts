@@ -71,6 +71,31 @@ describe('deriveRemoteSyncRowState', () => {
     ).toBe('unlinked');
   });
 
+  it('returns sent when the task/date already has finalized exports', () => {
+    expect(
+      deriveRemoteSyncRowState({
+        hasProject: true,
+        hasTracker: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: true,
+        hasExports: true,
+      }),
+    ).toBe('sent');
+  });
+
+  it('keeps a sent row sent even when later local time exists', () => {
+    expect(
+      deriveRemoteSyncRowState({
+        hasProject: true,
+        hasTracker: true,
+        config: { systemType: 'openproject' },
+        hasIssueRef: true,
+        hasExports: true,
+        activityStatus: 'available',
+      }),
+    ).toBe('sent');
+  });
+
   it('returns manageable when all prerequisites are met', () => {
     expect(
       deriveRemoteSyncRowState({

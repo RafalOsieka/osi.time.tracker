@@ -5,18 +5,12 @@
 export interface RemoteSyncDayTotalsRow {
   /** Full task duration for the day (all completed entries). */
   totalSeconds: number;
-  /** Duration of currently selected entries. */
-  selectedSeconds: number;
   /** Export duration after rounding/overrides (0 when excluded by duration). */
   exportSeconds: number;
-  /** True when the row will actually be pushed. */
+  /** True when the row will actually be pushed (Ready, non-zero, activity). */
   isPushable: boolean;
-  /**
-   * True when the user intends the row to be part of the export
-   * (has selected entries / is "included"). A row can be included but not
-   * pushable (blocked) — those seconds land in `blocked`, not `tracked`.
-   */
-  isIncluded: boolean;
+  /** True when the task/date already has finalized provenance. */
+  isSent: boolean;
 }
 
 export interface RemoteSyncDayTotals {
@@ -24,21 +18,21 @@ export interface RemoteSyncDayTotals {
   tracked: number;
   toSend: number;
   blocked: number;
-  excluded: number;
+  sent: number;
   untitled: number;
   /** Signed difference `toSend - tracked`. */
   delta: number;
 }
 
 /**
- * Computes the three reconciling day summaries plus blocked/excluded/untitled
- * amounts. Invariant: `dayTotal = tracked + blocked + excluded + untitled`.
+ * Computes the three reconciling day summaries plus sent/blocked/untitled
+ * amounts. Invariant: `dayTotal = tracked + sent + blocked + untitled`.
  *
- * - **day total**: every completed entry on the day (incl. untitled / blocked)
- * - **tracked**: selected seconds of pushable rows only
- * - **to send**: export durations of pushable rows only
- * - **blocked**: selected (or full) seconds of included-but-not-pushable rows
- * - **excluded**: seconds of exportable rows the user deselected
+ * - **day total**: every completed entry on the day
+ * - **tracked**: full duration of pushable Ready rows
+ * - **to send**: export durations of pushable Ready rows
+ * - **sent**: full duration of rows with provenance
+ * - **blocked**: everything else (unlinked, no activity, Ready with 0 to-send)
  * - **untitled**: untitled bucket duration
  */
 export function computeRemoteSyncDayTotals(
@@ -49,40 +43,24 @@ export function computeRemoteSyncDayTotals(
   let tracked = 0;
   let toSend = 0;
   let blocked = 0;
-  let excluded = 0;
+  let sent = 0;
 
   for (const row of rows) {
     const total = Math.max(0, row.totalSeconds);
     dayTotal += total;
 
+    if (row.isSent) {
+      sent += total;
+      continue;
+    }
+
     if (row.isPushable) {
-      const selected = Math.max(0, row.selectedSeconds);
-      tracked += selected;
+      tracked += total;
       toSend += Math.max(0, row.exportSeconds);
-      // Deselected remainder of an otherwise pushable row is excluded time.
-      const remainder = total - selected;
-      if (remainder > 0) {
-        excluded += remainder;
-      }
       continue;
     }
 
-    if (row.isIncluded) {
-      // Included but not pushable → blocked. Prefer selected seconds when the
-      // user narrowed the selection; fall back to the full row total.
-      const blockedSeconds = row.selectedSeconds > 0 ? Math.max(0, row.selectedSeconds) : total;
-      blocked += blockedSeconds;
-      // Any deselected remainder still contributes to the day total and is
-      // counted as excluded so the identity holds.
-      const remainder = total - blockedSeconds;
-      if (remainder > 0) {
-        excluded += remainder;
-      }
-      continue;
-    }
-
-    // Fully excluded (no selection / user opted out / export duration 0).
-    excluded += total;
+    blocked += total;
   }
 
   const untitled = Math.max(0, untitledSeconds);
@@ -92,7 +70,7 @@ export function computeRemoteSyncDayTotals(
     tracked,
     toSend,
     blocked,
-    excluded,
+    sent,
     untitled,
     delta: toSend - tracked,
   };

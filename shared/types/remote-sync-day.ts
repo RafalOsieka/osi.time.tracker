@@ -5,10 +5,10 @@ import type { TrackerExecutionMode, TrackerRoundingRule, TrackerSystemType } fro
  * Explicit per-row state on the Remote Sync page, derived by a pure shared
  * function (`deriveRemoteSyncRowState`). `no_project`/`no_tracker`/
  * `system_not_implemented` render read-only with a stated reason;
- * `unlinked` is read-only but linkable; `manageable` exposes the editable
- * rounded duration and required-field controls. Activity load outcomes
- * (`activity_loading` / `activity_error` / `no_activity`) are applied by the
- * client after the static prerequisites resolve to manageable.
+ * `unlinked` is read-only but linkable; `sent` has finalized provenance for
+ * the date; `manageable` (Ready) exposes in-place export editors. Activity
+ * load outcomes (`activity_loading` / `activity_error` / `no_activity`) are
+ * applied by the client after the static prerequisites resolve to manageable.
  */
 export const remoteSyncRowStateSchema = z.enum([
   'no_project',
@@ -18,6 +18,7 @@ export const remoteSyncRowStateSchema = z.enum([
   'activity_loading',
   'activity_error',
   'no_activity',
+  'sent',
   'manageable',
 ]);
 
@@ -103,6 +104,8 @@ export interface RemoteSyncRowStateInput {
   hasTracker: boolean;
   config: { systemType: TrackerSystemType } | null;
   hasIssueRef: boolean;
+  /** True when at least one finalized export exists for this task/date. */
+  hasExports?: boolean;
   /**
    * Optional activity-fetch outcome applied only after static prerequisites
    * resolve to a linked, implemented tracker. Omitted/undefined leaves
