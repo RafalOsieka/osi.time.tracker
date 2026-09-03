@@ -880,6 +880,51 @@ describe('RemoteSync page', () => {
     expect(csrfFetchMock).not.toHaveBeenCalledWith('/api/time-entries/reassign', expect.anything());
   });
 
+  it('restores the last committed title-to-send when edit is cancelled', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-title-esc',
+          taskName: 'Original name',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-title-esc' },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-title-esc', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-sync-task-name-task-title-esc"]').trigger('click');
+    await flushPromises();
+    let input = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-comment-task-title-esc"]',
+    );
+    await input.setValue('Committed comment');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(
+      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-task-name-task-title-esc"]').element
+        .value,
+    ).toContain('Committed comment');
+
+    await wrapper.find('[data-testid="remote-sync-task-name-task-title-esc"]').trigger('click');
+    await flushPromises();
+    input = wrapper.find<HTMLInputElement>('[data-testid="remote-sync-comment-task-title-esc"]');
+    await input.setValue('Accidental edit');
+    await input.trigger('keydown.esc');
+    await flushPromises();
+    expect(
+      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-task-name-task-title-esc"]').element
+        .value,
+    ).toContain('Committed comment');
+  });
+
   it('renders the empty state when there are no entries for the day', async () => {
     dayData = makeDay();
     dollarFetchMock.mockResolvedValue(dayData);

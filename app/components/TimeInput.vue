@@ -79,7 +79,7 @@ function cancel() {
       duration
         ? {
             root: 'inline-flex w-[8ch]',
-            base: () => 'w-full px-0 py-0 text-sm font-medium font-mono tabular-nums text-muted',
+            base: 'w-full px-0 py-0 font-mono text-sm font-medium tabular-nums text-muted',
           }
         : compact
           ? {

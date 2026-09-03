@@ -85,6 +85,7 @@ const expanded = ref<Record<string, boolean>>({});
 const dismissedDuplicates = ref<DismissedDuplicatesByTask>({});
 const exportComments = ref<ExportCommentsByTask>({});
 const editingTitleTaskId = ref<string | null>(null);
+const titleEditSnapshot = ref<Record<string, string>>({});
 const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const exportDialogPhase = ref<ExportDialogPhase>('review');
@@ -148,6 +149,7 @@ function resetUiState() {
   dismissedDuplicates.value = {};
   exportComments.value = {};
   editingTitleTaskId.value = null;
+  titleEditSnapshot.value = {};
   editingToSendTaskId.value = null;
   roundedOverrides.value = {};
   roundedInputText.value = {};
@@ -659,6 +661,7 @@ function toggleExpanded(taskId: string) {
 
 async function startEditTitle(row: RemoteSyncDayRowDto) {
   if (!canEditRow(row)) return;
+  titleEditSnapshot.value = { ...titleEditSnapshot.value, [row.taskId]: commentFor(row) };
   editingTitleTaskId.value = row.taskId;
   await nextTick();
   const input = document.querySelector<HTMLInputElement>(
@@ -675,14 +678,10 @@ function commitEditTitle(row: RemoteSyncDayRowDto) {
 
 function cancelEditTitle(row: RemoteSyncDayRowDto) {
   if (editingTitleTaskId.value !== row.taskId) return;
-  const logs = remoteLogsFor(row).logs;
-  exportComments.value = {
-    ...exportComments.value,
-    [row.taskId]: resolveDefaultExportComment(
-      row.taskName,
-      logs.map((log) => log.comment),
-    ),
-  };
+  const snapshot = titleEditSnapshot.value[row.taskId];
+  if (snapshot !== undefined) {
+    exportComments.value = { ...exportComments.value, [row.taskId]: snapshot };
+  }
   editingTitleTaskId.value = null;
 }
 </script>
