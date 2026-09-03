@@ -35,9 +35,9 @@ The expansion control SHALL be a compact icon button that exposes `aria-expanded
 
 ### Requirement: REQ-178 Inline-edit affordance uses a Nuxt UI input
 
-Click-to-edit **text** fields (timer group and entry titles, Remote Sync title-to-send, and Remote Sync to-send duration) SHALL express their editable affordance with a shared Nuxt UI `UInput` pattern — a seamless display state (`variant="none"`, styled like plain text) that becomes an editable state (`variant="ghost"`) on focus/activation — rather than a native `<button>` or a `UButton` styled with custom CSS to look like editable text. The group **project** control SHALL occupy a stable slot-owned `UButton` that opens a non-modal `UPopover` listbox on a single activation (not a `USelect`, whose dismiss overlay swallows the first click). The affordance SHALL commit the normalized value on blur or Enter (text and duration) or on option activate (project) and revert on Escape or invalid input (no model update, no request), preserving the existing behavior. It SHALL retain its accessible label and `data-testid`. The control SHALL occupy a stable layout slot whose width is determined by the surrounding layout, not by the current string length: dynamic `ch`-based sizing that grows or shrinks the control with the text SHALL NOT be used. When the display value exceeds the slot, the visible text SHALL be truncated. Activating the editor SHALL fill that same slot and SHALL NOT shift neighboring controls. No `<style scoped>` block SHALL be added to reset button chrome for this pattern.
+Click-to-edit **text** fields (timer group and entry titles, Remote Sync title-to-send) SHALL express their editable affordance with a shared Nuxt UI `UInput` pattern — a seamless display state (`variant="none"`, styled like plain text) that becomes an editable state (`variant="ghost"`) on focus/activation — rather than a native `<button>` or a `UButton` styled with custom CSS to look like editable text. The group **project** control and Remote Sync **activity** control SHALL occupy a stable slot-owned `UButton` that opens a non-modal `UPopover` listbox on a single activation (not a `USelect`, whose dismiss overlay swallows the first click). Remote Sync **to-send duration** SHALL use the same compact time-slot pattern as timer entry start/stop: a none-variant `UInput` in the reserved slot that becomes the compact outlined `TimeInput` on activation. The affordance SHALL commit the normalized value on blur or Enter (text and duration) or on option activate (project/activity) and revert on Escape or invalid input (no model update, no request), preserving the existing behavior. It SHALL retain its accessible label and `data-testid`. The control SHALL occupy a stable layout slot whose width is determined by the surrounding layout, not by the current string length: dynamic `ch`-based sizing that grows or shrinks the control with the text SHALL NOT be used. When the display value exceeds the slot, the visible text SHALL be truncated. Activating the editor SHALL fill that same slot and SHALL NOT shift neighboring controls. No `<style scoped>` block SHALL be added to reset button chrome for this pattern.
 
-Timer group and entry titles and Remote Sync title-to-send / to-send duration SHALL use the same shared inline-edit control. Project remains the slot-owned button + popover.
+Timer group and entry titles and Remote Sync title-to-send SHALL use the same shared inline-edit control. Project and activity remain the slot-owned button + popover. To-send duration shares the entry start/stop time slot.
 
 #### Scenario: Text field reads as plain text until edited
 
@@ -79,7 +79,12 @@ Timer group and entry titles and Remote Sync title-to-send / to-send duration SH
 - **WHEN** the user activates an inline-editable title or project field
 - **THEN** the editor SHALL occupy the same reserved width as the display state and neighboring controls SHALL NOT shift
 
-#### Scenario: Remote Sync duration uses the same inline-edit pattern
+#### Scenario: Remote Sync duration uses the compact time-slot pattern
 
 - **WHEN** a Ready Remote Sync row's to-send value is displayed without focus
-- **THEN** it SHALL use the shared none/ghost `UInput` pattern and SHALL become editable on activation
+- **THEN** it SHALL use the same none-variant `UInput` slot as a timer entry start/stop control and SHALL become the compact outlined `TimeInput` on activation
+
+#### Scenario: Remote Sync activity opens like project
+
+- **WHEN** the user activates a Ready row's activity control
+- **THEN** a non-modal popover listbox SHALL open on that activation and SHALL NOT require a second click

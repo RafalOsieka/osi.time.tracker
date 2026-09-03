@@ -259,6 +259,8 @@
     "trackedToSend": "{tracked} → {toSend}",
     "trackedToSendArrow": "\u2192",
     "rowDelta": "{delta}",
+    "rowDeltaTooltip": "Różnica: {delta}",
+    "durationClusterAria": "Śledzone {tracked}, do wysłania {toSend}, różnica {delta}",
     "activityLabel": "Czynność",
     "activityEmptyOption": "Wybierz czynność",
     "activityFetchError": "Nie udało się wczytać czynności.",
@@ -356,6 +358,7 @@
     "kind": {
       "ready": "Gotowe",
       "sent": "Wysłane",
+      "loading": "Wczytywanie",
       "blocked": "Nie wyeksportujesz"
     },
     "linkAction": "Połącz ze zdalnym zgłoszeniem"

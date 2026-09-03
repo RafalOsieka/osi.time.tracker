@@ -80,6 +80,23 @@ describe('InlineEditText', () => {
     expect(wrapper.emitted('commit')).toBeUndefined();
   });
 
+  it('does not start editing when disabled', async () => {
+    const wrapper = await mountSuspended(InlineEditText, {
+      props: {
+        modelValue: 'API review',
+        editing: false,
+        disabled: true,
+        fieldLabel: 'Title',
+        displayTestid: 'title',
+        inputTestid: 'title-input',
+      },
+      global: { stubs },
+    });
+
+    await wrapper.find('[data-testid="title"]').trigger('click');
+    expect(wrapper.emitted('edit')).toBeUndefined();
+  });
+
   it('wraps the display value in the overflow tooltip host', async () => {
     const wrapper = await mountSuspended(InlineEditText, {
       props: {

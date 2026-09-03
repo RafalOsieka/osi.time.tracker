@@ -259,6 +259,8 @@
     "trackedToSend": "{tracked} → {toSend}",
     "trackedToSendArrow": "\u2192",
     "rowDelta": "{delta}",
+    "rowDeltaTooltip": "Delta: {delta}",
+    "durationClusterAria": "Tracked {tracked}, to send {toSend}, delta {delta}",
     "activityLabel": "Activity",
     "activityEmptyOption": "Select an activity",
     "activityFetchError": "Activities could not be loaded.",
@@ -356,6 +358,7 @@
     "kind": {
       "ready": "Ready",
       "sent": "Sent",
+      "loading": "Loading",
       "blocked": "Can't export"
     },
     "linkAction": "Link remote issue"

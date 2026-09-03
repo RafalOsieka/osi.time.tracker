@@ -7,6 +7,7 @@ const {
   row,
   expanded,
   canEdit,
+  showEditors,
   kindLabel,
   kindColor,
   reason,
@@ -30,6 +31,7 @@ const {
   row: RemoteSyncDayRowDto;
   expanded: boolean;
   canEdit: boolean;
+  showEditors: boolean;
   kindLabel: string | null;
   kindColor: 'success' | 'warning' | 'error' | 'neutral';
   reason: string;
@@ -73,6 +75,42 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
+const durationClusterAria = computed(() =>
+  t('remoteSync.durationClusterAria', {
+    tracked: trackedLabel,
+    toSend: toSendLabel,
+    delta: deltaLabel,
+  }),
+);
+const activityOpen = ref(false);
+const selectedActivityName = computed(
+  () => activityOptions.find((option) => option.id === selectedActivityId)?.name,
+);
+const activityDisplayValue = computed(() => {
+  if (activityLoading) return t('remoteSync.activityLoading');
+  return selectedActivityName.value ?? t('remoteSync.activityEmptyOption');
+});
+
+function onActivityOpen(open: boolean) {
+  if (open && (!canEdit || activityLoading)) {
+    activityOpen.value = false;
+    return;
+  }
+  activityOpen.value = open;
+}
+
+function commitActivity(id: string) {
+  activityOpen.value = false;
+  if (!canEdit) return;
+  emit('update:activity', id);
+}
+
+function onEditToSend() {
+  if (!canEdit) return;
+  emit('edit-to-send');
+}
 </script>
 
 <template>
@@ -98,13 +136,14 @@ const { t } = useI18n();
         </UTooltip>
       </UBadge>
       <InlineEditText
-        v-if="canEdit"
+        v-if="showEditors"
         :model-value="comment"
         :editing="editingTitle"
+        :disabled="!canEdit"
         :field-label="t('remoteSync.titleToSendLabel')"
         :display-testid="`remote-sync-task-name-${row.taskId}`"
         :input-testid="`remote-sync-comment-${row.taskId}`"
-        display-class="font-semibold"
+        display-class="font-medium"
         @edit="emit('edit-title')"
         @update:model-value="(value) => emit('update:comment', value)"
         @commit="emit('commit-title')"
@@ -112,7 +151,7 @@ const { t } = useI18n();
       />
       <span
         v-else
-        class="truncate font-semibold"
+        class="truncate text-xs text-muted"
         :data-testid="`remote-sync-task-name-${row.taskId}`"
       >
         {{ row.taskName }}
@@ -122,7 +161,7 @@ const { t } = useI18n();
     <template #secondary>
       <span
         v-if="issueTitle && issueId"
-        class="block max-w-48 truncate text-sm text-muted"
+        class="block max-w-48 truncate text-xs text-muted"
         :data-testid="`remote-sync-issue-${row.taskId}`"
       >
         {{ issueTitle }}
@@ -134,96 +173,144 @@ const { t } = useI18n();
         :data-testid="`remote-sync-link-${row.taskId}`"
         @link="(payload) => emit('link', payload)"
       />
-      <span v-else class="text-sm text-muted">{{ t('remoteSync.emptyCell') }}</span>
+      <span v-else class="text-xs text-muted">{{ t('remoteSync.emptyCell') }}</span>
     </template>
 
     <template #meta>
-      <div class="flex min-w-0 max-w-48 items-center gap-1">
-        <span
-          v-if="activityLoading"
-          role="status"
-          aria-live="polite"
-          class="text-xs text-muted"
-          :data-testid="`remote-sync-activity-loading-${row.taskId}`"
-        >
-          {{ t('remoteSync.activityLoading') }}
-        </span>
-        <template v-else-if="activityError">
-          <span
-            role="alert"
-            class="text-xs"
-            :data-testid="`remote-sync-activity-error-${row.taskId}`"
-          >
-            {{ t('remoteSync.activityFetchError') }}
-          </span>
-          <UButton
-            variant="ghost"
-            size="xs"
-            :label="t('remoteSync.activityRetry')"
-            :data-testid="`remote-sync-activity-retry-${row.taskId}`"
-            @click="emit('retry-activity')"
-          />
+      <div class="w-48 min-w-0 max-w-full">
+        <template v-if="activityError">
+          <div class="flex min-w-0 items-center gap-1">
+            <span
+              role="alert"
+              class="truncate text-xs text-muted"
+              :data-testid="`remote-sync-activity-error-${row.taskId}`"
+            >
+              {{ t('remoteSync.activityFetchError') }}
+            </span>
+            <UButton
+              variant="ghost"
+              size="xs"
+              :label="t('remoteSync.activityRetry')"
+              :data-testid="`remote-sync-activity-retry-${row.taskId}`"
+              @click="emit('retry-activity')"
+            />
+          </div>
         </template>
         <span
           v-else-if="noActivity"
-          class="text-xs text-muted"
+          class="truncate text-xs text-muted"
           :data-testid="`remote-sync-no-activity-${row.taskId}`"
         >
           {{ t('remoteSync.noActivityReason') }}
         </span>
-        <USelect
-          v-else-if="canEdit"
-          :id="`remote-sync-activity-${row.taskId}`"
-          :model-value="selectedActivityId"
-          :items="activityOptions"
-          label-key="name"
-          value-key="id"
-          size="xs"
-          variant="ghost"
-          class="w-40"
-          :placeholder="t('remoteSync.activityEmptyOption')"
-          :aria-label="t('remoteSync.activityLabel')"
-          :data-testid="`remote-sync-activity-select-${row.taskId}`"
-          @update:model-value="(value: string | undefined) => emit('update:activity', value)"
-        />
+        <UTooltip v-else-if="showEditors && !canEdit" :text="reason" :content="{ side: 'top' }">
+          <span tabindex="0" class="inline-flex w-full min-w-0">
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              disabled
+              class="w-full justify-start truncate text-muted disabled:opacity-40"
+              :label="activityDisplayValue"
+              :loading="activityLoading"
+              :aria-label="t('remoteSync.activityLabel')"
+              :aria-busy="activityLoading"
+              :data-testid="
+                activityLoading
+                  ? `remote-sync-activity-loading-${row.taskId}`
+                  : `remote-sync-activity-select-${row.taskId}`
+              "
+            />
+          </span>
+        </UTooltip>
+        <UPopover
+          v-else-if="showEditors"
+          :open="activityOpen"
+          :modal="false"
+          :content="{ side: 'bottom', align: 'start', sideOffset: 4 }"
+          @update:open="onActivityOpen"
+        >
+          <OverflowTooltip class="w-full" :text="activityDisplayValue">
+            <UButton
+              variant="ghost"
+              color="neutral"
+              size="xs"
+              class="w-full justify-start truncate text-muted"
+              :label="activityDisplayValue"
+              :aria-label="t('remoteSync.activityLabel')"
+              :data-testid="`remote-sync-activity-select-${row.taskId}`"
+            />
+          </OverflowTooltip>
+          <template #content>
+            <div
+              class="flex max-h-60 min-w-48 flex-col overflow-auto p-1"
+              role="listbox"
+              :aria-label="t('remoteSync.activityLabel')"
+              :data-testid="`remote-sync-activity-list-${row.taskId}`"
+            >
+              <UButton
+                v-for="option in activityOptions"
+                :key="option.id"
+                variant="ghost"
+                color="neutral"
+                class="w-full justify-start"
+                role="option"
+                :label="option.name"
+                :data-testid="`remote-sync-activity-option-${row.taskId}-${option.id}`"
+                @click.stop="commitActivity(option.id)"
+              />
+            </div>
+          </template>
+        </UPopover>
         <span
           v-else
-          class="truncate text-sm text-muted"
+          class="block truncate text-xs text-muted"
           :data-testid="`remote-sync-activity-select-${row.taskId}`"
         >
-          {{
-            activityOptions.find((option) => option.id === selectedActivityId)?.name ??
-            t('remoteSync.emptyCell')
-          }}
+          {{ selectedActivityName ?? t('remoteSync.emptyCell') }}
         </span>
       </div>
     </template>
 
     <template #duration>
-      <div
-        class="flex flex-wrap items-center justify-end gap-1 font-mono text-sm tabular-nums"
-        :data-testid="`remote-sync-row-duration-${row.taskId}`"
-      >
-        <span :data-testid="`remote-sync-tracked-${row.taskId}`">{{ trackedLabel }}</span>
-        <span aria-hidden="true">{{ t('remoteSync.trackedToSendArrow') }}</span>
-        <InlineEditText
-          v-if="canEdit"
-          :model-value="editingToSend ? toSendInput : toSendLabel"
-          :editing="editingToSend"
-          :field-label="t('remoteSync.roundedDurationLabel')"
-          :display-testid="`remote-sync-to-send-${row.taskId}`"
-          :input-testid="`remote-sync-to-send-input-${row.taskId}`"
-          display-class="font-mono text-right"
-          @edit="emit('edit-to-send')"
-          @update:model-value="(value) => emit('update:to-send', value)"
-          @commit="emit('commit-to-send')"
-          @cancel="emit('cancel-to-send')"
-        />
-        <span v-else :data-testid="`remote-sync-to-send-${row.taskId}`">{{ toSendLabel }}</span>
-        <span class="text-muted" :data-testid="`remote-sync-row-delta-${row.taskId}`">
-          ({{ deltaLabel }})
-        </span>
-      </div>
+      <UTooltip :text="rowDeltaTooltip" :disabled="editingToSend" :content="{ side: 'top' }">
+        <div
+          class="inline-flex items-baseline gap-1 font-mono text-sm font-medium tabular-nums text-muted"
+          :aria-label="durationClusterAria"
+          :data-testid="`remote-sync-row-duration-${row.taskId}`"
+        >
+          <span :data-testid="`remote-sync-tracked-${row.taskId}`">{{ trackedLabel }}</span>
+          <span aria-hidden="true">{{ t('remoteSync.trackedToSendArrow') }}</span>
+          <TimeInput
+            v-if="showEditors && editingToSend"
+            :model-value="toSendInput"
+            duration
+            :label="t('remoteSync.roundedDurationLabel')"
+            :testid="`remote-sync-to-send-input-${row.taskId}`"
+            @update:model-value="(value) => emit('update:to-send', value ?? undefined)"
+            @commit="emit('commit-to-send')"
+            @cancel="emit('cancel-to-send')"
+          />
+          <button
+            v-else-if="showEditors"
+            type="button"
+            class="bg-transparent p-0 font-[inherit] text-[length:inherit] leading-[inherit]"
+            :class="canEdit ? 'cursor-pointer' : 'cursor-default'"
+            :disabled="!canEdit"
+            :aria-label="t('remoteSync.roundedDurationLabel')"
+            :data-testid="`remote-sync-to-send-${row.taskId}`"
+            @click="onEditToSend"
+          >
+            {{ toSendLabel }}
+          </button>
+          <span v-else :data-testid="`remote-sync-to-send-${row.taskId}`">
+            {{ toSendLabel }}
+          </span>
+          <span class="sr-only" :data-testid="`remote-sync-row-delta-${row.taskId}`">
+            {{ t('remoteSync.deltaLabel') }}: {{ deltaLabel }}
+          </span>
+        </div>
+      </UTooltip>
     </template>
 
     <template #detail>

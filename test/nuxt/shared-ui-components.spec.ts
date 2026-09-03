@@ -138,6 +138,22 @@ describe('TimeInput', () => {
     expect(input.element.value).toBe('08:00');
   });
 
+  it('normalizes duration mode to HH:MM:SS', async () => {
+    const wrapper = await mountSuspended(TimeInput, {
+      props: {
+        modelValue: '00:50:00',
+        label: 'Export duration',
+        testid: 'duration-input',
+        duration: true,
+      },
+      global: { stubs: { UInput: InputStub } },
+    });
+    const input = wrapper.find<HTMLInputElement>('[data-testid="duration-input"]');
+    await input.setValue('45');
+    await input.trigger('blur');
+    expect(wrapper.emitted('update:modelValue')).toEqual([['00:45:00']]);
+  });
+
   it('reserves compact width for a full HH:mm plus input chrome', async () => {
     const wrapper = await mount('09:00');
     const root = wrapper.find('.time-input--compact');

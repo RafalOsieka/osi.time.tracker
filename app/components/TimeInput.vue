@@ -7,6 +7,7 @@ const {
   describedby = undefined,
   invalid = false,
   compact = true,
+  duration = false,
 } = defineProps<{
   modelValue: string | null;
   label?: string;
@@ -15,6 +16,8 @@ const {
   describedby?: string;
   invalid?: boolean;
   compact?: boolean;
+  /** Normalize as `HH:MM:SS` duration instead of clock `HH:mm`. */
+  duration?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -35,8 +38,14 @@ watch(
   },
 );
 
+function normalize(raw: string): string | null {
+  if (!duration) return normalizeTimeInput(raw);
+  const seconds = normalizeDurationInput(raw);
+  return seconds === null ? null : formatDuration(seconds);
+}
+
 function commit() {
-  const normalized = normalizeTimeInput(inputValue.value);
+  const normalized = normalize(inputValue.value);
   if (normalized === null) {
     inputValue.value = previousValue.value;
   } else {
@@ -58,17 +67,26 @@ function cancel() {
     :id="id"
     v-model="inputValue"
     inputmode="numeric"
-    class="time-input min-w-[10ch]"
-    :class="{ 'time-input--compact w-full min-w-[10ch]': compact }"
+    class="time-input"
+    :class="
+      duration
+        ? { 'time-input--compact': compact }
+        : { 'min-w-[10ch]': true, 'time-input--compact w-full min-w-[10ch]': compact }
+    "
     :size="compact ? 'xs' : undefined"
     :variant="compact ? 'outline' : undefined"
     :ui="
-      compact
+      duration
         ? {
-            root: 'w-full min-w-0',
-            base: 'w-full min-w-0 text-center text-sm/4 tabular-nums',
+            root: 'inline-flex w-[8ch]',
+            base: () => 'w-full px-0 py-0 text-sm font-medium font-mono tabular-nums text-muted',
           }
-        : undefined
+        : compact
+          ? {
+              root: 'w-full min-w-0',
+              base: 'w-full min-w-0 text-center text-sm/4 tabular-nums',
+            }
+          : undefined
     "
     :aria-label="label"
     :aria-describedby="describedby"

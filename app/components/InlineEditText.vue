@@ -12,6 +12,7 @@ const {
   placeholder = '',
   displayClass = '',
   displayValue = undefined,
+  disabled = false,
 } = defineProps<{
   modelValue: string;
   editing: boolean;
@@ -21,6 +22,7 @@ const {
   placeholder?: string;
   displayClass?: string;
   displayValue?: string;
+  disabled?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -30,16 +32,22 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
+const rootClass = 'min-w-0 w-full max-w-full';
 const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
 const shownValue = computed(() => displayValue ?? modelValue);
 
 function onInput(value: string | undefined) {
   emit('update:modelValue', value ?? '');
 }
+
+function onEdit() {
+  if (disabled) return;
+  emit('edit');
+}
 </script>
 
 <template>
-  <div class="min-w-0 w-full max-w-full">
+  <div :class="rootClass">
     <UInput
       v-if="editing"
       :model-value="modelValue"
@@ -61,13 +69,13 @@ function onInput(value: string | undefined) {
         variant="none"
         readonly
         size="xs"
-        class="w-full min-w-0 max-w-full cursor-pointer"
-        :class="displayClass"
+        class="w-full min-w-0 max-w-full"
+        :class="[displayClass, disabled ? 'cursor-default' : 'cursor-pointer']"
         :ui="slotInputUi"
         :aria-label="fieldLabel"
         :data-testid="displayTestid"
-        @focus="emit('edit')"
-        @click.stop="emit('edit')"
+        @focus="onEdit"
+        @click.stop="onEdit"
       />
     </OverflowTooltip>
   </div>

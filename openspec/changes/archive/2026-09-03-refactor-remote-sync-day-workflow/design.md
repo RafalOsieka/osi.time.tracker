@@ -20,13 +20,13 @@ See `proposal.md` for motivation. The Remote Sync day page is a large orchestrat
 
 ### Shared shell with named slots, not a domain row
 
-Extract a presentational shell whose regions are expansion, title, secondary, meta, duration, actions, and detail. Timer fills secondary=project, meta=issue, duration=one total, actions=play/stop. Remote Sync fills secondary=issue, meta=activity, duration=tracked/to-send/delta cluster, actions=empty. Domain logic stays in `TimerTaskGroup` and a new `SyncDayRow`.
+Extract a presentational shell whose regions are expansion, title, secondary, meta, duration, actions, and detail. Timer fills secondary=project, meta=issue, duration=one total, actions=play/stop. Remote Sync fills secondary=issue, meta=activity, duration=tracked → to-send with delta on a tooltip, actions=empty. Domain logic stays in `TimerTaskGroup` and a new `SyncDayRow`.
 
 **Alternative considered:** one `TaskDayRow` that takes a mode prop. Timer and sync do not share enough middle content; the prop API would be larger than two call sites.
 
 ### Ghost inline-edit as a second shared control
 
-Lift the none/ghost `UInput` + overflow tooltip + Enter/Escape/blur commit used by `TimerTaskGroup` and `TimerEntryRow` into a shared control. Remote Sync title-to-send and to-send duration use it. Project stays a button+popover (REQ-178). Activity stays `USelect` `size="xs"` with a ghost/subtle variant so it looks like text until opened.
+Lift the none/ghost `UInput` + overflow tooltip + Enter/Escape/blur commit used by `TimerTaskGroup` and `TimerEntryRow` into a shared control. Remote Sync title-to-send uses it. To-send duration uses the same compact time slot as entry start/stop (`TimeInput` when editing). Project and activity stay a button+popover (REQ-178).
 
 **Alternative considered:** keep copy-pasted inputs per page. That is what we already have and it is why the sync duration editor does not match the timer.
 

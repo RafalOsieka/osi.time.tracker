@@ -49,8 +49,8 @@ const isEmpty = computed(
 );
 
 /**
- * Locale-aware day heading. Computed only on the client so Node vs browser
- * `toLocaleDateString` ICU differences cannot hydrate-mismatch the page.
+ * Locale-aware day heading. SSR and hydration keep the ISO date so Node vs
+ * browser `toLocaleDateString` cannot mismatch; format after mount.
  */
 const dayHeadingText = ref(date.value);
 function refreshDayHeading() {
@@ -62,9 +62,8 @@ function refreshDayHeading() {
     timeZone: effective.value.timeZone,
   });
 }
-if (import.meta.client) {
-  watch([date, locale, () => effective.value.timeZone], refreshDayHeading, { immediate: true });
-}
+watch([date, locale, () => effective.value.timeZone], refreshDayHeading);
+onMounted(refreshDayHeading);
 
 function toPickerConfig(config: RemoteSyncConfigSurfaceDto): TrackerDto {
   return {
@@ -238,6 +237,7 @@ function stateBadgeColor(row: RemoteSyncDayRowDto): 'success' | 'warning' | 'err
     case 'sent':
       return 'success';
     case 'activity_loading':
+      return 'neutral';
     case 'unlinked':
       return 'warning';
     case 'activity_error':
@@ -256,11 +256,17 @@ function kindLabelFor(row: RemoteSyncDayRowDto): string | null {
   if (state === 'unlinked') return null;
   if (state === 'manageable') return t('remoteSync.kind.ready');
   if (state === 'sent') return t('remoteSync.kind.sent');
+  if (state === 'activity_loading') return t('remoteSync.kind.loading');
   return t('remoteSync.kind.blocked');
 }
 
 function canEditRow(row: RemoteSyncDayRowDto): boolean {
   return stateFor(row) === 'manageable';
+}
+
+function showEditorsFor(row: RemoteSyncDayRowDto): boolean {
+  const state = stateFor(row);
+  return state === 'manageable' || state === 'activity_loading';
 }
 
 function roundedSecondsFor(row: RemoteSyncDayRowDto): number {
@@ -467,7 +473,7 @@ function toSendSecondsFor(row: RemoteSyncDayRowDto): number {
   if (stateFor(row) === 'sent') {
     return lastExportDuration(row);
   }
-  if (!canEditRow(row)) return 0;
+  if (!showEditorsFor(row)) return 0;
   if (isZeroDuration(row)) return 0;
   return roundedSecondsFor(row);
 }
@@ -651,9 +657,15 @@ function toggleExpanded(taskId: string) {
   expanded.value = { ...expanded.value, [taskId]: !expanded.value[taskId] };
 }
 
-function startEditTitle(row: RemoteSyncDayRowDto) {
+async function startEditTitle(row: RemoteSyncDayRowDto) {
   if (!canEditRow(row)) return;
   editingTitleTaskId.value = row.taskId;
+  await nextTick();
+  const input = document.querySelector<HTMLInputElement>(
+    `[data-testid="remote-sync-comment-${row.taskId}"]`,
+  );
+  input?.focus();
+  input?.select();
 }
 
 function commitEditTitle(row: RemoteSyncDayRowDto) {
@@ -788,6 +800,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :row="row"
         :expanded="isExpanded(row.taskId)"
         :can-edit="canEditRow(row)"
+        :show-editors="showEditorsFor(row)"
         :kind-label="kindLabelFor(row)"
         :kind-color="stateBadgeColor(row)"
         :reason="reasonKeyFor(row)"
@@ -802,7 +815,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :delta-label="formatSignedDuration(rowDeltaSeconds(row))"
         :editing-to-send="editingToSendTaskId === row.taskId"
         :to-send-input="displayedRoundedInput(row)"
-        :activity-loading="activitiesFor(row).loading || !activitiesFor(row).loaded"
+        :activity-loading="stateFor(row) === 'activity_loading'"
         :activity-error="!!activitiesFor(row).errorKey"
         :activity-options="activitiesFor(row).options"
         :selected-activity-id="selectedActivity(row)"

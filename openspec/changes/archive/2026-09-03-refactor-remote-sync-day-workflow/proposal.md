@@ -5,7 +5,7 @@ The Remote Sync day page still treats every task as a review-and-maybe-resend un
 ## What Changes
 
 - **BREAKING** for the day-export workflow: Export always sends ready, never-exported tasks. Any finalized provenance for that task/day makes the row Sent; later local time stays local until a future undo (not this change). No include checkbox, no per-entry selection, no re-export confirmation path.
-- Ready rows edit in place: title-to-send (export comment), activity, and to-send duration. Tracked, to-send, and delta stay on the collapsed row. Only ready rows expose those editors.
+- Ready rows edit in place: title-to-send (export comment), activity, and to-send duration. Tracked and to-send stay on the collapsed row; signed delta is on the duration-cluster tooltip. Only ready rows expose those editors.
 - Drop the State column. A compact badge (plus tooltip/accessible text) distinguishes Ready / Sent / not-exportable. Unlinked rows keep the link control.
 - Replace `UTable` with the timer’s two-line compact grid. Extract a shared expandable-row shell (and shared ghost inline-edit) and switch the timer group header onto it in this change.
 - Details are extra info only: local entries (read-only) beside same-day current-account remote logs; stacked on small viewports. No rounding chips, no comment field, no entry checkboxes.

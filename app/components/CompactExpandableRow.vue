@@ -59,7 +59,7 @@ const expandText = computed(() => (expanded ? collapseLabel : expandLabel));
         <slot name="meta" />
       </div>
 
-      <div class="min-w-[4.5rem] [grid-area:duration]">
+      <div class="min-w-[4.5rem] shrink-0 whitespace-nowrap [grid-area:duration]">
         <slot name="duration" />
       </div>
 

@@ -35,7 +35,7 @@ Expanding a Remote Sync task row SHALL reveal extra information only: a read-onl
 
 Each task row on the Remote Sync page SHALL expose exactly one effective state: **Sent** when at least one finalized export exists for that task on the requested local date; **read-only with a translated stated reason** when the Task has no Project, the Project has no tracker, the tracker is soft-deleted/missing, the system type is unsupported, or a successful activity fetch yielded no activities; **read-only but linkable** when the tracker is usable but no remote issue reference exists; **temporarily unavailable with a retryable error** when required remote data failed to load; or **Ready** (manageable) when every prerequisite is met and no finalized export exists for that task/date. The "(no task)" bucket SHALL always be read-only. Read-only and Sent rows SHALL still display task name, tracked duration, and any successfully loaded remote-log context in the expanded region.
 
-The collapsed row SHALL convey the kind with a compact badge whose visible label is short translated text (Ready, Sent, or the blocking reason in compact form) plus an accessible name and tooltip for the full reason. Unlinked Ready-path rows MAY omit the Ready badge and keep the existing inline link control. State SHALL NOT occupy a dedicated column. Color alone SHALL NOT convey the kind.
+The collapsed row SHALL convey the kind with a compact badge whose visible label is short translated text (Ready, Sent, Loading while remote activities are in flight, or the blocking reason in compact form) plus an accessible name and tooltip for the full reason. Unlinked Ready-path rows MAY omit the Ready badge and keep the existing inline link control. State SHALL NOT occupy a dedicated column. Color alone SHALL NOT convey the kind. While activities are loading, a linked never-exported row SHALL keep the same title, duration, and activity control chrome as Ready (non-interactive) rather than swapping plain text for inputs after load.
 
 #### Scenario: Task without a Project is read-only
 
@@ -62,6 +62,11 @@ The collapsed row SHALL convey the kind with a compact badge whose visible label
 - **WHEN** a listed Task resolves to a usable tracker but has no remote issue reference
 - **THEN** its row SHALL be read-only for export controls while exposing an inline link action
 
+#### Scenario: Activities in flight show Loading, not blocked
+
+- **WHEN** a linked never-exported task is waiting on remote activities
+- **THEN** its badge SHALL be the Loading kind and SHALL NOT use the blocked compact label
+
 #### Scenario: Fully eligible task is manageable
 
 - **WHEN** a listed Task is linked, has no finalized export for that date, and all required remote data loaded successfully with at least one activity
@@ -79,12 +84,12 @@ The collapsed row SHALL convey the kind with a compact badge whose visible label
 
 ### Requirement: REQ-113 Original and editable rounded durations
 
-Each task row SHALL display a duration cluster on the collapsed row: **tracked** (the sum of all of that Task's completed entries for the day), **to send** (the export duration), and their signed **delta**. For a Ready row, to-send SHALL be an in-place editable value pre-filled by applying the Project's active tracker's rounding rule once to the tracked total. A user override SHALL be retained until explicitly reset (Escape while editing, or an explicit reset if one is offered while the field is active). An export duration of `0` SHALL exclude the task from Export. Sent and other read-only rows SHALL show the cluster as text: to-send is the last finalized export duration when provenance exists, otherwise `0`. Reviewed values SHALL remain page state until a successful export is finalized. The cluster SHALL remain visible on the collapsed row at every supported viewport; it SHALL NOT be moved into the expanded region.
+Each task row SHALL display a duration cluster on the collapsed row: **tracked** (the sum of all of that Task's completed entries for the day) and **to send** (the export duration) on a single line, with their signed **delta** available from a tooltip on that cluster and as accessible text (not as a third visible token on the row). For a Ready row, to-send SHALL be an in-place editable value pre-filled by applying the Project's active tracker's rounding rule once to the tracked total. A user override SHALL be retained until explicitly reset (Escape while editing, or an explicit reset if one is offered while the field is active). An export duration of `0` SHALL exclude the task from Export. Sent and other read-only rows SHALL show the cluster as text: to-send is the last finalized export duration when provenance exists, otherwise `0`. Reviewed values SHALL remain page state until a successful export is finalized. The cluster SHALL remain visible on the collapsed row at every supported viewport; it SHALL NOT be moved into the expanded region.
 
 #### Scenario: Rounded default is computed from selected entries
 
 - **WHEN** a Ready task's completed entries (the whole day, with no per-entry picking) sum to 50 minutes under an `up_15m` rule
-- **THEN** the editable to-send duration SHALL default to 60 minutes while tracked remains 50 minutes and the signed delta is visible on the row
+- **THEN** the editable to-send duration SHALL default to 60 minutes while tracked remains 50 minutes and the signed delta SHALL be available from the duration cluster tooltip
 
 #### Scenario: Exact multiple is unchanged
 
@@ -119,7 +124,7 @@ Each task row SHALL display a duration cluster on the collapsed row: **tracked**
 #### Scenario: Cluster stays on the collapsed row
 
 - **WHEN** the user reviews the day without expanding a row
-- **THEN** tracked, to-send, and delta SHALL be visible on that row
+- **THEN** tracked and to-send SHALL be visible on that row and the signed delta SHALL be available from the duration cluster tooltip
 
 ### Requirement: REQ-116 Remote Sync page accessibility and i18n
 
@@ -219,7 +224,7 @@ The page SHALL create at most one remote log for each included Ready task in one
 
 ### Requirement: REQ-223 Day review is presented as a dense table with expandable rows
 
-The Remote Sync page SHALL present the day's tasks as a compact expandable list that uses the shared compact expandable-row shell (REQ-303). It SHALL NOT use a multi-column data table as the primary layout. Each collapsed row SHALL show: expansion control; title-to-send (in-place editable on Ready rows, text otherwise) with a compact kind badge; issue reference or link control; activity (in-place select on Ready rows, text otherwise); the tracked / to-send / delta cluster; and a reserved actions slot. The actions slot SHALL be present and empty (no control) in this change, sized for a later single icon button so adding undo does not reflow the row.
+The Remote Sync page SHALL present the day's tasks as a compact expandable list that uses the shared compact expandable-row shell (REQ-303). It SHALL NOT use a multi-column data table as the primary layout. Each collapsed row SHALL show: expansion control; title-to-send (in-place editable on Ready rows, text otherwise) with a compact kind badge; issue reference or link control; activity (in-place select on Ready rows, text otherwise); the tracked / to-send duration cluster (signed delta on tooltip); and a reserved actions slot. The actions slot SHALL be present and empty (no control) in this change, sized for a later single icon button so adding undo does not reflow the row.
 
 On viewports at or above the shell desktop rail breakpoint the row SHALL occupy a single line. Below that breakpoint it SHALL use two lines: expansion, title and badge, duration cluster, and actions on the first line; issue and activity on the second. Expansion SHALL default to collapsed, SHALL be per row, and SHALL NOT affect activity, title-to-send, or to-send values. The untitled-entries bucket SHALL appear as a non-editable row of the same list. Ready, Sent, and not-exportable rows SHALL share this list, distinguished by badge and which controls are interactive, not by separate lists.
 

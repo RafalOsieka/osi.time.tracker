@@ -20,7 +20,7 @@
 
 ## 5. Compact Remote Sync rows
 
-- [x] 5.1 Frontend: Replace `UTable` with a list of `SyncDayRow` shells: badge, in-place title-to-send, activity `USelect` xs, duration cluster (tracked / editable to-send / delta), empty actions slot; two-line below `lg`. Drop State column. i18n `en`/`pl` for badges and retired include/state/entry copy (REQ-223, REQ-113, REQ-232). Verify the page no longer renders `remote-sync-table` / include / state hooks.
+- [x] 5.1 Frontend: Replace `UTable` with a list of `SyncDayRow` shells: badge, in-place title-to-send, activity `USelect` xs, duration cluster (tracked → editable to-send, signed delta on tooltip), empty actions slot; two-line below `lg`. Drop State column. i18n `en`/`pl` for badges and retired include/state/entry copy (REQ-223, REQ-113, REQ-232). Verify the page no longer renders `remote-sync-table` / include / state hooks.
 - [x] 5.2 Frontend tests: Rewrite `test/nuxt/remote-sync-page.spec.ts` for collapsed cluster, Ready editors vs Sent read-only, no include/entry/rounding hooks, title-to-send not calling reassign.
 
 ## 6. Details panes and export dialog
