@@ -592,7 +592,7 @@ The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semant
 - **THEN** the client SHALL show a Toast translated from the returned `messageKey`
 
 ### Requirement: REQ-265 Timer view group and entry row density
-On the timer view, each task group header and each expanded entry row SHALL keep its primary text inside a stable layout slot so long names do not overflow the row and so activating an inline editor does not shift neighboring controls.
+On the timer view, each task group header and each expanded entry row SHALL keep its primary text inside a stable layout slot so long names do not overflow the row and so activating an inline editor does not shift neighboring controls. Each task group header SHALL be composed from the shared compact expandable-row shell (REQ-303): expansion, title (with entry-count indicator), project as secondary, remote-issue chrome as meta, group duration, and continue/stop as actions. Entry rows SHALL NOT use that shell.
 
 When a group's task name, project context (including the localized "(no project)" placeholder), or an entry's title exceeds the space allocated to its slot, the visible text SHALL be truncated with an ellipsis. The complete string SHALL be available on pointer hover and on keyboard focus (a tooltip) and SHALL remain the control's accessible name. A value that already fits the slot SHALL omit the tooltip so the tip is not anchored to empty space in the slot. Activating a truncated title SHALL show the complete value in the editor.
 
@@ -685,6 +685,10 @@ Typing into a title, project, or time editor SHALL NOT grow or shrink the reserv
 #### Scenario: Typing does not resize the slot
 - **WHEN** the user types a longer or shorter value in an active title, project, or time editor
 - **THEN** the reserved slot and surrounding row SHALL NOT grow or shrink with the typed text
+
+#### Scenario: Group header uses the shared compact row shell
+- **WHEN** a timer task group header is rendered
+- **THEN** its two-tier layout SHALL be the shared compact expandable-row shell used by Remote Sync day rows
 
 ### Requirement: REQ-179 Day-scoped reassignment of time entries to a task
 The system SHALL allow an authenticated user to move a set of their time entries to a target task in one atomic operation via `POST /api/time-entries/reassign`, accepting `{ ids, name?, projectId?, remoteIssueId? }` where `ids` is a non-empty array of entry uuids and `name` is trimmed and length-bounded. This powers the timer view's day-scoped group edits: the client sends exactly the entry ids of one day's task group so that only that day's entries move, while the same task's entries on other days are unaffected.

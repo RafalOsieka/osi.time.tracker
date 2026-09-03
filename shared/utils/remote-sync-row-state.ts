@@ -19,7 +19,7 @@ export function isImplementedTrackerSystemType(
  * Pure, precedence-ordered mapping from a Task's resolvable Project/tracker
  * state to its explicit Remote Sync row state:
  * `no_project` → `no_tracker` → `system_not_implemented` → `unlinked` →
- * optional activity outcome (`activity_loading` / `activity_error` /
+ * `sent` → optional activity outcome (`activity_loading` / `activity_error` /
  * `no_activity`) → `manageable`.
  */
 export function deriveRemoteSyncRowState(input: RemoteSyncRowStateInput): RemoteSyncRowState {
@@ -34,6 +34,9 @@ export function deriveRemoteSyncRowState(input: RemoteSyncRowStateInput): Remote
   }
   if (!input.hasIssueRef) {
     return 'unlinked';
+  }
+  if (input.hasExports) {
+    return 'sent';
   }
 
   switch (input.activityStatus) {

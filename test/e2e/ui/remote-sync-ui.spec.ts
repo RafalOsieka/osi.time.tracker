@@ -180,18 +180,19 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     await chooseDevelopment(page, entry.taskId);
 
-    // Expand the row so detail controls (rounded duration, entries) are available.
-    await page.click(`[data-testid="remote-sync-expand-${entry.taskId}"]`);
-
-    // Edit the rounded duration inline once activities make the row manageable.
-    const roundedSelector = `[data-testid="remote-sync-rounded-duration-${entry.taskId}"]`;
-    await page.waitForSelector(roundedSelector);
-    await page.locator(`${roundedSelector} input, ${roundedSelector}`).first().fill('00:00:00');
+    await page.click(`[data-testid="remote-sync-to-send-${entry.taskId}"]`);
+    const toSendInput = `[data-testid="remote-sync-to-send-input-${entry.taskId}"]`;
+    await page.waitForSelector(toSendInput);
+    await page.locator(toSendInput).fill('00:00:00');
     await page.keyboard.press('Tab');
-    await page.waitForSelector(`[data-testid="remote-sync-excluded-hint-${entry.taskId}"]`);
+    await page.waitForFunction(() => {
+      const btn = document.querySelector('[data-testid="remote-sync-export-button"]');
+      return btn instanceof HTMLButtonElement && btn.disabled;
+    });
 
-    // Reset duration so the row is pushable again for the review dialog.
-    await page.locator(`${roundedSelector} input, ${roundedSelector}`).first().fill('00:30:00');
+    await page.click(`[data-testid="remote-sync-to-send-${entry.taskId}"]`);
+    await page.waitForSelector(toSendInput);
+    await page.locator(toSendInput).fill('00:30:00');
     await page.keyboard.press('Tab');
 
     // Wait until the row is pushable (activity default applied + non-zero duration).
@@ -220,13 +221,11 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       state: 'hidden',
     });
 
-    // Edit comment, confirm export, reach report.
-    await page
-      .locator(
-        `[data-testid="remote-sync-comment-${entry.taskId}"] input, [data-testid="remote-sync-comment-${entry.taskId}"]`,
-      )
-      .first()
-      .fill('Reviewed comment from E2E');
+    await page.click(`[data-testid="remote-sync-task-name-${entry.taskId}"]`);
+    const commentInput = `[data-testid="remote-sync-comment-${entry.taskId}"]`;
+    await page.waitForSelector(commentInput);
+    await page.locator(commentInput).fill('Reviewed comment from E2E');
+    await page.keyboard.press('Tab');
     await page.click('[data-testid="remote-sync-export-button"]');
     await page.waitForSelector('[data-testid="remote-sync-export-dialog-body"]');
     await page.waitForFunction((taskId) => {
@@ -238,11 +237,15 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.waitForSelector(`[data-testid="remote-sync-export-result-${entry.taskId}"]`);
     await page.click('[data-testid="remote-sync-export-close"]');
     await page.waitForSelector('[data-testid="remote-sync-export-dialog"]', { state: 'hidden' });
+    await page.waitForFunction((taskId) => {
+      const el = document.querySelector(`[data-testid="remote-sync-state-${taskId}"]`);
+      return !!el && (el.textContent?.includes('Sent') || el.textContent?.includes('Wysłane'));
+    }, entry.taskId);
 
     await page.close();
   });
 
-  it('applies a rounding suggestion, keeps it across entry changes, and resets to the rule default', async () => {
+  it('keeps duration on the row and lists entries without selection in details', async () => {
     const { jar, token } = await apiLogin('remotesyncui@example.com');
     await fetch(url('/api/user/settings'), {
       method: 'PATCH',
@@ -314,37 +317,25 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       await page.waitForSelector(activitySelect);
     }
 
-    await page.click(`[data-testid="remote-sync-expand-${entryA.taskId}"]`);
-
-    const roundedSelector = `[data-testid="remote-sync-rounded-duration-${entryA.taskId}"]`;
-    await page.waitForSelector(roundedSelector);
-    // nearest_15m on 1h03m → 1h00m default
     await expect
-      .poll(async () => page.inputValue(`${roundedSelector} input, ${roundedSelector}`))
-      .toBe('01:00:00');
-
-    await page.click(`[data-testid="remote-sync-rounding-suggestion-${entryA.taskId}-ceil"]`);
-    await expect
-      .poll(async () => page.inputValue(`${roundedSelector} input, ${roundedSelector}`))
-      .toBe('01:15:00');
-    await page.waitForSelector(`[data-testid="remote-sync-reset-duration-${entryA.taskId}"]`);
-
-    // Deselect one entry; override must survive (REQ-113 / REQ-222).
-    await page
-      .locator(
-        `[data-testid="remote-sync-entry-check-${entryB.id}"] input, [data-testid="remote-sync-entry-check-${entryB.id}"]`,
+      .poll(async () =>
+        page.evaluate((taskId) => {
+          const el = document.querySelector(`[data-testid="remote-sync-to-send-${taskId}"]`);
+          if (el instanceof HTMLInputElement) return el.value;
+          return el?.textContent ?? '';
+        }, entryA.taskId),
       )
-      .first()
-      .click();
-    await expect
-      .poll(async () => page.inputValue(`${roundedSelector} input, ${roundedSelector}`))
-      .toBe('01:15:00');
+      .toContain('01:00:00');
 
-    await page.click(`[data-testid="remote-sync-reset-duration-${entryA.taskId}"]`);
-    // Remaining selection is 40m → nearest_15m → 45m
-    await expect
-      .poll(async () => page.inputValue(`${roundedSelector} input, ${roundedSelector}`))
-      .toBe('00:45:00');
+    await page.click(`[data-testid="remote-sync-expand-${entryA.taskId}"]`);
+    await page.waitForSelector(`[data-testid="remote-sync-detail-${entryA.taskId}"]`);
+    expect(await page.locator(`[data-testid="remote-sync-entry-check-${entryA.id}"]`).count()).toBe(
+      0,
+    );
+    expect(await page.locator(`[data-testid="remote-sync-entry-check-${entryB.id}"]`).count()).toBe(
+      0,
+    );
+    expect(await page.locator(`[data-testid="remote-sync-entry-${entryA.id}"]`).count()).toBe(1);
 
     await page.close();
   });
@@ -413,20 +404,12 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     expect(await page.locator('[data-testid="remote-sync-include-all"]').count()).toBe(0);
     expect(await page.locator('[data-testid="remote-sync-exclude-all"]').count()).toBe(0);
+    expect(await page.locator(`[data-testid="remote-sync-include-${entry.taskId}"]`).count()).toBe(
+      0,
+    );
     expect(await page.locator('[data-testid="remote-sync-today"]').count()).toBe(0);
     expect(await page.locator('[data-testid="remote-sync-pick-date"]').count()).toBe(0);
     expect(await page.locator('[data-testid="remote-sync-export-button"]').count()).toBe(1);
-
-    await page.click(`[data-testid="remote-sync-include-${entry.taskId}"]`);
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
-      return !!el && el.textContent?.includes('00:00:00');
-    });
-    await page.click(`[data-testid="remote-sync-include-${entry.taskId}"]`);
-    await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
-      return !!el && el.textContent?.includes('01:00:00');
-    });
 
     await page.click('[data-testid="remote-sync-next-day"]');
     await page.waitForURL(`**/sync/${next}`);

@@ -26,7 +26,6 @@ const deleting = ref(false);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(entry, now)));
 const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask'));
-const titleInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
 const timeSlotUi = {
   root: 'w-full min-w-0',
   base: 'w-full min-w-0 px-2 py-1 text-center text-sm/4 tabular-nums',
@@ -156,35 +155,17 @@ async function onDelete() {
     :data-testid="`timer-entry-${entry.id}`"
   >
     <span class="min-w-0 flex-1">
-      <UInput
-        v-if="editingField === 'title'"
+      <InlineEditText
         v-model="titleValue"
-        type="text"
-        variant="ghost"
-        size="xs"
-        :aria-label="t('timerView.entryRow.titleLabel')"
-        class="w-full min-w-0 max-w-full"
-        :ui="titleInputUi"
-        :data-testid="`timer-entry-title-input-${entry.id}`"
-        @blur="commitTitle"
-        @keydown.enter="commitTitle"
-        @keydown.esc="cancelEdit"
+        :editing="editingField === 'title'"
+        :display-value="titleDisplayValue"
+        :field-label="t('timerView.entryRow.titleLabel')"
+        :display-testid="`timer-entry-title-${entry.id}`"
+        :input-testid="`timer-entry-title-input-${entry.id}`"
+        @edit="startEditTitle"
+        @commit="commitTitle"
+        @cancel="cancelEdit"
       />
-      <OverflowTooltip v-else :text="titleDisplayValue">
-        <UInput
-          :model-value="titleDisplayValue"
-          type="text"
-          variant="none"
-          readonly
-          size="xs"
-          :aria-label="t('timerView.entryRow.titleLabel')"
-          class="w-full min-w-0 max-w-full cursor-pointer"
-          :ui="titleInputUi"
-          :data-testid="`timer-entry-title-${entry.id}`"
-          @focus="startEditTitle"
-          @click="startEditTitle"
-        />
-      </OverflowTooltip>
     </span>
 
     <span class="flex shrink-0 items-center gap-1.5">

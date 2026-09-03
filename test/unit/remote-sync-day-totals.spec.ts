@@ -8,10 +8,9 @@ function row(
   partial: Partial<RemoteSyncDayTotalsRow> & Pick<RemoteSyncDayTotalsRow, 'totalSeconds'>,
 ): RemoteSyncDayTotalsRow {
   return {
-    selectedSeconds: partial.selectedSeconds ?? partial.totalSeconds,
     exportSeconds: partial.exportSeconds ?? partial.totalSeconds,
     isPushable: partial.isPushable ?? false,
-    isIncluded: partial.isIncluded ?? false,
+    isSent: partial.isSent ?? false,
     ...partial,
     totalSeconds: partial.totalSeconds,
   };
@@ -24,7 +23,7 @@ describe('computeRemoteSyncDayTotals', () => {
       tracked: 0,
       toSend: 0,
       blocked: 0,
-      excluded: 0,
+      sent: 0,
       untitled: 0,
       delta: 0,
     });
@@ -37,38 +36,28 @@ describe('computeRemoteSyncDayTotals', () => {
       tracked: 0,
       toSend: 0,
       blocked: 0,
-      excluded: 0,
+      sent: 0,
       untitled: 900,
       delta: 0,
     });
-    expect(totals.dayTotal).toBe(
-      totals.tracked + totals.blocked + totals.excluded + totals.untitled,
-    );
+    expect(totals.dayTotal).toBe(totals.tracked + totals.sent + totals.blocked + totals.untitled);
   });
 
-  it('holds the dayTotal = tracked + blocked + excluded + untitled invariant', () => {
+  it('holds the dayTotal = tracked + sent + blocked + untitled invariant', () => {
     const totals = computeRemoteSyncDayTotals(
       [
         row({
           totalSeconds: 3600,
-          selectedSeconds: 3600,
           exportSeconds: 3600,
           isPushable: true,
-          isIncluded: true,
         }),
         row({
           totalSeconds: 1800,
-          selectedSeconds: 1800,
-          exportSeconds: 1800,
           isPushable: false,
-          isIncluded: true,
         }),
         row({
           totalSeconds: 600,
-          selectedSeconds: 0,
-          exportSeconds: 0,
-          isPushable: false,
-          isIncluded: false,
+          isSent: true,
         }),
       ],
       300,
@@ -78,11 +67,9 @@ describe('computeRemoteSyncDayTotals', () => {
     expect(totals.tracked).toBe(3600);
     expect(totals.toSend).toBe(3600);
     expect(totals.blocked).toBe(1800);
-    expect(totals.excluded).toBe(600);
+    expect(totals.sent).toBe(600);
     expect(totals.untitled).toBe(300);
-    expect(totals.dayTotal).toBe(
-      totals.tracked + totals.blocked + totals.excluded + totals.untitled,
-    );
+    expect(totals.dayTotal).toBe(totals.tracked + totals.sent + totals.blocked + totals.untitled);
   });
 
   it('reports a positive delta when rounding increases export duration', () => {
@@ -90,10 +77,8 @@ describe('computeRemoteSyncDayTotals', () => {
       [
         row({
           totalSeconds: 3700,
-          selectedSeconds: 3700,
           exportSeconds: 4500,
           isPushable: true,
-          isIncluded: true,
         }),
       ],
       0,
@@ -108,10 +93,8 @@ describe('computeRemoteSyncDayTotals', () => {
       [
         row({
           totalSeconds: 3600,
-          selectedSeconds: 3600,
           exportSeconds: 2700,
           isPushable: true,
-          isIncluded: true,
         }),
       ],
       0,
@@ -121,15 +104,13 @@ describe('computeRemoteSyncDayTotals', () => {
     expect(totals.delta).toBe(-900);
   });
 
-  it('counts included-but-blocked rows in blocked, not tracked or toSend', () => {
+  it('counts blocked rows in blocked, not tracked or toSend', () => {
     const totals = computeRemoteSyncDayTotals(
       [
         row({
           totalSeconds: 1200,
-          selectedSeconds: 1200,
           exportSeconds: 1200,
           isPushable: false,
-          isIncluded: true,
         }),
       ],
       0,
@@ -137,29 +118,41 @@ describe('computeRemoteSyncDayTotals', () => {
     expect(totals.tracked).toBe(0);
     expect(totals.toSend).toBe(0);
     expect(totals.blocked).toBe(1200);
-    expect(totals.excluded).toBe(0);
-    expect(totals.dayTotal).toBe(
-      totals.tracked + totals.blocked + totals.excluded + totals.untitled,
-    );
+    expect(totals.sent).toBe(0);
+    expect(totals.dayTotal).toBe(totals.tracked + totals.sent + totals.blocked + totals.untitled);
   });
 
-  it('counts partially selected blocked rows with remainder as excluded', () => {
+  it('counts Ready rows with zero to-send as blocked when not pushable', () => {
     const totals = computeRemoteSyncDayTotals(
       [
         row({
           totalSeconds: 1000,
-          selectedSeconds: 400,
-          exportSeconds: 400,
+          exportSeconds: 0,
           isPushable: false,
-          isIncluded: true,
         }),
       ],
       0,
     );
-    expect(totals.blocked).toBe(400);
-    expect(totals.excluded).toBe(600);
-    expect(totals.dayTotal).toBe(
-      totals.tracked + totals.blocked + totals.excluded + totals.untitled,
+    expect(totals.blocked).toBe(1000);
+    expect(totals.tracked).toBe(0);
+    expect(totals.toSend).toBe(0);
+  });
+
+  it('counts sent rows in sent even when local time remains', () => {
+    const totals = computeRemoteSyncDayTotals(
+      [
+        row({
+          totalSeconds: 5400,
+          exportSeconds: 3600,
+          isSent: true,
+          isPushable: false,
+        }),
+      ],
+      0,
     );
+    expect(totals.sent).toBe(5400);
+    expect(totals.tracked).toBe(0);
+    expect(totals.toSend).toBe(0);
+    expect(totals.dayTotal).toBe(5400);
   });
 });

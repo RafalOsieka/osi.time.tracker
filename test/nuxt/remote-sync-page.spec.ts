@@ -92,12 +92,21 @@ const InputTextStub = {
 };
 const SelectStub = {
   template: `
-    <select v-bind="$attrs" :value="modelValue ?? ''" @change="$emit('update:modelValue', $event.target.value || null)">
+    <select v-bind="$attrs" :value="modelValue ?? ''" :disabled="disabled" @change="$emit('update:modelValue', $event.target.value || null)">
       <option value="">(none)</option>
       <option v-for="option in items || []" :key="option.id" :value="option.id">{{ option.name }}</option>
     </select>
   `,
-  props: ['modelValue', 'items', 'labelKey', 'valueKey', 'placeholder'],
+  props: [
+    'modelValue',
+    'items',
+    'labelKey',
+    'valueKey',
+    'placeholder',
+    'disabled',
+    'loading',
+    'ui',
+  ],
   emits: ['update:modelValue'],
 };
 const CheckboxStub = {
@@ -108,8 +117,8 @@ const CheckboxStub = {
 };
 const ButtonStub = {
   template:
-    '<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')"><slot />{{ label }}</button>',
-  props: ['label', 'disabled', 'text', 'size'],
+    '<button v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\', $event)"><slot />{{ label }}</button>',
+  props: ['label', 'disabled', 'text', 'size', 'loading', 'icon', 'variant', 'color'],
   emits: ['click'],
 };
 const RemoteIssuePickerStub = {
@@ -126,10 +135,17 @@ const BadgeStub = {
 const TooltipStub = {
   name: 'UTooltip',
   template: '<div v-bind="$attrs" :data-tooltip-text="text"><slot /></div>',
-  props: ['text', 'content', 'ui', 'arrow', 'portal'],
+  props: ['text', 'content', 'ui', 'arrow', 'portal', 'disabled'],
 };
 const PopoverStub = {
-  template: '<div><slot /><slot name="content" /></div>',
+  props: ['open', 'modal', 'content'],
+  emits: ['update:open'],
+  template: `
+    <div>
+      <div @click="$emit('update:open', true)"><slot /></div>
+      <slot name="content" />
+    </div>
+  `,
 };
 const IconStub = {
   template: '<span v-bind="$attrs" />',
@@ -139,6 +155,12 @@ const ModalStub = {
   template:
     '<div v-if="open" v-bind="$attrs"><slot /><slot name="body" /><slot name="footer" /></div>',
   props: ['open', 'title', 'dismissible', 'close', 'ui'],
+  emits: ['update:open'],
+};
+
+const AlertStub = {
+  template: '<div v-bind="$attrs"><slot /><slot name="close" /></div>',
+  props: ['title', 'color', 'variant', 'icon', 'close'],
   emits: ['update:open'],
 };
 
@@ -152,6 +174,7 @@ const stubs = {
   UPopover: PopoverStub,
   UIcon: IconStub,
   UModal: ModalStub,
+  UAlert: AlertStub,
   RemoteIssuePicker: RemoteIssuePickerStub,
 };
 
@@ -234,6 +257,19 @@ async function mount() {
   return wrapper;
 }
 
+async function chooseActivity(
+  wrapper: Awaited<ReturnType<typeof mount>>,
+  taskId: string,
+  optionId: string,
+) {
+  await wrapper.find(`[data-testid="remote-sync-activity-select-${taskId}"]`).trigger('click');
+  await flushPromises();
+  const option = wrapper.find(`[data-testid="remote-sync-activity-option-${taskId}-${optionId}"]`);
+  expect(option.exists()).toBe(true);
+  await option.trigger('click');
+  await flushPromises();
+}
+
 async function expandRow(wrapper: Awaited<ReturnType<typeof mount>>, taskId: string) {
   const toggle = wrapper.find(`[data-testid="remote-sync-expand-${taskId}"]`);
   expect(toggle.exists()).toBe(true);
@@ -301,8 +337,10 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-exclude-all"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-export-button"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-calendar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-sync-table"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-include-task-1"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
-      'remoteSync.state.noTracker',
+      'remoteSync.kind.blocked',
     );
     expect(
       wrapper
@@ -311,15 +349,14 @@ describe('RemoteSync page', () => {
         ?.getAttribute('data-tooltip-text'),
     ).toBe('remoteSync.expandRow');
     await expandRow(wrapper, 'task-1');
-    expect(wrapper.find('[data-testid="remote-sync-original-duration-task-1"]').exists()).toBe(
-      true,
-    );
+    expect(wrapper.find('[data-testid="remote-sync-detail-task-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-rounded-duration-task-1"]').exists()).toBe(
       false,
     );
+    expect(wrapper.find('[data-testid="remote-sync-entry-check-entry-1"]').exists()).toBe(false);
   });
 
-  it('defaults eligible entries selected, rounds from selected total, and shows excluded hint at 0', async () => {
+  it('shows tracked and rounded to-send on the collapsed Ready row', async () => {
     dayData = makeDay({
       rows: [
         {
@@ -339,25 +376,56 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
     const wrapper = await mount();
-    await expandRow(wrapper, 'task-2');
-    expect(
-      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-entry-check-entry-2"]').element
-        .checked,
-    ).toBe(true);
-    const roundedInput = wrapper.find<HTMLInputElement>(
-      '[data-testid="remote-sync-rounded-duration-task-2"]',
+    expect(wrapper.find('[data-testid="remote-sync-tracked-task-2"]').text()).toContain('00:50:00');
+    expect(wrapper.find('[data-testid="remote-sync-to-send-task-2"]').text()).toContain('01:00:00');
+    expect(wrapper.find('[data-testid="remote-sync-row-duration-task-2"]').text()).not.toContain(
+      '(+00:10:00)',
     );
-    expect(roundedInput.element.value).toBe('01:00:00');
+    expect(wrapper.find('[data-testid="remote-sync-row-delta-task-2"]').text()).toContain(
+      '+00:10:00',
+    );
+    expect(
+      wrapper
+        .find('[data-testid="remote-sync-row-duration-task-2"]')
+        .element.closest('[data-tooltip-text]')
+        ?.getAttribute('data-tooltip-text'),
+    ).toBe('remoteSync.rowDeltaTooltip');
+    expect(wrapper.find('[data-testid="remote-sync-include-task-2"]').exists()).toBe(false);
+    await expandRow(wrapper, 'task-2');
+    expect(wrapper.find('[data-testid="remote-sync-entry-check-entry-2"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-comment-task-2"]').exists()).toBe(false);
+  });
 
-    await roundedInput.setValue('bad value');
-    await roundedInput.trigger('blur');
-    await flushPromises();
-    expect(roundedInput.element.value).toBe('01:00:00');
+  it('shows a Loading badge and editor chrome while activities are in flight', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-load',
+          taskName: 'Loading Task',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 50 * 60,
+          config: baseConfig,
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Fix bug' },
+          entries: [entry({ id: 'entry-load' })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockReturnValue(new Promise(() => {}));
 
-    await roundedInput.setValue('0');
-    await roundedInput.trigger('blur');
-    await flushPromises();
-    expect(wrapper.find('[data-testid="remote-sync-excluded-hint-task-2"]').exists()).toBe(true);
+    const wrapper = await mount();
+    expect(wrapper.find('[data-testid="remote-sync-state-task-load"]').text()).toBe(
+      'remoteSync.kind.loading',
+    );
+    expect(wrapper.find('[data-testid="remote-sync-activity-loading-task-load"]').exists()).toBe(
+      true,
+    );
+    expect(wrapper.find('[data-testid="remote-sync-to-send-task-load"]').text()).toContain(
+      '01:00:00',
+    );
+    expect(wrapper.find('[data-testid="remote-sync-task-name-task-load"]').exists()).toBe(true);
   });
 
   it('lets manageable rows edit to-send inline without expanding', async () => {
@@ -372,7 +440,7 @@ describe('RemoteSync page', () => {
           config: { ...baseConfig },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Fix bug' },
           entries: [entry({ id: 'entry-inline' })],
-          exports: [priorExport('1')],
+          exports: [],
         },
       ],
     });
@@ -380,6 +448,7 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
     const wrapper = await mount();
+    await chooseActivity(wrapper, 'task-inline', '1');
     const toSendButton = wrapper.find('[data-testid="remote-sync-to-send-task-inline"]');
     expect(toSendButton.exists()).toBe(true);
     expect(toSendButton.text()).toContain('01:00:00');
@@ -407,19 +476,19 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('00:45:00');
   });
 
-  it('pre-selects the activity matching last-export provenance', async () => {
+  it('shows a Sent row as read-only and keeps extra local time unsent', async () => {
     dayData = makeDay({
       rows: [
         {
           taskId: 'task-3',
-          taskName: 'With Default Activity',
+          taskName: 'Already Sent',
           projectName: 'Project',
           trackerName: 'Client',
-          totalSeconds: 3600,
+          totalSeconds: 5400,
           config: { ...baseConfig, id: 'config-3' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
-          entries: [entry({ id: 'entry-3', durationSeconds: 3600 })],
-          exports: [priorExport('2')],
+          entries: [entry({ id: 'entry-3', durationSeconds: 5400 })],
+          exports: [priorExport('2', { exportDurationSeconds: 3600 })],
         },
       ],
     });
@@ -432,10 +501,18 @@ describe('RemoteSync page', () => {
     );
 
     const wrapper = await mount();
-    const select = wrapper.find<HTMLSelectElement>(
-      '[data-testid="remote-sync-activity-select-task-3"]',
+    expect(wrapper.find('[data-testid="remote-sync-state-task-3"]').text()).toBe(
+      'remoteSync.kind.sent',
     );
-    expect(select.element.value).toBe('2');
+    expect(wrapper.find('[data-testid="remote-sync-to-send-input-task-3"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-to-send-task-3"]').text()).toContain('01:00:00');
+    expect(wrapper.find('[data-testid="remote-sync-tracked-task-3"]').text()).toContain('01:30:00');
+    expect(wrapper.find('[data-testid="remote-sync-row-delta-task-3"]').text()).toContain(
+      '−00:30:00',
+    );
+    expect(
+      wrapper.find('[data-testid="remote-sync-export-button"]').attributes('disabled'),
+    ).toBeDefined();
   });
 
   it('leaves the activity unselected when there is no last-export match', async () => {
@@ -463,10 +540,9 @@ describe('RemoteSync page', () => {
     );
 
     const wrapper = await mount();
-    const select = wrapper.find<HTMLSelectElement>(
-      '[data-testid="remote-sync-activity-select-task-3b"]',
+    expect(wrapper.find('[data-testid="remote-sync-activity-select-task-3b"]').text()).toContain(
+      'remoteSync.activityEmptyOption',
     );
-    expect(select.element.value).toBe('');
   });
 
   it('routes activities/account fetches through the server for a server-execution-mode config', async () => {
@@ -554,7 +630,7 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-activity-error-task-4"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-activity-retry-task-4"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-state-task-4"]').text()).toBe(
-      'remoteSync.state.activityError',
+      'remoteSync.kind.blocked',
     );
   });
 
@@ -580,7 +656,7 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     expect(wrapper.find('[data-testid="remote-sync-no-activity-task-empty"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-state-task-empty"]').text()).toBe(
-      'remoteSync.state.noActivity',
+      'remoteSync.kind.blocked',
     );
   });
 
@@ -634,8 +710,10 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload());
 
     const wrapper = await mount();
-    expect(wrapper.find('[data-testid="remote-sync-state-task-5"]').text()).toBe(
-      'remoteSync.state.unlinked',
+    expect(wrapper.find('[data-testid="remote-sync-state-task-5"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-link-task-5"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-sync-activity-loading-task-5"]').exists()).toBe(
+      false,
     );
     await wrapper.find('[data-testid="remote-sync-link-task-5"]').trigger('click');
     await flushPromises();
@@ -650,7 +728,7 @@ describe('RemoteSync page', () => {
       },
     });
     expect(wrapper.find('[data-testid="remote-sync-state-task-5-linked"]').text()).toBe(
-      'remoteSync.state.manageable',
+      'remoteSync.kind.ready',
     );
   });
 
@@ -728,7 +806,7 @@ describe('RemoteSync page', () => {
           },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
           entries: [entry({ id: 'entry-export', durationSeconds: 3600 })],
-          exports: [priorExport('1')],
+          exports: [],
         },
       ],
     });
@@ -742,6 +820,7 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
     const wrapper = await mount();
+    await chooseActivity(wrapper, 'task-export', '1');
     await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
     await flushPromises();
     expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(true);
@@ -769,6 +848,81 @@ describe('RemoteSync page', () => {
         }),
       }),
     );
+  });
+
+  it('does not reassign the local task when title-to-send is edited', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-title',
+          taskName: 'Original name',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-title' },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-title', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-sync-task-name-task-title"]').trigger('click');
+    await flushPromises();
+    const input = wrapper.find<HTMLInputElement>('[data-testid="remote-sync-comment-task-title"]');
+    expect(input.exists()).toBe(true);
+    await input.setValue('Comment for tracker');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(csrfFetchMock).not.toHaveBeenCalledWith('/api/time-entries/reassign', expect.anything());
+  });
+
+  it('restores the last committed title-to-send when edit is cancelled', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-title-esc',
+          taskName: 'Original name',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-title-esc' },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-title-esc', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-sync-task-name-task-title-esc"]').trigger('click');
+    await flushPromises();
+    let input = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-comment-task-title-esc"]',
+    );
+    await input.setValue('Committed comment');
+    await input.trigger('blur');
+    await flushPromises();
+    expect(
+      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-task-name-task-title-esc"]').element
+        .value,
+    ).toContain('Committed comment');
+
+    await wrapper.find('[data-testid="remote-sync-task-name-task-title-esc"]').trigger('click');
+    await flushPromises();
+    input = wrapper.find<HTMLInputElement>('[data-testid="remote-sync-comment-task-title-esc"]');
+    await input.setValue('Accidental edit');
+    await input.trigger('keydown.esc');
+    await flushPromises();
+    expect(
+      wrapper.find<HTMLInputElement>('[data-testid="remote-sync-task-name-task-title-esc"]').element
+        .value,
+    ).toContain('Committed comment');
   });
 
   it('renders the empty state when there are no entries for the day', async () => {
@@ -803,7 +957,7 @@ describe('RemoteSync page', () => {
           config: { ...baseConfig, id: 'config-sum' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
           entries: [entry({ id: 'e-sum-ok', durationSeconds: 3600 })],
-          exports: [priorExport('1')],
+          exports: [],
         },
         {
           taskId: 'task-sum-blocked',
@@ -822,13 +976,14 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
     const wrapper = await mount();
+    await chooseActivity(wrapper, 'task-sum-ok', '1');
     expect(wrapper.find('[data-testid="remote-sync-total-day"]').text()).toContain('01:15:00');
     expect(wrapper.find('[data-testid="remote-sync-total-tracked"]').text()).toContain('01:00:00');
     expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('01:00:00');
     expect(wrapper.find('[data-testid="remote-sync-total-blocked"]').text()).toContain('00:10:00');
     expect(wrapper.find('[data-testid="remote-sync-total-untitled"]').text()).toContain('00:05:00');
     expect(wrapper.find('[data-testid="remote-sync-state-task-sum-blocked"]').text()).toContain(
-      'remoteSync.state.noTracker',
+      'remoteSync.kind.blocked',
     );
 
     const tooltipTexts = wrapper
