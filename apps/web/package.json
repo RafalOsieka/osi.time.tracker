@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@osi/time-tracker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "type-check": "nuxt typecheck",
+    "test:unit": "vitest --project unit",
+    "test:e2e": "vitest --project e2e-db --project e2e-api --project e2e-ui",
+    "test:e2e:db": "vitest --project e2e-db",
+    "test:e2e:api": "vitest --project e2e-api",
+    "test:e2e:ui": "vitest --project e2e-ui",
+    "test:e2e:dev": "cross-env NUXT_TEST_DEV=1 vitest --project e2e-api --project e2e-ui",
+    "test:nuxt": "vitest --project nuxt",
+    "test:coverage": "vitest run --coverage --project unit --project nuxt",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx server/db/migrate.ts"
+  },
+  "dependencies": {
+    "@nuxt/ui": "^4.11.0",
+    "@osi/remote-trackers": "workspace:*",
+    "drizzle-orm": "^0.45.2",
+    "nuxt": "^4.5.2",
+    "nuxt-auth-utils": "^0.5.30",
+    "nuxt-security": "^2.6.0",
+    "postgres": "^3.4.9",
+    "tailwindcss": "^4.3.3",
+    "temporal-polyfill": "^1.0.4",
+    "vue": "^3.5.42",
+    "vue-router": "^5.3.1",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@iconify-json/lucide": "^1.2.129",
+    "@nuxt/eslint": "^1.17.0",
+    "@nuxt/schema": "^4.5.2",
+    "@nuxt/test-utils": "^4.2.0",
+    "@nuxtjs/i18n": "^10.6.0",
+    "@types/node": "^26.4.1",
+    "@vitest/coverage-v8": "4.1.11",
+    "@vue/test-utils": "^2.5.0",
+    "c8": "^12.0.0",
+    "cross-env": "^10.1.0",
+    "dotenv": "^17.4.2",
+    "drizzle-kit": "^0.31.10",
+    "happy-dom": "^20.14.0",
+    "playwright": "^1.63.0",
+    "playwright-core": "^1.63.0",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3",
+    "vite-doctor": "^0.0.9",
+    "vitest": "^4.1.11",
+    "vue-tsc": "^3.3.11"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

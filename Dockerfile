@@ -10,6 +10,8 @@ WORKDIR /app
 
 # Copy package manifests first for better layer caching
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/remote-trackers/package.json packages/remote-trackers/
+COPY apps/web/package.json apps/web/
 
 # Skip postinstall (nuxt prepare) here — source isn't copied yet, so it would
 # run against an empty workspace and produce incomplete type stubs.
@@ -17,7 +19,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy source, then generate Nuxt types and build
 COPY . .
-RUN pnpm exec nuxt prepare && pnpm build
+RUN pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/time-tracker exec nuxt prepare && pnpm --filter @osi/time-tracker build
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 FROM node:25-alpine AS runtime
@@ -32,7 +34,7 @@ EXPOSE 3000
 # DATABASE_URL and NUXT_SESSION_PASSWORD are required at runtime
 
 # Copy only the Nitro server output from the build stage
-COPY --from=build /app/.output .
+COPY --from=build /app/apps/web/.output .
 
 # Run as non-root user (node user is provided by the official Node image)
 USER node

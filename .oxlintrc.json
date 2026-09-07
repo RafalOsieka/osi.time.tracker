@@ -728,7 +728,7 @@
   },
   "settings": {
     "vue-i18n": {
-      "localeDir": "./i18n/locales/*.json",
+      "localeDir": "./apps/web/i18n/locales/*.json",
       "messageSyntaxVersion": "^9.0.0"
     }
   },
@@ -737,8 +737,13 @@
     ".output",
     "node_modules",
     "dist",
-    "server/db/migrations",
-    "tools/oxlint/anti-slop/**"
+    "apps/web/.nuxt",
+    "apps/web/.output",
+    "apps/web/server/db/migrations",
+    "packages/*/dist",
+    "tools/oxlint/anti-slop/index.ts",
+    "tools/oxlint/anti-slop/rules/**",
+    "tools/oxlint/anti-slop/shared/**"
   ],
   "rules": {
     "constructor-super": "error",

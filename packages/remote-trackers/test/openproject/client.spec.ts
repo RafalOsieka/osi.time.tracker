@@ -1,0 +1,324 @@
+import { describe, expect, it } from 'vitest';
+import {
+  OpenProjectClient,
+  OPENPROJECT_TITLE_SEARCH_MAX_RESULTS,
+} from '@osi/remote-trackers/openproject';
+import type { ZodType } from 'zod';
+import type { RemoteRequest, RemoteResponse, Transport } from '@osi/remote-trackers/contracts';
+
+/** Records every request it is asked to execute and returns canned responses in order. */
+function fakeTransport(responses: RemoteResponse[]): Transport & { requests: RemoteRequest[] } {
+  const requests: RemoteRequest[] = [];
+  let index = 0;
+  return {
+    requests,
+    async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
+      requests.push(request);
+      const response = responses[Math.min(index, responses.length - 1)]!;
+      index += 1;
+      const parsed = schema.safeParse(response.payload);
+      return { status: response.status, payload: parsed.success ? parsed.data : null };
+    },
+  };
+}
+
+describe('OpenProjectClient', () => {
+  it('builds a title-search request with the secret attached and a bounded page size', async () => {
+    const transport = fakeTransport([
+      { status: 200, payload: { _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } } },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com/');
+
+    const { status, results } = await client.searchByTitle('Fix bug', 'secret-api-key');
+
+    expect(status).toBe(200);
+    expect(results).toEqual([{ remoteIssueId: '1', title: 'Fix bug' }]);
+    const request = transport.requests[0]!;
+    expect(request.method).toBe('GET');
+    expect(request.headers?.Authorization).toBe('Basic YXBpa2V5OnNlY3JldC1hcGkta2V5');
+    const url = new URL(request.url);
+    expect(url.origin + url.pathname).toBe('https://op.example.com/api/v3/work_packages');
+    expect(url.searchParams.get('pageSize')).toBe(String(OPENPROJECT_TITLE_SEARCH_MAX_RESULTS));
+    const filters = JSON.parse(url.searchParams.get('filters')!);
+    expect(filters).toEqual([{ subject: { operator: '~', values: ['Fix bug'] } }]);
+  });
+
+  it('encodes API-key basic auth without Node Buffer', async () => {
+    const bufferDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'Buffer');
+    Reflect.deleteProperty(globalThis, 'Buffer');
+    try {
+      expect(Object.hasOwn(globalThis, 'Buffer')).toBe(false);
+      const transport = fakeTransport([
+        { status: 200, payload: { _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } } },
+      ]);
+      const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+      await client.searchByTitle('Fix bug', 'secret-api-key');
+
+      expect(transport.requests[0]!.headers?.Authorization).toBe(
+        'Basic YXBpa2V5OnNlY3JldC1hcGkta2V5',
+      );
+    } finally {
+      if (bufferDescriptor) Object.defineProperty(globalThis, 'Buffer', bufferDescriptor);
+    }
+  });
+
+  it('maps the work-package project title when present and omits ids', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 1,
+                subject: 'Fix bug',
+                _links: { project: { href: '/api/v3/projects/9', title: '  Acme Intranet  ' } },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { results } = await client.searchByTitle('Fix bug', null);
+
+    expect(results).toEqual([
+      { remoteIssueId: '1', title: 'Fix bug', remoteProjectTitle: 'Acme Intranet' },
+    ]);
+    expect(JSON.stringify(results)).not.toContain('/api/v3/projects/9');
+  });
+
+  it('omits a missing or blank project title from title search', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              { id: 2, subject: 'No project' },
+              { id: 3, subject: 'Blank project', _links: { project: { title: '   ' } } },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { results } = await client.searchByTitle('project', null);
+
+    expect(results).toEqual([
+      { remoteIssueId: '2', title: 'No project' },
+      { remoteIssueId: '3', title: 'Blank project' },
+    ]);
+  });
+
+  it('maps the project title on exact-id lookup', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          id: 42,
+          subject: 'Ship it',
+          _links: { project: { href: '/api/v3/projects/1', title: 'Portal' } },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { result } = await client.getIssueById('42', 'secret');
+
+    expect(result).toEqual({
+      remoteIssueId: '42',
+      title: 'Ship it',
+      remoteProjectTitle: 'Portal',
+    });
+  });
+
+  it('builds an exact-id lookup request and returns null for a 404 status', async () => {
+    const transport = fakeTransport([{ status: 404, payload: {} }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { status, result } = await client.getIssueById('42', null);
+
+    expect(status).toBe(404);
+    expect(result).toBeNull();
+    expect(transport.requests[0]!.url).toBe('https://op.example.com/api/v3/work_packages/42');
+  });
+
+  it('builds the project-scoped activities POST request keyed by the work package', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            schema: {
+              activity: { _embedded: { allowedValues: [{ id: 1, name: 'Development' }] } },
+            },
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { options } = await client.getActivityOptions('42', 'secret');
+
+    expect(options).toEqual([{ id: '1', name: 'Development' }]);
+    const request = transport.requests[0]!;
+    expect(request.method).toBe('POST');
+    expect(request.url).toBe('https://op.example.com/api/v3/time_entries/form');
+    expect(request.body).toEqual({
+      _links: { workPackage: { href: '/api/v3/work_packages/42' } },
+    });
+  });
+
+  it('resolves the current account from /api/v3/users/me', async () => {
+    const transport = fakeTransport([{ status: 200, payload: { id: 7, name: 'Ada' } }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { account } = await client.getCurrentAccount('secret');
+
+    expect(account).toEqual({ id: '7', name: 'Ada' });
+    expect(transport.requests[0]!.url).toBe('https://op.example.com/api/v3/users/me');
+  });
+
+  it('follows an absolute next-page URL rather than rebuilding filters', async () => {
+    const transport = fakeTransport([{ status: 200, payload: {} }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    await client.fetchTimeLogsPage(
+      {
+        spentOn: '2026-03-15',
+        workPackageIds: ['42'],
+        nextPageUrl: 'https://op.example.com/api/v3/time_entries?offset=2',
+      },
+      null,
+    );
+
+    expect(transport.requests[0]!.url).toBe('https://op.example.com/api/v3/time_entries?offset=2');
+  });
+
+  it('parses a paginated time-log page and exposes the next-page URL', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 11,
+                spentOn: '2026-03-15',
+                hours: 'PT1H',
+                comment: { raw: 'hello' },
+                _links: {
+                  entity: { href: '/api/v3/work_packages/42' },
+                  activity: { href: '/api/v3/time_entries/activities/3', title: 'Dev' },
+                  user: { href: '/api/v3/users/7' },
+                },
+              },
+            ],
+          },
+          _links: { next: { href: 'https://op.example.com/api/v3/time_entries?offset=2' } },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const page = await client.fetchTimeLogsPage(
+      { spentOn: '2026-03-15', workPackageIds: ['42'] },
+      null,
+    );
+
+    expect(page.logs).toEqual([
+      {
+        remoteLogId: '11',
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 3600,
+        activityId: '3',
+        activityName: 'Dev',
+        comment: 'hello',
+        remoteUserId: '7',
+      },
+    ]);
+    expect(page.nextPageUrl).toBe('https://op.example.com/api/v3/time_entries?offset=2');
+  });
+
+  it('builds a date-range time-log query without a work-package filter', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 88,
+                spentOn: '2026-08-12',
+                hours: 'PT2H',
+                _links: {
+                  entity: { href: '/api/v3/work_packages/99' },
+                  user: { href: '/api/v3/users/7' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const page = await client.fetchTimeLogsRangePage(
+      { from: '2026-08-01', to: '2026-08-31', userId: '7' },
+      null,
+    );
+
+    expect(page.logs[0]).toMatchObject({
+      remoteLogId: '88',
+      remoteIssueId: '99',
+      spentOn: '2026-08-12',
+      durationSeconds: 7200,
+    });
+    const url = new URL(transport.requests[0]!.url);
+    const filters = JSON.parse(url.searchParams.get('filters')!);
+    expect(filters).toEqual([
+      { spent_on: { operator: '<>d', values: ['2026-08-01', '2026-08-31'] } },
+      { entity_type: { operator: '=', values: ['WorkPackage'] } },
+      { user_id: { operator: '=', values: ['7'] } },
+    ]);
+    expect(JSON.stringify(filters)).not.toContain('entity_id');
+  });
+
+  it('builds a create-time-entry request and parses the remote log id', async () => {
+    const transport = fakeTransport([{ status: 201, payload: { id: 99 } }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com/');
+
+    const { result } = await client.createTimeEntry(
+      {
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 1800,
+        activityId: '5',
+        comment: 'shipped',
+      },
+      'secret',
+    );
+
+    expect(result).toEqual({ remoteLogId: '99' });
+    const request = transport.requests[0]!;
+    expect(request.method).toBe('POST');
+    expect(request.url).toBe('https://op.example.com/api/v3/time_entries');
+    expect(request.headers?.Authorization).toBe(
+      `Basic ${Buffer.from('apikey:secret', 'utf-8').toString('base64')}`,
+    );
+    expect(request.body).toEqual({
+      spentOn: '2026-03-15',
+      hours: 'PT30M',
+      comment: { raw: 'shipped' },
+      _links: {
+        entity: { href: '/api/v3/work_packages/42' },
+        activity: { href: '/api/v3/time_entries/activities/5' },
+      },
+    });
+  });
+});

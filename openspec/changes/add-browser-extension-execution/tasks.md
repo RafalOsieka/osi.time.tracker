@@ -1,0 +1,48 @@
+## 1. Protocol and extension build
+
+- [ ] 1.1 Confirm the monorepo prerequisite is implemented and verified, then add private extension/protocol manifests and independent build/type-check entries; verify both resolve the landed tracker package's public exports without Nuxt preparation.
+- [ ] 1.2 Define versioned handshake and seven discriminated operation request/result schemas, safe errors, correlation fields, and resource limits; verify emitted package declarations agree with the neutral adapter contract.
+- [ ] 1.3 Add protocol unit tests for every operation, malformed/oversized messages, version mismatch, mismatched result discriminants, and safe error serialization; run the standalone protocol suite.
+- [ ] 1.4 Add the Manifest V3 worker/content/options entry builds and bundled CSP-safe assets; verify unpacked output contains all referenced files and no web-source/runtime-code dependency.
+- [ ] 1.5 Add isolated persistent-profile Chromium fixtures with the built extension and no-CORS local OpenProject/Redmine HTTP fakes; verify the extension loads and fixtures are reachable, ready for the worker/UI journeys below.
+
+## 2. Extension authorization and worker backend
+
+- [ ] 2.1 Implement normalized website/destination approval storage, exact origin/provider/base-path matching, permission reconciliation, and revocation; verify extension type-check and the approval unit tests in 2.2.
+- [ ] 2.2 Add unit tests for allow/deny, differing ports/providers/paths, denied browser permission, shared host grants, startup reconciliation, and revocation during an operation; run the approval suite for 2.1.
+- [ ] 2.3 Implement the guarded provider transport with URL/path/method/header checks, no redirects or ambient cookies, response-byte limits, deadlines, and cancellation; verify it satisfies the shared transport contract.
+- [ ] 2.4 Add transport tests for normal responses, mounted base paths, encoded traversal, malicious response-derived URLs, redirects, auth rejection, unreachable hosts, and resource bounds; assert forbidden destinations receive zero requests and secrets never enter errors (2.3).
+- [ ] 2.5 Implement internal runtime-port sender/document validation and dispatch all seven operations through shared providers, with per-document limits and transient credentials; verify worker type-check and no duplicated provider logic.
+- [ ] 2.6 Add worker unit tests for both providers' operation dispatch, unapproved/foreign/frame senders, secret hygiene, in-flight limits, port disposal, and worker-restart failure; run tests for 2.5 including no automatic create replay.
+
+## 3. Extension frontend and bridge
+
+- [ ] 3.1 Implement the isolated content bridge and credential-free page handshake using document-bound ports and validated messages; verify its standalone build and browser registration.
+- [ ] 3.2 Add bridge unit tests for exact origin/source checks, iframe rejection, incompatible handshake, request correlation, late replies, timeout, and disconnect cleanup; run tests for 3.1.
+- [ ] 3.3 Add extension-owned website/tracker approval and revocation UI with English/Polish catalog parity, HTTP warning, and keyboard-accessible status/error feedback; verify component rendering and type-check.
+- [ ] 3.4 Add real-extension browser journeys for approval, denied permission, revocation, settings reload, and keyboard navigation/localization; verify 3.3 and that website-origin requests cannot auto-approve destinations.
+
+## 4. Web backend and tracker persistence
+
+- [ ] 4.1 Extend the web-owned tracker mode schema/order to accept `extension`, preserving default `client`, storage shape, and existing input rules; run schema tests and verify no SQL migration is generated or needed.
+- [ ] 4.2 Add tracker API integration coverage for extension create/update/read, absent-mode default, unknown-mode rejection, and cross-user rejection; run tests proving 4.1 without any extension installation.
+- [ ] 4.3 Add or tighten owned-mode checks across OSI remote endpoints so extension configurations never cause upstream execution; verify authentication/ownership still resolve first and existing server delegation remains unchanged.
+- [ ] 4.4 Extend remote proxy API integration suites with successful server-mode calls and extension-mode rejection for each operation family; assert zero upstream calls on rejection and retain unauthenticated/error coverage for 4.3.
+
+## 5. Web frontend and export safety
+
+- [ ] 5.1 Implement client-only extension availability/handshake service and the seven-operation execution adapter, then update the remote factory; verify type-check and no SSR bridge/network execution.
+- [ ] 5.2 Add adapter/factory/service unit tests for all operations, neutral results/errors, unavailable/incompatible/permission states, secret-free preflight, SSR, and no client/server fallback; run tests for 5.1.
+- [ ] 5.3 Add extension mode form labels, setup/recheck guidance, and remote-action availability feedback across linking, sync, and reports with English/Polish parity; verify existing local-entry UI remains independent.
+- [ ] 5.4 Add web E2E journeys for saving the mode without installation, setup/recheck, unavailable remote actions, unchanged persisted mode, and continued local entry creation; verify 5.3 with stable selectors.
+- [ ] 5.5 Add typed unknown-create handling, non-secret pending-create markers, and explicit duplicate-risk confirmation; preserve known-ID finalization retries and update relevant secret/error comments; verify the export outcome surface distinguishes both uncertainty cases.
+- [ ] 5.6 Add export unit tests for definite pre-dispatch failure, unknown post-dispatch outcome, retained markers after reload, confirmed retry, and known-ID finalization without repeated creation; run tests for 5.5 with fake timers.
+- [ ] 5.7 Add a browser export journey whose fake tracker creates a log but loses the reply; verify one remote create, uncertainty feedback, reload safety, explicit retry warning, and no secret in markers (5.5).
+
+## 6. End-to-end integration and delivery
+
+- [ ] 6.1 Verify the completed worker reaches the no-CORS fixtures through the real website bridge without page interception or live trackers, using the harness from 1.5.
+- [ ] 6.2 Exercise both providers end-to-end through the website/content/worker path, including search, lookup, activities, account, same-day/range logs, and export; assert OSI API traffic and extension storage contain no tracker secret.
+- [ ] 6.3 Add real-browser negative cases for unapproved origins/destinations, revoked grants, malformed messages, redirect/URL escape, and disconnected worker; verify no forbidden network calls, no automatic create retries, and actionable errors.
+- [ ] 6.4 Wire root extension build/test commands and CI artifacts/gates, maintaining separate web/package test ownership; verify clean ordered builds, lint, formatting, type-check, protocol/extension/web unit suites, Nuxt tests, and affected API/UI E2E suites.
+- [ ] 6.5 Document local build/load/reload/approve steps, version mismatch recovery, workplace-policy limitations, secret ownership, and safe downgrade; verify instructions against unpacked Chrome and Edge using only isolated fake trackers.

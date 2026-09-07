@@ -13,7 +13,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 
 - **Frontend / SSR:** Nuxt 4, Vue 3 (`<script setup lang="ts">`), Vue Router, TypeScript.
 - **UI:** Nuxt UI v4 (Tailwind v4 utilities, Lucide icons) + `@nuxtjs/color-mode`.
-- **Backend / API:** Nitro server routes under `server/api`.
+- **Backend / API:** Nitro server routes under `apps/web/server/api`.
 - **Database:** PostgreSQL ≥ 18 (native `uuidv7()`) via Drizzle ORM + `postgres` driver.
 - **Auth & security:** `nuxt-auth-utils` (sealed cookie sessions), `nuxt-security` (CSRF, rate limiting, CSP).
 - **Validation:** `zod` `^4` — single source of truth for boundary types.
@@ -26,7 +26,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 The package manager is **pnpm** (`^12`). Do not use `npm` or `yarn`.
 
 ```bash
-pnpm install            # install deps (also runs `nuxt prepare` via postinstall)
+pnpm install            # install deps (web package postinstall runs `nuxt prepare`)
 cp .env.example .env    # create env file, then set required secrets
 docker compose up -d    # start local PostgreSQL 18 (+ PgAdmin)
 pnpm db:migrate         # apply database migrations
@@ -46,19 +46,19 @@ Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` 
 
 ```bash
 pnpm dev            # start dev server (hot reload) on http://localhost:3000
-pnpm build          # production build (output in .output/)
+pnpm build          # production build (output in apps/web/.output/)
 pnpm preview        # preview the production build locally
 pnpm generate       # generate a static site
-pnpm type-check     # nuxt typecheck (vue-tsc)
+pnpm type-check     # tracker package type-check, then nuxt typecheck (vue-tsc)
 ```
 
 ### Database
 
-The schema lives in `server/db/schema`; migrations are committed SQL files under `server/db/migrations`.
+The schema lives in `apps/web/server/db/schema`; migrations are committed SQL files under `apps/web/server/db/migrations`.
 
 ```bash
 pnpm db:generate        # generate a new migration after editing the schema
-pnpm db:migrate         # apply pending migrations (tsx server/db/migrate.ts)
+pnpm db:migrate         # apply pending migrations (tsx apps/web/server/db/migrate.ts)
 docker compose down     # stop the local database (keeps data)
 docker compose down -v  # stop and delete the data volume
 ```
@@ -67,23 +67,24 @@ Always apply migrations before the app serves traffic.
 
 ## Testing Instructions
 
-Vitest is configured with three projects (see `vitest.config.ts`):
+Root commands forward to workspace packages. Web Vitest projects live in `apps/web/vitest.config.ts`; anti-slop plugin tests live under `tools/oxlint/anti-slop/test/`.
 
 ```bash
-pnpm test:unit      # unit tests    (test/unit/*.{test,spec}.ts, node env)
+pnpm test:unit      # tracker package + web unit + anti-slop plugin tests
 pnpm test:e2e:db    # Postgres-only (schema, migrator, server-util)
 pnpm test:e2e:api   # HTTP against a booted Nuxt server
 pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
 pnpm test:e2e       # db + api + ui
-pnpm test:nuxt      # component/integration tests (test/nuxt/*, nuxt env)
-pnpm test:coverage  # Vitest v8 coverage for unit + nuxt (exclude migrations/sql/json/warmup plugin); e2e-api Nitro coverage is collected in CI via c8, not this script. UI e2e is not in coverage.
+pnpm test:nuxt      # component/integration tests (apps/web/test/nuxt/*, nuxt env)
+pnpm test:coverage  # Vitest v8 coverage for web unit + nuxt (exclude migrations/sql/json/warmup plugin); e2e-api Nitro coverage is collected in CI via c8, not this script. UI e2e is not in coverage.
+pnpm package:check  # tracker package build/type-check/tests without Nuxt
 ```
 
 - **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
 - **Naming:** test files use `*.spec.ts` under the matching `test/` project directory.
-- **E2E layout:** `test/e2e/api`, `test/e2e/ui`, `test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
-- **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `.output` with `NUXT_TEST_SKIP_BUILD=1` (the CI `build` artifact is built with `IS_E2E=true` so login rate limits match local e2e).
-- **Who owns a UI failure:** `test/nuxt` = component + mocks; `test/e2e/api` = HTTP contract; `test/e2e/ui` = journey + production wiring.
+- **E2E layout:** `apps/web/test/e2e/api`, `apps/web/test/e2e/ui`, `apps/web/test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
+- **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `apps/web/.output` with `NUXT_TEST_SKIP_BUILD=1` (the CI `build` artifact is built with `IS_E2E=true` so login rate limits match local e2e).
+- **Who owns a UI failure:** `apps/web/test/nuxt` = component + mocks; `apps/web/test/e2e/api` = HTTP contract; `apps/web/test/e2e/ui` = journey + production wiring.
 - **Remote trackers:** unit + e2e mock OpenProject/Redmine (fake HTTP / `page.route`). There is **no** live integration suite against `docker-compose.openproject.yml` / `docker-compose.redmine.yml`. See `docs/e2e-guideline.md` (“Follow-up: live OpenProject / Redmine e2e”).
 - **E2E file names:** kebab-case (`setup-server.ts`).
 - **Determinism:** prefer deterministic tests; seed any randomness. Assert against stable `data-testid` selectors, not fragile markup.
@@ -113,21 +114,18 @@ pnpm format:check   # verify Oxfmt
 
 `pnpm lint` includes vendored anti-slop rules (`tools/oxlint/anti-slop`). Explicit `any` is an Oxlint `typescript/no-explicit-any` error; justified exceptions use `// oxlint-disable-next-line typescript/no-explicit-any -- reason`. Do not use npm or npx; one-off CLIs use `pnpx`.
 
-**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `test/unit/anti-slop/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
+**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `tools/oxlint/anti-slop/test/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
 
 Run lint, format check, and the relevant test projects before opening a PR. After moving files or changing imports, re-run `pnpm lint`.
 
 ## Project Structure
 
 ```
-app/       Nuxt app source (pages, layouts, middleware, composables, plugins, utils)
-server/    Nitro server: api/ handlers, db/ (Drizzle client, schema, migrations), utils, types
-shared/    Cross-boundary code shared by client and server; boundary types live in shared/types
-i18n/      Translation catalogs (en.json, pl.json)
-test/      unit/ (including test/unit/anti-slop), e2e/, and nuxt/ test suites
-tools/     Vendored tooling (anti-slop Oxlint plugin under tools/oxlint/anti-slop — do not edit unless asked)
-docs/      Project vision and work-breakdown notes
-openspec/  OpenSpec change/spec documents (behavioral source of truth)
+apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
+packages/remote-trackers/ Provider adapters, neutral contracts, and package tests
+tools/                    Vendored tooling (anti-slop Oxlint plugin — do not edit rules unless asked)
+docs/                     Project vision and work-breakdown notes
+openspec/                 OpenSpec change/spec documents (behavioral source of truth)
 ```
 
 ## Build and Deployment
@@ -142,7 +140,7 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compos
 | `docker-compose.openproject.yml`  | Opt-in local OpenProject instance for remote-integration development.       |
 | `docker-compose.redmine.yml`      | Opt-in local Redmine instance for remote-integration development.           |
 
-- Production build output lives in `.output/`.
+- Production build output lives in `apps/web/.output/`. The runtime image copies that output to `/app`.
 - Migrations must be applied before serving traffic; the standalone stack runs the migration step automatically.
 - CI runs via GitHub Actions (`.github/workflows/ci.yml`).
 
@@ -159,4 +157,4 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compos
 - The domain model is entry-first: tasks are derived automatically from time-entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
 - Never instantiate raw database drivers; always go through `getDb()`.
 - Do not weaken, skip, or disable tests to force a green run.
-- Never change the vendored anti-slop Oxlint plugin (`tools/oxlint/anti-slop/**`) unless the developer explicitly requests it. Do not rewrite, disable, or “fix” those rules on your own. Plugin tests live in `test/unit/anti-slop/`.
+- Never change the vendored anti-slop Oxlint plugin (`tools/oxlint/anti-slop/` index, rules, and shared helpers) unless the developer explicitly requests it. Do not rewrite, disable, or “fix” those rules on your own. Plugin tests live in `tools/oxlint/anti-slop/test/`.

@@ -1,18 +1,18 @@
 # E2E Troubleshooting Guideline
 
-Notes for recurring issues hit while writing/running `test/e2e` specs, and how to resolve them
+Notes for recurring issues hit while writing/running `apps/web/test/e2e` specs, and how to resolve them
 without wasting time re-diagnosing the same root causes.
 
 ## Layout and ownership
 
-| Directory       | Runtime                      | Owns                                          |
-| --------------- | ---------------------------- | --------------------------------------------- |
-| `test/e2e/api/` | HTTP + Nuxt + Postgres       | Server contracts (`server/api`)               |
-| `test/e2e/ui/`  | Playwright + Nuxt + Postgres | Journeys, SSR, production wiring              |
-| `test/e2e/db/`  | Postgres only                | Migrator, schema, historical SQL, server-util |
-| `test/nuxt/`    | happy-dom, mocked fetch      | Component behavior given data X               |
+| Directory                | Runtime                      | Owns                                          |
+| ------------------------ | ---------------------------- | --------------------------------------------- |
+| `apps/web/test/e2e/api/` | HTTP + Nuxt + Postgres       | Server contracts (`apps/web/server/api`)      |
+| `apps/web/test/e2e/ui/`  | Playwright + Nuxt + Postgres | Journeys, SSR, production wiring              |
+| `apps/web/test/e2e/db/`  | Postgres only                | Migrator, schema, historical SQL, server-util |
+| `apps/web/test/nuxt/`    | happy-dom, mocked fetch      | Component behavior given data X               |
 
-Scripts: `pnpm test:e2e:db`, `pnpm test:e2e:api`, `pnpm test:e2e:ui`. `NUXT_TEST_SKIP_BUILD=1` reuses `.output` and fails if it is missing. In CI, missing Docker or Chromium **fails** (does not skip).
+Scripts: `pnpm test:e2e:db`, `pnpm test:e2e:api`, `pnpm test:e2e:ui`. `NUXT_TEST_SKIP_BUILD=1` reuses `apps/web/.output` and fails if it is missing. In CI, missing Docker or Chromium **fails** (does not skip).
 
 The CI `build` job is the e2e artifact, not the production image: it sets `IS_E2E=true` and `NUXT_BUILD_SOURCEMAP=1` before `pnpm build`. nuxt-security login/global rate limits are compiled into `routeRules`, so a production-limit artifact reused under skip-build yields CI-only 429s, missing CSRF meta tags, login timeouts, and 401s. Local global-setup already sets `IS_E2E` before it builds.
 

@@ -6,7 +6,7 @@ dist
 
 # Lockfile and generated SQL migrations
 pnpm-lock.yaml
-server/db/migrations
+apps/web/server/db/migrations
 
 # Agent-managed configuration (reserved)
 .junie
