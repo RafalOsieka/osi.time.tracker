@@ -31,6 +31,11 @@ export function parseOpenProjectDuration(value: string | null | undefined): numb
 
 export function hrefId(href: string | null | undefined): string | null {
   if (href == null) return null;
-  const match = /\/(\d+)(?:\?.*)?$/.exec(href);
-  return match?.[1] ?? null;
+  const queryStart = href.indexOf('?');
+  const path = queryStart === -1 ? href : href.slice(0, queryStart);
+  const lastSlash = path.lastIndexOf('/');
+  if (lastSlash < 0) return null;
+  const id = path.slice(lastSlash + 1);
+  if (id.length === 0 || !/^\d+$/.test(id)) return null;
+  return id;
 }
