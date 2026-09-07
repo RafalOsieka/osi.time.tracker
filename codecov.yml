@@ -17,11 +17,12 @@ flag_management:
 flags:
   unit-nuxt:
     paths:
-      - app/
-      - server/
-      - shared/
+      - apps/web/app/
+      - apps/web/server/
+      - apps/web/shared/
+      - packages/remote-trackers/src/
   e2e-api:
     paths:
-      - app/
-      - server/
-      - shared/
+      - apps/web/app/
+      - apps/web/server/
+      - apps/web/shared/

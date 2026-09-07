@@ -1,5 +1,5 @@
 // https://eslint.nuxt.com
-import withNuxt from './.nuxt/eslint.config.mjs';
+import withNuxt from './apps/web/.nuxt/eslint.config.mjs';
 import prettier from 'eslint-config-prettier';
 import oxlint from 'eslint-plugin-oxlint';
 import vueA11y from 'eslint-plugin-vuejs-accessibility';
@@ -75,7 +75,7 @@ export default withNuxt()
     },
     settings: {
       'vue-i18n': {
-        localeDir: './i18n/locales/*.json',
+        localeDir: './apps/web/i18n/locales/*.json',
         messageSyntaxVersion: '^9.0.0',
       },
     },
@@ -104,5 +104,16 @@ export default withNuxt()
   .append(...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'))
   .append(prettier) // Keep last: disables ESLint stylistic rules that conflict with Oxfmt.
   .append({
-    ignores: ['.nuxt', '.output', 'node_modules', 'dist', 'server/db/migrations'],
+    ignores: [
+      '.nuxt',
+      '.output',
+      'node_modules',
+      'dist',
+      'apps/web/.nuxt',
+      'apps/web/.output',
+      'apps/web/server/db/migrations',
+      'packages/*/dist',
+      'apps/web/app/pages/**/*.vue',
+      'apps/web/app/layouts/**/*.vue',
+    ],
   });

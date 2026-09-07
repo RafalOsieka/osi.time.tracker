@@ -1,6 +1,6 @@
 # Coding Standards
 
-This document defines the coding style and conventions used across the application (`app/`) and server (`server/`) source. It is derived from the existing codebase and should be followed by all contributions unless a rule is explicitly overridden by a reviewer. It complements — and never contradicts — the tooling configuration (Oxlint, leftover ESLint, Oxfmt, TypeScript).
+This document defines the coding style and conventions used across the web application (`apps/web/app/`) and server (`apps/web/server/`) source, plus independently built workspace packages such as `packages/remote-trackers`. Paths below that start with `app/`, `server/`, `shared/`, or `test/` are relative to `apps/web/` unless noted otherwise. It is derived from the existing codebase and should be followed by all contributions unless a rule is explicitly overridden by a reviewer. It complements — and never contradicts — the tooling configuration (Oxlint, leftover ESLint, Oxfmt, TypeScript).
 
 ## 1. General Code Style
 

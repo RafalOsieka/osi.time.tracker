@@ -1,0 +1,29 @@
+import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
+import { RedmineAdapter } from '@osi/remote-trackers/redmine';
+import type { RemoteTrackerAdapter, TrackerSystemType } from '@osi/remote-trackers/contracts';
+import { createServerFetchTransport } from './server-fetch-transport';
+
+/**
+ * Selects and builds the `RemoteTrackerAdapter` for `server`-execution-mode
+ * `/api/remote/*` endpoints, keyed by the owned config's `systemType`. This
+ * is the single place these endpoints construct a provider adapter; adding a
+ * new provider only means adding a case here (mirroring the `client`-side
+ * `createRemoteAdapter`).
+ */
+export function createServerRemoteAdapter(
+  config: { systemType: TrackerSystemType; baseUrl: string },
+  secret: string,
+): RemoteTrackerAdapter {
+  switch (config.systemType) {
+    case 'openproject':
+      return new OpenProjectAdapter(
+        createServerFetchTransport(config.baseUrl),
+        config.baseUrl,
+        secret,
+      );
+    case 'redmine':
+      return new RedmineAdapter(createServerFetchTransport(config.baseUrl), config.baseUrl, secret);
+    default:
+      throw { data: { data: { messageKey: 'remoteSync.state.systemNotImplemented' } } };
+  }
+}

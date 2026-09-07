@@ -1,0 +1,89 @@
+import { z } from 'zod';
+import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
+import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+
+export {
+  trackerSystemTypeSchema,
+  TRACKER_SYSTEM_TYPE_ORDER,
+  TRACKER_SYSTEM_TYPE_LABELS,
+} from '@osi/remote-trackers/contracts';
+export type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+
+/**
+ * Selects the execution mode: `client` (default) sends remote requests
+ * directly from the browser to the tracker; `server` routes them through
+ * the OSI server, which forwards them to the tracker (no CORS involved).
+ */
+export const trackerExecutionModeSchema = z.enum(['client', 'server'], {
+  error: 'error.trackerExecutionModeRequired',
+});
+
+export type TrackerExecutionMode = z.infer<typeof trackerExecutionModeSchema>;
+
+/** Stable display order for execution-mode selects. */
+export const TRACKER_EXECUTION_MODE_ORDER = [
+  'client',
+  'server',
+] as const satisfies readonly TrackerExecutionMode[];
+
+/**
+ * Tracker-level export rounding rule. `none` passes the total through;
+ * `up_*` always rounds up to the next increment; `nearest_*` rounds to the
+ * closest increment (half-up at the midpoint). Stored as plain text —
+ * widening the enum needs no migration.
+ */
+export const trackerRoundingRuleSchema = z.enum(
+  ['none', 'up_15m', 'up_30m', 'up_1h', 'nearest_15m', 'nearest_30m', 'nearest_1h'],
+  {
+    error: 'error.trackerRoundingRuleRequired',
+  },
+);
+
+export type TrackerRoundingRule = z.infer<typeof trackerRoundingRuleSchema>;
+
+/** Stable display order for configuration selects: passthrough → up → nearest. */
+export const TRACKER_ROUNDING_RULE_ORDER = [
+  'none',
+  'up_15m',
+  'up_30m',
+  'up_1h',
+  'nearest_15m',
+  'nearest_30m',
+  'nearest_1h',
+] as const satisfies readonly TrackerRoundingRule[];
+
+export const TRACKER_NAME_MAX_LENGTH = 100;
+
+export const createTrackerSchema = z.object({
+  name: z
+    .string({ error: 'error.trackerNameRequired' })
+    .trim()
+    .min(1, { error: 'error.trackerNameRequired' })
+    .max(TRACKER_NAME_MAX_LENGTH, { error: 'error.trackerNameTooLong' }),
+  systemType: trackerSystemTypeSchema,
+  baseUrl: z
+    .url({
+      error: (issue) =>
+        issue.input === undefined ? 'error.trackerBaseUrlRequired' : 'error.trackerBaseUrlInvalid',
+    })
+    .trim(),
+  executionMode: trackerExecutionModeSchema.default('client'),
+  roundingRule: trackerRoundingRuleSchema,
+});
+
+export type CreateTrackerDto = z.infer<typeof createTrackerSchema>;
+
+export const updateTrackerSchema = createTrackerSchema;
+
+export type UpdateTrackerDto = z.infer<typeof updateTrackerSchema>;
+
+export interface TrackerDto {
+  id: string;
+  name: string;
+  systemType: TrackerSystemType;
+  baseUrl: string;
+  executionMode: TrackerExecutionMode;
+  roundingRule: TrackerRoundingRule;
+  createdAt: string;
+  updatedAt: string;
+}

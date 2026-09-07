@@ -88,7 +88,7 @@ pnpm dev
 
 ```bash
 pnpm dev            # start the dev server (http://localhost:3000)
-pnpm build          # production build (output in .output/)
+pnpm build          # production build (output in apps/web/.output/)
 pnpm preview        # preview the production build locally
 pnpm generate       # generate a static site
 
@@ -100,7 +100,7 @@ pnpm format:check   # verify Oxfmt
 
 ### Database
 
-The schema lives in `server/db/schema` and migrations are committed SQL files under `server/db/migrations`.
+The schema lives in `apps/web/server/db/schema` and migrations are committed SQL files under `apps/web/server/db/migrations`.
 
 ```bash
 pnpm db:generate    # generate a new migration after editing the schema
@@ -130,7 +130,7 @@ pnpm exec vitest run -t "<test name>"
 ```
 
 > [!TIP]
-> API and UI e2e tests run against a production build by default and require PostgreSQL (the harness uses `postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. For faster API/UI iteration, use `NUXT_TEST_DEV=1` (`pnpm test:e2e:dev`). Set `NUXT_TEST_SKIP_BUILD=1` to reuse an existing `.output`. Locally, missing Docker or Chromium skips those suites; in CI a missing prerequisite fails the job.
+> API and UI e2e tests run against a production build by default and require PostgreSQL (the harness uses `postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. For faster API/UI iteration, use `NUXT_TEST_DEV=1` (`pnpm test:e2e:dev`). Set `NUXT_TEST_SKIP_BUILD=1` to reuse an existing `apps/web/.output`. Locally, missing Docker or Chromium skips those suites; in CI a missing prerequisite fails the job.
 
 ## Deployment
 
@@ -183,13 +183,11 @@ This is a deployment concern only; OSI does not perform any application-level DN
 ## Project structure
 
 ```
-app/       Nuxt app source (pages, layouts, middleware, composables, plugins, utils)
-server/    Nitro server: api/ handlers, db/ (Drizzle client, schema, migrations), utils, types
-shared/    Cross-boundary code shared by client and server; boundary types live in shared/types
-i18n/      Translation catalogs (en.json, pl.json)
-test/      unit/, e2e/, and nuxt/ test suites
-docs/      Project vision and work-breakdown notes
-openspec/  OpenSpec change/spec documents (behavioral source of truth)
+apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
+packages/remote-trackers/ Provider adapters and neutral contracts
+test/unit/anti-slop/      Root Oxlint plugin tests
+docs/                     Project vision and work-breakdown notes
+openspec/                 OpenSpec change/spec documents (behavioral source of truth)
 ```
 
 ## Documentation
