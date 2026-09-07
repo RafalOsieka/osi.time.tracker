@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'oxlint/plugins-dev';
 
-import { noModuleMockingRule } from '../../../tools/oxlint/anti-slop/rules/no-module-mocking.ts';
+import { noModuleMockingRule } from '../rules/no-module-mocking.ts';
 
 const tester = new RuleTester({ languageOptions: { parserOptions: { lang: 'ts' } } });
 const error = { messageId: 'moduleMock' };

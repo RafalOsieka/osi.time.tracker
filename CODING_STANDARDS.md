@@ -135,7 +135,7 @@ Rules:
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
-- Anti-slop plugin tests live in `test/unit/anti-slop/` (`*.test.ts`, Oxlint `RuleTester`). Do not colocate those tests under `tools/oxlint/anti-slop/`.
+- Anti-slop plugin tests live in `tools/oxlint/anti-slop/test/` (`*.test.ts`, Oxlint `RuleTester`). Do not edit plugin rules, shared helpers, or the plugin entry unless asked.
 
 ## 11. Commits & Reviews
 
@@ -146,7 +146,7 @@ Rules:
 
 ## 12. Anti-slop plugin is frozen unless requested
 
-The vendored Oxlint anti-slop plugin under `tools/oxlint/anti-slop/` (plugin entry, rules, and shared helpers) SHALL NOT be edited, rewritten, disabled, or “fixed” by coding agents unless the developer explicitly asks for that change. Diagnosing application code that fails `anti-slop/*` is allowed; changing the plugin to silence those diagnostics is not. Tests for the plugin belong in `test/unit/anti-slop/` only.
+The vendored Oxlint anti-slop plugin under `tools/oxlint/anti-slop/` (plugin entry, rules, and shared helpers) SHALL NOT be edited, rewritten, disabled, or “fixed” by coding agents unless the developer explicitly asks for that change. Diagnosing application code that fails `anti-slop/*` is allowed; changing the plugin to silence those diagnostics is not. Tests for the plugin belong in `tools/oxlint/anti-slop/test/`.
 
 ## 13. Changes to This Guide
 

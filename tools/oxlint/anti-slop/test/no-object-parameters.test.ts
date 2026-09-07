@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'oxlint/plugins-dev';
 
-import { noObjectParametersRule } from '../../../tools/oxlint/anti-slop/rules/no-object-parameters.ts';
+import { noObjectParametersRule } from '../rules/no-object-parameters.ts';
 
 const tester = new RuleTester({ languageOptions: { parserOptions: { lang: 'ts' } } });
 const error = { messageId: 'objectParameter' };

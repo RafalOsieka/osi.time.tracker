@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'oxlint/plugins-dev';
 
-import { noReflectApplyRule } from '../../../tools/oxlint/anti-slop/rules/no-reflect-apply.ts';
+import { noReflectApplyRule } from '../rules/no-reflect-apply.ts';
 
 const tester = new RuleTester({ languageOptions: { parserOptions: { lang: 'ts' } } });
 const error = { messageId: 'reflectApply' };

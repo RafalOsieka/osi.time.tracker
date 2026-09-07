@@ -67,10 +67,10 @@ Always apply migrations before the app serves traffic.
 
 ## Testing Instructions
 
-Root commands forward to workspace packages. Web Vitest projects live in `apps/web/vitest.config.ts`; anti-slop tests stay at the repo root.
+Root commands forward to workspace packages. Web Vitest projects live in `apps/web/vitest.config.ts`; anti-slop plugin tests live under `tools/oxlint/anti-slop/test/`.
 
 ```bash
-pnpm test:unit      # tracker package + web unit + root anti-slop
+pnpm test:unit      # tracker package + web unit + anti-slop plugin tests
 pnpm test:e2e:db    # Postgres-only (schema, migrator, server-util)
 pnpm test:e2e:api   # HTTP against a booted Nuxt server
 pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
@@ -114,7 +114,7 @@ pnpm format:check   # verify Oxfmt
 
 `pnpm lint` includes vendored anti-slop rules (`tools/oxlint/anti-slop`). Explicit `any` is an Oxlint `typescript/no-explicit-any` error; justified exceptions use `// oxlint-disable-next-line typescript/no-explicit-any -- reason`. Do not use npm or npx; one-off CLIs use `pnpx`.
 
-**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `test/unit/anti-slop/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
+**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `tools/oxlint/anti-slop/test/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
 
 Run lint, format check, and the relevant test projects before opening a PR. After moving files or changing imports, re-run `pnpm lint`.
 
@@ -123,8 +123,7 @@ Run lint, format check, and the relevant test projects before opening a PR. Afte
 ```
 apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
 packages/remote-trackers/ Provider adapters, neutral contracts, and package tests
-test/unit/anti-slop/      Root tooling tests for the vendored Oxlint plugin
-tools/                    Vendored tooling (anti-slop Oxlint plugin — do not edit unless asked)
+tools/                    Vendored tooling (anti-slop Oxlint plugin — do not edit rules unless asked)
 docs/                     Project vision and work-breakdown notes
 openspec/                 OpenSpec change/spec documents (behavioral source of truth)
 ```
@@ -158,4 +157,4 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compos
 - The domain model is entry-first: tasks are derived automatically from time-entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
 - Never instantiate raw database drivers; always go through `getDb()`.
 - Do not weaken, skip, or disable tests to force a green run.
-- Never change the vendored anti-slop Oxlint plugin (`tools/oxlint/anti-slop/**`) unless the developer explicitly requests it. Do not rewrite, disable, or “fix” those rules on your own. Plugin tests live in `test/unit/anti-slop/`.
+- Never change the vendored anti-slop Oxlint plugin (`tools/oxlint/anti-slop/` index, rules, and shared helpers) unless the developer explicitly requests it. Do not rewrite, disable, or “fix” those rules on your own. Plugin tests live in `tools/oxlint/anti-slop/test/`.

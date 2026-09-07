@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'oxlint/plugins-dev';
 
-import { noUnknownTypeAliasesRule } from '../../../tools/oxlint/anti-slop/rules/no-unknown-type-aliases.ts';
+import { noUnknownTypeAliasesRule } from '../rules/no-unknown-type-aliases.ts';
 
 const tester = new RuleTester({ languageOptions: { parserOptions: { lang: 'ts' } } });
 const error = { messageId: 'unknownAlias' };

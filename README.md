@@ -114,7 +114,7 @@ docker compose down -v  # stop and delete the data volume
 Vitest is configured with three projects:
 
 ```bash
-pnpm test:unit      # unit tests   (test/unit/*.{test,spec}.ts, node env)
+pnpm test:unit      # tracker package + web unit + anti-slop plugin tests
 pnpm test:e2e:db    # Postgres schema/migrator/server-util tests
 pnpm test:e2e:api   # HTTP tests against a booted Nuxt server
 pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
@@ -185,7 +185,7 @@ This is a deployment concern only; OSI does not perform any application-level DN
 ```
 apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
 packages/remote-trackers/ Provider adapters and neutral contracts
-test/unit/anti-slop/      Root Oxlint plugin tests
+tools/                    Vendored tooling (anti-slop Oxlint plugin and its tests)
 docs/                     Project vision and work-breakdown notes
 openspec/                 OpenSpec change/spec documents (behavioral source of truth)
 ```

@@ -741,7 +741,9 @@
     "apps/web/.output",
     "apps/web/server/db/migrations",
     "packages/*/dist",
-    "tools/oxlint/anti-slop/**"
+    "tools/oxlint/anti-slop/index.ts",
+    "tools/oxlint/anti-slop/rules/**",
+    "tools/oxlint/anti-slop/shared/**"
   ],
   "rules": {
     "constructor-super": "error",

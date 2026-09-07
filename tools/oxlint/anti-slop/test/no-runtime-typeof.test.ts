@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { RuleTester } from 'oxlint/plugins-dev';
 
-import { noRuntimeTypeofRule } from '../../../tools/oxlint/anti-slop/rules/no-runtime-typeof.ts';
+import { noRuntimeTypeofRule } from '../rules/no-runtime-typeof.ts';
 
 const tester = new RuleTester({ languageOptions: { parserOptions: { lang: 'ts' } } });
 const error = { messageId: 'runtimeTypeof' };

@@ -21,6 +21,8 @@
     "openspec",
     "pnpm-lock.yaml",
     "pnpm-workspace.yaml",
-    "tools/oxlint/anti-slop/**"
+    "tools/oxlint/anti-slop/index.ts",
+    "tools/oxlint/anti-slop/rules/**",
+    "tools/oxlint/anti-slop/shared/**"
   ]
 }

@@ -6,7 +6,7 @@ export default defineConfig({
       {
         test: {
           name: 'anti-slop',
-          include: ['test/unit/anti-slop/**/*.{test,spec}.ts'],
+          include: ['tools/oxlint/anti-slop/test/**/*.{test,spec}.ts'],
           environment: 'node',
         },
       },

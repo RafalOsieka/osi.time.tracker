@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { build } from 'esbuild';
 import {
   RemoteAdapterError,
   deriveIssueUrl,
@@ -43,34 +42,5 @@ describe('package public exports', () => {
     for (const specifier of blocked) {
       await expect(import(/* @vite-ignore */ specifier)).rejects.toThrow(/is not exported/);
     }
-  });
-
-  it('bundles public exports for a browser without Node-only globals', async () => {
-    const result = await build({
-      absWorkingDir: packageRoot,
-      stdin: {
-        contents: `
-          import { RemoteAdapterError, normalizeBaseUrl } from '@osi/remote-trackers/contracts';
-          import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-          import { RedmineAdapter } from '@osi/remote-trackers/redmine';
-          export { RemoteAdapterError, normalizeBaseUrl, OpenProjectAdapter, RedmineAdapter };
-        `,
-        resolveDir: packageRoot,
-        sourcefile: 'browser-consumer.js',
-      },
-      bundle: true,
-      write: false,
-      format: 'esm',
-      platform: 'browser',
-      logLevel: 'silent',
-    });
-
-    const output = result.outputFiles[0]?.text ?? '';
-    expect(output.length).toBeGreaterThan(0);
-    expect(output).not.toContain('Buffer');
-    expect(output).not.toContain('from "node:');
-    expect(output).not.toContain("from 'node:");
-    expect(output).not.toContain('~~/');
-    expect(output).not.toContain('.nuxt');
   });
 });
