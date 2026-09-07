@@ -8,7 +8,7 @@ import { seedUsers } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 const describeRemoteIssuePickerUI = requireBrowser();
 

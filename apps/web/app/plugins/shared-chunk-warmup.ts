@@ -11,17 +11,15 @@ import { findDuplicateRemoteLog } from '~~/shared/utils/find-duplicate-remote-lo
 import { buildExportRequestKey } from '~~/shared/utils/export-request-key';
 import { resolveExportComment } from '~~/shared/utils/export-comment';
 import {
-  normalizeBaseUrl,
+  REMOTE_ISSUE_SEARCH_MODE_ORDER,
   RemoteAdapterError,
   UpstreamHttpError,
+  normalizeBaseUrl,
 } from '@osi/remote-trackers/contracts';
 import { OpenProjectAdapter, OpenProjectClient } from '@osi/remote-trackers/openproject';
 import { RedmineAdapter, RedmineClient } from '@osi/remote-trackers/redmine';
 import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
-import {
-  REMOTE_ISSUE_SEARCH_MODE_ORDER,
-  remoteIssuePickerFormSchema,
-} from '~~/shared/types/remote-issue-ref';
+import { remoteIssuePickerFormSchema } from '~~/shared/types/remote-issue-ref';
 
 export default defineNuxtPlugin(() => {
   void applyRoundingRule;

@@ -10,7 +10,7 @@ import { setupServer } from '../harness/setup-server';
 import { UNKNOWN_ID } from '../helpers/fixtures';
 import { createDatabaseClient } from '../../../server/db/client';
 import { trackers, timeEntries, tasks, remoteExports } from '../../../server/db/schema';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 
 const describeRemoteIssueRef = requireDocker();

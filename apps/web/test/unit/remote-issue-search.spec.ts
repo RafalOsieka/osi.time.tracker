@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TrackerDto } from '../../shared/types/tracker';
-import type { JsonValue } from '../../shared/types/json';
+import type { JsonValue } from '@osi/remote-trackers/contracts';
 
 const secretStore = new Map<string, string>();
 

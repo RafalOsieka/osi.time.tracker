@@ -1,14 +1,7 @@
 import { z } from 'zod';
-import { remoteIssueSearchModeSchema } from '@osi/remote-trackers/contracts';
-
-export {
+import {
   remoteIssueSearchModeSchema,
-  REMOTE_ISSUE_SEARCH_MODE_ORDER,
-} from '@osi/remote-trackers/contracts';
-export type {
-  RemoteIssueSearchMode,
-  RemoteIssueSearchQuery,
-  RemoteIssueSearchResult,
+  type RemoteIssueSearchResult,
 } from '@osi/remote-trackers/contracts';
 
 /**

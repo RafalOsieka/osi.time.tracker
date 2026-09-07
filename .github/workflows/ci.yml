@@ -288,7 +288,7 @@ jobs:
           NODE_V8_COVERAGE: coverage-v8-e2e
 
       - name: Convert Nitro coverage
-        run: pnpm --filter @osi/web exec tsx test/e2e/harness/report-e2e-coverage.ts
+        run: pnpm --filter @osi/time-tracker exec tsx test/e2e/harness/report-e2e-coverage.ts
         env:
           NODE_V8_COVERAGE: coverage-v8-e2e
 
@@ -328,7 +328,7 @@ jobs:
           path: apps/web/.output
 
       - name: Install Playwright Chromium
-        run: pnpm --filter @osi/web exec playwright install --with-deps chromium
+        run: pnpm --filter @osi/time-tracker exec playwright install --with-deps chromium
 
       - name: Run UI e2e tests
         run: pnpm test:e2e:ui

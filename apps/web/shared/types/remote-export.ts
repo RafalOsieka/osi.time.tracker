@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 
-export type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
-
 export const isoDateSchema = z
   .string({ error: 'error.remoteSyncDateRequired' })
   .regex(/^\d{4}-\d{2}-\d{2}$/, { error: 'error.remoteSyncDateInvalid' })

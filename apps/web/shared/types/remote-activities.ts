@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { RemoteFieldOption } from './remote-field-option';
+import type { RemoteFieldOption } from '@osi/remote-trackers/contracts';
 
 /**
  * Request body accepted by the `server`-execution-mode activities endpoint.

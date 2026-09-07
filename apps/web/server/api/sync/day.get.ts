@@ -5,11 +5,8 @@ import type {
   RemoteSyncDayEntryDto,
   RemoteSyncExportProvenanceDto,
 } from '../../../shared/types/remote-sync-day';
-import type {
-  TrackerExecutionMode,
-  TrackerRoundingRule,
-  TrackerSystemType,
-} from '../../../shared/types/tracker';
+import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type { TrackerExecutionMode, TrackerRoundingRule } from '../../../shared/types/tracker';
 import { getDb } from '../../db/index';
 import {
   timeEntries,

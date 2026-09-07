@@ -1,13 +1,5 @@
 import { z } from 'zod';
-import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-
-export {
-  trackerSystemTypeSchema,
-  TRACKER_SYSTEM_TYPE_ORDER,
-  TRACKER_SYSTEM_TYPE_LABELS,
-} from '@osi/remote-trackers/contracts';
-export type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import { trackerSystemTypeSchema, type TrackerSystemType } from '@osi/remote-trackers/contracts';
 
 /**
  * Selects the execution mode: `client` (default) sends remote requests

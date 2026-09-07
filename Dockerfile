@@ -19,7 +19,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy source, then generate Nuxt types and build
 COPY . .
-RUN pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/web exec nuxt prepare && pnpm --filter @osi/web build
+RUN pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/time-tracker exec nuxt prepare && pnpm --filter @osi/time-tracker build
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 FROM node:25-alpine AS runtime

@@ -2,7 +2,7 @@ import { and, eq, isNull } from 'drizzle-orm';
 import { getDb } from '../../db/index';
 import { trackers } from '../../db/schema';
 import type { ApiMessage } from '../../types/api-message';
-import type { TrackerSystemType } from '../../../shared/types/tracker';
+import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
 
 /**
  * Resolves an owned, active (non-soft-deleted) tracker for `server`

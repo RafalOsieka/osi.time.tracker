@@ -9,7 +9,7 @@ import { setupServer } from '../harness/setup-server';
 import { createDatabaseClient } from '../../../server/db/client';
 import { remoteExportEntries, remoteExports } from '../../../server/db/schema';
 import { eq } from 'drizzle-orm';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 const describeSyncExport = requireDocker();
 

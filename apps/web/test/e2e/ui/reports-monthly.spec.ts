@@ -11,7 +11,7 @@ import { apiLogin, type CookieJar } from '../helpers/auth';
 import { createProject, createTracker } from '../helpers/http';
 import { createDatabaseClient } from '../../../server/db/client';
 import { remoteExports } from '../../../server/db/schema';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 const describeReportsMonthlyUi = requireBrowser();
 

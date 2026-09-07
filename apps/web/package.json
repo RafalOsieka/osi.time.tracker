@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@osi/web",
+  "name": "@osi/time-tracker",
   "private": true,
   "type": "module",
   "scripts": {

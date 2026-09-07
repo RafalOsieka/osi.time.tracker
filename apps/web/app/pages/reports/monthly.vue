@@ -2,7 +2,7 @@
 import type { TableColumn } from '@nuxt/ui';
 import type { MonthlyReportDto } from '~~/shared/types/report';
 import type { TrackerDto } from '~~/shared/types/tracker';
-import type { RemoteTimeLogDto } from '~~/shared/types/remote-export';
+import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 import type { AttentionReason } from '~~/shared/utils/monthly-report-attention';
 import { attentionReasons } from '~~/shared/utils/monthly-report-attention';
 import { splitAppAndDirect } from '~~/shared/utils/monthly-report-split';

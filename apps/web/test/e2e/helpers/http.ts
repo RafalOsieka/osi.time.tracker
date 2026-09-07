@@ -1,7 +1,7 @@
 import { url } from './url';
 import type { CookieJar } from './auth';
 import type { CreateTrackerDto } from '../../../shared/types/tracker';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 function trackerSlug(name: string): string {
   return (

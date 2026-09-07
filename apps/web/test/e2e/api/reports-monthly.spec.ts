@@ -8,7 +8,7 @@ import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { createDatabaseClient } from '../../../server/db/client';
 import { remoteExports } from '../../../server/db/schema';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 const describeReportsMonthly = requireDocker();
 

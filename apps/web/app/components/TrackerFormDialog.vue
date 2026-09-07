@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from '@nuxt/ui';
+import {
+  TRACKER_SYSTEM_TYPE_LABELS,
+  TRACKER_SYSTEM_TYPE_ORDER,
+  type TrackerSystemType,
+} from '@osi/remote-trackers/contracts';
 
 const { open, tracker } = defineProps<{
   open: boolean;

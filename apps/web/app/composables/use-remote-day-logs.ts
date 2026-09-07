@@ -1,5 +1,5 @@
 import { ref, type Ref } from 'vue';
-import type { RemoteTimeLogDto } from '../../shared/types/remote-export';
+import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { mapRemoteSyncClientError, useRemoteSyncClient } from './use-remote-sync-client';
 

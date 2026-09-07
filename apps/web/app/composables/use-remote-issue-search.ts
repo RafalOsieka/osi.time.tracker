@@ -3,7 +3,7 @@ import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import type {
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
-} from '../../shared/types/remote-issue-ref';
+} from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { extractCaughtMessageKey } from '../utils/extract-message-key';
 import { useTrackerSecret } from './use-tracker-secret';

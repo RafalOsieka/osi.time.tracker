@@ -1,10 +1,11 @@
 <script setup lang="ts">
+import {
+  REMOTE_ISSUE_SEARCH_MODE_ORDER,
+  type RemoteIssueSearchMode,
+  type RemoteIssueSearchResult,
+} from '@osi/remote-trackers/contracts';
+import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 import type { TrackerDto } from '../../shared/types/tracker';
-import type {
-  RemoteIssueRefDto,
-  RemoteIssueSearchMode,
-  RemoteIssueSearchResult,
-} from '../../shared/types/remote-issue-ref';
 
 defineOptions({ inheritAttrs: false });
 

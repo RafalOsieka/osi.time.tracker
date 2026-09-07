@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { RemoteSyncDayEntryDto } from '~~/shared/types/remote-sync-day';
-import type { RemoteTimeLogDto } from '~~/shared/types/remote-export';
+import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 
 const {
   taskId,

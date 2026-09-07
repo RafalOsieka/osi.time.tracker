@@ -17,7 +17,7 @@ import { createProject, createTracker } from '../helpers/http';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
-import type { JsonObject } from '../../../shared/types/json';
+import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 const describeTimerViewUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();

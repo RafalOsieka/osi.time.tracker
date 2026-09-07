@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
+import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
 import {
   createTrackerSchema,
   trackerExecutionModeSchema,
   trackerRoundingRuleSchema,
-  trackerSystemTypeSchema,
 } from '../../shared/types/tracker';
 import { mapZodError } from '../../server/utils/zod-error';
 
