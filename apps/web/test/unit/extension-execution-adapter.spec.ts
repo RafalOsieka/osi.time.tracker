@@ -167,7 +167,7 @@ function operationSuccess(request: {
 }
 
 function createFakeHost(options?: {
-  handshake?: (message: HandshakeRequest) => HandshakeResult | SafeWireError;
+  handshake?: (message: HandshakeRequest) => HandshakeResult | SafeWireError | JsonValue;
   operation?: (message: OperationRequest) => OperationSuccess | OperationFailure | undefined;
 }) {
   const connectMessages: Array<{ message: JsonValue; origin: string }> = [];
@@ -281,6 +281,55 @@ describe('probeExtensionAvailability', () => {
 });
 
 describe('ExtensionExecutionAdapter', () => {
+  it.each([
+    { reply: { ...defaultHandshake(), protocolVersion: 999 }, kind: 'incompatible' },
+    { reply: { type: 'handshake-result' }, kind: 'malformed' },
+  ])('immediately rejects a recognizable invalid handshake: $kind', async ({ reply, kind }) => {
+    const host = createFakeHost({ handshake: () => reply });
+    const unschedule = vi.fn(clearTimeout);
+    const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
+      isClient: true,
+      openBridge: () => new ExtensionDocumentBridge({ ...host.bridgeOptions, unschedule }),
+    });
+    await expect(adapter.getCurrentAccount()).rejects.toMatchObject({ kind });
+    expect(unschedule).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(host.portMessages)).not.toContain('top-secret');
+  });
+
+  it('uses a short default handshake deadline independently of operation deadlines', async () => {
+    const host = createFakeHost();
+    const schedule = vi.spyOn(globalThis, 'setTimeout');
+    const bridge = new ExtensionDocumentBridge({
+      ...host.bridgeOptions,
+      handshakeTimeoutMs: undefined,
+      pageDeadlineMs: 60_000,
+    });
+    await bridge.handshake();
+    expect(schedule.mock.calls[0]?.[1]).toBe(2_000);
+    await bridge.request({
+      operation: 'getCurrentAccount',
+      provider: 'openproject',
+      baseUrl: config.baseUrl,
+      secret: 'secret',
+      payload: null,
+    });
+    expect(schedule.mock.calls[1]?.[1]).toBe(60_000);
+    bridge.close();
+    schedule.mockRestore();
+  });
+
+  it('ignores unrelated messages while waiting for a handshake', async () => {
+    const channel = createLinkedChannel();
+    const bridge = new ExtensionDocumentBridge({
+      window: { location: { origin: 'https://app.example.com' }, postMessage() {} },
+      createChannel: () => channel,
+    });
+    const result = bridge.handshake();
+    channel.port2.postMessage({ type: 'unrelated', protocolVersion: 999 });
+    channel.port2.postMessage(defaultHandshake());
+    await expect(result).resolves.toEqual(defaultHandshake());
+    bridge.close();
+  });
   it.each([
     { ...defaultHandshake(), destinationApproved: undefined },
     { ...defaultHandshake(), destinationApproved: false },

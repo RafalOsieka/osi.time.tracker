@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
 import type { RemoteFieldOption } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '~~/shared/types/tracker';
@@ -24,6 +25,7 @@ const {
   toSendInput,
   activityLoading,
   activityError,
+  activityErrorKey = null,
   activityOptions,
   selectedActivityId,
   noActivity,
@@ -48,6 +50,7 @@ const {
   toSendInput: string;
   activityLoading: boolean;
   activityError: boolean;
+  activityErrorKey?: string | null;
   activityOptions: RemoteFieldOption[];
   selectedActivityId: string | undefined;
   noActivity: boolean;
@@ -75,6 +78,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const extensionActivityErrorKey = computed(() =>
+  Object.values(EXTENSION_ERROR_MESSAGE_KEYS).find((key) => key === activityErrorKey),
+);
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 const durationClusterAria = computed(() =>
@@ -179,18 +185,27 @@ function onEditToSend() {
     <template #meta>
       <div class="w-48 min-w-0 max-w-full">
         <template v-if="activityError">
-          <div class="flex min-w-0 items-center gap-1">
+          <div class="flex min-w-0 flex-wrap items-center gap-1">
             <span
               role="alert"
-              class="truncate text-xs text-muted"
+              class="text-xs text-muted"
               :data-testid="`remote-sync-activity-error-${row.taskId}`"
             >
-              {{ t('remoteSync.activityFetchError') }}
+              {{ t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError') }}
             </span>
+            <p v-if="extensionActivityErrorKey" class="text-xs text-muted">
+              {{ t('trackers.extensionSetupGuidance') }}
+            </p>
             <UButton
               variant="ghost"
               size="xs"
-              :label="t('remoteSync.activityRetry')"
+              :label="
+                t(
+                  extensionActivityErrorKey
+                    ? 'trackers.extensionRecheckButton'
+                    : 'remoteSync.activityRetry',
+                )
+              "
               :data-testid="`remote-sync-activity-retry-${row.taskId}`"
               @click="emit('retry-activity')"
             />

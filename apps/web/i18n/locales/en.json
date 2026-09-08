@@ -352,7 +352,10 @@
       "unknownCreateRetryTitle": "Retry creating the remote log?",
       "unknownCreateRetryMessage": "The extension did not confirm whether the remote log was created. Retrying may create a duplicate. Confirm only after checking the tracker.",
       "unknownCreateRetryAccept": "Retry create",
-      "unknownCreateRetryReject": "Cancel"
+      "unknownCreateRetryReject": "Cancel",
+      "existingLogId": "Existing remote log ID",
+      "existingLogHint": "Found the log in the tracker? Enter its ID. We verify its account, issue, date, duration, activity and comment against the original export, then finalize locally without creating another log.",
+      "useExistingLog": "Use existing remote log"
     },
     "state": {
       "noProject": "This task has no Project, so it cannot be reviewed for a remote push.",
@@ -442,6 +445,8 @@
     "remoteExportTaskIdInvalid": "The export task id is invalid.",
     "remoteExportRemoteIssueIdRequired": "A remote issue id is required.",
     "remoteExportRemoteLogIdRequired": "A remote log id is required.",
+    "remoteExportExistingLogMismatch": "No matching log was found. Check the ID, account, issue, date, duration, activity and comment in the tracker; no new log was created.",
+    "exportRecoveryUnavailable": "Export recovery could not be saved or read. Keep this page open, allow browser storage and try again. Check the tracker before attempting another export.",
     "remoteExportDurationRequired": "An export duration is required.",
     "remoteExportDurationInvalid": "Export duration must be a positive whole number of seconds.",
     "remoteExportEntryIdsInvalid": "Select at least one valid local entry to finalize.",

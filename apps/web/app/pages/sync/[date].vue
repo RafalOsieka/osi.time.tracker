@@ -6,6 +6,7 @@ import type {
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
 import type { TrackerDto } from '~~/shared/types/tracker';
+import { resolveExportComment } from '~~/shared/utils/export-comment';
 import type {
   ActivityByTask,
   DismissedDuplicatesByTask,
@@ -128,8 +129,18 @@ const {
   runExport,
   requestStop,
   retryTask,
+  reconcileTask,
 } = useSyncExport({
   createTimeEntry: (config, input) => clientFor(config).createTimeEntry(input),
+  validateExistingRemoteLog: (task, remoteLogId) =>
+    clientFor(task.config).validateExistingTimeLog({
+      remoteLogId,
+      remoteIssueId: task.remoteIssueId,
+      spentOn: task.spentOn,
+      durationSeconds: task.durationSeconds,
+      activityId: task.activityId,
+      comment: resolveExportComment(task.comment, task.row.taskName),
+    }),
   finalizeExport: (body) =>
     $csrfFetch('/api/sync/export', {
       method: 'POST',
@@ -639,6 +650,14 @@ async function onExportRetry(taskId: string) {
   await retryTask(taskId);
 }
 
+async function onExportReconcile(taskId: string, remoteLogId: string) {
+  try {
+    await reconcileTask(taskId, remoteLogId);
+  } catch (err) {
+    toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
+  }
+}
+
 function formatEntryStart(iso: string): string {
   return new Date(iso).toLocaleTimeString(locale.value, {
     hour: '2-digit',
@@ -825,6 +844,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :to-send-input="displayedRoundedInput(row)"
         :activity-loading="stateFor(row) === 'activity_loading'"
         :activity-error="!!activitiesFor(row).errorKey"
+        :activity-error-key="activitiesFor(row).errorKey"
         :activity-options="activitiesFor(row).options"
         :selected-activity-id="selectedActivity(row)"
         :no-activity="stateFor(row) === 'no_activity'"
@@ -891,6 +911,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       @stop="requestStop"
       @close="closeExportDialog"
       @retry="onExportRetry"
+      @reconcile="onExportReconcile"
     />
   </section>
 </template>

@@ -6,11 +6,19 @@ import type {
 } from '../../shared/types/remote-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';
-import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types/sync-ui-maps';
+import type { ExportOutcomesByTask, ExportProgressByTask } from '~/types/sync-ui-maps';
 import { buildExportRequestKey } from '~~/shared/utils/export-request-key';
 import { resolveExportComment } from '~~/shared/utils/export-comment';
 import { extractCaughtMessageKey } from '~/utils/extract-message-key';
-import { createPendingCreateStore, type PendingCreateStore } from '~/utils/remote/pending-creates';
+import {
+  createPendingCreateStore,
+  ExportRecoveryStorageError,
+  pendingCreateIdentity,
+  recoveryTrackerSchema,
+  type ExportRecoveryPayload,
+  type PendingCreateMarker,
+  type PendingCreateStore,
+} from '~/utils/remote/pending-creates';
 
 export type SyncExportProgressStatus =
   | 'queued'
@@ -33,16 +41,8 @@ export interface SyncExportTaskInput {
   comment?: string;
 }
 
-export interface FinalizeExportBody {
-  taskId: string;
-  localDate: string;
-  remoteIssueId: string;
+export interface FinalizeExportBody extends ExportRecoveryPayload {
   remoteLogId: string;
-  exportDurationSeconds: number;
-  requiredFieldValues: { activity: string };
-  entryIds: string[];
-  exportRequestKey: string;
-  comment?: string;
 }
 
 /**
@@ -64,6 +64,7 @@ export function useSyncExport(options: {
   refresh?: () => Promise<void> | void;
   pendingCreates?: PendingCreateStore;
   confirmUnknownCreateRetry?: () => Promise<boolean>;
+  validateExistingRemoteLog?: (task: SyncExportTaskInput, remoteLogId: string) => Promise<void>;
 }) {
   const pendingCreates = options.pendingCreates ?? createPendingCreateStore();
   const outcomes = ref<ExportOutcomesByTask<RemoteExportTaskOutcomeDto>>({});
@@ -72,8 +73,8 @@ export function useSyncExport(options: {
   const stopRequested = ref(false);
   const totalCount = ref(0);
   const lastBatch = ref<SyncExportTaskInput[]>([]);
-  /** Known remote log ids from prior attempts (for uncertain retry reconciliation). */
-  const knownRemoteLogIds = ref<Record<TaskId, string>>({});
+  // Retain a received ID even when persisting it fails. Never clear this at batch boundaries.
+  const receivedCreates = new Map<string, PendingCreateMarker>();
 
   const completedCount = computed(() => {
     let count = 0;
@@ -113,125 +114,214 @@ export function useSyncExport(options: {
     });
   }
 
-  function pendingCreatesFor(task: SyncExportTaskInput) {
-    return pendingCreates
-      .list()
-      .filter(
-        (marker) =>
-          marker.trackerId === task.config.id &&
-          ((marker.taskId === task.row.taskId && marker.spentOn === task.spentOn) ||
-            marker.entryIds?.some((id) => task.entryIds.includes(id))),
-      );
+  function matchesTask(marker: PendingCreateMarker, task: SyncExportTaskInput) {
+    return (
+      marker.trackerId === task.config.id &&
+      ((marker.taskId === task.row.taskId &&
+        (marker.spentOn === task.spentOn || marker.recovery?.status === 'known')) ||
+        marker.entryIds?.some((id) => task.entryIds.includes(id)))
+    );
   }
 
-  async function runSingleTask(task: SyncExportTaskInput): Promise<void> {
-    const { row, config, remoteIssueId, activityId, durationSeconds, entryIds, spentOn } = task;
-    const comment = resolveExportComment(task.comment, row.taskName);
-    const exportRequestKey = buildKey(task);
-    const knownRemoteLogId = knownRemoteLogIds.value[row.taskId];
+  function reportRecoveryFailure(taskId: string, messageKey: string, remoteLogId?: string) {
+    setProgress(taskId, 'uncertain');
+    setOutcome({
+      taskId,
+      status: remoteLogId ? 'uncertain_finalization' : 'remote_failure',
+      remoteLogId,
+      messageKey,
+    });
+  }
 
-    let remoteLogId = knownRemoteLogId;
-    const trackPending = config.executionMode === 'extension';
+  async function saveMarker(marker: PendingCreateMarker) {
+    return await pendingCreates.transaction((markers) => {
+      const index = markers.findIndex(
+        (item) => pendingCreateIdentity(item) === pendingCreateIdentity(marker),
+      );
+      const existing = markers[index]?.recovery;
+      const incoming = marker.recovery;
+      // A late create reply can disagree with a log selected in another tab. Keep both IDs.
+      if (
+        existing?.status === 'known' &&
+        incoming?.status === 'known' &&
+        existing.remoteLogId !== incoming.remoteLogId
+      ) {
+        const separate: PendingCreateMarker = {
+          ...marker,
+          recovery: { ...incoming, attemptId: crypto.randomUUID() },
+        };
+        markers.push(separate);
+        return separate;
+      }
+      if (index < 0) markers.push(marker);
+      else markers[index] = marker;
+      return marker;
+    });
+  }
 
-    if (!remoteLogId && pendingCreatesFor(task).length > 0) {
-      setProgress(row.taskId, 'uncertain');
-      setOutcome({
-        taskId: row.taskId,
-        status: 'remote_failure',
-        messageKey: 'error.extensionUnknownCreate',
-      });
+  async function removeMarker(marker: PendingCreateMarker) {
+    await pendingCreates.transaction((markers) => {
+      const index = markers.findIndex(
+        (item) => pendingCreateIdentity(item) === pendingCreateIdentity(marker),
+      );
+      const existing = markers[index]?.recovery;
+      const expected = marker.recovery;
+      if (
+        index >= 0 &&
+        (existing?.status !== 'known' ||
+          (expected?.status === 'known' && existing.remoteLogId === expected.remoteLogId))
+      ) {
+        markers.splice(index, 1);
+      }
+    });
+    receivedCreates.delete(pendingCreateIdentity(marker));
+  }
+
+  async function finalizeMarker(task: SyncExportTaskInput, marker: PendingCreateMarker) {
+    const recovery = marker.recovery;
+    if (recovery?.status !== 'known') return;
+    const { remoteLogId, payload } = recovery;
+    const taskId = task.row.taskId;
+    setProgress(taskId, 'finalizing');
+    let finalized: FinalizeRemoteExportResultDto;
+    try {
+      const saved = await saveMarker(marker);
+      receivedCreates.delete(pendingCreateIdentity(marker));
+      receivedCreates.set(pendingCreateIdentity(saved), saved);
+      marker = saved;
+      finalized = await options.finalizeExport({ ...payload, remoteLogId });
+      if (finalized.remoteLogId !== remoteLogId) {
+        throw new Error('Finalization returned a different remote log');
+      }
+      await removeMarker(marker);
+    } catch (err) {
+      reportRecoveryFailure(
+        taskId,
+        err instanceof ExportRecoveryStorageError ? err.messageKey : 'remoteSync.outcomeUncertain',
+        remoteLogId,
+      );
+      await options.onTaskFinalized?.(task.row);
       return;
     }
+    setProgress(taskId, 'done');
+    setOutcome({
+      taskId,
+      status: 'success',
+      remoteLogId: finalized.remoteLogId,
+      exportId: finalized.exportId,
+      messageKey: 'remoteSync.outcomeSuccess',
+      messageParams: { remoteLogId: finalized.remoteLogId },
+    });
+    // Notification failures must not turn a successfully finalized export into a retry.
+    await options.onTaskFinalized?.(task.row);
+  }
 
-    if (!remoteLogId) {
-      setProgress(row.taskId, 'creating');
-      if (trackPending) {
-        pendingCreates.add({
+  async function runSingleTask(
+    task: SyncExportTaskInput,
+    allowedAttempts: string[] = [],
+  ): Promise<void> {
+    const { row, config, remoteIssueId, activityId, durationSeconds, entryIds, spentOn } = task;
+    const comment = resolveExportComment(task.comment, row.taskName);
+    const logicalKey = buildKey(task);
+    const received = [...receivedCreates.values()].find((marker) => matchesTask(marker, task));
+    if (received) {
+      await finalizeMarker(task, received);
+      return;
+    }
+    let reservation: { marker: PendingCreateMarker; create: boolean };
+    try {
+      reservation = await pendingCreates.transaction((markers) => {
+        const matching = markers.filter((marker) => matchesTask(marker, task));
+        const known = matching.find((marker) => marker.recovery?.status === 'known');
+        const blocking =
+          known ??
+          matching.find((marker) => !allowedAttempts.includes(pendingCreateIdentity(marker)));
+        if (blocking) return { marker: blocking, create: false };
+        const attemptId = crypto.randomUUID();
+        // A confirmed new create is not an idempotent replay of the older UNKNOWN attempt.
+        const exportRequestKey = allowedAttempts.length > 0 ? `er2|${attemptId}` : logicalKey;
+        const marker: PendingCreateMarker = {
           trackerId: config.id,
           taskId: row.taskId,
           spentOn,
           exportRequestKey,
-          entryIds,
-        });
-      }
-      try {
-        const created = await options.createTimeEntry(config, {
-          remoteIssueId,
-          spentOn,
-          durationSeconds,
-          activityId,
-          comment,
-        });
-        if (trackPending) pendingCreates.remove(exportRequestKey);
-        remoteLogId = created.remoteLogId;
-        knownRemoteLogIds.value = {
-          ...knownRemoteLogIds.value,
-          [row.taskId]: remoteLogId,
+          entryIds: [...entryIds],
+          recovery: {
+            attemptId,
+            status: 'unknown',
+            config: recoveryTrackerSchema.parse(config),
+            payload: {
+              taskId: row.taskId,
+              localDate: spentOn,
+              remoteIssueId,
+              exportDurationSeconds: durationSeconds,
+              requiredFieldValues: { activity: activityId },
+              entryIds: [...entryIds],
+              exportRequestKey,
+              comment,
+            },
+          },
         };
-      } catch (err) {
-        if (err instanceof ExtensionProtocolError && isUnknownCreateError(err)) {
-          setProgress(row.taskId, 'uncertain');
-          setOutcome({
-            taskId: row.taskId,
-            status: 'remote_failure',
-            messageKey: err.messageKey,
-          });
-          return;
-        }
-        if (trackPending) pendingCreates.remove(exportRequestKey);
-        setProgress(row.taskId, 'failed');
-        setOutcome({
-          taskId: row.taskId,
-          status: 'remote_failure',
-          messageKey: extractCaughtMessageKey(err, 'remoteSync.outcomeRemoteFailure'),
-        });
+        markers.push(marker);
+        return { marker, create: true };
+      });
+    } catch {
+      reportRecoveryFailure(row.taskId, 'error.exportRecoveryUnavailable');
+      return;
+    }
+    const { marker } = reservation;
+    if (!reservation.create) {
+      if (marker.recovery?.status === 'known') await finalizeMarker(task, marker);
+      else reportRecoveryFailure(row.taskId, 'error.extensionUnknownCreate');
+      return;
+    }
+    setProgress(row.taskId, 'creating');
+    const recovery = marker.recovery;
+    if (!recovery) return;
+    const { payload } = recovery;
+    let remoteLogId: string;
+    try {
+      const created = await options.createTimeEntry(recovery.config, {
+        remoteIssueId: payload.remoteIssueId,
+        spentOn: payload.localDate,
+        durationSeconds: payload.exportDurationSeconds,
+        activityId: payload.requiredFieldValues.activity,
+        comment: payload.comment,
+      });
+      remoteLogId = created.remoteLogId;
+    } catch (err) {
+      if (err instanceof ExtensionProtocolError && isUnknownCreateError(err)) {
+        reportRecoveryFailure(row.taskId, err.messageKey);
         return;
       }
-    }
-
-    setProgress(row.taskId, 'finalizing');
-    try {
-      const finalized = await options.finalizeExport({
-        taskId: row.taskId,
-        localDate: spentOn,
-        remoteIssueId,
-        remoteLogId,
-        exportDurationSeconds: durationSeconds,
-        requiredFieldValues: { activity: activityId },
-        entryIds,
-        exportRequestKey,
-        comment,
-      });
-      setProgress(row.taskId, 'done');
+      try {
+        await removeMarker(marker);
+      } catch {
+        reportRecoveryFailure(row.taskId, 'error.exportRecoveryUnavailable');
+        return;
+      }
+      setProgress(row.taskId, 'failed');
       setOutcome({
         taskId: row.taskId,
-        status: 'success',
-        remoteLogId: finalized.remoteLogId,
-        exportId: finalized.exportId,
-        messageKey: 'remoteSync.outcomeSuccess',
-        messageParams: { remoteLogId: finalized.remoteLogId },
+        status: 'remote_failure',
+        messageKey: extractCaughtMessageKey(err, 'remoteSync.outcomeRemoteFailure'),
       });
-      await options.onTaskFinalized?.(row);
-    } catch {
-      setProgress(row.taskId, 'uncertain');
-      setOutcome({
-        taskId: row.taskId,
-        status: 'uncertain_finalization',
-        remoteLogId,
-        messageKey: 'remoteSync.outcomeUncertain',
-      });
-      await options.onTaskFinalized?.(row);
+      return;
     }
+    const known: PendingCreateMarker = {
+      ...marker,
+      recovery: { ...recovery, status: 'known', remoteLogId },
+    };
+    receivedCreates.set(pendingCreateIdentity(known), known);
+    await finalizeMarker(task, known);
   }
 
   async function runExport(tasks: SyncExportTaskInput[]): Promise<void> {
+    if (isRunning.value) return;
     isRunning.value = true;
     stopRequested.value = false;
     lastBatch.value = tasks;
     totalCount.value = tasks.length;
-    // Fresh batch: never reuse remote log ids / outcomes from a prior export on this page.
-    // In-batch uncertain retries keep ids via retryTask only.
-    knownRemoteLogIds.value = {};
     outcomes.value = {};
 
     const initialProgress: Record<string, SyncExportProgressStatus> = {};
@@ -240,22 +330,25 @@ export function useSyncExport(options: {
     }
     progress.value = initialProgress;
 
-    for (const task of tasks) {
-      if (stopRequested.value) {
-        setProgress(task.row.taskId, 'not_attempted');
-        setOutcome({
-          taskId: task.row.taskId,
-          status: 'excluded',
-          messageKey: 'remoteSync.exportNotAttempted',
-        });
-        continue;
+    try {
+      for (const task of tasks) {
+        if (stopRequested.value) {
+          setProgress(task.row.taskId, 'not_attempted');
+          setOutcome({
+            taskId: task.row.taskId,
+            status: 'excluded',
+            messageKey: 'remoteSync.exportNotAttempted',
+          });
+          continue;
+        }
+        await runSingleTask(task);
       }
-      await runSingleTask(task);
-    }
 
-    isRunning.value = false;
-    stopRequested.value = false;
-    await options.refresh?.();
+      await options.refresh?.();
+    } finally {
+      isRunning.value = false;
+      stopRequested.value = false;
+    }
   }
 
   async function retryTask(taskId: string): Promise<void> {
@@ -264,23 +357,88 @@ export function useSyncExport(options: {
 
     isRunning.value = true;
     stopRequested.value = false;
-    const unresolvedCreates = pendingCreatesFor(task);
-    if (!knownRemoteLogIds.value[task.row.taskId] && unresolvedCreates.length > 0) {
-      const confirmed = (await options.confirmUnknownCreateRetry?.()) ?? false;
-      if (!confirmed) {
-        isRunning.value = false;
+    try {
+      let unresolvedCreates: PendingCreateMarker[];
+      try {
+        unresolvedCreates = pendingCreates.list().filter((marker) => matchesTask(marker, task));
+      } catch {
+        reportRecoveryFailure(taskId, 'error.exportRecoveryUnavailable');
         return;
       }
-      for (const marker of unresolvedCreates) {
-        pendingCreates.remove(marker.exportRequestKey);
+      const received = [...receivedCreates.values()].some((marker) => matchesTask(marker, task));
+      const known = unresolvedCreates.some((marker) => marker.recovery?.status === 'known');
+      let allowedAttempts: string[] = [];
+      if (!received && !known && unresolvedCreates.length > 0) {
+        if (!(await options.confirmUnknownCreateRetry?.())) return;
+        // Confirmation authorizes a new attempt, not deletion of an earlier uncertain create.
+        allowedAttempts = unresolvedCreates.map(pendingCreateIdentity);
       }
+      await runSingleTask(task, allowedAttempts);
+      await options.refresh?.();
+    } finally {
+      isRunning.value = false;
+      stopRequested.value = false;
     }
-    // Do not flip to `queued` here: report-phase groups only list terminal statuses, so
-    // a queued marker would hide the row until the attempt finishes. runSingleTask sets
-    // creating/finalizing immediately; the dialog keeps those visible as in-progress.
-    await runSingleTask(task);
-    isRunning.value = false;
-    await options.refresh?.();
+  }
+
+  /** Validate an existing remote log against the original attempt before recording its ID. */
+  async function reconcileTask(taskId: string, remoteLogId: string): Promise<void> {
+    const task = lastBatch.value.find((candidate) => candidate.row.taskId === taskId);
+    if (!task || isRunning.value) return;
+    isRunning.value = true;
+    try {
+      if (!options.validateExistingRemoteLog) {
+        reportRecoveryFailure(taskId, 'error.exportRecoveryUnavailable');
+        return;
+      }
+      const marker = pendingCreates.list().find((candidate) => matchesTask(candidate, task));
+      const recovery = marker?.recovery;
+      if (!marker || !recovery || recovery.status !== 'unknown' || !remoteLogId.trim()) {
+        reportRecoveryFailure(taskId, 'error.extensionUnknownCreate');
+        return;
+      }
+      const { payload } = recovery;
+      await options.validateExistingRemoteLog(
+        {
+          ...task,
+          config: recovery.config,
+          row: { ...task.row, taskId: payload.taskId },
+          remoteIssueId: payload.remoteIssueId,
+          activityId: payload.requiredFieldValues.activity,
+          durationSeconds: payload.exportDurationSeconds,
+          entryIds: [...payload.entryIds],
+          spentOn: payload.localDate,
+          comment: payload.comment,
+        },
+        remoteLogId.trim(),
+      );
+      const known: PendingCreateMarker = {
+        ...marker,
+        recovery: { ...recovery, status: 'known', remoteLogId: remoteLogId.trim() },
+      };
+      // Recheck after validation: a different tab may have reconciled this attempt meanwhile.
+      const accepted = await pendingCreates.transaction((markers) => {
+        const index = markers.findIndex(
+          (item) => pendingCreateIdentity(item) === recovery.attemptId,
+        );
+        if (index < 0 || markers[index]?.recovery?.status !== 'unknown') return false;
+        markers[index] = known;
+        receivedCreates.set(recovery.attemptId, known);
+        return true;
+      });
+      if (!accepted) {
+        reportRecoveryFailure(taskId, 'error.extensionUnknownCreate');
+        return;
+      }
+      await finalizeMarker(task, known);
+      await options.refresh?.();
+    } catch (err) {
+      if (!(err instanceof ExportRecoveryStorageError)) throw err;
+      reportRecoveryFailure(taskId, err.messageKey);
+    } finally {
+      isRunning.value = false;
+      stopRequested.value = false;
+    }
   }
 
   return {
@@ -292,5 +450,6 @@ export function useSyncExport(options: {
     runExport,
     requestStop,
     retryTask,
+    reconcileTask,
   };
 }

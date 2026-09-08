@@ -352,7 +352,10 @@
       "unknownCreateRetryTitle": "Ponowić tworzenie zdalnego wpisu?",
       "unknownCreateRetryMessage": "Rozszerzenie nie potwierdziło, czy zdalny wpis powstał. Ponowienie może utworzyć duplikat. Potwierdź dopiero po sprawdzeniu w trackerze.",
       "unknownCreateRetryAccept": "Ponów tworzenie",
-      "unknownCreateRetryReject": "Anuluj"
+      "unknownCreateRetryReject": "Anuluj",
+      "existingLogId": "Identyfikator istniejącego zdalnego wpisu",
+      "existingLogHint": "Wpis istnieje w trackerze? Podaj jego identyfikator. Sprawdzimy konto, zgłoszenie, datę, czas, czynność i komentarz względem pierwotnego eksportu, a następnie sfinalizujemy go lokalnie bez tworzenia kolejnego wpisu.",
+      "useExistingLog": "Użyj istniejącego wpisu"
     },
     "state": {
       "noProject": "To zadanie nie ma projektu, więc nie może być sprawdzone pod kątem wysyłki zdalnej.",
@@ -442,6 +445,8 @@
     "remoteExportTaskIdInvalid": "Identyfikator zadania eksportu jest nieprawidłowy.",
     "remoteExportRemoteIssueIdRequired": "Wymagany jest identyfikator zdalnego zgłoszenia.",
     "remoteExportRemoteLogIdRequired": "Wymagany jest identyfikator zdalnego wpisu czasu.",
+    "remoteExportExistingLogMismatch": "Nie znaleziono pasującego wpisu. Sprawdź identyfikator, konto, zgłoszenie, datę, czas, czynność i komentarz w trackerze; nie utworzono nowego wpisu.",
+    "exportRecoveryUnavailable": "Nie udało się zapisać lub odczytać danych odzyskiwania eksportu. Nie zamykaj strony, zezwól na zapis danych w przeglądarce i spróbuj ponownie. Sprawdź tracker przed kolejnym eksportem.",
     "remoteExportDurationRequired": "Wymagany jest czas trwania eksportu.",
     "remoteExportDurationInvalid": "Czas trwania eksportu musi być dodatnią liczbą całkowitą sekund.",
     "remoteExportEntryIdsInvalid": "Wybierz co najmniej jeden prawidłowy lokalny wpis do finalizacji.",

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import SyncExportDialog from '../../app/components/sync/SyncExportDialog.vue';
 
@@ -75,6 +75,19 @@ describe('SyncExportDialog uncertainty', () => {
       expect(wrapper.find('[data-testid="remote-sync-export-log-link-task"]').exists()).toBe(false);
       await wrapper.get('[data-testid="remote-sync-export-retry-task"]').trigger('click');
       expect(wrapper.emitted('retry')).toEqual([['task']]);
+      const input = wrapper.get('[data-testid="remote-sync-existing-log-id"]');
+      expect(
+        wrapper.get('[data-testid="remote-sync-existing-log-submit"]').attributes('disabled'),
+      ).toBeDefined();
+      await input.setValue('9001');
+      await wrapper.setProps({ isRunning: true });
+      expect(input.attributes('disabled')).toBeDefined();
+      expect(
+        wrapper.get('[data-testid="remote-sync-existing-log-submit"]').attributes('disabled'),
+      ).toBeDefined();
+      await wrapper.setProps({ isRunning: false });
+      await wrapper.get('[data-testid="remote-sync-existing-log-form"]').trigger('submit');
+      await vi.waitFor(() => expect(wrapper.emitted('reconcile')).toEqual([['task', '9001']]));
       await wrapper.setProps({
         outcomes: {
           task: { taskId: 'task', status: 'uncertain_finalization', remoteLogId: '9001' },
@@ -82,6 +95,7 @@ describe('SyncExportDialog uncertainty', () => {
       });
       expect(result.text()).toContain(known);
       expect(result.text()).not.toContain(unknown);
+      expect(wrapper.find('[data-testid="remote-sync-existing-log-form"]').exists()).toBe(false);
       expect(
         wrapper.get('[data-testid="remote-sync-export-log-link-task"]').attributes('href'),
       ).toBe('https://tracker.example/time_entries/9001');

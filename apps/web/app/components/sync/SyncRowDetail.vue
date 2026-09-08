@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { RemoteSyncDayEntryDto } from '~~/shared/types/remote-sync-day';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 
@@ -34,6 +35,9 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const extensionLogsErrorKey = computed(() =>
+  Object.values(EXTENSION_ERROR_MESSAGE_KEYS).find((key) => key === remoteLogsErrorKey),
+);
 
 function commentText(log: RemoteTimeLogDto): string {
   const comment = log.comment?.trim();
@@ -123,12 +127,21 @@ function hasRealComment(log: RemoteTimeLogDto): boolean {
         </span>
         <template v-else-if="remoteLogsErrorKey">
           <span role="alert" :data-testid="`remote-sync-remote-logs-error-${taskId}`">
-            {{ t('remoteSync.remoteLogsError') }}
+            {{ t(extensionLogsErrorKey ?? 'remoteSync.remoteLogsError') }}
           </span>
+          <p v-if="extensionLogsErrorKey" class="text-sm text-muted">
+            {{ t('trackers.extensionSetupGuidance') }}
+          </p>
           <UButton
             variant="ghost"
             size="xs"
-            :label="t('remoteSync.remoteLogsRetry')"
+            :label="
+              t(
+                extensionLogsErrorKey
+                  ? 'trackers.extensionRecheckButton'
+                  : 'remoteSync.remoteLogsRetry',
+              )
+            "
             :data-testid="`remote-sync-remote-logs-retry-${taskId}`"
             @click="emit('retryRemoteLogs')"
           />

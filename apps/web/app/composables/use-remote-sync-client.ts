@@ -1,6 +1,10 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import type { RemoteAccount, RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import {
+  RemoteAdapterError,
+  type RemoteAccount,
+  type RemoteTimeLogDto,
+} from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { extractCaughtMessageKey } from '../utils/extract-message-key';
 import { useTrackerSecret } from './use-tracker-secret';
@@ -114,6 +118,35 @@ export function useRemoteSyncClient(config: TrackerDto) {
     return adapter().createTimeEntry(input);
   }
 
+  /** Explicit reconciliation uses fresh data, never the display cache or a new create. */
+  async function validateExistingTimeLog(input: {
+    remoteLogId: string;
+    remoteIssueId: string;
+    spentOn: string;
+    durationSeconds: number;
+    activityId: string;
+    comment?: string;
+  }): Promise<void> {
+    const remote = adapter();
+    const account = await remote.getCurrentAccount();
+    const logs = await remote.fetchTimeLogs({
+      spentOn: input.spentOn,
+      workPackageIds: [input.remoteIssueId],
+      userId: account.id,
+    });
+    const matches = logs.some(
+      (log) =>
+        log.remoteLogId === input.remoteLogId &&
+        log.remoteIssueId === input.remoteIssueId &&
+        log.spentOn === input.spentOn &&
+        log.durationSeconds === input.durationSeconds &&
+        log.activityId === input.activityId &&
+        log.remoteUserId === account.id &&
+        (log.comment ?? '') === (input.comment ?? ''),
+    );
+    if (!matches) throw new RemoteAdapterError('error.remoteExportExistingLogMismatch');
+  }
+
   function invalidateCaches(): void {
     accountCache.value = null;
     logsCache.clear();
@@ -125,6 +158,7 @@ export function useRemoteSyncClient(config: TrackerDto) {
     fetchTimeLogs,
     fetchTimeLogsInRange,
     createTimeEntry,
+    validateExistingTimeLog,
     invalidateCaches,
   };
 }

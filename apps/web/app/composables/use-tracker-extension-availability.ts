@@ -39,8 +39,10 @@ export function useTrackerExtensionAvailability(
   const messageKey = ref('error.extensionUnavailable');
   const checking = computed(() => status.value === 'checking');
   const visible = computed(() => source().executionMode === 'extension');
+  let generation = 0;
 
   async function recheck(): Promise<void> {
+    const requestGeneration = ++generation;
     if (!visible.value) {
       status.value = 'idle';
       return;
@@ -53,16 +55,20 @@ export function useTrackerExtensionAvailability(
     }
 
     status.value = 'checking';
-    const snapshot = source();
+    const snapshot = { ...source() };
     const destination = destinationFrom(snapshot.systemType, snapshot.baseUrl);
     const result = await (options.probe ?? probeExtensionAvailability)({
       isClient: true,
       destination,
     });
-    if (source().executionMode !== 'extension') {
-      status.value = 'idle';
+    const current = source();
+    if (
+      requestGeneration !== generation ||
+      current.executionMode !== snapshot.executionMode ||
+      current.systemType !== snapshot.systemType ||
+      current.baseUrl !== snapshot.baseUrl
+    )
       return;
-    }
     status.value = result.status;
     messageKey.value = result.messageKey;
   }
@@ -75,7 +81,7 @@ export function useTrackerExtensionAvailability(
     () => {
       void recheck();
     },
-    { immediate: true },
+    { immediate: true, flush: 'sync' },
   );
 
   return { status, messageKey, checking, visible, recheck };

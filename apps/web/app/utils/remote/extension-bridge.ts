@@ -65,6 +65,8 @@ export interface ExtensionBridgeOptions {
 
 type OperationInput = OperationRequest['input'];
 
+const HANDSHAKE_TIMEOUT_MS = 2_000;
+
 type BridgeError = RemoteAdapterError | ExtensionProtocolError;
 
 interface PendingOperation {
@@ -159,7 +161,7 @@ export class ExtensionDocumentBridge {
       const timeoutId = (this.options.schedule ?? setTimeout)(() => {
         this.handshakeWaiter = undefined;
         reject(unavailableError());
-      }, this.options.handshakeTimeoutMs ?? EXTENSION_RESOURCE_LIMITS.pageDeadlineMs);
+      }, this.options.handshakeTimeoutMs ?? HANDSHAKE_TIMEOUT_MS);
       this.handshakeWaiter = { resolve, reject, timeoutId };
       const handshake: HandshakeRequest = {
         type: 'handshake',
@@ -249,6 +251,13 @@ export class ExtensionDocumentBridge {
         this.handshakeWaiter = undefined;
         (this.options.unschedule ?? clearTimeout)(waiter.timeoutId);
         waiter.reject(toProtocolError(wire.data));
+        return;
+      }
+      if (value instanceof Object && 'type' in value && value.type === 'handshake-result') {
+        const waiter = this.handshakeWaiter;
+        this.handshakeWaiter = undefined;
+        (this.options.unschedule ?? clearTimeout)(waiter.timeoutId);
+        waiter.reject(toProtocolError(handshake.error));
         return;
       }
     }

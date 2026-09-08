@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRemoteActivities } from '../../app/composables/use-remote-activities';
 import type { TrackerDto } from '../../shared/types/tracker';
+import { ExtensionProtocolError } from '@osi/extension-protocol';
 
 const getActivityOptionsMock = vi.fn();
 const getSecretMock = vi.fn(() => 'secret');
@@ -83,5 +84,23 @@ describe('useRemoteActivities', () => {
     expect(stateFor(config.id, '9').errorKey).toBeNull();
     expect(stateFor(config.id, '9').options).toEqual([{ id: 'a2', name: 'Support' }]);
     expect(getActivityOptionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('preserves extension failures for linked activity UI and clears them on recheck', async () => {
+    getActivityOptionsMock
+      .mockRejectedValueOnce(
+        new ExtensionProtocolError('permission', 'error.extensionDestinationUnapproved'),
+      )
+      .mockResolvedValueOnce([{ id: 'a1', name: 'Development' }]);
+    const { ensureLoaded, retry, stateFor } = useRemoteActivities();
+    const extensionConfig = { ...config, executionMode: 'extension' as const };
+    await ensureLoaded(extensionConfig, '42');
+    expect(stateFor(config.id, '42').errorKey).toBe('error.extensionDestinationUnapproved');
+    await retry(extensionConfig, '42');
+    expect(stateFor(config.id, '42')).toMatchObject({
+      errorKey: null,
+      loading: false,
+      loaded: true,
+    });
   });
 });
