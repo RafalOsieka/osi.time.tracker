@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
-import { defineConfig, type Plugin } from 'vite';
+import { build as viteBuild, defineConfig, type Plugin } from 'vite';
 import { extensionManifest } from './src/manifest.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -19,9 +19,27 @@ function emitManifest(): Plugin {
   };
 }
 
+/** Main `emptyOutDir` wipes content.js; rebuild it after every (watch) bundle. */
+function emitContentScript(): Plugin {
+  let building = false;
+  return {
+    name: 'emit-content-script',
+    apply: 'build',
+    async closeBundle() {
+      if (building) return;
+      building = true;
+      try {
+        await viteBuild({ configFile: resolve(root, 'vite.content.config.ts') });
+      } finally {
+        building = false;
+      }
+    },
+  };
+}
+
 export default defineConfig({
   base: './',
-  plugins: [vue(), emitManifest()],
+  plugins: [vue(), emitManifest(), emitContentScript()],
   build: {
     outDir: 'dist',
     emptyOutDir: true,
