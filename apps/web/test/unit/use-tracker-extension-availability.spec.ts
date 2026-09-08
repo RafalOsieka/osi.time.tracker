@@ -92,6 +92,29 @@ describe('useTrackerExtensionAvailability', () => {
     expect(status.value).toBe('permission');
   });
 
+  it.each(['', '   ', 'not a url', 'ftp://op.example.com'])(
+    'probes without a destination for invalid base URL %j',
+    async (baseUrl) => {
+      const probe = vi.fn().mockResolvedValue({
+        status: 'available',
+        messageKey: 'error.extensionUnavailable',
+      });
+      const source = reactive({
+        executionMode: 'extension',
+        systemType: 'openproject',
+        baseUrl,
+      } satisfies {
+        executionMode: TrackerExecutionMode;
+        systemType: TrackerSystemType;
+        baseUrl: string;
+      });
+      useTrackerExtensionAvailability(() => source, { isClient: true, probe });
+      await nextTick();
+      await Promise.resolve();
+      expect(probe).toHaveBeenCalledWith({ isClient: true, destination: undefined });
+    },
+  );
+
   it('does not probe during SSR', async () => {
     const probe = vi.fn();
     const source = reactive({

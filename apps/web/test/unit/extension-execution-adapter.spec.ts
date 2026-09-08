@@ -17,7 +17,10 @@ import {
 } from '@osi/extension-protocol';
 import { RemoteAdapterError, type JsonValue } from '@osi/remote-trackers/contracts';
 import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapter';
-import { probeExtensionAvailability } from '../../app/utils/remote/extension-availability';
+import {
+  openExtensionBridge,
+  probeExtensionAvailability,
+} from '../../app/utils/remote/extension-availability';
 import type {
   ExtensionBridgeOptions,
   ExtensionChannel,
@@ -278,6 +281,53 @@ describe('probeExtensionAvailability', () => {
       expect(result.messageKey).toBe(EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved);
     },
   );
+
+  it('throws unavailable when no window is available', () => {
+    try {
+      openExtensionBridge();
+      expect.unreachable('expected openExtensionBridge to throw');
+    } catch (err) {
+      expect(err).toBeInstanceOf(ExtensionProtocolError);
+      expect(err).toMatchObject({
+        kind: 'unavailable',
+        messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable,
+      });
+    }
+  });
+
+  it('maps unexpected probe failures to unavailable', async () => {
+    const result = await probeExtensionAvailability({
+      isClient: true,
+      openBridge: () => {
+        throw new Error('boom');
+      },
+    });
+    expect(result).toEqual({
+      status: 'unavailable',
+      messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable,
+    });
+  });
+
+  it.each(['timeout', 'malformed', 'limit'] as const)(
+    'treats handshake %s as unavailable, not a permission failure',
+    async (kind) => {
+      const host = createFakeHost({
+        handshake: () => ({
+          kind,
+          messageKey: EXTENSION_ERROR_MESSAGE_KEYS[kind],
+        }),
+      });
+      const result = await probeExtensionAvailability({
+        isClient: true,
+        openBridge: host.openBridge,
+        destination: { provider: 'openproject', baseUrl: config.baseUrl },
+      });
+      expect(result).toEqual({
+        status: 'unavailable',
+        messageKey: EXTENSION_ERROR_MESSAGE_KEYS[kind],
+      });
+    },
+  );
 });
 
 describe('ExtensionExecutionAdapter', () => {
@@ -484,5 +534,45 @@ describe('ExtensionExecutionAdapter', () => {
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
     });
     expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });
+  });
+});
+
+describe('ExtensionDocumentBridge', () => {
+  it('rejects a second handshake while one is already waiting', async () => {
+    const channel = createLinkedChannel();
+    const bridge = new ExtensionDocumentBridge({
+      window: { location: { origin: 'https://app.example.com' }, postMessage() {} },
+      createChannel: () => channel,
+    });
+    const first = bridge.handshake();
+    await expect(bridge.handshake()).rejects.toMatchObject({
+      kind: 'malformed',
+      messageKey: EXTENSION_ERROR_MESSAGE_KEYS.malformed,
+    });
+    bridge.close();
+    await expect(first).rejects.toMatchObject({ kind: 'unavailable' });
+  });
+
+  it('rejects an in-flight create as unknown-create when closed', async () => {
+    const host = createFakeHost({ operation: () => undefined });
+    const bridge = host.openBridge();
+    await bridge.handshake();
+    const create = bridge.request({
+      operation: 'createTimeEntry',
+      provider: 'openproject',
+      baseUrl: config.baseUrl,
+      secret: 'secret',
+      payload: {
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 1800,
+        activityId: '1',
+      },
+    });
+    bridge.close();
+    await expect(create).rejects.toMatchObject({
+      kind: 'unknown-create',
+      messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
+    });
   });
 });
