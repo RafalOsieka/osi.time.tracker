@@ -224,9 +224,9 @@ export class ExtensionDocumentBridge {
       this.pending.delete(requestId);
     }
     try {
+      this.port.postMessage({ type: 'osi-extension-disconnect' });
+    } finally {
       this.port.close();
-    } catch {
-      // already closed
     }
   }
 

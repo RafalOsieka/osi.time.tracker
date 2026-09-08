@@ -36,9 +36,6 @@ function permissionError(messageKey = EXTENSION_ERROR_MESSAGE_KEYS.destinationUn
  * forwards the seven contract operations through the document bridge.
  */
 export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
-  private bridge: ExtensionDocumentBridge | undefined;
-  private ready: Promise<void> | undefined;
-
   constructor(
     private readonly config: { systemType: TrackerSystemType; baseUrl: string },
     private readonly secret: string | null,
@@ -91,54 +88,33 @@ export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
     return { provider: this.config.systemType, baseUrl: this.config.baseUrl };
   }
 
-  private async ensureReady(): Promise<ExtensionDocumentBridge> {
-    const isClient = this.options.isClient ?? import.meta.client;
-    if (!isClient) throw unavailableError();
-
-    if (!this.ready) {
-      this.ready = this.connect().catch((error) => {
-        this.ready = undefined;
-        throw error;
-      });
-    }
-    await this.ready;
-    if (!this.bridge) throw unavailableError();
-    if (!this.secret) {
-      throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
-    }
-    return this.bridge;
-  }
-
-  private async connect(): Promise<void> {
-    const bridge = (this.options.openBridge ?? openExtensionBridge)(this.options.bridgeOptions);
-    this.bridge = bridge;
-    try {
-      const handshake = await bridge.handshake(this.destination());
-      if (handshake.destinationApproved === false) {
-        throw permissionError();
-      }
-    } catch (error) {
-      bridge.close();
-      this.bridge = undefined;
-      throw error;
-    }
-  }
-
   private async invoke<T>(
     operation: ExtensionOperationName,
     payload: OperationRequest['input'],
   ): Promise<T> {
-    const bridge = await this.ensureReady();
-    // SAFETY: `secret` is checked in ensureReady before any operation is posted.
-    const secret = this.secret as string;
-    const result = await bridge.request({
-      operation,
-      provider: this.config.systemType,
-      baseUrl: this.config.baseUrl,
-      secret,
-      payload,
-    });
-    // SAFETY: protocol result schema for `operation` matches T at each call site.
-    return result as T;
+    const isClient = this.options.isClient ?? import.meta.client;
+    if (!isClient) throw unavailableError();
+
+    const bridge = (this.options.openBridge ?? openExtensionBridge)(this.options.bridgeOptions);
+    try {
+      const handshake = await bridge.handshake(this.destination());
+      if (handshake.destinationApproved !== true) throw permissionError();
+      if (!handshake.supportedOperations.includes(operation)) {
+        throw new ExtensionProtocolError('incompatible', EXTENSION_ERROR_MESSAGE_KEYS.incompatible);
+      }
+      if (!this.secret) throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
+
+      const result = await bridge.request({
+        operation,
+        provider: this.config.systemType,
+        baseUrl: this.config.baseUrl,
+        secret: this.secret,
+        payload,
+      });
+      // SAFETY: protocol result schema for `operation` matches T at each call site.
+      return result as T;
+    } finally {
+      bridge.close();
+    }
   }
 }

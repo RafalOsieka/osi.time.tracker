@@ -26,6 +26,7 @@ export interface ApprovalState {
 export interface ApprovalStore {
   load: () => Promise<ApprovalState>;
   save: (state: ApprovalState) => Promise<void>;
+  subscribe?: (listener: (state: ApprovalState) => void) => () => void;
 }
 
 export interface HostPermissionPort {
@@ -42,6 +43,7 @@ export interface OperationAbortHandle {
 const emptyState: ApprovalState = { websites: [], destinations: [] };
 
 export function createMemoryApprovalStore(initial: ApprovalState = emptyState): ApprovalStore {
+  const listeners = new Set<(state: ApprovalState) => void>();
   let state: ApprovalState = {
     websites: [...initial.websites],
     destinations: [...initial.destinations],
@@ -55,6 +57,13 @@ export function createMemoryApprovalStore(initial: ApprovalState = emptyState): 
       state = {
         websites: [...next.websites],
         destinations: [...next.destinations],
+      };
+      for (const listener of listeners) listener(state);
+    },
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
       };
     },
   };
@@ -102,7 +111,8 @@ function neededPatterns(state: ApprovalState): Set<string> {
 }
 
 export class ApprovalService {
-  private inFlightAborts = new Map<string, OperationAbortHandle[]>();
+  private inFlightAborts = new Map<OperationAbortHandle, DestinationApproval>();
+  private unsubscribe?: () => void;
 
   constructor(
     private readonly store: ApprovalStore,
@@ -162,7 +172,7 @@ export class ApprovalService {
       destinations: state.destinations.filter((item) => item.websiteOrigin !== origin),
     };
     await this.store.save(next);
-    this.abortOrigin(origin);
+    this.abortUnapproved(next);
     await this.reconcilePermissions(next);
   }
 
@@ -173,18 +183,21 @@ export class ApprovalService {
       destinations: state.destinations.filter((item) => !sameDestination(item, approval)),
     };
     await this.store.save(next);
-    this.abortOrigin(approval.origin);
+    this.abortUnapproved(next);
     await this.reconcilePermissions(next);
   }
 
-  registerInFlight(origin: string, handle: OperationAbortHandle): () => void {
-    const current = this.inFlightAborts.get(origin) ?? [];
-    current.push(handle);
-    this.inFlightAborts.set(origin, current);
+  registerInFlight(approval: DestinationApproval, handle: OperationAbortHandle): () => void {
+    if (this.inFlightAborts.size === 0) {
+      this.unsubscribe = this.store.subscribe?.((state) => this.abortUnapproved(state));
+    }
+    this.inFlightAborts.set(handle, approval);
     return () => {
-      const remaining = (this.inFlightAborts.get(origin) ?? []).filter((item) => item !== handle);
-      if (remaining.length === 0) this.inFlightAborts.delete(origin);
-      else this.inFlightAborts.set(origin, remaining);
+      this.inFlightAborts.delete(handle);
+      if (this.inFlightAborts.size === 0) {
+        this.unsubscribe?.();
+        this.unsubscribe = undefined;
+      }
     };
   }
 
@@ -196,6 +209,9 @@ export class ApprovalService {
     const website = canonicalizeWebsiteOrigin(websiteOrigin);
     const destination = canonicalizeDestination(destinationRaw);
     const state = await this.store.load();
+    if (!state.websites.some((item) => item.origin === website.origin)) {
+      throw new CanonicalizationError('error.extensionOriginUnapproved');
+    }
     const match = state.destinations.find(
       (item) =>
         item.websiteOrigin === website.origin &&
@@ -206,8 +222,11 @@ export class ApprovalService {
     if (!match) {
       throw new CanonicalizationError('error.extensionDestinationUnapproved');
     }
-    const hostGranted = await this.permissions.contains(hostMatchPattern(match.origin));
-    if (!hostGranted) {
+    const [hostGranted, websiteGranted] = await Promise.all([
+      this.permissions.contains(hostMatchPattern(match.origin)),
+      this.permissions.contains(hostMatchPattern(website.origin)),
+    ]);
+    if (!hostGranted || !websiteGranted) {
       throw new CanonicalizationError('error.extensionPermissionRequired');
     }
     return match;
@@ -223,10 +242,20 @@ export class ApprovalService {
     }
   }
 
-  private abortOrigin(origin: string): void {
-    const handles = this.inFlightAborts.get(origin) ?? [];
-    this.inFlightAborts.delete(origin);
-    for (const handle of handles) handle.abort();
+  private abortUnapproved(state: ApprovalState): void {
+    for (const [handle, approval] of this.inFlightAborts) {
+      if (
+        state.websites.some((item) => item.origin === approval.websiteOrigin) &&
+        state.destinations.some((item) => sameDestination(item, approval))
+      )
+        continue;
+      this.inFlightAborts.delete(handle);
+      handle.abort();
+    }
+    if (this.inFlightAborts.size === 0) {
+      this.unsubscribe?.();
+      this.unsubscribe = undefined;
+    }
   }
 }
 

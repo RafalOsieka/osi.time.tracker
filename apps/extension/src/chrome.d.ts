@@ -29,6 +29,21 @@ interface ChromeStorageArea {
   set(items: { readonly [key: string]: ChromeJson }): Promise<void>;
 }
 
+interface ChromeStorageChanges {
+  addListener(
+    callback: (
+      changes: { readonly [key: string]: { newValue?: ChromeJson } },
+      area: string,
+    ) => void,
+  ): void;
+  removeListener(
+    callback: (
+      changes: { readonly [key: string]: { newValue?: ChromeJson } },
+      area: string,
+    ) => void,
+  ): void;
+}
+
 interface ChromePermissions {
   contains(permissions: { origins: string[] }): Promise<boolean>;
   request(permissions: { origins: string[] }): Promise<boolean>;
@@ -62,7 +77,7 @@ declare const chrome: {
     openOptionsPage(): void;
     onConnect: { addListener(callback: (port: ChromeRuntimePort) => void): void };
   };
-  storage: { local: ChromeStorageArea };
+  storage: { local: ChromeStorageArea; onChanged: ChromeStorageChanges };
   permissions: ChromePermissions;
   scripting: ChromeScripting;
 };

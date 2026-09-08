@@ -348,6 +348,7 @@
       "statusNotAttempted": "Niepodjęte",
       "remoteLogLink": "Otwórz zdalny wpis {id}",
       "uncertainHint": "Zdalny wpis {id} mógł już powstać. Ponowienie finalizuje ten sam eksport; w razie wątpliwości sprawdź w trackerze.",
+      "unknownCreateHint": "Zdalny wpis mógł już powstać, ale nie otrzymano jego identyfikatora. Ponowienie może utworzyć duplikat. Sprawdź tracker przed potwierdzeniem ponowienia.",
       "unknownCreateRetryTitle": "Ponowić tworzenie zdalnego wpisu?",
       "unknownCreateRetryMessage": "Rozszerzenie nie potwierdziło, czy zdalny wpis powstał. Ponowienie może utworzyć duplikat. Potwierdź dopiero po sprawdzeniu w trackerze.",
       "unknownCreateRetryAccept": "Ponów tworzenie",

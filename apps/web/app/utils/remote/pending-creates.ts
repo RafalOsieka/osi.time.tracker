@@ -7,6 +7,8 @@ export const pendingCreateMarkerSchema = z.object({
   taskId: z.string().min(1),
   spentOn: z.string().min(1),
   exportRequestKey: z.string().min(1),
+  // Older markers still protect their tracker/task/day without entry IDs.
+  entryIds: z.array(z.string().min(1)).optional(),
 });
 
 export type PendingCreateMarker = z.infer<typeof pendingCreateMarkerSchema>;

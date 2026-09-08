@@ -76,7 +76,7 @@ export async function probeExtensionAvailability(
       ...options.bridgeOptions,
     });
     const handshake = await bridge.handshake(options.destination);
-    if (options.destination && handshake.destinationApproved === false) {
+    if (options.destination && handshake.destinationApproved !== true) {
       return {
         status: 'permission',
         messageKey: EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved,

@@ -82,6 +82,43 @@ afterEach(() => {
 });
 
 describe('worker dispatch', () => {
+  it.each(['website', 'destination'] as const)(
+    'aborts active fetch when options revoke a %s without removing a shared host grant',
+    async (scope) => {
+      const store = createMemoryApprovalStore();
+      const permissions = createMemoryHostPermissions();
+      const editor = new ApprovalService(store, permissions);
+      const worker = new ApprovalService(store, permissions);
+      await editor.approveWebsite(website);
+      await editor.approveWebsite('http://localhost:3001');
+      const approval = await editor.approveDestination(website, 'openproject', openProject);
+      await editor.approveDestination('http://localhost:3001', 'openproject', openProject);
+      const started = Promise.withResolvers<AbortSignal>();
+      const fetchImpl = vi.fn(
+        (_input: RequestInfo | URL, init?: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => {
+            const signal = init?.signal;
+            if (!signal) throw new Error('missing abort signal');
+            signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+            started.resolve(signal);
+          }),
+      );
+      const pending = handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals: worker,
+        fetchImpl,
+        value: operationValue('getCurrentAccount', null),
+      });
+      const signal = await started.promise;
+      if (scope === 'website') await editor.revokeWebsite(website);
+      else await editor.revokeDestination(approval);
+      expect(signal.aborted).toBe(true);
+      expect(permissions.granted.has(`${openProject}/*`)).toBe(true);
+      await expect(pending).resolves.toMatchObject({ ok: false });
+      expect(fetchImpl).toHaveBeenCalledOnce();
+    },
+  );
   it('dispatches all seven operations through the shared adapter', async () => {
     const approvals = await approved();
     const seen: string[] = [];

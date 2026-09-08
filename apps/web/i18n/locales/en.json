@@ -348,6 +348,7 @@
       "statusNotAttempted": "Not attempted",
       "remoteLogLink": "Open remote log {id}",
       "uncertainHint": "Remote log {id} may already exist. Retry finalizes the same export; verify in the tracker if unsure.",
+      "unknownCreateHint": "The remote log may already exist, but its ID was not received. Retrying may create a duplicate. Check the tracker before confirming a retry.",
       "unknownCreateRetryTitle": "Retry creating the remote log?",
       "unknownCreateRetryMessage": "The extension did not confirm whether the remote log was created. Retrying may create a duplicate. Confirm only after checking the tracker.",
       "unknownCreateRetryAccept": "Retry create",

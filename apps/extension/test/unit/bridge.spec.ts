@@ -109,6 +109,7 @@ function fakeScripting() {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
 });
 
 describe('content bridge', () => {
@@ -168,6 +169,65 @@ describe('content bridge', () => {
     workerPort.messageListeners[0]?.({ type: 'handshake-result' });
     expect(pagePort.messages).toHaveLength(0);
     expect(workerPort.disconnected).toBe(true);
+  });
+
+  it('consumes page disposal locally and disconnects both ports exactly once', () => {
+    const pagePort = fakePagePort();
+    const workerPort = fakeWorkerPort();
+    const disconnect = vi.spyOn(workerPort, 'disconnect');
+    const close = pipePorts(pagePort, workerPort);
+    const onPageMessage = pagePort.listeners[0];
+    onPageMessage?.({ data: { type: 'osi-extension-disconnect' } });
+    onPageMessage?.({ data: { type: 'handshake' } });
+    workerPort.messageListeners[0]?.({ type: 'handshake-result' });
+    close();
+    expect(disconnect).toHaveBeenCalledOnce();
+    expect(pagePort.closed).toBe(true);
+    expect(pagePort.listeners).toHaveLength(0);
+    expect(workerPort.messages).toEqual([]);
+    expect(pagePort.messages).toEqual([]);
+  });
+
+  it('disposes all content connections on pagehide and allows a restored page to reconnect', async () => {
+    const windowRef = new (class extends EventTarget {
+      location = { origin };
+      get top() {
+        return this;
+      }
+    })();
+    const workerPort = fakeWorkerPort();
+    const disconnect = vi.spyOn(workerPort, 'disconnect');
+    const connect = vi.fn(() => workerPort);
+    vi.stubGlobal('window', windowRef);
+    vi.stubGlobal('chrome', { runtime: { connect } });
+    vi.resetModules();
+    await import('../../src/content.js');
+    const first = fakePagePort();
+    const second = fakePagePort();
+    const connectPage = (pagePort: PagePortLike) => {
+      windowRef.dispatchEvent(
+        Object.assign(new Event('message'), {
+          source: windowRef,
+          origin,
+          data: connectData(),
+          ports: [pagePort],
+        }),
+      );
+    };
+    connectPage(first);
+    connectPage(second);
+    windowRef.dispatchEvent(new Event('pagehide'));
+    expect(first.closed).toBe(true);
+    expect(second.closed).toBe(true);
+    expect(disconnect).toHaveBeenCalledTimes(2);
+    windowRef.dispatchEvent(new Event('pagehide'));
+    expect(disconnect).toHaveBeenCalledTimes(2);
+    const restored = fakePagePort();
+    connectPage(restored);
+    expect(restored.closed).toBe(false);
+    expect(connect).toHaveBeenCalledTimes(3);
+    restored.listeners[0]?.({ data: { type: 'osi-extension-disconnect' } });
+    expect(restored.closed).toBe(true);
   });
 });
 

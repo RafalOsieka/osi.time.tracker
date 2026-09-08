@@ -250,11 +250,12 @@ export async function handleOperation(options: {
       request.provider,
       request.baseUrl,
     );
-    unregister = options.approvals.registerInFlight(approval.origin, {
+    unregister = options.approvals.registerInFlight(approval, {
       abort: () => controller.abort(),
     });
     const transport = createGuardedTransport({
       approval,
+      approvals: options.approvals,
       fetchImpl: options.fetchImpl,
       signal: combined,
     });

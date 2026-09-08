@@ -121,7 +121,7 @@ pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
 pnpm test:e2e       # db + api + ui
 pnpm test:nuxt      # component/integration tests (test/nuxt, nuxt env)
 pnpm test:coverage  # coverage for unit + nuxt projects
-pnpm test:extension # unpacked Chrome/Edge extension browser harness (needs Chromium)
+pnpm test:extension # build extension, run unit + unpacked browser tests (needs Chromium)
 ```
 
 Focus on a single test by name:

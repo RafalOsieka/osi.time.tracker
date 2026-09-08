@@ -17,7 +17,7 @@
     "test:e2e:dev": "pnpm --filter @osi/time-tracker test:e2e:dev",
     "test:nuxt": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/time-tracker test:nuxt",
     "test:coverage": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/time-tracker test:coverage",
-    "test:extension": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/extension build && pnpm --filter @osi/extension test:browser",
+    "test:extension": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/extension build && pnpm --filter @osi/extension test:unit && pnpm --filter @osi/extension test:browser",
     "package:check": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/remote-trackers type-check && pnpm --filter @osi/remote-trackers test && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/extension-protocol type-check && pnpm --filter @osi/extension-protocol test",
     "db:generate": "pnpm --filter @osi/time-tracker db:generate",
     "db:migrate": "pnpm --filter @osi/time-tracker db:migrate",

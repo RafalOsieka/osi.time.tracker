@@ -321,13 +321,14 @@ const inProgress = computed(() =>
               >
                 <div class="grid gap-1">
                   <span class="font-semibold">{{ item.taskName }}</span>
-                  <span>
+                  <span v-if="outcomes[item.taskId]?.remoteLogId">
                     {{
                       t('remoteSync.exportDialog.uncertainHint', {
-                        id: outcomes[item.taskId]?.remoteLogId ?? t('remoteSync.emptyCell'),
+                        id: outcomes[item.taskId]?.remoteLogId,
                       })
                     }}
                   </span>
+                  <span v-else>{{ t('remoteSync.exportDialog.unknownCreateHint') }}</span>
                   <a
                     v-if="remoteLogHref(item.baseUrl, outcomes[item.taskId]?.remoteLogId)"
                     class="text-primary underline"

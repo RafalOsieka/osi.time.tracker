@@ -10,13 +10,18 @@ import {
   type Transport,
 } from '@osi/remote-trackers/contracts';
 import type { ZodType } from 'zod';
-import { destinationAllowsUrl, type DestinationApproval } from '../approvals/approvals.js';
+import {
+  destinationAllowsUrl,
+  type ApprovalService,
+  type DestinationApproval,
+} from '../approvals/approvals.js';
 import { CanonicalizationError, canonicalizeRequestUrl } from '../security/canonicalize.js';
 
 const ALLOWED_HEADERS = new Set(['accept', 'content-type', 'authorization', 'x-redmine-api-key']);
 
 export interface GuardedTransportOptions {
   approval: DestinationApproval;
+  approvals: ApprovalService;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
   maxNetworkCalls?: number;
@@ -37,6 +42,41 @@ function mergeSignals(left?: AbortSignal, right?: AbortSignal): AbortSignal | un
   if (!left) return right;
   if (!right) return left;
   return AbortSignal.any([left, right]);
+}
+
+async function readBoundedBody(
+  response: Response,
+  maxBytes: number,
+  signal?: AbortSignal,
+): Promise<string> {
+  if (!response.body) return '';
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let size = 0;
+  let text = '';
+  const cancel = () => {
+    void reader.cancel().catch(() => {});
+  };
+  signal?.addEventListener('abort', cancel, { once: true });
+  try {
+    signal?.throwIfAborted();
+    while (true) {
+      const { done, value } = await reader.read();
+      signal?.throwIfAborted();
+      if (done) return text + decoder.decode();
+      size += value.byteLength;
+      if (size > maxBytes) {
+        throw new ExtensionProtocolError('limit', EXTENSION_ERROR_MESSAGE_KEYS.limit);
+      }
+      text += decoder.decode(value, { stream: true });
+    }
+  } catch (error) {
+    cancel();
+    throw error;
+  } finally {
+    signal?.removeEventListener('abort', cancel);
+    reader.releaseLock();
+  }
 }
 
 /** Transport that refuses unapproved destinations, redirects, and oversized bodies. */
@@ -71,6 +111,12 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
 
       const timeout = AbortSignal.timeout(timeoutMs);
       const signal = mergeSignals(options.signal, timeout);
+      await options.approvals.authorizedDestination(
+        options.approval.websiteOrigin,
+        options.approval.provider,
+        `${options.approval.origin}${options.approval.basePath}`,
+      );
+      signal?.throwIfAborted();
       let response: Response;
       try {
         response = await fetchImpl(request.url, {
@@ -85,17 +131,13 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
         throw new UpstreamHttpError(0);
       }
 
-      const bytes = new Uint8Array(await response.arrayBuffer());
-      if (bytes.byteLength > maxResponseBytes) {
-        throw new ExtensionProtocolError('limit', EXTENSION_ERROR_MESSAGE_KEYS.limit);
-      }
+      const text = await readBoundedBody(response, maxResponseBytes, signal);
 
       if (!response.ok && response.status !== 403 && response.status !== 404) {
         throw new UpstreamHttpError(response.status);
       }
 
       try {
-        const text = new TextDecoder().decode(bytes);
         const parsed = schema.safeParse(JSON.parse(text));
         return { status: response.status, payload: parsed.success ? parsed.data : null };
       } catch {

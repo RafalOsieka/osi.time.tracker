@@ -14,6 +14,10 @@ function cloneEventData(data: JsonValue): JsonValue | undefined {
 }
 
 if (windowRef && windowRef === windowRef.top) {
+  const connections = new Set<() => void>();
+  windowRef.addEventListener('pagehide', () => {
+    for (const close of connections) close();
+  });
   windowRef.addEventListener('message', (event: MessageEvent<JsonValue>) => {
     const source = event.source;
     if (!(source instanceof Object)) return;
@@ -33,7 +37,12 @@ if (windowRef && windowRef === windowRef.top) {
       },
     );
     if (!pagePort) return;
-    const workerPort = chrome.runtime.connect({ name: WORKER_PORT_NAME });
-    pipePorts(pagePort, workerPort);
+    try {
+      const workerPort = chrome.runtime.connect({ name: WORKER_PORT_NAME });
+      const close = pipePorts(pagePort, workerPort, () => connections.delete(close));
+      connections.add(close);
+    } catch {
+      pagePort.close();
+    }
   });
 }

@@ -68,10 +68,18 @@ export function acceptConnectEvent(
 }
 
 /** Forwards messages until either port disconnects, then drops late replies. */
-export function pipePorts(pagePort: PagePortLike, workerPort: WorkerPortLike): () => void {
+export function pipePorts(
+  pagePort: PagePortLike,
+  workerPort: WorkerPortLike,
+  onClose?: () => void,
+): () => void {
   let closed = false;
   const onPageMessage = (event: { data: JsonValue }) => {
     if (closed) return;
+    if (isConnectEnvelope(event.data) && event.data.type === 'osi-extension-disconnect') {
+      close();
+      return;
+    }
     workerPort.postMessage(event.data);
   };
   const close = () => {
@@ -88,6 +96,7 @@ export function pipePorts(pagePort: PagePortLike, workerPort: WorkerPortLike): (
     } catch {
       // already disconnected
     }
+    onClose?.();
   };
   pagePort.addEventListener('message', onPageMessage);
   workerPort.onMessage.addListener((message) => {

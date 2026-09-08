@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { normalizeBaseUrl } from '@osi/remote-trackers/contracts';
 import {
   ApprovalService,
@@ -105,7 +105,7 @@ describe('extension approvals', () => {
     await approvals.approveWebsite(website);
     const destination = await approvals.approveDestination(website, 'openproject', tracker);
     let aborted = false;
-    approvals.registerInFlight(destination.origin, {
+    approvals.registerInFlight(destination, {
       abort: () => {
         aborted = true;
       },
@@ -134,6 +134,34 @@ describe('extension approvals', () => {
       ),
     ).toBe(false);
   });
+
+  it.each(['website', 'destination'] as const)(
+    'cancels only affected work when another context revokes a %s',
+    async (scope) => {
+      const { approvals: editor, store, permissions } = service();
+      const worker = new ApprovalService(store, permissions);
+      const otherWebsite = 'http://localhost:3001';
+      await editor.approveWebsite(website);
+      await editor.approveWebsite(otherWebsite);
+      const revoked = await editor.approveDestination(website, 'openproject', tracker);
+      const retained = await editor.approveDestination(otherWebsite, 'openproject', tracker);
+      const abortRevoked = vi.fn();
+      const abortRetained = vi.fn();
+      worker.registerInFlight(revoked, { abort: abortRevoked });
+      worker.registerInFlight(retained, { abort: abortRetained });
+
+      if (scope === 'website') await editor.revokeWebsite(website);
+      else await editor.revokeDestination(revoked);
+
+      expect(abortRevoked).toHaveBeenCalledOnce();
+      expect(abortRetained).not.toHaveBeenCalled();
+      expect(permissions.granted.has(hostMatchPattern(revoked.origin))).toBe(true);
+      await expect(worker.authorizedDestination(website, 'openproject', tracker)).rejects.toThrow();
+      await expect(
+        worker.authorizedDestination(otherWebsite, 'openproject', tracker),
+      ).resolves.toEqual(retained);
+    },
+  );
 });
 
 describe('website canonicalization', () => {

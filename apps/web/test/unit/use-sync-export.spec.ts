@@ -352,6 +352,8 @@ describe('useSyncExport', () => {
 
     await runExport([extensionTask('task-ext')]);
     expect(progress.value['task-ext']).toBe('uncertain');
+    expect(outcomes.value['task-ext']?.status).toBe('remote_failure');
+    expect(outcomes.value['task-ext']?.remoteLogId).toBeUndefined();
     expect(outcomes.value['task-ext']?.messageKey).toBe('error.extensionUnknownCreate');
     expect(pending.list()).toHaveLength(1);
     expect(JSON.stringify(pending.list())).not.toContain('secret');
@@ -407,8 +409,86 @@ describe('useSyncExport', () => {
     expect(failPending.list()).toHaveLength(0);
   });
 
+  it.each([
+    { name: 'duration edit', task: { ...extensionTask('task-ext'), durationSeconds: 1800 } },
+    { name: 'selection edit', task: extensionTask('task-ext', ['e2']) },
+    { name: 'client mode', task: taskInput('task-ext') },
+    {
+      name: 'server mode',
+      task: { ...taskInput('task-ext'), config: { ...config, executionMode: 'server' as const } },
+    },
+    {
+      name: 'reassigned overlapping entry',
+      task: taskInput('task-moved', { spentOn: '2026-03-16' }),
+    },
+  ])('blocks $name after an unknown create, including after reload', async ({ task }) => {
+    const pending = memoryPendingCreates();
+    const createTimeEntry = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ExtensionProtocolError('unknown-create', 'error.extensionUnknownCreate'),
+      )
+      .mockResolvedValue({ remoteLogId: 'confirmed' });
+    const finalizeExport = vi.fn().mockResolvedValue({ remoteLogId: 'confirmed', exportId: 'exp' });
+    const confirmUnknownCreateRetry = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    await useSyncExport({ createTimeEntry, finalizeExport, pendingCreates: pending }).runExport([
+      extensionTask('task-ext'),
+    ]);
+    const reloaded = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+      pendingCreates: pending,
+      confirmUnknownCreateRetry,
+    });
+    await reloaded.runExport([task]);
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
+    expect(finalizeExport).not.toHaveBeenCalled();
+    expect(reloaded.progress.value[task.row.taskId]).toBe('uncertain');
+    await reloaded.retryTask(task.row.taskId);
+    expect(confirmUnknownCreateRetry).toHaveBeenCalledTimes(1);
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
+    expect(pending.list()).toHaveLength(1);
+    await reloaded.retryTask(task.row.taskId);
+    expect(createTimeEntry).toHaveBeenCalledTimes(2);
+    expect(finalizeExport).toHaveBeenCalledTimes(1);
+    expect(pending.list()).toHaveLength(0);
+  });
+
+  it('blocks edited exports with legacy markers but leaves unrelated markers alone', async () => {
+    const pending = memoryPendingCreates();
+    pending.add({
+      trackerId: config.id,
+      taskId: 'task-ext',
+      spentOn: '2026-03-15',
+      exportRequestKey: 'legacy',
+    });
+    pending.add({
+      trackerId: 'other',
+      taskId: 'task-ext',
+      spentOn: '2026-03-15',
+      exportRequestKey: 'unrelated',
+    });
+    const createTimeEntry = vi.fn().mockResolvedValue({ remoteLogId: 'confirmed' });
+    const finalizeExport = vi.fn().mockResolvedValue({ remoteLogId: 'confirmed', exportId: 'exp' });
+    const sync = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+      pendingCreates: pending,
+      confirmUnknownCreateRetry: async () => true,
+    });
+    await sync.runExport([taskInput('task-ext', { durationSeconds: 1800, entryIds: ['changed'] })]);
+    expect(createTimeEntry).not.toHaveBeenCalled();
+    await sync.retryTask('task-ext');
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
+    expect(pending.list().map((marker) => marker.exportRequestKey)).toEqual(['unrelated']);
+  });
+
   it('retries known-ID finalization without repeating create', async () => {
     const pending = memoryPendingCreates();
+    const confirmUnknownCreateRetry = vi.fn();
     const createTimeEntry = vi.fn().mockResolvedValue({ remoteLogId: 'keep-me' });
     const finalizeExport = vi
       .fn()
@@ -418,11 +498,15 @@ describe('useSyncExport', () => {
       createTimeEntry,
       finalizeExport,
       pendingCreates: pending,
+      confirmUnknownCreateRetry,
     });
     await runExport([{ ...taskInput('task-u', { entryIds: ['e-u'] }), config: extensionConfig }]);
     expect(createTimeEntry).toHaveBeenCalledTimes(1);
     expect(pending.list()).toHaveLength(0);
     await retryTask('task-u');
     expect(createTimeEntry).toHaveBeenCalledTimes(1);
+    expect(finalizeExport).toHaveBeenCalledTimes(2);
+    expect(finalizeExport.mock.calls[1]?.[0]?.remoteLogId).toBe('keep-me');
+    expect(confirmUnknownCreateRetry).not.toHaveBeenCalled();
   });
 });

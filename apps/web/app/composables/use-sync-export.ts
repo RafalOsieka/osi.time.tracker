@@ -113,6 +113,17 @@ export function useSyncExport(options: {
     });
   }
 
+  function pendingCreatesFor(task: SyncExportTaskInput) {
+    return pendingCreates
+      .list()
+      .filter(
+        (marker) =>
+          marker.trackerId === task.config.id &&
+          ((marker.taskId === task.row.taskId && marker.spentOn === task.spentOn) ||
+            marker.entryIds?.some((id) => task.entryIds.includes(id))),
+      );
+  }
+
   async function runSingleTask(task: SyncExportTaskInput): Promise<void> {
     const { row, config, remoteIssueId, activityId, durationSeconds, entryIds, spentOn } = task;
     const comment = resolveExportComment(task.comment, row.taskName);
@@ -122,11 +133,11 @@ export function useSyncExport(options: {
     let remoteLogId = knownRemoteLogId;
     const trackPending = config.executionMode === 'extension';
 
-    if (!remoteLogId && trackPending && pendingCreates.has(exportRequestKey)) {
+    if (!remoteLogId && pendingCreatesFor(task).length > 0) {
       setProgress(row.taskId, 'uncertain');
       setOutcome({
         taskId: row.taskId,
-        status: 'uncertain_finalization',
+        status: 'remote_failure',
         messageKey: 'error.extensionUnknownCreate',
       });
       return;
@@ -140,6 +151,7 @@ export function useSyncExport(options: {
           taskId: row.taskId,
           spentOn,
           exportRequestKey,
+          entryIds,
         });
       }
       try {
@@ -161,7 +173,7 @@ export function useSyncExport(options: {
           setProgress(row.taskId, 'uncertain');
           setOutcome({
             taskId: row.taskId,
-            status: 'uncertain_finalization',
+            status: 'remote_failure',
             messageKey: err.messageKey,
           });
           return;
@@ -252,18 +264,16 @@ export function useSyncExport(options: {
 
     isRunning.value = true;
     stopRequested.value = false;
-    const exportRequestKey = buildKey(task);
-    const hasPendingCreate =
-      task.config.executionMode === 'extension' &&
-      !knownRemoteLogIds.value[task.row.taskId] &&
-      pendingCreates.has(exportRequestKey);
-    if (hasPendingCreate) {
+    const unresolvedCreates = pendingCreatesFor(task);
+    if (!knownRemoteLogIds.value[task.row.taskId] && unresolvedCreates.length > 0) {
       const confirmed = (await options.confirmUnknownCreateRetry?.()) ?? false;
       if (!confirmed) {
         isRunning.value = false;
         return;
       }
-      pendingCreates.remove(exportRequestKey);
+      for (const marker of unresolvedCreates) {
+        pendingCreates.remove(marker.exportRequestKey);
+      }
     }
     // Do not flip to `queued` here: report-phase groups only list terminal statuses, so
     // a queued marker would hide the row until the attempt finishes. runSingleTask sets

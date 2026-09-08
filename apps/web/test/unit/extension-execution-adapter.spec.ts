@@ -263,21 +263,60 @@ describe('probeExtensionAvailability', () => {
     });
   });
 
-  it('treats an unapproved destination as permission-required', async () => {
-    const host = createFakeHost({
-      handshake: () => ({ ...defaultHandshake(), destinationApproved: false }),
-    });
-    const result = await probeExtensionAvailability({
-      isClient: true,
-      openBridge: host.openBridge,
-      destination: { provider: 'openproject', baseUrl: config.baseUrl },
-    });
-    expect(result.status).toBe('permission');
-    expect(result.messageKey).toBe(EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved);
-  });
+  it.each([false, undefined])(
+    'requires explicit destination approval: %s',
+    async (destinationApproved) => {
+      const host = createFakeHost({
+        handshake: () => ({ ...defaultHandshake(), destinationApproved }),
+      });
+      const result = await probeExtensionAvailability({
+        isClient: true,
+        openBridge: host.openBridge,
+        destination: { provider: 'openproject', baseUrl: config.baseUrl },
+      });
+      expect(result.status).toBe('permission');
+      expect(result.messageKey).toBe(EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved);
+    },
+  );
 });
 
 describe('ExtensionExecutionAdapter', () => {
+  it.each([
+    { ...defaultHandshake(), destinationApproved: undefined },
+    { ...defaultHandshake(), destinationApproved: false },
+    { ...defaultHandshake(), supportedOperations: ['searchIssues'] } satisfies HandshakeResult,
+  ])('does not transmit credentials without approval and capability: %j', async (handshake) => {
+    const host = createFakeHost({ handshake: () => handshake });
+    const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+    });
+    await expect(adapter.getCurrentAccount()).rejects.toMatchObject({
+      kind: handshake.destinationApproved === true ? 'incompatible' : 'permission',
+    });
+    expect(JSON.stringify(host.portMessages)).not.toContain('top-secret');
+    expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });
+  });
+
+  it('disposes each concurrent operation bridge and each availability probe', async () => {
+    const host = createFakeHost();
+    const adapter = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+    });
+    await Promise.all([adapter.getCurrentAccount(), adapter.searchIssues('login')]);
+    await probeExtensionAvailability({ isClient: true, openBridge: host.openBridge });
+    expect(host.connectMessages).toHaveLength(3);
+    expect(
+      host.portMessages.filter(
+        (message) =>
+          message instanceof Object &&
+          'type' in message &&
+          message.type === 'osi-extension-disconnect',
+      ),
+    ).toHaveLength(3);
+  });
+
   it('handshakes without a secret, then runs all seven operations', async () => {
     const host = createFakeHost();
     const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
@@ -345,6 +384,7 @@ describe('ExtensionExecutionAdapter', () => {
       messageKey: 'error.remoteServerModeAuthRejected',
       status: 401,
     });
+    expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });
   });
 
   it('does not post an operation when the secret is missing after handshake', async () => {
@@ -354,6 +394,7 @@ describe('ExtensionExecutionAdapter', () => {
       openBridge: host.openBridge,
     });
     await expect(adapter.searchIssues('login')).rejects.toBeInstanceOf(RemoteAdapterError);
+    expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });
     expect(
       host.portMessages.some((message) => operationRequestSchema.safeParse(message).success),
     ).toBe(false);
@@ -393,5 +434,6 @@ describe('ExtensionExecutionAdapter', () => {
       kind: 'unknown-create',
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
     });
+    expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });
   });
 });

@@ -148,14 +148,14 @@ jobs:
           node-version: 25
           cache: pnpm
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install extension dependencies without Nuxt prepare
+        run: pnpm --filter @osi/extension... --ignore-scripts --frozen-lockfile install
 
       - name: Install Playwright Chromium
         run: pnpm --filter @osi/extension exec playwright install --with-deps chromium
 
       - name: Run extension unit and browser tests
-        run: pnpm --filter @osi/extension test:unit && pnpm test:extension
+        run: pnpm test:extension
 
   nuxt:
     runs-on: ubuntu-latest
