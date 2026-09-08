@@ -28,15 +28,15 @@
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
-    "@oxlint/plugins": "^1.81.0",
+    "@oxlint/plugins": "^1.82.0",
     "@typescript-eslint/parser": "^8.69.0",
     "concurrently": "^9.2.4",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-oxlint": "^1.81.0",
+    "eslint-plugin-oxlint": "^1.82.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
     "oxfmt": "^0.66.0",
-    "oxlint": "^1.81.0",
+    "oxlint": "^1.82.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   },
@@ -50,5 +50,5 @@
     "node": ">=24",
     "pnpm": "^12"
   },
-  "packageManager": "pnpm@12.3.0"
+  "packageManager": "pnpm@12.3.4"
 }

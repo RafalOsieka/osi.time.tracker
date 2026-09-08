@@ -22,7 +22,7 @@
     "db:migrate": "tsx server/db/migrate.ts"
   },
   "dependencies": {
-    "@nuxt/ui": "^4.11.0",
+    "@nuxt/ui": "^4.11.1",
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
     "drizzle-orm": "^0.45.2",
@@ -37,12 +37,12 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.129",
+    "@iconify-json/lucide": "^1.2.130",
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/schema": "^4.5.2",
-    "@nuxt/test-utils": "^4.2.0",
+    "@nuxt/test-utils": "^4.3.1",
     "@nuxtjs/i18n": "^10.6.0",
-    "@types/node": "^26.4.1",
+    "@types/node": "^26.5.0",
     "@vitest/coverage-v8": "4.1.11",
     "@vue/test-utils": "^2.5.0",
     "c8": "^12.0.0",
