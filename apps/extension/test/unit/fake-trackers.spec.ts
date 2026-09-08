@@ -30,6 +30,8 @@ describe('no-CORS fake trackers', () => {
       _type: 'Root',
       instanceName: 'fake-openproject',
     });
-    expect(await redmineResponse.json()).toEqual({ user: { id: 1, login: 'ada' } });
+    expect(await redmineResponse.json()).toEqual({
+      user: { id: 7, firstname: 'Ada', lastname: 'Lovelace', login: 'ada' },
+    });
   });
 });

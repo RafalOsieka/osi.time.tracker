@@ -185,6 +185,17 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.waitForSelector('[data-testid="tracker-extension-status"]');
     expect(await page.locator('[data-testid="tracker-extension-setup-guidance"]').count()).toBe(1);
     expect(await page.locator('[data-testid="tracker-extension-recheck"]').count()).toBe(1);
+    await page.waitForFunction(() =>
+      /not available|niedostępne/i.test(
+        document.querySelector('[data-testid="tracker-extension-status-text"]')?.textContent ?? '',
+      ),
+    );
+    await page.click('[data-testid="tracker-extension-recheck"]');
+    await page.waitForFunction(() =>
+      /not available|niedostępne/i.test(
+        document.querySelector('[data-testid="tracker-extension-status-text"]')?.textContent ?? '',
+      ),
+    );
     await page.click('[data-testid="save-button"]');
     await page.waitForSelector('[data-testid="tracker-dialog"]', { state: 'hidden' });
     await page.waitForFunction((name) => document.body.textContent?.includes(name), trackerName);
