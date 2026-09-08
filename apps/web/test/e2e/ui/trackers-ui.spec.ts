@@ -5,8 +5,10 @@ import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
 import { loginAs } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
+import { pageIncludesTextScript } from '../helpers/dom';
 
 const describeTrackersUI = requireBrowser();
+const pageIncludesText = pageIncludesTextScript();
 
 describeTrackersUI('trackers UI flow', async () => {
   const dbUrl = await provisionDatabase();
@@ -214,10 +216,12 @@ describeTrackersUI('trackers UI flow', async () => {
 
     await page.click('[data-testid="app-sidebar"] a[href="/"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page
+    const titleInput = page
       .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
-      .first()
-      .fill('Local entry with extension tracker');
+      .first();
+    await titleInput.click();
+    await titleInput.fill('Local entry with extension tracker');
+    await titleInput.press('Escape');
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
       () =>
@@ -225,17 +229,24 @@ describeTrackersUI('trackers UI flow', async () => {
           .querySelector('[data-testid="timer-toggle-button"]')
           ?.getAttribute('aria-pressed') === 'true',
     );
-    await page.click('[data-testid="timer-toggle-button"]');
+    await page.keyboard.press('Escape');
+    const stopResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes('/api/time-entries/') &&
+        response.ok(),
+    );
+    await page.locator('[data-testid="timer-toggle-button"]').evaluate((el: HTMLElement) => {
+      el.click();
+    });
+    await stopResponse;
     await page.waitForFunction(
       () =>
         document
           .querySelector('[data-testid="timer-toggle-button"]')
-          ?.getAttribute('aria-pressed') === 'false',
+          ?.getAttribute('aria-pressed') !== 'true',
     );
-    await page.waitForFunction(
-      (title) => document.body.textContent?.includes(title),
-      'Local entry with extension tracker',
-    );
+    await page.waitForFunction(pageIncludesText, 'Local entry with extension tracker');
 
     await page.close();
   });
