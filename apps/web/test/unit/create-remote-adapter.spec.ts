@@ -31,4 +31,10 @@ describe('createRemoteAdapter', () => {
     const adapter = createRemoteAdapter({ ...baseConfig, executionMode: 'server' }, 'secret');
     expect(adapter).toBeInstanceOf(ServerExecutionAdapter);
   });
+
+  it('does not fall back to client or server adapters for extension mode', () => {
+    expect(() =>
+      createRemoteAdapter({ ...baseConfig, executionMode: 'extension' }, 'secret'),
+    ).toThrow();
+  });
 });

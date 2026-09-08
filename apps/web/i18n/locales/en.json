@@ -83,6 +83,7 @@
     "executionModeLabel": "Execution mode",
     "executionModeClient": "Client (browser -> remote system)",
     "executionModeServer": "Server (browser -> server -> remote system)",
+    "executionModeExtension": "Extension (browser -> desktop extension -> remote system)",
     "roundingRuleLabel": "Rounding rule",
     "secretLabel": "API key",
     "secretPlaceholder": "Stored only in this browser",
@@ -444,6 +445,7 @@
     "remoteTimeLogsFetchFailed": "Remote time logs could not be loaded. Please try again.",
     "remoteExportCreateFailed": "The remote time log could not be created. Please try again.",
     "remoteServerModeOriginRejected": "The request target is not allowed for this tracker.",
+    "extensionUnavailable": "The OSI extension is not available for this tracker action.",
     "reportMonthInvalid": "Enter a valid month."
   },
   "errors": {

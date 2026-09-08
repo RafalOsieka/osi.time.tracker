@@ -3,6 +3,42 @@
     "name": "OSI Time Tracker",
     "optionsTitle": "Konfiguracja rozszerzenia",
     "popupTitle": "Status rozszerzenia",
-    "statusReady": "Rozszerzenie jest załadowane. Otwórz Opcje, aby zatwierdzić witrynę i miejsce docelowe trackera."
+    "statusReady": "Rozszerzenie jest załadowane. Otwórz Opcje, aby zatwierdzić witrynę i miejsce docelowe trackera.",
+    "openOptions": "Otwórz konfigurację",
+    "language": "Język",
+    "languageEn": "angielski",
+    "languagePl": "polski",
+    "refreshHint": "Odśwież otwarte karty OSI po zmianie zatwierdzeń witryn."
+  },
+  "approvals": {
+    "websitesTitle": "Zatwierdzone witryny",
+    "websiteOrigin": "Origin witryny",
+    "addWebsite": "Zatwierdź witrynę",
+    "revokeWebsite": "Cofnij witrynę",
+    "noWebsites": "Nie zatwierdzono jeszcze żadnej witryny.",
+    "destinationsTitle": "Zatwierdzone trackery",
+    "website": "Witryna",
+    "provider": "Dostawca",
+    "destinationUrl": "Adres trackera",
+    "addDestination": "Zatwierdź tracker",
+    "revokeDestination": "Cofnij tracker",
+    "noDestinations": "Nie zatwierdzono jeszcze żadnego trackera.",
+    "httpWarning": "Adresy HTTP wysyłają dane uwierzytelniające trackera bez szyfrowania. Preferuj HTTPS, chyba że to środowisko lokalne.",
+    "openproject": "OpenProject",
+    "redmine": "Redmine",
+    "saved": "Zatwierdzenie zapisane.",
+    "revoked": "Zatwierdzenie cofnięte.",
+    "denied": "Odmówiono uprawnienia. Nie zapisano zatwierdzenia."
+  },
+  "error": {
+    "extensionUnavailable": "Rozszerzenie OSI jest niedostępne w tej przeglądarce.",
+    "extensionIncompatible": "Ta witryna wymaga nowszej wersji rozszerzenia OSI.",
+    "extensionPermissionRequired": "Rozszerzenie potrzebuje uprawnienia do tej witryny lub trackera.",
+    "extensionUnknownCreate": "Wpis czasu może już istnieć w trackerze. Potwierdź przed ponowieniem.",
+    "extensionMalformed": "Rozszerzenie odrzuciło nieprawidłową wiadomość.",
+    "extensionTimeout": "Żądanie do rozszerzenia przekroczyło limit czasu.",
+    "extensionLimitExceeded": "Rozszerzenie zatrzymało żądanie, ponieważ osiągnięto limit bezpieczeństwa.",
+    "extensionDestinationUnapproved": "To miejsce docelowe trackera nie jest zatwierdzone.",
+    "extensionOriginUnapproved": "Ta witryna nie jest zatwierdzona do użycia rozszerzenia."
   }
 }

@@ -3,6 +3,42 @@
     "name": "OSI Time Tracker",
     "optionsTitle": "Extension setup",
     "popupTitle": "Extension status",
-    "statusReady": "Extension is loaded. Open Options to approve a website and tracker destination."
+    "statusReady": "Extension is loaded. Open Options to approve a website and tracker destination.",
+    "openOptions": "Open setup",
+    "language": "Language",
+    "languageEn": "English",
+    "languagePl": "Polish",
+    "refreshHint": "Refresh existing OSI tabs after changing website approvals."
+  },
+  "approvals": {
+    "websitesTitle": "Approved websites",
+    "websiteOrigin": "Website origin",
+    "addWebsite": "Approve website",
+    "revokeWebsite": "Revoke website",
+    "noWebsites": "No websites approved yet.",
+    "destinationsTitle": "Approved trackers",
+    "website": "Website",
+    "provider": "Provider",
+    "destinationUrl": "Tracker URL",
+    "addDestination": "Approve tracker",
+    "revokeDestination": "Revoke tracker",
+    "noDestinations": "No tracker destinations approved yet.",
+    "httpWarning": "HTTP destinations send tracker credentials without encryption. Prefer HTTPS unless this is local development.",
+    "openproject": "OpenProject",
+    "redmine": "Redmine",
+    "saved": "Approval saved.",
+    "revoked": "Approval revoked.",
+    "denied": "Permission was denied. No approval was saved."
+  },
+  "error": {
+    "extensionUnavailable": "The OSI extension is not available in this browser.",
+    "extensionIncompatible": "This website needs a newer OSI extension.",
+    "extensionPermissionRequired": "The extension needs permission for this site or tracker.",
+    "extensionUnknownCreate": "The time entry may already exist on the tracker. Confirm before retrying.",
+    "extensionMalformed": "The extension rejected an invalid message.",
+    "extensionTimeout": "The extension request timed out.",
+    "extensionLimitExceeded": "The extension stopped the request because a safety limit was reached.",
+    "extensionDestinationUnapproved": "This tracker destination is not approved.",
+    "extensionOriginUnapproved": "This website is not approved to use the extension."
   }
 }

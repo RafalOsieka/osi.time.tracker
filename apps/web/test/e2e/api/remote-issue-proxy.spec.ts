@@ -171,6 +171,28 @@ describeRemoteProxy('remote issue proxy API integration', async () => {
     expect((await foreignRes.json())?.data?.messageKey).toBe('error.notFound');
   });
 
+  it('rejects extension-mode trackers without contacting the fake tracker', async () => {
+    const alice = await seedAndLogin(dbUrl);
+    const before = tracker.server.listening;
+    expect(before).toBe(true);
+    const config = await createTracker(alice.jar, alice.token, 'Extension Tracker ' + Date.now(), {
+      executionMode: 'extension',
+      baseUrl: tracker.baseUrl,
+    });
+    const res = await fetch(url('/api/remote/search'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': alice.token,
+        cookie: alice.jar.header(),
+        [REMOTE_SECRET_HEADER]: 'good-secret',
+      },
+      body: JSON.stringify({ trackerId: config.id, mode: 'title', query: 'login bug' }),
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json())?.data?.messageKey).toBe('error.extensionUnavailable');
+  });
+
   it('3.8 unauthenticated, missing CSRF, and cross-user config are rejected without contacting upstream', async () => {
     const alice = await seedAndLogin(dbUrl);
     const bob = await seedAndLogin(dbUrl);

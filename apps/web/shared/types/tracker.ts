@@ -4,9 +4,9 @@ import { trackerSystemTypeSchema, type TrackerSystemType } from '@osi/remote-tra
 /**
  * Selects the execution mode: `client` (default) sends remote requests
  * directly from the browser to the tracker; `server` routes them through
- * the OSI server, which forwards them to the tracker (no CORS involved).
+ * the OSI server; `extension` routes them through the desktop extension.
  */
-export const trackerExecutionModeSchema = z.enum(['client', 'server'], {
+export const trackerExecutionModeSchema = z.enum(['client', 'server', 'extension'], {
   error: 'error.trackerExecutionModeRequired',
 });
 
@@ -16,6 +16,7 @@ export type TrackerExecutionMode = z.infer<typeof trackerExecutionModeSchema>;
 export const TRACKER_EXECUTION_MODE_ORDER = [
   'client',
   'server',
+  'extension',
 ] as const satisfies readonly TrackerExecutionMode[];
 
 /**

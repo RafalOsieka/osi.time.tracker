@@ -83,6 +83,7 @@
     "executionModeLabel": "Tryb wykonania",
     "executionModeClient": "Klient (przeglądarka -> zdalny system)",
     "executionModeServer": "Serwer (przeglądarka -> serwer -> zdalny system)",
+    "executionModeExtension": "Rozszerzenie (przeglądarka -> rozszerzenie pulpitu -> zdalny system)",
     "roundingRuleLabel": "Reguła zaokrąglania",
     "secretLabel": "Klucz API",
     "secretPlaceholder": "Przechowywany tylko w tej przeglądarce",
@@ -444,6 +445,7 @@
     "remoteTimeLogsFetchFailed": "Nie udało się wczytać zdalnych wpisów czasu. Spróbuj ponownie.",
     "remoteExportCreateFailed": "Nie udało się utworzyć zdalnego wpisu czasu. Spróbuj ponownie.",
     "remoteServerModeOriginRejected": "Cel żądania nie jest dozwolony dla tego trackera.",
+    "extensionUnavailable": "Rozszerzenie OSI jest niedostępne dla tej akcji trackera.",
     "reportMonthInvalid": "Wprowadź prawidłowy miesiąc."
   },
   "errors": {

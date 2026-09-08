@@ -1,6 +1,13 @@
-import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter } from '@osi/remote-trackers/redmine';
-import { createProviderAdapter } from './providers.js';
+import { ApprovalService } from './approvals/approvals.js';
+import {
+  createChromeApprovalStore,
+  createChromeHostPermissions,
+} from './approvals/chrome-store.js';
+import { listenForChromePorts } from './worker/ports.js';
 
-export { EXTENSION_PROTOCOL_VERSION, OpenProjectAdapter, RedmineAdapter, createProviderAdapter };
+const approvals = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
+
+listenForChromePorts({
+  extensionId: chrome.runtime.id,
+  approvals,
+});

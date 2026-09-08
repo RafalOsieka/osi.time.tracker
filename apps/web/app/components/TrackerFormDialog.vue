@@ -39,6 +39,7 @@ const roundingRuleItems = computed(() =>
 const executionModeLabelKeys = {
   client: 'trackers.executionModeClient',
   server: 'trackers.executionModeServer',
+  extension: 'trackers.executionModeExtension',
 } as const satisfies Record<TrackerExecutionMode, string>;
 const executionModeItems = computed(() =>
   TRACKER_EXECUTION_MODE_ORDER.map((value) => ({

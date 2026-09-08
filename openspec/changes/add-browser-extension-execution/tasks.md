@@ -12,19 +12,19 @@
 - [x] 2.2 Add unit tests for allow/deny, differing ports/providers/paths, denied browser permission, shared host grants, startup reconciliation, and revocation during an operation; run the approval suite for 2.1.
 - [x] 2.3 Implement the guarded provider transport with URL/path/method/header checks, no redirects or ambient cookies, response-byte limits, deadlines, and cancellation; verify it satisfies the shared transport contract.
 - [x] 2.4 Add transport tests for normal responses, mounted base paths, encoded traversal, malicious response-derived URLs, redirects, auth rejection, unreachable hosts, and resource bounds; assert forbidden destinations receive zero requests and secrets never enter errors (2.3).
-- [ ] 2.5 Implement internal runtime-port sender/document validation and dispatch all seven operations through shared providers, with per-document limits and transient credentials; verify worker type-check and no duplicated provider logic.
-- [ ] 2.6 Add worker unit tests for both providers' operation dispatch, unapproved/foreign/frame senders, secret hygiene, in-flight limits, port disposal, and worker-restart failure; run tests for 2.5 including no automatic create replay.
+- [x] 2.5 Implement internal runtime-port sender/document validation and dispatch all seven operations through shared providers, with per-document limits and transient credentials; verify worker type-check and no duplicated provider logic.
+- [x] 2.6 Add worker unit tests for both providers' operation dispatch, unapproved/foreign/frame senders, secret hygiene, in-flight limits, port disposal, and worker-restart failure; run tests for 2.5 including no automatic create replay.
 
 ## 3. Extension frontend and bridge
 
-- [ ] 3.1 Implement the isolated content bridge and credential-free page handshake using document-bound ports and validated messages; verify its standalone build and browser registration.
-- [ ] 3.2 Add bridge unit tests for exact origin/source checks, iframe rejection, incompatible handshake, request correlation, late replies, timeout, and disconnect cleanup; run tests for 3.1.
-- [ ] 3.3 Add extension-owned website/tracker approval and revocation UI with English/Polish catalog parity, HTTP warning, and keyboard-accessible status/error feedback; verify component rendering and type-check.
-- [ ] 3.4 Add real-extension browser journeys for approval, denied permission, revocation, settings reload, and keyboard navigation/localization; verify 3.3 and that website-origin requests cannot auto-approve destinations.
+- [x] 3.1 Implement the isolated content bridge and credential-free page handshake using document-bound ports and validated messages; verify its standalone build and browser registration.
+- [x] 3.2 Add bridge unit tests for exact origin/source checks, iframe rejection, incompatible handshake, request correlation, late replies, timeout, and disconnect cleanup; run tests for 3.1.
+- [x] 3.3 Add extension-owned website/tracker approval and revocation UI with English/Polish catalog parity, HTTP warning, and keyboard-accessible status/error feedback; verify component rendering and type-check.
+- [x] 3.4 Add real-extension browser journeys for approval, denied permission, revocation, settings reload, and keyboard navigation/localization; verify 3.3 and that website-origin requests cannot auto-approve destinations.
 
 ## 4. Web backend and tracker persistence
 
-- [ ] 4.1 Extend the web-owned tracker mode schema/order to accept `extension`, preserving default `client`, storage shape, and existing input rules; run schema tests and verify no SQL migration is generated or needed.
+- [x] 4.1 Extend the web-owned tracker mode schema/order to accept `extension`, preserving default `client`, storage shape, and existing input rules; run schema tests and verify no SQL migration is generated or needed.
 - [ ] 4.2 Add tracker API integration coverage for extension create/update/read, absent-mode default, unknown-mode rejection, and cross-user rejection; run tests proving 4.1 without any extension installation.
 - [ ] 4.3 Add or tighten owned-mode checks across OSI remote endpoints so extension configurations never cause upstream execution; verify authentication/ownership still resolve first and existing server delegation remains unchanged.
 - [ ] 4.4 Extend remote proxy API integration suites with successful server-mode calls and extension-mode rejection for each operation family; assert zero upstream calls on rejection and retain unauthenticated/error coverage for 4.3.

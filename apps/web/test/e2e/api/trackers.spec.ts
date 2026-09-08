@@ -164,6 +164,33 @@ describeTrackers('trackers API integration', async () => {
     expect(serverBody.executionMode).toBe('server');
     expect(serverBody.roundingRule).toBe('nearest_30m');
 
+    const extensionRes = await fetch(url('/api/trackers'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(
+        trackerBody('Extension Mode Tracker', {
+          executionMode: 'extension',
+          baseUrl: 'https://extension.example.com',
+        }),
+      ),
+    });
+    expect(extensionRes.status).toBe(200);
+    const extensionBody = await extensionRes.json();
+    expect(extensionBody.executionMode).toBe('extension');
+
+    const patchExtension = await fetch(url(`/api/trackers/${extensionBody.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(
+        trackerBody(extensionBody.name, {
+          executionMode: 'extension',
+          baseUrl: 'https://extension.example.com',
+        }),
+      ),
+    });
+    expect(patchExtension.status).toBe(200);
+    expect((await patchExtension.json()).executionMode).toBe('extension');
+
     const invalidMode = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },

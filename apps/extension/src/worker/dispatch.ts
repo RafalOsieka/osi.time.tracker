@@ -17,13 +17,28 @@ import {
   RemoteAdapterError,
   type JsonValue,
   type RemoteTrackerAdapter,
+  type TrackerSystemType,
+  type Transport,
 } from '@osi/remote-trackers/contracts';
 import { CanonicalizationError } from '../security/canonicalize.js';
 import { ApprovalService } from '../approvals/approvals.js';
 import { createProviderAdapter } from '../providers.js';
 import { createGuardedTransport } from '../transport/guarded-transport.js';
+import { documentKey, isTrustedDocumentSender, type RuntimeSender } from './sender.js';
+
+export type CreateProviderAdapter = (
+  provider: TrackerSystemType,
+  transport: Transport,
+  baseUrl: string,
+  secret: string,
+) => RemoteTrackerAdapter;
 
 const inFlightByDocument = new Map<string, number>();
+
+const permissionError: SafeWireError = {
+  kind: 'permission',
+  messageKey: EXTENSION_ERROR_MESSAGE_KEYS.originUnapproved,
+};
 
 function toWireError(
   error: RemoteAdapterError | ExtensionProtocolError | CanonicalizationError,
@@ -141,24 +156,40 @@ async function executeOperation(
   }
 }
 
-export async function handleHandshake(
-  senderOrigin: string,
-  value: JsonValue,
-  approvals: ApprovalService,
-): Promise<HandshakeResult | SafeWireError> {
-  const parsed = parseHandshakeRequest(value);
-  if (!parsed.success) return parsed.error;
+async function approvedOrigins(approvals: ApprovalService): Promise<string[]> {
   const listed = await approvals.list();
-  if (!listed.websites.some((item) => item.origin === senderOrigin)) {
-    return {
-      kind: 'permission',
-      messageKey: EXTENSION_ERROR_MESSAGE_KEYS.originUnapproved,
-    };
+  return listed.websites.map((item) => item.origin);
+}
+
+function isCreateAborted(
+  request: OperationRequest,
+  controller: AbortController,
+  signal?: AbortSignal,
+): boolean {
+  return (
+    request.operation === 'createTimeEntry' &&
+    (controller.signal.aborted || Boolean(signal?.aborted))
+  );
+}
+
+export async function handleHandshake(options: {
+  sender: RuntimeSender;
+  expectedExtensionId: string;
+  value: JsonValue;
+  approvals: ApprovalService;
+}): Promise<HandshakeResult | SafeWireError> {
+  const parsed = parseHandshakeRequest(options.value);
+  if (!parsed.success) return parsed.error;
+  const origins = await approvedOrigins(options.approvals);
+  if (!isTrustedDocumentSender(options.sender, options.expectedExtensionId, origins)) {
+    return permissionError;
   }
+  const senderOrigin = options.sender.origin;
+  if (!senderOrigin) return permissionError;
   let destinationApproved: boolean | undefined;
   if (parsed.data.destination) {
     try {
-      await approvals.authorizedDestination(
+      await options.approvals.authorizedDestination(
         senderOrigin,
         parsed.data.destination.provider,
         parsed.data.destination.baseUrl,
@@ -177,28 +208,45 @@ export async function handleHandshake(
 }
 
 export async function handleOperation(options: {
-  senderOrigin: string;
+  sender: RuntimeSender;
+  expectedExtensionId: string;
   value: JsonValue;
   approvals: ApprovalService;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
+  createAdapter?: CreateProviderAdapter;
+  operationTimeoutMs?: number;
 }): Promise<OperationResult | SafeWireError> {
   const parsed = parseOperationRequest(options.value);
   if (!parsed.success) return parsed.error;
   const request = parsed.data;
-  const current = inFlightByDocument.get(options.senderOrigin) ?? 0;
+  const origins = await approvedOrigins(options.approvals);
+  if (!isTrustedDocumentSender(options.sender, options.expectedExtensionId, origins)) {
+    return failure(request, permissionError);
+  }
+  const senderOrigin = options.sender.origin;
+  if (!senderOrigin) return failure(request, permissionError);
+
+  const key = documentKey(options.sender);
+  const current = inFlightByDocument.get(key) ?? 0;
   if (current >= EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument) {
     return failure(request, {
       kind: 'limit',
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.limit,
     });
   }
-  inFlightByDocument.set(options.senderOrigin, current + 1);
+  inFlightByDocument.set(key, current + 1);
   const controller = new AbortController();
+  const timeout = AbortSignal.timeout(
+    options.operationTimeoutMs ?? EXTENSION_RESOURCE_LIMITS.operationTimeoutMs,
+  );
+  const combined = AbortSignal.any(
+    options.signal ? [options.signal, controller.signal, timeout] : [controller.signal, timeout],
+  );
   let unregister = () => {};
   try {
     const approval = await options.approvals.authorizedDestination(
-      options.senderOrigin,
+      senderOrigin,
       request.provider,
       request.baseUrl,
     );
@@ -208,11 +256,9 @@ export async function handleOperation(options: {
     const transport = createGuardedTransport({
       approval,
       fetchImpl: options.fetchImpl,
-      signal: options.signal
-        ? AbortSignal.any([options.signal, controller.signal])
-        : controller.signal,
+      signal: combined,
     });
-    const adapter = createProviderAdapter(
+    const adapter = (options.createAdapter ?? createProviderAdapter)(
       request.provider,
       transport,
       request.baseUrl,
@@ -220,6 +266,12 @@ export async function handleOperation(options: {
     );
     return await executeOperation(adapter, request);
   } catch (error) {
+    if (isCreateAborted(request, controller, combined)) {
+      return failure(request, {
+        kind: 'unknown-create',
+        messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
+      });
+    }
     if (
       error instanceof RemoteAdapterError ||
       error instanceof ExtensionProtocolError ||
@@ -233,9 +285,9 @@ export async function handleOperation(options: {
     });
   } finally {
     unregister();
-    const remaining = (inFlightByDocument.get(options.senderOrigin) ?? 1) - 1;
-    if (remaining <= 0) inFlightByDocument.delete(options.senderOrigin);
-    else inFlightByDocument.set(options.senderOrigin, remaining);
+    const remaining = (inFlightByDocument.get(key) ?? 1) - 1;
+    if (remaining <= 0) inFlightByDocument.delete(key);
+    else inFlightByDocument.set(key, remaining);
   }
 }
 

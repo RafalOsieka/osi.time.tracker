@@ -21,6 +21,10 @@ export function createRemoteAdapter(
     return new ServerExecutionAdapter(config.id, secret);
   }
 
+  if (config.executionMode === 'extension') {
+    throw { data: { data: { messageKey: 'error.extensionUnavailable' } } };
+  }
+
   switch (config.systemType) {
     case 'openproject':
       return new OpenProjectAdapter(clientFetchTransport, config.baseUrl, secret);
