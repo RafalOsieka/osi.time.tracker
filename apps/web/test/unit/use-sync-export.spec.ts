@@ -1,8 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ExtensionProtocolError } from '@osi/extension-protocol';
 import { useSyncExport } from '../../app/composables/use-sync-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { buildExportRequestKey } from '../../shared/utils/export-request-key';
+import type {
+  PendingCreateMarker,
+  PendingCreateStore,
+} from '../../app/utils/remote/pending-creates';
 
 const config: TrackerDto = {
   id: 'cfg-1',
@@ -36,6 +41,29 @@ function row(taskId = 'task-1', taskName = 'Ship it'): RemoteSyncDayRowDto {
       cachedTitle: 'Issue',
     },
   };
+}
+
+const extensionConfig: TrackerDto = { ...config, executionMode: 'extension' };
+
+function memoryPendingCreates(): PendingCreateStore & {
+  markers: Map<string, PendingCreateMarker>;
+} {
+  const markers = new Map<string, PendingCreateMarker>();
+  return {
+    markers,
+    list: () => [...markers.values()],
+    has: (key) => markers.has(key),
+    add: (marker) => {
+      markers.set(marker.exportRequestKey, marker);
+    },
+    remove: (key) => {
+      markers.delete(key);
+    },
+  };
+}
+
+function extensionTask(taskId: string, entryIds = ['e1']) {
+  return { ...taskInput(taskId, { entryIds }), config: extensionConfig };
 }
 
 function taskInput(
@@ -297,5 +325,104 @@ describe('useSyncExport', () => {
         exportDurationSeconds: 900,
       }),
     );
+  });
+
+  it('treats unknown-create as uncertain and does not recreate until confirmed', async () => {
+    const pending = memoryPendingCreates();
+    const createTimeEntry = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ExtensionProtocolError('unknown-create', 'error.extensionUnknownCreate'),
+      )
+      .mockResolvedValueOnce({ remoteLogId: 'after-confirm' });
+    const finalizeExport = vi.fn().mockResolvedValue({
+      remoteLogId: 'after-confirm',
+      exportId: 'exp-u',
+    });
+    const confirmUnknownCreateRetry = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+    const { runExport, retryTask, outcomes, progress } = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+      pendingCreates: pending,
+      confirmUnknownCreateRetry,
+    });
+
+    await runExport([extensionTask('task-ext')]);
+    expect(progress.value['task-ext']).toBe('uncertain');
+    expect(outcomes.value['task-ext']?.messageKey).toBe('error.extensionUnknownCreate');
+    expect(pending.list()).toHaveLength(1);
+    expect(JSON.stringify(pending.list())).not.toContain('secret');
+
+    await retryTask('task-ext');
+    expect(confirmUnknownCreateRetry).toHaveBeenCalledTimes(1);
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
+
+    await retryTask('task-ext');
+    expect(createTimeEntry).toHaveBeenCalledTimes(2);
+    expect(progress.value['task-ext']).toBe('done');
+    expect(pending.list()).toHaveLength(0);
+  });
+
+  it('does not dispatch create when a pending marker survives reload, and drops markers on definite pre-dispatch failure', async () => {
+    const pending = memoryPendingCreates();
+    const key = buildExportRequestKey({
+      taskId: 'task-reload',
+      localDate: '2026-03-15',
+      entryIds: ['e1'],
+      exportDurationSeconds: 3600,
+    });
+    pending.add({
+      trackerId: extensionConfig.id,
+      taskId: 'task-reload',
+      spentOn: '2026-03-15',
+      exportRequestKey: key,
+    });
+    const createTimeEntry = vi.fn();
+    const finalizeExport = vi.fn();
+    const first = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+      pendingCreates: pending,
+    });
+    await first.runExport([extensionTask('task-reload')]);
+    expect(createTimeEntry).not.toHaveBeenCalled();
+    expect(first.progress.value['task-reload']).toBe('uncertain');
+
+    const failCreate = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new ExtensionProtocolError('unavailable', 'error.extensionUnavailable'),
+      );
+    const failPending = memoryPendingCreates();
+    const { runExport, progress } = useSyncExport({
+      createTimeEntry: failCreate,
+      finalizeExport,
+      pendingCreates: failPending,
+    });
+    await runExport([extensionTask('task-fail')]);
+    expect(progress.value['task-fail']).toBe('failed');
+    expect(failPending.list()).toHaveLength(0);
+  });
+
+  it('retries known-ID finalization without repeating create', async () => {
+    const pending = memoryPendingCreates();
+    const createTimeEntry = vi.fn().mockResolvedValue({ remoteLogId: 'keep-me' });
+    const finalizeExport = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('db down'))
+      .mockResolvedValueOnce({ remoteLogId: 'keep-me', exportId: 'exp-1' });
+    const { runExport, retryTask } = useSyncExport({
+      createTimeEntry,
+      finalizeExport,
+      pendingCreates: pending,
+    });
+    await runExport([{ ...taskInput('task-u', { entryIds: ['e-u'] }), config: extensionConfig }]);
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
+    expect(pending.list()).toHaveLength(0);
+    await retryTask('task-u');
+    expect(createTimeEntry).toHaveBeenCalledTimes(1);
   });
 });

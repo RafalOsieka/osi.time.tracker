@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapter';
 import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
 import { RedmineAdapter } from '@osi/remote-trackers/redmine';
+import { ExtensionExecutionAdapter } from '../../app/utils/remote/extension-execution-adapter';
 import { ServerExecutionAdapter } from '../../app/utils/remote/server-execution-adapter';
 import type { TrackerDto } from '../../shared/types/tracker';
 
@@ -32,9 +33,10 @@ describe('createRemoteAdapter', () => {
     expect(adapter).toBeInstanceOf(ServerExecutionAdapter);
   });
 
-  it('does not fall back to client or server adapters for extension mode', () => {
-    expect(() =>
-      createRemoteAdapter({ ...baseConfig, executionMode: 'extension' }, 'secret'),
-    ).toThrow();
+  it('selects the extension adapter and does not fall back to client or server adapters', () => {
+    const adapter = createRemoteAdapter({ ...baseConfig, executionMode: 'extension' }, 'secret');
+    expect(adapter).toBeInstanceOf(ExtensionExecutionAdapter);
+    expect(adapter).not.toBeInstanceOf(OpenProjectAdapter);
+    expect(adapter).not.toBeInstanceOf(ServerExecutionAdapter);
   });
 });

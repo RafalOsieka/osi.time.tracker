@@ -12,9 +12,11 @@ import { setupServer } from '../harness/setup-server';
 
 const describeTimeLogsRange = requireDocker();
 
-function startFakeTracker(): Promise<{ server: Server; baseUrl: string }> {
+function startFakeTracker(): Promise<{ server: Server; baseUrl: string; hits: { count: number } }> {
+  const hits = { count: 0 };
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
+      hits.count += 1;
       const path = req.url ?? '';
       if (path.startsWith('/api/v3/time_entries') && req.method === 'GET') {
         res.writeHead(200, { 'content-type': 'application/json' });
@@ -43,7 +45,7 @@ function startFakeTracker(): Promise<{ server: Server; baseUrl: string }> {
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
       const port = address instanceof Object && 'port' in address ? address.port : 0;
-      resolve({ server, baseUrl: `http://127.0.0.1:${port}` });
+      resolve({ server, baseUrl: `http://127.0.0.1:${port}`, hits });
     });
   });
 }
@@ -52,7 +54,7 @@ describeTimeLogsRange('remote date-range time-logs proxy', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl });
 
-  let tracker: { server: Server; baseUrl: string };
+  let tracker: { server: Server; baseUrl: string; hits: { count: number } };
   beforeAll(async () => {
     tracker = await startFakeTracker();
   });
@@ -130,5 +132,32 @@ describeTimeLogsRange('remote date-range time-logs proxy', async () => {
     expect(body.logs[0].remoteLogId).toBe('88');
     expect(body.logs[0].remoteIssueId).toBe('99');
     expect(body.logs[0].durationSeconds).toBe(7200);
+  });
+
+  it('rejects extension-mode range fetches without contacting the fake tracker', async () => {
+    const user = await seedAndLogin(dbUrl);
+    const config = await createTracker(user.jar, user.token, 'Extension Range ' + Date.now(), {
+      executionMode: 'extension',
+      baseUrl: tracker.baseUrl,
+    });
+    const hitsBefore = tracker.hits.count;
+    const res = await fetch(url('/api/remote/time-logs-range'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': user.token,
+        cookie: user.jar.header(),
+        [REMOTE_SECRET_HEADER]: 'good-secret',
+      },
+      body: JSON.stringify({
+        trackerId: config.id,
+        from: '2026-08-01',
+        to: '2026-08-31',
+        userId: '7',
+      }),
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json())?.data?.messageKey).toBe('error.extensionUnavailable');
+    expect(tracker.hits.count).toBe(hitsBefore);
   });
 });

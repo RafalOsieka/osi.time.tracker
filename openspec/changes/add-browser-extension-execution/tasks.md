@@ -25,18 +25,18 @@
 ## 4. Web backend and tracker persistence
 
 - [x] 4.1 Extend the web-owned tracker mode schema/order to accept `extension`, preserving default `client`, storage shape, and existing input rules; run schema tests and verify no SQL migration is generated or needed.
-- [ ] 4.2 Add tracker API integration coverage for extension create/update/read, absent-mode default, unknown-mode rejection, and cross-user rejection; run tests proving 4.1 without any extension installation.
-- [ ] 4.3 Add or tighten owned-mode checks across OSI remote endpoints so extension configurations never cause upstream execution; verify authentication/ownership still resolve first and existing server delegation remains unchanged.
-- [ ] 4.4 Extend remote proxy API integration suites with successful server-mode calls and extension-mode rejection for each operation family; assert zero upstream calls on rejection and retain unauthenticated/error coverage for 4.3.
+- [x] 4.2 Add tracker API integration coverage for extension create/update/read, absent-mode default, unknown-mode rejection, and cross-user rejection; run tests proving 4.1 without any extension installation.
+- [x] 4.3 Add or tighten owned-mode checks across OSI remote endpoints so extension configurations never cause upstream execution; verify authentication/ownership still resolve first and existing server delegation remains unchanged.
+- [x] 4.4 Extend remote proxy API integration suites with successful server-mode calls and extension-mode rejection for each operation family; assert zero upstream calls on rejection and retain unauthenticated/error coverage for 4.3.
 
 ## 5. Web frontend and export safety
 
-- [ ] 5.1 Implement client-only extension availability/handshake service and the seven-operation execution adapter, then update the remote factory; verify type-check and no SSR bridge/network execution.
-- [ ] 5.2 Add adapter/factory/service unit tests for all operations, neutral results/errors, unavailable/incompatible/permission states, secret-free preflight, SSR, and no client/server fallback; run tests for 5.1.
-- [ ] 5.3 Add extension mode form labels, setup/recheck guidance, and remote-action availability feedback across linking, sync, and reports with English/Polish parity; verify existing local-entry UI remains independent.
+- [x] 5.1 Implement client-only extension availability/handshake service and the seven-operation execution adapter, then update the remote factory; verify type-check and no SSR bridge/network execution.
+- [x] 5.2 Add adapter/factory/service unit tests for all operations, neutral results/errors, unavailable/incompatible/permission states, secret-free preflight, SSR, and no client/server fallback; run tests for 5.1.
+- [x] 5.3 Add extension mode form labels, setup/recheck guidance, and remote-action availability feedback across linking, sync, and reports with English/Polish parity; verify existing local-entry UI remains independent.
 - [ ] 5.4 Add web E2E journeys for saving the mode without installation, setup/recheck, unavailable remote actions, unchanged persisted mode, and continued local entry creation; verify 5.3 with stable selectors.
-- [ ] 5.5 Add typed unknown-create handling, non-secret pending-create markers, and explicit duplicate-risk confirmation; preserve known-ID finalization retries and update relevant secret/error comments; verify the export outcome surface distinguishes both uncertainty cases.
-- [ ] 5.6 Add export unit tests for definite pre-dispatch failure, unknown post-dispatch outcome, retained markers after reload, confirmed retry, and known-ID finalization without repeated creation; run tests for 5.5 with fake timers.
+- [x] 5.5 Add typed unknown-create handling, non-secret pending-create markers, and explicit duplicate-risk confirmation; preserve known-ID finalization retries and update relevant secret/error comments; verify the export outcome surface distinguishes both uncertainty cases.
+- [x] 5.6 Add export unit tests for definite pre-dispatch failure, unknown post-dispatch outcome, retained markers after reload, confirmed retry, and known-ID finalization without repeated creation; run tests for 5.5 with fake timers.
 - [ ] 5.7 Add a browser export journey whose fake tracker creates a log but loses the reply; verify one remote create, uncertainty feedback, reload safety, explicit retry warning, and no secret in markers (5.5).
 
 ## 6. End-to-end integration and delivery

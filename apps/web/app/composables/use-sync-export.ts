@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue';
+import { ExtensionProtocolError, isUnknownCreateError } from '@osi/extension-protocol';
 import type {
   FinalizeRemoteExportResultDto,
   RemoteExportTaskOutcomeDto,
@@ -9,6 +10,7 @@ import type { ExportOutcomesByTask, ExportProgressByTask, TaskId } from '~/types
 import { buildExportRequestKey } from '~~/shared/utils/export-request-key';
 import { resolveExportComment } from '~~/shared/utils/export-comment';
 import { extractCaughtMessageKey } from '~/utils/extract-message-key';
+import { createPendingCreateStore, type PendingCreateStore } from '~/utils/remote/pending-creates';
 
 export type SyncExportProgressStatus =
   | 'queued'
@@ -60,7 +62,10 @@ export function useSyncExport(options: {
   finalizeExport: (body: FinalizeExportBody) => Promise<FinalizeRemoteExportResultDto>;
   onTaskFinalized?: (row: RemoteSyncDayRowDto) => Promise<void> | void;
   refresh?: () => Promise<void> | void;
+  pendingCreates?: PendingCreateStore;
+  confirmUnknownCreateRetry?: () => Promise<boolean>;
 }) {
+  const pendingCreates = options.pendingCreates ?? createPendingCreateStore();
   const outcomes = ref<ExportOutcomesByTask<RemoteExportTaskOutcomeDto>>({});
   const progress = ref<ExportProgressByTask<SyncExportProgressStatus>>({});
   const isRunning = ref(false);
@@ -115,9 +120,28 @@ export function useSyncExport(options: {
     const knownRemoteLogId = knownRemoteLogIds.value[row.taskId];
 
     let remoteLogId = knownRemoteLogId;
+    const trackPending = config.executionMode === 'extension';
+
+    if (!remoteLogId && trackPending && pendingCreates.has(exportRequestKey)) {
+      setProgress(row.taskId, 'uncertain');
+      setOutcome({
+        taskId: row.taskId,
+        status: 'uncertain_finalization',
+        messageKey: 'error.extensionUnknownCreate',
+      });
+      return;
+    }
 
     if (!remoteLogId) {
       setProgress(row.taskId, 'creating');
+      if (trackPending) {
+        pendingCreates.add({
+          trackerId: config.id,
+          taskId: row.taskId,
+          spentOn,
+          exportRequestKey,
+        });
+      }
       try {
         const created = await options.createTimeEntry(config, {
           remoteIssueId,
@@ -126,12 +150,23 @@ export function useSyncExport(options: {
           activityId,
           comment,
         });
+        if (trackPending) pendingCreates.remove(exportRequestKey);
         remoteLogId = created.remoteLogId;
         knownRemoteLogIds.value = {
           ...knownRemoteLogIds.value,
           [row.taskId]: remoteLogId,
         };
       } catch (err) {
+        if (err instanceof ExtensionProtocolError && isUnknownCreateError(err)) {
+          setProgress(row.taskId, 'uncertain');
+          setOutcome({
+            taskId: row.taskId,
+            status: 'uncertain_finalization',
+            messageKey: err.messageKey,
+          });
+          return;
+        }
+        if (trackPending) pendingCreates.remove(exportRequestKey);
         setProgress(row.taskId, 'failed');
         setOutcome({
           taskId: row.taskId,
@@ -217,6 +252,19 @@ export function useSyncExport(options: {
 
     isRunning.value = true;
     stopRequested.value = false;
+    const exportRequestKey = buildKey(task);
+    const hasPendingCreate =
+      task.config.executionMode === 'extension' &&
+      !knownRemoteLogIds.value[task.row.taskId] &&
+      pendingCreates.has(exportRequestKey);
+    if (hasPendingCreate) {
+      const confirmed = (await options.confirmUnknownCreateRetry?.()) ?? false;
+      if (!confirmed) {
+        isRunning.value = false;
+        return;
+      }
+      pendingCreates.remove(exportRequestKey);
+    }
     // Do not flip to `queued` here: report-phase groups only list terminal statuses, so
     // a queued marker would hide the row until the attempt finishes. runSingleTask sets
     // creating/finalizing immediately; the dialog keeps those visible as in-progress.

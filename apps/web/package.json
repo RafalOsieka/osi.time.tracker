@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@nuxt/ui": "^4.11.0",
+    "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "nuxt": "^4.5.2",

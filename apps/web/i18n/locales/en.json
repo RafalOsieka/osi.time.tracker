@@ -84,6 +84,10 @@
     "executionModeClient": "Client (browser -> remote system)",
     "executionModeServer": "Server (browser -> server -> remote system)",
     "executionModeExtension": "Extension (browser -> desktop extension -> remote system)",
+    "extensionStatusChecking": "Checking the OSI extension\u2026",
+    "extensionStatusAvailable": "The OSI extension is available for this tracker.",
+    "extensionRecheckButton": "Recheck extension",
+    "extensionSetupGuidance": "Install the OSI Time Tracker extension for Chrome or Edge, approve this website and tracker destination, then recheck. Remote actions stay disabled until the extension is ready.",
     "roundingRuleLabel": "Rounding rule",
     "secretLabel": "API key",
     "secretPlaceholder": "Stored only in this browser",
@@ -343,7 +347,11 @@
       "statusUncertain": "Needs verification",
       "statusNotAttempted": "Not attempted",
       "remoteLogLink": "Open remote log {id}",
-      "uncertainHint": "Remote log {id} may already exist. Retry finalizes the same export; verify in the tracker if unsure."
+      "uncertainHint": "Remote log {id} may already exist. Retry finalizes the same export; verify in the tracker if unsure.",
+      "unknownCreateRetryTitle": "Retry creating the remote log?",
+      "unknownCreateRetryMessage": "The extension did not confirm whether the remote log was created. Retrying may create a duplicate. Confirm only after checking the tracker.",
+      "unknownCreateRetryAccept": "Retry create",
+      "unknownCreateRetryReject": "Cancel"
     },
     "state": {
       "noProject": "This task has no Project, so it cannot be reviewed for a remote push.",
@@ -446,6 +454,14 @@
     "remoteExportCreateFailed": "The remote time log could not be created. Please try again.",
     "remoteServerModeOriginRejected": "The request target is not allowed for this tracker.",
     "extensionUnavailable": "The OSI extension is not available for this tracker action.",
+    "extensionIncompatible": "The installed OSI extension is not compatible with this website. Update the extension or refresh the page.",
+    "extensionPermissionRequired": "The OSI extension needs permission for this website or tracker. Approve it in the extension, then recheck.",
+    "extensionUnknownCreate": "The remote time entry may already exist because the extension reply was lost. Confirm before retrying to avoid a duplicate.",
+    "extensionMalformed": "The extension sent an invalid response.",
+    "extensionTimeout": "The extension did not respond in time.",
+    "extensionLimitExceeded": "The extension request exceeded its safety limits.",
+    "extensionDestinationUnapproved": "This tracker destination is not approved in the OSI extension.",
+    "extensionOriginUnapproved": "This website is not approved in the OSI extension.",
     "reportMonthInvalid": "Enter a valid month."
   },
   "errors": {

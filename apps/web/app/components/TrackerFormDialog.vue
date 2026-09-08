@@ -272,6 +272,12 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             />
           </UFormField>
 
+          <TrackerExtensionStatus
+            :execution-mode="state.executionMode"
+            :system-type="state.systemType"
+            :base-url="state.baseUrl"
+          />
+
           <UFormField :label="t('trackers.roundingRuleLabel')" name="roundingRule">
             <USelect
               id="tracker-rounding-rule"

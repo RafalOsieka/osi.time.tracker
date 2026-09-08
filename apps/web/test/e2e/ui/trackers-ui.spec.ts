@@ -161,4 +161,65 @@ describeTrackersUI('trackers UI flow', async () => {
 
     await page.close();
   });
+
+  it('saves extension mode without installation, shows recheck guidance, and keeps local timer entry working', async () => {
+    const page = await openAuthed();
+    await page.click('[data-testid="app-sidebar"] a[href="/trackers"]');
+    await page.waitForSelector('[data-testid="trackers-page"]');
+
+    const trackerName = 'Extension UI Tracker ' + Date.now();
+    await page.click('[data-testid="new-tracker-button"]');
+    await page.waitForSelector('[data-testid="tracker-dialog"]');
+    await page
+      .locator('[data-testid="tracker-name-input"] input, [data-testid="tracker-name-input"]')
+      .first()
+      .fill(trackerName);
+    await page
+      .locator(
+        '[data-testid="tracker-base-url-input"] input, [data-testid="tracker-base-url-input"]',
+      )
+      .first()
+      .fill('https://extension.example.com');
+    await page.click('[data-testid="tracker-execution-mode-select"]');
+    await page.getByRole('option', { name: /Extension|Rozszerzenie/ }).click();
+    await page.waitForSelector('[data-testid="tracker-extension-status"]');
+    expect(await page.locator('[data-testid="tracker-extension-setup-guidance"]').count()).toBe(1);
+    expect(await page.locator('[data-testid="tracker-extension-recheck"]').count()).toBe(1);
+    await page.click('[data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="tracker-dialog"]', { state: 'hidden' });
+    await page.waitForFunction((name) => document.body.textContent?.includes(name), trackerName);
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="trackers-page"]');
+    const row = page.locator('tr', { hasText: trackerName });
+    await row.locator('[data-testid^="edit-tracker-"]').click();
+    await page.waitForSelector('[data-testid="tracker-dialog"]');
+    const savedMode = await page
+      .locator('[data-testid="tracker-execution-mode-select"]')
+      .textContent();
+    expect(savedMode).toMatch(/Extension|Rozszerzenie/);
+    await page.waitForSelector('[data-testid="tracker-extension-status"]');
+    await page.click('[data-testid="cancel-button"]');
+
+    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first()
+      .fill('Local entry with extension tracker');
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
+    );
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      (title) => document.body.textContent?.includes(title),
+      'Local entry with extension tracker',
+    );
+
+    await page.close();
+  });
 });

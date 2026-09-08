@@ -275,6 +275,79 @@ describeTrackers('trackers API integration', async () => {
     expect(notFound.status).toBe(404);
   });
 
+  it('extension mode round-trips without installation and stays isolated across users', async () => {
+    const alice = await seedAndLogin(dbUrl);
+    const bob = await seedAndLogin(dbUrl);
+
+    const created = await fetch(url('/api/trackers'), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': alice.token,
+        cookie: alice.jar.header(),
+      },
+      body: JSON.stringify(
+        trackerBody('Extension Persist ' + Date.now(), {
+          executionMode: 'extension',
+          baseUrl: 'https://extension-persist.example.com',
+        }),
+      ),
+    });
+    expect(created.status).toBe(200);
+    const createdBody = await created.json();
+    expect(createdBody.executionMode).toBe('extension');
+    expect(createdBody.secret).toBeUndefined();
+
+    const list = await fetch(url('/api/trackers'), { headers: { cookie: alice.jar.header() } });
+    expect(list.status).toBe(200);
+    const listed = (await list.json()).find((row: { id: string }) => row.id === createdBody.id);
+    expect(listed?.executionMode).toBe('extension');
+
+    const patched = await fetch(url(`/api/trackers/${createdBody.id}`), {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': alice.token,
+        cookie: alice.jar.header(),
+      },
+      body: JSON.stringify(
+        trackerBody(createdBody.name, {
+          executionMode: 'extension',
+          baseUrl: 'https://extension-persist-updated.example.com',
+        }),
+      ),
+    });
+    expect(patched.status).toBe(200);
+    const patchedBody = await patched.json();
+    expect(patchedBody.executionMode).toBe('extension');
+    expect(patchedBody.baseUrl).toBe('https://extension-persist-updated.example.com');
+
+    const afterPatch = await fetch(url('/api/trackers'), {
+      headers: { cookie: alice.jar.header() },
+    });
+    const afterPatchRow = (await afterPatch.json()).find(
+      (row: { id: string }) => row.id === createdBody.id,
+    );
+    expect(afterPatchRow?.executionMode).toBe('extension');
+    expect(afterPatchRow?.baseUrl).toBe('https://extension-persist-updated.example.com');
+
+    const bobList = await fetch(url('/api/trackers'), { headers: { cookie: bob.jar.header() } });
+    expect(
+      (await bobList.json()).find((row: { id: string }) => row.id === createdBody.id),
+    ).toBeUndefined();
+
+    const bobPatch = await fetch(url(`/api/trackers/${createdBody.id}`), {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': bob.token,
+        cookie: bob.jar.header(),
+      },
+      body: JSON.stringify(trackerBody('Hijacked Extension')),
+    });
+    expect(bobPatch.status).toBe(404);
+  });
+
   it('cross-user isolation and unauthenticated → 401', async () => {
     const alice = await seedAndLogin(dbUrl);
     const bob = await seedAndLogin(dbUrl);

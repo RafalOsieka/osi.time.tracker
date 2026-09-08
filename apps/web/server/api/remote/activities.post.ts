@@ -16,7 +16,8 @@ import type { ApiMessage } from '../../types/api-message';
  */
 export default defineEventHandler(async (event): Promise<ProxiedRemoteActivitiesResponseDto> => {
   const { user } = await requireAuth(event);
-
+  const parsedBody = await readZodBody(event, proxiedRemoteActivitiesSchema);
+  const config = await resolveOwnedTracker(user.id, parsedBody.trackerId);
   const secret = getRequestHeader(event, REMOTE_SECRET_HEADER);
   if (!secret) {
     throw createError({
@@ -24,10 +25,6 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteActivities
       data: { messageKey: 'error.remoteServerModeSecretRequired' } satisfies ApiMessage,
     });
   }
-
-  const parsedBody = await readZodBody(event, proxiedRemoteActivitiesSchema);
-
-  const config = await resolveOwnedTracker(user.id, parsedBody.trackerId);
   const adapter = createServerRemoteAdapter(config, secret);
 
   try {

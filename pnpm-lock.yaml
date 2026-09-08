@@ -182,6 +182,9 @@ importers:
       '@nuxt/ui':
         specifier: ^4.11.0
         version: 4.11.0(1d1fe668bb3664e1d78b396e36e33f46)
+      '@osi/extension-protocol':
+        specifier: workspace:*
+        version: link:../../packages/extension-protocol
       '@osi/remote-trackers':
         specifier: workspace:*
         version: link:../../packages/remote-trackers

@@ -19,6 +19,7 @@ const route = useRoute();
 const router = useRouter();
 const { t, locale } = useI18n();
 const toast = useAppToast();
+const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 const { effective } = useUserSettings();
 // Forwards the incoming request cookies during SSR so the day aggregate is
@@ -140,6 +141,14 @@ const {
   refresh: async () => {
     // Refresh is triggered on report close / retry completion, not mid-batch.
   },
+  confirmUnknownCreateRetry: () =>
+    confirm({
+      title: t('remoteSync.exportDialog.unknownCreateRetryTitle'),
+      description: t('remoteSync.exportDialog.unknownCreateRetryMessage'),
+      confirmLabel: t('remoteSync.exportDialog.unknownCreateRetryAccept'),
+      cancelLabel: t('remoteSync.exportDialog.unknownCreateRetryReject'),
+      confirmColor: 'error',
+    }),
 });
 
 function resetUiState() {
