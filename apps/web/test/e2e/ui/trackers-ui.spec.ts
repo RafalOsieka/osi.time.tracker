@@ -227,6 +227,12 @@ describeTrackersUI('trackers UI flow', async () => {
     );
     await page.click('[data-testid="timer-toggle-button"]');
     await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'false',
+    );
+    await page.waitForFunction(
       (title) => document.body.textContent?.includes(title),
       'Local entry with extension tracker',
     );
