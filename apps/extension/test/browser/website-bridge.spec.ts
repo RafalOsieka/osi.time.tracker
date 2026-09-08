@@ -45,11 +45,17 @@ async function approveSite(
   await page.goto(optionsUrl(harness));
   await page.getByTestId('website-origin').fill(websiteOrigin);
   await page.getByTestId('add-website').click();
-  await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved|zapisane/i);
+  await page
+    .getByTestId('status')
+    .filter({ hasText: /saved|zapisane/i })
+    .waitFor();
   await page.getByTestId('destination-provider').selectOption(provider);
   await page.getByTestId('destination-url').fill(destinationUrl);
   await page.getByTestId('add-destination').click();
-  await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved|zapisane/i);
+  await page
+    .getByTestId('status')
+    .filter({ hasText: /saved|zapisane/i })
+    .waitFor();
   await page.close();
 }
 

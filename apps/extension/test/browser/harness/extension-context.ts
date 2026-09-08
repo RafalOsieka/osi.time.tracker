@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -17,10 +17,23 @@ export interface ExtensionHarness {
   close: () => Promise<void>;
 }
 
+/** Copy dist and grant host access so tests do not hang on Chrome's permission prompt. */
+async function unpackedExtensionForTests(): Promise<string> {
+  const pathToExtension = await mkdtemp(join(tmpdir(), 'osi-extension-unpacked-'));
+  await cp(extensionDistPath(), pathToExtension, { recursive: true });
+  const manifestPath = join(pathToExtension, 'manifest.json');
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
+    host_permissions?: string[];
+  };
+  manifest.host_permissions = ['http://*/*', 'https://*/*'];
+  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+  return pathToExtension;
+}
+
 /** Persistent Chromium profile with the unpacked extension loaded. */
 export async function launchExtensionContext(): Promise<ExtensionHarness> {
   const userDataDir = await mkdtemp(join(tmpdir(), 'osi-extension-'));
-  const pathToExtension = extensionDistPath();
+  const pathToExtension = await unpackedExtensionForTests();
   // `channel: 'chromium'` is required for MV3 extensions in headless Playwright.
   const context = await chromium.launchPersistentContext(userDataDir, {
     headless: true,
@@ -40,6 +53,7 @@ export async function launchExtensionContext(): Promise<ExtensionHarness> {
     close: async () => {
       await context.close();
       await rm(userDataDir, { recursive: true, force: true });
+      await rm(pathToExtension, { recursive: true, force: true });
     },
   };
 }
