@@ -125,7 +125,11 @@ describeExtensionModeUi('extension execution mode UI', async () => {
         state: 'visible',
       });
     }
-    await group.locator('[data-testid="remote-issue-picker-trigger"]').click();
+    await group
+      .locator('[data-testid="remote-issue-picker-trigger"]')
+      .evaluate((el: HTMLElement) => {
+        el.click();
+      });
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
     await page.waitForSelector('[data-testid="tracker-extension-status"]');
     await page
