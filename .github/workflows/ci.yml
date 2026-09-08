@@ -151,6 +151,15 @@ jobs:
       - name: Install extension dependencies without Nuxt prepare
         run: pnpm --filter @osi/extension... --ignore-scripts --frozen-lockfile install
 
+      - name: Run independent extension lint
+        run: pnpm --filter @osi/extension lint
+
+      - name: Build extension workspace dependencies
+        run: pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build
+
+      - name: Run independent extension type check
+        run: pnpm --filter @osi/extension type-check
+
       - name: Install Playwright Chromium
         run: pnpm --filter @osi/extension exec playwright install --with-deps chromium
 

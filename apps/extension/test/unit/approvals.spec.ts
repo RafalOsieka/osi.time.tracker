@@ -26,6 +26,40 @@ function service(options?: { deny?: boolean }) {
 }
 
 describe('extension approvals', () => {
+  it('looks up HTTP tracker permission without weakening website approval validation', async () => {
+    const { approvals } = service();
+    await approvals.approveWebsite(website);
+    await approvals.approveDestination(website, 'redmine', 'http://tracker.internal/redmine');
+    await expect(approvals.hasHostPermission('http://tracker.internal')).resolves.toBe(true);
+    await expect(approvals.approveWebsite('http://tracker.internal')).rejects.toThrow(
+      CanonicalizationError,
+    );
+  });
+
+  it.each(['website', 'destination'] as const)(
+    'reconciles a removed %s permission and notifies other worker contexts',
+    async (scope) => {
+      const { approvals, store, permissions } = service();
+      await approvals.approveWebsite(website);
+      const destination = await approvals.approveDestination(website, 'openproject', tracker);
+      const retained = await approvals.approveDestination(website, 'redmine', 'https://other.test');
+      const worker = new ApprovalService(store, permissions);
+      const abort = vi.fn();
+      const retainedAbort = vi.fn();
+      worker.registerInFlight(destination, { abort });
+      const unregister = worker.registerInFlight(retained, { abort: retainedAbort });
+      await permissions.remove(
+        hostMatchPattern(scope === 'website' ? website : destination.origin),
+      );
+      await approvals.reconcile();
+      expect(abort).toHaveBeenCalledOnce();
+      expect(retainedAbort).toHaveBeenCalledTimes(scope === 'website' ? 1 : 0);
+      expect((await approvals.list()).destinations).toEqual([destination, retained]);
+      expect((await approvals.list()).websites).toEqual([{ origin: website }]);
+      unregister();
+    },
+  );
+
   it('waits for an approval save before reconciling permissions in another context', async () => {
     const { approvals, store, permissions } = service();
     const other = new ApprovalService(store, permissions);

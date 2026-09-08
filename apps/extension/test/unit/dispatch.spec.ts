@@ -1,6 +1,12 @@
+import { createServer } from 'node:http';
+import { once } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
-import type { JsonValue, RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
+import type {
+  JsonValue,
+  RemoteAccount,
+  RemoteTrackerAdapter,
+} from '@osi/remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,
@@ -82,6 +88,169 @@ afterEach(() => {
 });
 
 describe('worker dispatch', () => {
+  const createInput = {
+    remoteIssueId: '1',
+    spentOn: '2026-01-01',
+    durationSeconds: 3600,
+    activityId: '1',
+  };
+
+  it.each(['openproject', 'redmine'] as const)(
+    'preserves uncertainty when %s creates an entry and drops the real HTTP response',
+    async (provider) => {
+      let creates = 0;
+      const server = createServer((request, response) => {
+        if (request.method === 'POST') creates += 1;
+        response.destroy();
+      });
+      server.listen(0, '127.0.0.1');
+      await once(server, 'listening');
+      try {
+        const address = server.address();
+        if (!address || !(address instanceof Object)) throw new Error('missing server address');
+        const baseUrl = `http://127.0.0.1:${address.port}`;
+        const approvals = await approved();
+        await approvals.approveDestination(website, provider, baseUrl);
+        const result = await handleOperation({
+          sender: trustedSender(),
+          expectedExtensionId: extensionId,
+          approvals,
+          value: { ...operationValue('createTimeEntry', createInput, provider), baseUrl },
+        });
+        expect(result).toMatchObject({ ok: false, error: { kind: 'unknown-create' } });
+        expect(creates).toBe(1);
+        expect(JSON.stringify(result)).not.toContain(secret);
+      } finally {
+        server.closeAllConnections();
+        await new Promise<void>((resolve, reject) => {
+          server.close((error) => (error ? reject(error) : resolve()));
+        });
+      }
+    },
+  );
+
+  it.each([
+    { status: 201, body: '{', kind: 'unknown-create' },
+    { status: 201, body: '{}', kind: 'unknown-create' },
+    { status: 500, body: '{}', kind: 'unknown-create' },
+    { status: 408, body: '{}', kind: 'unknown-create' },
+    { status: 422, body: '{}', kind: 'adapter' },
+    { status: 401, body: '{}', kind: 'adapter' },
+  ])('classifies create response $status / $body as $kind', async ({ status, body, kind }) => {
+    const fetchImpl = vi.fn(async () => new Response(body, { status }));
+    const result = await handleOperation({
+      sender: trustedSender(),
+      expectedExtensionId: extensionId,
+      approvals: await approved(),
+      fetchImpl,
+      value: operationValue('createTimeEntry', createInput),
+    });
+    expect(result).toMatchObject({ ok: false, error: { kind } });
+    expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it('keeps cancellation before network dispatch a definite failure', async () => {
+    const fetchImpl = vi.fn();
+    const result = await handleOperation({
+      sender: trustedSender(),
+      expectedExtensionId: extensionId,
+      approvals: await approved(),
+      fetchImpl,
+      signal: AbortSignal.abort(),
+      value: operationValue('createTimeEntry', createInput),
+    });
+    expect(result).not.toMatchObject({ error: { kind: 'unknown-create' } });
+    expect(result).toMatchObject({ ok: false });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it.each(['network-timeout', 'body-reset', 'body-limit'] as const)(
+    'preserves create uncertainty after a %s',
+    async (failure) => {
+      const fetchImpl = vi.fn(async () => {
+        if (failure === 'network-timeout') throw new DOMException('Timed out', 'TimeoutError');
+        const body = new ReadableStream<Uint8Array>({
+          start(controller) {
+            if (failure === 'body-reset') controller.error(new Error('Connection reset'));
+            else
+              controller.enqueue(
+                new Uint8Array(EXTENSION_RESOURCE_LIMITS.maxResponseEnvelopeBytes + 1),
+              );
+          },
+        });
+        return new Response(body, { status: 201 });
+      });
+      const result = await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals: await approved(),
+        fetchImpl,
+        value: operationValue('createTimeEntry', createInput),
+      });
+      expect(result).toMatchObject({ ok: false, error: { kind: 'unknown-create' } });
+      expect(fetchImpl).toHaveBeenCalledOnce();
+    },
+  );
+
+  it('bounds the aggregate result from multiple individually bounded provider pages', async () => {
+    const comment = 'x'.repeat(6 * 1024 * 1024);
+    let pages = 0;
+    const fetchImpl = vi.fn(async () => {
+      pages += 1;
+      return new Response(
+        JSON.stringify({
+          _embedded: {
+            elements: [
+              {
+                id: pages,
+                spentOn: '2026-01-01',
+                hours: 'PT1H',
+                comment: { raw: comment },
+                _links: { entity: { href: '/api/v3/work_packages/1' } },
+              },
+            ],
+          },
+          _links:
+            pages === 1 ? { next: { href: `${openProject}/api/v3/time_entries?offset=2` } } : {},
+        }),
+      );
+    });
+    const result = await handleOperation({
+      sender: trustedSender(),
+      expectedExtensionId: extensionId,
+      approvals: await approved(),
+      fetchImpl,
+      value: operationValue('fetchTimeLogsInRange', { from: '2026-01-01', to: '2026-01-02' }),
+    });
+    expect(result).toMatchObject({ ok: false, error: { kind: 'limit' } });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(JSON.stringify(result).length).toBeLessThan(1000);
+  });
+
+  const malformedAccount: RemoteAccount = {
+    // @ts-expect-error Deliberately violate the provider contract to test the outgoing boundary.
+    id: 42,
+    name: 'Ada',
+  };
+  it.each([
+    { name: 'malformed', account: malformedAccount, kind: 'malformed' },
+    {
+      name: 'oversized',
+      account: { id: '1', name: 'x'.repeat(EXTENSION_RESOURCE_LIMITS.maxResponseEnvelopeBytes) },
+      kind: 'limit',
+    },
+  ])('rejects $name provider output before sending it', async ({ account, kind }) => {
+    const result = await handleOperation({
+      sender: trustedSender(),
+      expectedExtensionId: extensionId,
+      approvals: await approved(),
+      createAdapter: () => probeAdapter({ getCurrentAccount: async () => account }),
+      value: operationValue('getCurrentAccount', null),
+    });
+    expect(result).toMatchObject({ ok: false, error: { kind } });
+    expect(JSON.stringify(result).length).toBeLessThan(1000);
+  });
+
   it.each(['website', 'destination'] as const)(
     'aborts active fetch when options revoke a %s without removing a shared host grant',
     async (scope) => {

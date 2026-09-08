@@ -300,6 +300,75 @@ describeChromium('website/content/worker bridge', () => {
     await page.close();
   });
 
+  it.each(['openproject', 'redmine'] as const)(
+    'reports an unknown create from the real %s worker after the tracker loses its reply',
+    async (provider) => {
+      const tracker = await (provider === 'openproject' ? startFakeOpenProject : startFakeRedmine)({
+        dropCreateResponse: true,
+      });
+      const page = await openFixture(harness!, website.url);
+      try {
+        await approveSite(harness!, website.origin, tracker.baseUrl, provider);
+        const result = await runOnPage(page, {
+          type: 'operation',
+          requestId: `lost-${provider}`,
+          provider,
+          baseUrl: tracker.baseUrl,
+          secret: SECRET,
+          operation: 'createTimeEntry',
+          input: {
+            remoteIssueId: '42',
+            spentOn: '2026-03-15',
+            durationSeconds: 1800,
+            activityId: '1',
+          },
+        });
+        expect(result).toMatchObject({ ok: false, error: { kind: 'unknown-create' } });
+        expect(tracker.createdLogIds).toEqual([9001]);
+        await page.reload();
+        await runOnPage(page, { type: 'handshake', protocolVersion: 1 });
+        expect(tracker.createdLogIds).toEqual([9001]);
+        expect(await readExtensionStorage(harness!)).not.toContain(SECRET);
+      } finally {
+        await page.close();
+        await tracker.close();
+      }
+    },
+  );
+
+  it.each(['pagination', 'redirect'] as const)(
+    'blocks a response-derived %s destination without sending credentials there',
+    async (kind) => {
+      const forbidden = await startFakeOpenProject();
+      const tracker = await startFakeOpenProject(
+        kind === 'pagination'
+          ? { nextPageUrl: `${forbidden.baseUrl}/stolen` }
+          : { redirectAccountTo: `${forbidden.baseUrl}/stolen` },
+      );
+      const page = await openFixture(harness!, website.url);
+      try {
+        await approveSite(harness!, website.origin, tracker.baseUrl, 'openproject');
+        const result = await runOnPage(page, {
+          type: 'operation',
+          requestId: `escape-${kind}`,
+          provider: 'openproject',
+          baseUrl: tracker.baseUrl,
+          secret: SECRET,
+          operation: kind === 'pagination' ? 'fetchTimeLogsInRange' : 'getCurrentAccount',
+          input: kind === 'pagination' ? { from: '2026-03-01', to: '2026-03-31' } : null,
+        });
+        expect(result).toMatchObject({ ok: false });
+        expect(tracker.requests).toHaveLength(1);
+        expect(forbidden.requests).toHaveLength(0);
+        expect(JSON.stringify(result)).not.toContain(SECRET);
+      } finally {
+        await page.close();
+        await tracker.close();
+        await forbidden.close();
+      }
+    },
+  );
+
   it('rejects unapproved origins, destinations, malformed messages, and URL escapes', async () => {
     const hitsBefore = openProject.requests.length;
     const foreignPage = await openFixture(harness!, foreign.url);

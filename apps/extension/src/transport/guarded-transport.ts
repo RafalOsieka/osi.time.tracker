@@ -27,6 +27,7 @@ export interface GuardedTransportOptions {
   maxNetworkCalls?: number;
   maxResponseBytes?: number;
   timeoutMs?: number;
+  onWriteOutcome?: (outcome: 'dispatched' | 'rejected') => void;
 }
 
 function assertAllowedHeaders(headers: Record<string, string> | undefined): void {
@@ -117,12 +118,14 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
         `${options.approval.origin}${options.approval.basePath}`,
       );
       signal?.throwIfAborted();
+      const body = request.body !== undefined ? JSON.stringify(request.body) : undefined;
       let response: Response;
       try {
+        if (request.method === 'POST') options.onWriteOutcome?.('dispatched');
         response = await fetchImpl(request.url, {
           method: request.method,
           headers,
-          body: request.body !== undefined ? JSON.stringify(request.body) : undefined,
+          body,
           redirect: 'error',
           credentials: 'omit',
           signal,
@@ -131,6 +134,16 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
         throw new UpstreamHttpError(0);
       }
 
+      // A timeout or server failure can follow a committed write; ordinary client
+      // rejections are definite even if their error body cannot be read.
+      if (
+        request.method === 'POST' &&
+        response.status >= 400 &&
+        response.status < 500 &&
+        response.status !== 408
+      ) {
+        options.onWriteOutcome?.('rejected');
+      }
       const text = await readBoundedBody(response, maxResponseBytes, signal);
 
       if (!response.ok && response.status !== 403 && response.status !== 404) {

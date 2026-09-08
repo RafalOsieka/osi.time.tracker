@@ -88,6 +88,27 @@ afterEach(() => {
 });
 
 describe('worker runtime ports', () => {
+  it.each(['website', 'destination'] as const)(
+    'disconnects an idle port when its %s browser permission is removed with settings closed',
+    async (scope) => {
+      const permissions = createMemoryHostPermissions();
+      const approvals = new ApprovalService(createMemoryApprovalStore(), permissions);
+      await approvals.approveWebsite(website);
+      await approvals.approveDestination(website, 'openproject', tracker);
+      const port = new FakePort(trustedSender());
+      attachWorkerPort(port, { extensionId, approvals });
+      port.emit({
+        type: 'handshake',
+        protocolVersion: EXTENSION_PROTOCOL_VERSION,
+        destination: { provider: 'openproject', baseUrl: tracker },
+      });
+      await vi.waitFor(() => expect(port.messages).toHaveLength(1));
+      await permissions.remove(`${scope === 'website' ? website : tracker}/*`);
+      await vi.waitFor(() => expect(port.disconnected).toBe(true));
+      expect((await approvals.list()).websites).toHaveLength(1);
+    },
+  );
+
   it('handshakes and dispatches over a document-bound port', async () => {
     const approvals = await approved();
     const port = new FakePort(trustedSender());

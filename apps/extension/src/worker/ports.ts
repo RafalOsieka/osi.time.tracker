@@ -1,9 +1,9 @@
 import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
-import type { ApprovalService } from '../approvals/approvals.js';
+import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import { WORKER_PORT_NAME } from '../port-name.js';
 import { handleHandshake, handleOperation, type CreateProviderAdapter } from './dispatch.js';
-import type { RuntimeSender } from './sender.js';
+import { isTrustedDocumentSender, type RuntimeSender } from './sender.js';
 
 export { WORKER_PORT_NAME };
 
@@ -70,9 +70,49 @@ export function attachWorkerPort(port: WorkerPort, options: WorkerPortOptions): 
     return;
   }
   const controller = new AbortController();
-  port.onDisconnect.addListener(() => controller.abort());
+  const destinations = new Map<string, () => void>();
+  const unsubscribe = options.approvals.subscribe(() => {
+    void checkWebsite().catch(disconnect);
+  });
+
+  function dispose(): void {
+    controller.abort();
+    unsubscribe();
+    for (const unregister of destinations.values()) unregister();
+    destinations.clear();
+  }
+
+  function disconnect(): void {
+    dispose();
+    port.disconnect();
+  }
+
+  async function checkWebsite(): Promise<void> {
+    const state = await options.approvals.list();
+    const sender = port.sender ?? {};
+    if (
+      !isTrustedDocumentSender(
+        sender,
+        options.extensionId,
+        state.websites.map((item) => item.origin),
+      ) ||
+      !sender.origin ||
+      !(await options.approvals.hasHostPermission(sender.origin))
+    )
+      disconnect();
+  }
+
+  function onAuthorized(approval: DestinationApproval): void {
+    if (controller.signal.aborted) return;
+    const key = JSON.stringify(approval);
+    if (destinations.has(key)) return;
+    destinations.set(key, options.approvals.registerInFlight(approval, { abort: disconnect }));
+  }
+
+  port.onDisconnect.addListener(dispose);
   port.onMessage.addListener((message) => {
-    void handlePortMessage(port, message, options, controller.signal);
+    if (controller.signal.aborted) return;
+    void handlePortMessage(port, message, options, controller.signal, onAuthorized);
   });
 }
 
@@ -81,6 +121,7 @@ async function handlePortMessage(
   message: JsonValue,
   options: WorkerPortOptions,
   signal: AbortSignal,
+  onAuthorized: (approval: DestinationApproval) => void,
 ): Promise<void> {
   const value = cloneJson(message);
   if (value === undefined) {
@@ -97,6 +138,7 @@ async function handlePortMessage(
       expectedExtensionId: options.extensionId,
       value,
       approvals: options.approvals,
+      onAuthorized,
     });
     safePost(port, result);
     return;
@@ -106,6 +148,7 @@ async function handlePortMessage(
     expectedExtensionId: options.extensionId,
     value,
     approvals: options.approvals,
+    onAuthorized,
     fetchImpl: options.fetchImpl,
     signal,
     createAdapter: options.createAdapter,

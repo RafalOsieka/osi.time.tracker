@@ -145,7 +145,9 @@ export class ApprovalService {
   }
 
   async hasHostPermission(origin: string): Promise<boolean> {
-    return this.permissions.contains(hostMatchPattern(canonicalizeWebsiteOrigin(origin).origin));
+    // Host grants cover both OSI websites and HTTP/HTTPS trackers; website approval
+    // policy is enforced separately by approveWebsite and authorizedDestination.
+    return this.permissions.contains(hostMatchPattern(canonicalizeDestination(origin).origin));
   }
 
   async approveWebsite(rawOrigin: string): Promise<WebsiteApproval> {
@@ -214,7 +216,14 @@ export class ApprovalService {
 
   registerInFlight(approval: DestinationApproval, handle: OperationAbortHandle): () => void {
     if (this.inFlightAborts.size === 0) {
-      this.unsubscribe = this.store.subscribe?.((state) => this.abortUnapproved(state));
+      const unsubscribeStore = this.store.subscribe?.((state) => this.abortUnapproved(state));
+      const unsubscribePermissions = this.permissions.subscribe?.(() => {
+        void this.reconcile().catch(() => this.abortUnapproved(emptyState));
+      });
+      this.unsubscribe = () => {
+        unsubscribeStore?.();
+        unsubscribePermissions?.();
+      };
     }
     this.inFlightAborts.set(handle, approval);
     return () => {
@@ -259,7 +268,23 @@ export class ApprovalService {
 
   async reconcile(): Promise<void> {
     await navigator.locks.request(MUTATION_LOCK, async () => {
-      await this.cleanupPermissions(await this.store.load());
+      const state = await this.store.load();
+      const granted = new Set<string>();
+      await Promise.all(
+        [...neededPatterns(state)].map(async (pattern) => {
+          if (await this.permissions.contains(pattern)) granted.add(pattern);
+        }),
+      );
+      const websites = state.websites.filter((item) => granted.has(hostMatchPattern(item.origin)));
+      const websiteOrigins = new Set(websites.map((item) => item.origin));
+      const destinations = state.destinations.filter(
+        (item) =>
+          websiteOrigins.has(item.websiteOrigin) && granted.has(hostMatchPattern(item.origin)),
+      );
+      const next = { websites, destinations };
+      this.abortUnapproved(next);
+      // Missing browser grants suspend access, but retain approvals for the restore UI.
+      await this.cleanupPermissions(state);
     });
   }
 

@@ -7,19 +7,21 @@ export async function registerWebsiteContentScript(
   origin: string,
   scripting: ChromeScripting = chrome.scripting,
 ): Promise<void> {
-  const id = contentScriptId(origin);
-  const existing = await scripting.getRegisteredContentScripts();
-  if (existing.some((script) => script.id === id)) return;
-  await scripting.registerContentScripts([
-    {
-      id,
-      matches: [`${origin}/*`],
-      js: ['content.js'],
-      runAt: 'document_start',
-      world: 'ISOLATED',
-      persistAcrossSessions: true,
-    },
-  ]);
+  await navigator.locks.request('osi.content-script.registration', async () => {
+    const id = contentScriptId(origin);
+    const existing = await scripting.getRegisteredContentScripts();
+    if (existing.some((script) => script.id === id)) return;
+    await scripting.registerContentScripts([
+      {
+        id,
+        matches: [`${origin}/*`],
+        js: ['content.js'],
+        runAt: 'document_start',
+        world: 'ISOLATED',
+        persistAcrossSessions: true,
+      },
+    ]);
+  });
 }
 
 export async function unregisterWebsiteContentScript(

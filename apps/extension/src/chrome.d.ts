@@ -87,6 +87,8 @@ declare const chrome: {
     connect(connectInfo: { name: string }): ChromeRuntimePort;
     openOptionsPage(): void;
     onConnect: { addListener(callback: (port: ChromeRuntimePort) => void): void };
+    onStartup: { addListener(callback: () => void): void };
+    onInstalled: { addListener(callback: () => void): void };
   };
   storage: { local: ChromeStorageArea; onChanged: ChromeStorageChanges };
   permissions: ChromePermissions;

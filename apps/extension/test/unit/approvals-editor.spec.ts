@@ -9,6 +9,22 @@ import {
 import { useApprovalsEditor } from '../../src/composables/use-approvals-editor.js';
 
 describe('approvals editor', () => {
+  it('refreshes approved non-loopback HTTP trackers', async () => {
+    const service = new ApprovalService(createMemoryApprovalStore(), createMemoryHostPermissions());
+    await service.approveWebsite('https://osi.example.com');
+    const destination = await service.approveDestination(
+      'https://osi.example.com',
+      'redmine',
+      'http://tracker.internal/redmine',
+    );
+    const editor = useApprovalsEditor(service);
+    await editor.refresh();
+    expect(editor.loaded.value).toBe(true);
+    expect(editor.errorKey.value).toBeNull();
+    expect(editor.destinations.value).toEqual([destination]);
+    expect(editor.missingOrigins.value).toEqual([]);
+  });
+
   it('observes external approvals and permission loss, restores access, and unsubscribes', async () => {
     const store = createMemoryApprovalStore();
     const permissions = createMemoryHostPermissions();

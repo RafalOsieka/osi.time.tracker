@@ -14,7 +14,14 @@ export interface FakeTrackerServer {
   origin: string;
   baseUrl: string;
   requests: RecordedRequest[];
+  createdLogIds: number[];
   close: () => Promise<void>;
+}
+
+interface FakeTrackerOptions {
+  dropCreateResponse?: boolean;
+  nextPageUrl?: string;
+  redirectAccountTo?: string;
 }
 
 function readUrl(request: IncomingMessage): string {
@@ -159,14 +166,38 @@ function handleRedmine(request: IncomingMessage, response: ServerResponse): void
 function listen(
   kind: FakeTrackerKind,
   handler: typeof handleOpenProject,
+  options: FakeTrackerOptions,
 ): Promise<FakeTrackerServer> {
   const requests: RecordedRequest[] = [];
+  const createdLogIds: number[] = [];
   const server: Server = createServer((request, response) => {
     requests.push({
       method: request.method ?? 'GET',
       url: readUrl(request),
       authorization: request.headers.authorization,
     });
+    const path = readUrl(request).split('?')[0];
+    if (
+      request.method === 'POST' &&
+      (path === '/api/v3/time_entries' || path === '/time_entries.json')
+    ) {
+      createdLogIds.push(9001 + createdLogIds.length);
+      if (options.dropCreateResponse) {
+        response.destroy();
+        return;
+      }
+    }
+    if (options.nextPageUrl && path === '/api/v3/time_entries' && request.method === 'GET') {
+      sendJson(response, 200, {
+        _embedded: { elements: [] },
+        _links: { next: { href: options.nextPageUrl } },
+      });
+      return;
+    }
+    if (options.redirectAccountTo && path === '/api/v3/users/me') {
+      sendRedirect(response, options.redirectAccountTo);
+      return;
+    }
     handler(request, response);
   });
 
@@ -184,6 +215,7 @@ function listen(
         origin,
         baseUrl: origin,
         requests,
+        createdLogIds,
         close: () =>
           new Promise((closeResolve, closeReject) => {
             server.close((error) => {
@@ -196,10 +228,10 @@ function listen(
   });
 }
 
-export function startFakeOpenProject(): Promise<FakeTrackerServer> {
-  return listen('openproject', handleOpenProject);
+export function startFakeOpenProject(options: FakeTrackerOptions = {}): Promise<FakeTrackerServer> {
+  return listen('openproject', handleOpenProject, options);
 }
 
-export function startFakeRedmine(): Promise<FakeTrackerServer> {
-  return listen('redmine', handleRedmine);
+export function startFakeRedmine(options: FakeTrackerOptions = {}): Promise<FakeTrackerServer> {
+  return listen('redmine', handleRedmine, options);
 }

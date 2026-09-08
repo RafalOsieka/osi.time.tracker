@@ -5,6 +5,8 @@ import {
   ExtensionProtocolError,
   parseHandshakeRequest,
   parseOperationRequest,
+  parseMatchedOperationResult,
+  reconstructProtocolError,
   serializeAdapterError,
   serializeProtocolError,
   type HandshakeResult,
@@ -20,7 +22,7 @@ import {
   type TrackerSystemType,
   type Transport,
 } from '@osi/remote-trackers/contracts';
-import type { ApprovalService } from '../approvals/approvals.js';
+import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import { CanonicalizationError } from '../security/canonicalize.js';
 import { createProviderAdapter } from '../providers.js';
 import { createGuardedTransport } from '../transport/guarded-transport.js';
@@ -130,24 +132,14 @@ async function executeOperation(
       };
     }
     case 'createTimeEntry': {
-      try {
-        const result = await adapter.createTimeEntry(request.input);
-        return {
-          type: 'operation-result',
-          requestId: request.requestId,
-          operation: 'createTimeEntry',
-          ok: true,
-          result,
-        };
-      } catch (error) {
-        if (error instanceof ExtensionProtocolError && error.kind === 'timeout') {
-          throw new ExtensionProtocolError(
-            'unknown-create',
-            EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
-          );
-        }
-        throw error;
-      }
+      const result = await adapter.createTimeEntry(request.input);
+      return {
+        type: 'operation-result',
+        requestId: request.requestId,
+        operation: 'createTimeEntry',
+        ok: true,
+        result,
+      };
     }
     default: {
       const _exhaustive: never = request;
@@ -161,22 +153,12 @@ async function approvedOrigins(approvals: ApprovalService): Promise<string[]> {
   return listed.websites.map((item) => item.origin);
 }
 
-function isCreateAborted(
-  request: OperationRequest,
-  controller: AbortController,
-  signal?: AbortSignal,
-): boolean {
-  return (
-    request.operation === 'createTimeEntry' &&
-    (controller.signal.aborted || Boolean(signal?.aborted))
-  );
-}
-
 export async function handleHandshake(options: {
   sender: RuntimeSender;
   expectedExtensionId: string;
   value: JsonValue;
   approvals: ApprovalService;
+  onAuthorized?: (approval: DestinationApproval) => void;
 }): Promise<HandshakeResult | SafeWireError> {
   const parsed = parseHandshakeRequest(options.value);
   if (!parsed.success) return parsed.error;
@@ -189,11 +171,12 @@ export async function handleHandshake(options: {
   let destinationApproved: boolean | undefined;
   if (parsed.data.destination) {
     try {
-      await options.approvals.authorizedDestination(
+      const approval = await options.approvals.authorizedDestination(
         senderOrigin,
         parsed.data.destination.provider,
         parsed.data.destination.baseUrl,
       );
+      options.onAuthorized?.(approval);
       destinationApproved = true;
     } catch {
       destinationApproved = false;
@@ -212,6 +195,7 @@ export async function handleOperation(options: {
   expectedExtensionId: string;
   value: JsonValue;
   approvals: ApprovalService;
+  onAuthorized?: (approval: DestinationApproval) => void;
   fetchImpl?: typeof fetch;
   signal?: AbortSignal;
   createAdapter?: CreateProviderAdapter;
@@ -244,12 +228,14 @@ export async function handleOperation(options: {
     options.signal ? [options.signal, controller.signal, timeout] : [controller.signal, timeout],
   );
   let unregister = () => {};
+  let writeDispatched = false;
   try {
     const approval = await options.approvals.authorizedDestination(
       senderOrigin,
       request.provider,
       request.baseUrl,
     );
+    options.onAuthorized?.(approval);
     unregister = options.approvals.registerInFlight(approval, {
       abort: () => controller.abort(),
     });
@@ -258,6 +244,9 @@ export async function handleOperation(options: {
       approvals: options.approvals,
       fetchImpl: options.fetchImpl,
       signal: combined,
+      onWriteOutcome: (outcome) => {
+        writeDispatched = outcome === 'dispatched';
+      },
     });
     const adapter = (options.createAdapter ?? createProviderAdapter)(
       request.provider,
@@ -265,9 +254,16 @@ export async function handleOperation(options: {
       request.baseUrl,
       request.secret,
     );
-    return await executeOperation(adapter, request);
+    const result = await executeOperation(adapter, request);
+    const validated = parseMatchedOperationResult(request.operation, result);
+    if (!validated.success) {
+      throw reconstructProtocolError(validated.error);
+    }
+    return validated.data;
   } catch (error) {
-    if (isCreateAborted(request, controller, combined)) {
+    // Provider error mapping loses transport details. Retain dispatch state outside
+    // the adapter until a validated success or definite rejection is available.
+    if (request.operation === 'createTimeEntry' && writeDispatched) {
       return failure(request, {
         kind: 'unknown-create',
         messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
