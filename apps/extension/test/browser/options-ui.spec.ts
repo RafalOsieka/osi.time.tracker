@@ -64,13 +64,34 @@ describeChromium('extension options UI', () => {
       .poll(() => popup.getByTestId('open-options').textContent())
       .toMatch(/Otwórz konfigurację/);
 
-    await page.getByTestId('destination-url').fill('https://tracker.example.com');
+    await expect
+      .poll(() => popup.getByTestId('saved-websites').textContent())
+      .toContain('Zapisane witryny:');
+    await expect
+      .poll(() => popup.getByTestId('saved-websites').locator('li').allTextContents())
+      .toEqual(['http://localhost:3000']);
+    await page.getByTestId('destination-url').fill('https://tracker.example.com/team');
     await page.getByTestId('add-destination').press('Enter');
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
+    await expect
+      .poll(() => popup.getByTestId('saved-trackers').textContent())
+      .toContain('Zapisane trackery:');
+    await expect
+      .poll(async () =>
+        (await popup.getByTestId('saved-trackers').locator('li').allTextContents()).map((text) =>
+          text.trim(),
+        ),
+      )
+      .toEqual(['http://localhost:3000 - https://tracker.example.com/team']);
     await page.locator('[data-testid^="revoke-website-"]').press('Enter');
     await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/cofni/i);
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
-    await expect.poll(() => popup.getByTestId('approval-counts').textContent()).toMatch(/0 \/ 0/);
+    await expect
+      .poll(() => popup.getByTestId('saved-websites').textContent())
+      .toContain('Nie zatwierdzono jeszcze żadnej witryny.');
+    await expect
+      .poll(() => popup.getByTestId('saved-trackers').textContent())
+      .toContain('Nie zatwierdzono jeszcze żadnego trackera.');
 
     await page.getByTestId('website-origin').fill('http://localhost:3001');
     await page.getByTestId('add-website').press('Enter');
