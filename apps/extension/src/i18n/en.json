@@ -1,0 +1,8 @@
+{
+  "app": {
+    "name": "OSI Time Tracker",
+    "optionsTitle": "Extension setup",
+    "popupTitle": "Extension status",
+    "statusReady": "Extension is loaded. Open Options to approve a website and tracker destination."
+  }
+}

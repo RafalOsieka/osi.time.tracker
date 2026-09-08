@@ -1,0 +1,8 @@
+{
+  "app": {
+    "name": "OSI Time Tracker",
+    "optionsTitle": "Konfiguracja rozszerzenia",
+    "popupTitle": "Status rozszerzenia",
+    "statusReady": "Rozszerzenie jest załadowane. Otwórz Opcje, aby zatwierdzić witrynę i miejsce docelowe trackera."
+  }
+}
