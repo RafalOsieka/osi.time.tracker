@@ -1,22 +1,26 @@
 <script setup lang="ts">
-import { computed, onMounted, shallowRef } from 'vue';
+import { computed, onMounted } from 'vue';
 import { ApprovalService } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
   createChromeHostPermissions,
 } from '../approvals/chrome-store.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
+import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 
-const { t } = useExtensionI18n();
-const websiteCount = shallowRef(0);
-const destinationCount = shallowRef(0);
-const status = computed(() => t.value('app.statusReady'));
+const { t, localeErrorKey } = useExtensionI18n();
+const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
+const { websites, destinations, missingOrigins, loaded, errorKey, refresh } =
+  useApprovalsEditor(service);
+const status = computed(() =>
+  t.value(
+    errorKey.value ??
+      (missingOrigins.value.length ? 'approvals.missingPermission' : 'app.statusReady'),
+  ),
+);
 
-onMounted(async () => {
-  const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
-  const state = await service.list();
-  websiteCount.value = state.websites.length;
-  destinationCount.value = state.destinations.length;
+onMounted(() => {
+  void refresh();
 });
 
 function openOptions(): void {
@@ -28,7 +32,11 @@ function openOptions(): void {
   <main class="popup">
     <h1 class="title">{{ t('app.popupTitle') }}</h1>
     <p class="status" role="status" aria-live="polite">{{ status }}</p>
-    <p data-testid="approval-counts">{{ websiteCount }} / {{ destinationCount }}</p>
+    <p v-if="localeErrorKey" role="alert">{{ t(localeErrorKey) }}</p>
+    <p v-if="loaded" data-testid="approval-counts">
+      {{ t('approvals.savedCounts') }} {{ websites.length }} / {{ destinations.length }}
+    </p>
+    <button v-if="errorKey" type="button" @click="refresh()">{{ t('approvals.retry') }}</button>
     <button class="button" data-testid="open-options" type="button" @click="openOptions">
       {{ t('app.openOptions') }}
     </button>

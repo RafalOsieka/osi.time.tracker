@@ -34,6 +34,7 @@ export interface HostPermissionPort {
   request: (matchPattern: string) => Promise<boolean>;
   remove: (matchPattern: string) => Promise<void>;
   list: () => Promise<string[]>;
+  subscribe?: (listener: () => void) => () => void;
 }
 
 export interface OperationAbortHandle {
@@ -41,6 +42,8 @@ export interface OperationAbortHandle {
 }
 
 const emptyState: ApprovalState = { websites: [], destinations: [] };
+const MUTATION_LOCK = 'osi.approvals.mutation';
+const GRANT_LOCK = 'osi.approvals.pending-grants';
 
 export function createMemoryApprovalStore(initial: ApprovalState = emptyState): ApprovalStore {
   const listeners = new Set<(state: ApprovalState) => void>();
@@ -72,17 +75,26 @@ export function createMemoryApprovalStore(initial: ApprovalState = emptyState): 
 export function createMemoryHostPermissions(
   granted: Set<string> = new Set(),
 ): HostPermissionPort & { granted: Set<string> } {
+  const listeners = new Set<() => void>();
   return {
     granted,
     contains: async (matchPattern) => granted.has(matchPattern),
     request: async (matchPattern) => {
       granted.add(matchPattern);
+      for (const listener of listeners) listener();
       return true;
     },
     remove: async (matchPattern) => {
       granted.delete(matchPattern);
+      for (const listener of listeners) listener();
     },
     list: async () => [...granted],
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
   };
 }
 
@@ -123,18 +135,29 @@ export class ApprovalService {
     return this.store.load();
   }
 
+  subscribe(listener: () => void): () => void {
+    const unsubscribeStore = this.store.subscribe?.(listener);
+    const unsubscribePermissions = this.permissions.subscribe?.(listener);
+    return () => {
+      unsubscribeStore?.();
+      unsubscribePermissions?.();
+    };
+  }
+
+  async hasHostPermission(origin: string): Promise<boolean> {
+    return this.permissions.contains(hostMatchPattern(canonicalizeWebsiteOrigin(origin).origin));
+  }
+
   async approveWebsite(rawOrigin: string): Promise<WebsiteApproval> {
     const canonical = canonicalizeWebsiteOrigin(rawOrigin);
-    const granted = await this.permissions.request(hostMatchPattern(canonical.origin));
-    if (!granted) {
-      throw new CanonicalizationError('error.extensionPermissionRequired');
-    }
-    const state = await this.store.load();
-    if (!state.websites.some((item) => item.origin === canonical.origin)) {
-      state.websites.push({ origin: canonical.origin });
-      await this.store.save(state);
-    }
-    return { origin: canonical.origin };
+    return this.withPermission(canonical.origin, async () => {
+      const state = await this.store.load();
+      if (!state.websites.some((item) => item.origin === canonical.origin)) {
+        state.websites.push({ origin: canonical.origin });
+        await this.store.save(state);
+      }
+      return { origin: canonical.origin };
+    });
   }
 
   async approveDestination(
@@ -144,47 +167,49 @@ export class ApprovalService {
   ): Promise<DestinationApproval> {
     const website = canonicalizeWebsiteOrigin(websiteOriginRaw);
     const destination = canonicalizeDestination(destinationRaw);
-    const state = await this.store.load();
-    if (!state.websites.some((item) => item.origin === website.origin)) {
-      throw new CanonicalizationError('error.extensionOriginUnapproved');
-    }
-    const granted = await this.permissions.request(hostMatchPattern(destination.origin));
-    if (!granted) {
-      throw new CanonicalizationError('error.extensionPermissionRequired');
-    }
     const approval: DestinationApproval = {
       websiteOrigin: website.origin,
       provider,
       origin: destination.origin,
       basePath: destination.pathname,
     };
-    if (!state.destinations.some((item) => sameDestination(item, approval))) {
-      state.destinations.push(approval);
-      await this.store.save(state);
-    }
-    return approval;
+    return this.withPermission(destination.origin, async () => {
+      const state = await this.store.load();
+      if (!state.websites.some((item) => item.origin === website.origin)) {
+        throw new CanonicalizationError('error.extensionOriginUnapproved');
+      }
+      if (!state.destinations.some((item) => sameDestination(item, approval))) {
+        state.destinations.push(approval);
+        await this.store.save(state);
+      }
+      return approval;
+    });
   }
 
   async revokeWebsite(origin: string): Promise<void> {
-    const state = await this.store.load();
-    const next: ApprovalState = {
-      websites: state.websites.filter((item) => item.origin !== origin),
-      destinations: state.destinations.filter((item) => item.websiteOrigin !== origin),
-    };
-    await this.store.save(next);
-    this.abortUnapproved(next);
-    await this.reconcilePermissions(next);
+    await navigator.locks.request(MUTATION_LOCK, async () => {
+      const state = await this.store.load();
+      const next: ApprovalState = {
+        websites: state.websites.filter((item) => item.origin !== origin),
+        destinations: state.destinations.filter((item) => item.websiteOrigin !== origin),
+      };
+      await this.store.save(next);
+      this.abortUnapproved(next);
+      await this.cleanupPermissions(next);
+    });
   }
 
   async revokeDestination(approval: DestinationApproval): Promise<void> {
-    const state = await this.store.load();
-    const next: ApprovalState = {
-      websites: state.websites,
-      destinations: state.destinations.filter((item) => !sameDestination(item, approval)),
-    };
-    await this.store.save(next);
-    this.abortUnapproved(next);
-    await this.reconcilePermissions(next);
+    await navigator.locks.request(MUTATION_LOCK, async () => {
+      const state = await this.store.load();
+      const next: ApprovalState = {
+        websites: state.websites,
+        destinations: state.destinations.filter((item) => !sameDestination(item, approval)),
+      };
+      await this.store.save(next);
+      this.abortUnapproved(next);
+      await this.cleanupPermissions(next);
+    });
   }
 
   registerInFlight(approval: DestinationApproval, handle: OperationAbortHandle): () => void {
@@ -232,14 +257,51 @@ export class ApprovalService {
     return match;
   }
 
-  async reconcilePermissions(state?: ApprovalState): Promise<void> {
-    const current = state ?? (await this.store.load());
-    const needed = neededPatterns(current);
-    const granted = await this.permissions.list();
-    for (const pattern of granted) {
-      if (needed.has(pattern)) continue;
-      await this.permissions.remove(pattern);
+  async reconcile(): Promise<void> {
+    await navigator.locks.request(MUTATION_LOCK, async () => {
+      await this.cleanupPermissions(await this.store.load());
+    });
+  }
+
+  async reconcilePermissions(): Promise<void> {
+    await this.reconcile();
+  }
+
+  private async withPermission<T>(origin: string, mutate: () => Promise<T>): Promise<T> {
+    const pattern = hostMatchPattern(origin);
+    // Request before any await to preserve the browser's user gesture. Handle rejection
+    // immediately even when another context currently holds the grant lock.
+    const requested = Promise.allSettled([this.permissions.request(pattern)]);
+    try {
+      return await navigator.locks.request(GRANT_LOCK, { mode: 'shared' }, async () => {
+        const [result] = await requested;
+        if (result.status === 'rejected') throw result.reason;
+        if (!result.value) {
+          throw new CanonicalizationError('error.extensionPermissionRequired');
+        }
+        return navigator.locks.request(MUTATION_LOCK, async () => {
+          // A cleanup already running when the prompt started may have removed the grant.
+          if (!(await this.permissions.contains(pattern))) {
+            throw new CanonicalizationError('error.extensionPermissionRequired');
+          }
+          return mutate();
+        });
+      });
+    } finally {
+      await this.reconcile();
     }
+  }
+
+  private async cleanupPermissions(state: ApprovalState): Promise<void> {
+    // Never wait for a pending grant while holding the mutation lock: its commit needs
+    // that lock. The last pending approval reconciles again after releasing its guard.
+    await navigator.locks.request(GRANT_LOCK, { ifAvailable: true }, async (lock) => {
+      if (!lock) return;
+      const needed = neededPatterns(state);
+      for (const pattern of await this.permissions.list()) {
+        if (!needed.has(pattern)) await this.permissions.remove(pattern);
+      }
+    });
   }
 
   private abortUnapproved(state: ApprovalState): void {

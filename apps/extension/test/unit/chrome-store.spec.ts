@@ -3,9 +3,36 @@ import { ApprovalService, createMemoryHostPermissions } from '../../src/approval
 import {
   APPROVAL_STORAGE_KEY,
   createChromeApprovalStore,
+  createChromeHostPermissions,
 } from '../../src/approvals/chrome-store.js';
 
 describe('Chrome approval changes', () => {
+  it('observes browser permission additions and removals and releases both listeners', () => {
+    const onAdded: ChromePermissionChanges = {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    };
+    const onRemoved: ChromePermissionChanges = {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    };
+    const permissions = createChromeHostPermissions({
+      contains: async () => false,
+      request: async () => true,
+      remove: async () => true,
+      getAll: async () => ({}),
+      onAdded,
+      onRemoved,
+    });
+    const listener = vi.fn();
+    const unsubscribe = permissions.subscribe?.(listener);
+    expect(onAdded.addListener).toHaveBeenCalledWith(listener);
+    expect(onRemoved.addListener).toHaveBeenCalledWith(listener);
+    unsubscribe?.();
+    expect(onAdded.removeListener).toHaveBeenCalledWith(listener);
+    expect(onRemoved.removeListener).toHaveBeenCalledWith(listener);
+  });
+
   it('cancels worker work after an options-context storage change and releases the listener', async () => {
     const listeners = new Set<Parameters<ChromeStorageChanges['addListener']>[0]>();
     const changes: ChromeStorageChanges = {

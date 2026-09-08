@@ -59,5 +59,13 @@ export function createChromeHostPermissions(
       await permissions.remove({ origins: [matchPattern] });
     },
     list: async () => (await permissions.getAll()).origins ?? [],
+    subscribe: (listener) => {
+      permissions.onAdded.addListener(listener);
+      permissions.onRemoved.addListener(listener);
+      return () => {
+        permissions.onAdded.removeListener(listener);
+        permissions.onRemoved.removeListener(listener);
+      };
+    },
   };
 }

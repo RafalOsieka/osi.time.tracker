@@ -44,7 +44,18 @@ interface ChromeStorageChanges {
   ): void;
 }
 
+interface ChromePermissionChanges {
+  addListener(
+    callback: (permissions: { origins?: string[]; permissions?: string[] }) => void,
+  ): void;
+  removeListener(
+    callback: (permissions: { origins?: string[]; permissions?: string[] }) => void,
+  ): void;
+}
+
 interface ChromePermissions {
+  onAdded: ChromePermissionChanges;
+  onRemoved: ChromePermissionChanges;
   contains(permissions: { origins: string[] }): Promise<boolean>;
   request(permissions: { origins: string[] }): Promise<boolean>;
   remove(permissions: { origins: string[] }): Promise<boolean>;

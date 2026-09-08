@@ -26,6 +26,140 @@ function service(options?: { deny?: boolean }) {
 }
 
 describe('extension approvals', () => {
+  it('waits for an approval save before reconciling permissions in another context', async () => {
+    const { approvals, store, permissions } = service();
+    const other = new ApprovalService(store, permissions);
+    const saving = Promise.withResolvers<undefined>();
+    const release = Promise.withResolvers<undefined>();
+    const save = store.save;
+    vi.spyOn(store, 'save').mockImplementation(async (state) => {
+      saving.resolve(undefined);
+      await release.promise;
+      await save(state);
+    });
+    const pending = approvals.approveWebsite(website);
+    await saving.promise;
+    const cleanup = other.reconcile();
+    release.resolve(undefined);
+    await Promise.all([pending, cleanup]);
+    expect((await approvals.list()).websites).toEqual([{ origin: website }]);
+    await expect(approvals.hasHostPermission(website)).resolves.toBe(true);
+  });
+
+  it('fails closed if cleanup already underway removes a newly requested grant', async () => {
+    const { approvals, store, permissions } = service();
+    const other = new ApprovalService(store, permissions);
+    permissions.granted.add(hostMatchPattern(website));
+    const removing = Promise.withResolvers<undefined>();
+    const release = Promise.withResolvers<undefined>();
+    const remove = permissions.remove;
+    vi.spyOn(permissions, 'remove').mockImplementation(async (pattern) => {
+      removing.resolve(undefined);
+      await release.promise;
+      await remove(pattern);
+    });
+    const cleanup = other.reconcile();
+    await removing.promise;
+    const request = vi.spyOn(permissions, 'request');
+    const pending = approvals.approveWebsite(website);
+    expect(request).toHaveBeenCalledOnce();
+    const rejected = expect(pending).rejects.toMatchObject({
+      messageKey: 'error.extensionPermissionRequired',
+    });
+    release.resolve(undefined);
+    await Promise.all([cleanup, rejected]);
+    expect(await approvals.list()).toEqual({ websites: [], destinations: [] });
+  });
+
+  it('requests permission immediately and protects a pending grant from reconciliation', async () => {
+    const { approvals, store, permissions } = service();
+    const other = new ApprovalService(store, permissions);
+    await approvals.approveWebsite(website);
+    const grant = Promise.withResolvers<boolean>();
+    const request = vi.spyOn(permissions, 'request').mockImplementation((pattern) => {
+      permissions.granted.add(pattern);
+      return grant.promise;
+    });
+    const pending = approvals.approveDestination(website, 'openproject', tracker);
+    expect(request).toHaveBeenCalledOnce();
+    await other.reconcile();
+    expect(permissions.granted.has(hostMatchPattern('https://op.example.com'))).toBe(true);
+    grant.resolve(true);
+    await pending;
+    await expect(
+      approvals.authorizedDestination(website, 'openproject', tracker),
+    ).resolves.toMatchObject({
+      origin: 'https://op.example.com',
+    });
+  });
+
+  it('serializes concurrent revocations without restoring either approval', async () => {
+    const { approvals, store, permissions } = service();
+    const other = new ApprovalService(store, permissions);
+    await approvals.approveWebsite(website);
+    await approvals.approveWebsite('http://localhost:3001');
+    await Promise.all([
+      approvals.revokeWebsite(website),
+      other.revokeWebsite('http://localhost:3001'),
+    ]);
+    expect(await approvals.list()).toEqual({ websites: [], destinations: [] });
+    expect([...permissions.granted]).toEqual([]);
+  });
+
+  it('observes both store and permission changes until unsubscribed', async () => {
+    const { approvals, store, permissions } = service();
+    const listener = vi.fn();
+    const unsubscribe = approvals.subscribe(listener);
+    await store.save({ websites: [{ origin: website }], destinations: [] });
+    expect(listener).toHaveBeenCalledTimes(1);
+    await permissions.request(hostMatchPattern(website));
+    expect(listener).toHaveBeenCalledTimes(2);
+    await expect(approvals.hasHostPermission(website)).resolves.toBe(true);
+    await permissions.remove(hostMatchPattern(website));
+    expect(listener).toHaveBeenCalledTimes(3);
+    await expect(approvals.hasHostPermission(website)).resolves.toBe(false);
+    unsubscribe();
+    await store.save({ websites: [], destinations: [] });
+    await permissions.request(hostMatchPattern(website));
+    expect(listener).toHaveBeenCalledTimes(3);
+  });
+
+  it('preserves simultaneous approvals from separate service contexts', async () => {
+    const { approvals, store, permissions } = service();
+    const other = new ApprovalService(store, permissions);
+    await Promise.all([
+      approvals.approveWebsite(website),
+      other.approveWebsite('http://localhost:3001'),
+    ]);
+    expect((await approvals.list()).websites).toEqual(
+      expect.arrayContaining([{ origin: website }, { origin: 'http://localhost:3001' }]),
+    );
+  });
+
+  it('does not resurrect a website revoked while its destination permission is pending', async () => {
+    const { approvals, store, permissions } = service();
+    const other = new ApprovalService(store, permissions);
+    await approvals.approveWebsite(website);
+    const requested = Promise.withResolvers<undefined>();
+    const grant = Promise.withResolvers<boolean>();
+    permissions.request = async (pattern) => {
+      requested.resolve(undefined);
+      await grant.promise;
+      permissions.granted.add(pattern);
+      return true;
+    };
+    const pending = approvals.approveDestination(website, 'openproject', tracker);
+    const rejected = expect(pending).rejects.toMatchObject({
+      messageKey: 'error.extensionOriginUnapproved',
+    });
+    await requested.promise;
+    await other.revokeWebsite(website);
+    grant.resolve(true);
+    await rejected;
+    expect(await approvals.list()).toEqual({ websites: [], destinations: [] });
+    expect([...permissions.granted]).toEqual([]);
+  });
+
   it('does not treat trailing-slash-only normalizeBaseUrl as authorization', () => {
     expect(normalizeBaseUrl('https://op.example.com/openproject/../secret/')).toBe(
       'https://op.example.com/openproject/../secret',

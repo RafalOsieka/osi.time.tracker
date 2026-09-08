@@ -7,19 +7,23 @@ import {
 } from '../approvals/chrome-store.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
-import {
-  reconcileWebsiteContentScripts,
-  registerWebsiteContentScript,
-  unregisterWebsiteContentScript,
-} from '../content/registration.js';
+import { reconcileWebsiteContentScripts } from '../content/registration.js';
 import DestinationApprovals from './DestinationApprovals.vue';
 import WebsiteApprovals from './WebsiteApprovals.vue';
 
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const editor = useApprovalsEditor(service, {
-  register: registerWebsiteContentScript,
-  unregister: unregisterWebsiteContentScript,
-  reconcile: reconcileWebsiteContentScripts,
+  // Read inside the shared lock so another setup tab cannot apply an older script list last.
+  reconcile: () =>
+    navigator.locks.request('osi-extension-script-setup', async () => {
+      const state = await service.list();
+      const granted = await Promise.all(
+        state.websites.map((item) => service.hasHostPermission(item.origin)),
+      );
+      await reconcileWebsiteContentScripts(
+        state.websites.filter((_, index) => granted[index]).map((item) => item.origin),
+      );
+    }),
 });
 const {
   websites,
@@ -30,15 +34,24 @@ const {
   destinationUrl,
   statusKey,
   errorKey,
+  websiteErrorKey,
+  destinationErrorKey,
+  missingOrigins,
+  busy,
+  loaded,
   httpWarning,
   refresh,
   addWebsite,
   revokeWebsite,
   addDestination,
   revokeDestination,
+  restoreWebsite,
+  restoreDestination,
+  retry,
 } = editor;
-const { t, locale, setLocale } = useExtensionI18n();
+const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const statusText = computed(() => t.value(errorKey.value ?? statusKey.value));
+const disabled = computed(() => busy.value || !loaded.value);
 
 function onLanguageChange(event: Event): void {
   const target = event.target;
@@ -64,13 +77,28 @@ onMounted(() => {
       </label>
     </header>
     <p class="status" data-testid="status" role="status" aria-live="polite">{{ statusText }}</p>
+    <p v-if="localeErrorKey" role="alert">{{ t(localeErrorKey) }}</p>
+    <button
+      v-if="errorKey"
+      data-testid="retry-setup"
+      type="button"
+      :disabled="busy"
+      @click="retry()"
+    >
+      {{ t('approvals.retry') }}
+    </button>
+    <p v-if="missingOrigins.length" role="status">{{ t('approvals.missingPermission') }}</p>
     <p class="hint">{{ t('app.refreshHint') }}</p>
     <WebsiteApprovals
       :websites="websites"
       :origin="websiteOrigin"
+      :disabled="disabled"
+      :error-key="websiteErrorKey"
+      :missing-origins="missingOrigins"
       @update:origin="websiteOrigin = $event"
       @add="addWebsite()"
       @revoke="revokeWebsite($event)"
+      @restore="restoreWebsite($event)"
     />
     <DestinationApprovals
       :websites="websites"
@@ -79,11 +107,15 @@ onMounted(() => {
       :provider="destinationProvider"
       :destination-url="destinationUrl"
       :http-warning="httpWarning"
+      :disabled="disabled"
+      :error-key="destinationErrorKey"
+      :missing-origins="missingOrigins"
       @update:website="destinationWebsite = $event"
       @update:provider="destinationProvider = $event"
       @update:destination-url="destinationUrl = $event"
       @add="addDestination()"
       @revoke="revokeDestination($event)"
+      @restore="restoreDestination($event)"
     />
   </main>
 </template>

@@ -49,11 +49,11 @@ async function approveSite(
   await page.goto(await optionsUrl(harness));
   await page.getByTestId('website-origin').fill(websiteOrigin);
   await page.getByTestId('add-website').click();
-  await expect(page.getByTestId('status')).toContainText(/saved|zapisane/i);
+  await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved|zapisane/i);
   await page.getByTestId('destination-provider').selectOption(provider);
   await page.getByTestId('destination-url').fill(destinationUrl);
   await page.getByTestId('add-destination').click();
-  await expect(page.getByTestId('status')).toContainText(/saved|zapisane/i);
+  await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved|zapisane/i);
   await page.close();
 }
 
@@ -343,7 +343,7 @@ describeChromium('website/content/worker bridge', () => {
     const options = await harness!.context.newPage();
     await options.goto(await optionsUrl(harness!));
     await options.locator(`[data-testid="revoke-website-${website.origin}"]`).click();
-    await expect(options.getByTestId('status')).toContainText(/cofni|revoked/i);
+    await expect.poll(() => options.getByTestId('status').textContent()).toMatch(/cofni|revoked/i);
     await options.close();
 
     const afterRevoke = await runOnPage(page, {

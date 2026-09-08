@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
 import {
   extensionDistPath,
   launchExtensionContext,
@@ -29,22 +29,141 @@ describeChromium('extension options UI', () => {
     await harness?.close();
   });
 
+  afterEach(async () => {
+    await Promise.all(harness!.context.pages().map((page) => page.close()));
+  });
+
   it('approves, reloads, localizes, and revokes from the keyboard', async () => {
     const page = await harness!.context.newPage();
     await page.goto(await optionsUrl(harness!));
+    await page.getByTestId('language').selectOption('en');
+    await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
+    await page.getByTestId('website-origin').fill('https://time.example.com/reports');
+    await page.getByTestId('add-website').press('Enter');
+    await expect
+      .poll(() => page.getByTestId('website-origin').getAttribute('aria-invalid'))
+      .toBe('true');
+    await expect
+      .poll(() => page.locator('#website-origin-error').textContent())
+      .toMatch(/Remove paths/);
     await page.getByTestId('website-origin').fill('http://localhost:3000');
     await page.getByTestId('add-website').press('Enter');
-    await expect(page.getByTestId('status')).toContainText(/saved|zapisane/i);
+    await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved/i);
 
     await page.reload();
-    await expect(page.getByText('http://localhost:3000')).toBeVisible();
+    await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3000').isVisible())
+      .toBe(true);
 
     await page.getByTestId('language').selectOption('pl');
-    await expect(page.getByTestId('add-website')).toHaveText(/Zatwierdź/i);
+    await expect.poll(() => page.getByTestId('add-website').textContent()).toMatch(/Zatwierdź/i);
+    await expect
+      .poll(() => page.getByTestId('add-destination').textContent())
+      .toMatch(/Zatwierdź tracker/i);
+    await page.reload();
+    await expect.poll(() => page.getByTestId('language').inputValue()).toBe('pl');
+    const popup = await harness!.context.newPage();
+    await popup.goto((await optionsUrl(harness!)).replace('/options/', '/popup/'));
+    await expect
+      .poll(() => popup.getByTestId('open-options').textContent())
+      .toMatch(/Otwórz konfigurację/);
 
     await page.getByTestId('destination-url').fill('https://tracker.example.com');
     await page.getByTestId('add-destination').press('Enter');
+    await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
     await page.locator('[data-testid^="revoke-website-"]').press('Enter');
-    await expect(page.getByTestId('status')).toContainText(/cofni|revoked/i);
+    await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/cofni/i);
+    await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
+    await expect.poll(() => popup.getByTestId('approval-counts').textContent()).toMatch(/0 \/ 0/);
+
+    await page.getByTestId('website-origin').fill('http://localhost:3001');
+    await page.getByTestId('add-website').press('Enter');
+    await expect
+      .poll(() => page.getByTestId('destination-website').inputValue())
+      .toBe('http://localhost:3001');
+    await page.getByTestId('revoke-website-http://localhost:3001').click();
+    await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
+  });
+
+  it('synchronizes setup tabs, distinguishes destination identities, and restores lost browser access', async () => {
+    const page = await harness!.context.newPage();
+    const other = await harness!.context.newPage();
+    const url = await optionsUrl(harness!);
+    await page.goto(url);
+    await other.goto(url);
+    await page.getByTestId('language').selectOption('en');
+    await expect
+      .poll(() => other.getByTestId('add-website').textContent())
+      .toMatch(/Approve website/);
+    for (const origin of ['http://localhost:3100', 'http://localhost:3101']) {
+      await page.getByTestId('website-origin').fill(origin);
+      await page.getByTestId('add-website').click();
+      await expect.poll(() => other.getByTestId(`revoke-website-${origin}`).isVisible()).toBe(true);
+      await page.getByTestId('destination-website').selectOption(origin);
+      await page.getByTestId('destination-provider').selectOption('redmine');
+      await page.getByTestId('destination-url').fill('https://shared.example.com/team');
+      await page.getByTestId('add-destination').click();
+      const row = other.getByTestId(
+        `revoke-destination-${origin}|redmine|https://shared.example.com/team`,
+      );
+      await expect
+        .poll(() => row.getAttribute('aria-label'))
+        .toBe(`Revoke tracker Website: ${origin} — Redmine https://shared.example.com/team`);
+    }
+    await other.evaluate(() =>
+      chrome.permissions.remove({ origins: ['https://shared.example.com/*'] }),
+    );
+    const restore = page.getByTestId(
+      'restore-destination-http://localhost:3100|redmine|https://shared.example.com/team',
+    );
+    await expect.poll(() => restore.isVisible()).toBe(true);
+    await restore.click();
+    await expect.poll(() => page.locator('[data-testid^="restore-destination-"]').count()).toBe(0);
+    await other.getByTestId('revoke-website-http://localhost:3100').click();
+    await expect
+      .poll(() => page.getByTestId('destination-website').inputValue())
+      .toBe('http://localhost:3101');
+    await other.getByTestId('revoke-website-http://localhost:3101').click();
+    await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
+  });
+
+  it('shows saved approvals after bridge failure and retries registration explicitly', async () => {
+    const page = await harness!.context.newPage();
+    await page.goto(await optionsUrl(harness!));
+    await page.getByTestId('language').selectOption('en');
+    const registration = await page.evaluateHandle(() => {
+      const register = chrome.scripting.registerContentScripts.bind(chrome.scripting);
+      chrome.scripting.registerContentScripts = async (scripts) => {
+        throw new Error(`Registration failed for ${scripts.length} scripts`);
+      };
+      return register;
+    });
+    await page.getByTestId('website-origin').fill('http://localhost:3200');
+    await page.getByTestId('add-website').click();
+    await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3200').isVisible())
+      .toBe(true);
+    await expect
+      .poll(() => page.getByTestId('status').textContent())
+      .toMatch(/bridge could not be configured/);
+    await page.evaluate((register) => {
+      chrome.scripting.registerContentScripts = register;
+    }, registration);
+    await registration.dispose();
+    await page.getByTestId('retry-setup').click();
+    await expect.poll(() => page.getByTestId('retry-setup').count()).toBe(0);
+    await expect
+      .poll(() =>
+        page.evaluate(async () =>
+          (await chrome.scripting.getRegisteredContentScripts()).some(
+            (script) => script.id === 'osi-bridge:http://localhost:3200',
+          ),
+        ),
+      )
+      .toBe(true);
+    await page.getByTestId('revoke-website-http://localhost:3200').click();
+    await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3200').count())
+      .toBe(0);
   });
 });
