@@ -31,12 +31,8 @@ declare global {
   }
 }
 
-async function optionsUrl(harness: ExtensionHarness): Promise<string> {
-  const workers = harness.context.serviceWorkers();
-  const worker =
-    workers[0] ?? (await harness.context.waitForEvent('serviceworker', { timeout: 15_000 }));
-  const extensionId = new URL(worker.url()).host;
-  return `chrome-extension://${extensionId}/src/options/index.html`;
+function optionsUrl(harness: ExtensionHarness): string {
+  return `chrome-extension://${harness.extensionId}/src/options/index.html`;
 }
 
 async function approveSite(
@@ -46,7 +42,7 @@ async function approveSite(
   provider: 'openproject' | 'redmine',
 ): Promise<void> {
   const page = await harness.context.newPage();
-  await page.goto(await optionsUrl(harness));
+  await page.goto(optionsUrl(harness));
   await page.getByTestId('website-origin').fill(websiteOrigin);
   await page.getByTestId('add-website').click();
   await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved|zapisane/i);
@@ -77,10 +73,7 @@ async function runOnPage(page: Page, message: JsonValue): Promise<JsonValue> {
 }
 
 async function readExtensionStorage(harness: ExtensionHarness): Promise<string> {
-  const workers = harness.context.serviceWorkers();
-  const worker = workers[0];
-  if (!worker) return '';
-  return worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null)));
+  return harness.worker.evaluate(async () => JSON.stringify(await chrome.storage.local.get(null)));
 }
 
 describeChromium('website/content/worker bridge', () => {
@@ -341,7 +334,7 @@ describeChromium('website/content/worker bridge', () => {
     expect(openProject.requests.length).toBe(hitsBefore);
 
     const options = await harness!.context.newPage();
-    await options.goto(await optionsUrl(harness!));
+    await options.goto(optionsUrl(harness!));
     await options.locator(`[data-testid="revoke-website-${website.origin}"]`).click();
     await expect.poll(() => options.getByTestId('status').textContent()).toMatch(/cofni|revoked/i);
     await options.close();

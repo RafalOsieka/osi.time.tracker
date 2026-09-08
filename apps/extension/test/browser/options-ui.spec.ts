@@ -9,12 +9,8 @@ import { requireChromium } from './harness/skip.js';
 
 const describeChromium = requireChromium();
 
-async function optionsUrl(harness: ExtensionHarness): Promise<string> {
-  const workers = harness.context.serviceWorkers();
-  const worker =
-    workers[0] ?? (await harness.context.waitForEvent('serviceworker', { timeout: 15_000 }));
-  const extensionId = new URL(worker.url()).host;
-  return `chrome-extension://${extensionId}/src/options/index.html`;
+function optionsUrl(harness: ExtensionHarness): string {
+  return `chrome-extension://${harness.extensionId}/src/options/index.html`;
 }
 
 describeChromium('extension options UI', () => {
@@ -35,7 +31,7 @@ describeChromium('extension options UI', () => {
 
   it('approves, reloads, localizes, and revokes from the keyboard', async () => {
     const page = await harness!.context.newPage();
-    await page.goto(await optionsUrl(harness!));
+    await page.goto(optionsUrl(harness!));
     await page.getByTestId('language').selectOption('en');
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
     await page.getByTestId('website-origin').fill('https://time.example.com/reports');
@@ -63,7 +59,7 @@ describeChromium('extension options UI', () => {
     await page.reload();
     await expect.poll(() => page.getByTestId('language').inputValue()).toBe('pl');
     const popup = await harness!.context.newPage();
-    await popup.goto((await optionsUrl(harness!)).replace('/options/', '/popup/'));
+    await popup.goto(optionsUrl(harness!).replace('/options/', '/popup/'));
     await expect
       .poll(() => popup.getByTestId('open-options').textContent())
       .toMatch(/Otwórz konfigurację/);
@@ -88,7 +84,7 @@ describeChromium('extension options UI', () => {
   it('synchronizes setup tabs, distinguishes destination identities, and restores lost browser access', async () => {
     const page = await harness!.context.newPage();
     const other = await harness!.context.newPage();
-    const url = await optionsUrl(harness!);
+    const url = optionsUrl(harness!);
     await page.goto(url);
     await other.goto(url);
     await page.getByTestId('language').selectOption('en');
@@ -129,7 +125,7 @@ describeChromium('extension options UI', () => {
 
   it('shows saved approvals after bridge failure and retries registration explicitly', async () => {
     const page = await harness!.context.newPage();
-    await page.goto(await optionsUrl(harness!));
+    await page.goto(optionsUrl(harness!));
     await page.getByTestId('language').selectOption('en');
     const registration = await page.evaluateHandle(() => {
       const register = chrome.scripting.registerContentScripts.bind(chrome.scripting);

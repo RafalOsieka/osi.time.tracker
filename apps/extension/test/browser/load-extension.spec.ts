@@ -33,10 +33,7 @@ describeChromium('extension browser harness', () => {
   });
 
   it('loads the unpacked extension and reaches no-CORS tracker fixtures', async () => {
-    const workers = harness?.context.serviceWorkers() ?? [];
-    const worker =
-      workers[0] ?? (await harness?.context.waitForEvent('serviceworker', { timeout: 15_000 }));
-    expect(worker).toBeDefined();
+    expect(harness?.worker).toBeDefined();
 
     const openProjectResponse = await fetch(`${openProject.baseUrl}/api/v3`);
     const redmineResponse = await fetch(`${redmine.baseUrl}/users/current.json`);
