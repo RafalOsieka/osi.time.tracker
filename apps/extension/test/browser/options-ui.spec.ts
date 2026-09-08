@@ -1,5 +1,6 @@
 import { existsSync } from 'node:fs';
 import { afterAll, afterEach, beforeAll, expect, it } from 'vitest';
+import type { Page } from 'playwright';
 import {
   extensionDistPath,
   launchExtensionContext,
@@ -11,6 +12,12 @@ const describeChromium = requireChromium();
 
 function optionsUrl(harness: ExtensionHarness): string {
   return `chrome-extension://${harness.extensionId}/src/options/index.html`;
+}
+
+async function waitUntilIdle(page: Page): Promise<void> {
+  await expect
+    .poll(() => page.getByTestId('status').textContent(), { timeout: 15_000 })
+    .not.toMatch(/Updating approvals|Aktualizowanie zatwierdzeń/);
 }
 
 describeChromium('extension options UI', () => {
@@ -83,6 +90,7 @@ describeChromium('extension options UI', () => {
         ),
       )
       .toEqual(['http://localhost:3000 - https://tracker.example.com/team']);
+    await waitUntilIdle(page);
     await page.locator('[data-testid^="revoke-website-"]').press('Enter');
     await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/cofni/i);
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
@@ -146,11 +154,14 @@ describeChromium('extension options UI', () => {
         .poll(() => page.locator('[data-testid^="restore-destination-"]').count())
         .toBe(0);
     }
+    await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3100').click();
     await expect
       .poll(() => page.getByTestId('destination-website').inputValue())
       .toBe('http://localhost:3101');
+    await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3101').click();
+    await waitUntilIdle(other);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
   });
 
