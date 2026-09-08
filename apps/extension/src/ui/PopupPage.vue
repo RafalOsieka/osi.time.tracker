@@ -33,9 +33,27 @@ function openOptions(): void {
     <h1 class="title">{{ t('app.popupTitle') }}</h1>
     <p class="status" role="status" aria-live="polite">{{ status }}</p>
     <p v-if="localeErrorKey" role="alert">{{ t(localeErrorKey) }}</p>
-    <p v-if="loaded" data-testid="approval-counts">
-      {{ t('approvals.savedCounts') }} {{ websites.length }} / {{ destinations.length }}
-    </p>
+    <template v-if="loaded">
+      <section aria-labelledby="saved-websites-title" data-testid="saved-websites">
+        <h2 id="saved-websites-title" class="list-title">{{ t('approvals.savedWebsites') }}</h2>
+        <ul v-if="websites.length" class="approval-list">
+          <li v-for="website in websites" :key="website.origin">{{ website.origin }}</li>
+        </ul>
+        <p v-else class="empty">{{ t('approvals.noWebsites') }}</p>
+      </section>
+      <section aria-labelledby="saved-trackers-title" data-testid="saved-trackers">
+        <h2 id="saved-trackers-title" class="list-title">{{ t('approvals.savedTrackers') }}</h2>
+        <ul v-if="destinations.length" class="approval-list">
+          <li
+            v-for="destination in destinations"
+            :key="`${destination.websiteOrigin}|${destination.provider}|${destination.origin}${destination.basePath}`"
+          >
+            {{ destination.websiteOrigin }} - {{ destination.origin }}{{ destination.basePath }}
+          </li>
+        </ul>
+        <p v-else class="empty">{{ t('approvals.noDestinations') }}</p>
+      </section>
+    </template>
     <button v-if="errorKey" type="button" @click="refresh()">{{ t('approvals.retry') }}</button>
     <button class="button" data-testid="open-options" type="button" @click="openOptions">
       {{ t('app.openOptions') }}
@@ -57,6 +75,18 @@ function openOptions(): void {
 }
 .status {
   margin: 0;
+}
+.list-title {
+  font-size: 1rem;
+  margin: 0;
+}
+.approval-list {
+  margin: 0.5rem 0 0;
+  padding-left: 1.25rem;
+  overflow-wrap: anywhere;
+}
+.empty {
+  margin: 0.5rem 0 0;
 }
 .button {
   font: inherit;
