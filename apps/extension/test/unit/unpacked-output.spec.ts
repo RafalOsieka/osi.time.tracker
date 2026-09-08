@@ -2,6 +2,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
+import { z } from 'zod';
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const distRoot = join(packageRoot, 'dist');
@@ -50,12 +51,14 @@ function htmlAssetPaths(htmlPath: string): string[] {
 describe('unpacked extension output', () => {
   it('contains every manifest-referenced file and no web-app source', () => {
     expect(existsSync(join(distRoot, 'manifest.json'))).toBe(true);
-    const manifest = JSON.parse(readFileSync(join(distRoot, 'manifest.json'), 'utf8')) as {
-      background: { service_worker: string; type: string };
-      action: { default_popup: string };
-      options_ui: { page: string };
-      content_security_policy: { extension_pages: string };
-    };
+    const manifest = z
+      .object({
+        background: z.object({ service_worker: z.string(), type: z.string() }),
+        action: z.object({ default_popup: z.string() }),
+        options_ui: z.object({ page: z.string() }),
+        content_security_policy: z.object({ extension_pages: z.string() }),
+      })
+      .parse(JSON.parse(readFileSync(join(distRoot, 'manifest.json'), 'utf8')));
 
     expect(manifest.background.type).toBe('module');
     expect(manifest.content_security_policy.extension_pages).toContain("script-src 'self'");

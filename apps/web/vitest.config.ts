@@ -48,6 +48,7 @@ export default defineConfig({
           globalSetup: ['test/e2e/harness/global-setup-db.ts'],
           hookTimeout: 600_000,
           testTimeout: 60_000,
+          sequence: { groupOrder: 1 },
         },
       },
       {
@@ -61,6 +62,7 @@ export default defineConfig({
           maxWorkers: Math.max(1, Math.min(4, Math.floor(cpus().length / 2))),
           // Allows describe.concurrent in a file; @nuxt/test-utils url() needs bindTestOrigin().
           maxConcurrency: 5,
+          sequence: { groupOrder: 2 },
         },
       },
       {
@@ -72,6 +74,7 @@ export default defineConfig({
           hookTimeout: 600_000,
           testTimeout: 60_000,
           maxWorkers: Math.max(1, Math.min(4, Math.floor(cpus().length / 2))),
+          sequence: { groupOrder: 3 },
         },
       },
       await defineVitestProject({

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { ExtensionProtocolError } from '@osi/extension-protocol';
-import { UpstreamHttpError } from '@osi/remote-trackers/contracts';
+import { UpstreamHttpError, type JsonValue } from '@osi/remote-trackers/contracts';
 import type { DestinationApproval } from '../../src/approvals/approvals.js';
 import { CanonicalizationError } from '../../src/security/canonicalize.js';
 import { createGuardedTransport } from '../../src/transport/guarded-transport.js';
@@ -15,7 +15,7 @@ const approval: DestinationApproval = {
 
 const payloadSchema = z.object({ ok: z.boolean() });
 
-function jsonResponse(body: unknown, status = 200, extra?: Partial<Response>): Response {
+function jsonResponse(body: JsonValue, status = 200, extra?: Partial<Response>): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: { 'content-type': 'application/json' },

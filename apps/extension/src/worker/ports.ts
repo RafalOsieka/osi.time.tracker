@@ -3,16 +3,16 @@ import type { JsonValue } from '@osi/remote-trackers/contracts';
 import type { ApprovalService } from '../approvals/approvals.js';
 import { WORKER_PORT_NAME } from '../port-name.js';
 import { handleHandshake, handleOperation, type CreateProviderAdapter } from './dispatch.js';
-import { type RuntimeSender } from './sender.js';
+import type { RuntimeSender } from './sender.js';
 
 export { WORKER_PORT_NAME };
 
 export interface WorkerPort {
   name: string;
   sender?: RuntimeSender;
-  postMessage: (message: unknown) => void;
+  postMessage: (message: JsonValue) => void;
   disconnect: () => void;
-  onMessage: { addListener: (callback: (message: unknown) => void) => void };
+  onMessage: { addListener: (callback: (message: JsonValue) => void) => void };
   onDisconnect: { addListener: (callback: () => void) => void };
 }
 
@@ -24,7 +24,7 @@ export interface WorkerPortOptions {
   operationTimeoutMs?: number;
 }
 
-function cloneJson(value: unknown): JsonValue | undefined {
+function cloneJson(value: JsonValue): JsonValue | undefined {
   try {
     // SAFETY: port messages are untyped; JSON round-trip is the validation boundary.
     return JSON.parse(JSON.stringify(value)) as JsonValue;
@@ -33,7 +33,7 @@ function cloneJson(value: unknown): JsonValue | undefined {
   }
 }
 
-function safePost(port: WorkerPort, message: unknown): void {
+function safePost(port: WorkerPort, message: JsonValue): void {
   try {
     port.postMessage(message);
   } catch {
@@ -78,7 +78,7 @@ export function attachWorkerPort(port: WorkerPort, options: WorkerPortOptions): 
 
 async function handlePortMessage(
   port: WorkerPort,
-  message: unknown,
+  message: JsonValue,
   options: WorkerPortOptions,
   signal: AbortSignal,
 ): Promise<void> {
@@ -91,12 +91,7 @@ async function handlePortMessage(
     return;
   }
   const sender = port.sender ?? {};
-  if (
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    value.type === 'handshake'
-  ) {
+  if (value instanceof Object && !Array.isArray(value) && value.type === 'handshake') {
     const result = await handleHandshake({
       sender,
       expectedExtensionId: options.extensionId,

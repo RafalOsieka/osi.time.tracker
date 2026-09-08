@@ -20,8 +20,8 @@ import {
   type TrackerSystemType,
   type Transport,
 } from '@osi/remote-trackers/contracts';
+import type { ApprovalService } from '../approvals/approvals.js';
 import { CanonicalizationError } from '../security/canonicalize.js';
-import { ApprovalService } from '../approvals/approvals.js';
 import { createProviderAdapter } from '../providers.js';
 import { createGuardedTransport } from '../transport/guarded-transport.js';
 import { documentKey, isTrustedDocumentSender, type RuntimeSender } from './sender.js';

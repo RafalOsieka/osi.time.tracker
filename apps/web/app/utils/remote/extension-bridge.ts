@@ -7,25 +7,45 @@ import {
   parseHandshakeResult,
   parseMatchedOperationResult,
   reconstructProtocolError,
+  requestIdSchema,
   safeWireErrorSchema,
   type DestinationSelector,
   type ExtensionOperationName,
+  type HandshakeRequest,
   type HandshakeResult,
   type OperationRequest,
+  type OperationSuccess,
+  type SafeWireError,
 } from '@osi/extension-protocol';
-import type { JsonValue, TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type {
+  JsonValue,
+  RemoteAdapterError,
+  TrackerSystemType,
+} from '@osi/remote-trackers/contracts';
+
+export type ExtensionPortPayload = JsonValue;
 
 export interface ExtensionWindow {
   readonly location: { readonly origin: string };
-  postMessage(message: unknown, targetOrigin: string, transfer?: unknown[]): void;
+  postMessage(
+    message: ExtensionPortPayload,
+    targetOrigin: string,
+    transfer?: ExtensionMessagePort[],
+  ): void;
 }
 
 export interface ExtensionMessagePort {
   start?: () => void;
   close: () => void;
-  postMessage: (message: unknown) => void;
-  addEventListener: (type: 'message', listener: (event: { data: unknown }) => void) => void;
-  removeEventListener: (type: 'message', listener: (event: { data: unknown }) => void) => void;
+  postMessage: (message: ExtensionPortPayload) => void;
+  addEventListener: (
+    type: 'message',
+    listener: (event: { data: ExtensionPortPayload }) => void,
+  ) => void;
+  removeEventListener: (
+    type: 'message',
+    listener: (event: { data: ExtensionPortPayload }) => void,
+  ) => void;
 }
 
 export interface ExtensionChannel {
@@ -45,15 +65,17 @@ export interface ExtensionBridgeOptions {
 
 type OperationInput = OperationRequest['input'];
 
+type BridgeError = RemoteAdapterError | ExtensionProtocolError;
+
 interface PendingOperation {
   operation: ExtensionOperationName;
   isCreate: boolean;
-  resolve: (value: unknown) => void;
-  reject: (error: unknown) => void;
+  resolve: (value: OperationSuccess['result']) => void;
+  reject: (error: BridgeError) => void;
   timeoutId: ReturnType<typeof setTimeout>;
 }
 
-function cloneJson(value: unknown): JsonValue | undefined {
+function cloneJson(value: ExtensionPortPayload): JsonValue | undefined {
   try {
     // SAFETY: JSON.parse of JSON.stringify always yields a JSON value.
     return JSON.parse(JSON.stringify(value)) as JsonValue;
@@ -82,12 +104,8 @@ function malformedError(): ExtensionProtocolError {
   return new ExtensionProtocolError('malformed', EXTENSION_ERROR_MESSAGE_KEYS.malformed);
 }
 
-function toProtocolError(error: { kind: string; messageKey: string; status?: number }) {
-  const parsed = safeWireErrorSchema.safeParse(error);
-  if (!parsed.success) return malformedError();
-  const reconstructed = reconstructProtocolError(parsed.data);
-  if (reconstructed instanceof ExtensionProtocolError) return reconstructed;
-  return reconstructed;
+function toProtocolError(error: SafeWireError): BridgeError {
+  return reconstructProtocolError(error);
 }
 
 let requestSeq = 0;
@@ -106,13 +124,13 @@ export class ExtensionDocumentBridge {
   private handshakeWaiter:
     | {
         resolve: (value: HandshakeResult) => void;
-        reject: (error: unknown) => void;
+        reject: (error: BridgeError) => void;
         timeoutId: ReturnType<typeof setTimeout>;
       }
     | undefined;
   private closed = false;
   private readonly port: ExtensionMessagePort;
-  private readonly onMessage = (event: { data: unknown }) => {
+  private readonly onMessage = (event: { data: ExtensionPortPayload }) => {
     this.handleMessage(event.data);
   };
 
@@ -143,11 +161,12 @@ export class ExtensionDocumentBridge {
         reject(unavailableError());
       }, this.options.handshakeTimeoutMs ?? EXTENSION_RESOURCE_LIMITS.pageDeadlineMs);
       this.handshakeWaiter = { resolve, reject, timeoutId };
-      this.port.postMessage({
+      const handshake: HandshakeRequest = {
         type: 'handshake',
         protocolVersion: EXTENSION_PROTOCOL_VERSION,
-        ...(destination ? { destination } : {}),
-      });
+      };
+      if (destination) handshake.destination = destination;
+      this.port.postMessage(handshake);
     });
   }
 
@@ -157,7 +176,7 @@ export class ExtensionDocumentBridge {
     baseUrl: string;
     secret: string;
     payload: OperationInput;
-  }): Promise<unknown> {
+  }): Promise<OperationSuccess['result']> {
     if (this.closed) throw unavailableError();
     if (this.pending.size >= EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument) {
       throw limitError();
@@ -211,7 +230,7 @@ export class ExtensionDocumentBridge {
     }
   }
 
-  private handleMessage(data: unknown): void {
+  private handleMessage(data: ExtensionPortPayload): void {
     const value = cloneJson(data);
     if (value === undefined) return;
 
@@ -234,21 +253,22 @@ export class ExtensionDocumentBridge {
       }
     }
 
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      const requestId = value.requestId;
-      if (typeof requestId === 'string') {
-        const pending = this.pending.get(requestId);
-        if (!pending) return;
-        const parsed = parseMatchedOperationResult(pending.operation, value);
-        if (!parsed.success) return;
-        this.pending.delete(requestId);
-        (this.options.unschedule ?? clearTimeout)(pending.timeoutId);
-        if (parsed.data.ok) {
-          pending.resolve(parsed.data.result);
-          return;
-        }
-        pending.reject(toProtocolError(parsed.data.error));
-      }
+    const envelope = requestIdSchema.safeParse(
+      value instanceof Object && !Array.isArray(value) && 'requestId' in value
+        ? value.requestId
+        : undefined,
+    );
+    if (!envelope.success) return;
+    const pending = this.pending.get(envelope.data);
+    if (!pending) return;
+    const parsed = parseMatchedOperationResult(pending.operation, value);
+    if (!parsed.success) return;
+    this.pending.delete(envelope.data);
+    (this.options.unschedule ?? clearTimeout)(pending.timeoutId);
+    if (parsed.data.ok) {
+      pending.resolve(parsed.data.result);
+      return;
     }
+    pending.reject(toProtocolError(parsed.data.error));
   }
 }

@@ -21,7 +21,7 @@ export interface PendingCreateStore {
 }
 
 function readAll(): PendingCreateMarker[] {
-  if (typeof window === 'undefined') return [];
+  if (!import.meta.client) return [];
   const raw = window.localStorage.getItem(PENDING_CREATE_STORAGE_KEY);
   if (!raw) return [];
   try {
@@ -33,7 +33,7 @@ function readAll(): PendingCreateMarker[] {
 }
 
 function writeAll(markers: PendingCreateMarker[]): void {
-  if (typeof window === 'undefined') return;
+  if (!import.meta.client) return;
   window.localStorage.setItem(PENDING_CREATE_STORAGE_KEY, JSON.stringify(markers));
 }
 

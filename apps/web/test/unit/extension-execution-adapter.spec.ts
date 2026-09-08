@@ -5,8 +5,17 @@ import {
   EXTENSION_OPERATION_NAMES,
   EXTENSION_PROTOCOL_VERSION,
   ExtensionProtocolError,
+  handshakeRequestSchema,
+  operationRequestSchema,
+  type ExtensionOperationName,
+  type HandshakeRequest,
+  type HandshakeResult,
+  type OperationFailure,
+  type OperationRequest,
+  type OperationSuccess,
+  type SafeWireError,
 } from '@osi/extension-protocol';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
+import { RemoteAdapterError, type JsonValue } from '@osi/remote-trackers/contracts';
 import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapter';
 import { probeExtensionAvailability } from '../../app/utils/remote/extension-availability';
 import type {
@@ -47,12 +56,12 @@ const log = {
 };
 
 function createLinkedChannel(): ExtensionChannel {
-  const port1Listeners = new Set<(event: { data: unknown }) => void>();
-  const port2Listeners = new Set<(event: { data: unknown }) => void>();
+  const port1Listeners = new Set<(event: { data: JsonValue }) => void>();
+  const port2Listeners = new Set<(event: { data: JsonValue }) => void>();
 
   function createPort(
-    own: Set<(event: { data: unknown }) => void>,
-    peer: Set<(event: { data: unknown }) => void>,
+    own: Set<(event: { data: JsonValue }) => void>,
+    peer: Set<(event: { data: JsonValue }) => void>,
   ): ExtensionMessagePort {
     let closed = false;
     return {
@@ -89,19 +98,16 @@ function defaultHandshake() {
   };
 }
 
-function operationSuccess(request: { requestId: string; operation: string }): {
-  type: 'operation-result';
+function operationSuccess(request: {
   requestId: string;
-  operation: string;
-  ok: true;
-  result: unknown;
-} {
+  operation: ExtensionOperationName;
+}): OperationSuccess {
   switch (request.operation) {
     case 'searchIssues':
       return {
         type: 'operation-result',
         requestId: request.requestId,
-        operation: request.operation,
+        operation: 'searchIssues',
         ok: true,
         result: [issue],
       };
@@ -109,7 +115,7 @@ function operationSuccess(request: { requestId: string; operation: string }): {
       return {
         type: 'operation-result',
         requestId: request.requestId,
-        operation: request.operation,
+        operation: 'getIssueById',
         ok: true,
         result: issue,
       };
@@ -117,7 +123,7 @@ function operationSuccess(request: { requestId: string; operation: string }): {
       return {
         type: 'operation-result',
         requestId: request.requestId,
-        operation: request.operation,
+        operation: 'getActivityOptions',
         ok: true,
         result: [activity],
       };
@@ -125,16 +131,23 @@ function operationSuccess(request: { requestId: string; operation: string }): {
       return {
         type: 'operation-result',
         requestId: request.requestId,
-        operation: request.operation,
+        operation: 'getCurrentAccount',
         ok: true,
         result: account,
       };
     case 'fetchTimeLogs':
+      return {
+        type: 'operation-result',
+        requestId: request.requestId,
+        operation: 'fetchTimeLogs',
+        ok: true,
+        result: [log],
+      };
     case 'fetchTimeLogsInRange':
       return {
         type: 'operation-result',
         requestId: request.requestId,
-        operation: request.operation,
+        operation: 'fetchTimeLogsInRange',
         ok: true,
         result: [log],
       };
@@ -142,57 +155,50 @@ function operationSuccess(request: { requestId: string; operation: string }): {
       return {
         type: 'operation-result',
         requestId: request.requestId,
-        operation: request.operation,
+        operation: 'createTimeEntry',
         ok: true,
         result: { remoteLogId: '99' },
       };
-    default:
-      return {
-        type: 'operation-result',
-        requestId: request.requestId,
-        operation: request.operation,
-        ok: true,
-        result: null,
-      };
+    default: {
+      const _exhaustive: never = request.operation;
+      return _exhaustive;
+    }
   }
 }
 
 function createFakeHost(options?: {
-  handshake?: (message: Record<string, unknown>) => unknown;
-  operation?: (message: Record<string, unknown>) => unknown | undefined;
+  handshake?: (message: HandshakeRequest) => HandshakeResult | SafeWireError;
+  operation?: (message: OperationRequest) => OperationSuccess | OperationFailure | undefined;
 }) {
-  const connectMessages: unknown[] = [];
-  const portMessages: unknown[] = [];
+  const connectMessages: Array<{ message: JsonValue; origin: string }> = [];
+  const portMessages: JsonValue[] = [];
   const windowRef: ExtensionWindow = {
     location: { origin: 'https://app.example.com' },
     postMessage(message, origin, transfer) {
       connectMessages.push({ message, origin });
-      const pagePort = transfer?.[0] as ExtensionMessagePort | undefined;
+      const pagePort = transfer?.[0];
       pagePort?.addEventListener('message', (event) => {
         const data = event.data;
         portMessages.push(data);
-        if (!(data instanceof Object)) return;
-        const record = data as Record<string, unknown>;
-        if (record.type === 'handshake') {
-          pagePort.postMessage(options?.handshake ? options.handshake(record) : defaultHandshake());
+        const handshake = handshakeRequestSchema.safeParse(data);
+        if (handshake.success) {
+          pagePort.postMessage(
+            options?.handshake ? options.handshake(handshake.data) : defaultHandshake(),
+          );
           return;
         }
-        if (
-          record.type === 'operation' &&
-          typeof record.requestId === 'string' &&
-          typeof record.operation === 'string'
-        ) {
-          const reply = options?.operation
-            ? options.operation(record)
-            : operationSuccess({ requestId: record.requestId, operation: record.operation });
-          if (reply !== undefined) pagePort.postMessage(reply);
-        }
+        const operation = operationRequestSchema.safeParse(data);
+        if (!operation.success) return;
+        const reply = options?.operation
+          ? options.operation(operation.data)
+          : operationSuccess(operation.data);
+        if (reply !== undefined) pagePort.postMessage(reply);
       });
     },
   };
 
   let requestSeq = 0;
-  const bridgeOptions: Partial<ExtensionBridgeOptions> = {
+  const bridgeOptions: ExtensionBridgeOptions = {
     window: windowRef,
     createChannel: createLinkedChannel,
     nextRequestId: () => {
@@ -206,7 +212,7 @@ function createFakeHost(options?: {
   return {
     connectMessages,
     portMessages,
-    openBridge: () => new ExtensionDocumentBridge(bridgeOptions as ExtensionBridgeOptions),
+    openBridge: () => new ExtensionDocumentBridge(bridgeOptions),
     bridgeOptions,
   };
 }
@@ -299,7 +305,7 @@ describe('ExtensionExecutionAdapter', () => {
     ).toEqual({ remoteLogId: '99' });
 
     const handshake = host.portMessages.find(
-      (message) => message instanceof Object && (message as { type?: string }).type === 'handshake',
+      (message) => handshakeRequestSchema.safeParse(message).success,
     );
     expect(handshake).toEqual({
       type: 'handshake',
@@ -315,7 +321,7 @@ describe('ExtensionExecutionAdapter', () => {
       origin: 'https://app.example.com',
     });
     const operations = host.portMessages.filter(
-      (message) => message instanceof Object && (message as { type?: string }).type === 'operation',
+      (message) => operationRequestSchema.safeParse(message).success,
     );
     expect(operations).toHaveLength(7);
   });
@@ -349,10 +355,7 @@ describe('ExtensionExecutionAdapter', () => {
     });
     await expect(adapter.searchIssues('login')).rejects.toBeInstanceOf(RemoteAdapterError);
     expect(
-      host.portMessages.some(
-        (message) =>
-          message instanceof Object && (message as { type?: string }).type === 'operation',
-      ),
+      host.portMessages.some((message) => operationRequestSchema.safeParse(message).success),
     ).toBe(false);
   });
 

@@ -69,7 +69,7 @@ function rejectIfOversized(value: JsonValue, maxBytes: number): EnvelopeParseFai
 function rejectIfIncompatibleVersion(value: JsonValue): EnvelopeParseFailure | undefined {
   if (!isJsonObject(value)) return undefined;
   const version = value.protocolVersion;
-  if (typeof version === 'number' && version !== EXTENSION_PROTOCOL_VERSION) {
+  if (Number.isFinite(version) && version !== EXTENSION_PROTOCOL_VERSION) {
     return { success: false, error: incompatibleError() };
   }
   return undefined;

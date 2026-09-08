@@ -7,18 +7,26 @@ interface ChromeRuntimeSender {
   documentId?: string;
 }
 
+type ChromeJson =
+  | string
+  | number
+  | boolean
+  | null
+  | ChromeJson[]
+  | { readonly [key: string]: ChromeJson };
+
 interface ChromeRuntimePort {
   name: string;
   sender?: ChromeRuntimeSender;
-  postMessage(message: unknown): void;
+  postMessage(message: ChromeJson): void;
   disconnect(): void;
-  onMessage: { addListener(callback: (message: unknown) => void): void };
+  onMessage: { addListener(callback: (message: ChromeJson) => void): void };
   onDisconnect: { addListener(callback: () => void): void };
 }
 
 interface ChromeStorageArea {
-  get(keys: string): Promise<Record<string, unknown>>;
-  set(items: Record<string, unknown>): Promise<void>;
+  get(keys: string): Promise<{ readonly [key: string]: ChromeJson | undefined }>;
+  set(items: { readonly [key: string]: ChromeJson }): Promise<void>;
 }
 
 interface ChromePermissions {

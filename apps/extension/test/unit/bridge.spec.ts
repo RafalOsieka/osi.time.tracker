@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EXTENSION_CHANNEL, EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
+import type { JsonValue } from '@osi/remote-trackers/contracts';
 import {
   acceptConnectEvent,
   pipePorts,
@@ -25,11 +26,11 @@ function connectData(protocolVersion: number = EXTENSION_PROTOCOL_VERSION) {
 }
 
 function fakePagePort(): PagePortLike & {
-  messages: unknown[];
+  messages: JsonValue[];
   closed: boolean;
-  listeners: Array<(event: { data: unknown }) => void>;
+  listeners: Array<(event: { data: JsonValue }) => void>;
 } {
-  const listeners: Array<(event: { data: unknown }) => void> = [];
+  const listeners: Array<(event: { data: JsonValue }) => void> = [];
   return {
     messages: [],
     closed: false,
@@ -52,17 +53,17 @@ function fakePagePort(): PagePortLike & {
 }
 
 function fakeWorkerPort(): WorkerPortLike & {
-  messages: unknown[];
+  messages: JsonValue[];
   disconnected: boolean;
-  messageListeners: Array<(message: unknown) => void>;
+  messageListeners: Array<(message: JsonValue) => void>;
   disconnectListeners: Array<() => void>;
 } {
-  const messageListeners: Array<(message: unknown) => void> = [];
+  const messageListeners: Array<(message: JsonValue) => void> = [];
   const disconnectListeners: Array<() => void> = [];
   const port: WorkerPortLike & {
-    messages: unknown[];
+    messages: JsonValue[];
     disconnected: boolean;
-    messageListeners: Array<(message: unknown) => void>;
+    messageListeners: Array<(message: JsonValue) => void>;
     disconnectListeners: Array<() => void>;
   } = {
     messages: [],

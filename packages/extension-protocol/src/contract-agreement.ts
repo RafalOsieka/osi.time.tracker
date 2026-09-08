@@ -70,7 +70,7 @@ type CreateTimeEntryAgreed =
     ? Mutual<CreateTimeEntryResult, Awaited<ReturnType<RemoteTrackerAdapter['createTimeEntry']>>>
     : false;
 
-type ResultShapesAgreed =
+type ResultContractsAgreed =
   Mutual<RemoteIssueSearchResult, SearchIssuesResult[number]> extends true
     ? Mutual<RemoteFieldOption, GetActivityOptionsResult[number]> extends true
       ? Mutual<RemoteTimeLogDto, FetchTimeLogsResult[number]>
@@ -84,7 +84,7 @@ export type ProtocolMatchesRemoteTrackerAdapter = SearchIssuesAgreed extends tru
         ? FetchTimeLogsAgreed extends true
           ? FetchTimeLogsInRangeAgreed extends true
             ? CreateTimeEntryAgreed extends true
-              ? ResultShapesAgreed
+              ? ResultContractsAgreed
               : false
             : false
           : false

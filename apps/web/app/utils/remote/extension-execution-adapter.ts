@@ -14,17 +14,13 @@ import {
   type RemoteTrackerAdapter,
   type TrackerSystemType,
 } from '@osi/remote-trackers/contracts';
-import { ExtensionDocumentBridge, type ExtensionBridgeOptions } from './extension-bridge';
+import type { ExtensionBridgeOptions, ExtensionDocumentBridge } from './extension-bridge';
 import { openExtensionBridge } from './extension-availability';
 
 export interface ExtensionExecutionAdapterOptions {
   isClient?: boolean;
   openBridge?: (options?: Partial<ExtensionBridgeOptions>) => ExtensionDocumentBridge;
   bridgeOptions?: Partial<ExtensionBridgeOptions>;
-}
-
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.postMessage === 'function';
 }
 
 function unavailableError(): ExtensionProtocolError {
@@ -96,7 +92,7 @@ export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
   }
 
   private async ensureReady(): Promise<ExtensionDocumentBridge> {
-    const isClient = this.options.isClient ?? isBrowser();
+    const isClient = this.options.isClient ?? import.meta.client;
     if (!isClient) throw unavailableError();
 
     if (!this.ready) {

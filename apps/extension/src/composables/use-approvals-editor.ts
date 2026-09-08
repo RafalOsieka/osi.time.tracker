@@ -1,9 +1,9 @@
 import { computed, readonly, shallowRef } from 'vue';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import {
+import type {
   ApprovalService,
-  type DestinationApproval,
-  type WebsiteApproval,
+  DestinationApproval,
+  WebsiteApproval,
 } from '../approvals/approvals.js';
 import {
   CanonicalizationError,
@@ -98,6 +98,7 @@ export function useApprovalsEditor(
     await refresh();
   }
 
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- catch binding is implicitly unknown
   function applyError(error: unknown): void {
     if (error instanceof CanonicalizationError) {
       errorKey.value =

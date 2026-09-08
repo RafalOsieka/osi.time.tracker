@@ -8,9 +8,13 @@ describe('useTrackerExtensionAvailability', () => {
   it('stays idle for non-extension modes and does not probe', async () => {
     const probe = vi.fn();
     const source = reactive({
-      executionMode: 'client' as TrackerExecutionMode,
-      systemType: 'openproject' as TrackerSystemType,
+      executionMode: 'client',
+      systemType: 'openproject',
       baseUrl: 'https://op.example.com',
+    } satisfies {
+      executionMode: TrackerExecutionMode;
+      systemType: TrackerSystemType;
+      baseUrl: string;
     });
     const { visible, status } = useTrackerExtensionAvailability(() => source, {
       isClient: true,
@@ -28,9 +32,13 @@ describe('useTrackerExtensionAvailability', () => {
       messageKey: 'error.extensionUnavailable',
     });
     const source = reactive({
-      executionMode: 'extension' as TrackerExecutionMode,
-      systemType: 'openproject' as TrackerSystemType,
+      executionMode: 'extension',
+      systemType: 'openproject',
       baseUrl: 'https://op.example.com',
+    } satisfies {
+      executionMode: TrackerExecutionMode;
+      systemType: TrackerSystemType;
+      baseUrl: string;
     });
     const { visible, status, recheck } = useTrackerExtensionAvailability(() => source, {
       isClient: true,
@@ -57,9 +65,13 @@ describe('useTrackerExtensionAvailability', () => {
   it('does not probe during SSR', async () => {
     const probe = vi.fn();
     const source = reactive({
-      executionMode: 'extension' as TrackerExecutionMode,
-      systemType: 'openproject' as TrackerSystemType,
+      executionMode: 'extension',
+      systemType: 'openproject',
       baseUrl: 'https://op.example.com',
+    } satisfies {
+      executionMode: TrackerExecutionMode;
+      systemType: TrackerSystemType;
+      baseUrl: string;
     });
     const { status } = useTrackerExtensionAvailability(() => source, {
       isClient: false,

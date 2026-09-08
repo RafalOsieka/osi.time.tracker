@@ -4,37 +4,38 @@ import {
   EXTENSION_PROTOCOL_VERSION,
   connectMessageSchema,
 } from '@osi/extension-protocol';
+import type { JsonValue } from '@osi/remote-trackers/contracts';
 
 export interface ConnectEventLike {
   origin: string;
-  source: unknown;
-  data: unknown;
+  source: object;
+  data: JsonValue;
   ports: Array<PagePortLike>;
 }
 
 export interface PagePortLike {
-  postMessage: (message: unknown) => void;
+  postMessage: (message: JsonValue) => void;
   close: () => void;
   start?: () => void;
-  addEventListener: (type: 'message', listener: (event: { data: unknown }) => void) => void;
-  removeEventListener?: (type: 'message', listener: (event: { data: unknown }) => void) => void;
+  addEventListener: (type: 'message', listener: (event: { data: JsonValue }) => void) => void;
+  removeEventListener?: (type: 'message', listener: (event: { data: JsonValue }) => void) => void;
 }
 
 export interface WorkerPortLike {
-  postMessage: (message: unknown) => void;
+  postMessage: (message: JsonValue) => void;
   disconnect: () => void;
-  onMessage: { addListener: (callback: (message: unknown) => void) => void };
+  onMessage: { addListener: (callback: (message: JsonValue) => void) => void };
   onDisconnect: { addListener: (callback: () => void) => void };
 }
 
 export interface ConnectContext {
   expectedOrigin: string;
-  source: unknown;
+  source: object;
   isTopFrame: boolean;
 }
 
-function isConnectEnvelope(data: unknown): data is { channel: unknown; type: unknown } {
-  return data !== null && typeof data === 'object' && !Array.isArray(data);
+function isConnectEnvelope(data: JsonValue): data is { readonly [key: string]: JsonValue } {
+  return data instanceof Object && !Array.isArray(data);
 }
 
 /**
@@ -69,7 +70,7 @@ export function acceptConnectEvent(
 /** Forwards messages until either port disconnects, then drops late replies. */
 export function pipePorts(pagePort: PagePortLike, workerPort: WorkerPortLike): () => void {
   let closed = false;
-  const onPageMessage = (event: { data: unknown }) => {
+  const onPageMessage = (event: { data: JsonValue }) => {
     if (closed) return;
     workerPort.postMessage(event.data);
   };

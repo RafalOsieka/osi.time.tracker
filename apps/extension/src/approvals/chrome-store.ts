@@ -1,6 +1,6 @@
 import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
 import { z } from 'zod';
-import { type ApprovalState, type ApprovalStore, type HostPermissionPort } from './approvals.js';
+import type { ApprovalState, ApprovalStore, HostPermissionPort } from './approvals.js';
 
 export const APPROVAL_STORAGE_KEY = 'osi.approvals';
 
@@ -30,7 +30,11 @@ export function createChromeApprovalStore(
       return parsed.data;
     },
     save: async (state) => {
-      await storage.set({ [APPROVAL_STORAGE_KEY]: state });
+      const payload = approvalStateSchema.parse(state);
+      // SAFETY: validated approval state is JSON-serializable storage payload.
+      await storage.set({
+        [APPROVAL_STORAGE_KEY]: JSON.parse(JSON.stringify(payload)) as ChromeJson,
+      });
     },
   };
 }

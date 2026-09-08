@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
-import type { RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
+import type { JsonValue, RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,
@@ -62,7 +62,7 @@ function probeAdapter(overrides: Partial<RemoteTrackerAdapter> = {}): RemoteTrac
 
 function operationValue(
   operation: string,
-  input: unknown,
+  input: JsonValue,
   provider: 'openproject' | 'redmine' = 'openproject',
   requestId = 'req-1',
 ) {

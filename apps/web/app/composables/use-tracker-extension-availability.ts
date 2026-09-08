@@ -8,10 +8,6 @@ import type { TrackerExecutionMode } from '~~/shared/types/tracker';
 
 export type TrackerExtensionUiStatus = 'idle' | 'checking' | ExtensionAvailabilityStatus;
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.postMessage === 'function';
-}
-
 function destinationFrom(systemType: TrackerSystemType, baseUrl: string) {
   const trimmed = baseUrl.trim();
   if (!trimmed) return undefined;
@@ -49,7 +45,7 @@ export function useTrackerExtensionAvailability(
       status.value = 'idle';
       return;
     }
-    const isClient = options.isClient ?? isBrowser();
+    const isClient = options.isClient ?? import.meta.client;
     if (!isClient) {
       status.value = 'unavailable';
       messageKey.value = 'error.extensionUnavailable';

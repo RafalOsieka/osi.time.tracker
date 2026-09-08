@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
-import type { RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
+import type { JsonValue, RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,
@@ -37,14 +37,14 @@ async function approved() {
 
 class FakePort implements WorkerPort {
   name = WORKER_PORT_NAME;
-  messages: unknown[] = [];
+  messages: JsonValue[] = [];
   disconnected = false;
-  private readonly messageListeners: Array<(message: unknown) => void> = [];
+  private readonly messageListeners: Array<(message: JsonValue) => void> = [];
   private readonly disconnectListeners: Array<() => void> = [];
 
   constructor(readonly sender: RuntimeSender) {}
 
-  postMessage(message: unknown): void {
+  postMessage(message: JsonValue): void {
     if (this.disconnected) throw new Error('disconnected');
     this.messages.push(message);
   }
@@ -56,7 +56,7 @@ class FakePort implements WorkerPort {
   }
 
   onMessage = {
-    addListener: (callback: (message: unknown) => void) => {
+    addListener: (callback: (message: JsonValue) => void) => {
       this.messageListeners.push(callback);
     },
   };
@@ -67,7 +67,7 @@ class FakePort implements WorkerPort {
     },
   };
 
-  emit(message: unknown): void {
+  emit(message: JsonValue): void {
     for (const listener of this.messageListeners) listener(message);
   }
 }

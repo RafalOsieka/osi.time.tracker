@@ -304,7 +304,7 @@ describeChromium('website/content/worker bridge', () => {
   it('rejects unapproved origins, destinations, malformed messages, and URL escapes', async () => {
     const hitsBefore = openProject.requests.length;
     const foreignPage = await openFixture(harness!, foreign.url);
-    let foreignHandshake: JsonValue | 'timeout' = 'timeout';
+    let foreignHandshake: JsonValue | 'timeout';
     try {
       foreignHandshake = await runOnPage(foreignPage, {
         type: 'handshake',

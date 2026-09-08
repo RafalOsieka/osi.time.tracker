@@ -32,10 +32,6 @@ export interface ExtensionAvailabilityOptions {
   bridgeOptions?: Partial<ExtensionBridgeOptions>;
 }
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined' && typeof window.postMessage === 'function';
-}
-
 function unavailable(): ExtensionAvailability {
   return {
     status: 'unavailable',
@@ -57,7 +53,7 @@ export function openExtensionBridge(
   options: Partial<ExtensionBridgeOptions> = {},
 ): ExtensionDocumentBridge {
   const windowRef: ExtensionWindow | undefined =
-    options.window ?? (typeof window === 'undefined' ? undefined : window);
+    options.window ?? (import.meta.client ? window : undefined);
   if (!windowRef) {
     throw new ExtensionProtocolError('unavailable', EXTENSION_ERROR_MESSAGE_KEYS.unavailable);
   }
@@ -70,7 +66,7 @@ export function openExtensionBridge(
 export async function probeExtensionAvailability(
   options: ExtensionAvailabilityOptions = {},
 ): Promise<ExtensionAvailability> {
-  const isClient = options.isClient ?? isBrowser();
+  const isClient = options.isClient ?? import.meta.client;
   if (!isClient) return unavailable();
 
   let bridge: ExtensionDocumentBridge | undefined;
