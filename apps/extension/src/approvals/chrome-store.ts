@@ -56,7 +56,14 @@ export function createChromeHostPermissions(
     contains: async (matchPattern) => permissions.contains({ origins: [matchPattern] }),
     request: async (matchPattern) => permissions.request({ origins: [matchPattern] }),
     remove: async (matchPattern) => {
-      await permissions.remove({ origins: [matchPattern] });
+      try {
+        await permissions.remove({ origins: [matchPattern] });
+      } catch (err) {
+        // Chrome rejects removing install-time host_permissions (used by the
+        // headless browser-test profile). Optional grants still revoke.
+        if (err instanceof Error && /required permissions/i.test(err.message)) return;
+        throw err;
+      }
     },
     list: async () => (await permissions.getAll()).origins ?? [],
     subscribe: (listener) => {

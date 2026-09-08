@@ -7,6 +7,20 @@ import {
 } from '../../src/approvals/chrome-store.js';
 
 describe('Chrome approval changes', () => {
+  it('ignores Chrome refusing to remove required host permissions', async () => {
+    const permissions = createChromeHostPermissions({
+      contains: async () => true,
+      request: async () => true,
+      remove: async () => {
+        throw new Error('You cannot remove required permissions.');
+      },
+      getAll: async () => ({ origins: ['https://*/*'] }),
+      onAdded: { addListener: vi.fn(), removeListener: vi.fn() },
+      onRemoved: { addListener: vi.fn(), removeListener: vi.fn() },
+    });
+    await expect(permissions.remove('https://*/*')).resolves.toBeUndefined();
+  });
+
   it('observes browser permission additions and removals and releases both listeners', () => {
     const onAdded: ChromePermissionChanges = {
       addListener: vi.fn(),

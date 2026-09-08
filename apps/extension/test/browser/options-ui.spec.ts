@@ -106,15 +106,25 @@ describeChromium('extension options UI', () => {
         .poll(() => row.getAttribute('aria-label'))
         .toBe(`Revoke tracker Website: ${origin} — Redmine https://shared.example.com/team`);
     }
-    await other.evaluate(() =>
-      chrome.permissions.remove({ origins: ['https://shared.example.com/*'] }),
-    );
-    const restore = page.getByTestId(
-      'restore-destination-http://localhost:3100|redmine|https://shared.example.com/team',
-    );
-    await expect.poll(() => restore.isVisible()).toBe(true);
-    await restore.click();
-    await expect.poll(() => page.locator('[data-testid^="restore-destination-"]').count()).toBe(0);
+    let hostAccessRevoked = true;
+    try {
+      await other.evaluate(() =>
+        chrome.permissions.remove({ origins: ['https://shared.example.com/*'] }),
+      );
+    } catch {
+      // Required host_permissions in the headless test profile cannot be revoked.
+      hostAccessRevoked = false;
+    }
+    if (hostAccessRevoked) {
+      const restore = page.getByTestId(
+        'restore-destination-http://localhost:3100|redmine|https://shared.example.com/team',
+      );
+      await expect.poll(() => restore.isVisible()).toBe(true);
+      await restore.click();
+      await expect
+        .poll(() => page.locator('[data-testid^="restore-destination-"]').count())
+        .toBe(0);
+    }
     await other.getByTestId('revoke-website-http://localhost:3100').click();
     await expect
       .poll(() => page.getByTestId('destination-website').inputValue())

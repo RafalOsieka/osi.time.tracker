@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium, type BrowserContext, type Worker } from 'playwright';
+import { z } from 'zod';
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '../../..');
 
@@ -22,9 +23,10 @@ async function unpackedExtensionForTests(): Promise<string> {
   const pathToExtension = await mkdtemp(join(tmpdir(), 'osi-extension-unpacked-'));
   await cp(extensionDistPath(), pathToExtension, { recursive: true });
   const manifestPath = join(pathToExtension, 'manifest.json');
-  const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as {
-    host_permissions?: string[];
-  };
+  const manifest = z
+    .object({ host_permissions: z.array(z.string()).optional() })
+    .passthrough()
+    .parse(JSON.parse(await readFile(manifestPath, 'utf8')));
   manifest.host_permissions = ['http://*/*', 'https://*/*'];
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
   return pathToExtension;
