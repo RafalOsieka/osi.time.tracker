@@ -169,6 +169,20 @@ describeChromium('extension options UI', () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
     await page.getByTestId('language').selectOption('en');
+    // The worker also registers scripts on approval changes, so both contexts
+    // must fail or the options page skips register after a successful worker run.
+    await harness!.worker.evaluate(() => {
+      // SAFETY: test-only stash of the native register function on the worker global.
+      const g = globalThis as typeof globalThis & {
+        __osiRegisterContentScripts?: typeof chrome.scripting.registerContentScripts;
+      };
+      g.__osiRegisterContentScripts =
+        g.__osiRegisterContentScripts ??
+        chrome.scripting.registerContentScripts.bind(chrome.scripting);
+      chrome.scripting.registerContentScripts = async (scripts) => {
+        throw new Error(`Registration failed for ${scripts.length} scripts`);
+      };
+    });
     const registration = await page.evaluateHandle(() => {
       const register = chrome.scripting.registerContentScripts.bind(chrome.scripting);
       chrome.scripting.registerContentScripts = async (scripts) => {
@@ -184,6 +198,15 @@ describeChromium('extension options UI', () => {
     await expect
       .poll(() => page.getByTestId('status').textContent())
       .toMatch(/bridge could not be configured/);
+    await harness!.worker.evaluate(() => {
+      // SAFETY: restore the native register function stashed for this test.
+      const g = globalThis as typeof globalThis & {
+        __osiRegisterContentScripts?: typeof chrome.scripting.registerContentScripts;
+      };
+      if (g.__osiRegisterContentScripts) {
+        chrome.scripting.registerContentScripts = g.__osiRegisterContentScripts;
+      }
+    });
     await page.evaluate((register) => {
       chrome.scripting.registerContentScripts = register;
     }, registration);
