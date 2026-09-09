@@ -163,6 +163,47 @@ describe('useRemoteSyncClient', () => {
     ).toBe('error.remoteTimeLogsFetchFailed');
   });
 
+  it('validates an existing log using fresh remote data without creating anything', async () => {
+    const client = useRemoteSyncClient(config);
+    await client.fetchTimeLogs({ spentOn: '2026-03-15', workPackageIds: ['42'] });
+    await expect(
+      client.validateExistingTimeLog({
+        remoteLogId: '11',
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 3600,
+        activityId: '1',
+        comment: '',
+      }),
+    ).resolves.toBeUndefined();
+    expect(fetchTimeLogs).toHaveBeenCalledTimes(2);
+    expect(createTimeEntry).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { remoteLogId: 'different' },
+    { remoteIssueId: 'other' },
+    { spentOn: '2026-03-16' },
+    { durationSeconds: 1800 },
+    { activityId: '2' },
+    { remoteUserId: '8' },
+    { comment: 'different' },
+  ])('rejects a mismatching existing log: %j', async (overrides) => {
+    fetchTimeLogs.mockResolvedValue([log(overrides)]);
+    const client = useRemoteSyncClient(config);
+    await expect(
+      client.validateExistingTimeLog({
+        remoteLogId: '11',
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 3600,
+        activityId: '1',
+        comment: '',
+      }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteExportExistingLogMismatch' });
+    expect(createTimeEntry).not.toHaveBeenCalled();
+  });
+
   it('maps adapter errors to translation keys', () => {
     expect(mapRemoteSyncClientError(new RemoteAdapterError('error.remoteAuth'), 'fallback')).toBe(
       'error.remoteAuth',

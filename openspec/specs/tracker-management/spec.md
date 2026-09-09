@@ -30,7 +30,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
 ### Requirement: REQ-245 Create a tracker
-The system SHALL allow an authenticated user to create a tracker via `POST /api/trackers` with a required `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`. `executionMode` SHALL accept `client` or `server` and SHALL default to `client` when omitted. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user among non-deleted trackers. `baseUrl` SHALL be a valid URL. On success the created tracker SHALL be returned and a success Toast SHALL be shown. The API secret SHALL NOT be accepted as a stored field. Create and update bodies SHALL NOT accept `requiredFieldDefaults` as a stored field.
+The system SHALL allow an authenticated user to create a tracker via `POST /api/trackers` with a required `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`. `executionMode` SHALL accept `client`, `server`, or `extension` and SHALL default to `client` when omitted. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user among non-deleted trackers. `baseUrl` SHALL be a valid URL. On success the created tracker SHALL be returned and a success Toast SHALL be shown. The API secret SHALL NOT be accepted as a stored field. Create and update bodies SHALL NOT accept `requiredFieldDefaults` as a stored field. The tracker form SHALL offer all three modes with localized labels; saving `extension` SHALL NOT require that the current device has an installed or approved extension.
 
 #### Scenario: Successful creation
 - **WHEN** an authenticated user submits a valid unique name and valid connection fields
@@ -67,6 +67,14 @@ The system SHALL allow an authenticated user to create a tracker via `POST /api/
 #### Scenario: Required-field defaults are not accepted as a stored field
 - **WHEN** a create or update body includes `requiredFieldDefaults`
 - **THEN** the server SHALL ignore or reject that field and SHALL NOT persist required-field defaults
+
+#### Scenario: Extension selection round-trips without installation
+- **WHEN** a user creates or edits a tracker with `executionMode: extension` on a device without the extension
+- **THEN** the selected mode SHALL persist and appear on subsequent reads, while remote operations require extension setup
+
+#### Scenario: Unknown execution mode rejected
+- **WHEN** a user submits an execution mode outside the accepted set
+- **THEN** the server SHALL reject it with a translated validation error and persist nothing
 
 ### Requirement: REQ-246 Edit a tracker
 The system SHALL allow an authenticated user to update their own tracker via `PATCH /api/trackers/[id]`, applying the same validation as creation for provided fields. Editing SHALL be scoped by `userId`. Editing any configuration field, including `systemType` or normalized `baseUrl`, SHALL retain the tracker identity and existing Task remote issue references without remote validation, cleanup, or metadata migration. On success the updated tracker SHALL be returned and the row SHALL reflect the change.
@@ -122,7 +130,7 @@ Every tracker read and write SHALL be scoped by the authenticated user's id. A t
 - **THEN** the system SHALL reject it via `requireAuth`
 
 ### Requirement: REQ-249 Client-side credentials are never persisted server-side
-The API secret SHALL be entered and kept only in the user's browser and SHALL never be stored on the server. In `client` execution mode the secret SHALL be sent only to the configured tracker origin. In `server` execution mode the secret MAY be transmitted to the OSI server per request solely for immediate upstream forwarding, but SHALL NOT be persisted, logged, or returned by the server. The secret SHALL be stored in the browser keyed by the tracker id and SHALL remain available after a page reload without being persisted on the server.
+The API secret SHALL be entered and kept only in the user's browser and SHALL never be stored on the server. In `client` execution mode the secret SHALL be sent only to the configured tracker origin. In `server` execution mode the secret MAY be transmitted to the OSI server per request solely for immediate upstream forwarding, but SHALL NOT be persisted, logged, or returned by the server. In `extension` execution mode the secret SHALL be forwarded transiently through the approved extension to the approved tracker destination and SHALL NOT be persisted by the extension or transmitted to OSI APIs. The secret SHALL be stored in the browser keyed by the tracker id and SHALL remain available after a page reload without being persisted on the server.
 
 #### Scenario: Browser retains the secret across sessions
 - **WHEN** a user enters an API secret for a tracker in the browser
@@ -131,6 +139,10 @@ The API secret SHALL be entered and kept only in the user's browser and SHALL ne
 #### Scenario: Server execution forwarding does not persist the secret
 - **WHEN** the browser forwards the secret to the OSI server for a `server` execution-mode request
 - **THEN** the server SHALL use it only for the immediate upstream request and SHALL NOT persist, log, or return it
+
+#### Scenario: Switching execution mode retains browser ownership
+- **WHEN** a user selects extension execution for an existing tracker
+- **THEN** its existing browser-held secret SHALL remain the credential source and SHALL NOT be migrated to extension or server storage
 
 ### Requirement: REQ-251 Accessible, tokenized Trackers UI
 The Trackers page SHALL meet WCAG 2.1 AA: form fields SHALL be labelled, the create/edit modal and confirm modal SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error. Styling SHALL derive from Tailwind utilities and Nuxt UI `--ui-*` design tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity. The create/edit form SHALL be a single surface covering name and all connection fields plus the browser-only secret input.

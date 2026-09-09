@@ -28,7 +28,7 @@ It solves a recurring problem for multi-client work: your clients run different 
 - **Entry-first data model** — tasks are derived automatically from entry titles (auto-created, matched, renamed, merged, garbage-collected); there is no separate task-management page.
 - **Client & project organization** — group work under `Client → Project`, with soft-delete semantics.
 - **Remote integration** — link local tasks to remote issues (OpenProject in MVP; Redmine deferred) and push a day's rounded totals with a single action.
-- **Adapter model** — pluggable adapters run either browser-side (for trackers behind a VPN) or server-side; MVP ships the client-side OpenProject adapter.
+- **Adapter model** — pluggable adapters run in the browser (`client`), on the OSI server (`server`), or through an optional Chrome/Edge extension when the hosted page cannot reach VPN-only trackers.
 - **Internationalization** — English and Polish catalogs kept in strict parity, with browser-language detection.
 - **Security baseline** — sealed cookie sessions, CSRF protection, rate limiting, and a Content-Security-Policy out of the box.
 - **Accessibility** — WCAG 2.1 AA target, enforced through a lint gate.
@@ -114,13 +114,14 @@ docker compose down -v  # stop and delete the data volume
 Vitest is configured with three projects:
 
 ```bash
-pnpm test:unit      # tracker package + web unit + anti-slop plugin tests
+pnpm test:unit      # tracker/protocol/extension unit + web unit + anti-slop plugin tests
 pnpm test:e2e:db    # Postgres schema/migrator/server-util tests
 pnpm test:e2e:api   # HTTP tests against a booted Nuxt server
 pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
 pnpm test:e2e       # db + api + ui
 pnpm test:nuxt      # component/integration tests (test/nuxt, nuxt env)
 pnpm test:coverage  # coverage for unit + nuxt projects
+pnpm test:extension # build extension, run unit + unpacked browser tests (needs Chromium)
 ```
 
 Focus on a single test by name:
@@ -180,11 +181,36 @@ services:
 
 This is a deployment concern only; OSI does not perform any application-level DNS or VPN handling.
 
+### Browser extension (Chrome / Edge)
+
+Use **Extension** tracker mode when the hosted website cannot call your tracker (no CORS / no VPN on the server) but your desktop browser can. The production web image does **not** include the extension; each person loads it unpacked locally.
+
+```bash
+pnpm --filter @osi/remote-trackers build
+pnpm --filter @osi/extension-protocol build
+pnpm --filter @osi/extension build
+```
+
+Load `apps/extension/dist` as an unpacked extension in Chrome or Edge (`chrome://extensions` → Developer mode → Load unpacked). After rebuilding, click **Reload** on the extension card, then refresh the OSI tab.
+
+In the extension options page, approve:
+
+1. The OSI website origin (for example `https://time.example.com` or `http://localhost:3000`).
+2. Each tracker base URL (OpenProject or Redmine). HTTP destinations show a credential-risk warning.
+
+If the website reports an incompatible extension, rebuild/reload the extension and refresh the page. Workplace policy that blocks unpacked extensions or host-permission prompts cannot be bypassed. Tracker API secrets stay in the website's `localStorage` and are sent only for the current operation; they are never stored in the extension.
+
+To stop using the extension, switch the tracker back to `client` or `server` and remove the unpacked extension. Local time entries are unchanged.
+
+Isolated fake trackers for development/tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at live production trackers from CI.
+
 ## Project structure
 
 ```
 apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
+apps/extension/           Optional Chrome/Edge companion (unpacked load)
 packages/remote-trackers/ Provider adapters and neutral contracts
+packages/extension-protocol/ Versioned website/extension envelopes
 tools/                    Vendored tooling (anti-slop Oxlint plugin and its tests)
 docs/                     Project vision and work-breakdown notes
 openspec/                 OpenSpec change/spec documents (behavioral source of truth)

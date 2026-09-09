@@ -11,6 +11,9 @@ node_modules
 
 # Tests
 test
+apps/web/test
+apps/extension/test
+apps/extension/dist
 
 # Local env files
 .env

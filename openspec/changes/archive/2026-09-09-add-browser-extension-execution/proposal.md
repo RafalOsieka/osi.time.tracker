@@ -28,6 +28,8 @@ No mobile no-trackers policy, PWA/offline implementation, native companion, serv
 
 ## Impact
 
-**Depends on `migrate-to-pnpm-monorepo` being implemented and verified first.** This proposal targets its package boundaries; implementation must use the landed public exports.
+The monorepo prerequisite is implemented and archived as `2026-09-07-migrate-to-pnpm-monorepo`. The landed baseline is `@osi/time-tracker` in `apps/web` and `@osi/remote-trackers` in `packages/remote-trackers`, exposing `/contracts`, `/openproject`, and `/redmine`; extension implementation must consume these public exports.
 
 Touches tracker validation/UI, remote adapter selection and export error handling, extension build/test tooling, and CI. Existing OSI tracker APIs accept the new mode; server execution must not become a fallback. Plain-text database mode storage needs no schema migration. The user explicitly prioritizes this MVP connectivity extension to WBS 5.1–5.3 and 5.14–5.15; older client-only user-story wording is superseded by active client/server specs and this approved addition. Ordinary local time tracking remains usable when the extension is unavailable.
+
+Repository wiring includes protocol dependency build/watch ordering for both consumers and web test entry points, Docker manifest installation and web dependency builds, and independent protocol/extension quality gates without Nuxt preparation. Extension packaging remains separate from the production web image.

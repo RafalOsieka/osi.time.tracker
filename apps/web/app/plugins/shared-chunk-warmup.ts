@@ -20,6 +20,8 @@ import { OpenProjectAdapter, OpenProjectClient } from '@osi/remote-trackers/open
 import { RedmineAdapter, RedmineClient } from '@osi/remote-trackers/redmine';
 import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import { remoteIssuePickerFormSchema } from '~~/shared/types/remote-issue-ref';
+import { finalizeRemoteExportSchema } from '~~/shared/types/remote-export';
+import { createTrackerSchema } from '~~/shared/types/tracker';
 
 export default defineNuxtPlugin(() => {
   void applyRoundingRule;
@@ -35,6 +37,8 @@ export default defineNuxtPlugin(() => {
   void UpstreamHttpError;
   void REMOTE_ISSUE_SEARCH_MODE_ORDER;
   void remoteIssuePickerFormSchema;
+  void finalizeRemoteExportSchema;
+  void createTrackerSchema;
   void OpenProjectAdapter;
   void OpenProjectClient;
   void RedmineAdapter;

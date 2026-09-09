@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { extractCaughtMessageKey, extractMessageKey } from '../../app/utils/extract-message-key';
+import { ExtensionProtocolError } from '@osi/extension-protocol';
 import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
 import type { MessageParams } from '../../shared/types/message-params';
 
@@ -47,6 +48,11 @@ describe('extractCaughtMessageKey', () => {
   it('reads messageKey from a RemoteAdapterError', () => {
     const err = new RemoteAdapterError('error.remoteIssueSearchFailed', 502);
     expect(extractCaughtMessageKey(err, 'fallback')).toBe('error.remoteIssueSearchFailed');
+  });
+
+  it('reads messageKey from an ExtensionProtocolError', () => {
+    const err = new ExtensionProtocolError('unavailable', 'error.extensionUnavailable');
+    expect(extractCaughtMessageKey(err, 'fallback')).toBe('error.extensionUnavailable');
   });
 
   it('reads messageKey from a Nitro/ofetch Error', () => {

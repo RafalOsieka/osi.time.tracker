@@ -1,0 +1,91 @@
+import { describe, expect, it, vi } from 'vitest';
+import { ApprovalService, createMemoryHostPermissions } from '../../src/approvals/approvals.js';
+import {
+  APPROVAL_STORAGE_KEY,
+  createChromeApprovalStore,
+  createChromeHostPermissions,
+} from '../../src/approvals/chrome-store.js';
+
+describe('Chrome approval changes', () => {
+  it('ignores Chrome refusing to remove required host permissions', async () => {
+    const permissions = createChromeHostPermissions({
+      contains: async () => true,
+      request: async () => true,
+      remove: async () => {
+        throw new Error('You cannot remove required permissions.');
+      },
+      getAll: async () => ({ origins: ['https://*/*'] }),
+      onAdded: { addListener: vi.fn(), removeListener: vi.fn() },
+      onRemoved: { addListener: vi.fn(), removeListener: vi.fn() },
+    });
+    await expect(permissions.remove('https://*/*')).resolves.toBeUndefined();
+  });
+
+  it('observes browser permission additions and removals and releases both listeners', () => {
+    const onAdded: ChromePermissionChanges = {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    };
+    const onRemoved: ChromePermissionChanges = {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    };
+    const permissions = createChromeHostPermissions({
+      contains: async () => false,
+      request: async () => true,
+      remove: async () => true,
+      getAll: async () => ({}),
+      onAdded,
+      onRemoved,
+    });
+    const listener = vi.fn();
+    const unsubscribe = permissions.subscribe?.(listener);
+    expect(onAdded.addListener).toHaveBeenCalledWith(listener);
+    expect(onRemoved.addListener).toHaveBeenCalledWith(listener);
+    unsubscribe?.();
+    expect(onAdded.removeListener).toHaveBeenCalledWith(listener);
+    expect(onRemoved.removeListener).toHaveBeenCalledWith(listener);
+  });
+
+  it('cancels worker work after an options-context storage change and releases the listener', async () => {
+    const listeners = new Set<Parameters<ChromeStorageChanges['addListener']>[0]>();
+    const changes: ChromeStorageChanges = {
+      addListener: (listener) => {
+        listeners.add(listener);
+      },
+      removeListener: (listener) => {
+        listeners.delete(listener);
+      },
+    };
+    let stored: ChromeJson = { websites: [], destinations: [] };
+    const storage: ChromeStorageArea = {
+      get: async () => ({ [APPROVAL_STORAGE_KEY]: stored }),
+      set: async (items) => {
+        stored = items[APPROVAL_STORAGE_KEY] ?? null;
+        for (const listener of listeners)
+          listener({ [APPROVAL_STORAGE_KEY]: { newValue: stored } }, 'local');
+      },
+    };
+    const permissions = createMemoryHostPermissions();
+    const editor = new ApprovalService(createChromeApprovalStore(storage, changes), permissions);
+    const worker = new ApprovalService(createChromeApprovalStore(storage, changes), permissions);
+    const website = 'http://localhost:3000';
+    await editor.approveWebsite(website);
+    const approval = await editor.approveDestination(
+      website,
+      'redmine',
+      'https://tracker.example/redmine',
+    );
+    const abort = vi.fn();
+    worker.registerInFlight(approval, { abort });
+    expect(listeners.size).toBe(1);
+    for (const listener of listeners) {
+      listener({ [APPROVAL_STORAGE_KEY]: {} }, 'sync');
+      listener({ preference: {} }, 'local');
+    }
+    expect(abort).not.toHaveBeenCalled();
+    await editor.revokeWebsite(website);
+    expect(abort).toHaveBeenCalledOnce();
+    expect(listeners.size).toBe(0);
+  });
+});

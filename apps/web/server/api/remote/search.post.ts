@@ -18,15 +18,6 @@ import type { ApiMessage } from '../../types/api-message';
  */
 export default defineEventHandler(async (event): Promise<ProxiedRemoteIssueSearchResponseDto> => {
   const { user } = await requireAuth(event);
-
-  const secret = getRequestHeader(event, REMOTE_SECRET_HEADER);
-  if (!secret) {
-    throw createError({
-      statusCode: 422,
-      data: { messageKey: 'error.remoteServerModeSecretRequired' } satisfies ApiMessage,
-    });
-  }
-
   const parsedBody = await readZodBody(event, proxiedRemoteIssueSearchSchema);
 
   const value = parsedBody.query.trim();
@@ -44,6 +35,13 @@ export default defineEventHandler(async (event): Promise<ProxiedRemoteIssueSearc
   }
 
   const config = await resolveOwnedTracker(user.id, parsedBody.trackerId);
+  const secret = getRequestHeader(event, REMOTE_SECRET_HEADER);
+  if (!secret) {
+    throw createError({
+      statusCode: 422,
+      data: { messageKey: 'error.remoteServerModeSecretRequired' } satisfies ApiMessage,
+    });
+  }
   const adapter = createServerRemoteAdapter(config, secret);
 
   try {

@@ -13,10 +13,17 @@ import { UNKNOWN_ID } from '../helpers/fixtures';
 
 const describeRemoteExportProxy = requireDocker();
 
-function startFakeTracker(): Promise<{ server: Server; baseUrl: string; seenAuth: string[] }> {
+function startFakeTracker(): Promise<{
+  server: Server;
+  baseUrl: string;
+  seenAuth: string[];
+  hits: { count: number };
+}> {
   const seenAuth: string[] = [];
+  const hits = { count: 0 };
   return new Promise((resolve) => {
     const server = createServer((req, res) => {
+      hits.count += 1;
       const authHeader = req.headers.authorization ?? '';
       seenAuth.push(authHeader);
       const decoded = authHeader.startsWith('Basic ')
@@ -70,7 +77,7 @@ function startFakeTracker(): Promise<{ server: Server; baseUrl: string; seenAuth
     server.listen(0, '127.0.0.1', () => {
       const address = server.address();
       const port = address instanceof Object && 'port' in address ? address.port : 0;
-      resolve({ server, baseUrl: `http://127.0.0.1:${port}`, seenAuth });
+      resolve({ server, baseUrl: `http://127.0.0.1:${port}`, seenAuth, hits });
     });
   });
 }
@@ -79,7 +86,7 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl });
 
-  let tracker: { server: Server; baseUrl: string; seenAuth: string[] };
+  let tracker: { server: Server; baseUrl: string; seenAuth: string[]; hits: { count: number } };
   beforeAll(async () => {
     tracker = await startFakeTracker();
   });
@@ -284,5 +291,56 @@ describeRemoteExportProxy('remote export proxy API integration', async () => {
     expect((await createConn.json())?.data?.messageKey).toBe(
       'error.remoteServerModeConnectionFailed',
     );
+  });
+
+  it('rejects extension-mode account, time-log, and create operations without contacting the fake tracker', async () => {
+    const user = await seedAndLogin(dbUrl);
+    const config = await createTracker(user.jar, user.token, 'Extension Tracker ' + Date.now(), {
+      executionMode: 'extension',
+      baseUrl: tracker.baseUrl,
+    });
+    const headers = {
+      'content-type': 'application/json',
+      'csrf-token': user.token,
+      cookie: user.jar.header(),
+      [REMOTE_SECRET_HEADER]: 'good-secret',
+    };
+    const hitsBefore = tracker.hits.count;
+
+    const accountRes = await fetch(url('/api/remote/account'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ trackerId: config.id }),
+    });
+    expect(accountRes.status).toBe(422);
+    expect((await accountRes.json())?.data?.messageKey).toBe('error.extensionUnavailable');
+
+    const logsRes = await fetch(url('/api/remote/time-logs'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        trackerId: config.id,
+        spentOn: '2026-03-15',
+        workPackageIds: ['42'],
+        userId: '7',
+      }),
+    });
+    expect(logsRes.status).toBe(422);
+    expect((await logsRes.json())?.data?.messageKey).toBe('error.extensionUnavailable');
+
+    const createRes = await fetch(url('/api/remote/time-entries'), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        trackerId: config.id,
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 1800,
+        activityId: '1',
+      }),
+    });
+    expect(createRes.status).toBe(422);
+    expect((await createRes.json())?.data?.messageKey).toBe('error.extensionUnavailable');
+    expect(tracker.hits.count).toBe(hitsBefore);
   });
 });

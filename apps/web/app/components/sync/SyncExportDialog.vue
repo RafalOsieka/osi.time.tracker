@@ -60,6 +60,7 @@ const emit = defineEmits<{
   stop: [];
   close: [];
   retry: [taskId: string];
+  reconcile: [taskId: string, remoteLogId: string];
 }>();
 
 const { t } = useI18n();
@@ -321,13 +322,22 @@ const inProgress = computed(() =>
               >
                 <div class="grid gap-1">
                   <span class="font-semibold">{{ item.taskName }}</span>
-                  <span>
+                  <span v-if="outcomes[item.taskId]?.remoteLogId">
                     {{
                       t('remoteSync.exportDialog.uncertainHint', {
-                        id: outcomes[item.taskId]?.remoteLogId ?? t('remoteSync.emptyCell'),
+                        id: outcomes[item.taskId]?.remoteLogId,
                       })
                     }}
                   </span>
+                  <span v-else>{{ t('remoteSync.exportDialog.unknownCreateHint') }}</span>
+                  <span v-if="outcomes[item.taskId]?.messageKey !== 'error.extensionUnknownCreate'">
+                    {{ outcomeText(item.taskId) }}
+                  </span>
+                  <SyncExistingLogForm
+                    v-if="!outcomes[item.taskId]?.remoteLogId"
+                    :disabled="isRunning"
+                    @reconcile="emit('reconcile', item.taskId, $event)"
+                  />
                   <a
                     v-if="remoteLogHref(item.baseUrl, outcomes[item.taskId]?.remoteLogId)"
                     class="text-primary underline"

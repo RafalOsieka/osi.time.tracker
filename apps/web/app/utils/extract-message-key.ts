@@ -1,3 +1,4 @@
+import { ExtensionProtocolError } from '@osi/extension-protocol';
 import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
 
 /**
@@ -16,12 +17,13 @@ export function extractMessageKey(err: Error & { data?: unknown }, fallback: str
 }
 
 /**
- * Maps a catch binding using real error classes (`RemoteAdapterError`, `Error`
- * with a Nitro/ofetch `data` envelope).
+ * Maps a catch binding using real error classes (`RemoteAdapterError`,
+ * `ExtensionProtocolError`, `Error` with a Nitro/ofetch `data` envelope).
  */
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- catch binding is implicitly unknown
 export function extractCaughtMessageKey(err: unknown, fallback: string): string {
   if (err instanceof RemoteAdapterError) return err.messageKey;
+  if (err instanceof ExtensionProtocolError) return err.messageKey;
   if (err instanceof Error && 'data' in err) {
     return extractMessageKey(err, fallback);
   }

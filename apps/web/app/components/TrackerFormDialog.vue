@@ -39,6 +39,7 @@ const roundingRuleItems = computed(() =>
 const executionModeLabelKeys = {
   client: 'trackers.executionModeClient',
   server: 'trackers.executionModeServer',
+  extension: 'trackers.executionModeExtension',
 } as const satisfies Record<TrackerExecutionMode, string>;
 const executionModeItems = computed(() =>
   TRACKER_EXECUTION_MODE_ORDER.map((value) => ({
@@ -270,6 +271,12 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
               data-testid="tracker-execution-mode-select"
             />
           </UFormField>
+
+          <TrackerExtensionStatus
+            :execution-mode="state.executionMode"
+            :system-type="state.systemType"
+            :base-url="state.baseUrl"
+          />
 
           <UFormField :label="t('trackers.roundingRuleLabel')" name="roundingRule">
             <USelect

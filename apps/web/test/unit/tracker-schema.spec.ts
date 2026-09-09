@@ -46,6 +46,11 @@ describe('tracker connection field schemas', () => {
     expect(result.executionMode).toBe('server');
   });
 
+  it('accepts an explicit extension executionMode', () => {
+    const result = createTrackerSchema.parse({ ...valid, executionMode: 'extension' });
+    expect(result.executionMode).toBe('extension');
+  });
+
   it('rejects an invalid executionMode', () => {
     expect(() => createTrackerSchema.parse({ ...valid, executionMode: 'tunneled' })).toThrow();
   });

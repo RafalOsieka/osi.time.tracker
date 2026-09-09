@@ -81,6 +81,15 @@ export default withNuxt()
     },
   })
   .append({
+    files: ['apps/extension/**/*.{vue,ts,js}'],
+    settings: {
+      'vue-i18n': {
+        localeDir: './apps/extension/src/i18n/*.json',
+        messageSyntaxVersion: '^9.0.0',
+      },
+    },
+  })
+  .append({
     files: ['**/*.vue'],
     rules: {
       'no-restricted-syntax': [
@@ -113,6 +122,7 @@ export default withNuxt()
       'apps/web/.output',
       'apps/web/server/db/migrations',
       'packages/*/dist',
+      'apps/extension/dist',
       'apps/web/app/pages/**/*.vue',
       'apps/web/app/layouts/**/*.vue',
     ],

@@ -1,4 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { locks } from 'node:worker_threads';
+import { ExtensionProtocolError } from '@osi/extension-protocol';
+import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
@@ -18,6 +21,7 @@ const toastErrorMock = vi.hoisted(() => vi.fn());
 const createTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ remoteLogId: '9001' }));
 const fetchTimeLogsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 const invalidateCachesMock = vi.hoisted(() => vi.fn());
+const validateExistingTimeLogMock = vi.hoisted(() => vi.fn());
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
@@ -31,6 +35,7 @@ vi.mock('../../app/composables/use-remote-sync-client', () => ({
     fetchTimeLogs: fetchTimeLogsMock,
     fetchTimeLogsInRange: vi.fn().mockResolvedValue([]),
     createTimeEntry: createTimeEntryMock,
+    validateExistingTimeLog: validateExistingTimeLogMock,
     invalidateCaches: invalidateCachesMock,
   }),
   mapRemoteSyncClientError: (_err: Error, fallback: string) => fallback,
@@ -278,6 +283,7 @@ async function expandRow(wrapper: Awaited<ReturnType<typeof mount>>, taskId: str
 }
 
 describe('RemoteSync page', () => {
+  afterEach(() => vi.unstubAllGlobals());
   beforeEach(() => {
     csrfFetchMock.mockReset();
     dollarFetchMock.mockReset();
@@ -286,11 +292,14 @@ describe('RemoteSync page', () => {
     confirmMock.mockResolvedValue(true);
     createTimeEntryMock.mockReset();
     createTimeEntryMock.mockResolvedValue({ remoteLogId: '9001' });
+    validateExistingTimeLogMock.mockReset();
+    validateExistingTimeLogMock.mockResolvedValue(undefined);
     fetchTimeLogsMock.mockReset();
     fetchTimeLogsMock.mockResolvedValue([]);
     invalidateCachesMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
     installFakeLocalStorage();
+    vi.stubGlobal('navigator', { locks });
     try {
       Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
@@ -791,64 +800,95 @@ describe('RemoteSync page', () => {
     ).toBe(true);
   });
 
-  it('exports with the local task title as the OpenProject comment', async () => {
-    dayData = makeDay({
-      rows: [
-        {
-          taskId: 'task-export',
-          taskName: 'Ship feature X',
-          projectName: 'Project',
-          trackerName: 'Client',
-          totalSeconds: 3600,
-          config: {
-            ...baseConfig,
-            id: 'config-export',
+  it.each(['created', 'reconciled'])(
+    'exports with the local task title as the OpenProject comment (%s)',
+    async (outcome) => {
+      if (outcome === 'reconciled') {
+        createTimeEntryMock.mockRejectedValueOnce(
+          new ExtensionProtocolError('unknown-create', 'error.extensionUnknownCreate'),
+        );
+      }
+      dayData = makeDay({
+        rows: [
+          {
+            taskId: 'task-export',
+            taskName: 'Ship feature X',
+            projectName: 'Project',
+            trackerName: 'Client',
+            totalSeconds: 3600,
+            config: {
+              ...baseConfig,
+              id: 'config-export',
+            },
+            issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
+            entries: [entry({ id: 'entry-export', durationSeconds: 3600 })],
+            exports: [],
           },
-          issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
-          entries: [entry({ id: 'entry-export', durationSeconds: 3600 })],
-          exports: [],
-        },
-      ],
-    });
-    dollarFetchMock.mockResolvedValue(dayData);
-    csrfFetchMock.mockResolvedValue({
-      exportId: 'exp-1',
-      remoteLogId: '9001',
-      taskId: 'task-export',
-      localDate: '2026-03-15',
-    });
-    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+        ],
+      });
+      dollarFetchMock.mockResolvedValue(dayData);
+      csrfFetchMock.mockResolvedValue({
+        exportId: 'exp-1',
+        remoteLogId: '9001',
+        taskId: 'task-export',
+        localDate: '2026-03-15',
+      });
+      fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
-    const wrapper = await mount();
-    await chooseActivity(wrapper, 'task-export', '1');
-    await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
-    await flushPromises();
-    expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(true);
-    expect(createTimeEntryMock).not.toHaveBeenCalled();
-    await wrapper.find('[data-testid="remote-sync-export-confirm"]').trigger('click');
-    await flushPromises();
-    await flushPromises();
+      const wrapper = await mount();
+      await chooseActivity(wrapper, 'task-export', '1');
+      await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
+      await flushPromises();
+      expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(true);
+      expect(createTimeEntryMock).not.toHaveBeenCalled();
+      await wrapper.find('[data-testid="remote-sync-export-confirm"]').trigger('click');
+      await flushPromises();
+      await flushPromises();
 
-    expect(createTimeEntryMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        remoteIssueId: '42',
-        spentOn: '2026-03-15',
-        activityId: '1',
-        comment: 'Ship feature X',
-      }),
-    );
-    expect(csrfFetchMock).toHaveBeenCalledWith(
-      '/api/sync/export',
-      expect.objectContaining({
-        method: 'POST',
-        body: expect.objectContaining({
-          taskId: 'task-export',
-          remoteLogId: '9001',
-          entryIds: ['entry-export'],
+      expect(createTimeEntryMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          remoteIssueId: '42',
+          spentOn: '2026-03-15',
+          activityId: '1',
+          comment: 'Ship feature X',
         }),
-      }),
-    );
-  });
+      );
+      if (outcome === 'reconciled') {
+        expect(csrfFetchMock).not.toHaveBeenCalled();
+        validateExistingTimeLogMock.mockRejectedValueOnce(
+          new RemoteAdapterError('error.remoteExportExistingLogMismatch'),
+        );
+        await wrapper.get('[data-testid="remote-sync-existing-log-id"]').setValue('9001');
+        await wrapper.get('[data-testid="remote-sync-existing-log-form"]').trigger('submit');
+        await vi.waitFor(() => expect(toastErrorMock).toHaveBeenCalled());
+        expect(csrfFetchMock).not.toHaveBeenCalled();
+        await wrapper.get('[data-testid="remote-sync-existing-log-form"]').trigger('submit');
+        await vi.waitFor(() => expect(csrfFetchMock).toHaveBeenCalled());
+        expect(validateExistingTimeLogMock).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            remoteLogId: '9001',
+            remoteIssueId: '42',
+            spentOn: '2026-03-15',
+            durationSeconds: 3600,
+            activityId: '1',
+            comment: 'Ship feature X',
+          }),
+        );
+      }
+      expect(createTimeEntryMock).toHaveBeenCalledTimes(1);
+      expect(csrfFetchMock).toHaveBeenCalledWith(
+        '/api/sync/export',
+        expect.objectContaining({
+          method: 'POST',
+          body: expect.objectContaining({
+            taskId: 'task-export',
+            remoteLogId: '9001',
+            entryIds: ['entry-export'],
+          }),
+        }),
+      );
+    },
+  );
 
   it('does not reassign the local task when title-to-send is edited', async () => {
     dayData = makeDay({
