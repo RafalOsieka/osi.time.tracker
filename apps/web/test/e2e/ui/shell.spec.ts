@@ -88,8 +88,9 @@ describeShell('authenticated shell navigation', async () => {
     const page = await createPage('/');
     await loginAs(page, user.email, user.password, { width: 390, height: 844 });
     await page.locator('[data-testid="app-topbar"] [data-slot="toggle"]').click();
-    await page.waitForSelector('[data-testid="extension-status-footer"]');
-    await page.locator('[data-testid="extension-status-trigger"]').tap();
+    const mobileFooter = page.locator('[data-testid="extension-status-footer"]:visible');
+    await mobileFooter.waitFor();
+    await mobileFooter.locator('[data-testid="extension-status-trigger"]').tap();
     await page.waitForSelector('[data-testid="extension-status-popover"]');
     await page.keyboard.press('Escape');
 
