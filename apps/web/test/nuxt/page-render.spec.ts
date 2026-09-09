@@ -111,6 +111,7 @@ describe('preserved test hooks', () => {
           UDashboardSidebarCollapse: { template: '<button data-testid="sidebar-collapse" />' },
           AppSidebar: { template: '<nav data-testid="app-sidebar-nav" />' },
           AppTimer: { template: '<div data-testid="app-timer" />' },
+          ExtensionStatusFooter: { template: '<div data-testid="extension-status-footer" />' },
           AppUserFooter: {
             template:
               '<div data-testid="app-user-footer">' +

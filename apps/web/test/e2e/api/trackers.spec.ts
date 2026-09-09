@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
 import { seedAndLogin } from '../helpers/session';
-import { createTracker } from '../helpers/http';
+import { createProject, createTracker } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
@@ -15,7 +15,7 @@ function trackerBody(name: string, overrides: JsonObject = {}) {
     name,
     systemType: 'openproject',
     baseUrl: 'https://op.example.com',
-    executionMode: 'client',
+    directBrowserAccess: true,
     roundingRule: 'none',
     ...overrides,
   };
@@ -70,7 +70,7 @@ describeTrackers('trackers API integration', async () => {
     expect(created.name).toBe('New Tracker');
     expect(created.id).toBeDefined();
     expect(created.systemType).toBe('openproject');
-    expect(created.executionMode).toBe('client');
+    expect(created.directBrowserAccess).toBe(true);
     expect(created.apiKey).toBeUndefined();
     expect(created.secret).toBeUndefined();
     expect(created.requiredFieldDefaults).toBeUndefined();
@@ -136,17 +136,17 @@ describeTrackers('trackers API integration', async () => {
     expect((await invalidUrl.json())?.data?.messageKey).toBe('error.trackerBaseUrlInvalid');
   });
 
-  it('create defaults executionMode to client and rejects server/unknown modes', async () => {
+  it('create defaults directBrowserAccess to true and rejects obsolete or invalid values', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
-    const { executionMode: _ignored, ...withoutMode } = trackerBody('Default Mode Tracker');
+    const { directBrowserAccess: _ignored, ...withoutAccess } = trackerBody('Default Mode Tracker');
 
     const defaultRes = await fetch(url('/api/trackers'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify(withoutMode),
+      body: JSON.stringify(withoutAccess),
     });
     expect(defaultRes.status).toBe(200);
-    expect((await defaultRes.json()).executionMode).toBe('client');
+    expect((await defaultRes.json()).directBrowserAccess).toBe(true);
 
     const nearestRes = await fetch(url('/api/trackers'), {
       method: 'POST',
@@ -179,27 +179,27 @@ describeTrackers('trackers API integration', async () => {
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify(
         trackerBody('Extension Mode Tracker', {
-          executionMode: 'extension',
+          directBrowserAccess: false,
           baseUrl: 'https://extension.example.com',
         }),
       ),
     });
     expect(extensionRes.status).toBe(200);
     const extensionBody = await extensionRes.json();
-    expect(extensionBody.executionMode).toBe('extension');
+    expect(extensionBody.directBrowserAccess).toBe(false);
 
     const patchExtension = await fetch(url(`/api/trackers/${extensionBody.id}`), {
       method: 'PATCH',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify(
         trackerBody(extensionBody.name, {
-          executionMode: 'extension',
+          directBrowserAccess: false,
           baseUrl: 'https://extension.example.com',
         }),
       ),
     });
     expect(patchExtension.status).toBe(200);
-    expect((await patchExtension.json()).executionMode).toBe('extension');
+    expect((await patchExtension.json()).directBrowserAccess).toBe(false);
 
     const invalidMode = await fetch(url('/api/trackers'), {
       method: 'POST',
@@ -208,6 +208,16 @@ describeTrackers('trackers API integration', async () => {
     });
     expect(invalidMode.status).toBe(422);
     expect((await invalidMode.json())?.data?.messageKey).toBe('error.trackerExecutionModeRequired');
+
+    const nonBoolean = await fetch(url('/api/trackers'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(trackerBody('Non Boolean Access', { directBrowserAccess: 'yes' })),
+    });
+    expect(nonBoolean.status).toBe(422);
+    expect((await nonBoolean.json())?.data?.messageKey).toBe(
+      'error.trackerDirectBrowserAccessInvalid',
+    );
   });
 
   it('patch happy path + foreign id → 404', async () => {
@@ -298,20 +308,20 @@ describeTrackers('trackers API integration', async () => {
       },
       body: JSON.stringify(
         trackerBody('Extension Persist ' + Date.now(), {
-          executionMode: 'extension',
+          directBrowserAccess: false,
           baseUrl: 'https://extension-persist.example.com',
         }),
       ),
     });
     expect(created.status).toBe(200);
     const createdBody = await created.json();
-    expect(createdBody.executionMode).toBe('extension');
+    expect(createdBody.directBrowserAccess).toBe(false);
     expect(createdBody.secret).toBeUndefined();
 
     const list = await fetch(url('/api/trackers'), { headers: { cookie: alice.jar.header() } });
     expect(list.status).toBe(200);
     const listed = (await list.json()).find((row: { id: string }) => row.id === createdBody.id);
-    expect(listed?.executionMode).toBe('extension');
+    expect(listed?.directBrowserAccess).toBe(false);
 
     const patched = await fetch(url(`/api/trackers/${createdBody.id}`), {
       method: 'PATCH',
@@ -322,14 +332,14 @@ describeTrackers('trackers API integration', async () => {
       },
       body: JSON.stringify(
         trackerBody(createdBody.name, {
-          executionMode: 'extension',
+          directBrowserAccess: false,
           baseUrl: 'https://extension-persist-updated.example.com',
         }),
       ),
     });
     expect(patched.status).toBe(200);
     const patchedBody = await patched.json();
-    expect(patchedBody.executionMode).toBe('extension');
+    expect(patchedBody.directBrowserAccess).toBe(false);
     expect(patchedBody.baseUrl).toBe('https://extension-persist-updated.example.com');
 
     const afterPatch = await fetch(url('/api/trackers'), {
@@ -338,7 +348,7 @@ describeTrackers('trackers API integration', async () => {
     const afterPatchRow = (await afterPatch.json()).find(
       (row: { id: string }) => row.id === createdBody.id,
     );
-    expect(afterPatchRow?.executionMode).toBe('extension');
+    expect(afterPatchRow?.directBrowserAccess).toBe(false);
     expect(afterPatchRow?.baseUrl).toBe('https://extension-persist-updated.example.com');
 
     const bobList = await fetch(url('/api/trackers'), { headers: { cookie: bob.jar.header() } });
@@ -387,5 +397,65 @@ describeTrackers('trackers API integration', async () => {
 
     const unauth = await fetch(url('/api/trackers'));
     expect(unauth.status).toBe(401);
+  });
+
+  it('changing directBrowserAccess keeps related project and task records', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'Related Records Tracker ' + Date.now(), {
+      baseUrl: 'https://related-records.example.com',
+    });
+    const project = await createProject(jar, token, 'Related Project ' + Date.now(), tracker.id);
+    const startedAt = new Date().toISOString();
+    const entryRes = await fetch(url('/api/time-entries'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        title: 'Related Task',
+        projectId: project.id,
+        startedAt,
+        stoppedAt: new Date(Date.now() + 60_000).toISOString(),
+      }),
+    });
+    expect(entryRes.status).toBe(200);
+    const entry = await entryRes.json();
+    const linkRes = await fetch(url('/api/time-entries/reassign'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        ids: [entry.id],
+        remoteIssueId: '42',
+        cachedTitle: 'Cached issue',
+      }),
+    });
+    expect(linkRes.status).toBe(200);
+    const linked = await linkRes.json();
+    const taskId = linked[0]?.taskId ?? entry.taskId;
+    expect(taskId).toBeTruthy();
+
+    const patchRes = await fetch(url(`/api/trackers/${tracker.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify(
+        trackerBody(tracker.name, {
+          baseUrl: 'https://related-records.example.com',
+          directBrowserAccess: false,
+        }),
+      ),
+    });
+    expect(patchRes.status).toBe(200);
+    const patched = await patchRes.json();
+    expect(patched.id).toBe(tracker.id);
+    expect(patched.directBrowserAccess).toBe(false);
+
+    const projects = await fetch(url('/api/projects'), { headers: { cookie: jar.header() } });
+    const projectRow = (await projects.json()).find((row: { id: string }) => row.id === project.id);
+    expect(projectRow?.trackerId).toBe(tracker.id);
+
+    const tasks = await fetch(url(`/api/tasks?projectId=${project.id}`), {
+      headers: { cookie: jar.header() },
+    });
+    const taskRow = (await tasks.json()).find((row: { id: string }) => row.id === taskId);
+    expect(taskRow?.id).toBe(taskId);
+    expect(taskRow?.projectId).toBe(project.id);
   });
 });

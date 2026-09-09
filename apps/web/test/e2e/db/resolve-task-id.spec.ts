@@ -35,7 +35,7 @@ describeResolveTaskId('resolveTaskId', async () => {
         name,
         systemType: 'openproject',
         baseUrl: 'https://op.example.com',
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
       })
       .returning({ id: trackers.id });

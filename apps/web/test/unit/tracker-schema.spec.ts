@@ -3,8 +3,7 @@ import { ZodError } from 'zod';
 import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
 import {
   createTrackerSchema,
-  TRACKER_EXECUTION_MODE_ORDER,
-  trackerExecutionModeSchema,
+  trackerDirectBrowserAccessSchema,
   trackerRoundingRuleSchema,
 } from '../../shared/types/tracker';
 import { mapZodError } from '../../server/utils/zod-error';
@@ -14,7 +13,7 @@ describe('tracker connection field schemas', () => {
     name: 'My Tracker',
     systemType: 'redmine',
     baseUrl: 'https://redmine.example.com',
-    executionMode: 'client',
+    directBrowserAccess: true,
     roundingRule: 'none',
   };
 
@@ -36,30 +35,31 @@ describe('tracker connection field schemas', () => {
     expect(() => createTrackerSchema.parse({ ...valid, systemType: 'jira' })).toThrow();
   });
 
-  it('defaults executionMode to client when omitted', () => {
-    const { executionMode: _ignored, ...rest } = valid;
+  it('defaults directBrowserAccess to true when omitted', () => {
+    const { directBrowserAccess: _ignored, ...rest } = valid;
     const result = createTrackerSchema.parse(rest);
-    expect(result.executionMode).toBe('client');
+    expect(result.directBrowserAccess).toBe(true);
   });
 
-  it('rejects the removed server executionMode', () => {
+  it('rejects the obsolete executionMode field', () => {
     expect(() => createTrackerSchema.parse({ ...valid, executionMode: 'server' })).toThrow(
       ZodError,
     );
   });
 
-  it('accepts an explicit extension executionMode', () => {
-    const result = createTrackerSchema.parse({ ...valid, executionMode: 'extension' });
-    expect(result.executionMode).toBe('extension');
+  it('accepts an explicit false directBrowserAccess', () => {
+    const result = createTrackerSchema.parse({ ...valid, directBrowserAccess: false });
+    expect(result.directBrowserAccess).toBe(false);
   });
 
-  it('rejects an invalid executionMode', () => {
-    expect(() => createTrackerSchema.parse({ ...valid, executionMode: 'tunneled' })).toThrow();
+  it('rejects a non-boolean directBrowserAccess', () => {
+    expect(() => createTrackerSchema.parse({ ...valid, directBrowserAccess: 'true' })).toThrow();
   });
 
   it('no longer exposes a transportMode field', () => {
     const result = createTrackerSchema.parse(valid);
     expect('transportMode' in result).toBe(false);
+    expect('executionMode' in result).toBe(false);
   });
 
   it('strips a secret field submitted alongside a valid body', () => {
@@ -106,11 +106,10 @@ describe('tracker connection field schemas', () => {
     );
   });
 
-  it('exports standalone enums used by adapters', () => {
+  it('exports standalone schemas used by adapters', () => {
     expect(trackerSystemTypeSchema.parse('openproject')).toBe('openproject');
-    expect(TRACKER_EXECUTION_MODE_ORDER).toEqual(['client', 'extension']);
-    expect(trackerExecutionModeSchema.parse('client')).toBe('client');
-    expect(() => trackerExecutionModeSchema.parse('server')).toThrow(ZodError);
+    expect(trackerDirectBrowserAccessSchema.parse(true)).toBe(true);
+    expect(() => trackerDirectBrowserAccessSchema.parse('true')).toThrow(ZodError);
     expect(trackerRoundingRuleSchema.parse('up_15m')).toBe('up_15m');
   });
 });

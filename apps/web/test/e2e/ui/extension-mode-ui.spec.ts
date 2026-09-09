@@ -78,7 +78,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     await setTimezone(jar, token);
     const tracker = await createTracker(jar, token, 'Extension Unavailable ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
-      executionMode: 'extension',
+      directBrowserAccess: false,
     });
     const project = await createProject(
       jar,
@@ -131,7 +131,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
         el.click();
       });
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
-    await page.waitForSelector('[data-testid="tracker-extension-status"]');
+    expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
     await page
       .locator(
         '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
@@ -166,7 +166,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     await setTimezone(jar, token);
     const tracker = await createTracker(jar, token, 'Extension Lost Create ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
-      executionMode: 'extension',
+      directBrowserAccess: false,
     });
     const project = await createProject(
       jar,

@@ -17,10 +17,10 @@ export interface RemoteIssueSearchInput {
 
 /**
  * State-only issue search over the `RemoteTrackerAdapter` selected for
- * `config.executionMode` (REQ-103): loading/results/error state and
+ * `config.directBrowserAccess` (REQ-103): loading/results/error state and
  * stale-response suppression live here; all I/O and provider quirks are
  * delegated to the adapter, which behaves identically regardless of
- * execution mode.
+ * transport.
  */
 export function useRemoteIssueSearch(config: TrackerDto) {
   const { get: getSecret } = useTrackerSecret();

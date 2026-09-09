@@ -71,7 +71,7 @@ describeSyncExport('sync export finalization API', async () => {
     const tracker = await createTracker(jar, token, `Export Client ${suffix}`, {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
-      executionMode: 'client',
+      directBrowserAccess: true,
       roundingRule: 'none',
     });
     const project = await createProject(jar, token, `Export Project ${suffix}`, tracker.id);

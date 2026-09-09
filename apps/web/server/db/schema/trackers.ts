@@ -1,8 +1,8 @@
-import { pgTable, uuid, text, timestamp, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import type { TrackerExecutionMode, TrackerRoundingRule } from '../../../shared/types/tracker';
+import type { TrackerRoundingRule } from '../../../shared/types/tracker';
 
 export const trackers = pgTable(
   'trackers',
@@ -16,7 +16,7 @@ export const trackers = pgTable(
     name: text('name').notNull(),
     systemType: text('systemType').notNull().$type<TrackerSystemType>(),
     baseUrl: text('baseUrl').notNull(),
-    executionMode: text('executionMode').notNull().$type<TrackerExecutionMode>(),
+    directBrowserAccess: boolean('directBrowserAccess').notNull().default(true),
     roundingRule: text('roundingRule').notNull().$type<TrackerRoundingRule>(),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),

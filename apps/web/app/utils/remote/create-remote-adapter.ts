@@ -6,17 +6,17 @@ import { clientFetchTransport } from './client-fetch-transport';
 import { ExtensionExecutionAdapter } from './extension-execution-adapter';
 
 /**
- * Selects and builds the `RemoteTrackerAdapter` for one call: `client`
- * execution mode returns the provider adapter matched by `systemType` over
- * the browser-direct transport; `extension` returns
- * `ExtensionExecutionAdapter` and never falls back to client execution.
- * `secret` is resolved by the caller for this call.
+ * Selects and builds the `RemoteTrackerAdapter` for one call from the
+ * tracker's persisted capability: `directBrowserAccess: true` returns the
+ * provider adapter matched by `systemType` over the browser-direct
+ * transport; `false` returns `ExtensionExecutionAdapter` and never falls
+ * back to client execution. `secret` is resolved by the caller for this call.
  */
 export function createRemoteAdapter(
   config: TrackerDto,
   secret: string | null,
 ): RemoteTrackerAdapter {
-  if (config.executionMode === 'extension') {
+  if (!config.directBrowserAccess) {
     return new ExtensionExecutionAdapter(config, secret);
   }
 

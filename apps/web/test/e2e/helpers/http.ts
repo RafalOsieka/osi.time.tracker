@@ -25,7 +25,7 @@ export async function createTracker(
       name,
       systemType: 'openproject',
       baseUrl: `https://${trackerSlug(name)}.example.com`,
-      executionMode: 'client',
+      directBrowserAccess: true,
       roundingRule: 'none',
       ...overrides,
     }),

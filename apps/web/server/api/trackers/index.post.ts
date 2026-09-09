@@ -13,7 +13,7 @@ function toTrackerDto(row: typeof trackers.$inferSelect): TrackerDto {
     name: row.name,
     systemType: row.systemType,
     baseUrl: row.baseUrl,
-    executionMode: row.executionMode,
+    directBrowserAccess: row.directBrowserAccess,
     roundingRule: row.roundingRule,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -52,7 +52,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
         name: parsedBody.name,
         systemType: parsedBody.systemType,
         baseUrl: parsedBody.baseUrl,
-        executionMode: parsedBody.executionMode,
+        directBrowserAccess: parsedBody.directBrowserAccess,
         roundingRule: parsedBody.roundingRule,
       })
       .returning();

@@ -21,7 +21,7 @@ const tracker: TrackerDto = {
   name: 'Acme',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'client',
+  directBrowserAccess: true,
   roundingRule: 'none',
   createdAt: '',
   updatedAt: '',

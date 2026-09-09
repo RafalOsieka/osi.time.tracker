@@ -42,7 +42,7 @@ describeSyncDay('sync day-review API integration', async () => {
     const tracker = await createTracker(jar, token, 'Sync Client ' + Date.now(), {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
-      executionMode: 'client',
+      directBrowserAccess: true,
       roundingRule: 'none',
     });
     const project = await createProject(jar, token, 'Sync Project ' + Date.now(), tracker.id);
@@ -69,7 +69,7 @@ describeSyncDay('sync day-review API integration', async () => {
     expect(row.config).not.toBeNull();
     expect(row.config.id).toBe(tracker.id);
     expect(row.config.systemType).toBe('openproject');
-    expect(row.config.executionMode).toBe('client');
+    expect(row.config.directBrowserAccess).toBe(true);
     expect(row.config.roundingRule).toBe('none');
     expect(row.config.baseUrl).toBe('https://op.example.com');
     expect(row.config.requiredFieldDefaults).toBeUndefined();

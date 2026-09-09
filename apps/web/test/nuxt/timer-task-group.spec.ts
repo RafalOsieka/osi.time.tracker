@@ -113,7 +113,7 @@ const openProjectTracker = {
   name: 'OpenProject',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
-  executionMode: 'client' as const,
+  directBrowserAccess: true,
   roundingRule: 'none' as const,
   createdAt: '',
   updatedAt: '',

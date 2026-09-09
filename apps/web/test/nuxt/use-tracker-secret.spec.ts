@@ -59,7 +59,7 @@ describe('useTrackerSecret', () => {
     const outgoingBody = {
       systemType: 'redmine',
       baseUrl: 'https://redmine.example.com',
-      executionMode: 'client',
+      directBrowserAccess: true,
       roundingRule: 'none',
     };
 

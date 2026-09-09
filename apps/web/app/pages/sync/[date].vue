@@ -73,7 +73,7 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): TrackerDto {
     name: '',
     systemType: config.systemType,
     baseUrl: config.baseUrl,
-    executionMode: config.executionMode,
+    directBrowserAccess: config.directBrowserAccess,
     roundingRule: config.roundingRule,
     createdAt: '',
     updatedAt: '',

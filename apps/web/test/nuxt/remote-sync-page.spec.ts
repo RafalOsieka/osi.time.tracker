@@ -197,7 +197,7 @@ const baseConfig = {
   id: 'config-1',
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
-  executionMode: 'client' as const,
+  directBrowserAccess: true,
   roundingRule: 'up_15m' as const,
 };
 
@@ -567,7 +567,7 @@ describe('RemoteSync page', () => {
           projectName: 'Project',
           trackerName: 'Extension Tracker',
           totalSeconds: 3600,
-          config: { ...baseConfig, id: 'config-ext', executionMode: 'extension' },
+          config: { ...baseConfig, id: 'config-ext', directBrowserAccess: false },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
           entries: [entry({ id: 'entry-ext', durationSeconds: 3600 })],
           exports: [],
@@ -769,7 +769,7 @@ describe('RemoteSync page', () => {
             id: 'config-redmine',
             systemType: 'redmine',
             baseUrl: 'https://rm.example.com',
-            executionMode: 'client',
+            directBrowserAccess: true,
           },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
           entries: [entry({ id: 'entry-redmine', durationSeconds: 3600 })],

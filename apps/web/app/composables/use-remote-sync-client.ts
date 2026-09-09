@@ -12,10 +12,10 @@ import { useTrackerSecret } from './use-tracker-secret';
 /**
  * Feature composable for browser-orchestrated remote sync: current account,
  * paginated same-day logs, and time-entry create, over the
- * `RemoteTrackerAdapter` selected for `config.executionMode`. Keeps the
+ * `RemoteTrackerAdapter` selected for `config.directBrowserAccess`. Keeps the
  * account/logs caches and in-flight request dedup; delegates all I/O and
  * provider quirks to the adapter, which behaves identically regardless of
- * execution mode.
+ * transport.
  */
 export function useRemoteSyncClient(config: TrackerDto) {
   const { get: getSecret } = useTrackerSecret();

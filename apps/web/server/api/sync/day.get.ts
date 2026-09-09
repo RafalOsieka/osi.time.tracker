@@ -6,7 +6,7 @@ import type {
   RemoteSyncExportProvenanceDto,
 } from '../../../shared/types/remote-sync-day';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import type { TrackerExecutionMode, TrackerRoundingRule } from '../../../shared/types/tracker';
+import type { TrackerRoundingRule } from '../../../shared/types/tracker';
 import { getDb } from '../../db/index';
 import {
   timeEntries,
@@ -72,7 +72,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       id: string;
       systemType: TrackerSystemType;
       baseUrl: string;
-      executionMode: TrackerExecutionMode;
+      directBrowserAccess: boolean;
       roundingRule: TrackerRoundingRule;
     }
   >();
@@ -87,7 +87,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
           id: tracker.id,
           systemType: tracker.systemType,
           baseUrl: tracker.baseUrl,
-          executionMode: tracker.executionMode,
+          directBrowserAccess: tracker.directBrowserAccess,
           roundingRule: tracker.roundingRule,
         });
       }

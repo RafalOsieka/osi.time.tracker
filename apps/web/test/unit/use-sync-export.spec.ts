@@ -16,7 +16,7 @@ const config: TrackerDto = {
   name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'client',
+  directBrowserAccess: true,
   roundingRule: 'none',
   createdAt: '',
   updatedAt: '',
@@ -35,7 +35,7 @@ function row(taskId = 'task-1', taskName = 'Ship it'): RemoteSyncDayRowDto {
       id: config.id,
       systemType: 'openproject',
       baseUrl: config.baseUrl,
-      executionMode: 'client',
+      directBrowserAccess: true,
       roundingRule: 'none',
     },
     issueRef: {
@@ -45,7 +45,7 @@ function row(taskId = 'task-1', taskName = 'Ship it'): RemoteSyncDayRowDto {
   };
 }
 
-const extensionConfig: TrackerDto = { ...config, executionMode: 'extension' };
+const extensionConfig: TrackerDto = { ...config, directBrowserAccess: false };
 
 function memoryPendingCreates(): PendingCreateStore & {
   markers: Map<string, PendingCreateMarker>;
@@ -811,7 +811,7 @@ describe('useSyncExport', () => {
       name: 'redmine client mode',
       task: {
         ...taskInput('task-ext'),
-        config: { ...config, systemType: 'redmine' as const, executionMode: 'client' as const },
+        config: { ...config, systemType: 'redmine' as const, directBrowserAccess: true },
       },
     },
     {

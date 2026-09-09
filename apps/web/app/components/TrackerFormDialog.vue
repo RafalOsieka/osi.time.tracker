@@ -36,35 +36,20 @@ const roundingRuleItems = computed(() =>
     value,
   })),
 );
-const executionModeLabelKeys = {
-  client: 'trackers.executionModeClient',
-  extension: 'trackers.executionModeExtension',
-} as const satisfies Record<TrackerExecutionMode, string>;
-const executionModeItems = computed(() =>
-  TRACKER_EXECUTION_MODE_ORDER.map((value) => ({
-    label: t(executionModeLabelKeys[value]),
-    value,
-  })),
-);
 
 const state = reactive<{
   name: string;
   systemType: TrackerSystemType;
   baseUrl: string;
-  executionMode: TrackerExecutionMode;
+  directBrowserAccess: boolean;
   roundingRule: TrackerRoundingRule;
 }>({
   name: '',
   systemType: TRACKER_SYSTEM_TYPE_ORDER[0],
   baseUrl: '',
-  executionMode: TRACKER_EXECUTION_MODE_ORDER[0],
+  directBrowserAccess: true,
   roundingRule: TRACKER_ROUNDING_RULE_ORDER[0],
 });
-const executionModeHelp = computed(() =>
-  state.executionMode === 'extension'
-    ? t('trackers.executionModeExtensionHelp')
-    : t('trackers.executionModeClientHelp'),
-);
 const secret = ref('');
 const nameServerError = ref('');
 const baseUrlServerError = ref('');
@@ -76,7 +61,7 @@ function seedForm(tracker: TrackerDto | null) {
   state.name = tracker?.name ?? '';
   state.systemType = tracker?.systemType ?? TRACKER_SYSTEM_TYPE_ORDER[0];
   state.baseUrl = tracker?.baseUrl ?? '';
-  state.executionMode = tracker?.executionMode ?? TRACKER_EXECUTION_MODE_ORDER[0];
+  state.directBrowserAccess = tracker?.directBrowserAccess ?? true;
   state.roundingRule = tracker?.roundingRule ?? TRACKER_ROUNDING_RULE_ORDER[0];
   secret.value = tracker ? (getSecret(tracker.id) ?? '') : '';
   nameServerError.value = '';
@@ -100,7 +85,7 @@ type TrackerFormState = {
   name: string;
   systemType: TrackerSystemType;
   baseUrl: string;
-  executionMode: TrackerExecutionMode;
+  directBrowserAccess: boolean;
   roundingRule: TrackerRoundingRule;
 };
 
@@ -133,7 +118,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
       name: data.name,
       systemType: data.systemType,
       baseUrl: data.baseUrl,
-      executionMode: data.executionMode,
+      directBrowserAccess: data.directBrowserAccess,
       roundingRule: data.roundingRule,
     };
     if (tracker) {
@@ -264,26 +249,27 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             </template>
           </UFormField>
 
-          <UFormField :label="t('trackers.executionModeLabel')" name="executionMode">
-            <USelect
-              id="tracker-execution-mode"
-              v-model="state.executionMode"
-              :items="executionModeItems"
-              value-key="value"
-              label-key="label"
-              class="w-full"
-              data-testid="tracker-execution-mode-select"
-            />
-            <p data-testid="tracker-execution-mode-help" class="text-sm text-muted">
-              {{ executionModeHelp }}
-            </p>
+          <UFormField name="directBrowserAccess">
+            <div class="flex items-start gap-2">
+              <UCheckbox
+                id="tracker-direct-browser-access"
+                v-model="state.directBrowserAccess"
+                :label="t('trackers.directBrowserAccessLabel')"
+                data-testid="tracker-direct-browser-access"
+              />
+              <UTooltip :text="t('trackers.directBrowserAccessHelp')" :delay-duration="0">
+                <UButton
+                  type="button"
+                  color="neutral"
+                  variant="ghost"
+                  square
+                  icon="i-lucide-circle-help"
+                  :aria-label="t('trackers.directBrowserAccessHelpAria')"
+                  data-testid="tracker-direct-browser-access-help"
+                />
+              </UTooltip>
+            </div>
           </UFormField>
-
-          <TrackerExtensionStatus
-            :execution-mode="state.executionMode"
-            :system-type="state.systemType"
-            :base-url="state.baseUrl"
-          />
 
           <UFormField :label="t('trackers.roundingRuleLabel')" name="roundingRule">
             <USelect

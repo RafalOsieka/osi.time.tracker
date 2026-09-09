@@ -37,7 +37,7 @@ const config: TrackerDto = {
   name: 'OpenProject',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'extension',
+  directBrowserAccess: false,
   roundingRule: 'none',
   createdAt: '2024-01-01T00:00:00.000Z',
   updatedAt: '2024-01-01T00:00:00.000Z',
@@ -260,7 +260,7 @@ describe('probeExtensionAvailability', () => {
         destination: { provider: 'openproject', baseUrl: config.baseUrl },
       }),
     ).toMatchObject({
-      status: 'permission',
+      status: 'websiteUnapproved',
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.originUnapproved,
     });
   });

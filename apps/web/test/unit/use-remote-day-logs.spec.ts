@@ -22,7 +22,7 @@ const config: TrackerDto = {
   name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'client',
+  directBrowserAccess: true,
   roundingRule: 'none',
   createdAt: '',
   updatedAt: '',

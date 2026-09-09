@@ -27,7 +27,7 @@ type Tracker = {
   name: string;
   systemType: string;
   baseUrl: string;
-  executionMode: string;
+  directBrowserAccess: boolean;
   roundingRule: string;
   createdAt: string;
   updatedAt: string;
@@ -122,6 +122,15 @@ const commonStubs = {
   UForm: FormStub,
   UFormField: { template: '<div><slot /><slot name="error" /></div>' },
   USelect: { template: '<select v-bind="$attrs" />' },
+  UCheckbox: {
+    props: ['modelValue', 'label'],
+    template:
+      '<label><input type="checkbox" v-bind="$attrs" :checked="modelValue" />{{ label }}</label>',
+  },
+  UTooltip: {
+    props: ['text'],
+    template: '<span :data-tooltip-text="text"><slot /></span>',
+  },
   USeparator: { template: '<hr />' },
   TableHeader: {
     props: ['title', 'newLabel', 'newTestid'],
@@ -190,7 +199,7 @@ describe('trackers page', () => {
         name: 'Acme Tracker',
         systemType: 'openproject',
         baseUrl: 'https://a.example.com',
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -200,7 +209,7 @@ describe('trackers page', () => {
         name: 'Zebra Tracker',
         systemType: 'redmine',
         baseUrl: 'https://z.example.com',
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

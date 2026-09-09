@@ -170,11 +170,11 @@ One-time setup for adapter work:
 
 ### VPN reachability
 
-The OSI server does not contact your tracker. `client` and `extension` modes both require **this device** to reach the tracker (publicly or over VPN). `client` additionally requires the tracker to allow cross-origin requests from the OSI origin; `extension` is desktop-only when CORS would otherwise block those requests. If your tracker is only on a VPN, connect the browser (or the desktop that hosts the extension) to that VPN.
+The OSI server does not contact your tracker. Direct browser access and the extension both require **this device** to reach the tracker (publicly or over VPN). Direct browser access additionally requires the tracker to allow cross-origin requests from the OSI origin; disable it (require the extension) when CORS would otherwise block those requests. If your tracker is only on a VPN, connect the browser (or the desktop that hosts the extension) to that VPN.
 
 ### Browser extension (Chrome / Edge)
 
-Use **Extension** tracker mode when the hosted website cannot call your tracker (no CORS / no VPN on the server) but your desktop browser can. The production web image does **not** include the extension; each person loads it unpacked locally.
+Turn off **Direct browser connection allowed** when the hosted website cannot call your tracker (no CORS) but your desktop browser can. Transport is then always the extension; there is no automatic fallback. The production web image does **not** include the extension; each person loads it unpacked locally.
 
 ```bash
 pnpm --filter @osi/remote-trackers build
@@ -191,7 +191,7 @@ In the extension options page, approve:
 
 If the website reports an incompatible extension, rebuild/reload the extension and refresh the page. Workplace policy that blocks unpacked extensions or host-permission prompts cannot be bypassed. Tracker API secrets stay in the website's `localStorage` and are sent only for the current operation; they are never stored in the extension.
 
-To stop using the extension, switch the tracker back to `client` or `server` and remove the unpacked extension. Local time entries are unchanged.
+To stop using the extension, turn **Direct browser connection allowed** back on (if the tracker permits it) and remove the unpacked extension. Local time entries are unchanged.
 
 Isolated fake trackers for development/tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at live production trackers from CI.
 
