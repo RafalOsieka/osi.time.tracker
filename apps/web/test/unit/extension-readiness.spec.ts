@@ -124,6 +124,22 @@ describe('deriveExtensionAggregateState', () => {
     ).toBe('green');
   });
 
+  it('stays checking while a required destination is still unresolved', () => {
+    expect(
+      deriveExtensionAggregateState({
+        trackers: [
+          tracker({
+            id: 'e',
+            name: 'Ext',
+            directBrowserAccess: false,
+            destinationApproved: null,
+          }),
+        ],
+        connection: 'ready',
+      }),
+    ).toBe('checking');
+  });
+
   it('does not let optional direct-capable approvals downgrade green or neutral', () => {
     expect(
       deriveExtensionAggregateState({
@@ -192,19 +208,61 @@ describe('probeExtensionReadiness', () => {
     const destination = await run([
       { status: 'available', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable },
       { status: 'permission', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved },
-      { status: 'available', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable },
     ]);
     expect(destination.connection).toBe('ready');
     expect(destination.aggregate).toBe('orange');
     expect(destination.trackers[0]?.destinationApproved).toBe(false);
+    expect(destination.trackers[1]?.destinationApproved).toBeNull();
     expect(JSON.stringify(probe.mock.calls)).not.toContain('secret');
 
     const approved = await run([
       { status: 'available', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable },
       { status: 'available', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable },
-      { status: 'available', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable },
     ]);
     expect(approved.aggregate).toBe('green');
-    expect(approved.trackers.every((item) => item.destinationApproved === true)).toBe(true);
+    expect(approved.trackers[0]?.destinationApproved).toBe(true);
+    expect(approved.trackers[1]?.destinationApproved).toBeNull();
+  });
+
+  it('emits tracker rows as soon as the website is approved', async () => {
+    const progress: string[] = [];
+    const required = {
+      id: 'req',
+      name: 'Required',
+      systemType: 'openproject' as const,
+      baseUrl: 'https://req.example.com',
+      directBrowserAccess: false,
+    };
+    let releaseDestination: (() => void) | undefined;
+    const destinationGate = new Promise<void>((resolve) => {
+      releaseDestination = resolve;
+    });
+    const probe = vi.fn(async (options?: { destination?: unknown }) => {
+      if (!options?.destination) {
+        return {
+          status: 'available' as const,
+          messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable,
+        };
+      }
+      await destinationGate;
+      return { status: 'available' as const, messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable };
+    });
+
+    const pending = probeExtensionReadiness([required], {
+      isClient: true,
+      probe,
+      onProgress(snapshot) {
+        progress.push(
+          `${snapshot.connection}:${snapshot.trackers[0]?.name}:${String(snapshot.trackers[0]?.destinationApproved)}`,
+        );
+      },
+    });
+
+    await vi.waitFor(() => {
+      expect(progress[0]).toBe('ready:Required:null');
+    });
+    releaseDestination?.();
+    await pending;
+    expect(progress.at(-1)).toBe('ready:Required:true');
   });
 });

@@ -15,20 +15,17 @@
       "invalid": "Extension setup needed",
       "partial": "Tracker approval missing",
       "ready": "Extension ready",
-      "connected": "Connected",
       "rowAria": "Browser extension status: {status}",
-      "connectionLabel": "Extension connection",
-      "websiteLabel": "This website",
+      "title": "OSI Time Tracker Extension",
+      "statusLabel": "Status",
+      "unavailable": "Not available",
+      "incompatible": "Incompatible",
       "websiteApproved": "Approved",
       "websiteUnapproved": "Not approved",
       "websiteUnknown": "Unknown",
       "destinationsLabel": "Tracker destinations",
-      "required": "Required",
-      "optional": "Optional",
       "destinationApproved": "Approved",
-      "destinationUnapproved": "Not approved",
-      "approveButton": "Approve destination",
-      "recheckButton": "Recheck"
+      "destinationUnapproved": "Not approved"
     }
   },
   "nav": {

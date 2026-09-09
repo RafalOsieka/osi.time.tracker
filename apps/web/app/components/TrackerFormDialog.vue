@@ -20,6 +20,7 @@ const { t } = useI18n();
 const toast = useAppToast();
 const { $csrfFetch } = useNuxtApp();
 const { get: getSecret, set: setSecret } = useTrackerSecret();
+const { putTracker } = useActiveTrackers();
 
 const dialogOpen = computed({
   get: () => open,
@@ -129,6 +130,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
       if (secret.value) {
         setSecret(updated.id, secret.value);
       }
+      putTracker(updated);
       toast.success(
         t('trackers.toastUpdatedSummary'),
         t('trackers.toastUpdatedDetail', { name: updated.name }),
@@ -141,6 +143,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
       if (secret.value) {
         setSecret(created.id, secret.value);
       }
+      putTracker(created);
       toast.success(
         t('trackers.toastCreatedSummary'),
         t('trackers.toastCreatedDetail', { name: created.name }),
@@ -250,20 +253,30 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
           </UFormField>
 
           <UFormField name="directBrowserAccess">
-            <div class="flex items-start gap-2">
+            <div class="flex items-center gap-1">
               <UCheckbox
                 id="tracker-direct-browser-access"
                 v-model="state.directBrowserAccess"
                 :label="t('trackers.directBrowserAccessLabel')"
                 data-testid="tracker-direct-browser-access"
               />
-              <UTooltip :text="t('trackers.directBrowserAccessHelp')" :delay-duration="0">
+              <UTooltip
+                :text="t('trackers.directBrowserAccessHelp')"
+                :delay-duration="0"
+                :ui="{
+                  content: 'h-auto max-w-xs whitespace-normal',
+                  text: 'whitespace-normal',
+                }"
+              >
                 <UButton
                   type="button"
                   color="neutral"
                   variant="ghost"
+                  size="xs"
                   square
                   icon="i-lucide-circle-help"
+                  class="text-muted"
+                  :ui="{ leadingIcon: 'size-3.5' }"
                   :aria-label="t('trackers.directBrowserAccessHelpAria')"
                   data-testid="tracker-direct-browser-access-help"
                 />

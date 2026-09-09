@@ -11,6 +11,7 @@ const { effective } = useUserSettings();
 const requestFetch = useRequestFetch();
 
 const { clear: clearSecret } = useTrackerSecret();
+const { dropTracker } = useActiveTrackers();
 
 const {
   data: trackersData,
@@ -44,6 +45,7 @@ async function onDelete(tracker: Pick<TrackerDto, 'id' | 'name'>) {
   try {
     await $csrfFetch(`/api/trackers/${tracker.id}`, { method: 'DELETE' });
     clearSecret(tracker.id);
+    dropTracker(tracker.id);
     await fetchTrackers();
     toast.success(t('trackers.toastDeletedSummary'), t('trackers.toastDeletedDetail'));
   } catch (err) {

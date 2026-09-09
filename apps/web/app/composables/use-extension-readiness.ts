@@ -1,12 +1,12 @@
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import type { TrackerDto } from '../../shared/types/tracker';
 import {
+  deriveExtensionAggregateState,
   orderReadinessTrackers,
   probeExtensionReadiness,
   type ExtensionReadinessSnapshot,
+  type ExtensionReadinessTracker,
 } from '~/utils/remote/extension-readiness';
-import { probeExtensionAvailability } from '~/utils/remote/extension-availability';
-import type { DestinationSelector } from '@osi/extension-protocol';
 
 function toReadinessTrackers(trackers: TrackerDto[]) {
   return orderReadinessTrackers(
@@ -21,17 +21,17 @@ function toReadinessTrackers(trackers: TrackerDto[]) {
   );
 }
 
-function destinationOf(tracker: {
-  systemType: TrackerDto['systemType'];
-  baseUrl: string;
-}): DestinationSelector | undefined {
-  try {
-    const parsed = new URL(tracker.baseUrl.trim());
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return undefined;
-    return { provider: tracker.systemType, baseUrl: tracker.baseUrl.trim() };
-  } catch {
-    return undefined;
-  }
+function mergeReadinessTrackers(
+  listed: ExtensionReadinessTracker[],
+  previous: ExtensionReadinessTracker[],
+): ExtensionReadinessTracker[] {
+  const previousById = new Map(previous.map((tracker) => [tracker.id, tracker]));
+  return listed.map((tracker) => {
+    if (tracker.destinationApproved != null) return tracker;
+    const prior = previousById.get(tracker.id);
+    if (!prior) return tracker;
+    return { ...tracker, destinationApproved: prior.destinationApproved };
+  });
 }
 
 /**
@@ -52,15 +52,27 @@ export function useExtensionReadiness(
     trackers: [],
   });
   const aggregate = computed(() => snapshot.value.aggregate);
-  let generation = 0;
+  let inFlight: Promise<void> | null = null;
+  let queued = false;
 
-  async function recheck(): Promise<void> {
-    const requestGeneration = ++generation;
+  function applySnapshot(partial: ExtensionReadinessSnapshot) {
+    const trackers = mergeReadinessTrackers(partial.trackers, snapshot.value.trackers);
+    snapshot.value = {
+      ...partial,
+      trackers,
+      aggregate: deriveExtensionAggregateState({
+        trackers,
+        connection: partial.connection,
+      }),
+    };
+  }
+
+  async function runRecheck(): Promise<void> {
     await ensureAllLoaded();
     const trackers = Object.values(trackersById.value).filter(
       (tracker): tracker is TrackerDto => tracker !== null,
     );
-    const listed = toReadinessTrackers(trackers);
+    const listed = mergeReadinessTrackers(toReadinessTrackers(trackers), snapshot.value.trackers);
     const requiresExtension = listed.some((tracker) => !tracker.directBrowserAccess);
     if (!requiresExtension) {
       snapshot.value = {
@@ -74,28 +86,36 @@ export function useExtensionReadiness(
 
     snapshot.value = {
       ...snapshot.value,
-      connection: 'checking',
-      aggregate: 'checking',
       trackers: listed,
     };
 
     const isClient = options.isClient ?? import.meta.client;
     if (!isClient) return;
-    const next = await (options.probe ?? probeExtensionReadiness)(trackers, { isClient: true });
-    if (requestGeneration !== generation) return;
-    snapshot.value = next;
+    const next = await (options.probe ?? probeExtensionReadiness)(trackers, {
+      isClient: true,
+      onProgress: applySnapshot,
+    });
+    applySnapshot(next);
   }
 
-  async function approveDestination(trackerId: string): Promise<void> {
-    const tracker = snapshot.value.trackers.find((item) => item.id === trackerId);
-    if (!tracker) return;
-    const destination = destinationOf(tracker);
-    if (!destination) return;
-    await probeExtensionAvailability({
-      isClient: options.isClient ?? import.meta.client,
-      destination,
+  async function recheck(): Promise<void> {
+    if (inFlight) {
+      queued = true;
+      return inFlight;
+    }
+    inFlight = runRecheck().finally(() => {
+      inFlight = null;
+      if (queued) {
+        queued = false;
+        void recheck();
+      }
     });
-    await recheck();
+    return inFlight;
+  }
+
+  function onPageResume() {
+    if (document.visibilityState === 'hidden') return;
+    void recheck();
   }
 
   watch(
@@ -113,5 +133,17 @@ export function useExtensionReadiness(
     { immediate: true },
   );
 
-  return { snapshot, aggregate, recheck, approveDestination };
+  onMounted(() => {
+    if (!(options.isClient ?? import.meta.client)) return;
+    window.addEventListener('focus', onPageResume);
+    document.addEventListener('visibilitychange', onPageResume);
+  });
+
+  onUnmounted(() => {
+    if (!(options.isClient ?? import.meta.client)) return;
+    window.removeEventListener('focus', onPageResume);
+    document.removeEventListener('visibilitychange', onPageResume);
+  });
+
+  return { snapshot, aggregate, recheck };
 }

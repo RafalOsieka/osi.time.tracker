@@ -60,7 +60,8 @@ export function orderReadinessTrackers(
 
 /**
  * Neutral when no tracker requires the extension. Direct-capable destination
- * approvals never downgrade red/orange/green.
+ * approvals never downgrade red/orange/green. Unresolved required destinations
+ * stay checking so the sidebar does not flash orange while probes finish.
  */
 export function deriveExtensionAggregateState(input: {
   trackers: readonly Pick<
@@ -79,6 +80,7 @@ export function deriveExtensionAggregateState(input: {
   ) {
     return 'red';
   }
+  if (required.some((tracker) => tracker.destinationApproved == null)) return 'checking';
   if (required.some((tracker) => tracker.destinationApproved !== true)) return 'orange';
   return 'green';
 }
@@ -90,9 +92,19 @@ export async function probeExtensionReadiness(
   >[],
   options: ExtensionAvailabilityOptions & {
     probe?: (options?: ExtensionAvailabilityOptions) => Promise<ExtensionAvailability>;
+    onProgress?: (snapshot: ExtensionReadinessSnapshot) => void;
   } = {},
 ): Promise<ExtensionReadinessSnapshot> {
   const probe = options.probe ?? probeExtensionAvailability;
+  const emit = (
+    connection: Exclude<ExtensionConnectionState, 'checking'>,
+    messageKey: string,
+    nextTrackers: ExtensionReadinessTracker[],
+  ): ExtensionReadinessSnapshot => {
+    const snapshot = finish(connection, messageKey, nextTrackers);
+    options.onProgress?.(snapshot);
+    return snapshot;
+  };
   const ordered = orderReadinessTrackers(
     trackers.map((tracker) => ({
       id: tracker.id,
@@ -112,35 +124,42 @@ export async function probeExtensionReadiness(
   });
 
   if (website.status === 'unavailable') {
-    return finish('unavailable', website.messageKey, ordered);
+    return emit('unavailable', website.messageKey, ordered);
   }
   if (website.status === 'incompatible') {
-    return finish('incompatible', website.messageKey, ordered);
+    return emit('incompatible', website.messageKey, ordered);
   }
   if (website.status === 'websiteUnapproved') {
-    return finish('websiteUnapproved', website.messageKey, ordered);
+    return emit('websiteUnapproved', website.messageKey, ordered);
   }
 
-  const resolved: ExtensionReadinessTracker[] = [];
-  for (const tracker of ordered) {
-    const destination = destinationFrom(tracker.systemType, tracker.baseUrl);
-    if (!destination) {
-      resolved.push({ ...tracker, destinationApproved: false });
-      continue;
-    }
-    const result = await probe({
-      isClient: options.isClient,
-      openBridge: options.openBridge,
-      bridgeOptions: options.bridgeOptions,
-      destination,
-    });
-    resolved.push({
-      ...tracker,
-      destinationApproved: result.status === 'available',
-    });
-  }
+  const resolved: ExtensionReadinessTracker[] = ordered.map((tracker) => ({ ...tracker }));
+  emit('ready', website.messageKey, [...resolved]);
 
-  return finish('ready', website.messageKey, resolved);
+  await Promise.all(
+    ordered.map(async (tracker, index) => {
+      if (tracker.directBrowserAccess) return;
+      const destination = destinationFrom(tracker.systemType, tracker.baseUrl);
+      if (!destination) {
+        resolved[index] = { ...tracker, destinationApproved: false };
+        emit('ready', website.messageKey, [...resolved]);
+        return;
+      }
+      const result = await probe({
+        isClient: options.isClient,
+        openBridge: options.openBridge,
+        bridgeOptions: options.bridgeOptions,
+        destination,
+      });
+      resolved[index] = {
+        ...tracker,
+        destinationApproved: result.status === 'available',
+      };
+      emit('ready', website.messageKey, [...resolved]);
+    }),
+  );
+
+  return emit('ready', website.messageKey, [...resolved]);
 }
 
 function finish(

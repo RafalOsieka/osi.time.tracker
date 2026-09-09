@@ -312,7 +312,7 @@ describe('REQ-069: sidebar footer user area', () => {
     expect(sidebar.find('[data-testid="app-user-footer-trigger"]').exists()).toBe(true);
   });
 
-  it('places extension status immediately above the user menu', async () => {
+  it('places extension status below the user menu', async () => {
     const wrapper = await mountShell();
     const sidebar = wrapper.find('[data-testid="app-sidebar"]').element;
     const status = sidebar.querySelector('[data-testid="extension-status-footer"]');
@@ -321,7 +321,7 @@ describe('REQ-069: sidebar footer user area', () => {
     expect(user).not.toBeNull();
     expect(
       Boolean(
-        status && user && status.compareDocumentPosition(user) & Node.DOCUMENT_POSITION_FOLLOWING,
+        user && status && user.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING,
       ),
     ).toBe(true);
   });

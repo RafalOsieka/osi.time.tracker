@@ -66,12 +66,12 @@ describeShell('authenticated shell navigation', async () => {
     expect(await page.locator('[data-testid="reports-monthly"]').count()).toBe(0);
   });
 
-  it('shows a neutral extension status above the user menu when no tracker requires it', async () => {
+  it('shows a neutral extension status below the user menu when no tracker requires it', async () => {
     const page = await openAuthed();
     await page.waitForSelector('[data-testid="extension-status-footer"]');
     const footerHtml = await page.locator('[data-testid="app-sidebar"]').innerHTML();
-    expect(footerHtml.indexOf('extension-status-footer')).toBeLessThan(
-      footerHtml.indexOf('app-user-footer'),
+    expect(footerHtml.indexOf('app-user-footer')).toBeLessThan(
+      footerHtml.indexOf('extension-status-footer'),
     );
     expect(await page.locator('[data-testid="extension-status-label"]').textContent()).toMatch(
       /Not required|Nie wymagane/,

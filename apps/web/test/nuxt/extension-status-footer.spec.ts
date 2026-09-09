@@ -15,14 +15,13 @@ const state = vi.hoisted(() => {
     aggregate: 'neutral',
     trackers: [],
   };
-  return { snapshot, recheck: vi.fn(), approve: vi.fn() };
+  return { snapshot, recheck: vi.fn() };
 });
 
 mockNuxtImport('useExtensionReadiness', () => () => ({
   snapshot: computed(() => state.snapshot),
   aggregate: computed(() => state.snapshot.aggregate),
   recheck: state.recheck,
-  approveDestination: state.approve,
 }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
@@ -57,9 +56,13 @@ const PopoverStub = {
 const stubs = {
   UPopover: PopoverStub,
   UButton: {
-    props: ['label', 'icon', 'square', 'block'],
+    props: ['label', 'icon', 'square', 'block', 'size', 'ui'],
     template:
-      '<button type="button" v-bind="$attrs" @click="$emit(\'click\')" @focus="$emit(\'focus\')">{{ label }}<slot /></button>',
+      '<button type="button" v-bind="$attrs" @click="$emit(\'click\')" @focus="$emit(\'focus\')"><slot name="leading" />{{ label }}<slot /></button>',
+  },
+  UIcon: {
+    props: ['name'],
+    template: '<span v-bind="$attrs" :data-icon="name" />',
   },
 };
 
@@ -100,14 +103,16 @@ describe('ExtensionStatusFooter', () => {
   });
 
   it.each([
-    ['neutral', 'layout.extensionStatus.notRequired'],
-    ['checking', 'layout.extensionStatus.checking'],
-    ['red', 'layout.extensionStatus.invalid'],
-    ['orange', 'layout.extensionStatus.partial'],
-    ['green', 'layout.extensionStatus.ready'],
-  ] as const satisfies ReadonlyArray<readonly [ExtensionAggregateState, string]>)(
-    'renders %s aggregate status with non-color semantics',
-    async (aggregateState, key) => {
+    ['neutral', 'layout.extensionStatus.notRequired', 'neutral', 'text-muted'],
+    ['checking', 'layout.extensionStatus.checking', 'neutral', 'text-muted'],
+    ['red', 'layout.extensionStatus.invalid', 'error', 'text-error'],
+    ['orange', 'layout.extensionStatus.partial', 'warning', 'text-warning'],
+    ['green', 'layout.extensionStatus.ready', 'success', 'text-success'],
+  ] as const satisfies ReadonlyArray<
+    readonly [ExtensionAggregateState, string, 'neutral' | 'error' | 'warning' | 'success', string]
+  >)(
+    'renders %s aggregate status with matching icon color',
+    async (aggregateState, key, color, iconClass) => {
       state.snapshot = { ...state.snapshot, aggregate: aggregateState };
       const wrapper = await mountFooter();
       expect(wrapper.get('[data-testid="extension-status-label"]').text()).toBe(key);
@@ -115,6 +120,10 @@ describe('ExtensionStatusFooter', () => {
       expect(
         wrapper.get('[data-testid="extension-status-semantics"]').attributes('data-state'),
       ).toBe(aggregateState);
+      expect(
+        wrapper.get('[data-testid="extension-status-semantics"]').attributes('data-color'),
+      ).toBe(color);
+      expect(wrapper.get('[data-testid="extension-status-icon"]').classes()).toContain(iconClass);
     },
   );
 
@@ -125,6 +134,12 @@ describe('ExtensionStatusFooter', () => {
     expect(wrapper.get('[data-testid="extension-status-trigger"]').attributes('aria-label')).toBe(
       'layout.extensionStatus.invalid',
     );
+    expect(wrapper.get('[data-testid="extension-status-trigger"]').classes()).toContain('px-1.5');
+  });
+
+  it('uses expanded trigger padding', async () => {
+    const wrapper = await mountFooter();
+    expect(wrapper.get('[data-testid="extension-status-trigger"]').classes()).toContain('px-2.5');
   });
 
   it('opens details from keyboard focus and lists required trackers first', async () => {
@@ -141,22 +156,36 @@ describe('ExtensionStatusFooter', () => {
     expect(destinations[0]?.attributes('data-testid')).toBe('extension-status-destination-req');
     expect(destinations[0]?.attributes('data-required')).toBe('required');
     expect(destinations[1]?.attributes('data-required')).toBe('optional');
-    expect(wrapper.text()).toContain('layout.extensionStatus.optional');
+    expect(wrapper.get('[data-testid="extension-status-title"]').text()).toBe(
+      'layout.extensionStatus.title',
+    );
+    expect(wrapper.get('[data-testid="extension-status-website"]').text()).toContain(
+      'layout.extensionStatus.websiteApproved',
+    );
+    expect(destinations[0]?.text()).toContain('layout.extensionStatus.destinationUnapproved');
+    expect(destinations[1]?.text()).toContain('layout.extensionStatus.notRequired');
   });
 
-  it('opens on tap/click and rechecks after approving a destination', async () => {
+  it('opens on tap/click and shows status without approve or recheck actions', async () => {
     state.snapshot = {
-      connection: 'ready',
-      messageKey: 'error.extensionUnavailable',
-      aggregate: 'orange',
+      connection: 'websiteUnapproved',
+      messageKey: 'error.extensionOriginUnapproved',
+      aggregate: 'red',
       trackers: [requiredTracker],
     };
     const wrapper = await mountFooter();
     await wrapper.get('[data-testid="popover-trigger"]').trigger('click');
     await flushPromises();
-    await wrapper.get('[data-testid="extension-status-approve-req"]').trigger('click');
-    expect(state.approve).toHaveBeenCalledWith('req');
-    await wrapper.get('[data-testid="extension-status-recheck"]').trigger('click');
-    expect(state.recheck).toHaveBeenCalled();
+    expect(wrapper.get('[data-testid="extension-status-title"]').text()).toBe(
+      'layout.extensionStatus.title',
+    );
+    expect(wrapper.get('[data-testid="extension-status-website"]').text()).toContain(
+      'layout.extensionStatus.websiteUnapproved',
+    );
+    expect(wrapper.get('[data-testid="extension-status-destination-req"]').text()).toContain(
+      'Required Tracker',
+    );
+    expect(wrapper.find('[data-testid="extension-status-approve-req"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="extension-status-recheck"]').exists()).toBe(false);
   });
 });

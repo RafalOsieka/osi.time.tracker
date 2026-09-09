@@ -2,12 +2,19 @@
 import {
   orderReadinessTrackers,
   type ExtensionAggregateState,
+  type ExtensionConnectionState,
 } from '~/utils/remote/extension-readiness';
+
+interface StatusPresentation {
+  label: string;
+  icon: string;
+  iconClass: string;
+}
 
 const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
 
 const { t } = useI18n();
-const { snapshot, aggregate, recheck, approveDestination } = useExtensionReadiness();
+const { snapshot, aggregate } = useExtensionReadiness();
 const detailsOpen = shallowRef(false);
 const orderedTrackers = computed(() => orderReadinessTrackers(snapshot.value.trackers));
 
@@ -44,61 +51,142 @@ const statusIcon = computed(() => {
   return icons[aggregate.value];
 });
 
-const connectionLabel = computed(() => {
-  if (snapshot.value.connection === 'unavailable') return t('error.extensionUnavailable');
-  if (snapshot.value.connection === 'incompatible') return t('error.extensionIncompatible');
-  if (snapshot.value.connection === 'websiteUnapproved') {
-    return t('error.extensionOriginUnapproved');
-  }
-  if (snapshot.value.connection === 'checking') return t('layout.extensionStatus.checking');
-  return t('layout.extensionStatus.connected');
+const statusIconClass = computed(() => {
+  const classes = {
+    neutral: 'text-muted',
+    checking: 'animate-spin text-muted',
+    red: 'text-error',
+    orange: 'text-warning',
+    green: 'text-success',
+  } as const satisfies Record<ExtensionAggregateState, string>;
+  return classes[aggregate.value];
 });
 
-const websiteLabel = computed(() => {
-  if (snapshot.value.connection === 'websiteUnapproved') {
-    return t('layout.extensionStatus.websiteUnapproved');
-  }
-  if (snapshot.value.connection === 'ready') return t('layout.extensionStatus.websiteApproved');
-  return t('layout.extensionStatus.websiteUnknown');
+const hasRequiredTracker = computed(() =>
+  orderedTrackers.value.some((tracker) => !tracker.directBrowserAccess),
+);
+
+const notRequiredStatus = computed((): StatusPresentation => ({
+  label: t('layout.extensionStatus.notRequired'),
+  icon: 'i-lucide-circle-minus',
+  iconClass: 'text-muted',
+}));
+
+const websiteStatus = computed((): StatusPresentation => {
+  if (!hasRequiredTracker.value) return notRequiredStatus.value;
+  const presentations = {
+    checking: {
+      label: t('layout.extensionStatus.checking'),
+      icon: 'i-lucide-loader-circle',
+      iconClass: 'text-muted animate-spin',
+    },
+    unavailable: {
+      label: t('layout.extensionStatus.unavailable'),
+      icon: 'i-lucide-unplug',
+      iconClass: 'text-error',
+    },
+    incompatible: {
+      label: t('layout.extensionStatus.incompatible'),
+      icon: 'i-lucide-circle-alert',
+      iconClass: 'text-error',
+    },
+    websiteUnapproved: {
+      label: t('layout.extensionStatus.websiteUnapproved'),
+      icon: 'i-lucide-circle-x',
+      iconClass: 'text-error',
+    },
+    ready: {
+      label: t('layout.extensionStatus.websiteApproved'),
+      icon: 'i-lucide-circle-check',
+      iconClass: 'text-success',
+    },
+  } as const satisfies Record<ExtensionConnectionState, StatusPresentation>;
+  return presentations[snapshot.value.connection];
 });
+
+const destinationRows = computed(() =>
+  orderedTrackers.value.map((tracker) => ({
+    id: tracker.id,
+    name: tracker.name,
+    required: !tracker.directBrowserAccess,
+    status: destinationStatus(tracker),
+  })),
+);
+
+function destinationStatus(tracker: {
+  directBrowserAccess: boolean;
+  destinationApproved: boolean | null;
+}): StatusPresentation {
+  if (tracker.directBrowserAccess) return notRequiredStatus.value;
+  if (tracker.destinationApproved === true) {
+    return {
+      label: t('layout.extensionStatus.destinationApproved'),
+      icon: 'i-lucide-circle-check',
+      iconClass: 'text-success',
+    };
+  }
+  if (tracker.destinationApproved === false) {
+    return {
+      label: t('layout.extensionStatus.destinationUnapproved'),
+      icon: 'i-lucide-circle-x',
+      iconClass: 'text-error',
+    };
+  }
+  if (snapshot.value.connection === 'checking') {
+    return {
+      label: t('layout.extensionStatus.checking'),
+      icon: 'i-lucide-loader-circle',
+      iconClass: 'text-muted animate-spin',
+    };
+  }
+  return {
+    label: t('layout.extensionStatus.websiteUnknown'),
+    icon: 'i-lucide-circle-minus',
+    iconClass: 'text-muted',
+  };
+}
 
 function openDetails() {
   detailsOpen.value = true;
 }
-
-function toggleDetails() {
-  detailsOpen.value = !detailsOpen.value;
-}
 </script>
 
 <template>
-  <div
-    class="flex w-full min-w-0"
-    :class="collapsed ? 'justify-center' : undefined"
-    data-testid="extension-status-footer"
-  >
+  <div class="flex w-full min-w-0" data-testid="extension-status-footer">
     <UPopover
       v-model:open="detailsOpen"
       mode="hover"
       enable-touch
-      :content="{ side: 'top', align: collapsed ? 'center' : 'start', sideOffset: 8 }"
+      :open-delay="50"
+      :close-delay="200"
+      class="w-full min-w-0"
+      :content="{ side: 'top', align: collapsed ? 'center' : 'start', sideOffset: 4 }"
       :ui="{ content: 'max-w-80 p-3' }"
     >
       <UButton
         color="neutral"
         variant="ghost"
-        :block="!collapsed"
-        :square="collapsed"
-        class="w-full min-w-0 justify-start"
-        :icon="statusIcon"
+        size="xs"
+        block
+        class="w-full min-w-0 justify-start gap-1.5 font-normal text-muted"
+        :class="collapsed ? 'px-1.5' : 'px-2.5'"
         :aria-label="t('layout.extensionStatus.rowAria', { status: statusLabel })"
         data-testid="extension-status-trigger"
         @focus="openDetails"
-        @click="toggleDetails"
       >
+        <template #leading>
+          <span class="inline-flex size-5 shrink-0 items-center justify-center">
+            <UIcon
+              :name="statusIcon"
+              class="size-3"
+              :class="statusIconClass"
+              data-testid="extension-status-icon"
+            />
+          </span>
+        </template>
         <span
           v-if="!collapsed"
-          class="min-w-0 truncate text-sm"
+          class="min-w-0 truncate text-xs"
           data-testid="extension-status-label"
         >
           {{ statusLabel }}
@@ -115,71 +203,56 @@ function toggleDetails() {
 
       <template #content>
         <div
-          class="grid max-h-64 gap-3 overflow-auto"
+          class="grid gap-3"
           data-testid="extension-status-popover"
           role="dialog"
-          :aria-label="t('layout.extensionStatus.rowAria', { status: statusLabel })"
+          :aria-label="t('layout.extensionStatus.title')"
         >
-          <div class="grid gap-1 text-sm">
-            <p data-testid="extension-status-connection">
-              {{ t('layout.extensionStatus.connectionLabel') }}: {{ connectionLabel }}
-            </p>
-            <p data-testid="extension-status-website">
-              {{ t('layout.extensionStatus.websiteLabel') }}: {{ websiteLabel }}
-            </p>
-          </div>
+          <h2
+            class="m-0 flex items-center gap-2 text-sm font-semibold"
+            data-testid="extension-status-title"
+          >
+            <UIcon name="i-lucide-puzzle" class="size-4 shrink-0 text-primary" />
+            <span class="min-w-0">{{ t('layout.extensionStatus.title') }}</span>
+          </h2>
+
+          <p class="m-0 flex items-center gap-2 text-sm" data-testid="extension-status-website">
+            <span class="inline-flex size-4 shrink-0 items-center justify-center overflow-hidden">
+              <UIcon :name="websiteStatus.icon" class="size-4" :class="websiteStatus.iconClass" />
+            </span>
+            <span class="min-w-0">
+              {{ t('layout.extensionStatus.statusLabel') }}: {{ websiteStatus.label }}
+            </span>
+          </p>
 
           <ul
-            class="m-0 grid list-none gap-2 p-0"
+            v-if="destinationRows.length > 0"
+            class="m-0 grid max-h-56 list-none gap-2 overflow-x-hidden overflow-y-auto p-0"
             data-testid="extension-status-destinations"
             :aria-label="t('layout.extensionStatus.destinationsLabel')"
           >
             <li
-              v-for="tracker in orderedTrackers"
+              v-for="tracker in destinationRows"
               :key="tracker.id"
-              class="grid gap-1"
+              class="flex items-start gap-2"
               :data-testid="`extension-status-destination-${tracker.id}`"
-              :data-required="tracker.directBrowserAccess ? 'optional' : 'required'"
+              :data-required="tracker.required ? 'required' : 'optional'"
             >
-              <p class="text-sm">
-                {{ tracker.name }}
-                <span class="text-muted">
-                  ({{
-                    tracker.directBrowserAccess
-                      ? t('layout.extensionStatus.optional')
-                      : t('layout.extensionStatus.required')
-                  }})
-                </span>
-              </p>
-              <p class="text-sm text-muted">
-                {{
-                  tracker.destinationApproved
-                    ? t('layout.extensionStatus.destinationApproved')
-                    : t('layout.extensionStatus.destinationUnapproved')
-                }}
-              </p>
-              <UButton
-                v-if="!tracker.destinationApproved"
-                type="button"
-                color="neutral"
-                variant="outline"
-                size="xs"
-                :label="t('layout.extensionStatus.approveButton')"
-                :data-testid="`extension-status-approve-${tracker.id}`"
-                @click="approveDestination(tracker.id)"
-              />
+              <span
+                class="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
+              >
+                <UIcon
+                  :name="tracker.status.icon"
+                  class="size-4"
+                  :class="tracker.status.iconClass"
+                />
+              </span>
+              <div class="grid min-w-0 gap-0.5">
+                <p class="m-0 truncate text-sm">{{ tracker.name }}</p>
+                <p class="m-0 text-sm text-muted">{{ tracker.status.label }}</p>
+              </div>
             </li>
           </ul>
-
-          <UButton
-            type="button"
-            color="neutral"
-            variant="ghost"
-            size="xs"
-            :label="t('layout.extensionStatus.recheckButton')"
-            data-testid="extension-status-recheck"
-            @click="recheck"
-          />
         </div>
       </template>
     </UPopover>
