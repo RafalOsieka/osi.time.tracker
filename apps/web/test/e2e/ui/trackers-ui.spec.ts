@@ -168,7 +168,7 @@ describeTrackersUI('trackers UI flow', async () => {
     const user = await seedUser(dbUrl, { displayName: 'trackersmobileuser' });
     const page = await createPage('/');
     await loginAs(page, user.email, user.password, { width: 390, height: 844 });
-    await page.goto('/trackers');
+    await page.goto(new URL('/trackers', page.url()).href);
     await page.waitForSelector('[data-testid="trackers-page"]');
 
     const trackerName = 'Mobile Client Tracker ' + Date.now();
