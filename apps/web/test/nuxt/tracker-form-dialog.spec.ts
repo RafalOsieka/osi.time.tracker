@@ -47,17 +47,40 @@ const stubs = {
     props: { open: { type: Boolean, default: true }, title: { type: String, default: '' } },
     template: '<div v-if="open !== false" data-testid="tracker-dialog"><slot name="body" /></div>',
   },
-  UForm: { template: '<form v-bind="$attrs"><slot /></form>' },
+  UForm: { template: '<form v-bind="$attrs" @submit.prevent="$emit(\'submit\')"><slot /></form>' },
   UFormField: { template: '<div><slot /><slot name="error" /></div>' },
   USelect: SelectStub,
+  UCheckbox: {
+    props: ['modelValue', 'label'],
+    emits: ['update:modelValue'],
+    template: `
+      <label>
+        <input
+          type="checkbox"
+          v-bind="$attrs"
+          :checked="modelValue"
+          @change="$emit('update:modelValue', $event.target.checked)"
+        />
+        {{ label }}
+      </label>
+    `,
+  },
+  UTooltip: {
+    props: ['text'],
+    template: '<span :data-tooltip-text="text"><slot /></span>',
+  },
+  UButton: {
+    template: '<button type="button" v-bind="$attrs"><slot /></button>',
+  },
   UInput: {
     props: ['modelValue'],
     emits: ['update:modelValue'],
     template:
       '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   },
-  FormDialogFooter: { template: '<div />' },
-  TrackerExtensionStatus: { template: '<div data-testid="tracker-extension-status" />' },
+  FormDialogFooter: {
+    template: '<button type="submit" data-testid="save-button">Save</button>',
+  },
 };
 
 const existingTracker: TrackerDto = {
@@ -65,7 +88,7 @@ const existingTracker: TrackerDto = {
   name: 'Existing Tracker',
   systemType: 'redmine',
   baseUrl: 'https://rm.example.com',
-  executionMode: 'extension',
+  directBrowserAccess: false,
   roundingRule: 'up_15m',
   createdAt: '2026-01-01T00:00:00.000Z',
   updatedAt: '2026-01-01T00:00:00.000Z',
@@ -81,7 +104,7 @@ async function openDialog(tracker: TrackerDto | null) {
   return wrapper;
 }
 
-describe('TrackerFormDialog execution modes', () => {
+describe('TrackerFormDialog direct browser access', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     try {
@@ -91,29 +114,39 @@ describe('TrackerFormDialog execution modes', () => {
     }
   });
 
-  it('seeds create with client mode and offers only client and extension options', async () => {
+  it('seeds create with the checkbox enabled and focusable help', async () => {
     const wrapper = await openDialog(null);
-    const select = wrapper.find('[data-testid="tracker-execution-mode-select"]');
-    const options = select.findAll('option');
-    expect(options.map((option) => option.attributes('value'))).toEqual(['client', 'extension']);
-    expect(options.map((option) => option.text())).toEqual([
-      'trackers.executionModeClient',
-      'trackers.executionModeExtension',
-    ]);
-    expect(select.element).toHaveProperty('value', 'client');
-    expect(wrapper.find('[data-testid="tracker-execution-mode-help"]').text()).toBe(
-      'trackers.executionModeClientHelp',
+    const checkbox = wrapper.find('[data-testid="tracker-direct-browser-access"] input');
+    expect(checkbox.element).toBeInstanceOf(HTMLInputElement);
+    if (!(checkbox.element instanceof HTMLInputElement)) throw new Error('checkbox');
+    expect(checkbox.element.checked).toBe(true);
+    const help = wrapper.find('[data-testid="tracker-direct-browser-access-help"]');
+    expect(help.exists()).toBe(true);
+    expect(help.attributes('aria-label')).toBe('trackers.directBrowserAccessHelpAria');
+    expect(help.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'trackers.directBrowserAccessHelp',
     );
+    expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);
   });
 
-  it('seeds edit with the persisted extension mode and its desktop-only guidance', async () => {
+  it('seeds edit with persisted false and no extension readiness panel', async () => {
     getSecretMock.mockReturnValue('browser-secret');
     const wrapper = await openDialog(existingTracker);
-    const select = wrapper.find('[data-testid="tracker-execution-mode-select"]');
-    expect(select.element).toHaveProperty('value', 'extension');
-    expect(wrapper.find('[data-testid="tracker-execution-mode-help"]').text()).toBe(
-      'trackers.executionModeExtensionHelp',
-    );
-    expect(select.findAll('option')).toHaveLength(2);
+    const checkbox = wrapper.find('[data-testid="tracker-direct-browser-access"] input');
+    expect(checkbox.element).toBeInstanceOf(HTMLInputElement);
+    if (!(checkbox.element instanceof HTMLInputElement)) throw new Error('checkbox');
+    expect(checkbox.element.checked).toBe(false);
+    expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);
+  });
+
+  it('lets the form stay savable when the extension is required and unavailable', async () => {
+    const wrapper = await openDialog(null);
+    await wrapper.find('[data-testid="tracker-direct-browser-access"] input').setValue(false);
+    const checkbox = wrapper.find('[data-testid="tracker-direct-browser-access"] input');
+    expect(checkbox.element).toBeInstanceOf(HTMLInputElement);
+    if (!(checkbox.element instanceof HTMLInputElement)) throw new Error('checkbox');
+    expect(checkbox.element.checked).toBe(false);
+    expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="save-button"]').exists()).toBe(true);
   });
 });

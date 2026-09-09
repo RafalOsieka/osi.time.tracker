@@ -122,7 +122,7 @@ const config: TrackerDto = {
   name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'client',
+  directBrowserAccess: true,
   roundingRule: 'none',
   createdAt: '',
   updatedAt: '',
@@ -330,7 +330,7 @@ describe('RemoteIssuePicker', () => {
     window.localStorage.setItem('rsc:config-1', 'secret');
     try {
       const wrapper = await mount({
-        config: { ...config, executionMode: 'extension' },
+        config: { ...config, directBrowserAccess: false },
       });
       await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
       await flushPromises();
@@ -344,6 +344,7 @@ describe('RemoteIssuePicker', () => {
       await flushPromises();
 
       expect(fetchMock).not.toHaveBeenCalled();
+      expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);
       expect(wrapper.text()).toContain('error.extensionUnavailable');
     } finally {
       vi.useRealTimers();

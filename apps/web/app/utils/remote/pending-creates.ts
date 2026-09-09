@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { finalizeRemoteExportSchema } from '../../../shared/types/remote-export';
-import { createTrackerSchema } from '../../../shared/types/tracker';
+import { trackerWriteFieldsSchema } from '../../../shared/types/tracker';
 
 export const PENDING_CREATE_STORAGE_KEY = 'osi:pending-creates';
 
-export const recoveryTrackerSchema = createTrackerSchema.extend({
+export const recoveryTrackerSchema = trackerWriteFieldsSchema.extend({
   id: z.string().min(1),
   // Sync configurations omit the display name; only destination fields authorize remote calls.
   name: z.string(),

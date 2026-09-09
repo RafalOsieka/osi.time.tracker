@@ -39,7 +39,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '') || 'tracker'
         }.example.com`,
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
         ...overrides,
       }),
@@ -129,7 +129,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     const tracker = await createTracker(jar, token, `${label} Tracker ${Date.now()}`, {
       baseUrl: OPENPROJECT_BASE_URL,
       systemType: 'openproject',
-      executionMode: 'client',
+      directBrowserAccess: true,
     });
     const projectId = await createProject(jar, token, `${label} Project ${Date.now()}`, tracker.id);
     const taskId = await createTaskViaEntry(jar, token, `${label} Task ${Date.now()}`, projectId);

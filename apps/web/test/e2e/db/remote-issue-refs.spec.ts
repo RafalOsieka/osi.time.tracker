@@ -46,7 +46,7 @@ describeRemoteIssueRefs('remote issue reference helpers (inline on tasks)', asyn
         name: `${label} Tracker`,
         systemType: 'openproject',
         baseUrl: 'https://op.example.com',
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
       })
       .returning({ id: trackers.id });

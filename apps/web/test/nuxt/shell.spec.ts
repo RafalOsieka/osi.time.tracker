@@ -113,6 +113,9 @@ async function mountShell(overrideStubs: StubMap = {}) {
           template: '<button data-testid="sidebar-collapse" />',
         },
         AppSidebar: sidebarStub,
+        ExtensionStatusFooter: {
+          template: '<div data-testid="extension-status-footer" />',
+        },
         AppUserFooter: userFooterStub,
         AppTimer: appTimerStub,
         NuxtPage: { template: '<div>page</div>' },
@@ -307,6 +310,20 @@ describe('REQ-069: sidebar footer user area', () => {
     const sidebar = wrapper.find('[data-testid="app-sidebar"]');
     expect(sidebar.find('[data-testid="app-user-footer"]').exists()).toBe(true);
     expect(sidebar.find('[data-testid="app-user-footer-trigger"]').exists()).toBe(true);
+  });
+
+  it('places extension status below the user menu', async () => {
+    const wrapper = await mountShell();
+    const sidebar = wrapper.find('[data-testid="app-sidebar"]').element;
+    const status = sidebar.querySelector('[data-testid="extension-status-footer"]');
+    const user = sidebar.querySelector('[data-testid="app-user-footer"]');
+    expect(status).not.toBeNull();
+    expect(user).not.toBeNull();
+    expect(
+      Boolean(
+        user && status && user.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    ).toBe(true);
   });
 });
 

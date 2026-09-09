@@ -57,7 +57,10 @@ onMounted(() => {
       </template>
 
       <template #footer="{ collapsed: isCollapsed }">
-        <AppUserFooter :collapsed="isCollapsed" />
+        <div class="grid w-full gap-0.5">
+          <AppUserFooter :collapsed="isCollapsed" />
+          <ExtensionStatusFooter :collapsed="isCollapsed" />
+        </div>
       </template>
     </UDashboardSidebar>
 

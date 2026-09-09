@@ -2,21 +2,13 @@ import { z } from 'zod';
 import { trackerSystemTypeSchema, type TrackerSystemType } from '@osi/remote-trackers/contracts';
 
 /**
- * Selects the execution mode: `client` (default) sends remote requests
- * directly from the browser to the tracker; `extension` routes them through
- * the desktop extension.
+ * Whether the tracker origin allows direct browser requests. `true` (default)
+ * uses the client adapter; `false` requires the desktop extension. The
+ * obsolete `executionMode` field is rejected so stale clients fail closed.
  */
-export const trackerExecutionModeSchema = z.enum(['client', 'extension'], {
-  error: 'error.trackerExecutionModeRequired',
+export const trackerDirectBrowserAccessSchema = z.boolean({
+  error: 'error.trackerDirectBrowserAccessInvalid',
 });
-
-export type TrackerExecutionMode = z.infer<typeof trackerExecutionModeSchema>;
-
-/** Stable display order for execution-mode selects. */
-export const TRACKER_EXECUTION_MODE_ORDER = [
-  'client',
-  'extension',
-] as const satisfies readonly TrackerExecutionMode[];
 
 /**
  * Tracker-level export rounding rule. `none` passes the total through;
@@ -46,7 +38,7 @@ export const TRACKER_ROUNDING_RULE_ORDER = [
 
 export const TRACKER_NAME_MAX_LENGTH = 100;
 
-export const createTrackerSchema = z.object({
+export const trackerWriteFieldsSchema = z.object({
   name: z
     .string({ error: 'error.trackerNameRequired' })
     .trim()
@@ -59,9 +51,15 @@ export const createTrackerSchema = z.object({
         issue.input === undefined ? 'error.trackerBaseUrlRequired' : 'error.trackerBaseUrlInvalid',
     })
     .trim(),
-  executionMode: trackerExecutionModeSchema.default('client'),
+  directBrowserAccess: trackerDirectBrowserAccessSchema.default(true),
   roundingRule: trackerRoundingRuleSchema,
 });
+
+export const createTrackerSchema = trackerWriteFieldsSchema
+  .extend({
+    executionMode: z.never({ error: 'error.trackerExecutionModeRequired' }).optional(),
+  })
+  .transform(({ executionMode: _obsolete, ...rest }) => rest);
 
 export type CreateTrackerDto = z.infer<typeof createTrackerSchema>;
 
@@ -74,7 +72,7 @@ export interface TrackerDto {
   name: string;
   systemType: TrackerSystemType;
   baseUrl: string;
-  executionMode: TrackerExecutionMode;
+  directBrowserAccess: boolean;
   roundingRule: TrackerRoundingRule;
   createdAt: string;
   updatedAt: string;

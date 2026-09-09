@@ -30,7 +30,7 @@ describeProjectsUI('projects UI flow', async () => {
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-|-$/g, '') || 'tracker'
         }.example.com`,
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
       }),
     });

@@ -31,7 +31,7 @@ describeDb('remote exports schema', () => {
           name: 'Export Tracker',
           systemType: 'openproject',
           baseUrl: 'https://op.example.com',
-          executionMode: 'client',
+          directBrowserAccess: true,
           roundingRule: 'none',
         })
         .returning();

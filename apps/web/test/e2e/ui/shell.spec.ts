@@ -5,6 +5,8 @@ import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
 import { loginAs } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
+import { apiLogin } from '../helpers/auth';
+import { createTracker } from '../helpers/http';
 
 const describeShell = requireBrowser();
 
@@ -62,6 +64,46 @@ describeShell('authenticated shell navigation', async () => {
     expect(response?.status()).toBe(404);
     expect(await page.locator('[data-testid="reports-hub"]').count()).toBe(0);
     expect(await page.locator('[data-testid="reports-monthly"]').count()).toBe(0);
+  });
+
+  it('shows a neutral extension status below the user menu when no tracker requires it', async () => {
+    const page = await openAuthed();
+    await page.waitForSelector('[data-testid="extension-status-footer"]');
+    const footerHtml = await page.locator('[data-testid="app-sidebar"]').innerHTML();
+    expect(footerHtml.indexOf('app-user-footer')).toBeLessThan(
+      footerHtml.indexOf('extension-status-footer'),
+    );
+    expect(await page.locator('[data-testid="extension-status-label"]').textContent()).toMatch(
+      /Not required|Nie wymagane/,
+    );
+    await page.locator('[data-testid="extension-status-trigger"]').focus();
+    await page.waitForSelector('[data-testid="extension-status-popover"]');
+    await page.close();
+  });
+
+  it('opens extension status details from the collapsed rail and on a touch viewport', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'shellextuser' });
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await createTracker(jar, token, 'Direct Shell Tracker ' + Date.now());
+    const page = await createPage('/');
+    await loginAs(page, user.email, user.password, { width: 390, height: 844 });
+    await page.locator('[data-testid="app-topbar"] [data-slot="toggle"]').click();
+    const mobileFooter = page.locator('[data-testid="extension-status-footer"]:visible');
+    await mobileFooter.waitFor();
+    await mobileFooter.locator('[data-testid="extension-status-trigger"]').click();
+    await page.waitForSelector('[data-testid="extension-status-popover"]');
+    await page.keyboard.press('Escape');
+
+    const desktop = await createPage('/');
+    await loginAs(desktop, user.email, user.password, { height: 900 });
+    await desktop.waitForSelector('[data-testid="sidebar-collapse"]');
+    await desktop.click('[data-testid="sidebar-collapse"]');
+    await desktop.waitForSelector('[data-testid="extension-status-trigger"]');
+    expect(await desktop.locator('[data-testid="extension-status-label"]').count()).toBe(0);
+    await desktop.locator('[data-testid="extension-status-trigger"]').focus();
+    await desktop.waitForSelector('[data-testid="extension-status-popover"]');
+    await desktop.close();
+    await page.close();
   });
 
   it('logout is reachable via the sidebar account menu', async () => {

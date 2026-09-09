@@ -23,7 +23,7 @@ const config: TrackerDto = {
   name: 'Tracker 1',
   systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'client',
+  directBrowserAccess: true,
   roundingRule: 'none',
   createdAt: '',
   updatedAt: '',
@@ -93,7 +93,7 @@ describe('useRemoteActivities', () => {
       )
       .mockResolvedValueOnce([{ id: 'a1', name: 'Development' }]);
     const { ensureLoaded, retry, stateFor } = useRemoteActivities();
-    const extensionConfig = { ...config, executionMode: 'extension' as const };
+    const extensionConfig = { ...config, directBrowserAccess: false };
     await ensureLoaded(extensionConfig, '42');
     expect(stateFor(config.id, '42').errorKey).toBe('error.extensionDestinationUnapproved');
     await retry(extensionConfig, '42');

@@ -44,7 +44,7 @@ The model is **entry-first**: the primary object a user creates is a `TimeEntry`
 
 ```
 User
- ├─► Tracker (named remote connection: system type, base URL, execution mode, rounding, defaults)
+ ├─► Tracker (named remote connection: system type, base URL, direct-browser capability, rounding, defaults)
  ├─► Project (trackerId nullable ──► Tracker; null = local project)
  ├─► Task (auto-created / auto-matched; projectId nullable ──► Project)
  │     └─► RemoteIssueRef (optional; tracker provenance via task.trackerId)
@@ -58,13 +58,13 @@ A `TimeEntry` optionally points to a `Task` — the task's name is what the user
 | Entity             | Description                                                                                                                                                                                                                                                                                                                                      |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **User**           | A registered account. Owns all data beneath it. Fully isolated from other users.                                                                                                                                                                                                                                                                 |
-| **Tracker**        | A named remote issue-tracker connection (OpenProject, Redmine, …). Stores system type, base URL, execution mode, and rounding rule. Browser-only API secret is never persisted server-side.                                                                                                                                                      |
+| **Tracker**        | A named remote issue-tracker connection (OpenProject, Redmine, …). Stores system type, base URL, direct-browser capability, and rounding rule. Browser-only API secret is never persisted server-side.                                                                                                                                           |
 | **Project**        | A body of work that may optionally belong to a Tracker (`trackerId` nullable). Local projects (no tracker) are first-class.                                                                                                                                                                                                                      |
 | **Task**           | A derived unit of work grouping time entries. Auto-created or auto-matched when the user titles a time entry; renamed via the group header in the Timer View; hard-deleted (garbage-collected) when its last entry leaves. Has a name and an optional Project. No status, no number, no description. May optionally be linked to a remote issue. |
 | **TimeEntry**      | A single logged time interval (`startedAt` + `stoppedAt`; a running timer is an entry with no stop time). Carries no title of its own — its displayed title is the name of the Task it points to (`taskId` nullable ⇒ shown as "(no task)").                                                                                                     |
 | **RemoteIssueRef** | An optional link from a Task to a specific issue in the project's active Tracker. Stores the remote issue ID, cached title, and tracker provenance id.                                                                                                                                                                                           |
 
-A `Tracker` holds the connection details (system type, base URL, execution mode, rounding). A `Task` holds a `RemoteIssueRef` that references only the remote issue identifier and metadata plus tracker provenance — it does not duplicate connection details. Linking and push resolve the active tracker via `project.trackerId`.
+A `Tracker` holds the connection details (system type, base URL, direct-browser capability, rounding). A `Task` holds a `RemoteIssueRef` that references only the remote issue identifier and metadata plus tracker provenance — it does not duplicate connection details. Linking and push resolve the active tracker via `project.trackerId`.
 
 ### Entry-First Semantics
 
@@ -147,7 +147,7 @@ Remote integration is configured as a first-class **Tracker**. Each tracker stor
 - **System type** (e.g. `redmine`, `openproject`)
 - **Base URL** of the remote system
 - **API credentials** (API key or token) — entered and held **only in the user's browser** and never persisted on the OSI server (the rest of the tracker is still stored in the database).
-- **Adapter execution mode** (`client` or `extension` — see below)
+- **Direct browser capability** (`directBrowserAccess` — see below)
 - **Rounding rule** (e.g. round up to nearest 15 minutes)
 - **Required remote fields** — some systems require extra fields on a time log (e.g. Redmine `activity_id`). The config may store adapter-fetched defaults; values can also be chosen on the Remote Sync page at push time.
 
@@ -195,13 +195,13 @@ The device must be able to reach the tracker (publicly or over VPN). Execution m
 | **Client**    | User's browser                     | The tracker is reachable from this device and permits cross-origin requests from the OSI origin.               |
 | **Extension** | Approved desktop browser extension | The tracker is reachable from this device but CORS would block direct browser requests. Unavailable on mobile. |
 
-The execution mode is configured per Tracker. Credentials are entered and held **only in the user's browser** and are never persisted to the OSI server (the rest of the tracker still lives in the database). Encrypted server-side credential storage is out of scope. The adapter interface is identical in both modes; only the execution path differs. The OSI server does not forward tracker operations.
+Direct browser access is configured per Tracker. Credentials are entered and held **only in the user's browser** and are never persisted to the OSI server (the rest of the tracker still lives in the database). Encrypted server-side credential storage is out of scope. The adapter interface is identical for both transports; only the path differs. The OSI server does not forward tracker operations. Transport is deterministic: allowed direct access always uses the client adapter; blocked direct access always uses the extension.
 
 ### Adapter Model
 
 Each supported remote system is implemented as an **adapter** (plugin). The adapter interface is stable; new systems can be added without changing core logic.
 
-Each adapter is implemented as a **transport-agnostic core** (request building + response parsing) in `packages/remote-trackers`, wrapped by thin **browser-direct** and **desktop-extension** transports. The core is identical across execution modes; only the transport differs. **OpenProject and Redmine adapters are both in MVP.**
+Each adapter is implemented as a **transport-agnostic core** (request building + response parsing) in `packages/remote-trackers`, wrapped by thin **browser-direct** and **desktop-extension** transports. The core is identical across transports; only the path differs. **OpenProject and Redmine adapters are both in MVP.**
 
 | Adapter        | Status                |
 | -------------- | --------------------- |

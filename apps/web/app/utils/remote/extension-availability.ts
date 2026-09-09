@@ -14,12 +14,15 @@ export type ExtensionAvailabilityStatus =
   | 'available'
   | 'unavailable'
   | 'incompatible'
+  | 'websiteUnapproved'
   | 'permission';
 
 export interface ExtensionAvailability {
   status: ExtensionAvailabilityStatus;
   messageKey: string;
   handshake?: HandshakeResult;
+  websiteApproved?: boolean;
+  destinationApproved?: boolean;
 }
 
 /** Short handshake wait for setup/recheck; operations keep the protocol page deadline. */
@@ -44,7 +47,19 @@ function fromProtocolError(error: ExtensionProtocolError): ExtensionAvailability
     return { status: 'incompatible', messageKey: error.messageKey };
   }
   if (error.kind === 'permission') {
-    return { status: 'permission', messageKey: error.messageKey };
+    if (error.messageKey === EXTENSION_ERROR_MESSAGE_KEYS.originUnapproved) {
+      return {
+        status: 'websiteUnapproved',
+        messageKey: error.messageKey,
+        websiteApproved: false,
+      };
+    }
+    return {
+      status: 'permission',
+      messageKey: error.messageKey,
+      websiteApproved: true,
+      destinationApproved: false,
+    };
   }
   return { status: 'unavailable', messageKey: error.messageKey };
 }
@@ -81,12 +96,16 @@ export async function probeExtensionAvailability(
         status: 'permission',
         messageKey: EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved,
         handshake,
+        websiteApproved: true,
+        destinationApproved: false,
       };
     }
     return {
       status: 'available',
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unavailable,
       handshake,
+      websiteApproved: true,
+      destinationApproved: options.destination ? true : handshake.destinationApproved,
     };
   } catch (error) {
     if (error instanceof ExtensionProtocolError) return fromProtocolError(error);

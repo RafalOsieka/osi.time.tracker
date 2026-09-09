@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import type { TrackerExecutionMode, TrackerRoundingRule } from './tracker';
+import type { TrackerRoundingRule } from './tracker';
 
 /**
  * Explicit per-row state on the Remote Sync page, derived by a pure shared
@@ -33,7 +33,7 @@ export interface RemoteSyncConfigSurfaceDto {
   id: string;
   systemType: TrackerSystemType;
   baseUrl: string;
-  executionMode: TrackerExecutionMode;
+  directBrowserAccess: boolean;
   roundingRule: TrackerRoundingRule;
 }
 

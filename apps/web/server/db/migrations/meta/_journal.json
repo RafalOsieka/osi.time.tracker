@@ -141,6 +141,13 @@
       "when": 1788969600000,
       "tag": "0019_migrate_server_execution_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1789142400000,
+      "tag": "0020_direct_browser_access",
+      "breakpoints": true
     }
   ]
 }

@@ -75,14 +75,14 @@ async function patchTask(
 const openProjectConfig = {
   systemType: 'openproject' as const,
   baseUrl: 'https://op.example.com',
-  executionMode: 'client' as const,
+  directBrowserAccess: true,
   roundingRule: 'none' as const,
 };
 
 const redmineConfig = {
   systemType: 'redmine' as const,
   baseUrl: 'https://redmine.example.com',
-  executionMode: 'client' as const,
+  directBrowserAccess: true,
   roundingRule: 'none' as const,
 };
 

@@ -270,13 +270,6 @@ onBeforeUnmount(() => {
             />
           </UForm>
 
-          <TrackerExtensionStatus
-            compact
-            :execution-mode="config.executionMode"
-            :system-type="config.systemType"
-            :base-url="config.baseUrl"
-          />
-
           <p v-if="statusMessage" class="m-0 text-sm text-muted" role="status" aria-live="polite">
             {{ statusMessage }}
           </p>

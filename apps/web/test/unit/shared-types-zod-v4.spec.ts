@@ -77,8 +77,8 @@ describe('shared types zod v4 idiom (no deprecated options)', () => {
   });
 });
 
-describe('trackerExecutionModeSchema.default input typing', () => {
-  it('treats executionMode as optional on create input', () => {
+describe('trackerDirectBrowserAccessSchema.default input typing', () => {
+  it('treats directBrowserAccess as optional on create input', () => {
     const result = createTrackerSchema.safeParse({
       name: 'Acme',
       systemType: 'openproject',
@@ -87,7 +87,7 @@ describe('trackerExecutionModeSchema.default input typing', () => {
     });
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.executionMode).toBe('client');
+      expect(result.data.directBrowserAccess).toBe(true);
     }
   });
 });

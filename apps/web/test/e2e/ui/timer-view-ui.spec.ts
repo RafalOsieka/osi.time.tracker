@@ -223,7 +223,7 @@ describeTimerViewUI('timer view UI flow', async () => {
         name: 'Inline Assign Client ' + Date.now(),
         systemType: 'openproject',
         baseUrl: 'https://inline-assign.example.com',
-        executionMode: 'client',
+        directBrowserAccess: true,
         roundingRule: 'none',
       }),
     });

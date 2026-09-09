@@ -1,9 +1,9 @@
 {
   "app": {
     "name": "OSI Time Tracker",
-    "optionsTitle": "Konfiguracja rozszerzenia",
-    "popupTitle": "Status rozszerzenia",
-    "statusReady": "Rozszerzenie jest załadowane. Otwórz Opcje, aby zatwierdzić witrynę i miejsce docelowe trackera.",
+    "optionsTitle": "Konfiguracja wtyczki",
+    "popupTitle": "Status wtyczki",
+    "statusReady": "Wtyczka jest załadowana. Otwórz Opcje, aby zatwierdzić witrynę i miejsce docelowe trackera.",
     "openOptions": "Otwórz konfigurację",
     "language": "Język",
     "languageEn": "angielski",
@@ -49,14 +49,14 @@
     "invalidDestination": "Podaj poprawny bazowy adres trackera z http:// lub https://. Ścieżki instalacji są dozwolone; dane uwierzytelniające, parametry zapytania, fragmenty i ścieżki nadrzędne nie są."
   },
   "error": {
-    "extensionUnavailable": "Rozszerzenie OSI jest niedostępne w tej przeglądarce.",
-    "extensionIncompatible": "Ta witryna wymaga nowszej wersji rozszerzenia OSI.",
-    "extensionPermissionRequired": "Rozszerzenie potrzebuje uprawnienia do tej witryny lub trackera.",
+    "extensionUnavailable": "Wtyczka OSI jest niedostępna w tej przeglądarce.",
+    "extensionIncompatible": "Ta witryna wymaga nowszej wersji wtyczki OSI.",
+    "extensionPermissionRequired": "Wtyczka potrzebuje uprawnienia do tej witryny lub trackera.",
     "extensionUnknownCreate": "Wpis czasu może już istnieć w trackerze. Potwierdź przed ponowieniem.",
-    "extensionMalformed": "Rozszerzenie odrzuciło nieprawidłową wiadomość.",
-    "extensionTimeout": "Żądanie do rozszerzenia przekroczyło limit czasu.",
-    "extensionLimitExceeded": "Rozszerzenie zatrzymało żądanie, ponieważ osiągnięto limit bezpieczeństwa.",
+    "extensionMalformed": "Wtyczka odrzuciła nieprawidłową wiadomość.",
+    "extensionTimeout": "Żądanie do wtyczki przekroczyło limit czasu.",
+    "extensionLimitExceeded": "Wtyczka zatrzymała żądanie, ponieważ osiągnięto limit bezpieczeństwa.",
     "extensionDestinationUnapproved": "To miejsce docelowe trackera nie jest zatwierdzone.",
-    "extensionOriginUnapproved": "Ta witryna nie jest zatwierdzona do użycia rozszerzenia."
+    "extensionOriginUnapproved": "Ta witryna nie jest zatwierdzona do użycia wtyczki."
   }
 }

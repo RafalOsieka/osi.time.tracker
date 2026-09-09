@@ -164,25 +164,23 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.close();
   });
 
-  it('offers only client and extension modes and saves client mode on a mobile viewport', async () => {
+  it('defaults the direct-browser checkbox on and exposes help without a pointer', async () => {
     const user = await seedUser(dbUrl, { displayName: 'trackersmobileuser' });
     const page = await createPage('/');
     await loginAs(page, user.email, user.password, { width: 390, height: 844 });
     await page.goto(new URL('/trackers', page.url()).href);
     await page.waitForSelector('[data-testid="trackers-page"]');
 
-    const trackerName = 'Mobile Client Tracker ' + Date.now();
+    const trackerName = 'Mobile Direct Tracker ' + Date.now();
     await page.click('[data-testid="new-tracker-button"]');
     await page.waitForSelector('[data-testid="tracker-dialog"]');
-    await page.click('[data-testid="tracker-execution-mode-select"]');
-    const options = page.getByRole('option');
-    await options.first().waitFor();
-    expect(await options.count()).toBe(2);
-    const labels = (await options.allTextContents()).join(' ');
-    expect(labels).toMatch(/Client|Klient/);
-    expect(labels).toMatch(/Extension|Rozszerzenie/);
-    expect(labels).not.toMatch(/Server \(browser -> server|Serwer \(przeglądarka -> serwer/);
-    await page.keyboard.press('Escape');
+    const checkbox = page.locator('[data-testid="tracker-direct-browser-access"]');
+    await checkbox.waitFor();
+    expect(await checkbox.getAttribute('aria-checked')).toBe('true');
+    expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
+
+    await page.locator('[data-testid="tracker-direct-browser-access-help"]').focus();
+    await page.waitForFunction(() => /CORS|cors/.test(document.body.textContent ?? ''));
 
     await page
       .locator('[data-testid="tracker-name-input"] input, [data-testid="tracker-name-input"]')
@@ -194,9 +192,6 @@ describeTrackersUI('trackers UI flow', async () => {
       )
       .first()
       .fill('https://mobile-client.example.com');
-    expect(await page.locator('[data-testid="tracker-execution-mode-help"]').textContent()).toMatch(
-      /cross-origin|międzyźródłow/i,
-    );
     await page.click('[data-testid="save-button"]');
     await page.waitForSelector('[data-testid="tracker-dialog"]', { state: 'hidden' });
     await page.waitForFunction((name) => document.body.textContent?.includes(name), trackerName);
@@ -204,15 +199,16 @@ describeTrackersUI('trackers UI flow', async () => {
     const row = page.locator('tr, [data-testid="trackers-row"]', { hasText: trackerName });
     await row.locator('[data-testid^="edit-tracker-"]').click();
     await page.waitForSelector('[data-testid="tracker-dialog"]');
-    const savedMode = await page
-      .locator('[data-testid="tracker-execution-mode-select"]')
-      .textContent();
-    expect(savedMode).toMatch(/Client|Klient/);
+    expect(
+      await page
+        .locator('[data-testid="tracker-direct-browser-access"]')
+        .getAttribute('aria-checked'),
+    ).toBe('true');
 
     await page.close();
   });
 
-  it('saves extension mode without installation, shows recheck guidance, and keeps local timer entry working', async () => {
+  it('saves extension-required access without installation and keeps local timer entry working', async () => {
     const page = await openAuthed();
     await page.click('[data-testid="app-sidebar"] a[href="/trackers"]');
     await page.waitForSelector('[data-testid="trackers-page"]');
@@ -230,22 +226,13 @@ describeTrackersUI('trackers UI flow', async () => {
       )
       .first()
       .fill('https://extension.example.com');
-    await page.click('[data-testid="tracker-execution-mode-select"]');
-    await page.getByRole('option', { name: /Extension|Rozszerzenie/ }).click();
-    await page.waitForSelector('[data-testid="tracker-extension-status"]');
-    expect(await page.locator('[data-testid="tracker-extension-setup-guidance"]').count()).toBe(1);
-    expect(await page.locator('[data-testid="tracker-extension-recheck"]').count()).toBe(1);
-    await page.waitForFunction(() =>
-      /not available|niedostępne/i.test(
-        document.querySelector('[data-testid="tracker-extension-status-text"]')?.textContent ?? '',
-      ),
-    );
-    await page.click('[data-testid="tracker-extension-recheck"]');
-    await page.waitForFunction(() =>
-      /not available|niedostępne/i.test(
-        document.querySelector('[data-testid="tracker-extension-status-text"]')?.textContent ?? '',
-      ),
-    );
+    await page.locator('[data-testid="tracker-direct-browser-access"]').click();
+    expect(
+      await page
+        .locator('[data-testid="tracker-direct-browser-access"]')
+        .getAttribute('aria-checked'),
+    ).toBe('false');
+    expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
     await page.click('[data-testid="save-button"]');
     await page.waitForSelector('[data-testid="tracker-dialog"]', { state: 'hidden' });
     await page.waitForFunction((name) => document.body.textContent?.includes(name), trackerName);
@@ -255,11 +242,12 @@ describeTrackersUI('trackers UI flow', async () => {
     const row = page.locator('tr', { hasText: trackerName });
     await row.locator('[data-testid^="edit-tracker-"]').click();
     await page.waitForSelector('[data-testid="tracker-dialog"]');
-    const savedMode = await page
-      .locator('[data-testid="tracker-execution-mode-select"]')
-      .textContent();
-    expect(savedMode).toMatch(/Extension|Rozszerzenie/);
-    await page.waitForSelector('[data-testid="tracker-extension-status"]');
+    expect(
+      await page
+        .locator('[data-testid="tracker-direct-browser-access"]')
+        .getAttribute('aria-checked'),
+    ).toBe('false');
+    expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
     await page.click('[data-testid="cancel-button"]');
 
     await page.click('[data-testid="app-sidebar"] a[href="/"]');

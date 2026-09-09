@@ -41,7 +41,7 @@ describeDb('tasks schema', () => {
           name: 'Tracker A',
           systemType: 'openproject',
           baseUrl: 'https://op.example.com',
-          executionMode: 'client',
+          directBrowserAccess: true,
           roundingRule: 'none',
         })
         .returning();

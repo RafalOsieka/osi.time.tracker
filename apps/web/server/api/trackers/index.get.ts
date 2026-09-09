@@ -18,7 +18,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto[]> => {
     name: row.name,
     systemType: row.systemType,
     baseUrl: row.baseUrl,
-    executionMode: row.executionMode,
+    directBrowserAccess: row.directBrowserAccess,
     roundingRule: row.roundingRule,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

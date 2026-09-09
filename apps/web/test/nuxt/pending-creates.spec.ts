@@ -107,7 +107,7 @@ describe('pending creates', () => {
           name: 'Tracker',
           systemType: 'openproject' as const,
           baseUrl: 'https://tracker.example',
-          executionMode: 'extension' as const,
+          directBrowserAccess: false,
           roundingRule: 'none' as const,
           createdAt: '',
           updatedAt: '',

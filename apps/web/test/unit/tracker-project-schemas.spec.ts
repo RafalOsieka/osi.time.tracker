@@ -3,7 +3,7 @@ import { createTrackerSchema } from '../../shared/types/tracker';
 import { createProjectSchema } from '../../shared/types/project';
 
 describe('createTrackerSchema', () => {
-  it('accepts a valid tracker payload and defaults executionMode to client', () => {
+  it('accepts a valid tracker payload and defaults directBrowserAccess to true', () => {
     const parsed = createTrackerSchema.parse({
       name: ' OpenProject A ',
       systemType: 'openproject',
@@ -14,7 +14,7 @@ describe('createTrackerSchema', () => {
       name: 'OpenProject A',
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',
-      executionMode: 'client',
+      directBrowserAccess: true,
       roundingRule: 'up_15m',
     });
   });
