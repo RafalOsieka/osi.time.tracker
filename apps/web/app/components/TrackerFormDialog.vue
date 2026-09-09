@@ -38,7 +38,6 @@ const roundingRuleItems = computed(() =>
 );
 const executionModeLabelKeys = {
   client: 'trackers.executionModeClient',
-  server: 'trackers.executionModeServer',
   extension: 'trackers.executionModeExtension',
 } as const satisfies Record<TrackerExecutionMode, string>;
 const executionModeItems = computed(() =>
@@ -61,6 +60,11 @@ const state = reactive<{
   executionMode: TRACKER_EXECUTION_MODE_ORDER[0],
   roundingRule: TRACKER_ROUNDING_RULE_ORDER[0],
 });
+const executionModeHelp = computed(() =>
+  state.executionMode === 'extension'
+    ? t('trackers.executionModeExtensionHelp')
+    : t('trackers.executionModeClientHelp'),
+);
 const secret = ref('');
 const nameServerError = ref('');
 const baseUrlServerError = ref('');
@@ -270,6 +274,9 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
               class="w-full"
               data-testid="tracker-execution-mode-select"
             />
+            <p data-testid="tracker-execution-mode-help" class="text-sm text-muted">
+              {{ executionModeHelp }}
+            </p>
           </UFormField>
 
           <TrackerExtensionStatus

@@ -25,7 +25,7 @@ Conventions that apply to every story:
 - I can create a Tracker with a name, remote system type, base URL, execution mode, and rounding rule.
 - I can view a list of only my own Trackers.
 - I can edit and delete a Tracker.
-- For client-side execution mode, API secrets stay in the browser only.
+- For both `client` and `extension` execution modes, API secrets stay in the browser only.
 - Another user can never see or access my Trackers.
 
 ---
@@ -130,9 +130,9 @@ Conventions that apply to every story:
 
 **Acceptance criteria**
 
-- I can configure a Tracker: system type (redmine/openproject), base URL, API credentials, execution mode (backend/client), and rounding rule. The full config except the API secret is stored in the database.
-- For **client-side** trackers (**the only MVP mode**), my credentials are entered and kept **only in my browser** (keyed by tracker id) and are never persisted to the server, while the rest of the tracker is still stored in the database.
-- (Post-MVP) For **backend-side** trackers, my credentials are stored encrypted and never returned to the client in plaintext.
+- I can configure a Tracker: system type (redmine/openproject), base URL, API credentials, execution mode (`client` or `extension`), and rounding rule. The full config except the API secret is stored in the database.
+- `client` requires the tracker to allow cross-origin requests from this site; the device must reach the tracker (including over VPN). `extension` is desktop-only and is used when CORS would block direct access.
+- My credentials are entered and kept **only in my browser** (keyed by tracker id) and are never persisted to the server, while the rest of the tracker is still stored in the database.
 - I can edit and remove a Tracker.
 
 ---
@@ -143,7 +143,7 @@ Conventions that apply to every story:
 
 **Acceptance criteria**
 
-- I can browse/search open issues from a Project's active Tracker (**OpenProject** for MVP; **Redmine** at the end of MVP), in **client-side** execution mode (backend-side is post-MVP).
+- I can browse/search open issues from a Project's active Tracker (**OpenProject** and **Redmine**) under `client` or desktop `extension` execution mode.
 - I can link a remote issue to a Task from its group row in the Timer view (and inline on the Remote Sync page), storing the issue ID and cached title/URL (RemoteIssueRef) via the project's tracker.
 - I can unlink a remote issue from a Task.
 - Linking is rejected for local projects or projects whose tracker is missing/soft-deleted.

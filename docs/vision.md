@@ -146,8 +146,8 @@ Remote integration is configured as a first-class **Tracker**. Each tracker stor
 
 - **System type** (e.g. `redmine`, `openproject`)
 - **Base URL** of the remote system
-- **API credentials** (API key or token) — storage depends on execution mode: **client-side** configs (**the only MVP mode**) keep them **only in the user's browser** and never persist them to the server (the rest of the config is still stored in the database); **backend-side** configs (**post-MVP**) store them **encrypted server-side**.
-- **Adapter execution mode** (`client-side` or `backend-side` — see below)
+- **API credentials** (API key or token) — entered and held **only in the user's browser** and never persisted on the OSI server (the rest of the tracker is still stored in the database).
+- **Adapter execution mode** (`client` or `extension` — see below)
 - **Rounding rule** (e.g. round up to nearest 15 minutes)
 - **Required remote fields** — some systems require extra fields on a time log (e.g. Redmine `activity_id`). The config may store adapter-fetched defaults; values can also be chosen on the Remote Sync page at push time.
 
@@ -174,7 +174,7 @@ From the Timer view the user opens a **Remote Sync** page for a selected day. It
 - required remote fields (e.g. OpenProject activity), with previously finalized values preferred over config defaults;
 - **current-account same-day remote logs** for the linked issue as informational context only.
 
-On export, the browser orchestrates one remote create per included task (direct or Nitro-proxied transport) and finalizes each success through an authenticated local endpoint. No selection, zero duration, missing activity, or unresolved prerequisites exclude a task. Successful exports append non-locking provenance (remote log id, exact duration, required fields, selected entry ids). Selecting previously exported entries requires confirmation; intentional repeats are allowed. If remote creation succeeds but local finalization fails, the task is marked uncertain and the user is warned that retry may duplicate the remote log. Known finalized remote log ids are replayed without creating another remote log.
+On export, the browser orchestrates one remote create per included task (direct browser or desktop-extension transport) and finalizes each success through an authenticated local endpoint. No selection, zero duration, missing activity, or unresolved prerequisites exclude a task. Successful exports append non-locking provenance (remote log id, exact duration, required fields, selected entry ids). Selecting previously exported entries requires confirmation; intentional repeats are allowed. If remote creation succeeds but local finalization fails, the task is marked uncertain and the user is warned that retry may duplicate the remote log. Known finalized remote log ids are replayed without creating another remote log.
 
 ### Provenance is non-locking
 
@@ -188,20 +188,20 @@ Rounding is configurable per Tracker (e.g. round up to nearest 15 minutes). This
 
 ### Adapter Execution Modes
 
-Some remote systems are hosted behind a client's VPN and are not reachable from the application's backend server. To support this, each adapter can run in one of two modes:
+The device must be able to reach the tracker (publicly or over VPN). Execution mode does not make the OSI server contact the tracker.
 
-| Mode             | Where it runs      | Use case                                                                                  |
-| ---------------- | ------------------ | ----------------------------------------------------------------------------------------- |
-| **Backend-side** | Application server | Remote system is publicly reachable; API calls are made server-to-server.                 |
-| **Client-side**  | User's browser     | Remote system is behind a VPN; the browser (already on the VPN) makes API calls directly. |
+| Mode          | Where it runs                      | Use case                                                                                                       |
+| ------------- | ---------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Client**    | User's browser                     | The tracker is reachable from this device and permits cross-origin requests from the OSI origin.               |
+| **Extension** | Approved desktop browser extension | The tracker is reachable from this device but CORS would block direct browser requests. Unavailable on mobile. |
 
-The execution mode is configured per Tracker. **MVP ships client-side and server-proxied modes**, where credentials are entered and held **only in the user's browser** and are never persisted to the server (the rest of the tracker still lives in the database). Encrypted server-side credential storage is out of scope. The adapter interface is identical in both modes; only the execution context and credential handling differ. CORS must be enabled on the remote system for client-side mode to work.
+The execution mode is configured per Tracker. Credentials are entered and held **only in the user's browser** and are never persisted to the OSI server (the rest of the tracker still lives in the database). Encrypted server-side credential storage is out of scope. The adapter interface is identical in both modes; only the execution path differs. The OSI server does not forward tracker operations.
 
 ### Adapter Model
 
 Each supported remote system is implemented as an **adapter** (plugin). The adapter interface is stable; new systems can be added without changing core logic.
 
-Each adapter is implemented as a **transport-agnostic core** (request building + response parsing) in `shared/`, wrapped by thin **server-side** and **browser-side** transports that supply authentication and handle CORS. The core is identical across execution modes; only the transport differs. **For MVP, only the OpenProject adapter and only the browser-side transport are built**; the Redmine adapter and the server-side transport are deferred to the end of / after MVP.
+Each adapter is implemented as a **transport-agnostic core** (request building + response parsing) in `packages/remote-trackers`, wrapped by thin **browser-direct** and **desktop-extension** transports. The core is identical across execution modes; only the transport differs. **OpenProject and Redmine adapters are both in MVP.**
 
 | Adapter        | Status                |
 | -------------- | --------------------- |

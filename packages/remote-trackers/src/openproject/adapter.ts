@@ -10,7 +10,7 @@ import { OpenProjectClient, OPENPROJECT_TIME_LOGS_MAX_PAGES } from './client.js'
 /**
  * L2: implements the neutral `RemoteTrackerAdapter` use-case surface over
  * `OpenProjectClient` (L3), owning every provider quirk so `client` and
- * `server` execution modes behave identically: the bounded (50-page)
+ * `extension` execution modes behave identically: the bounded (50-page)
  * time-log pagination loop, 403 -> empty activities (a per-work-package
  * permission outcome, not a rejected credential), 404-on-id -> `null`
  * issue, and upstream-status -> `RemoteAdapterError` mapping.

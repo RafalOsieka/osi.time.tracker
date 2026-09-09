@@ -30,51 +30,59 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
 ### Requirement: REQ-245 Create a tracker
-The system SHALL allow an authenticated user to create a tracker via `POST /api/trackers` with a required `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`. `executionMode` SHALL accept `client`, `server`, or `extension` and SHALL default to `client` when omitted. The `name` SHALL be trimmed, non-empty, length-bounded, and unique per user among non-deleted trackers. `baseUrl` SHALL be a valid URL. On success the created tracker SHALL be returned and a success Toast SHALL be shown. The API secret SHALL NOT be accepted as a stored field. Create and update bodies SHALL NOT accept `requiredFieldDefaults` as a stored field. The tracker form SHALL offer all three modes with localized labels; saving `extension` SHALL NOT require that the current device has an installed or approved extension.
-
-#### Scenario: Successful creation
-- **WHEN** an authenticated user submits a valid unique name and valid connection fields
-- **THEN** the system SHALL create the tracker scoped to the user, return it (without secret), and the new tracker SHALL appear in the list
-
-#### Scenario: Empty name rejected
-- **WHEN** the submitted name is empty or whitespace-only
-- **THEN** the system SHALL reject the request with `{ messageKey, params }` and the field error SHALL render inline under the field
-
-#### Scenario: Duplicate name rejected
-- **WHEN** the submitted name matches an existing non-deleted tracker of the same user
-- **THEN** the system SHALL reject the request with `messageKey: 'error.trackerNameDuplicate'` and the error SHALL render inline under the name field
-
-#### Scenario: Archived name reuse
-- **WHEN** the submitted name matches only a soft-deleted tracker of the same user
-- **THEN** the system SHALL allow creation
+The system SHALL allow an authenticated user to create a tracker via `POST /api/trackers` with a required `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `executionMode`, and `roundingRule`. `executionMode` SHALL accept `client` or `extension` and SHALL default to `client` when omitted. The tracker form SHALL offer both modes with localized labels and SHALL explain that `client` requires tracker-approved cross-origin browser requests while `extension` is desktop-browser only. Saving `extension` SHALL NOT require an installed or approved extension. All existing name, URL, ownership, and non-persistence validation rules remain unchanged.
 
 #### Scenario: Execution mode defaults to client
 - **WHEN** a user submits a tracker without an explicit `executionMode`
 - **THEN** the system SHALL persist it with `executionMode` set to `client`
 
+#### Scenario: Successful creation
+- **WHEN** an authenticated user submits valid unique connection fields
+- **THEN** the tracker SHALL be created for that user and returned without a secret
+
+#### Scenario: Empty name rejected
+- **WHEN** the name is empty or whitespace-only
+- **THEN** validation SHALL reject it and show an inline field error
+
+#### Scenario: Duplicate name rejected
+- **WHEN** the name duplicates another active tracker owned by the user
+- **THEN** creation SHALL fail with `error.trackerNameDuplicate`
+
+#### Scenario: Archived name reuse
+- **WHEN** the name matches only a soft-deleted tracker
+- **THEN** creation SHALL be allowed
+
 #### Scenario: Invalid base URL rejected
-- **WHEN** a user submits a tracker whose `baseUrl` is missing or not a valid URL
-- **THEN** the system SHALL reject the request with `{ messageKey, params }` and persist nothing
+- **WHEN** the base URL is invalid
+- **THEN** validation SHALL reject it and persist nothing
 
 #### Scenario: Unsupported system type rejected
-- **WHEN** a user submits a `systemType` that is not `redmine` or `openproject`
-- **THEN** the system SHALL reject the request with `{ messageKey, params }` and persist nothing
+- **WHEN** the system type is unsupported
+- **THEN** validation SHALL reject it and persist nothing
 
 #### Scenario: Secret is not accepted as a stored field
-- **WHEN** a create or update body includes a credential/secret field intended for storage
-- **THEN** the server SHALL ignore or reject that field and SHALL never persist it
+- **WHEN** a request includes a credential field for persistence
+- **THEN** the server SHALL reject or ignore it and never persist it
 
 #### Scenario: Required-field defaults are not accepted as a stored field
-- **WHEN** a create or update body includes `requiredFieldDefaults`
-- **THEN** the server SHALL ignore or reject that field and SHALL NOT persist required-field defaults
+- **WHEN** a request includes `requiredFieldDefaults`
+- **THEN** the server SHALL reject or ignore it and never persist it
 
 #### Scenario: Extension selection round-trips without installation
 - **WHEN** a user creates or edits a tracker with `executionMode: extension` on a device without the extension
-- **THEN** the selected mode SHALL persist and appear on subsequent reads, while remote operations require extension setup
+- **THEN** the selected mode SHALL persist while remote operations require extension setup
+
+#### Scenario: Removed server mode is rejected
+- **WHEN** a create or update request submits `executionMode: server`
+- **THEN** the server SHALL reject it with a translated validation error and persist nothing
 
 #### Scenario: Unknown execution mode rejected
-- **WHEN** a user submits an execution mode outside the accepted set
-- **THEN** the server SHALL reject it with a translated validation error and persist nothing
+- **WHEN** a request submits any value outside `client` and `extension`
+- **THEN** validation SHALL reject it and persist nothing
+
+#### Scenario: Mobile user can select client mode
+- **WHEN** a mobile or PWA user configures a tracker reachable by the device and allowed by the tracker's CORS policy
+- **THEN** the user SHALL be able to save and use `client` mode
 
 ### Requirement: REQ-246 Edit a tracker
 The system SHALL allow an authenticated user to update their own tracker via `PATCH /api/trackers/[id]`, applying the same validation as creation for provided fields. Editing SHALL be scoped by `userId`. Editing any configuration field, including `systemType` or normalized `baseUrl`, SHALL retain the tracker identity and existing Task remote issue references without remote validation, cleanup, or metadata migration. On success the updated tracker SHALL be returned and the row SHALL reflect the change.
@@ -130,19 +138,19 @@ Every tracker read and write SHALL be scoped by the authenticated user's id. A t
 - **THEN** the system SHALL reject it via `requireAuth`
 
 ### Requirement: REQ-249 Client-side credentials are never persisted server-side
-The API secret SHALL be entered and kept only in the user's browser and SHALL never be stored on the server. In `client` execution mode the secret SHALL be sent only to the configured tracker origin. In `server` execution mode the secret MAY be transmitted to the OSI server per request solely for immediate upstream forwarding, but SHALL NOT be persisted, logged, or returned by the server. In `extension` execution mode the secret SHALL be forwarded transiently through the approved extension to the approved tracker destination and SHALL NOT be persisted by the extension or transmitted to OSI APIs. The secret SHALL be stored in the browser keyed by the tracker id and SHALL remain available after a page reload without being persisted on the server.
+The API secret SHALL be entered and kept only in the user's browser and SHALL never be stored on the OSI server. In `client` execution mode the secret SHALL be sent only to the configured tracker origin. In `extension` execution mode the secret SHALL pass transiently through the approved extension to the approved tracker destination and SHALL NOT be persisted by the extension or transmitted to OSI APIs. The secret SHALL be stored in the browser keyed by tracker id and SHALL remain available after reload.
 
 #### Scenario: Browser retains the secret across sessions
-- **WHEN** a user enters an API secret for a tracker in the browser
-- **THEN** the secret SHALL be stored only in the browser (localStorage keyed by the tracker id) and SHALL remain available after a page reload without being persisted on the server
-
-#### Scenario: Server execution forwarding does not persist the secret
-- **WHEN** the browser forwards the secret to the OSI server for a `server` execution-mode request
-- **THEN** the server SHALL use it only for the immediate upstream request and SHALL NOT persist, log, or return it
+- **WHEN** a user enters an API secret for a tracker
+- **THEN** it SHALL remain browser-held and SHALL NOT be persisted on the OSI server
 
 #### Scenario: Switching execution mode retains browser ownership
-- **WHEN** a user selects extension execution for an existing tracker
-- **THEN** its existing browser-held secret SHALL remain the credential source and SHALL NOT be migrated to extension or server storage
+- **WHEN** a user switches between `client` and `extension`
+- **THEN** the existing browser-held secret SHALL remain the credential source and SHALL NOT migrate to extension or server storage
+
+#### Scenario: Server execution forwarding does not persist the secret
+- **WHEN** a stale caller attempts server execution with a secret
+- **THEN** validation SHALL reject the unsupported mode and no OSI remote-operation endpoint SHALL receive the secret
 
 ### Requirement: REQ-251 Accessible, tokenized Trackers UI
 The Trackers page SHALL meet WCAG 2.1 AA: form fields SHALL be labelled, the create/edit modal and confirm modal SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error. Styling SHALL derive from Tailwind utilities and Nuxt UI `--ui-*` design tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity. The create/edit form SHALL be a single surface covering name and all connection fields plus the browser-only secret input.
@@ -165,51 +173,6 @@ The tracker create/edit form SHALL validate input client-side using the shared c
 #### Scenario: Server-only duplicate error still shown inline
 - **WHEN** the submitted name passes client-side validation but the server rejects it as a duplicate
 - **THEN** the `error.trackerNameDuplicate` message SHALL render inline under the name field
-
-### Requirement: REQ-253 Proxy remote issue search through the OSI server
-For a tracker whose `executionMode` is `server`, the system SHALL expose authenticated, user-scoped OSI server endpoints that forward title-phrase search and exact issue-ID lookup to the configured tracker and return the adapter-neutral issue shape. The client SHALL identify only the owned tracker and search input; the server SHALL derive the target tracker base URL from the authenticated user's owned stored tracker and SHALL NOT accept a target URL from the client. The endpoints SHALL forward exactly the known contract operations, SHALL NOT act as a generic HTTP pass-through, and SHALL delegate to the same provider adapter used in `client` execution mode. Title search SHALL require at least three trimmed characters and return a fixed bounded result set; issue-ID search SHALL require a non-empty valid remote issue ID and perform an exact lookup; both SHALL include open and closed issues.
-
-#### Scenario: Server execution-mode title search returns matching issues
-- **WHEN** an authenticated user submits a title search of at least three trimmed characters for their eligible Task under a `server` tracker
-- **THEN** the OSI server SHALL query the tracker's remote origin server-side and return a bounded set of adapter-neutral issues regardless of status
-
-#### Scenario: Target tracker is derived server-side, not client-supplied
-- **WHEN** a server execution-mode search request includes any client-supplied target URL or origin
-- **THEN** the server SHALL ignore it and resolve the tracker base URL solely from the authenticated user's owned stored tracker
-
-#### Scenario: Invalid search input does not call the tracker
-- **WHEN** a server execution-mode request has a title shorter than three trimmed characters or an empty or invalid issue ID
-- **THEN** the server SHALL respond with a translated `{ messageKey, params }` validation error and SHALL NOT contact the remote system
-
-### Requirement: REQ-254 Forwarded proxy credential is never persisted
-For `server` execution-mode requests the browser SHALL send the tracker API secret per request in a dedicated request header, and the OSI server SHALL use it only to authorize the single upstream call. The server SHALL NOT persist, log, serialize, or return the forwarded secret, and SHALL NOT place it in any error payload. Server-execution endpoints SHALL require a valid session and CSRF protection for mutations and SHALL scope tracker lookup to the authenticated user.
-
-#### Scenario: Secret is used only for the upstream call
-- **WHEN** the server forwards a server execution-mode request using the per-request secret header
-- **THEN** the secret SHALL be attached only to the upstream remote request and SHALL NOT be persisted, logged, or returned in any OSI response
-
-#### Scenario: Missing forwarded secret is rejected
-- **WHEN** a server execution-mode request omits the credential header
-- **THEN** the server SHALL respond with a translated `{ messageKey, params }` error and SHALL NOT contact the remote system
-
-#### Scenario: Unauthenticated or cross-user request is rejected
-- **WHEN** a server execution-mode request lacks a valid session, lacks CSRF for a mutation, or references a tracker the user does not own
-- **THEN** the server SHALL reject it without contacting the remote system and without disclosing the tracker
-
-### Requirement: REQ-255 Proxy failures map to the translated error contract
-The server-execution endpoints SHALL translate upstream outcomes into distinct `{ messageKey, params }` errors mirroring the client execution-mode error states: rejected credential, connection failure or timeout, and not-found. The server SHALL NOT return raw upstream status text or response bodies to the client.
-
-#### Scenario: Upstream rejects the credential
-- **WHEN** the remote system rejects the forwarded credential
-- **THEN** the server SHALL respond with a distinct translated authentication `messageKey` and SHALL NOT expose the raw upstream body
-
-#### Scenario: Tracker is unreachable from the server
-- **WHEN** the upstream request fails to connect, times out, or its host cannot be resolved
-- **THEN** the server SHALL respond with a distinct translated connection `messageKey`
-
-#### Scenario: Requested issue does not exist
-- **WHEN** an exact issue-ID lookup finds no matching issue
-- **THEN** the server SHALL respond with a translated not-found result state without changing any Task reference
 
 ### Requirement: REQ-256 Nearest-increment rounding rules on trackers
 The accepted `roundingRule` values on a tracker SHALL be `none`, `up_15m`, `up_30m`, `up_1h`, `nearest_15m`, `nearest_30m` and `nearest_1h`. A `nearest_*` rule SHALL round a summed duration to the closest multiple of its increment, rounding **up** when the remainder is exactly half the increment. The `up_*` rules SHALL keep rounding up to the next multiple, and `none` SHALL pass the total through unchanged. Rounding SHALL remain a pure, once-applied, export-time transformation that never alters stored local entries. The tracker form SHALL offer every accepted rule with a translated label in both `en` and `pl`.
@@ -255,3 +218,15 @@ The Trackers management page (`/trackers`) SHALL resolve the authenticated user'
 #### Scenario: SSR list uses the session cookie
 - **WHEN** the Trackers page resolves the list during SSR
 - **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request
+
+### Requirement: REQ-305 Persisted server execution modes migrate to client
+
+The system SHALL migrate every persisted tracker whose execution mode is `server` to `client` before application code that accepts only the two-mode contract reads it. Tracker identity, ownership, system type, base URL, rounding rule, timestamps, project associations, and remote issue references SHALL remain unchanged.
+
+#### Scenario: Existing server tracker is upgraded
+- **WHEN** the migration encounters a tracker with `executionMode: server`
+- **THEN** it SHALL change only the execution mode to `client`
+
+#### Scenario: Existing supported modes are unchanged
+- **WHEN** the migration encounters a tracker with `executionMode: client` or `executionMode: extension`
+- **THEN** it SHALL leave that tracker unchanged

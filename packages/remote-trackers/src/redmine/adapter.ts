@@ -9,8 +9,8 @@ import { RedmineClient, REDMINE_TIME_LOGS_MAX_PAGES } from './client.js';
 
 /**
  * L2: implements the neutral `RemoteTrackerAdapter` use-case surface over
- * `RedmineClient` (L3), owning every provider quirk so `client` and `server`
- * execution modes behave identically: the bounded time-log pagination loop,
+ * `RedmineClient` (L3), owning every provider quirk so `client` and
+ * `extension` execution modes behave identically: the bounded time-log pagination loop,
  * 404-on-id → `null` issue, and upstream-status → `RemoteAdapterError` mapping.
  */
 export class RedmineAdapter implements RemoteTrackerAdapter {

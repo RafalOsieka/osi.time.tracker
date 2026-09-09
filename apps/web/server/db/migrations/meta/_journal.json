@@ -134,6 +134,13 @@
       "when": 1787846400000,
       "tag": "0018_drop_required_field_defaults",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788969600000,
+      "tag": "0019_migrate_server_execution_mode",
+      "breakpoints": true
     }
   ]
 }

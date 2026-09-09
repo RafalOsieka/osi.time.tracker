@@ -808,8 +808,11 @@ describe('useSyncExport', () => {
     { name: 'selection edit', task: extensionTask('task-ext', ['e2']) },
     { name: 'client mode', task: taskInput('task-ext') },
     {
-      name: 'server mode',
-      task: { ...taskInput('task-ext'), config: { ...config, executionMode: 'server' as const } },
+      name: 'redmine client mode',
+      task: {
+        ...taskInput('task-ext'),
+        config: { ...config, systemType: 'redmine' as const, executionMode: 'client' as const },
+      },
     },
     {
       name: 'reassigned overlapping entry',

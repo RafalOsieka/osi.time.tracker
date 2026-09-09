@@ -18,7 +18,6 @@ import {
 } from '@osi/remote-trackers/contracts';
 import { OpenProjectAdapter, OpenProjectClient } from '@osi/remote-trackers/openproject';
 import { RedmineAdapter, RedmineClient } from '@osi/remote-trackers/redmine';
-import { REMOTE_SECRET_HEADER } from '~~/shared/config/remote-secret';
 import { remoteIssuePickerFormSchema } from '~~/shared/types/remote-issue-ref';
 import { finalizeRemoteExportSchema } from '~~/shared/types/remote-export';
 import { createTrackerSchema } from '~~/shared/types/tracker';
@@ -32,7 +31,6 @@ export default defineNuxtPlugin(() => {
   void buildExportRequestKey;
   void resolveExportComment;
   void normalizeBaseUrl;
-  void REMOTE_SECRET_HEADER;
   void RemoteAdapterError;
   void UpstreamHttpError;
   void REMOTE_ISSUE_SEARCH_MODE_ORDER;

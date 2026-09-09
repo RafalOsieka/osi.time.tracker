@@ -23,24 +23,27 @@ The system SHALL define a single provider-neutral remote-tracker adapter contrac
 - **THEN** it SHALL invoke the neutral contract for the Client's configured `systemType` without provider-specific conditional branching
 
 ### Requirement: REQ-296 Date-range time-log fetch
-
-The contract SHALL expose a date-range time-log operation that fetches the current remote account's time logs whose `spentOn` falls on an inclusive `from`/`to` pair of local calendar days (`YYYY-MM-DD`). The operation SHALL NOT filter by work-package or issue id. It SHALL return the same adapter-neutral `RemoteTimeLogDto` list as the same-day fetch. Pagination SHALL be bounded by a fixed maximum page count so an inconsistent upstream total cannot cause unbounded requests. Same-day `fetchTimeLogs` (issue-filtered, one day) SHALL remain for Remote Sync and SHALL NOT be used by looping the range operation per day. Under `client` execution mode the secret SHALL go only to the tracker origin; under `server` execution mode the browser SHALL send the range request and per-request secret to the OSI server, which SHALL forward it and SHALL NOT persist the secret (REQ-201, REQ-203).
+The contract SHALL expose one bounded date-range operation for the current account's logs on an inclusive `from`/`to` local-date pair, without issue filtering. `client` SHALL send the secret only to the tracker origin; `extension` SHALL use it transiently only for the approved tracker request. Same-day issue-filtered fetch SHALL remain available for Remote Sync.
 
 #### Scenario: Range returns logs across the month without issue filter
-- **WHEN** a caller requests logs from `2026-08-01` through `2026-08-31` for the current account
-- **THEN** the adapter SHALL return that account's logs in the range, including logs on issues that are not linked in OSI
+- **WHEN** a caller requests a valid date range
+- **THEN** the adapter SHALL return current-account logs across that range, including unlinked issues, within the pagination bound
+
+#### Scenario: Secrets avoid OSI APIs
+- **WHEN** either supported mode performs a range fetch
+- **THEN** the secret SHALL NOT appear in OSI API traffic
 
 #### Scenario: Pagination is bounded
-- **WHEN** the upstream total would imply more pages than the fixed maximum
-- **THEN** the adapter SHALL stop at the bound rather than issuing unbounded requests
+- **WHEN** an upstream total exceeds the fixed page bound
+- **THEN** the adapter SHALL stop at that bound
 
 #### Scenario: Same-day fetch is unchanged
-- **WHEN** Remote Sync requests same-day logs for linked issues
-- **THEN** it SHALL continue to use the existing same-day operation and SHALL NOT be required to call the range operation
+- **WHEN** Remote Sync requests issue-filtered same-day logs
+- **THEN** it SHALL continue using the same-day operation
 
 #### Scenario: Server-mode proxy does not keep the secret
-- **WHEN** a `server`-mode range fetch is proxied through the OSI server
-- **THEN** the server SHALL use the secret only for that upstream call and SHALL NOT persist, log, serialize, or return it
+- **WHEN** a stale caller attempts a server-mode range fetch
+- **THEN** boundary validation SHALL reject the unsupported mode before any secret reaches OSI
 
 ### Requirement: REQ-266 Search and lookup results include optional remote project title
 Issue title search and exact issue-ID lookup SHALL return the same adapter-neutral result shape: remote issue ID, issue title, and an optional remote project title. The remote project title SHALL be the tracker's project display name when the provider payload supplies a usable string, and SHALL be omitted when it does not. The result SHALL NOT include a remote project id, href, or any other remote-project identifier. Provider adapters SHALL map only the provider's project display name into that field and SHALL NOT leak provider-specific project objects across the contract boundary.
@@ -58,20 +61,23 @@ Issue title search and exact issue-ID lookup SHALL return the same adapter-neutr
 - **THEN** it SHALL read only the adapter-neutral remote project title and SHALL NOT inspect provider-specific project fields
 
 ### Requirement: REQ-201 Execution-mode equivalence is a contract invariant
-
-The contract SHALL behave identically under `client`, `server`, and `extension` execution modes for supported, authorized operations: for the same operation and inputs, results, provider-quirk handling, and upstream error classification SHALL be identical, with only the execution path differing. `client` mode SHALL send remote requests directly from the browser to the configured tracker origin; `server` mode SHALL route them through the OSI server, which forwards them to the tracker by delegating to the same provider adapter used in `client` mode. `extension` mode SHALL delegate to that same provider implementation bundled in the approved browser extension and SHALL NOT route tracker requests through the OSI server. Extension availability, protocol, and permission errors SHALL remain distinguishable from upstream errors.
+The contract SHALL behave identically under authorized `client` and `extension` execution for all seven operations, with only the execution path and extension-specific setup failures differing. `client` SHALL call the tracker directly. `extension` SHALL delegate to the same provider implementation bundled in the approved browser extension and SHALL NOT route tracker requests through the OSI server.
 
 #### Scenario: Same operation yields identical results across modes
-- **WHEN** the same contract operation runs under authorized `client`, `server`, and `extension` configurations against equivalent upstream responses
-- **THEN** the returned adapter-neutral result, quirk handling, and upstream error classification SHALL be identical and only the execution path SHALL differ
+- **WHEN** equivalent upstream responses are processed under `client` and `extension`
+- **THEN** results, provider quirks, and upstream error classification SHALL be identical
 
 #### Scenario: Server mode delegates to the same adapter
-- **WHEN** the OSI server forwards a contract operation for a `server`-mode configuration
-- **THEN** it SHALL delegate to the same provider adapter used in `client` mode rather than reimplementing provider behavior
+- **WHEN** a stale configuration still contains `server` before migration
+- **THEN** migration SHALL convert it to `client` rather than invoking a server adapter
 
 #### Scenario: Extension mode delegates all operations
-- **WHEN** a configured extension operation performs search, lookup, activities, account resolution, same-day logs, date-range logs, or creation
-- **THEN** it SHALL invoke the shared provider implementation through the extension's guarded network transport
+- **WHEN** any neutral operation runs under `extension`
+- **THEN** it SHALL invoke the shared provider implementation through the guarded extension transport
+
+#### Scenario: Extension remains distinguishable
+- **WHEN** extension availability, compatibility, or permission fails before tracker execution
+- **THEN** the caller SHALL receive the corresponding extension-specific error
 
 ### Requirement: REQ-202 Transport neutrality and single-point auth construction
 
@@ -86,20 +92,19 @@ Transports SHALL be credential-scheme-agnostic: a transport SHALL attach only th
 - **THEN** it SHALL construct its credential header in exactly one place and no other component SHALL replicate that scheme
 
 ### Requirement: REQ-203 Credential hygiene across the contract
-
-For every contract operation the API secret SHALL NOT be persisted, logged, serialized, or returned by the OSI server, and SHALL NOT appear in any error payload. Under `client` execution mode the secret SHALL be transmitted only to the configured tracker origin and SHALL NOT appear in any OSI API request, response, or persisted record. Under `server` execution mode the secret MAY be transmitted to the OSI server per request solely for immediate upstream forwarding and SHALL NOT be persisted, logged, or returned. Under `extension` execution mode the browser-held secret SHALL pass transiently through the approved extension solely to authenticate requests to the approved tracker destination; it SHALL NOT appear in OSI API traffic, extension persistent storage, logs, handshake messages, or responses to the page. The credential-bearing local request message is permitted; serialized errors and diagnostics SHALL NOT contain it.
+For every operation the secret SHALL NOT be persisted, logged, serialized, returned, or included in an error. Under `client`, it SHALL travel only to the configured tracker origin. Under `extension`, it SHALL pass transiently through the approved extension solely for the approved destination and SHALL NOT enter OSI API traffic, extension storage, handshake messages, logs, or responses to the page.
 
 #### Scenario: Client-mode secret stays browser-to-tracker only
-- **WHEN** a contract operation runs under a `client` configuration
-- **THEN** the secret SHALL be sent only to the configured tracker origin and SHALL NOT appear in any OSI request, response, or record
-
-#### Scenario: Server-mode secret is used once and never retained
-- **WHEN** the browser forwards the secret to the OSI server for a `server`-mode operation
-- **THEN** the server SHALL use it only for the single upstream call and SHALL NOT persist, log, serialize, or return it
+- **WHEN** an operation runs under `client`
+- **THEN** its secret SHALL go only to the configured tracker origin
 
 #### Scenario: Extension secret is transient
-- **WHEN** an operation succeeds or fails through the extension
-- **THEN** the secret SHALL have been used only for that approved operation and SHALL NOT be retained in extension storage, returned, logged, or sent to OSI APIs
+- **WHEN** an extension operation succeeds or fails
+- **THEN** its secret SHALL NOT be retained, returned, logged, or sent to OSI APIs
+
+#### Scenario: Server-mode secret is used once and never retained
+- **WHEN** a stale caller submits `server` with a secret
+- **THEN** validation SHALL reject the mode and SHALL NOT transmit the secret to an OSI remote-operation endpoint
 
 ### Requirement: REQ-204 Not-found resolves to an empty result, not an error
 
@@ -126,24 +131,23 @@ The contract SHALL derive an issue URL from a configuration's normalized base UR
 - **THEN** it SHALL be provided through the per-provider abstraction without adding `systemType` conditionals in shared code
 
 ### Requirement: REQ-206 Shared translated error contract for all providers
-
-The contract SHALL map upstream outcomes into distinct translated `{ messageKey, params }` errors that mirror the client-mode error states across every provider and all three execution modes: rejected credential, connection failure or timeout, and not-found. Raw upstream status text or response bodies SHALL NOT be returned to the client, so callers render equivalent translated states regardless of provider or execution mode. Extension-specific availability, compatibility, permission, and unknown-create-outcome failures SHALL use distinct safe translated errors rather than masquerading as upstream credential failures.
+The contract SHALL map rejected credentials, connection failures or timeouts, and not-found outcomes into equivalent translated `{ messageKey, params }` states across providers and the two supported modes. Raw upstream payloads SHALL NOT be exposed. Extension availability, compatibility, permission, and unknown-create-outcome failures SHALL remain distinct.
 
 #### Scenario: Rejected credential maps to a distinct key
-- **WHEN** the tracker rejects the credential in any execution mode
-- **THEN** the contract SHALL surface a distinct translated authentication `messageKey` without exposing the raw upstream body
+- **WHEN** the tracker rejects a credential
+- **THEN** the contract SHALL expose a safe translated authentication key
 
 #### Scenario: Connection failure maps to a distinct key
-- **WHEN** the upstream request fails to connect, times out, or its host cannot be resolved
-- **THEN** the contract SHALL surface a distinct translated connection `messageKey`, with an unknown-outcome warning when extension-executed time-entry creation may already have occurred
+- **WHEN** the tracker cannot be reached or times out
+- **THEN** the contract SHALL expose a safe translated connection key
 
 #### Scenario: Error states are provider- and mode-independent
-- **WHEN** the same upstream failure class occurs for different providers or execution modes
-- **THEN** the caller SHALL receive equivalent translated `{ messageKey, params }` states
+- **WHEN** the same upstream failure occurs through `client` or `extension`
+- **THEN** the caller SHALL receive an equivalent safe translated state
 
 #### Scenario: Extension failure is actionable
-- **WHEN** extension authorization or protocol negotiation fails before tracker execution
-- **THEN** the caller SHALL receive the corresponding extension-specific message without raw payloads or credentials
+- **WHEN** extension setup fails before tracker execution
+- **THEN** the caller SHALL receive a distinct extension-specific message
 
 ### Requirement: REQ-287 Upstream payloads are parsed with zod
 Every remote transport `execute` SHALL accept a zod schema for the expected

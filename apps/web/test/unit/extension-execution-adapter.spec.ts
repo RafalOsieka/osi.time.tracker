@@ -30,7 +30,6 @@ import type {
 import { ExtensionDocumentBridge } from '../../app/utils/remote/extension-bridge';
 import { ExtensionExecutionAdapter } from '../../app/utils/remote/extension-execution-adapter';
 import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { ServerExecutionAdapter } from '../../app/utils/remote/server-execution-adapter';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const config: TrackerDto = {
@@ -499,7 +498,7 @@ describe('ExtensionExecutionAdapter', () => {
     ).toBe(false);
   });
 
-  it('does not execute on SSR and never falls back to client or server adapters', async () => {
+  it('does not execute on SSR and never falls back to a direct provider adapter', async () => {
     const openBridge = vi.fn();
     const adapter = new ExtensionExecutionAdapter(config, 'secret', {
       isClient: false,
@@ -511,7 +510,6 @@ describe('ExtensionExecutionAdapter', () => {
     const factoryAdapter = createRemoteAdapter(config, 'secret');
     expect(factoryAdapter).toBeInstanceOf(ExtensionExecutionAdapter);
     expect(factoryAdapter).not.toBeInstanceOf(OpenProjectAdapter);
-    expect(factoryAdapter).not.toBeInstanceOf(ServerExecutionAdapter);
   });
 
   it('treats a lost create reply as unknown-create, not a retryable timeout', async () => {

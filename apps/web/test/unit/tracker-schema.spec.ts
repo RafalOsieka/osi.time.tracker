@@ -3,6 +3,7 @@ import { ZodError } from 'zod';
 import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
 import {
   createTrackerSchema,
+  TRACKER_EXECUTION_MODE_ORDER,
   trackerExecutionModeSchema,
   trackerRoundingRuleSchema,
 } from '../../shared/types/tracker';
@@ -41,9 +42,10 @@ describe('tracker connection field schemas', () => {
     expect(result.executionMode).toBe('client');
   });
 
-  it('accepts an explicit server executionMode', () => {
-    const result = createTrackerSchema.parse({ ...valid, executionMode: 'server' });
-    expect(result.executionMode).toBe('server');
+  it('rejects the removed server executionMode', () => {
+    expect(() => createTrackerSchema.parse({ ...valid, executionMode: 'server' })).toThrow(
+      ZodError,
+    );
   });
 
   it('accepts an explicit extension executionMode', () => {
@@ -106,7 +108,9 @@ describe('tracker connection field schemas', () => {
 
   it('exports standalone enums used by adapters', () => {
     expect(trackerSystemTypeSchema.parse('openproject')).toBe('openproject');
-    expect(trackerExecutionModeSchema.parse('server')).toBe('server');
+    expect(TRACKER_EXECUTION_MODE_ORDER).toEqual(['client', 'extension']);
+    expect(trackerExecutionModeSchema.parse('client')).toBe('client');
+    expect(() => trackerExecutionModeSchema.parse('server')).toThrow(ZodError);
     expect(trackerRoundingRuleSchema.parse('up_15m')).toBe('up_15m');
   });
 });

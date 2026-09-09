@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 
 export const isoDateSchema = z
   .string({ error: 'error.remoteSyncDateRequired' })
@@ -87,77 +86,4 @@ export interface RemoteExportTaskOutcomeDto {
   /** Translation key for failure/uncertain/excluded explanations. */
   messageKey?: string;
   messageParams?: Record<string, string | number>;
-}
-
-/** Proxied current-account resolution body. */
-export const proxiedRemoteAccountSchema = z.object({
-  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
-});
-
-export type ProxiedRemoteAccountDto = z.infer<typeof proxiedRemoteAccountSchema>;
-
-export interface ProxiedRemoteAccountResponseDto {
-  id: string;
-  name: string;
-}
-
-/** Proxied same-day time-log context body. */
-export const proxiedRemoteTimeLogsSchema = z.object({
-  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
-  spentOn: isoDateSchema,
-  workPackageIds: z
-    .array(
-      z
-        .string({ error: 'error.remoteIssueIdRequired' })
-        .min(1, { error: 'error.remoteIssueIdRequired' }),
-    )
-    .min(1, { error: 'error.remoteIssueIdRequired' }),
-  userId: z.string().min(1).optional(),
-});
-
-export type ProxiedRemoteTimeLogsDto = z.infer<typeof proxiedRemoteTimeLogsSchema>;
-
-export interface ProxiedRemoteTimeLogsResponseDto {
-  logs: RemoteTimeLogDto[];
-}
-
-/** Proxied date-range time-log fetch body (reports; no issue filter). */
-export const proxiedRemoteTimeLogsRangeSchema = z
-  .object({
-    trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
-    from: isoDateSchema,
-    to: isoDateSchema,
-    userId: z.string().min(1).optional(),
-  })
-  .refine((value) => value.from <= value.to, {
-    path: ['from'],
-    error: 'error.remoteSyncDateInvalid',
-  });
-
-export type ProxiedRemoteTimeLogsRangeDto = z.infer<typeof proxiedRemoteTimeLogsRangeSchema>;
-
-export interface ProxiedRemoteTimeLogsRangeResponseDto {
-  logs: RemoteTimeLogDto[];
-}
-
-/** Proxied create-time-entry body. */
-export const proxiedRemoteCreateTimeEntrySchema = z.object({
-  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
-  remoteIssueId: z
-    .string({ error: 'error.remoteIssueIdRequired' })
-    .min(1, { error: 'error.remoteIssueIdRequired' }),
-  spentOn: isoDateSchema,
-  durationSeconds: z
-    .int({ error: 'error.remoteExportDurationInvalid' })
-    .positive({ error: 'error.remoteExportDurationInvalid' }),
-  activityId: z
-    .string({ error: 'error.remoteExportActivityRequired' })
-    .min(1, { error: 'error.remoteExportActivityRequired' }),
-  comment: z.string().optional(),
-});
-
-export type ProxiedRemoteCreateTimeEntryDto = z.infer<typeof proxiedRemoteCreateTimeEntrySchema>;
-
-export interface ProxiedRemoteCreateTimeEntryResponseDto {
-  remoteLogId: string;
 }

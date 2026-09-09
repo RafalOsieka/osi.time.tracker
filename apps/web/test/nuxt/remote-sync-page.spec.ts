@@ -554,32 +554,46 @@ describe('RemoteSync page', () => {
     );
   });
 
-  it('routes activities/account fetches through the server for a server-execution-mode config', async () => {
-    window.localStorage.setItem('rsc:config-server', 'secret-value');
+  it('shows extension-unavailable on a mobile-sized viewport and does not fall back to direct fetch', async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    vi.useFakeTimers();
+    window.localStorage.setItem('rsc:config-ext', 'secret-value');
     dayData = makeDay({
       rows: [
         {
-          taskId: 'task-server',
-          taskName: 'Server Routed Task',
+          taskId: 'task-ext',
+          taskName: 'Extension Task',
           projectName: 'Project',
-          trackerName: 'Client',
+          trackerName: 'Extension Tracker',
           totalSeconds: 3600,
-          config: { ...baseConfig, id: 'config-server', executionMode: 'server' },
+          config: { ...baseConfig, id: 'config-ext', executionMode: 'extension' },
           issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
-          entries: [entry({ id: 'entry-server', durationSeconds: 3600 })],
+          entries: [entry({ id: 'entry-ext', durationSeconds: 3600 })],
           exports: [],
         },
       ],
     });
     dollarFetchMock.mockResolvedValue(dayData);
-    csrfFetchMock.mockResolvedValue({ options: [{ id: '1', name: 'Dev' }] });
 
-    await mount();
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(csrfFetchMock).toHaveBeenCalledWith(
-      '/api/remote/activities',
-      expect.objectContaining({ method: 'POST' }),
-    );
+    try {
+      const wrapper = await mount();
+      await vi.advanceTimersByTimeAsync(2_000);
+      await flushPromises();
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(
+        csrfFetchMock.mock.calls.some((call) => String(call[0]).includes('/api/remote/')),
+      ).toBe(false);
+      expect(wrapper.find('[data-testid="remote-sync-activity-error-task-ext"]').exists()).toBe(
+        true,
+      );
+      expect(wrapper.find('[data-testid="remote-sync-activity-error-task-ext"]').text()).toContain(
+        'error.extensionUnavailable',
+      );
+    } finally {
+      vi.useRealTimers();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    }
   });
 
   it('fetches activities once for rows sharing the same resolved config and work package', async () => {
@@ -755,7 +769,7 @@ describe('RemoteSync page', () => {
             id: 'config-redmine',
             systemType: 'redmine',
             baseUrl: 'https://rm.example.com',
-            executionMode: 'server',
+            executionMode: 'client',
           },
           issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
           entries: [entry({ id: 'entry-redmine', durationSeconds: 3600 })],

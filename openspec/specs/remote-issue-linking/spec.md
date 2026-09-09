@@ -157,45 +157,53 @@ The same reusable picker SHALL also be available inline on the Remote Sync page 
 - **THEN** the same picker Popover SHALL open, and a successful selection SHALL reassign that date's entries for the row and flip it to the manageable state in place
 
 ### Requirement: REQ-103 Search the configured tracker by execution mode
-For an owned Task whose Project has an active tracker with a registered adapter, the system SHALL search that tracker's issues via the neutral remote-tracker adapter contract (`remote-adapter-contract` REQ-200) using the execution mode selected by the tracker's `executionMode`. When `executionMode` is `client`, the browser SHALL query the configured tracker origin directly using the browser-held credential, and the credential SHALL NOT be transmitted to or persisted by the OSI server. When `executionMode` is `server`, the browser SHALL send the search and the per-request credential to the OSI server, which SHALL forward the request to the tracker and return the result; the OSI server SHALL NOT persist the credential. The picker SHALL default to issue-ID search and SHALL let the user switch to title-phrase search. The user SHALL enter a query and submit it. Title search SHALL require at least three trimmed characters, match issue titles, and return a fixed bounded result set. Issue-ID search SHALL require a non-empty valid remote issue ID and perform an exact lookup without applying the title minimum length. Both modes SHALL include open and closed issues, return the same adapter-neutral issue shape containing remote issue ID, title, and optional remote project title (never a remote project id), and SHALL behave identically with respect to provider quirks and error classification (`remote-adapter-contract` REQ-201). A result whose tracker payload has no usable project title SHALL still be returned with remote issue ID and title.
+For an owned Task whose Project has an active tracker and registered adapter, the system SHALL search through `client` or `extension` according to `executionMode`. `client` SHALL query the configured tracker origin directly with the browser-held secret; `extension` SHALL execute through the approved desktop extension. Neither mode SHALL transmit the secret to an OSI API. Existing validation, bounded title search, exact-ID lookup, stale-response suppression, neutral results, and translated error behavior remain unchanged.
 
 #### Scenario: Client execution-mode title search returns matching issues
-- **WHEN** the user selects title search, enters at least three trimmed characters, and submits the search for an eligible Task under a `client` tracker
-- **THEN** the browser SHALL query the configured tracker origin directly and show a bounded set of matching issues regardless of status
+- **WHEN** a user submits valid search input under `client`
+- **THEN** the browser SHALL query the configured tracker origin and render neutral results
 
 #### Scenario: Server execution-mode title search returns matching issues
-- **WHEN** the user submits a valid title search for an eligible Task under a `server` tracker
-- **THEN** the browser SHALL send the search to the OSI server, which forwards it to the tracker, and the picker SHALL show a bounded set of matching issues regardless of status
+- **WHEN** a stale client submits a search for a `server` tracker
+- **THEN** the unsupported mode SHALL be rejected without contacting the tracker
 
 #### Scenario: Exact issue-ID search returns an issue
-- **WHEN** the user selects issue-ID search, enters a valid remote issue ID, and submits the search under either execution mode
-- **THEN** the system SHALL retrieve that exact issue via the configured execution mode and SHALL show it as a selectable result regardless of status
+- **WHEN** a valid exact-ID search runs through `client` or `extension`
+- **THEN** the matching issue SHALL be shown regardless of status
 
 #### Scenario: Search result includes remote project title
-- **WHEN** a title search or issue-ID lookup returns an issue whose tracker payload includes a project title
-- **THEN** the adapter-neutral result SHALL include that remote project title and SHALL NOT include a remote project id
+- **WHEN** the provider supplies a usable project title
+- **THEN** the neutral result SHALL include it without a project id
 
 #### Scenario: Search result omits a missing remote project title
-- **WHEN** a title search or issue-ID lookup returns an otherwise valid issue whose tracker payload has no usable project title
-- **THEN** the adapter-neutral result SHALL still include remote issue ID and title and SHALL omit the remote project title
+- **WHEN** the provider omits a usable project title
+- **THEN** the issue id and title SHALL remain selectable
+
+#### Scenario: Extension search bypasses CORS
+- **WHEN** a desktop user submits valid search input under `extension`
+- **THEN** the approved extension SHALL perform the tracker request without routing it through OSI
+
+#### Scenario: Mobile extension mode is unavailable
+- **WHEN** a mobile browser encounters a tracker configured for `extension`
+- **THEN** remote search SHALL expose an actionable extension-unavailable state and SHALL NOT fall back to another mode
 
 #### Scenario: Invalid search input does not call the tracker
-- **WHEN** the user submits a title shorter than three trimmed characters or an empty or invalid issue ID
-- **THEN** the picker SHALL show a translated validation message and SHALL NOT send a remote request in either execution mode
+- **WHEN** title input is too short or an issue ID is invalid
+- **THEN** the picker SHALL show translated validation and make no remote request
 
 #### Scenario: New search supersedes an older response
-- **WHEN** an earlier remote request finishes after a newer search has been submitted
-- **THEN** the system SHALL ignore or cancel the stale response and SHALL display only results for the latest query
+- **WHEN** an older request completes after a newer search
+- **THEN** only the newer result SHALL be displayed
 
 #### Scenario: Client execution-mode credential remains browser-only
-- **WHEN** the browser searches the tracker under a `client` configuration
-- **THEN** the credential SHALL be sent only to the configured tracker origin and SHALL NOT appear in any OSI API request, response, or persisted record
+- **WHEN** client search runs
+- **THEN** the secret SHALL travel only to the configured tracker origin
 
 #### Scenario: Server execution-mode credential is forwarded but not persisted
-- **WHEN** the browser searches the tracker under a `server` configuration
-- **THEN** the credential SHALL be sent to the OSI server only for immediate upstream forwarding and SHALL NOT be persisted, logged, or returned by the server
+- **WHEN** a stale caller requests server search
+- **THEN** validation SHALL reject it and SHALL NOT forward the credential
 
 #### Scenario: Remote search fails
-- **WHEN** the tracker rejects the credential, CORS blocks a client-mode request, or a client- or server-mode request otherwise fails
-- **THEN** the picker SHALL expose a translated accessible error state without changing the Task's existing reference
+- **WHEN** a supported mode encounters authentication, CORS, connection, or extension failure
+- **THEN** the picker SHALL expose a translated accessible error without changing the reference
 

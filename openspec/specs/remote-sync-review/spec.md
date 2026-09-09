@@ -316,28 +316,35 @@ The page SHALL create at most one remote log for each included Ready task in one
 - **THEN** the application SHALL return the stored result without creating another remote log
 
 ### Requirement: REQ-121 Browser orchestration supports direct and proxied client transport
-
-The browser SHALL orchestrate remote reads, one remote creation per included task, and local finalization regardless of execution mode. The remote client SHALL support sending remote requests directly from the browser (`client` execution mode) or through authenticated Nitro endpoints (`server` execution mode) selected by the remote-system configuration's `executionMode`. Both modes SHALL provide equivalent account resolution, activities, paginated time logs, time-entry creation, error classification, retry behavior, deduplication, per-task outcome isolation, and identical provider-quirk handling by delegating to the same provider adapter. In `server` execution mode Nitro SHALL authorize the local user, restrict requests to that user's configured remote origin, and SHALL NOT persist or log forwarded remote credentials.
+The browser SHALL orchestrate remote reads, at most one remote creation per included task, and local finalization under `client` or `extension`. Both modes SHALL provide equivalent provider behavior, retries, deduplication, and per-task isolation. `client` SHALL call the tracker directly; `extension` SHALL use the approved desktop extension. Neither mode SHALL send tracker credentials through OSI APIs, and execution SHALL NOT silently fall back between modes.
 
 #### Scenario: Client execution mode completes the two-phase operation
-- **WHEN** a remote configuration selects `client` execution mode and the user exports a task
-- **THEN** the browser SHALL create the tracker log directly and finalize the returned remote ID through the authenticated local endpoint
+- **WHEN** a `client` tracker exports a task
+- **THEN** the browser SHALL create the remote log directly and finalize its remote ID locally
 
 #### Scenario: Server execution mode completes the same two-phase operation
-- **WHEN** a remote configuration selects `server` execution mode and the user exports a task
-- **THEN** the browser SHALL request remote creation through the Nitro endpoint and finalize the returned remote ID through the same authenticated local endpoint
+- **WHEN** a stale client attempts export under `server`
+- **THEN** validation SHALL reject the unsupported mode before remote creation
 
 #### Scenario: Server execution-mode credentials remain ephemeral
-- **WHEN** Nitro forwards a remote request containing remote credentials
-- **THEN** it SHALL use them only for that request and SHALL NOT persist them or include them in logs
+- **WHEN** a stale request includes server-mode credentials
+- **THEN** no remote-operation OSI endpoint SHALL accept or forward them
 
 #### Scenario: Server execution-mode destination is restricted
-- **WHEN** a server execution-mode request targets an origin other than the authenticated user's configured remote system origin
-- **THEN** Nitro SHALL reject the request without contacting the supplied destination
+- **WHEN** a caller targets a former remote proxy route
+- **THEN** no generic or tracker-specific server proxy SHALL contact the supplied destination
+
+#### Scenario: Extension completes the two-phase operation
+- **WHEN** an `extension` tracker exports a task on a supported desktop browser
+- **THEN** the extension SHALL create the remote log and the browser SHALL finalize its remote ID locally
+
+#### Scenario: Extension is unavailable on mobile
+- **WHEN** Remote Sync loads an `extension` tracker on mobile
+- **THEN** affected rows SHALL expose an actionable unavailable state and SHALL NOT attempt or fall back to direct execution
 
 #### Scenario: Transport failures remain isolated and retryable
-- **WHEN** either execution mode fails for one task or shared request scope
-- **THEN** the page SHALL expose the same retryable state and SHALL NOT block unaffected tasks
+- **WHEN** one supported transport operation fails
+- **THEN** its task SHALL expose the appropriate retryable state without blocking unaffected tasks
 
 ### Requirement: REQ-223 Day review is presented as a dense table with expandable rows
 

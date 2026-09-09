@@ -168,18 +168,9 @@ One-time setup for adapter work:
 3. Create a sample project and a few issues.
 4. Copy an API access key from **My account → API access key** and send it as the `X-Redmine-API-Key` header.
 
-### VPN internal DNS (proxied remote transport)
+### VPN reachability
 
-When a remote-system configuration uses `proxied` transport, the OSI server itself makes the outbound request to your tracker instead of the browser, so the app container needs to resolve and reach the tracker's hostname. If your tracker is only reachable over a VPN with its own internal DNS, add the VPN's resolver to the `app` service in `docker-compose.standalone.yml` (or your own compose override), e.g.:
-
-```yaml
-services:
-  app:
-    dns:
-      - 10.0.0.1 # your VPN's internal DNS resolver
-```
-
-This is a deployment concern only; OSI does not perform any application-level DNS or VPN handling.
+The OSI server does not contact your tracker. `client` and `extension` modes both require **this device** to reach the tracker (publicly or over VPN). `client` additionally requires the tracker to allow cross-origin requests from the OSI origin; `extension` is desktop-only when CORS would otherwise block those requests. If your tracker is only on a VPN, connect the browser (or the desktop that hosts the extension) to that VPN.
 
 ### Browser extension (Chrome / Edge)
 
