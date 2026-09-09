@@ -90,7 +90,7 @@ describeShell('authenticated shell navigation', async () => {
     await page.locator('[data-testid="app-topbar"] [data-slot="toggle"]').click();
     const mobileFooter = page.locator('[data-testid="extension-status-footer"]:visible');
     await mobileFooter.waitFor();
-    await mobileFooter.locator('[data-testid="extension-status-trigger"]').tap();
+    await mobileFooter.locator('[data-testid="extension-status-trigger"]').click();
     await page.waitForSelector('[data-testid="extension-status-popover"]');
     await page.keyboard.press('Escape');
 
