@@ -174,9 +174,7 @@ describeTrackersUI('trackers UI flow', async () => {
     const trackerName = 'Mobile Direct Tracker ' + Date.now();
     await page.click('[data-testid="new-tracker-button"]');
     await page.waitForSelector('[data-testid="tracker-dialog"]');
-    const checkbox = page
-      .locator('[data-testid="tracker-direct-browser-access"] [role="checkbox"]')
-      .first();
+    const checkbox = page.locator('[data-testid="tracker-direct-browser-access"]');
     await checkbox.waitFor();
     expect(await checkbox.getAttribute('aria-checked')).toBe('true');
     expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
@@ -203,8 +201,7 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.waitForSelector('[data-testid="tracker-dialog"]');
     expect(
       await page
-        .locator('[data-testid="tracker-direct-browser-access"] [role="checkbox"]')
-        .first()
+        .locator('[data-testid="tracker-direct-browser-access"]')
         .getAttribute('aria-checked'),
     ).toBe('true');
 
@@ -229,11 +226,10 @@ describeTrackersUI('trackers UI flow', async () => {
       )
       .first()
       .fill('https://extension.example.com');
-    await page.locator('[data-testid="tracker-direct-browser-access"] [role="checkbox"]').click();
+    await page.locator('[data-testid="tracker-direct-browser-access"]').click();
     expect(
       await page
-        .locator('[data-testid="tracker-direct-browser-access"] [role="checkbox"]')
-        .first()
+        .locator('[data-testid="tracker-direct-browser-access"]')
         .getAttribute('aria-checked'),
     ).toBe('false');
     expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
@@ -248,8 +244,7 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.waitForSelector('[data-testid="tracker-dialog"]');
     expect(
       await page
-        .locator('[data-testid="tracker-direct-browser-access"] [role="checkbox"]')
-        .first()
+        .locator('[data-testid="tracker-direct-browser-access"]')
         .getAttribute('aria-checked'),
     ).toBe('false');
     expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);

@@ -87,6 +87,7 @@ describeShell('authenticated shell navigation', async () => {
     await createTracker(jar, token, 'Direct Shell Tracker ' + Date.now());
     const page = await createPage('/');
     await loginAs(page, user.email, user.password, { width: 390, height: 844 });
+    await page.locator('[data-testid="app-topbar"] [data-slot="toggle"]').click();
     await page.waitForSelector('[data-testid="extension-status-footer"]');
     await page.locator('[data-testid="extension-status-trigger"]').tap();
     await page.waitForSelector('[data-testid="extension-status-popover"]');
