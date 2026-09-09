@@ -1,8 +1,5 @@
 import { z } from 'zod';
-import {
-  remoteIssueSearchModeSchema,
-  type RemoteIssueSearchResult,
-} from '@osi/remote-trackers/contracts';
+import { remoteIssueSearchModeSchema } from '@osi/remote-trackers/contracts';
 
 /**
  * Client-side form schema for the remote issue picker popover (mode + query).
@@ -33,33 +30,6 @@ export const linkRemoteIssueSchema = z.object({
 });
 
 export type LinkRemoteIssueDto = z.infer<typeof linkRemoteIssueSchema>;
-
-/**
- * Request body accepted by the `proxied`-transport search endpoints
- * (REQ-253). The client identifies only the owned tracker and the
- * search input; the server derives the target tracker base URL from the
- * authenticated user's owned stored tracker and never accepts a
- * target URL from the client.
- */
-export const proxiedRemoteIssueSearchSchema = z.object({
-  trackerId: z.uuid({ error: 'error.trackerIdRequired' }),
-  mode: remoteIssueSearchModeSchema,
-  query: z
-    .string({ error: 'error.remoteIssueSearchQueryRequired' })
-    .trim()
-    .min(1, { error: 'error.remoteIssueSearchQueryRequired' }),
-});
-
-export type ProxiedRemoteIssueSearchDto = z.infer<typeof proxiedRemoteIssueSearchSchema>;
-
-/**
- * Adapter-neutral response returned by the `proxied` search endpoints:
- * either a bounded list of matches (title search) or a single exact match
- * (issue-ID lookup, `results` has at most one element).
- */
-export interface ProxiedRemoteIssueSearchResponseDto {
-  results: RemoteIssueSearchResult[];
-}
 
 /**
  * Persisted remote issue reference DTO. `url` is included only when the

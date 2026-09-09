@@ -164,6 +164,54 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.close();
   });
 
+  it('offers only client and extension modes and saves client mode on a mobile viewport', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'trackersmobileuser' });
+    const page = await createPage('/');
+    await loginAs(page, user.email, user.password, { width: 390, height: 844 });
+    await page.goto('/trackers');
+    await page.waitForSelector('[data-testid="trackers-page"]');
+
+    const trackerName = 'Mobile Client Tracker ' + Date.now();
+    await page.click('[data-testid="new-tracker-button"]');
+    await page.waitForSelector('[data-testid="tracker-dialog"]');
+    await page.click('[data-testid="tracker-execution-mode-select"]');
+    const options = page.getByRole('option');
+    await options.first().waitFor();
+    expect(await options.count()).toBe(2);
+    const labels = (await options.allTextContents()).join(' ');
+    expect(labels).toMatch(/Client|Klient/);
+    expect(labels).toMatch(/Extension|Rozszerzenie/);
+    expect(labels).not.toMatch(/Server \(browser -> server|Serwer \(przeglądarka -> serwer/);
+    await page.keyboard.press('Escape');
+
+    await page
+      .locator('[data-testid="tracker-name-input"] input, [data-testid="tracker-name-input"]')
+      .first()
+      .fill(trackerName);
+    await page
+      .locator(
+        '[data-testid="tracker-base-url-input"] input, [data-testid="tracker-base-url-input"]',
+      )
+      .first()
+      .fill('https://mobile-client.example.com');
+    expect(await page.locator('[data-testid="tracker-execution-mode-help"]').textContent()).toMatch(
+      /cross-origin|międzyźródłow/i,
+    );
+    await page.click('[data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="tracker-dialog"]', { state: 'hidden' });
+    await page.waitForFunction((name) => document.body.textContent?.includes(name), trackerName);
+
+    const row = page.locator('tr, [data-testid="trackers-row"]', { hasText: trackerName });
+    await row.locator('[data-testid^="edit-tracker-"]').click();
+    await page.waitForSelector('[data-testid="tracker-dialog"]');
+    const savedMode = await page
+      .locator('[data-testid="tracker-execution-mode-select"]')
+      .textContent();
+    expect(savedMode).toMatch(/Client|Klient/);
+
+    await page.close();
+  });
+
   it('saves extension mode without installation, shows recheck guidance, and keeps local timer entry working', async () => {
     const page = await openAuthed();
     await page.click('[data-testid="app-sidebar"] a[href="/trackers"]');

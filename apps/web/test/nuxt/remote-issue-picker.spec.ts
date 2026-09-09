@@ -4,6 +4,7 @@ import { mountSuspended } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import RemoteIssuePicker from '../../app/components/RemoteIssuePicker.vue';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const fetchMock = vi.fn();
 vi.stubGlobal('fetch', fetchMock);
@@ -116,13 +117,13 @@ function testI18n() {
   });
 }
 
-const config = {
+const config: TrackerDto = {
   id: 'config-1',
   name: 'Tracker 1',
-  systemType: 'openproject' as const,
+  systemType: 'openproject',
   baseUrl: 'https://op.example.com',
-  executionMode: 'client' as const,
-  roundingRule: 'none' as const,
+  executionMode: 'client',
+  roundingRule: 'none',
   createdAt: '',
   updatedAt: '',
 };
@@ -132,6 +133,7 @@ type PickerMountProps = {
   linkTestid?: string;
   cachedTestid?: string;
   unlinkedTestid?: string;
+  config?: TrackerDto;
 };
 
 function mount(props: PickerMountProps = {}) {
@@ -319,5 +321,49 @@ describe('RemoteIssuePicker', () => {
         .find('[data-testid="popover-content"] [data-testid="remote-issue-picker-unlink"]')
         .exists(),
     ).toBe(false);
+  });
+
+  it('exposes extension-unavailable on a mobile-sized viewport and does not fall back to direct search', async () => {
+    const previousWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+    vi.useFakeTimers();
+    window.localStorage.setItem('rsc:config-1', 'secret');
+    try {
+      const wrapper = await mount({
+        config: { ...config, executionMode: 'extension' },
+      });
+      await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+      await flushPromises();
+      const modeButtons = wrapper
+        .find('[data-testid="remote-issue-picker-mode"]')
+        .findAll('button');
+      await modeButtons[1]?.trigger('click');
+      await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('login bug');
+      await wrapper.find('form').trigger('submit');
+      await vi.advanceTimersByTimeAsync(2_000);
+      await flushPromises();
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(wrapper.text()).toContain('error.extensionUnavailable');
+    } finally {
+      vi.useRealTimers();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
+    }
+  });
+
+  it('maps a direct-mode connection failure without calling an OSI remote route', async () => {
+    window.localStorage.setItem('rsc:config-1', 'secret');
+    fetchMock.mockRejectedValue(new Error('network down'));
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    await modeButtons[1]?.trigger('click');
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('login bug');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(fetchMock).toHaveBeenCalled();
+    expect(wrapper.text()).toContain('error.remoteServerModeConnectionFailed');
   });
 });

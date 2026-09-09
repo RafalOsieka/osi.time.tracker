@@ -30,12 +30,12 @@ Vitest `test:coverage` include/exclude (`app/**`, `server/**`, `shared/**`, plus
 
 Current tests never talk to a real tracker:
 
-| Layer       | What exists today                                                          | What it is not          |
-| ----------- | -------------------------------------------------------------------------- | ----------------------- |
-| Unit        | `openproject-*` / `redmine-*` adapter and client tests with mocked `fetch` | No network              |
-| API e2e     | `remote-*-proxy.spec.ts` against an in-process fake HTTP server            | Not OpenProject/Redmine |
-| UI e2e      | Playwright `page.route` stubs of `/api/v3/...`                             | Not the real API        |
-| Dev compose | `docker-compose.openproject.yml`, `docker-compose.redmine.yml`             | Manual only; not in CI  |
+| Layer       | What exists today                                                                     | What it is not          |
+| ----------- | ------------------------------------------------------------------------------------- | ----------------------- |
+| Unit        | `openproject-*` / `redmine-*` adapter and client tests with mocked `fetch`            | No network              |
+| API e2e     | Authenticated tracker/sync/export contracts; former `/api/remote/*` routes assert 404 | Not OpenProject/Redmine |
+| UI e2e      | Playwright `page.route` stubs of `/api/v3/...`                                        | Not the real API        |
+| Dev compose | `docker-compose.openproject.yml`, `docker-compose.redmine.yml`                        | Manual only; not in CI  |
 
 There is no round-trip: create/search a real work package or issue, export time, and assert the remote time log. That needs a separate change (suggested: opt-in `test:e2e:trackers` against the compose stacks, skip unless an env flag is set, one smoke per provider for search, lookup, activities, and export). Do not fold it into the default `api`/`ui` jobs — those stacks are slow and stateful.
 

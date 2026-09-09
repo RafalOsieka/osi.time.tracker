@@ -161,7 +161,7 @@ export interface OpenProjectCreateTimeEntryInput {
 /**
  * L3: one method roughly equal to one OpenProject REST v3 endpoint. Folds in
  * the request-building/response-parsing logic previously duplicated across
- * `direct`/`proxied` composables and the server proxy, and builds Basic auth
+ * browser transports, and builds Basic auth
  * headers (`apikey:<secret>`) in exactly one place. Speaks HTTP status +
  * OpenProject-shaped payloads; quirk interpretation lives in
  * `OpenProjectAdapter`, one layer up.
