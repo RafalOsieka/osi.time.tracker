@@ -1,6 +1,6 @@
 ## Context
 
-See `proposal.md` for motivation. Trackers currently persist `executionMode`, adapter construction branches directly on it, and proactive extension checks are rendered in both tracker configuration and remote-issue selection. The extension handshake already distinguishes bridge compatibility, exact OSI website approval, and destination approval. The authenticated sidebar has a footer area above its user menu suitable for app-wide integration status.
+See `proposal.md` for motivation. Trackers currently persist `executionMode`, adapter construction branches directly on it, and proactive extension checks are rendered in both tracker configuration and remote-issue selection. The extension handshake already distinguishes bridge compatibility, exact OSI website approval, and destination approval. The authenticated sidebar has a footer area below its user menu suitable for app-wide integration status.
 
 ## Goals / Non-Goals
 
@@ -39,7 +39,7 @@ Alternative considered: dynamically prefer an available extension or fall back a
 
 ### Centralize readiness in a sidebar composable and footer component
 
-Extend the device-local availability model to combine the handshake with the authenticated user's active trackers and exact destination approval results. A sidebar footer component renders the aggregate indicator and popover; it sits immediately above the user menu and receives collapsed state from the existing sidebar layout. Required trackers sort before optional direct-capable trackers.
+Extend the device-local availability model to combine the handshake with the authenticated user's active trackers and exact destination approval results. A sidebar footer component renders the aggregate indicator and informational popover; it sits immediately below the user menu and receives collapsed state from the existing sidebar layout. Keeping the user menu first preserves its established position and separates account actions from integration diagnostics. Required trackers sort before optional direct-capable trackers.
 
 Aggregation is evaluated in this order:
 
@@ -50,9 +50,9 @@ Aggregation is evaluated in this order:
 
 Alternative considered: keep status panels near every remote control. This duplicates checks, produces inconsistent states, and overloads configuration forms, so only contextual errors remain at operation sites.
 
-### Reuse the existing approval protocol
+### Report approval state without initiating approval
 
-The popover reads and requests exact website/destination approvals through the existing bridge contract. It does not treat browser host permission as approval and never receives credentials. Rechecks after approval update the shared status model.
+The popover reads exact website/destination approval state through the existing bridge contract, but remains an informational diagnostic surface and does not initiate approval. Approval continues through contextual extension-owned flows, avoiding a second setup workflow in the sidebar. The popover does not treat browser host permission as approval and never receives credentials. Rechecks after approval update the shared status model.
 
 ## Risks / Trade-offs
 

@@ -7,7 +7,7 @@ Users currently choose an adapter execution mode even though their actual decisi
 - **BREAKING** Replace persisted `executionMode` with `directBrowserAccess`, migrating `client` to `true` and `extension` to `false` without changing tracker identities or related records.
 - Select transport deterministically: direct browser access uses the client adapter; blocked direct access requires the extension adapter; never retry through another transport automatically.
 - Replace the execution-mode selector with a default-enabled **Direct browser connection allowed** checkbox and accessible explanatory help covering browser restrictions and CORS.
-- Add an extension status row above the user menu in the sidebar footer, including a responsive popover with extension compatibility, website approval, and per-tracker destination approval details.
+- Add an extension status row below the user menu in the sidebar footer, including a responsive informational popover with extension compatibility, website approval, and per-tracker destination approval details.
 - Aggregate status as neutral when no active tracker requires the extension, green when required extension setup is complete, orange when required tracker destinations lack approval, and red when the extension or OSI website approval is invalid.
 - Remove redundant proactive extension status checks from tracker configuration and remote-issue selection while retaining contextual operation errors.
 

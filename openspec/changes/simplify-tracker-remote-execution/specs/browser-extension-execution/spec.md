@@ -24,7 +24,7 @@ The web app SHALL derive transport from the tracker's persisted capability: `dir
 
 ### Requirement: REQ-315 Sidebar communicates extension readiness
 
-The authenticated sidebar SHALL contain a compact extension-status row immediately above the user menu and outside navigation. Its indicator SHALL aggregate active trackers and device-local extension status using this precedence: neutral when no active tracker requires the extension; red when an extension is required but unavailable, incompatible, or the current OSI website is not approved; orange when the extension and website are valid but at least one extension-required tracker destination is not approved; green when every required part is valid. Direct-capable trackers SHALL NOT downgrade the aggregate state.
+The authenticated sidebar SHALL contain a compact extension-status row immediately below the user menu and outside navigation. Its indicator SHALL aggregate active trackers and device-local extension status using this precedence: neutral when no active tracker requires the extension; red when an extension is required but unavailable, incompatible, or the current OSI website is not approved; orange when the extension and website are valid but at least one extension-required tracker destination is not approved; green when every required part is valid. Direct-capable trackers SHALL NOT downgrade the aggregate state.
 
 #### Scenario: Extension is not required
 - **WHEN** no active tracker has `directBrowserAccess: false`
@@ -42,9 +42,9 @@ The authenticated sidebar SHALL contain a compact extension-status row immediate
 - **WHEN** the extension and website are valid and every extension-required tracker destination is approved
 - **THEN** the indicator SHALL show the green ready state
 
-### Requirement: REQ-316 Extension status details are accessible and actionable
+### Requirement: REQ-316 Extension status details are accessible and informative
 
-The sidebar status row SHALL open a localized popover by hover, keyboard focus, click, or tap. The popover SHALL distinguish extension connection and compatibility, current website approval, and each configured tracker's destination approval. Extension-required trackers SHALL appear first; direct-capable trackers MAY appear as optional destinations but SHALL be identified as not required. An unapproved destination SHALL provide an action that initiates the existing extension approval flow. The collapsed sidebar SHALL retain an understandable icon and status indicator.
+The sidebar status row SHALL open a localized informational popover by hover, keyboard focus, click, or tap. The popover SHALL distinguish extension connection and compatibility, current website approval, and each configured tracker's destination approval. Extension-required trackers SHALL appear first; direct-capable trackers MAY appear as optional destinations but SHALL be identified as not required. Approval SHALL remain owned by contextual extension flows rather than being initiated from this popover. The collapsed sidebar SHALL retain an understandable icon and status indicator.
 
 #### Scenario: Inspect status with keyboard
 - **WHEN** a keyboard user focuses or activates the status row
@@ -52,11 +52,7 @@ The sidebar status row SHALL open a localized popover by hover, keyboard focus, 
 
 #### Scenario: Inspect status on touch
 - **WHEN** a touch user taps the status row
-- **THEN** the same tracker approval details and actions SHALL be available without hover
-
-#### Scenario: Start missing destination approval
-- **WHEN** a user activates the action for an unapproved tracker destination
-- **THEN** the existing extension-owned approval flow SHALL be initiated for that exact destination and OSI website
+- **THEN** the same tracker approval details SHALL be available without hover
 
 #### Scenario: Direct-capable tracker lacks optional approval
 - **WHEN** a direct-capable tracker destination is not extension-approved

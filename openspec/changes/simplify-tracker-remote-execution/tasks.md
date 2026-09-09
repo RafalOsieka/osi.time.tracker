@@ -19,8 +19,8 @@
 
 - [x] 4.1 Extend the extension bridge/availability model to expose compatibility, current website approval, and exact per-tracker destination approvals without credentials, and verify utility/composable unit tests cover unavailable, incompatible, website-unapproved, destination-unapproved, and approved responses.
 - [x] 4.2 Implement pure aggregate-state and required-first ordering logic for neutral, red, orange, and green outcomes, ensuring optional direct-capable approvals never downgrade status, and verify exhaustive unit tests cover precedence and empty tracker sets.
-- [x] 4.3 Add the extension-status row immediately above the sidebar user menu with collapsed presentation and localized non-color status semantics, then verify Nuxt component tests cover placement and every aggregate state.
-- [x] 4.4 Add the bounded approval-details popover with hover, focus, click/tap triggers and the existing exact-destination approval action, then verify Nuxt component tests cover keyboard/touch opening, required-first details, optional labels, approval recheck, and focus behavior.
+- [x] 4.3 Add the extension-status row immediately below the sidebar user menu with collapsed presentation and localized non-color status semantics, then verify Nuxt component tests cover placement and every aggregate state.
+- [x] 4.4 Add the bounded informational approval-details popover with hover, focus, and click/tap triggers while leaving approval initiation to contextual extension flows, then verify Nuxt component tests cover keyboard/touch opening, required-first details, optional labels, and focus behavior.
 - [x] 4.5 Remove the proactive extension panel from remote-issue selection while preserving operation-specific errors and recovery actions, then verify its component tests cover both successful extension use and incomplete setup failure.
 - [x] 4.6 Add or update a responsive authenticated-shell journey that verifies the footer status and popover in expanded, collapsed, keyboard, and touch/mobile contexts, including neutral status when no tracker requires the extension.
 
