@@ -124,6 +124,7 @@ describe('worker runtime ports', () => {
           fetchTimeLogs: async () => [],
           fetchTimeLogsInRange: async () => [],
           createTimeEntry: async () => ({ remoteLogId: 'log-1' }),
+          deleteTimeEntry: async () => ({ status: 'deleted' as const }),
         }) satisfies RemoteTrackerAdapter,
     });
     port.emit({ type: 'handshake', protocolVersion: EXTENSION_PROTOCOL_VERSION });

@@ -54,11 +54,12 @@ export interface RemoteSyncDayEntryDto {
 }
 
 /**
- * Append-only provenance for one successfully finalized remote log on this
- * task/day (REQ-119). Multiple records per task/day are allowed.
+ * Provenance for one successfully finalized or linked remote log on this
+ * task/day (REQ-119). Identity is tracker-scoped (REQ-304).
  */
 export interface RemoteSyncExportProvenanceDto {
   exportId: string;
+  trackerId: string;
   remoteLogId: string;
   remoteIssueId: string;
   exportDurationSeconds: number;

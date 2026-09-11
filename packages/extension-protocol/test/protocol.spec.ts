@@ -44,6 +44,7 @@ describe('extension protocol', () => {
       'fetchTimeLogs',
       'fetchTimeLogsInRange',
       'createTimeEntry',
+      'deleteTimeEntry',
     ]);
   });
 
@@ -66,6 +67,7 @@ describe('extension protocol', () => {
         activityId: '9',
         comment: 'work',
       }),
+      baseRequest('deleteTimeEntry', 'l1'),
     ];
 
     for (const sample of samples) {
@@ -158,6 +160,16 @@ describe('extension protocol', () => {
           operation: 'createTimeEntry',
           ok: true,
           result: { remoteLogId: 'l1' },
+        },
+      },
+      {
+        operation: 'deleteTimeEntry',
+        value: {
+          type: 'operation-result',
+          requestId: 'req-1',
+          operation: 'deleteTimeEntry',
+          ok: true,
+          result: { status: 'not_found' },
         },
       },
     ];

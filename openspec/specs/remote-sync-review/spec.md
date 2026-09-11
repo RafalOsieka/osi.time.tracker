@@ -245,75 +245,89 @@ A Ready task's export SHALL include every completed local entry attributed to th
 
 ### Requirement: REQ-118 Current-account remote logs provide same-day context
 
-The browser-orchestrated remote adapter SHALL resolve the authenticated remote account and fetch
-that account's time logs for the selected local date and linked issues, following pagination. The
-page SHALL display those logs beside the corresponding task as informational context only. Remote
-logs SHALL NOT alter selection, infer local-entry provenance, or block export.
+The browser-orchestrated remote adapter SHALL resolve the authenticated remote account and fetch that
+account's time logs for the selected local date and linked issues, following pagination. The page SHALL
+display those logs beside the corresponding task, label each as Linked or Unlinked from tracker-scoped
+local provenance, and expose eligible reconciliation actions. Remote logs SHALL NOT automatically infer
+provenance, alter review values, or block export.
 
 #### Scenario: Same-day logs for the current account are displayed
 - **WHEN** the current remote account has logs on a linked issue for the selected date
-- **THEN** those logs SHALL be displayed with stable identifying details beside that task
+- **THEN** each log SHALL be displayed with stable details and an explicit Linked or Unlinked state
 
 #### Scenario: Other accounts are excluded
 - **WHEN** other accounts have logs on the same issue and date
-- **THEN** their logs SHALL NOT be displayed
+- **THEN** their logs SHALL NOT be displayed or reconciled
 
 #### Scenario: Remote logs do not change export eligibility
 - **WHEN** one or more contextual remote logs are displayed
-- **THEN** local entries SHALL remain selected according to local page state and export SHALL remain
-  available
+- **THEN** review values and export eligibility SHALL remain controlled by local page state and provenance
 
 #### Scenario: Remote-log fetch fails
 - **WHEN** remote-log context cannot be loaded
-- **THEN** the row SHALL show an accessible retryable context error without misrepresenting that no
-  logs exist or blocking an otherwise valid export
+- **THEN** the row SHALL show an accessible retryable error without claiming no logs exist or blocking an
+  otherwise valid export
 
 ### Requirement: REQ-119 Successful exports persist non-locking provenance and warn on repeats
 
-For every remote log successfully created and locally finalized, the application SHALL persist a user-scoped append-only export record containing task, local date, remote issue and log IDs, exact export duration, required-field values, selected local entry IDs (all completed entries of that task/day), the export request key, and timestamps. After that record exists for the task/date, the row SHALL be Sent. Export SHALL NOT create another remote log for that task/date from this page, including when later local entries are added. The review phase SHALL NOT offer a repeat-export confirmation for previously exported entries because those rows are not included. Stale or foreign finalization SHALL still be rejected without persisting partial provenance.
+For every remote log successfully created, linked, and locally finalized, the application SHALL persist a
+user- and tracker-scoped export record containing task, local date, remote issue and log IDs, exact remote
+duration, required-field values, covered completed local entry IDs, and timestamps. After provenance exists
+for the task/date, the row SHALL be Sent and SHALL not create another remote log from that page. Removing
+provenance after confirmed remote deletion SHALL make the task/day exportable again.
 
 #### Scenario: Successful export records exact provenance
-
 - **WHEN** the tracker creates a log and local finalization succeeds
-- **THEN** one export record and its selected-entry associations SHALL be persisted atomically with the exact submitted values, the export request key, and returned remote log ID
+- **THEN** provenance and covered-entry associations SHALL be persisted atomically with submitted values
+
+#### Scenario: Existing provenance prevents another export
+- **WHEN** a task/date already has finalized provenance
+- **THEN** the row SHALL be Sent and Export SHALL NOT include it
 
 #### Scenario: Previously exported entry is selected again
-
 - **WHEN** a task/date already has finalized provenance
-- **THEN** the row SHALL be Sent, Export SHALL NOT include it, and no repeat-export confirmation SHALL be required
+- **THEN** the row SHALL remain Sent and no repeat-export confirmation SHALL be offered
 
 #### Scenario: New entries can be exported later
+- **WHEN** entries are added after an earlier export and that export is subsequently deleted remotely
+- **THEN** removal of its provenance SHALL make all completed entries for the task/day exportable again
 
-- **WHEN** entries are added to a task/day after an earlier export
-- **THEN** the row SHALL remain Sent and those entries SHALL NOT be exported from this page until a future undo (out of scope here) clears provenance
+#### Scenario: Confirmed deletion clears provenance
+- **WHEN** a linked remote log is confirmed deleted or absent
+- **THEN** its provenance and covered-entry associations SHALL be removed atomically
 
 #### Scenario: Stale or foreign finalization is rejected
-
-- **WHEN** finalization references an entry not owned by the user, not completed, on another local date, or assigned to another task
-- **THEN** the endpoint SHALL reject the request without persisting partial provenance
+- **WHEN** finalization references data outside the authenticated user's matching task/day
+- **THEN** the endpoint SHALL reject it without persisting partial provenance
 
 ### Requirement: REQ-120 Export reports per-task outcomes without claiming strict idempotency
 
-The page SHALL create at most one remote log for each included Ready task in one batch action and SHALL display a succeeded, failed, or needs-verification outcome per task without hiding successful tasks. Tasks that are Sent, have zero duration, have no activity, or have unresolved prerequisites SHALL be excluded and SHALL be listed as skipped with their reason. A known finalized remote log ID SHALL never be recreated automatically. Failure after remote creation and before local finalization SHALL be reported as needing verification; when the remote log identifier is known, a retry SHALL reuse the attempt's export request key to complete the same logical export rather than create a duplicate, and when it is not known the user SHALL be warned to verify in the tracker before retrying.
+The page SHALL create at most one remote log for each included Ready task. After all scheduled tasks reach
+a terminal outcome, the confirmation dialog SHALL close and the day review SHALL refresh. A success toast
+SHALL be shown only when every included task finalized locally; otherwise a warning toast SHALL be shown.
+Successfully finalized rows SHALL become Sent, while failed or unattempted rows SHALL remain actionable.
+A known finalized remote log ID SHALL never be recreated automatically.
+
+#### Scenario: Entire batch succeeds
+- **WHEN** every included task is remotely created and locally finalized
+- **THEN** the dialog SHALL close, the refreshed rows SHALL be Sent, and a success toast SHALL appear
 
 #### Scenario: Mixed batch outcomes remain visible
-
-- **WHEN** some task exports succeed and others fail
-- **THEN** the report SHALL show the outcome and actionable error for every attempted task
+- **WHEN** at least one included task does not finalize successfully
+- **THEN** the dialog SHALL close, successful rows SHALL be Sent, remaining rows SHALL be actionable, and a
+  warning toast SHALL appear
 
 #### Scenario: Excluded tasks are not sent
-
-- **WHEN** the day contains Sent tasks or tasks with no activity, zero duration, or unresolved prerequisites
-- **THEN** no remote create request SHALL be made for those tasks and they SHALL be listed as skipped with their reason
+- **WHEN** a task is Sent, blocked, has zero duration, or lacks a selected activity
+- **THEN** no remote creation SHALL be attempted for that task
 
 #### Scenario: Local finalization fails after remote creation
-- **WHEN** the tracker returns a remote log ID but local finalization fails
-- **THEN** the task SHALL be marked as needing verification, remote-log context SHALL be refreshable,
-  and a retry SHALL finalize that same remote log under the same export request key instead of creating a duplicate
+- **WHEN** remote creation succeeds but local finalization fails
+- **THEN** the refreshed row SHALL remain actionable and the batch SHALL produce a warning toast
 
 #### Scenario: Known finalized operation is not automatically recreated
-- **WHEN** the same finalized export operation is retried with its known remote log ID
-- **THEN** the application SHALL return the stored result without creating another remote log
+- **WHEN** finalization is retried with a known finalized remote log ID
+- **THEN** the stored result SHALL be returned without creating another remote log
 
 ### Requirement: REQ-121 Browser orchestration supports direct and proxied client transport
 The browser SHALL orchestrate remote reads, at most one remote creation per included task, and local finalization under `client` or `extension`. Both modes SHALL provide equivalent provider behavior, retries, deduplication, and per-task isolation. `client` SHALL call the tracker directly; `extension` SHALL use the approved desktop extension. Neither mode SHALL send tracker credentials through OSI APIs, and execution SHALL NOT silently fall back between modes.
@@ -525,111 +539,36 @@ Each displayed remote log SHALL render its comment alongside its duration, activ
 - **WHEN** a log comment is too long to display in full
 - **THEN** the visible text SHALL be truncated while the complete comment remains available to assistive technologies and on hover or focus
 
-### Requirement: REQ-227 Possible-duplicate warning without blocking export
-
-When a row's linked issue already has a fetched remote log for the selected date whose duration equals the row's export duration, the page SHALL display a translated warning identifying the colliding log, conveyed as text with an icon and never by colour alone. The warning SHALL be dismissible per row, SHALL NOT change entry selection, SHALL NOT alter the row's state, and SHALL NOT disable or block export. Absence of remote-log context, or a failed remote-log fetch, SHALL NOT produce a warning and SHALL NOT be presented as an absence of duplicates.
-
-#### Scenario: Matching duration raises a warning
-- **WHEN** a linked issue has a same-day remote log whose duration equals the row's export duration
-- **THEN** the row SHALL display a translated possible-duplicate warning naming the colliding log
-
-#### Scenario: Export remains available
-- **WHEN** a possible-duplicate warning is displayed
-- **THEN** the row SHALL remain pushable and the export action SHALL remain enabled
-
-#### Scenario: Dismissing the warning
-- **WHEN** the user dismisses a possible-duplicate warning
-- **THEN** the warning SHALL be hidden for that row without changing selection, duration or state
-
-#### Scenario: Different duration raises no warning
-- **WHEN** the only same-day remote log on the issue has a different duration
-- **THEN** no duplicate warning SHALL be displayed
-
-#### Scenario: Failed log fetch does not imply no duplicates
-- **WHEN** remote-log context could not be loaded for a row
-- **THEN** no duplicate warning SHALL be shown and the page SHALL NOT state that no duplicate exists
-
 ### Requirement: REQ-229 Export runs through a review, running and report dialog
 
-Activating Export SHALL open a single dialog that carries the run through three phases without closing: **review**, **running**, and **report**. Export SHALL include every Ready row with a non-zero to-send duration and a selected activity. The dialog SHALL present one row per included task throughout all three phases so row identity never changes. In the review phase it SHALL state, per task, the linked issue, the selected activity, the tracked and to-send durations, and the comment that will be written; it SHALL also state the day's day-total, tracked and to-send summaries and list what is being skipped with its translated reason (Sent, blocked, zero duration, missing activity). No remote request SHALL be made before the user confirms. Cancelling the review SHALL leave all local review state unchanged and SHALL create nothing remotely. While running, the dialog SHALL NOT be dismissible except through the stop action. All phases SHALL be keyboard operable, use translated text, and expose stable `data-testid` hooks.
+Activating Export SHALL open a confirmation listing only each included task's title and to-send duration,
+plus the total to-send duration. Export SHALL include every Ready row with non-zero duration and a selected
+activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without
+changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
 
 #### Scenario: Review lists exactly what will be sent
-
-- **WHEN** the user activates Export with several Ready tasks
-- **THEN** the dialog SHALL open in the review phase listing each task's issue, activity, tracked and to-send durations and comment, together with the day's three summaries
+- **WHEN** Export is activated with eligible rows
+- **THEN** the dialog SHALL list each included title and duration plus their total
 
 #### Scenario: Skipped tasks are stated with reasons
-
-- **WHEN** the day contains Sent or blocked tasks
-- **THEN** the review phase SHALL list them with their translated reason rather than omitting them silently
+- **WHEN** the day contains ineligible tasks
+- **THEN** their durable row states SHALL state why they are excluded without repeating them in the dialog
 
 #### Scenario: Nothing is sent before confirmation
-
-- **WHEN** the review phase is open
-- **THEN** no remote time-entry creation and no finalization request SHALL have been made
+- **WHEN** the confirmation is open
+- **THEN** no remote creation or local finalization SHALL have occurred
 
 #### Scenario: Cancelling changes nothing
-
-- **WHEN** the user cancels the review phase
-- **THEN** the dialog SHALL close, no remote log SHALL exist, and activity selection and export durations SHALL be unchanged
+- **WHEN** the user cancels confirmation
+- **THEN** no remote creation or local finalization SHALL occur
 
 #### Scenario: Confirmation advances to the running phase
-
-- **WHEN** the user confirms the review
-- **THEN** the dialog SHALL move to the running phase with the same rows and begin the sequential export
+- **WHEN** the user confirms the batch
+- **THEN** export SHALL begin and the dialog SHALL prevent dismissal or duplicate confirmation until complete
 
 #### Scenario: Export is disabled when nothing is Ready
-
-- **WHEN** the day has no Ready row with a non-zero to-send duration and a selected activity
+- **WHEN** no Ready row has non-zero duration and a selected activity
 - **THEN** Export SHALL be disabled
-
-### Requirement: REQ-230 Per-task progress and a stop that never interrupts a task
-
-During the running phase the dialog SHALL show a per-task status advancing through queued, creating the remote log, finalizing locally, and a terminal succeeded, failed or needs-verification status, plus an overall completed-of-total indicator announced through a polite live region. A stop action SHALL be available while running; it SHALL prevent any further task from starting and SHALL NOT interrupt the task currently in flight. Tasks that were never attempted SHALL be reported as not attempted rather than as failures. When the last task reaches a terminal status, the dialog SHALL advance to the report phase.
-
-#### Scenario: Each task reports its own progress
-- **WHEN** the export is running over several tasks
-- **THEN** each row SHALL show its own current status and the dialog SHALL show how many tasks of the total have completed
-
-#### Scenario: Progress is announced accessibly
-- **WHEN** the completed-of-total count changes
-- **THEN** the change SHALL be announced through a polite live region
-
-#### Scenario: Stop halts before the next task
-- **WHEN** the user activates the stop action while a task is in flight
-- **THEN** the in-flight task SHALL be allowed to finish and no further task SHALL be started
-
-#### Scenario: Unattempted tasks are not reported as failures
-- **WHEN** the run was stopped before some tasks were attempted
-- **THEN** those tasks SHALL be reported as not attempted, distinctly from failed tasks
-
-#### Scenario: Completion advances to the report
-- **WHEN** every attempted task has reached a terminal status
-- **THEN** the dialog SHALL advance to the report phase without losing any row
-
-### Requirement: REQ-231 Report groups outcomes and offers per-task retry
-
-The report phase SHALL group the run's rows as succeeded, failed and needs-verification, SHALL never hide successful tasks, and SHALL show each task's actionable translated message. A needs-verification row SHALL be presented at warning level, SHALL state the known remote log identifier, and SHALL offer a link to that log in the configured tracker when a base URL is available. Failed and needs-verification rows SHALL offer a retry action that re-runs **only that task** with the same inputs, without re-confirming the whole batch, replacing that row's outcome in place. Retrying a needs-verification row SHALL attempt to complete the same logical export rather than start a new one. Succeeded rows SHALL identify the created remote log. Closing the report SHALL refresh the day review so provenance and remote-log context reflect the run.
-
-#### Scenario: Mixed outcomes are all visible
-- **WHEN** a run contains successes, failures and a needs-verification task
-- **THEN** the report SHALL show all three groups with every attempted task and its translated message
-
-#### Scenario: Retry re-runs a single task
-- **WHEN** the user retries a failed task from the report
-- **THEN** only that task SHALL be exported again, its row status SHALL be replaced in place, and no other task SHALL be re-sent
-
-#### Scenario: Retry does not re-confirm the batch
-- **WHEN** the user retries one task from the report
-- **THEN** the review phase SHALL NOT be shown again and no additional repeat confirmation SHALL be required
-
-#### Scenario: Needs-verification row is actionable
-- **WHEN** a task's remote log was created but local finalization failed
-- **THEN** its report row SHALL warn in text with an icon, state the remote log identifier, and offer a link to that log when the configuration provides a base URL
-
-#### Scenario: Closing the report refreshes the day
-- **WHEN** the user closes the report phase
-- **THEN** the day review SHALL be refreshed so provenance and remote-log context reflect what was exported
 
 ### Requirement: REQ-232 Editable per-task export comment
 

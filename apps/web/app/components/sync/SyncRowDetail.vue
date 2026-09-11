@@ -1,37 +1,45 @@
 <script setup lang="ts">
 import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
-import type { RemoteSyncDayEntryDto } from '~~/shared/types/remote-sync-day';
+import type {
+  RemoteSyncDayEntryDto,
+  RemoteSyncExportProvenanceDto,
+} from '~~/shared/types/remote-sync-day';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 
 const {
   taskId,
   entries,
+  exportRecords,
+  trackerId,
   showRemoteLogs,
   remoteLogs,
   remoteLogsLoading,
   remoteLogsErrorKey,
   remoteLogsLoaded,
-  duplicateLog,
-  duplicateDismissed,
+  canReconcile,
+  busy,
   formatEntryStart,
   formatEntryStop,
 } = defineProps<{
   taskId: string;
   entries: RemoteSyncDayEntryDto[];
+  exportRecords: RemoteSyncExportProvenanceDto[];
+  trackerId: string | null;
   showRemoteLogs: boolean;
   remoteLogs: RemoteTimeLogDto[];
   remoteLogsLoading: boolean;
   remoteLogsErrorKey: string | null;
   remoteLogsLoaded: boolean;
-  duplicateLog: RemoteTimeLogDto | null;
-  duplicateDismissed: boolean;
+  canReconcile: boolean;
+  busy: boolean;
   formatEntryStart: (iso: string) => string;
   formatEntryStop: (iso: string) => string;
 }>();
 
 const emit = defineEmits<{
   retryRemoteLogs: [];
-  dismissDuplicate: [];
+  link: [log: RemoteTimeLogDto];
+  delete: [log: RemoteTimeLogDto, exportId: string];
 }>();
 
 const { t } = useI18n();
@@ -44,48 +52,53 @@ function commentText(log: RemoteTimeLogDto): string {
   return comment && comment.length > 0 ? comment : t('remoteSync.remoteLogNoComment');
 }
 
-function hasRealComment(log: RemoteTimeLogDto): boolean {
-  return !!(log.comment && log.comment.trim().length > 0);
+function linkedExport(log: RemoteTimeLogDto): RemoteSyncExportProvenanceDto | undefined {
+  if (!trackerId) return undefined;
+  return exportRecords.find(
+    (record) => record.trackerId === trackerId && record.remoteLogId === log.remoteLogId,
+  );
 }
+
+function isLinked(log: RemoteTimeLogDto): boolean {
+  return !!linkedExport(log);
+}
+
+function emitDelete(log: RemoteTimeLogDto) {
+  const record = linkedExport(log);
+  if (!record) return;
+  emit('delete', log, record.exportId);
+}
+
+const hasFinalizedExport = computed(() => exportRecords.length > 0);
+
+function logFromProvenance(record: RemoteSyncExportProvenanceDto): RemoteTimeLogDto {
+  return {
+    remoteLogId: record.remoteLogId,
+    remoteIssueId: record.remoteIssueId,
+    spentOn: '',
+    durationSeconds: record.exportDurationSeconds,
+    activityId: record.requiredFieldValues.activity ?? null,
+    activityName: null,
+    comment: null,
+    remoteUserId: null,
+  };
+}
+
+/** Local provenance with no matching tracker log still needs Delete (orphan / stale cache). */
+const displayedRemoteLogs = computed(() => {
+  if (!remoteLogsLoaded || remoteLogsErrorKey) return remoteLogs;
+  const known = new Set(remoteLogs.map((log) => log.remoteLogId));
+  const missing = exportRecords
+    .filter(
+      (record) => (!trackerId || record.trackerId === trackerId) && !known.has(record.remoteLogId),
+    )
+    .map(logFromProvenance);
+  return [...remoteLogs, ...missing];
+});
 </script>
 
 <template>
   <div class="grid gap-4 py-2" :data-testid="`remote-sync-detail-${taskId}`">
-    <UAlert
-      v-if="duplicateLog && !duplicateDismissed"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-triangle-alert"
-      close
-      :title="
-        t('remoteSync.duplicateWarning', {
-          id: duplicateLog.remoteLogId,
-          commentPart: hasRealComment(duplicateLog)
-            ? t('remoteSync.duplicateWarningComment', { comment: duplicateLog.comment })
-            : '',
-        })
-      "
-      :data-testid="`remote-sync-duplicate-warning-${taskId}`"
-      @update:open="
-        (open: boolean) => {
-          if (!open) emit('dismissDuplicate');
-        }
-      "
-    >
-      <template #close>
-        <UButton
-          icon="i-lucide-x"
-          color="neutral"
-          variant="link"
-          size="md"
-          square
-          :aria-label="t('remoteSync.duplicateWarningDismiss')"
-          :data-testid="`remote-sync-duplicate-dismiss-${taskId}`"
-          @click="emit('dismissDuplicate')"
-        />
-      </template>
-    </UAlert>
-
     <div class="grid gap-4 lg:grid-cols-2" :class="{ 'lg:grid-cols-1': !showRemoteLogs }">
       <div
         v-if="entries.length > 0"
@@ -147,28 +160,60 @@ function hasRealComment(log: RemoteTimeLogDto): boolean {
           />
         </template>
         <p
-          v-else-if="remoteLogsLoaded && remoteLogs.length === 0"
+          v-else-if="remoteLogsLoaded && displayedRemoteLogs.length === 0"
           class="m-0 text-sm text-muted"
           :data-testid="`remote-sync-remote-logs-empty-${taskId}`"
         >
           {{ t('remoteSync.remoteLogsEmpty') }}
         </p>
-        <ul v-else-if="remoteLogs.length > 0" class="m-0 grid gap-2 pl-0">
+        <ul v-else-if="displayedRemoteLogs.length > 0" class="m-0 grid gap-2 pl-0">
           <li
-            v-for="log in remoteLogs"
+            v-for="log in displayedRemoteLogs"
             :key="log.remoteLogId"
-            class="grid list-none gap-0.5"
+            class="grid list-none gap-1"
             :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
           >
-            <span class="text-sm">
-              {{
-                t('remoteSync.remoteLogItem', {
-                  duration: formatDuration(log.durationSeconds),
-                  activity: log.activityName ?? t('remoteSync.emptyCell'),
-                  id: log.remoteLogId,
-                })
-              }}
-            </span>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="text-sm">
+                {{
+                  t('remoteSync.remoteLogItem', {
+                    duration: formatDuration(log.durationSeconds),
+                    activity: log.activityName ?? t('remoteSync.emptyCell'),
+                    id: log.remoteLogId,
+                  })
+                }}
+              </span>
+              <UBadge
+                :color="isLinked(log) ? 'success' : 'neutral'"
+                variant="subtle"
+                size="sm"
+                :label="
+                  isLinked(log)
+                    ? t('remoteSync.remoteLogLinked')
+                    : t('remoteSync.remoteLogUnlinked')
+                "
+                :data-testid="`remote-sync-remote-log-state-${log.remoteLogId}`"
+              />
+              <UButton
+                v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"
+                variant="ghost"
+                size="xs"
+                :disabled="busy"
+                :label="t('remoteSync.linkRemoteEntry')"
+                :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
+                @click="emit('link', log)"
+              />
+              <UButton
+                v-if="canReconcile && isLinked(log) && linkedExport(log)"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :disabled="busy"
+                :label="t('remoteSync.deleteRemoteEntry')"
+                :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"
+                @click="emitDelete(log)"
+              />
+            </div>
             <OverflowTooltip :text="commentText(log)">
               <span
                 class="block max-w-prose truncate text-sm text-muted"

@@ -10,6 +10,7 @@ import {
   type RemoteAccount,
   type RemoteFieldOption,
   type RemoteIssueSearchResult,
+  type RemoteTimeEntryDeleteOutcome,
   type RemoteTimeLogDto,
   type RemoteTrackerAdapter,
   type TrackerSystemType,
@@ -33,7 +34,7 @@ function permissionError(messageKey = EXTENSION_ERROR_MESSAGE_KEYS.destinationUn
 
 /**
  * `extension` execution-mode adapter: handshakes without a secret, then
- * forwards the seven contract operations through the document bridge.
+ * forwards the eight contract operations through the document bridge.
  */
 export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
   constructor(
@@ -82,6 +83,10 @@ export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
     comment?: string;
   }): Promise<{ remoteLogId: string }> {
     return this.invoke('createTimeEntry', input);
+  }
+
+  async deleteTimeEntry(remoteLogId: string): Promise<RemoteTimeEntryDeleteOutcome> {
+    return this.invoke('deleteTimeEntry', remoteLogId);
   }
 
   private destination(): DestinationSelector {

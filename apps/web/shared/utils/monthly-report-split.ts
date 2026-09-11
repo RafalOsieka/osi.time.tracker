@@ -4,6 +4,15 @@ export interface ReportRemoteLog {
   durationSeconds: number;
 }
 
+export function knownRemoteLogIdsForTracker(
+  exports: readonly { trackerId: string; remoteLogId: string }[],
+  trackerId: string,
+): Set<string> {
+  return new Set(
+    exports.filter((item) => item.trackerId === trackerId).map((item) => item.remoteLogId),
+  );
+}
+
 export interface TrackerDayHours {
   appSeconds: number;
   directSeconds: number;

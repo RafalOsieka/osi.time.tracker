@@ -304,6 +304,18 @@ export class OpenProjectClient {
     return { status, result: parseCreateTimeEntryResult(payload) };
   }
 
+  async deleteTimeEntry(remoteLogId: string, secret: string | null): Promise<{ status: number }> {
+    const { status } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/time_entries/${encodeURIComponent(remoteLogId)}`,
+        method: 'DELETE',
+        headers: authHeaders(secret),
+      },
+      z.unknown(),
+    );
+    return { status };
+  }
+
   private base(): string {
     return normalizeBaseUrl(this.baseUrl);
   }

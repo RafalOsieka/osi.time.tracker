@@ -4,6 +4,8 @@ export interface AppConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmColor?: 'error' | 'primary' | 'neutral';
+  /** Runs after accept, while the dialog stays open. Close only after it settles. */
+  onConfirm?: () => Promise<void> | void;
 }
 
 /**

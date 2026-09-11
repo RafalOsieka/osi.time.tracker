@@ -228,14 +228,8 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.keyboard.press('Tab');
     await page.click('[data-testid="remote-sync-export-button"]');
     await page.waitForSelector('[data-testid="remote-sync-export-dialog-body"]');
-    await page.waitForFunction((taskId) => {
-      const el = document.querySelector(`[data-testid="remote-sync-export-comment-${taskId}"]`);
-      return !!el && el.textContent?.includes('Reviewed comment from E2E');
-    }, entry.taskId);
+    await page.waitForSelector(`[data-testid="remote-sync-export-row-${entry.taskId}"]`);
     await page.click('[data-testid="remote-sync-export-confirm"]');
-    await page.waitForSelector('[data-testid="remote-sync-export-group-succeeded"]');
-    await page.waitForSelector(`[data-testid="remote-sync-export-result-${entry.taskId}"]`);
-    await page.click('[data-testid="remote-sync-export-close"]');
     await page.waitForSelector('[data-testid="remote-sync-export-dialog"]', { state: 'hidden' });
     await page.waitForFunction((taskId) => {
       const el = document.querySelector(`[data-testid="remote-sync-state-${taskId}"]`);
@@ -440,6 +434,108 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.waitForURL(`**/sync/${next}`);
     await page.waitForSelector('[data-testid="remote-sync-empty-state"]');
 
+    await page.close();
+  });
+
+  it('links an unlinked remote log and deletes the linked entry', async () => {
+    const { jar, token } = await apiLogin('remotesyncui@example.com');
+    await fetch(url('/api/user/settings'), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ timezone: 'UTC' }),
+    });
+    const tracker = await createTracker(jar, token, 'Link Tracker ' + Date.now(), {
+      baseUrl: OPENPROJECT_BASE_URL,
+      roundingRule: 'none',
+    });
+    const project = await createProject(jar, token, 'Link Project ' + Date.now(), tracker.id);
+    const startedAt = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const stoppedAt = new Date().toISOString();
+    const dayKey = startedAt.slice(0, 10);
+    const title = 'Link Journey Task ' + Date.now();
+    const entry = await createEntry(jar, token, {
+      title,
+      projectId: project.id,
+      startedAt,
+      stoppedAt,
+    });
+    const linkRes = await fetch(url('/api/time-entries/reassign'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        ids: [entry.id],
+        remoteIssueId: '123',
+        cachedTitle: 'Linked Issue',
+      }),
+    });
+    const linkedEntries = await linkRes.json();
+    const taskId = linkedEntries[0]?.taskId ?? entry.taskId;
+
+    const page = await loginPage('remotesyncui@example.com');
+    await seedBrowserSecret(page, tracker.id);
+    await mockOpenProjectActivities(page);
+    await page.route(`${OPENPROJECT_BASE_URL}/api/v3/users/me**`, async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ id: 7, name: 'Ada' }),
+      });
+    });
+    let deleted = false;
+    await page.route(`${OPENPROJECT_BASE_URL}/api/v3/time_entries**`, async (route) => {
+      const method = route.request().method();
+      if (method === 'DELETE') {
+        deleted = true;
+        await route.fulfill({ status: 204, body: '' });
+        return;
+      }
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            _embedded: {
+              elements: deleted
+                ? []
+                : [
+                    {
+                      id: 11,
+                      spentOn: dayKey,
+                      hours: 'PT1H',
+                      comment: { raw: 'Existing remote' },
+                      _links: {
+                        workPackage: { href: '/api/v3/work_packages/123' },
+                        activity: { href: '/api/v3/time_entry_activities/1', title: 'Development' },
+                        user: { href: '/api/v3/users/7' },
+                      },
+                    },
+                  ],
+            },
+          }),
+        });
+        return;
+      }
+      await route.continue();
+    });
+
+    await openSyncDay(page, dayKey, title);
+    await page.click(`[data-testid="remote-sync-expand-${taskId}"]`);
+    await page.waitForSelector('[data-testid="remote-sync-link-entry-11"]');
+    await page.click('[data-testid="remote-sync-link-entry-11"]');
+    await page.waitForSelector('[data-testid="confirm-modal"]');
+    await page.click('[data-testid="confirm-accept"]');
+    await page.waitForFunction(() =>
+      /now linked|jest teraz powiązany/i.test(document.body.textContent ?? ''),
+    );
+    // Refresh keeps the row expanded; toggling here would collapse details.
+    await page.waitForSelector('[data-testid="remote-sync-delete-entry-11"]');
+    await page.click('[data-testid="remote-sync-delete-entry-11"]');
+    await page.waitForSelector('[data-testid="confirm-modal"]');
+    await page.click('[data-testid="confirm-accept"]');
+    await page.waitForFunction(() =>
+      /was deleted|został usunięty/i.test(document.body.textContent ?? ''),
+    );
+    expect(deleted).toBe(true);
     await page.close();
   });
 });

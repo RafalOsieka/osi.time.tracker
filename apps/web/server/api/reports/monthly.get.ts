@@ -36,6 +36,7 @@ export default defineEventHandler(async (event): Promise<MonthlyReportDto> => {
     db
       .select({
         localDate: remoteExports.localDate,
+        trackerId: remoteExports.trackerId,
         remoteLogId: remoteExports.remoteLogId,
         exportDurationSeconds: remoteExports.exportDurationSeconds,
       })
@@ -70,6 +71,7 @@ export default defineEventHandler(async (event): Promise<MonthlyReportDto> => {
     ),
     exports: exportRows.map((row) => ({
       localDate: String(row.localDate),
+      trackerId: row.trackerId,
       remoteLogId: row.remoteLogId,
       exportDurationSeconds: row.exportDurationSeconds,
     })),

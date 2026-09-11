@@ -3,6 +3,7 @@ import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import {
   RemoteAdapterError,
   type RemoteAccount,
+  type RemoteTimeEntryDeleteOutcome,
   type RemoteTimeLogDto,
 } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
@@ -118,6 +119,10 @@ export function useRemoteSyncClient(config: TrackerDto) {
     return adapter().createTimeEntry(input);
   }
 
+  async function deleteTimeEntry(remoteLogId: string): Promise<RemoteTimeEntryDeleteOutcome> {
+    return adapter().deleteTimeEntry(remoteLogId);
+  }
+
   /** Explicit reconciliation uses fresh data, never the display cache or a new create. */
   async function validateExistingTimeLog(input: {
     remoteLogId: string;
@@ -158,6 +163,7 @@ export function useRemoteSyncClient(config: TrackerDto) {
     fetchTimeLogs,
     fetchTimeLogsInRange,
     createTimeEntry,
+    deleteTimeEntry,
     validateExistingTimeLog,
     invalidateCaches,
   };

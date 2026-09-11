@@ -197,6 +197,7 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
       await db.insert(remoteExports).values({
         userId: user.id,
         taskId: entry.taskId,
+        trackerId: trackerA.id,
         localDate: '2026-08-03',
         remoteIssueId: '42',
         remoteLogId: '11',

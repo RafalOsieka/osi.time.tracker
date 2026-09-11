@@ -116,6 +116,7 @@ describeSyncExport('sync export finalization API', async () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.replayed).toBe(false);
+    expect(body.trackerId).toBeDefined();
     expect(body.entryIds).toEqual([entry.id]);
     expect(body.exportDurationSeconds).toBe(1800);
     expect(body.requiredFieldValues).toEqual({ activity: '1' });
@@ -129,6 +130,7 @@ describeSyncExport('sync export finalization API', async () => {
     expect(row.entries[0].previouslyExported).toBe(true);
     expect(row.exports).toHaveLength(1);
     expect(row.exports[0].remoteLogId).toBe(body.remoteLogId);
+    expect(row.exports[0].trackerId).toBe(body.trackerId);
 
     const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
     try {

@@ -435,6 +435,7 @@ describeRemoteIssueRef('day-scoped remote issue linking via reassign', async () 
       .values({
         userId: userRow!.userId,
         taskId,
+        trackerId: userRow!.trackerId!,
         localDate: '2026-03-15',
         remoteIssueId: '300',
         remoteLogId: 'log-gc',

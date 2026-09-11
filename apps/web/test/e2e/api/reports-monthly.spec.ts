@@ -101,6 +101,7 @@ describeReportsMonthly('monthly report API', async () => {
       await db.insert(remoteExports).values({
         userId: user.id,
         taskId: stopped.taskId,
+        trackerId: tracker.id,
         localDate: '2026-08-03',
         remoteIssueId: '42',
         remoteLogId: 'log-11',
@@ -123,6 +124,7 @@ describeReportsMonthly('monthly report API', async () => {
     expect(body.exports).toEqual([
       {
         localDate: '2026-08-03',
+        trackerId: tracker.id,
         remoteLogId: 'log-11',
         exportDurationSeconds: 7200,
       },

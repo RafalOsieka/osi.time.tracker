@@ -8,6 +8,8 @@ import type {
 import type {
   CreateTimeEntryInput,
   CreateTimeEntryResult,
+  DeleteTimeEntryInput,
+  DeleteTimeEntryResult,
   FetchTimeLogsInRangeInput,
   FetchTimeLogsInRangeResult,
   FetchTimeLogsInput,
@@ -70,6 +72,11 @@ type CreateTimeEntryAgreed =
     ? Mutual<CreateTimeEntryResult, Awaited<ReturnType<RemoteTrackerAdapter['createTimeEntry']>>>
     : false;
 
+type DeleteTimeEntryAgreed =
+  Mutual<DeleteTimeEntryInput, Parameters<RemoteTrackerAdapter['deleteTimeEntry']>[0]> extends true
+    ? Mutual<DeleteTimeEntryResult, Awaited<ReturnType<RemoteTrackerAdapter['deleteTimeEntry']>>>
+    : false;
+
 type ResultContractsAgreed =
   Mutual<RemoteIssueSearchResult, SearchIssuesResult[number]> extends true
     ? Mutual<RemoteFieldOption, GetActivityOptionsResult[number]> extends true
@@ -84,7 +91,9 @@ export type ProtocolMatchesRemoteTrackerAdapter = SearchIssuesAgreed extends tru
         ? FetchTimeLogsAgreed extends true
           ? FetchTimeLogsInRangeAgreed extends true
             ? CreateTimeEntryAgreed extends true
-              ? ResultContractsAgreed
+              ? DeleteTimeEntryAgreed extends true
+                ? ResultContractsAgreed
+                : false
               : false
             : false
           : false

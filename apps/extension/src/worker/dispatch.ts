@@ -141,6 +141,16 @@ async function executeOperation(
         result,
       };
     }
+    case 'deleteTimeEntry': {
+      const result = await adapter.deleteTimeEntry(request.input);
+      return {
+        type: 'operation-result',
+        requestId: request.requestId,
+        operation: 'deleteTimeEntry',
+        ok: true,
+        result,
+      };
+    }
     default: {
       const _exhaustive: never = request;
       return _exhaustive;

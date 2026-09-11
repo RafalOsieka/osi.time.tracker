@@ -9,6 +9,7 @@ export const EXTENSION_OPERATION_NAMES = [
   'fetchTimeLogs',
   'fetchTimeLogsInRange',
   'createTimeEntry',
+  'deleteTimeEntry',
 ] as const;
 
 export const operationNameSchema = z.enum(EXTENSION_OPERATION_NAMES);
@@ -87,6 +88,14 @@ export const createTimeEntryResultSchema = z.object({
   remoteLogId: z.string(),
 });
 
+export const deleteTimeEntryInputSchema = z.string();
+export const deleteTimeEntryResultSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('deleted') }),
+  z.object({ status: z.literal('not_found') }),
+  z.object({ status: z.literal('rejected'), messageKey: z.string() }),
+  z.object({ status: z.literal('unknown'), messageKey: z.string() }),
+]);
+
 export type SearchIssuesInput = z.infer<typeof searchIssuesInputSchema>;
 export type SearchIssuesResult = z.infer<typeof searchIssuesResultSchema>;
 export type GetIssueByIdInput = z.infer<typeof getIssueByIdInputSchema>;
@@ -101,6 +110,8 @@ export type FetchTimeLogsInRangeInput = z.infer<typeof fetchTimeLogsInRangeInput
 export type FetchTimeLogsInRangeResult = z.infer<typeof fetchTimeLogsInRangeResultSchema>;
 export type CreateTimeEntryInput = z.infer<typeof createTimeEntryInputSchema>;
 export type CreateTimeEntryResult = z.infer<typeof createTimeEntryResultSchema>;
+export type DeleteTimeEntryInput = z.infer<typeof deleteTimeEntryInputSchema>;
+export type DeleteTimeEntryResult = z.infer<typeof deleteTimeEntryResultSchema>;
 
 const operationRequestBase = {
   type: z.literal('operation'),
@@ -152,6 +163,12 @@ export const createTimeEntryRequestSchema = z.object({
   input: createTimeEntryInputSchema,
 });
 
+export const deleteTimeEntryRequestSchema = z.object({
+  ...operationRequestBase,
+  operation: z.literal('deleteTimeEntry'),
+  input: deleteTimeEntryInputSchema,
+});
+
 export const operationRequestSchema = z.discriminatedUnion('operation', [
   searchIssuesRequestSchema,
   getIssueByIdRequestSchema,
@@ -160,6 +177,7 @@ export const operationRequestSchema = z.discriminatedUnion('operation', [
   fetchTimeLogsRequestSchema,
   fetchTimeLogsInRangeRequestSchema,
   createTimeEntryRequestSchema,
+  deleteTimeEntryRequestSchema,
 ]);
 
 export type OperationRequest = z.infer<typeof operationRequestSchema>;
@@ -220,6 +238,14 @@ export const createTimeEntrySuccessSchema = z.object({
   result: createTimeEntryResultSchema,
 });
 
+export const deleteTimeEntrySuccessSchema = z.object({
+  type: z.literal('operation-result'),
+  requestId: requestIdSchema,
+  operation: z.literal('deleteTimeEntry'),
+  ok: z.literal(true),
+  result: deleteTimeEntryResultSchema,
+});
+
 export const operationSuccessSchema = z.discriminatedUnion('operation', [
   searchIssuesSuccessSchema,
   getIssueByIdSuccessSchema,
@@ -228,6 +254,7 @@ export const operationSuccessSchema = z.discriminatedUnion('operation', [
   fetchTimeLogsSuccessSchema,
   fetchTimeLogsInRangeSuccessSchema,
   createTimeEntrySuccessSchema,
+  deleteTimeEntrySuccessSchema,
 ]);
 
 export type OperationSuccess = z.infer<typeof operationSuccessSchema>;

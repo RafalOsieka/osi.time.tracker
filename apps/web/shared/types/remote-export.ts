@@ -51,11 +51,64 @@ export const finalizeRemoteExportSchema = z.object({
 
 export type FinalizeRemoteExportDto = z.infer<typeof finalizeRemoteExportSchema>;
 
+/** Request body for linking a discovered remote entry to a local task/day. */
+export const linkRemoteEntrySchema = z.object({
+  taskId: z.uuid({
+    error: (issue) =>
+      issue.input === undefined
+        ? 'error.remoteExportTaskIdRequired'
+        : 'error.remoteExportTaskIdInvalid',
+  }),
+  trackerId: z.uuid({
+    error: (issue) =>
+      issue.input === undefined
+        ? 'error.remoteExportTrackerIdRequired'
+        : 'error.remoteExportTrackerIdInvalid',
+  }),
+  localDate: isoDateSchema,
+  remoteIssueId: z
+    .string({ error: 'error.remoteExportRemoteIssueIdRequired' })
+    .trim()
+    .min(1, { error: 'error.remoteExportRemoteIssueIdRequired' }),
+  remoteLogId: z
+    .string({ error: 'error.remoteExportRemoteLogIdRequired' })
+    .trim()
+    .min(1, { error: 'error.remoteExportRemoteLogIdRequired' }),
+  exportDurationSeconds: z
+    .int({
+      error: (issue) =>
+        issue.input === undefined
+          ? 'error.remoteExportDurationRequired'
+          : 'error.remoteExportDurationInvalid',
+    })
+    .positive({ error: 'error.remoteExportDurationInvalid' }),
+  requiredFieldValues: z.record(z.string(), z.string()).default({}),
+  spentOn: isoDateSchema,
+});
+
+export type LinkRemoteEntryDto = z.infer<typeof linkRemoteEntrySchema>;
+
+/** Request body for removing local provenance after confirmed remote deletion. */
+export const cleanupRemoteExportSchema = z.object({
+  exportId: z.uuid({
+    error: (issue) =>
+      issue.input === undefined ? 'error.remoteExportIdRequired' : 'error.remoteExportIdInvalid',
+  }),
+});
+
+export type CleanupRemoteExportDto = z.infer<typeof cleanupRemoteExportSchema>;
+
+export interface CleanupRemoteExportResultDto {
+  exportId: string;
+  cleaned: true;
+}
+
 /** Successful finalization response, including known-result replay. */
 export interface FinalizeRemoteExportResultDto {
   exportId: string;
   /** Nullable after the source task is garbage-collected (ON DELETE SET NULL). */
   taskId: string | null;
+  trackerId: string;
   localDate: string;
   remoteIssueId: string;
   remoteLogId: string;

@@ -1,4 +1,14 @@
 /**
+ * Typed outcome of deleting one remote time entry (REQ-307). Callers must not
+ * treat `unknown` as confirmed deletion.
+ */
+export type RemoteTimeEntryDeleteOutcome =
+  | { status: 'deleted' }
+  | { status: 'not_found' }
+  | { status: 'rejected'; messageKey: string }
+  | { status: 'unknown'; messageKey: string };
+
+/**
  * A single remote time log shown as informational context beside a linked
  * task. Never used to infer local provenance.
  */

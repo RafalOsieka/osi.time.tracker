@@ -5,7 +5,10 @@ import type { TrackerDto } from '~~/shared/types/tracker';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 import type { AttentionReason } from '~~/shared/utils/monthly-report-attention';
 import { attentionReasons } from '~~/shared/utils/monthly-report-attention';
-import { splitAppAndDirect } from '~~/shared/utils/monthly-report-split';
+import {
+  knownRemoteLogIdsForTracker,
+  splitAppAndDirect,
+} from '~~/shared/utils/monthly-report-split';
 import { addCalendarMonths, monthDateRange } from '~~/shared/utils/report-month';
 import { formatReportDuration } from '~/utils/format-report-duration';
 import { extractCaughtMessageKey } from '~/utils/extract-message-key';
@@ -160,7 +163,6 @@ const ATTENTION_I18N = {
 const rows = computed<TimesheetRow[]>(() => {
   const report = reportData.value;
   if (!report) return [];
-  const knownIds = new Set(report.exports.map((item) => item.remoteLogId));
   const hoursByTracker = new Map<
     string,
     Map<string, { appSeconds: number; directSeconds: number }>
@@ -169,7 +171,10 @@ const rows = computed<TimesheetRow[]>(() => {
   for (const tracker of report.trackers) {
     const remote = remoteByTracker.value[tracker.id];
     if (remote?.status === 'ok') {
-      const split = splitAppAndDirect(remote.logs, knownIds);
+      const split = splitAppAndDirect(
+        remote.logs,
+        knownRemoteLogIdsForTracker(report.exports, tracker.id),
+      );
       hoursByTracker.set(tracker.id, split);
       for (const date of split.keys()) dates.add(date);
     }

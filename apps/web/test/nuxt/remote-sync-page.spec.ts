@@ -1,7 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { locks } from 'node:worker_threads';
-import { ExtensionProtocolError } from '@osi/extension-protocol';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
@@ -11,6 +9,7 @@ import type {
   RemoteSyncDayEntryDto,
   RemoteSyncExportProvenanceDto,
 } from '../../shared/types/remote-sync-day';
+import type { AppConfirmOptions } from '../../app/composables/use-app-confirm';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const dollarFetchMock = vi.hoisted(() => vi.fn());
@@ -18,7 +17,9 @@ const fetchMock = vi.fn();
 const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
+const toastWarningMock = vi.hoisted(() => vi.fn());
 const createTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ remoteLogId: '9001' }));
+const deleteTimeEntryMock = vi.hoisted(() => vi.fn().mockResolvedValue({ status: 'deleted' }));
 const fetchTimeLogsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
 const invalidateCachesMock = vi.hoisted(() => vi.fn());
 const validateExistingTimeLogMock = vi.hoisted(() => vi.fn());
@@ -35,6 +36,7 @@ vi.mock('../../app/composables/use-remote-sync-client', () => ({
     fetchTimeLogs: fetchTimeLogsMock,
     fetchTimeLogsInRange: vi.fn().mockResolvedValue([]),
     createTimeEntry: createTimeEntryMock,
+    deleteTimeEntry: deleteTimeEntryMock,
     validateExistingTimeLog: validateExistingTimeLogMock,
     invalidateCaches: invalidateCachesMock,
   }),
@@ -47,6 +49,7 @@ mockNuxtImport('useAppConfirm', () => () => confirmMock);
 mockNuxtImport('useAppToast', () => () => ({
   success: toastSuccessMock,
   error: toastErrorMock,
+  warning: toastWarningMock,
 }));
 mockNuxtImport('useUserSettings', () => () => ({
   effective: { value: { timeZone: 'UTC' } },
@@ -217,6 +220,7 @@ function priorExport(
 ): RemoteSyncExportProvenanceDto {
   return {
     exportId: 'exp-prior',
+    trackerId: 'config-1',
     remoteLogId: '8000',
     remoteIssueId: '42',
     exportDurationSeconds: 3600,
@@ -289,9 +293,17 @@ describe('RemoteSync page', () => {
     dollarFetchMock.mockReset();
     fetchMock.mockReset();
     confirmMock.mockReset();
-    confirmMock.mockResolvedValue(true);
+    confirmMock.mockImplementation(async (options?: AppConfirmOptions) => {
+      await options?.onConfirm?.();
+      return true;
+    });
     createTimeEntryMock.mockReset();
     createTimeEntryMock.mockResolvedValue({ remoteLogId: '9001' });
+    deleteTimeEntryMock.mockReset();
+    deleteTimeEntryMock.mockResolvedValue({ status: 'deleted' });
+    toastSuccessMock.mockReset();
+    toastErrorMock.mockReset();
+    toastWarningMock.mockReset();
     validateExistingTimeLogMock.mockReset();
     validateExistingTimeLogMock.mockResolvedValue(undefined);
     fetchTimeLogsMock.mockReset();
@@ -811,98 +823,170 @@ describe('RemoteSync page', () => {
     expect(comment.element.closest('[data-overflow-tooltip]')).not.toBeNull();
     expect(
       wrapper.find('[data-testid="remote-sync-duplicate-warning-task-redmine-logs"]').exists(),
-    ).toBe(true);
+    ).toBe(false);
+    expect(wrapper.get('[data-testid="remote-sync-remote-log-state-11"]').text()).toMatch(
+      /Unlinked|Niepowiązany/,
+    );
+    await wrapper.get('[data-testid="remote-sync-link-entry-11"]').trigger('click');
+    await flushPromises();
+    expect(confirmMock).toHaveBeenCalled();
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/sync/link',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.objectContaining({
+          remoteLogId: '11',
+          exportDurationSeconds: 3600,
+        }),
+      }),
+    );
   });
 
-  it.each(['created', 'reconciled'])(
-    'exports with the local task title as the OpenProject comment (%s)',
-    async (outcome) => {
-      if (outcome === 'reconciled') {
-        createTimeEntryMock.mockRejectedValueOnce(
-          new ExtensionProtocolError('unknown-create', 'error.extensionUnknownCreate'),
-        );
-      }
+  it('deletes a linked remote entry after confirmation', async () => {
+    const sentRow = {
+      taskId: 'task-del',
+      taskName: 'Exported Task',
+      projectName: 'Project',
+      trackerName: 'Client',
+      totalSeconds: 3600,
+      config: { ...baseConfig, id: 'config-1' },
+      issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
+      entries: [entry({ id: 'entry-del', durationSeconds: 3600 })],
+      exports: [priorExport('1', { remoteLogId: '11' })],
+    };
+    dayData = makeDay({ rows: [sentRow] });
+    dollarFetchMock.mockImplementation(async () => dayData);
+    fetchTimeLogsMock.mockResolvedValue([
+      {
+        remoteLogId: '11',
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        durationSeconds: 3600,
+        activityId: '1',
+        activityName: 'Development',
+        comment: null,
+        remoteUserId: '7',
+      },
+    ]);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Development' }]));
+    csrfFetchMock.mockResolvedValue({ exportId: 'exp-prior', cleaned: true });
+    deleteTimeEntryMock.mockImplementation(async () => {
       dayData = makeDay({
-        rows: [
-          {
-            taskId: 'task-export',
-            taskName: 'Ship feature X',
-            projectName: 'Project',
-            trackerName: 'Client',
-            totalSeconds: 3600,
-            config: {
-              ...baseConfig,
-              id: 'config-export',
-            },
-            issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
-            entries: [entry({ id: 'entry-export', durationSeconds: 3600 })],
-            exports: [],
+        rows: [{ ...sentRow, exports: [] }],
+      });
+      fetchTimeLogsMock.mockResolvedValue([]);
+      return { status: 'deleted' };
+    });
+
+    const wrapper = await mount();
+    await expandRow(wrapper, 'task-del');
+    await wrapper.get('[data-testid="remote-sync-delete-entry-11"]').trigger('click');
+    await flushPromises();
+    expect(deleteTimeEntryMock).toHaveBeenCalledWith('11');
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/sync/export',
+      expect.objectContaining({ method: 'DELETE', body: { exportId: 'exp-prior' } }),
+    );
+    expect(invalidateCachesMock).toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="remote-sync-remote-log-11"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="remote-sync-remote-logs-empty-task-del"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('shows Delete for a local export missing from the tracker list', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-orphan',
+          taskName: 'Exported Task',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-1' },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
+          entries: [entry({ id: 'entry-orphan', durationSeconds: 3600 })],
+          exports: [priorExport('1', { remoteLogId: '11' })],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchTimeLogsMock.mockResolvedValue([]);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Development' }]));
+
+    const wrapper = await mount();
+    await expandRow(wrapper, 'task-orphan');
+
+    expect(wrapper.find('[data-testid="remote-sync-remote-logs-empty-task-orphan"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.get('[data-testid="remote-sync-remote-log-state-11"]').text()).toMatch(
+      /Linked|Powiązany/,
+    );
+    expect(wrapper.find('[data-testid="remote-sync-delete-entry-11"]').exists()).toBe(true);
+  });
+
+  it('exports with the local task title as the OpenProject comment', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-export',
+          taskName: 'Ship feature X',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: {
+            ...baseConfig,
+            id: 'config-export',
           },
-        ],
-      });
-      dollarFetchMock.mockResolvedValue(dayData);
-      csrfFetchMock.mockResolvedValue({
-        exportId: 'exp-1',
-        remoteLogId: '9001',
-        taskId: 'task-export',
-        localDate: '2026-03-15',
-      });
-      fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Remote issue' },
+          entries: [entry({ id: 'entry-export', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    csrfFetchMock.mockResolvedValue({
+      exportId: 'exp-1',
+      remoteLogId: '9001',
+      taskId: 'task-export',
+      localDate: '2026-03-15',
+    });
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
-      const wrapper = await mount();
-      await chooseActivity(wrapper, 'task-export', '1');
-      await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
-      await flushPromises();
-      expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(true);
-      expect(createTimeEntryMock).not.toHaveBeenCalled();
-      await wrapper.find('[data-testid="remote-sync-export-confirm"]').trigger('click');
-      await flushPromises();
-      await flushPromises();
+    const wrapper = await mount();
+    await chooseActivity(wrapper, 'task-export', '1');
+    await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(true);
+    expect(createTimeEntryMock).not.toHaveBeenCalled();
+    await wrapper.find('[data-testid="remote-sync-export-confirm"]').trigger('click');
+    await flushPromises();
+    await flushPromises();
 
-      expect(createTimeEntryMock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          remoteIssueId: '42',
-          spentOn: '2026-03-15',
-          activityId: '1',
-          comment: 'Ship feature X',
+    expect(createTimeEntryMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        remoteIssueId: '42',
+        spentOn: '2026-03-15',
+        activityId: '1',
+        comment: 'Ship feature X',
+      }),
+    );
+    expect(createTimeEntryMock).toHaveBeenCalledTimes(1);
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/sync/export',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.objectContaining({
+          taskId: 'task-export',
+          remoteLogId: '9001',
+          entryIds: ['entry-export'],
         }),
-      );
-      if (outcome === 'reconciled') {
-        expect(csrfFetchMock).not.toHaveBeenCalled();
-        validateExistingTimeLogMock.mockRejectedValueOnce(
-          new RemoteAdapterError('error.remoteExportExistingLogMismatch'),
-        );
-        await wrapper.get('[data-testid="remote-sync-existing-log-id"]').setValue('9001');
-        await wrapper.get('[data-testid="remote-sync-existing-log-form"]').trigger('submit');
-        await vi.waitFor(() => expect(toastErrorMock).toHaveBeenCalled());
-        expect(csrfFetchMock).not.toHaveBeenCalled();
-        await wrapper.get('[data-testid="remote-sync-existing-log-form"]').trigger('submit');
-        await vi.waitFor(() => expect(csrfFetchMock).toHaveBeenCalled());
-        expect(validateExistingTimeLogMock).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            remoteLogId: '9001',
-            remoteIssueId: '42',
-            spentOn: '2026-03-15',
-            durationSeconds: 3600,
-            activityId: '1',
-            comment: 'Ship feature X',
-          }),
-        );
-      }
-      expect(createTimeEntryMock).toHaveBeenCalledTimes(1);
-      expect(csrfFetchMock).toHaveBeenCalledWith(
-        '/api/sync/export',
-        expect.objectContaining({
-          method: 'POST',
-          body: expect.objectContaining({
-            taskId: 'task-export',
-            remoteLogId: '9001',
-            entryIds: ['entry-export'],
-          }),
-        }),
-      );
-    },
-  );
+      }),
+    );
+    expect(toastSuccessMock).toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(false);
+  });
 
   it('does not reassign the local task when title-to-send is edited', async () => {
     dayData = makeDay({
@@ -932,6 +1016,45 @@ describe('RemoteSync page', () => {
     await input.trigger('blur');
     await flushPromises();
     expect(csrfFetchMock).not.toHaveBeenCalledWith('/api/time-entries/reassign', expect.anything());
+  });
+
+  it('shows the overridden comment in the export confirmation', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-comment-dialog',
+          taskName: 'Original name',
+          projectName: 'Project',
+          trackerName: 'Client',
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-comment-dialog' },
+          issueRef: { remoteIssueId: '42', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'entry-comment-dialog', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await wrapper
+      .find('[data-testid="remote-sync-task-name-task-comment-dialog"]')
+      .trigger('click');
+    await flushPromises();
+    const input = wrapper.find<HTMLInputElement>(
+      '[data-testid="remote-sync-comment-task-comment-dialog"]',
+    );
+    await input.setValue('Comment for tracker');
+    await input.trigger('blur');
+    await flushPromises();
+    await chooseActivity(wrapper, 'task-comment-dialog', '1');
+    await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
+    await flushPromises();
+
+    const row = wrapper.get('[data-testid="remote-sync-export-row-task-comment-dialog"]');
+    expect(row.text()).toContain('Comment for tracker');
+    expect(row.text()).not.toContain('Original name');
   });
 
   it('restores the last committed title-to-send when edit is cancelled', async () => {
