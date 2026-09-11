@@ -76,6 +76,9 @@ export interface RemoteSyncDayRowDto {
   totalSeconds: number;
   config: RemoteSyncConfigSurfaceDto | null;
   issueRef: RemoteSyncIssueRefDto | null;
+  /** The owning project's remote project scope (REQ-328), or null when unset. */
+  remoteProjectId: string | null;
+  remoteProjectTitle: string | null;
   /** Completed entries attributed to this task on the requested local day. */
   entries: RemoteSyncDayEntryDto[];
   /** Prior finalized exports for this task on the requested local day. */

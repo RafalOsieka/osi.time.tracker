@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
-import type { RemoteFieldOption } from '@osi/remote-trackers/contracts';
+import type { RemoteFieldOption, RemoteIssueScope } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '~~/shared/types/tracker';
 
 const {
@@ -16,6 +16,7 @@ const {
   issueId,
   showLinkPicker,
   pickerConfig,
+  pickerScope = null,
   comment,
   editingTitle,
   trackedLabel,
@@ -41,6 +42,8 @@ const {
   issueId: string | null;
   showLinkPicker: boolean;
   pickerConfig: TrackerDto | null;
+  /** The owning project's remote project scope (REQ-328), if any. */
+  pickerScope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
   comment: string;
   editingTitle: boolean;
   trackedLabel: string;
@@ -176,6 +179,7 @@ function onEditToSend() {
       <RemoteIssuePicker
         v-else-if="showLinkPicker && pickerConfig"
         :config="pickerConfig"
+        :scope="pickerScope"
         :data-testid="`remote-sync-link-${row.taskId}`"
         @link="(payload) => emit('link', payload)"
       />

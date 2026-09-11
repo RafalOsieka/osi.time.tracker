@@ -31,13 +31,16 @@ See proposal.md – Why. Current state that shapes the approach:
 | List of ids (`only`) | Redmine needs the long `f[]/op[]/v[]` filter syntax for multi-value; OpenProject fine. Multi-select UI, jsonb column. Rejected: the providers make single-root cheap and the multi case has no concrete user. |
 | Exclusion (`except`) / derived "unclaimed" | Hierarchy absorbs the need; would add a union column and a sibling-projects rule. Rejected. |
 
-Storage: two nullable `text` columns on `projects` — `remoteProjectId`, `remoteProjectTitle` — mirroring the task row's `remoteIssueId` / `remoteIssueCachedTitle` pattern. Both null or both set (CHECK constraint). `remoteProjectId` is stored as text because Redmine ids are numeric and OpenProject ids are numeric-as-string; the adapter treats it opaquely.
+Storage: two nullable `text` columns on `projects` — `remoteProjectId`, `remoteProjectTitle` — mirroring the task row's `remoteIssueId` / `remoteIssueCachedTitle` pattern. Both null or both set, enforced at the API boundary (`createProjectSchema`/`updateProjectSchema`) rather than a DB `CHECK` constraint — this codebase has no existing DB-level CHECK-constraint convention, and the sibling `tasks.remoteIssueId`/`remoteIssueCachedTitle` pairing is enforced the same way. `remoteProjectId` is stored as text because Redmine ids are numeric and OpenProject ids are numeric-as-string; the adapter treats it opaquely.
 
 ### 2. Tree semantics are forced, not setting-dependent
 
-Redmine includes descendants only when the admin setting `display_subprojects_issues` is on. The adapter always sends `subproject_id=*` so the scope means the same thing on every instance and matches OpenProject's `subprojectId` `*` filter on `/api/v3/projects/{id}/work_packages`. Alternative — "exact project, no descendants" (Redmine `subproject_id=!*`) — rejected: a user pointing at a parent wants the tree, and a leaf is a tree of one.
+**Confirmed by spike (2026-09-11) against the local dev instances**, `docker-compose.redmine.yml` / `docker-compose.openproject.yml`:
 
-Fallback if the spike shows Redmine rejects `subproject_id=*`: the adapter expands descendants from `listProjects()` (which carries `parentId`) and uses the long filter syntax. Contract and callers unchanged.
+- **Redmine**: with `Setting.display_subprojects_issues` explicitly turned **off**, `GET /issues.json?project_id=<root>` returned only the root's own issue. Adding `subproject_id=*` returned the root's issue **and** a descendant project's issue, while still excluding an issue in an unrelated project. The adapter always sends `subproject_id=*` so the scope means the same thing on every instance regardless of that admin setting. Scoping to a nonexistent/invisible project id (`project_id=<bogus>`) 404s, which the adapter maps to the shared search error.
+- **OpenProject**: the project-scoped endpoint `GET /api/v3/projects/{id}/work_packages` **already includes descendant projects by default** — no `subprojectId` filter needed. Confirmed by scoping to the root (returned root + descendant, excluded the unrelated project) and to the leaf (returned only itself). Scoping to a nonexistent project id 404s the same way. This simplifies Decision 3 below: OpenProject needs only the path-scoped endpoint plus the existing `subject`/`id` filters, not an added `subprojectId` filter.
+
+Alternative — "exact project, no descendants" (Redmine `subproject_id=!*`) — rejected: a user pointing at a parent wants the tree, and a leaf is a tree of one. The documented fallback (expand descendants from `listProjects()` and use Redmine's long filter syntax) is **not needed** — `subproject_id=*` works as designed.
 
 ### 3. ID-mode scope check asks the tracker, not the client
 
@@ -45,14 +48,19 @@ With tree semantics, comparing a result's project id to the scope root is wrong 
 
 | Option | Notes |
 |---|---|
-| **Scoped lookup first, unscoped fallback (chosen)** | Redmine `/issues.json?project_id=X&subproject_id=*&issue_id=N`; OpenProject `/projects/X/work_packages?filters=[id = N, subprojectId *]`. Found ⇒ `inScope: true`. Empty ⇒ existing `/issues/N` / `/work_packages/N` lookup ⇒ `inScope: false` or not found. Two requests worst case, ID mode only. Result shape stays id-free. |
+| **Scoped lookup first, unscoped fallback (chosen)** | Redmine `/issues.json?project_id=X&subproject_id=*&issue_id=N`; OpenProject `/projects/X/work_packages?filters=[{"id":{"operator":"=","values":["N"]}}]` (subprojects already included by the path scope, confirmed above — no extra filter). Found ⇒ `inScope: true`. Empty ⇒ existing `/issues/N` / `/work_packages/N` lookup ⇒ `inScope: false` or not found. Two requests worst case, ID mode only. Result shape stays id-free. |
 | Return `remoteProjectId` on results and load the catalog in the picker | Extra catalog fetch per picker open; relaxes REQ-266; membership logic duplicated in the web app. Rejected. |
 
-`getIssueById(id, scope?)` returns `RemoteIssueLookup = { result: RemoteIssueSearchResult; inScope: boolean } | null`. Without a scope, `inScope` is `true`. The composable maps `inScope: false` to a hint state, never to an error.
+Both steps confirmed directly: a scoped issue/id query for a descendant's id returns it; the same query for an unrelated project's id returns an empty collection; the plain unscoped `/issues/{id}` / `/work_packages/{id}` lookup then finds it. `getIssueById(id, scope?)` returns `RemoteIssueLookup = { result: RemoteIssueSearchResult; inScope: boolean } | null`. Without a scope, `inScope` is `true`. The composable maps `inScope: false` to a hint state, never to an error.
 
 ### 4. Catalog is a ninth neutral operation, paginated to a bound
 
-`listProjects(): Promise<RemoteProjectDto[]>` with `RemoteProjectDto = { remoteProjectId, title, parentId?: string }`. Redmine `/projects.json?limit=100&offset=…`, OpenProject `/api/v3/projects?pageSize=100&offset=…` (1-based `offset` is the page index there); both loop until `total` is reached or `*_MAX_PAGES` (reuse the time-log constant). `parentId` lets the select render an indented tree; no other hierarchy logic in the web app. Alternative — search-as-you-type against `name=~` — rejected; instances in scope have tens, not thousands, of projects.
+`listProjects(): Promise<RemoteProjectDto[]>` with `RemoteProjectDto = { remoteProjectId, title, parentId?: string }`. Confirmed page shapes:
+
+- **Redmine** `GET /projects.json?limit=100&offset=0`: envelope `{ projects: [...], total_count, offset, limit }`; a child project's payload carries `parent: { id, name }` (absent on roots).
+- **OpenProject** `GET /api/v3/projects?pageSize=100&offset=1` (1-based page number): envelope `{ total, count, pageSize, offset, _embedded: { elements: [...] } }`; a child project's `_links.parent.href` is `/api/v3/projects/{id}` (absent on roots — the id is the last path segment).
+
+Both loop until `total`/`total_count` is reached or `*_MAX_PAGES` (reuse the time-log constant). `parentId` lets the select render an indented tree; no other hierarchy logic in the web app. Alternative — search-as-you-type against `name=~` — rejected; instances in scope have tens, not thousands, of projects.
 
 ### 5. The Project form loads the catalog through the same client adapter path
 
@@ -82,7 +90,6 @@ Alternative — a server route proxying the catalog — rejected: the server hol
 
 ## Risks / Trade-offs
 
-- [Redmine ignores or rejects `subproject_id=*`] → spike first (tasks §0); fallback in Decision 2 keeps the contract intact.
 - [No secret on `/projects` when the user configures scope] → form degrades to cached title + clear; hint points at tracker settings where the secret is entered.
 - [Remote project archived/deleted after save] → scoped search returns an upstream 404/403 which maps to the existing `error.remoteIssueSearchFailed`; the widen toggle still works; the user re-picks in the Project form.
 - [Cached title drifts after a remote rename] → accepted, same as cached issue titles; re-picking refreshes it.
@@ -92,10 +99,10 @@ Alternative — a server route proxying the catalog — rejected: the server hol
 
 ## Migration Plan
 
-1. Generate the additive migration (`ALTER TABLE projects ADD COLUMN "remoteProjectId" text, ADD COLUMN "remoteProjectTitle" text` + CHECK both-or-neither). Existing rows stay null = unrestricted; no behaviour change until a user picks a scope.
+1. Generate the additive migration (`ALTER TABLE projects ADD COLUMN "remoteProjectId" text, ADD COLUMN "remoteProjectTitle" text`). Existing rows stay null = unrestricted; no behaviour change until a user picks a scope.
 2. Ship `remote-trackers`, `extension-protocol`, extension, and web in one deploy; old web clients omit the new fields and the server stores null.
 3. Rollback: drop the two columns; adapters ignore an absent scope.
 
 ## Open Questions
 
-- Whether the OpenProject project-scoped endpoint honours `subprojectId` `*` for users without membership in every descendant — affects only which issues appear, not the design; verify during the spike.
+_None — the spike (Decisions 2–4) resolved the only open question about OpenProject's subproject inclusion, and confirmed it needs no explicit filter at all._

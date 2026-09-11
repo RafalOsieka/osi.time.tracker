@@ -147,6 +147,107 @@ describe('OpenProjectClient', () => {
     expect(transport.requests[0]!.url).toBe('https://op.example.com/api/v3/work_packages/42');
   });
 
+  it('scopes a title search to the project-scoped work-packages path', async () => {
+    const transport = fakeTransport([
+      { status: 200, payload: { _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } } },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    await client.searchByTitle('Fix bug', null, { remoteProjectId: '3' });
+
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.origin + url.pathname).toBe(
+      'https://op.example.com/api/v3/projects/3/work_packages',
+    );
+    const filters = JSON.parse(url.searchParams.get('filters')!);
+    expect(filters).toEqual([{ subject: { operator: '~', values: ['Fix bug'] } }]);
+  });
+
+  it('uses the tracker-wide path when no scope is given', async () => {
+    const transport = fakeTransport([{ status: 200, payload: { _embedded: { elements: [] } } }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    await client.searchByTitle('Fix bug', null);
+
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.origin + url.pathname).toBe('https://op.example.com/api/v3/work_packages');
+  });
+
+  it('finds a work package within a scoped project via the id filter', async () => {
+    const transport = fakeTransport([
+      { status: 200, payload: { _embedded: { elements: [{ id: 38, subject: 'Child wp' }] } } },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { status, result } = await client.findIssueInScope('38', { remoteProjectId: '3' }, null);
+
+    expect(status).toBe(200);
+    expect(result).toEqual({ remoteIssueId: '38', title: 'Child wp' });
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.origin + url.pathname).toBe(
+      'https://op.example.com/api/v3/projects/3/work_packages',
+    );
+    const filters = JSON.parse(url.searchParams.get('filters')!);
+    expect(filters).toEqual([{ id: { operator: '=', values: ['38'] } }]);
+  });
+
+  it('returns a null result for a work package outside the scoped project', async () => {
+    const transport = fakeTransport([{ status: 200, payload: { _embedded: { elements: [] } } }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { status, result } = await client.findIssueInScope('39', { remoteProjectId: '3' }, null);
+
+    expect(status).toBe(200);
+    expect(result).toBeNull();
+  });
+
+  it('reports the upstream status when the scoped project is gone', async () => {
+    const transport = fakeTransport([{ status: 404, payload: {} }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const { status, result } = await client.findIssueInScope(
+      '38',
+      { remoteProjectId: 'bogus' },
+      null,
+    );
+
+    expect(status).toBe(404);
+    expect(result).toBeNull();
+  });
+
+  it('lists a page of the project catalog with parent ids', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          total: 2,
+          count: 2,
+          pageSize: 100,
+          offset: 1,
+          _embedded: {
+            elements: [
+              { id: 3, name: 'Spike Root' },
+              { id: 4, name: 'Spike Child', _links: { parent: { href: '/api/v3/projects/3' } } },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const page = await client.listProjectsPage({ offset: 1 }, null);
+
+    expect(page.status).toBe(200);
+    expect(page.total).toBe(2);
+    expect(page.projects).toEqual([
+      { remoteProjectId: '3', title: 'Spike Root' },
+      { remoteProjectId: '4', title: 'Spike Child', parentId: '3' },
+    ]);
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.origin + url.pathname).toBe('https://op.example.com/api/v3/projects');
+    expect(url.searchParams.get('offset')).toBe('1');
+  });
+
   it('builds the project-scoped activities POST request keyed by the work package', async () => {
     const transport = fakeTransport([
       {

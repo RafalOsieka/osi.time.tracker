@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import type {
+  RemoteIssueScope,
   RemoteIssueSearchMode,
   RemoteIssueSearchResult,
 } from '@osi/remote-trackers/contracts';
@@ -21,13 +22,25 @@ export interface RemoteIssueSearchInput {
  * stale-response suppression live here; all I/O and provider quirks are
  * delegated to the adapter, which behaves identically regardless of
  * transport.
+ *
+ * `scope` is an optional getter for the owning project's remote project
+ * scope (REQ-328/REQ-329). When `search` is called with `applyScope: true`
+ * and a scope is present, it is forwarded to the adapter; ID-mode results
+ * outside that scope are still returned (not filtered) and flagged via
+ * `outOfScopeId` rather than treated as an error.
  */
-export function useRemoteIssueSearch(config: TrackerDto) {
+export function useRemoteIssueSearch(
+  config: TrackerDto,
+  scope?: () => RemoteIssueScope | null | undefined,
+) {
   const { get: getSecret } = useTrackerSecret();
 
   const results = ref<RemoteIssueSearchResult[]>([]);
   const loading = ref(false);
   const errorKey = ref<string | null>(null);
+  // Set to the single ID-mode result's id when it exists but falls outside
+  // the applied scope (REQ-329); null otherwise, including for title search.
+  const outOfScopeId = ref<string | null>(null);
 
   // Monotonically increasing token used to suppress stale/superseded responses.
   let requestToken = 0;
@@ -46,16 +59,18 @@ export function useRemoteIssueSearch(config: TrackerDto) {
     return null;
   }
 
-  async function search(input: RemoteIssueSearchInput): Promise<void> {
+  async function search(input: RemoteIssueSearchInput, applyScope = true): Promise<void> {
     const validationError = validate(input);
     if (validationError) {
       errorKey.value = validationError;
       results.value = [];
+      outOfScopeId.value = null;
       loading.value = false;
       return;
     }
 
     const value = input.query.trim();
+    const effectiveScope = applyScope ? (scope?.() ?? undefined) : undefined;
     const token = ++requestToken;
     loading.value = true;
     errorKey.value = null;
@@ -64,21 +79,33 @@ export function useRemoteIssueSearch(config: TrackerDto) {
     const adapter = createRemoteAdapter(config, secret);
 
     try {
-      const searchResults =
-        input.mode === 'id'
-          ? await adapter.getIssueById(value).then((result) => (result ? [result] : []))
-          : await adapter.searchIssues(value);
+      if (input.mode === 'id') {
+        const lookup = await adapter.getIssueById(value, effectiveScope);
 
-      // A superseded request must never overwrite newer results/errors.
+        // A superseded request must never overwrite newer results/errors.
+        if (token !== requestToken) return;
+
+        if (!lookup) {
+          results.value = [];
+          outOfScopeId.value = null;
+          errorKey.value = 'error.remoteIssueSearchNotFound';
+        } else {
+          results.value = [lookup.result];
+          outOfScopeId.value = lookup.inScope ? null : lookup.result.remoteIssueId;
+        }
+        return;
+      }
+
+      const searchResults = await adapter.searchIssues(value, effectiveScope);
+
       if (token !== requestToken) return;
 
       results.value = searchResults;
-      if (input.mode === 'id' && searchResults.length === 0) {
-        errorKey.value = 'error.remoteIssueSearchNotFound';
-      }
+      outOfScopeId.value = null;
     } catch (err) {
       if (token !== requestToken) return;
       results.value = [];
+      outOfScopeId.value = null;
       errorKey.value = extractCaughtMessageKey(err, 'error.remoteIssueSearchFailed');
     } finally {
       if (token === requestToken) {
@@ -87,5 +114,5 @@ export function useRemoteIssueSearch(config: TrackerDto) {
     }
   }
 
-  return { search, results, loading, errorKey };
+  return { search, results, outOfScopeId, loading, errorKey };
 }

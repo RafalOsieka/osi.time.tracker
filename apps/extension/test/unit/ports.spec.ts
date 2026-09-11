@@ -119,6 +119,7 @@ describe('worker runtime ports', () => {
         ({
           searchIssues: async () => [{ remoteIssueId: '1', title: 'Issue' }],
           getIssueById: async () => null,
+          listProjects: async () => [],
           getActivityOptions: async () => [],
           getCurrentAccount: async () => ({ id: 'u', name: 'Ada' }),
           fetchTimeLogs: async () => [],

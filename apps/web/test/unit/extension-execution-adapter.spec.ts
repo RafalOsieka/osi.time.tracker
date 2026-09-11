@@ -44,6 +44,8 @@ const config: TrackerDto = {
 };
 
 const issue = { remoteIssueId: '42', title: 'Fix login' };
+const lookup = { result: issue, inScope: true };
+const project = { remoteProjectId: '3', title: 'Spike Root' };
 const account = { id: '7', name: 'Ada' };
 const activity = { id: '1', name: 'Development' };
 const log = {
@@ -119,7 +121,15 @@ function operationSuccess(request: {
         requestId: request.requestId,
         operation: 'getIssueById',
         ok: true,
-        result: issue,
+        result: lookup,
+      };
+    case 'listProjects':
+      return {
+        type: 'operation-result',
+        requestId: request.requestId,
+        operation: 'listProjects',
+        ok: true,
+        result: [project],
       };
     case 'getActivityOptions':
       return {
@@ -423,7 +433,7 @@ describe('ExtensionExecutionAdapter', () => {
     ).toHaveLength(3);
   });
 
-  it('handshakes without a secret, then runs all eight operations', async () => {
+  it('handshakes without a secret, then runs all nine operations', async () => {
     const host = createFakeHost();
     const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
       isClient: true,
@@ -431,7 +441,10 @@ describe('ExtensionExecutionAdapter', () => {
     });
 
     expect(await adapter.searchIssues('login')).toEqual([issue]);
-    expect(await adapter.getIssueById('42')).toEqual(issue);
+    expect(await adapter.searchIssues('login', { remoteProjectId: '3' })).toEqual([issue]);
+    expect(await adapter.getIssueById('42')).toEqual(lookup);
+    expect(await adapter.getIssueById('42', { remoteProjectId: '3' })).toEqual(lookup);
+    expect(await adapter.listProjects()).toEqual([project]);
     expect(await adapter.getActivityOptions('42')).toEqual([activity]);
     expect(await adapter.getCurrentAccount()).toEqual(account);
     expect(await adapter.fetchTimeLogs({ spentOn: '2026-03-15', workPackageIds: ['42'] })).toEqual([
@@ -469,7 +482,70 @@ describe('ExtensionExecutionAdapter', () => {
     const operations = host.portMessages.filter(
       (message) => operationRequestSchema.safeParse(message).success,
     );
-    expect(operations).toHaveLength(8);
+    expect(operations).toHaveLength(11);
+  });
+
+  it('sends the query alone when unscoped and the scope alongside it when scoped', async () => {
+    const host = createFakeHost();
+    const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+    });
+
+    await adapter.searchIssues('login');
+    await adapter.searchIssues('login', { remoteProjectId: '3' });
+    await adapter.getIssueById('42');
+    await adapter.getIssueById('42', { remoteProjectId: '3' });
+
+    // SAFETY: the filter above keeps only messages that just parsed as OperationRequest.
+    const operations = host.portMessages.filter(
+      (message) => operationRequestSchema.safeParse(message).success,
+    ) as OperationRequest[];
+    expect(operations.map((op) => op.input)).toEqual([
+      { query: 'login' },
+      { query: 'login', scope: { remoteProjectId: '3' } },
+      { remoteIssueId: '42' },
+      { remoteIssueId: '42', scope: { remoteProjectId: '3' } },
+    ]);
+  });
+
+  it('rejects listProjects as incompatible when the extension does not advertise it', async () => {
+    const host = createFakeHost({
+      handshake: () => ({
+        ...defaultHandshake(),
+        supportedOperations: EXTENSION_OPERATION_NAMES.filter((op) => op !== 'listProjects'),
+      }),
+    });
+    const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+    });
+
+    await expect(adapter.listProjects()).rejects.toMatchObject({ kind: 'incompatible' });
+    expect(
+      host.portMessages.some((message) => operationRequestSchema.safeParse(message).success),
+    ).toBe(false);
+  });
+
+  it('exposes listProjects support through the availability probe handshake', async () => {
+    const supported = createFakeHost();
+    const withCatalog = await probeExtensionAvailability({
+      isClient: true,
+      openBridge: supported.openBridge,
+    });
+    expect(withCatalog.handshake?.supportedOperations).toContain('listProjects');
+
+    const legacy = createFakeHost({
+      handshake: () => ({
+        ...defaultHandshake(),
+        supportedOperations: EXTENSION_OPERATION_NAMES.filter((op) => op !== 'listProjects'),
+      }),
+    });
+    const withoutCatalog = await probeExtensionAvailability({
+      isClient: true,
+      openBridge: legacy.openBridge,
+    });
+    expect(withoutCatalog.handshake?.supportedOperations).not.toContain('listProjects');
   });
 
   it('reconstructs upstream adapter errors without treating them as availability failures', async () => {

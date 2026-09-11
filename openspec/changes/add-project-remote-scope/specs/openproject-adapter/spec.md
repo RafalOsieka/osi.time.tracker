@@ -37,7 +37,7 @@ The OpenProject adapter SHALL implement the catalog operation (REQ-318) by listi
 - **THEN** the neutral entry SHALL expose only the parent's id derived from that link
 
 ### Requirement: REQ-324 OpenProject scoped search includes all subprojects
-When a scope is supplied, the OpenProject adapter SHALL query the project-scoped work-packages endpoint for the given project id with the subproject filter set to include all subprojects, combined with the existing subject filter and result bound. Exact-lookup scope membership (REQ-320) SHALL be decided by querying the same scoped endpoint filtered to the requested work-package id; an empty scoped answer followed by a successful direct work-package lookup SHALL yield `inScope: false`.
+When a scope is supplied, the OpenProject adapter SHALL query the project-scoped work-packages endpoint for the given project id (which includes descendant projects), combined with the existing subject filter and result bound. Exact-lookup scope membership (REQ-320) SHALL be decided by querying the same scoped endpoint filtered to the requested work-package id; an empty scoped answer followed by a successful direct work-package lookup SHALL yield `inScope: false`.
 
 #### Scenario: Descendants are included
 - **WHEN** a scoped title search runs against a project with subprojects

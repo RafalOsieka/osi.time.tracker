@@ -1,6 +1,11 @@
 import type { RemoteFieldOption } from '../contracts/remote-field-option.js';
 import type { RemoteAccount } from '../contracts/remote-account.js';
-import type { RemoteIssueSearchResult } from '../contracts/remote-issue.js';
+import type {
+  RemoteIssueLookup,
+  RemoteIssueScope,
+  RemoteIssueSearchResult,
+} from '../contracts/remote-issue.js';
+import type { RemoteProjectDto } from '../contracts/remote-project.js';
 import type {
   RemoteTimeEntryDeleteOutcome,
   RemoteTimeLogDto,
@@ -31,25 +36,58 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
     this.client = new RedmineClient(transport, baseUrl);
   }
 
-  async searchIssues(query: string): Promise<RemoteIssueSearchResult[]> {
+  async searchIssues(query: string, scope?: RemoteIssueScope): Promise<RemoteIssueSearchResult[]> {
     try {
-      const { results } = await this.client.searchByTitle(query, this.secret);
+      const { status, results } = await this.client.searchByTitle(query, this.secret, scope);
+      if (scope && (status === 404 || status === 403)) {
+        throw new RemoteAdapterError('error.remoteIssueSearchFailed', status);
+      }
       return results;
     } catch (err) {
       rethrowAsAdapterError(err, 'error.remoteIssueSearchFailed');
     }
   }
 
-  async getIssueById(remoteIssueId: string): Promise<RemoteIssueSearchResult | null> {
+  async getIssueById(
+    remoteIssueId: string,
+    scope?: RemoteIssueScope,
+  ): Promise<RemoteIssueLookup | null> {
     try {
+      if (scope) {
+        const scoped = await this.client.findIssueInScope(remoteIssueId, scope, this.secret);
+        if (scoped.status === 404 || scoped.status === 403) {
+          throw new RemoteAdapterError('error.remoteIssueSearchFailed', scoped.status);
+        }
+        if (scoped.result) {
+          return { result: scoped.result, inScope: true };
+        }
+      }
       const { result } = await this.client.getIssueById(remoteIssueId, this.secret);
-      return result;
+      return result ? { result, inScope: !scope } : null;
     } catch (err) {
       if (err instanceof UpstreamHttpError && err.statusCode === 404) {
         return null;
       }
       rethrowAsAdapterError(err, 'error.remoteIssueSearchFailed');
     }
+  }
+
+  async listProjects(): Promise<RemoteProjectDto[]> {
+    const projects: RemoteProjectDto[] = [];
+    let offset = 0;
+
+    try {
+      for (let page = 0; page < REDMINE_TIME_LOGS_MAX_PAGES; page += 1) {
+        const result = await this.client.listProjectsPage({ offset }, this.secret);
+        projects.push(...result.projects);
+        if (result.nextOffset == null) break;
+        offset = result.nextOffset;
+      }
+    } catch (err) {
+      rethrowAsAdapterError(err, 'error.remoteProjectsFetchFailed');
+    }
+
+    return projects;
   }
 
   /**

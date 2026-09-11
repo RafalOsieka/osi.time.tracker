@@ -109,6 +109,16 @@ function trackerForGroup(group: { projectId: string | null }) {
   return getTracker(trackerIdForProject(group.projectId));
 }
 
+/** The owning project's remote project scope (REQ-328), or null when unset. */
+function scopeForGroup(group: { projectId: string | null }) {
+  const project = projectOptions.value.find((p) => p.id === group.projectId);
+  if (!project?.remoteProjectId || !project.remoteProjectTitle) return null;
+  return {
+    remoteProjectId: project.remoteProjectId,
+    remoteProjectTitle: project.remoteProjectTitle,
+  };
+}
+
 const now = ref(0);
 onMounted(() => {
   now.value = Date.now();
@@ -355,6 +365,7 @@ async function onEntryDeleted() {
           :active-editor-key="activeEditorKey"
           :project-options="projectOptions"
           :tracker="trackerForGroup(group)"
+          :scope="scopeForGroup(group)"
           @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
           @continue="onContinue(group)"
           @stop="onStop"

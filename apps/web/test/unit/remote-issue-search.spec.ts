@@ -95,6 +95,79 @@ describe('useRemoteIssueSearch', () => {
     expect(errorKey.value).toBe('error.remoteIssueSearchNotFound');
   });
 
+  it('forwards the scope to a scoped title search and marks no result out of scope', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ _embedded: { elements: [{ id: 1, subject: 'Fix bug' }] } }),
+    );
+    const { search, results, outOfScopeId } = useRemoteIssueSearch(config, () => ({
+      remoteProjectId: '3',
+    }));
+    await search({ mode: 'title', query: 'Fix bug' });
+
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(url)).toContain('/api/v3/projects/3/work_packages?');
+    expect(results.value).toEqual([{ remoteIssueId: '1', title: 'Fix bug' }]);
+    expect(outOfScopeId.value).toBeNull();
+  });
+
+  it('does not scope the search when applyScope is false', async () => {
+    vi.mocked(fetch).mockResolvedValue(jsonResponse({ _embedded: { elements: [] } }));
+    const { search } = useRemoteIssueSearch(config, () => ({ remoteProjectId: '3' }));
+    await search({ mode: 'title', query: 'Fix bug' }, false);
+
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(url)).toContain('/api/v3/work_packages?');
+    expect(String(url)).not.toContain('/projects/3/');
+  });
+
+  it('marks an in-scope id-mode result without a hint', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({ _embedded: { elements: [{ id: 38, subject: 'Child wp' }] } }),
+    );
+    const { search, results, outOfScopeId } = useRemoteIssueSearch(config, () => ({
+      remoteProjectId: '3',
+    }));
+    await search({ mode: 'id', query: '38' });
+
+    const [url] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(url)).toContain('/api/v3/projects/3/work_packages?');
+    expect(results.value).toEqual([{ remoteIssueId: '38', title: 'Child wp' }]);
+    expect(outOfScopeId.value).toBeNull();
+  });
+
+  it('falls back to the direct lookup and flags an out-of-scope id result', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({ _embedded: { elements: [] } }))
+      .mockResolvedValueOnce(jsonResponse({ id: 39, subject: 'Unrelated wp' }));
+    const { search, results, outOfScopeId, errorKey } = useRemoteIssueSearch(config, () => ({
+      remoteProjectId: '3',
+    }));
+    await search({ mode: 'id', query: '39' });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const [firstUrl] = vi.mocked(fetch).mock.calls[0]!;
+    expect(String(firstUrl)).toContain('/api/v3/projects/3/work_packages?');
+    const [secondUrl] = vi.mocked(fetch).mock.calls[1]!;
+    expect(String(secondUrl)).toBe('https://op.example.com/api/v3/work_packages/39');
+    expect(results.value).toEqual([{ remoteIssueId: '39', title: 'Unrelated wp' }]);
+    expect(outOfScopeId.value).toBe('39');
+    expect(errorKey.value).toBeNull();
+  });
+
+  it('resolves not-found when neither the scoped nor direct id lookup finds a result', async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(jsonResponse({ _embedded: { elements: [] } }))
+      .mockResolvedValueOnce(jsonResponse({}, 404));
+    const { search, results, outOfScopeId, errorKey } = useRemoteIssueSearch(config, () => ({
+      remoteProjectId: '3',
+    }));
+    await search({ mode: 'id', query: '999' });
+
+    expect(results.value).toEqual([]);
+    expect(outOfScopeId.value).toBeNull();
+    expect(errorKey.value).toBe('error.remoteIssueSearchNotFound');
+  });
+
   it('maps a generic remote failure to a translated error key', async () => {
     vi.mocked(fetch).mockResolvedValue(jsonResponse({}, 500));
     const { search, errorKey } = useRemoteIssueSearch(config);
@@ -132,6 +205,42 @@ describe('useRemoteIssueSearch', () => {
     await first;
 
     expect(results.value).toEqual([{ remoteIssueId: '2', title: 'Newer' }]);
+  });
+
+  it('suppresses a stale two-step id lookup superseded by a newer search', async () => {
+    // Dispatch by request content rather than call order: the two searches'
+    // fetches interleave at each `await` boundary, not strictly FIFO.
+    let resolveDirectLookup!: (value: Response) => void;
+    const directLookupPromise = new Promise<Response>((resolve) => {
+      resolveDirectLookup = resolve;
+    });
+    vi.mocked(fetch).mockImplementation(async (input) => {
+      const requestUrl = String(input);
+      if (requestUrl === 'https://op.example.com/api/v3/work_packages/39') {
+        return directLookupPromise; // direct-lookup fallback: hangs until resolved below
+      }
+      if (requestUrl.includes('/projects/3/work_packages') && requestUrl.includes('%2239%22')) {
+        return jsonResponse({ _embedded: { elements: [] } }); // scoped id lookup: miss
+      }
+      return jsonResponse({ _embedded: { elements: [{ id: 2, subject: 'Newer' }] } }); // title search
+    });
+
+    const { search, results, outOfScopeId } = useRemoteIssueSearch(config, () => ({
+      remoteProjectId: '3',
+    }));
+    const first = search({ mode: 'id', query: '39' });
+    const second = search({ mode: 'title', query: 'newer query' });
+
+    await second;
+    expect(results.value).toEqual([{ remoteIssueId: '2', title: 'Newer' }]);
+
+    // Now let the stale first request's direct lookup resolve; it must not
+    // overwrite the newer title-search result or set an out-of-scope flag.
+    resolveDirectLookup(jsonResponse({ id: 39, subject: 'Unrelated wp' }));
+    await first;
+
+    expect(results.value).toEqual([{ remoteIssueId: '2', title: 'Newer' }]);
+    expect(outOfScopeId.value).toBeNull();
   });
 
   it('never sends the credential to an OSI server API path', async () => {

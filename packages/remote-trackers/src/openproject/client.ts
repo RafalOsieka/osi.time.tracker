@@ -1,6 +1,7 @@
 import type { RemoteFieldOption } from '../contracts/remote-field-option.js';
 import type { RemoteAccount } from '../contracts/remote-account.js';
-import type { RemoteIssueSearchResult } from '../contracts/remote-issue.js';
+import type { RemoteIssueScope, RemoteIssueSearchResult } from '../contracts/remote-issue.js';
+import type { RemoteProjectDto } from '../contracts/remote-project.js';
 import { z } from 'zod';
 import type { Transport } from '../contracts/remote-adapter.js';
 import { normalizeBaseUrl } from '../contracts/normalize-base-url.js';
@@ -109,6 +110,22 @@ interface OpenProjectAccountPayload {
   name?: string;
 }
 
+interface OpenProjectProjectElement {
+  id?: string | number;
+  name?: string;
+  _links?: {
+    parent?: OpenProjectHalLink;
+  };
+}
+
+interface OpenProjectProjectsCollectionPayload {
+  total?: number;
+  count?: number;
+  pageSize?: number;
+  offset?: number;
+  _embedded?: { elements?: OpenProjectProjectElement[] };
+}
+
 const openProjectCollectionPayloadSchema = z.custom<OpenProjectCollectionPayload>(
   (value) => value instanceof Object && !Array.isArray(value),
 );
@@ -125,6 +142,9 @@ const openProjectTimeEntryCollectionSchema = z.custom<OpenProjectTimeEntryCollec
   (value) => value instanceof Object && !Array.isArray(value),
 );
 const openProjectTimeEntryElementSchema = z.custom<OpenProjectTimeEntryElement>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const openProjectProjectsCollectionSchema = z.custom<OpenProjectProjectsCollectionPayload>(
   (value) => value instanceof Object && !Array.isArray(value),
 );
 
@@ -175,6 +195,7 @@ export class OpenProjectClient {
   async searchByTitle(
     title: string,
     secret: string | null,
+    scope?: RemoteIssueScope,
   ): Promise<{ status: number; results: RemoteIssueSearchResult[] }> {
     const filters = JSON.stringify([{ subject: { operator: '~', values: [title] } }]);
     const params = new URLSearchParams({
@@ -183,7 +204,7 @@ export class OpenProjectClient {
     });
     const { status, payload } = await this.transport.execute(
       {
-        url: `${this.base()}/api/v3/work_packages?${params.toString()}`,
+        url: `${this.base()}${this.workPackagesPath(scope)}?${params.toString()}`,
         method: 'GET',
         headers: authHeaders(secret),
       },
@@ -205,6 +226,57 @@ export class OpenProjectClient {
       openProjectWorkPackageElementSchema,
     );
     return { status, result: parseIssueByIdResult(payload, status) };
+  }
+
+  /**
+   * Looks up one work-package id within a project scope. The project-scoped
+   * work-packages endpoint (`/projects/{id}/work_packages`) already includes
+   * descendant projects, confirmed against a live instance — no additional
+   * subproject filter is needed. A `status` of 404/403 means the scoped
+   * project itself is gone or inaccessible — distinct from a 200 with an
+   * empty list, which means the work package exists but is outside scope.
+   */
+  async findIssueInScope(
+    remoteIssueId: string,
+    scope: RemoteIssueScope,
+    secret: string | null,
+  ): Promise<{ status: number; result: RemoteIssueSearchResult | null }> {
+    const filters = JSON.stringify([{ id: { operator: '=', values: [remoteIssueId] } }]);
+    const params = new URLSearchParams({ filters });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}${this.workPackagesPath(scope)}?${params.toString()}`,
+        method: 'GET',
+        headers: authHeaders(secret),
+      },
+      openProjectCollectionPayloadSchema,
+    );
+    const results = parseTitleSearchResults(payload);
+    return { status, result: results[0] ?? null };
+  }
+
+  /**
+   * One page of the remote project catalog (REQ-323), `pageSize`/`offset`
+   * paginated. OpenProject's `offset` here is a 1-based page number, not an
+   * item offset.
+   */
+  async listProjectsPage(
+    input: { offset?: number; pageSize?: number },
+    secret: string | null,
+  ): Promise<{ status: number; projects: RemoteProjectDto[]; total: number }> {
+    const pageSize = input.pageSize ?? 100;
+    const offset = input.offset ?? 1;
+    const params = new URLSearchParams({ pageSize: String(pageSize), offset: String(offset) });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/api/v3/projects?${params.toString()}`,
+        method: 'GET',
+        headers: authHeaders(secret),
+      },
+      openProjectProjectsCollectionSchema,
+    );
+    const parsed = parseProjectsCollection(payload);
+    return { status, projects: parsed.projects, total: parsed.total };
   }
 
   async getActivityOptions(
@@ -318,6 +390,13 @@ export class OpenProjectClient {
 
   private base(): string {
     return normalizeBaseUrl(this.baseUrl);
+  }
+
+  /** Tracker-wide or project-scoped work-packages path, per `scope`. */
+  private workPackagesPath(scope: RemoteIssueScope | undefined): string {
+    return scope
+      ? `/api/v3/projects/${encodeURIComponent(scope.remoteProjectId)}/work_packages`
+      : '/api/v3/work_packages';
   }
 
   private async executeTimeLogsPage(
@@ -547,4 +626,35 @@ function parseCreateTimeEntryResult(
   if (fromId) return { remoteLogId: fromId };
   const fromSelf = hrefId(row._links?.self?.href);
   return fromSelf ? { remoteLogId: fromSelf } : null;
+}
+
+/**
+ * Parses one page of the OpenProject project catalog into adapter-neutral
+ * entries and the reported total. Malformed elements are skipped.
+ */
+type OpenProjectProjectsPage = {
+  projects: RemoteProjectDto[];
+  total: number;
+};
+
+function parseProjectsCollection(
+  payload: OpenProjectProjectsCollectionPayload | null,
+): OpenProjectProjectsPage {
+  const elements = payload?._embedded?.elements;
+  const projects: RemoteProjectDto[] = [];
+
+  if (elements) {
+    for (const element of elements) {
+      if (element.id == null || element.name == null) continue;
+      const dto: RemoteProjectDto = { remoteProjectId: String(element.id), title: element.name };
+      const parentId = hrefId(element._links?.parent?.href);
+      if (parentId) dto.parentId = parentId;
+      projects.push(dto);
+    }
+  }
+
+  const total =
+    payload?.total != null && Number.isFinite(payload.total) ? payload.total : projects.length;
+
+  return { projects, total };
 }

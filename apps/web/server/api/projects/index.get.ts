@@ -22,6 +22,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
       name: projects.name,
       trackerId: projects.trackerId,
       trackerName: trackers.name,
+      remoteProjectId: projects.remoteProjectId,
+      remoteProjectTitle: projects.remoteProjectTitle,
       createdAt: projects.createdAt,
     })
     .from(projects)
@@ -35,6 +37,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
     name: row.name,
     trackerId: row.trackerId,
     trackerName: row.trackerName ?? null,
+    remoteProjectId: row.remoteProjectId,
+    remoteProjectTitle: row.remoteProjectTitle,
     createdAt: row.createdAt.toISOString(),
   }));
 });

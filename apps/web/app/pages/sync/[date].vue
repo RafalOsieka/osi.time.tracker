@@ -822,6 +822,11 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :issue-id="issueRefFor(row)?.remoteIssueId ?? null"
         :show-link-picker="stateFor(row) === 'unlinked' && !!row.config"
         :picker-config="row.config ? toPickerConfig(row.config) : null"
+        :picker-scope="
+          row.remoteProjectId && row.remoteProjectTitle
+            ? { remoteProjectId: row.remoteProjectId, remoteProjectTitle: row.remoteProjectTitle }
+            : null
+        "
         :comment="commentFor(row)"
         :editing-title="editingTitleTaskId === row.taskId"
         :tracked-label="formatDuration(trackedSecondsFor(row))"

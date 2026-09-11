@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
   REMOTE_ISSUE_SEARCH_MODE_ORDER,
+  type RemoteIssueScope,
   type RemoteIssueSearchMode,
   type RemoteIssueSearchResult,
 } from '@osi/remote-trackers/contracts';
@@ -12,12 +13,15 @@ defineOptions({ inheritAttrs: false });
 const {
   config,
   currentRef = undefined,
+  scope = null,
   linkTestid = undefined,
   cachedTestid = undefined,
   unlinkedTestid = undefined,
 } = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
+  /** The owning project's remote project scope (REQ-328), if any. */
+  scope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
   linkTestid?: string;
   cachedTestid?: string;
   unlinkedTestid?: string;
@@ -35,10 +39,15 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
-const { search, results, loading, errorKey } = useRemoteIssueSearch(config);
+const { search, results, outOfScopeId, loading, errorKey } = useRemoteIssueSearch(
+  config,
+  () => scope ?? undefined,
+);
 
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
+// On by default whenever a scope exists (REQ-328); reset on every popover open.
+const applyScope = shallowRef(true);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
@@ -77,8 +86,17 @@ const statusMessage = computed(() => {
   if (results.value.length === 0) {
     return t('remoteIssuePicker.emptyResults');
   }
-  return t('remoteIssuePicker.resultCount', { count: results.value.length }, results.value.length);
+  const count = t(
+    'remoteIssuePicker.resultCount',
+    { count: results.value.length },
+    results.value.length,
+  );
+  return outOfScopeId.value ? `${count} ${t('remoteIssuePicker.outOfScopeHint')}` : count;
 });
+
+const scopeToggleLabel = computed(() =>
+  scope ? t('remoteIssuePicker.scopeToggleLabel', { title: scope.remoteProjectTitle }) : '',
+);
 
 function linkedTooltip(ref: RemoteIssueRefDto): string {
   const base = `${t('timerView.remoteIssue.linkedTooltipPrefix')} #${ref.remoteIssueId}: ${ref.cachedTitle}`;
@@ -92,17 +110,32 @@ function resultMeta(result: RemoteIssueSearchResult): string {
 }
 
 function resultAccessibleName(result: RemoteIssueSearchResult): string {
-  return result.remoteProjectTitle
+  const base = result.remoteProjectTitle
     ? `#${result.remoteIssueId} ${result.title} ${result.remoteProjectTitle}`
     : `#${result.remoteIssueId} ${result.title}`;
+  return result.remoteIssueId === outOfScopeId.value
+    ? `${base} ${t('remoteIssuePicker.outOfScopeHint')}`
+    : base;
 }
 
 function focusQueryInput() {
   rootEl.value?.querySelector('input')?.focus();
 }
 
-function onTriggerClick() {
+// Shared by every path that opens the popover (the unlinked icon, the Edit
+// menu item, and the popover's own controlled reopen) so state — including
+// the scope toggle (REQ-328) — resets the same way regardless of entry point.
+async function resetForOpen() {
+  state.mode = REMOTE_ISSUE_SEARCH_MODE_ORDER[0];
+  applyScope.value = true;
+  hasSearched.value = false;
+  await nextTick();
+  focusQueryInput();
+}
+
+async function onTriggerClick() {
   open.value = true;
+  await resetForOpen();
 }
 
 async function onOpenChange(value: boolean) {
@@ -111,10 +144,7 @@ async function onOpenChange(value: boolean) {
     hasSearched.value = false;
     return;
   }
-  state.mode = REMOTE_ISSUE_SEARCH_MODE_ORDER[0];
-  hasSearched.value = false;
-  await nextTick();
-  focusQueryInput();
+  await resetForOpen();
 }
 
 function onClose() {
@@ -124,7 +154,7 @@ function onClose() {
 
 async function submit() {
   hasSearched.value = true;
-  await search({ mode: state.mode, query: state.query });
+  await search({ mode: state.mode, query: state.query }, applyScope.value);
 }
 
 function selectResult(result: RemoteIssueSearchResult) {
@@ -270,6 +300,14 @@ onBeforeUnmount(() => {
             />
           </UForm>
 
+          <UCheckbox
+            v-if="scope"
+            id="remote-issue-picker-scope-toggle"
+            v-model="applyScope"
+            :label="scopeToggleLabel"
+            data-testid="remote-issue-picker-scope-toggle"
+          />
+
           <p v-if="statusMessage" class="m-0 text-sm text-muted" role="status" aria-live="polite">
             {{ statusMessage }}
           </p>
@@ -294,6 +332,13 @@ onBeforeUnmount(() => {
                 <span class="flex min-w-0 flex-col items-start gap-0.5">
                   <span class="truncate">{{ result.title }}</span>
                   <span class="truncate text-xs text-muted">{{ resultMeta(result) }}</span>
+                  <span
+                    v-if="result.remoteIssueId === outOfScopeId"
+                    class="truncate text-xs text-warning"
+                    data-testid="remote-issue-picker-out-of-scope-hint"
+                  >
+                    {{ t('remoteIssuePicker.outOfScopeHint') }}
+                  </span>
                 </span>
               </UButton>
             </li>

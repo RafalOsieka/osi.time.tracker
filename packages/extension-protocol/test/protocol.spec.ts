@@ -39,6 +39,7 @@ describe('extension protocol', () => {
     expect(EXTENSION_OPERATION_NAMES).toEqual([
       'searchIssues',
       'getIssueById',
+      'listProjects',
       'getActivityOptions',
       'getCurrentAccount',
       'fetchTimeLogs',
@@ -48,10 +49,18 @@ describe('extension protocol', () => {
     ]);
   });
 
+  it('rejects the old scalar searchIssues/getIssueById inputs', () => {
+    expect(parseOperationRequest(baseRequest('searchIssues', 'invoice')).success).toBe(false);
+    expect(parseOperationRequest(baseRequest('getIssueById', '42')).success).toBe(false);
+  });
+
   it('parses every operation request', () => {
     const samples: JsonValue[] = [
-      baseRequest('searchIssues', 'invoice'),
-      baseRequest('getIssueById', '42'),
+      baseRequest('searchIssues', { query: 'invoice' }),
+      baseRequest('searchIssues', { query: 'invoice', scope: { remoteProjectId: '3' } }),
+      baseRequest('getIssueById', { remoteIssueId: '42' }),
+      baseRequest('getIssueById', { remoteIssueId: '42', scope: { remoteProjectId: '3' } }),
+      baseRequest('listProjects', null),
       baseRequest('getActivityOptions', '42'),
       baseRequest('getCurrentAccount', null),
       baseRequest('fetchTimeLogs', {
@@ -99,6 +108,26 @@ describe('extension protocol', () => {
           operation: 'getIssueById',
           ok: true,
           result: null,
+        },
+      },
+      {
+        operation: 'getIssueById',
+        value: {
+          type: 'operation-result',
+          requestId: 'req-1',
+          operation: 'getIssueById',
+          ok: true,
+          result: { result: { remoteIssueId: '1', title: 'A' }, inScope: false },
+        },
+      },
+      {
+        operation: 'listProjects',
+        value: {
+          type: 'operation-result',
+          requestId: 'req-1',
+          operation: 'listProjects',
+          ok: true,
+          result: [{ remoteProjectId: '1', title: 'Acme' }],
         },
       },
       {

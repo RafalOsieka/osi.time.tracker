@@ -144,6 +144,7 @@ Conventions that apply to every story:
 **Acceptance criteria**
 
 - I can browse/search open issues from a Project's active Tracker (**OpenProject** and **Redmine**) through direct browser access or the desktop extension.
+- A Project may optionally scope itself to one remote project (and its descendants) on its tracker, picked from a catalog in the Project form; the issue picker applies that scope by default with a toggle to search the whole tracker, and an exact-ID lookup outside the scope is still shown with a hint rather than hidden.
 - I can link a remote issue to a Task from its group row in the Timer view (and inline on the Remote Sync page), storing the issue ID and cached title/URL (RemoteIssueRef) via the project's tracker.
 - I can unlink a remote issue from a Task.
 - Linking is rejected for local projects or projects whose tracker is missing/soft-deleted.

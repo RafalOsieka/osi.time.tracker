@@ -433,4 +433,240 @@ describeProjects('projects API integration', async () => {
     const unauth = await fetch(url('/api/projects'));
     expect(unauth.status).toBe(401);
   });
+
+  it('create with a remote project scope (happy path) and without one', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'Scope Tracker ' + Date.now());
+
+    const scopedRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Scoped Project',
+        trackerId: tracker.id,
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    expect(scopedRes.status).toBe(200);
+    const scoped = await scopedRes.json();
+    expect(scoped.remoteProjectId).toBe('3');
+    expect(scoped.remoteProjectTitle).toBe('Spike Root');
+
+    const unscopedRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Unscoped Project', trackerId: tracker.id }),
+    });
+    expect(unscopedRes.status).toBe(200);
+    const unscoped = await unscopedRes.json();
+    expect(unscoped.remoteProjectId).toBeNull();
+    expect(unscoped.remoteProjectTitle).toBeNull();
+  });
+
+  it('rejects a half-set remote project scope', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'Half Scope Tracker ' + Date.now());
+
+    const idOnlyRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Half A', trackerId: tracker.id, remoteProjectId: '3' }),
+    });
+    expect(idOnlyRes.status).toBe(422);
+    expect((await idOnlyRes.json())?.data?.messageKey).toBe('error.projectRemoteScopeIncomplete');
+
+    const titleOnlyRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Half B',
+        trackerId: tracker.id,
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    expect(titleOnlyRes.status).toBe(422);
+    expect((await titleOnlyRes.json())?.data?.messageKey).toBe(
+      'error.projectRemoteScopeIncomplete',
+    );
+  });
+
+  it('rejects a remote project scope on a local project', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+
+    const res = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Local With Scope',
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json())?.data?.messageKey).toBe('error.projectRemoteScopeRequiresTracker');
+  });
+
+  it('patch replaces or clears the scope when the tracker is unchanged', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'Patch Scope Tracker ' + Date.now());
+
+    const createRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Rescope Me',
+        trackerId: tracker.id,
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    const project = await createRes.json();
+
+    const replaceRes = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Rescope Me',
+        trackerId: tracker.id,
+        remoteProjectId: '4',
+        remoteProjectTitle: 'Spike Child',
+      }),
+    });
+    expect(replaceRes.status).toBe(200);
+    const replaced = await replaceRes.json();
+    expect(replaced.remoteProjectId).toBe('4');
+    expect(replaced.remoteProjectTitle).toBe('Spike Child');
+
+    const clearRes = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Rescope Me', trackerId: tracker.id }),
+    });
+    expect(clearRes.status).toBe(200);
+    const cleared = await clearRes.json();
+    expect(cleared.remoteProjectId).toBeNull();
+    expect(cleared.remoteProjectTitle).toBeNull();
+  });
+
+  it('patch drops the scope when the tracker changes or is detached, even if the body echoes it', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const trackerA = await createTracker(jar, token, 'Reassign Scope A ' + Date.now());
+    const trackerB = await createTracker(jar, token, 'Reassign Scope B ' + Date.now());
+
+    const createRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Reassign Me',
+        trackerId: trackerA.id,
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    const project = await createRes.json();
+
+    const reassignRes = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Reassign Me',
+        trackerId: trackerB.id,
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    expect(reassignRes.status).toBe(200);
+    const reassigned = await reassignRes.json();
+    expect(reassigned.trackerId).toBe(trackerB.id);
+    expect(reassigned.remoteProjectId).toBeNull();
+    expect(reassigned.remoteProjectTitle).toBeNull();
+
+    const rescopeRes = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Reassign Me',
+        trackerId: trackerB.id,
+        remoteProjectId: '5',
+        remoteProjectTitle: 'Spike Grandchild',
+      }),
+    });
+    expect(rescopeRes.status).toBe(200);
+
+    const detachRes = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Reassign Me',
+        trackerId: null,
+        remoteProjectId: '5',
+        remoteProjectTitle: 'Spike Grandchild',
+      }),
+    });
+    expect(detachRes.status).toBe(200);
+    const detached = await detachRes.json();
+    expect(detached.trackerId).toBeNull();
+    expect(detached.remoteProjectId).toBeNull();
+    expect(detached.remoteProjectTitle).toBeNull();
+  });
+
+  it('patch rejects a remote project scope on an already-local project', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+
+    const createRes = await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Stays Local' }),
+    });
+    const project = await createRes.json();
+
+    const res = await fetch(url(`/api/projects/${project.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Stays Local',
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    expect(res.status).toBe(422);
+    expect((await res.json())?.data?.messageKey).toBe('error.projectRemoteScopeRequiresTracker');
+  });
+
+  it('list includes scope fields, null when absent', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(jar, token, 'List Scope Tracker ' + Date.now());
+
+    await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        name: 'Listed Scoped',
+        trackerId: tracker.id,
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    });
+    await fetch(url('/api/projects'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ name: 'Listed Unscoped', trackerId: tracker.id }),
+    });
+
+    const listRes = await fetch(url(`/api/projects?trackerId=${tracker.id}`), {
+      headers: { cookie: jar.header() },
+    });
+    const rows: Array<{
+      name: string;
+      remoteProjectId: string | null;
+      remoteProjectTitle: string | null;
+    }> = await listRes.json();
+    const scopedRow = rows.find((r) => r.name === 'Listed Scoped');
+    const unscopedRow = rows.find((r) => r.name === 'Listed Unscoped');
+    expect(scopedRow?.remoteProjectId).toBe('3');
+    expect(scopedRow?.remoteProjectTitle).toBe('Spike Root');
+    expect(unscopedRow?.remoteProjectId).toBeNull();
+    expect(unscopedRow?.remoteProjectTitle).toBeNull();
+  });
 });

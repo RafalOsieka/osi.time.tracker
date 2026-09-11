@@ -35,3 +35,22 @@ export interface RemoteIssueSearchResult {
   title: string;
   remoteProjectTitle?: string;
 }
+
+/**
+ * Restricts a search or exact lookup to one remote project and its
+ * descendants. The adapter (not the caller) resolves tree membership, so
+ * the neutral result shape never needs a remote project id.
+ */
+export interface RemoteIssueScope {
+  remoteProjectId: string;
+}
+
+/**
+ * Exact-lookup result: the found issue plus whether it belongs to the
+ * requested scope's subtree. `inScope` is always `true` when no scope was
+ * supplied to the lookup.
+ */
+export interface RemoteIssueLookup {
+  result: RemoteIssueSearchResult;
+  inScope: boolean;
+}

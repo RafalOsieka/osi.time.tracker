@@ -6,7 +6,10 @@ export type {
   RemoteIssueSearchMode,
   RemoteIssueSearchQuery,
   RemoteIssueSearchResult,
+  RemoteIssueScope,
+  RemoteIssueLookup,
 } from './remote-issue.js';
+export type { RemoteProjectDto } from './remote-project.js';
 export type { RemoteTimeEntryDeleteOutcome, RemoteTimeLogDto } from './remote-time-log.js';
 export { mapTimeEntryDeleteFailure, mapTimeEntryDeleteStatus } from './time-entry-delete.js';
 export {

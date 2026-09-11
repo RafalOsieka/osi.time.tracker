@@ -3,6 +3,8 @@ import {
   createProjectSchema,
   listProjectsQuerySchema,
   PROJECT_NAME_MAX_LENGTH,
+  PROJECT_REMOTE_PROJECT_ID_MAX_LENGTH,
+  PROJECT_REMOTE_PROJECT_TITLE_MAX_LENGTH,
 } from '../../shared/types/project';
 
 const validTrackerId = '018f2f8a-1234-7abc-8def-123456789abc';
@@ -59,6 +61,86 @@ describe('createProjectSchema', () => {
     expect(() =>
       createProjectSchema.parse({ name: 'Valid Name', trackerId: 'not-a-uuid' }),
     ).toThrow();
+  });
+
+  it('accepts a valid remote project scope pair', () => {
+    const result = createProjectSchema.parse({
+      name: 'Scoped',
+      trackerId: validTrackerId,
+      remoteProjectId: '  3  ',
+      remoteProjectTitle: '  Spike Root  ',
+    });
+    expect(result.remoteProjectId).toBe('3');
+    expect(result.remoteProjectTitle).toBe('Spike Root');
+  });
+
+  it('accepts no scope (both omitted or both null)', () => {
+    expect(
+      createProjectSchema.parse({ name: 'Unscoped', trackerId: validTrackerId }).remoteProjectId,
+    ).toBeUndefined();
+    const result = createProjectSchema.parse({
+      name: 'Unscoped',
+      trackerId: validTrackerId,
+      remoteProjectId: null,
+      remoteProjectTitle: null,
+    });
+    expect(result.remoteProjectId).toBeNull();
+    expect(result.remoteProjectTitle).toBeNull();
+  });
+
+  it('rejects a half-set scope in either direction', () => {
+    expect(() =>
+      createProjectSchema.parse({
+        name: 'Half',
+        trackerId: validTrackerId,
+        remoteProjectId: '3',
+      }),
+    ).toThrow();
+    expect(() =>
+      createProjectSchema.parse({
+        name: 'Half',
+        trackerId: validTrackerId,
+        remoteProjectTitle: 'Spike Root',
+      }),
+    ).toThrow();
+  });
+
+  it('rejects a blank or over-length remote project id or title', () => {
+    expect(() =>
+      createProjectSchema.parse({
+        name: 'Blank id',
+        trackerId: validTrackerId,
+        remoteProjectId: '   ',
+        remoteProjectTitle: 'Spike Root',
+      }),
+    ).toThrow();
+    expect(() =>
+      createProjectSchema.parse({
+        name: 'Long id',
+        trackerId: validTrackerId,
+        remoteProjectId: 'a'.repeat(PROJECT_REMOTE_PROJECT_ID_MAX_LENGTH + 1),
+        remoteProjectTitle: 'Spike Root',
+      }),
+    ).toThrow();
+    expect(() =>
+      createProjectSchema.parse({
+        name: 'Long title',
+        trackerId: validTrackerId,
+        remoteProjectId: '3',
+        remoteProjectTitle: 'a'.repeat(PROJECT_REMOTE_PROJECT_TITLE_MAX_LENGTH + 1),
+      }),
+    ).toThrow();
+  });
+
+  it('accepts scope fields at exactly the max length', () => {
+    const result = createProjectSchema.parse({
+      name: 'Max length scope',
+      trackerId: validTrackerId,
+      remoteProjectId: 'a'.repeat(PROJECT_REMOTE_PROJECT_ID_MAX_LENGTH),
+      remoteProjectTitle: 'a'.repeat(PROJECT_REMOTE_PROJECT_TITLE_MAX_LENGTH),
+    });
+    expect(result.remoteProjectId).toHaveLength(PROJECT_REMOTE_PROJECT_ID_MAX_LENGTH);
+    expect(result.remoteProjectTitle).toHaveLength(PROJECT_REMOTE_PROJECT_TITLE_MAX_LENGTH);
   });
 });
 

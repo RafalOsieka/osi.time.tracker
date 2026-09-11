@@ -85,10 +85,10 @@ const stubs = {
   UBadge: BadgeStub,
   TimerEntryRow: true,
   RemoteIssuePicker: {
-    props: ['config', 'currentRef', 'linkTestid', 'cachedTestid', 'unlinkedTestid'],
+    props: ['config', 'currentRef', 'scope', 'linkTestid', 'cachedTestid', 'unlinkedTestid'],
     emits: ['link', 'unlink'],
     template: `
-      <div v-bind="$attrs" data-remote-issue-picker="1">
+      <div v-bind="$attrs" data-remote-issue-picker="1" :data-scope-title="scope?.remoteProjectTitle">
         <a
           v-if="currentRef && currentRef.url"
           :href="currentRef.url"
@@ -162,6 +162,7 @@ type TimerTaskGroupMountProps = {
   activeEditorKey?: string | null;
   projectOptions?: ProjectDto[];
   tracker?: TrackerDto | null;
+  scope?: { remoteProjectId: string; remoteProjectTitle: string } | null;
 };
 
 function mount(props: TimerTaskGroupMountProps = {}) {
@@ -233,6 +234,8 @@ describe('TimerTaskGroup', () => {
           name: 'Current project',
           trackerId: 'c',
           trackerName: null,
+          remoteProjectId: null,
+          remoteProjectTitle: null,
           createdAt: '',
         },
       ],
@@ -348,6 +351,21 @@ describe('TimerTaskGroup', () => {
     expect(wrapper.find('[data-testid="timer-group-remote-issue-picker-task-1"]').exists()).toBe(
       true,
     );
+  });
+
+  it('forwards the project scope to the picker when the project has one', async () => {
+    const wrapper = await mount({
+      tracker: openProjectTracker,
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    const picker = wrapper.find('[data-remote-issue-picker="1"]');
+    expect(picker.attributes('data-scope-title')).toBe('Spike Root');
+  });
+
+  it('passes no scope to the picker when the project has none', async () => {
+    const wrapper = await mount({ tracker: openProjectTracker });
+    const picker = wrapper.find('[data-remote-issue-picker="1"]');
+    expect(picker.attributes('data-scope-title')).toBeUndefined();
   });
 
   it('renders a linked anchor with the reference URL and a tooltip', async () => {

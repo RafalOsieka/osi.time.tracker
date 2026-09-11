@@ -59,7 +59,13 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
   {
     id: 'tracker',
     header: t('projects.columnTracker'),
-    cell: ({ row }) => row.original.trackerName ?? t('projects.localTrackerLabel'),
+    cell: ({ row }) => {
+      const trackerLabel = row.original.trackerName ?? t('projects.localTrackerLabel');
+      // Shows the project's remote project scope alongside the tracker name (REQ-325).
+      return row.original.remoteProjectTitle
+        ? `${trackerLabel} · ${row.original.remoteProjectTitle}`
+        : trackerLabel;
+    },
   },
   {
     accessorKey: 'createdAt',

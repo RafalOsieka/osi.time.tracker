@@ -15,6 +15,14 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const trackerId = parsedBody.trackerId ?? null;
   let trackerName: string | null = null;
 
+  // A local project (no tracker) cannot carry a remote project scope (REQ-325).
+  if (!trackerId && parsedBody.remoteProjectId) {
+    throw createError({
+      statusCode: 422,
+      data: { messageKey: 'error.projectRemoteScopeRequiresTracker' } satisfies ApiMessage,
+    });
+  }
+
   if (trackerId) {
     const [tracker] = await db
       .select({ id: trackers.id, name: trackers.name })
@@ -56,7 +64,13 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   try {
     const [created] = await db
       .insert(projects)
-      .values({ userId: user.id, trackerId, name: parsedBody.name })
+      .values({
+        userId: user.id,
+        trackerId,
+        name: parsedBody.name,
+        remoteProjectId: parsedBody.remoteProjectId ?? null,
+        remoteProjectTitle: parsedBody.remoteProjectTitle ?? null,
+      })
       .returning();
 
     if (!created) {
@@ -71,6 +85,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       name: created.name,
       trackerId: created.trackerId,
       trackerName,
+      remoteProjectId: created.remoteProjectId,
+      remoteProjectTitle: created.remoteProjectTitle,
       createdAt: created.createdAt.toISOString(),
     };
   } catch (err) {
