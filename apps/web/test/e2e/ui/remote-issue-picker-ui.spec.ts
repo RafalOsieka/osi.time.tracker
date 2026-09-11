@@ -52,11 +52,12 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     token: string,
     name: string,
     trackerId: string,
+    scope?: { remoteProjectId: string; remoteProjectTitle: string },
   ): Promise<string> {
     const res = await fetch(url('/api/projects'), {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name, trackerId }),
+      body: JSON.stringify({ name, trackerId, ...scope }),
     });
     return (await res.json()).id;
   }
@@ -124,14 +125,23 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     return { _embedded: { elements: items } };
   }
 
-  async function setupClientAndTask(label: string) {
+  async function setupClientAndTask(
+    label: string,
+    scope?: { remoteProjectId: string; remoteProjectTitle: string },
+  ) {
     const { jar, token } = await apiLogin('remoteissuepickerui@example.com');
     const tracker = await createTracker(jar, token, `${label} Tracker ${Date.now()}`, {
       baseUrl: OPENPROJECT_BASE_URL,
       systemType: 'openproject',
       directBrowserAccess: true,
     });
-    const projectId = await createProject(jar, token, `${label} Project ${Date.now()}`, tracker.id);
+    const projectId = await createProject(
+      jar,
+      token,
+      `${label} Project ${Date.now()}`,
+      tracker.id,
+      scope,
+    );
     const taskId = await createTaskViaEntry(jar, token, `${label} Task ${Date.now()}`, projectId);
     return { jar, token, taskId };
   }
@@ -435,5 +445,129 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
 
     await page.close();
     expect(taskId).toBeTruthy();
+  });
+
+  it('5.2 applies the project scope by default, widens on toggle-off, and flags an out-of-scope id result', async () => {
+    const scopeRootId = '3';
+    const { taskId } = await setupClientAndTask('Scope', {
+      remoteProjectId: scopeRootId,
+      remoteProjectTitle: 'Spike Root',
+    });
+    const page = await loginAsInBrowser('remoteissuepickerui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForSelector(`[data-testid="timer-group-${taskId}"]`);
+    const group = page.locator(`[data-testid="timer-group-${taskId}"]`);
+
+    const requestPaths: string[] = [];
+    await page.route(`${OPENPROJECT_BASE_URL}/api/v3/**`, async (route) => {
+      const reqUrl = new URL(route.request().url());
+      requestPaths.push(reqUrl.pathname + reqUrl.search);
+
+      // Scoped exact lookup for id 39 (outside scope): no match.
+      if (reqUrl.pathname === `/api/v3/projects/${scopeRootId}/work_packages`) {
+        const filters = reqUrl.searchParams.get('filters') ?? '';
+        if (filters.includes('"39"')) {
+          await route.fulfill({
+            status: 200,
+            contentType: 'application/json',
+            body: JSON.stringify({ _embedded: { elements: [] } }),
+          });
+          return;
+        }
+        // Scoped title search.
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            _embedded: { elements: [{ id: 111, subject: 'Scoped Match' }] },
+          }),
+        });
+        return;
+      }
+      // Direct (unscoped) lookup of id 39: found, but outside the applied scope.
+      if (reqUrl.pathname === '/api/v3/work_packages/39') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ id: 39, subject: 'Unrelated Issue' }),
+        });
+        return;
+      }
+      // Tracker-wide title search (toggle off).
+      if (reqUrl.pathname === '/api/v3/work_packages') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            _embedded: { elements: [{ id: 222, subject: 'Wide Match' }] },
+          }),
+        });
+        return;
+      }
+      await route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
+    });
+
+    await openRemoteIssuePicker(group);
+    await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
+
+    // Toggle defaults on (REQ-328).
+    const toggle = page.locator('[data-testid="remote-issue-picker-scope-toggle"]');
+    expect(await toggle.getAttribute('aria-checked')).toBe('true');
+
+    await page
+      .locator('[data-testid="remote-issue-picker-mode"]')
+      .getByRole('radio', { name: /title/i })
+      .click();
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('Match');
+    await page.click('[data-testid="remote-issue-picker-submit"]');
+    await page.waitForSelector('[data-testid="remote-issue-picker-result-111"]');
+    expect(
+      requestPaths.some((p) => p.startsWith(`/api/v3/projects/${scopeRootId}/work_packages`)),
+    ).toBe(true);
+
+    // Widen: turn the toggle off and submit again — expect the tracker-wide path.
+    await toggle.click();
+    expect(await toggle.getAttribute('aria-checked')).toBe('false');
+    requestPaths.length = 0;
+    await page.click('[data-testid="remote-issue-picker-submit"]');
+    await page.waitForSelector('[data-testid="remote-issue-picker-result-222"]');
+    expect(requestPaths.some((p) => p.startsWith('/api/v3/work_packages?'))).toBe(true);
+    expect(
+      requestPaths.some((p) => p.startsWith(`/api/v3/projects/${scopeRootId}/work_packages`)),
+    ).toBe(false);
+
+    // Re-open (toggle resets on) and look up an id outside the scope.
+    await dismissRemoteIssuePicker(page);
+    await openRemoteIssuePicker(group);
+    await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
+    expect(
+      await page
+        .locator('[data-testid="remote-issue-picker-scope-toggle"]')
+        .getAttribute('aria-checked'),
+    ).toBe('true');
+    await page
+      .locator(
+        '[data-testid="remote-issue-picker-query"] input, [data-testid="remote-issue-picker-query"]',
+      )
+      .first()
+      .fill('39');
+    await page.click('[data-testid="remote-issue-picker-submit"]');
+    await page.waitForSelector('[data-testid="remote-issue-picker-result-39"]');
+    await page.waitForSelector('[data-testid="remote-issue-picker-out-of-scope-hint"]');
+
+    await page.click('[data-testid="remote-issue-picker-result-39"]');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid^="timer-group-remote-issue-link-"]')
+          ?.textContent?.trim() === '#39',
+    );
+
+    await page.close();
   });
 });

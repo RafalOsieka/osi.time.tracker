@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TimerViewGroup } from '~/utils/timer-view-grouping';
+import type { RemoteIssueScope } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const {
@@ -11,6 +12,7 @@ const {
   activeEditorKey = null,
   projectOptions = [],
   tracker = null,
+  scope = null,
 } = defineProps<{
   group: TimerViewGroup;
   isLive: boolean;
@@ -20,6 +22,8 @@ const {
   activeEditorKey?: string | null;
   projectOptions?: ProjectDto[];
   tracker?: TrackerDto | null;
+  /** The owning project's remote project scope (REQ-328), if any. */
+  scope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
 }>();
 
 const emit = defineEmits<{
@@ -61,6 +65,8 @@ const projectSelectOptions = computed(() => {
       name: group.projectName ?? '',
       trackerId: null,
       trackerName: null,
+      remoteProjectId: null,
+      remoteProjectTitle: null,
       createdAt: '',
     },
   ];
@@ -317,6 +323,7 @@ async function unlinkRemoteIssue() {
         v-if="showRemoteIssueControl"
         :config="tracker!"
         :current-ref="remoteIssueRef"
+        :scope="scope"
         class="shrink-0"
         :link-testid="`timer-group-remote-issue-link-${group.key}`"
         :cached-testid="`timer-group-remote-issue-cached-${group.key}`"

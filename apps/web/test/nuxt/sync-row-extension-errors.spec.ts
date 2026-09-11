@@ -18,6 +18,8 @@ describe('sync row extension errors', () => {
           taskName: 'Task',
           projectName: 'Project',
           trackerName: 'Tracker',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
           totalSeconds: 60,
           config: null,
           issueRef: { remoteIssueId: '42', cachedTitle: 'Linked' },

@@ -173,6 +173,117 @@ describe('RedmineAdapter', () => {
     expect(result).toBeNull();
   });
 
+  it('marks an unscoped lookup as in scope', async () => {
+    const transport = fakeTransport(() => ({
+      status: 200,
+      payload: { issue: { id: 42, subject: 'Ship it' } },
+    }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const lookup = await adapter.getIssueById('42');
+
+    expect(lookup).toEqual({ result: { remoteIssueId: '42', title: 'Ship it' }, inScope: true });
+  });
+
+  it('finds a scoped descendant issue without a second request', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return { status: 200, payload: { issues: [{ id: 8, subject: 'Child issue' }] } };
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const lookup = await adapter.getIssueById('8', { remoteProjectId: '3' });
+
+    expect(calls).toBe(1);
+    expect(lookup).toEqual({
+      result: { remoteIssueId: '8', title: 'Child issue' },
+      inScope: true,
+    });
+  });
+
+  it('falls back to the direct lookup and marks it outside scope', async () => {
+    let calls = 0;
+    const transport = fakeTransport((request) => {
+      calls += 1;
+      if (calls === 1) {
+        expect(request.url).toContain('/issues.json');
+        return { status: 200, payload: { issues: [] } };
+      }
+      expect(request.url).toBe('https://rm.example.com/issues/9.json');
+      return { status: 200, payload: { issue: { id: 9, subject: 'Unrelated issue' } } };
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const lookup = await adapter.getIssueById('9', { remoteProjectId: '3' });
+
+    expect(calls).toBe(2);
+    expect(lookup).toEqual({
+      result: { remoteIssueId: '9', title: 'Unrelated issue' },
+      inScope: false,
+    });
+  });
+
+  it('resolves not-found when neither the scoped nor the direct lookup finds the issue', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return calls === 1 ? { status: 200, payload: { issues: [] } } : { status: 404, payload: {} };
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const lookup = await adapter.getIssueById('999', { remoteProjectId: '3' });
+
+    expect(lookup).toBeNull();
+  });
+
+  it('raises the search error when the scoped project is gone (404)', async () => {
+    const transport = fakeTransport(() => ({ status: 404, payload: {} }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    await expect(adapter.getIssueById('8', { remoteProjectId: 'bogus' })).rejects.toMatchObject({
+      messageKey: 'error.remoteIssueSearchFailed',
+    });
+  });
+
+  it('raises the search error when the scoped project is forbidden (403)', async () => {
+    const transport = fakeTransport(() => ({ status: 403, payload: {} }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    await expect(
+      adapter.searchIssues('anything', { remoteProjectId: 'forbidden' }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteIssueSearchFailed' });
+  });
+
+  it('lists projects across pages and stops at the pagination bound', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return {
+        status: 200,
+        payload: {
+          projects: [{ id: calls, name: `Project ${calls}` }],
+          total_count: 1_000_000,
+        },
+      };
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const projects = await adapter.listProjects();
+
+    expect(calls).toBe(REDMINE_TIME_LOGS_MAX_PAGES);
+    expect(projects).toHaveLength(REDMINE_TIME_LOGS_MAX_PAGES);
+  });
+
+  it('maps a project-catalog failure to its own messageKey', async () => {
+    const transport = fakeTransport(() => ({ status: 500, payload: {} }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    await expect(adapter.listProjects()).rejects.toMatchObject({
+      messageKey: 'error.remoteProjectsFetchFailed',
+    });
+  });
+
   it('ignores the remote issue id when fetching activity options', async () => {
     const transport = fakeTransport((request) => {
       expect(request.url).toContain('/enumerations/time_entry_activities.json');

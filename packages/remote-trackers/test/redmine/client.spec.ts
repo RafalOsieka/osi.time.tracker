@@ -104,6 +104,118 @@ describe('RedmineClient', () => {
     expect(results[0]).toEqual({ remoteIssueId: '1', title: 'Issue 1' });
   });
 
+  it('scopes a title search to a remote project and forces descendants', async () => {
+    const transport = fakeTransport([
+      { status: 200, payload: { issues: [{ id: 1, subject: 'Fix bug' }] } },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    await client.searchByTitle('Fix bug', null, { remoteProjectId: '3' });
+
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.searchParams.get('project_id')).toBe('3');
+    expect(url.searchParams.get('subproject_id')).toBe('*');
+  });
+
+  it('omits the scope params when no scope is given', async () => {
+    const transport = fakeTransport([{ status: 200, payload: { issues: [] } }]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    await client.searchByTitle('Fix bug', null);
+
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.searchParams.get('project_id')).toBeNull();
+    expect(url.searchParams.get('subproject_id')).toBeNull();
+  });
+
+  it('finds an issue within a scoped project via issue_id filter', async () => {
+    const transport = fakeTransport([
+      { status: 200, payload: { issues: [{ id: 8, subject: 'Child issue' }] } },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { status, result } = await client.findIssueInScope('8', { remoteProjectId: '3' }, null);
+
+    expect(status).toBe(200);
+    expect(result).toEqual({ remoteIssueId: '8', title: 'Child issue' });
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.origin + url.pathname).toBe('https://rm.example.com/issues.json');
+    expect(url.searchParams.get('project_id')).toBe('3');
+    expect(url.searchParams.get('subproject_id')).toBe('*');
+    expect(url.searchParams.get('issue_id')).toBe('8');
+  });
+
+  it('returns a null result for an issue outside the scoped project', async () => {
+    const transport = fakeTransport([{ status: 200, payload: { issues: [] } }]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { status, result } = await client.findIssueInScope('9', { remoteProjectId: '3' }, null);
+
+    expect(status).toBe(200);
+    expect(result).toBeNull();
+  });
+
+  it('reports the upstream status when the scoped project is gone', async () => {
+    const transport = fakeTransport([{ status: 404, payload: {} }]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { status, result } = await client.findIssueInScope(
+      '8',
+      { remoteProjectId: 'bogus' },
+      null,
+    );
+
+    expect(status).toBe(404);
+    expect(result).toBeNull();
+  });
+
+  it('lists a page of the project catalog with parent ids', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          projects: [
+            { id: 3, name: 'Spike Root' },
+            { id: 4, name: 'Spike Child', parent: { id: 3 } },
+          ],
+          total_count: 2,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.listProjectsPage({ offset: 0 }, null);
+
+    expect(page.status).toBe(200);
+    expect(page.projects).toEqual([
+      { remoteProjectId: '3', title: 'Spike Root' },
+      { remoteProjectId: '4', title: 'Spike Child', parentId: '3' },
+    ]);
+    expect(page.nextOffset).toBeNull();
+    const url = new URL(transport.requests[0]!.url);
+    expect(url.origin + url.pathname).toBe('https://rm.example.com/projects.json');
+  });
+
+  it('exposes the next offset when more project pages remain', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          projects: [{ id: 1, name: 'One' }],
+          total_count: 150,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.listProjectsPage(
+      { offset: 0, limit: REDMINE_TIME_LOGS_PAGE_SIZE },
+      null,
+    );
+
+    expect(page.nextOffset).toBe(REDMINE_TIME_LOGS_PAGE_SIZE);
+  });
+
   it('builds an exact-id lookup request and returns null for a 404 status', async () => {
     const transport = fakeTransport([{ status: 404, payload: {} }]);
     const client = new RedmineClient(transport, 'https://rm.example.com');

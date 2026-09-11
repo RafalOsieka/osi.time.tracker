@@ -5,6 +5,7 @@ const PROTOCOL_VERSION = 1;
 const SUPPORTED_OPERATIONS = [
   'searchIssues',
   'getIssueById',
+  'listProjects',
   'getActivityOptions',
   'getCurrentAccount',
   'fetchTimeLogs',
@@ -92,6 +93,7 @@ export async function installLostCreateExtension(page: Page): Promise<void> {
           | { id: string; name: string }[]
           | { id: string; name: string }
           | { status: string }
+          | { remoteProjectId: string; title: string }[]
           | null,
       ) {
         port.postMessage({
@@ -148,6 +150,10 @@ export async function installLostCreateExtension(page: Page): Promise<void> {
         }
         if (operation === 'getIssueById') {
           succeed(port, requestId, operation, null);
+          return;
+        }
+        if (operation === 'listProjects') {
+          succeed(port, requestId, operation, []);
           return;
         }
         if (operation === 'deleteTimeEntry') {

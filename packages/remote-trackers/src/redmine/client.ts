@@ -1,6 +1,7 @@
 import type { RemoteFieldOption } from '../contracts/remote-field-option.js';
 import type { RemoteAccount } from '../contracts/remote-account.js';
-import type { RemoteIssueSearchResult } from '../contracts/remote-issue.js';
+import type { RemoteIssueScope, RemoteIssueSearchResult } from '../contracts/remote-issue.js';
+import type { RemoteProjectDto } from '../contracts/remote-project.js';
 import { z } from 'zod';
 import type { Transport } from '../contracts/remote-adapter.js';
 import { normalizeBaseUrl } from '../contracts/normalize-base-url.js';
@@ -78,12 +79,14 @@ export class RedmineClient {
   async searchByTitle(
     title: string,
     secret: string | null,
+    scope?: RemoteIssueScope,
   ): Promise<{ status: number; results: RemoteIssueSearchResult[] }> {
     const params = new URLSearchParams({
       subject: `~${title}`,
       status_id: '*',
       limit: String(REDMINE_TITLE_SEARCH_MAX_RESULTS),
     });
+    applyScopeParams(params, scope);
     const { status, payload } = await this.transport.execute(
       {
         url: `${this.base()}/issues.json?${params.toString()}`,
@@ -108,6 +111,62 @@ export class RedmineClient {
       redmineIssuePayloadSchema,
     );
     return { status, result: parseIssueByIdResult(payload, status) };
+  }
+
+  /**
+   * Looks up one issue id within a project scope (and its descendants, via
+   * `subproject_id=*`). A `status` of 404/403 means the scoped project
+   * itself is gone or inaccessible — distinct from a 200 with an empty list,
+   * which means the issue exists but is outside the scope.
+   */
+  async findIssueInScope(
+    remoteIssueId: string,
+    scope: RemoteIssueScope,
+    secret: string | null,
+  ): Promise<{ status: number; result: RemoteIssueSearchResult | null }> {
+    const params = new URLSearchParams({ issue_id: remoteIssueId, status_id: '*' });
+    applyScopeParams(params, scope);
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/issues.json?${params.toString()}`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineIssuesPayloadSchema,
+    );
+    const results = parseTitleSearchResults(payload);
+    return { status, result: results[0] ?? null };
+  }
+
+  /**
+   * One page of the remote project catalog (REQ-321), offset/limit paginated
+   * like `fetchTimeLogsPage`.
+   */
+  async listProjectsPage(
+    input: { offset?: number; limit?: number },
+    secret: string | null,
+  ): Promise<{
+    status: number;
+    projects: RemoteProjectDto[];
+    nextOffset: number | null;
+  }> {
+    const limit = input.limit ?? REDMINE_TIME_LOGS_PAGE_SIZE;
+    const offset = input.offset ?? 0;
+    const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/projects.json?${params.toString()}`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineProjectsPayloadSchema,
+    );
+    const parsed = parseProjectsPage(payload);
+    const nextOffset =
+      parsed.totalCount > offset + parsed.projects.length && parsed.projects.length > 0
+        ? offset + limit
+        : null;
+    return { status, projects: parsed.projects, nextOffset };
   }
 
   async getActivityOptions(
@@ -262,6 +321,18 @@ export class RedmineClient {
   }
 }
 
+/**
+ * Scopes a query to one Redmine project and forces descendant projects to
+ * be included (`subproject_id=*`) regardless of the instance's
+ * `display_subprojects_issues` setting, so the scope means the same thing
+ * on every Redmine instance.
+ */
+function applyScopeParams(params: URLSearchParams, scope: RemoteIssueScope | undefined): void {
+  if (!scope) return;
+  params.set('project_id', scope.remoteProjectId);
+  params.set('subproject_id', '*');
+}
+
 interface RedmineIssueElement {
   id?: string | number;
   subject?: string;
@@ -318,6 +389,19 @@ interface RedmineCreateTimeEntryPayload {
   time_entry?: { id?: string | number };
 }
 
+interface RedmineProjectElement {
+  id?: string | number;
+  name?: string;
+  parent?: { id?: string | number };
+}
+
+interface RedmineProjectsPayload {
+  projects?: RedmineProjectElement[];
+  total_count?: number;
+  offset?: number;
+  limit?: number;
+}
+
 const redmineIssuesPayloadSchema = z.custom<RedmineIssuesPayload>(
   (value) => value instanceof Object && !Array.isArray(value),
 );
@@ -334,6 +418,9 @@ const redmineTimeEntriesPayloadSchema = z.custom<RedmineTimeEntriesPayload>(
   (value) => value instanceof Object && !Array.isArray(value),
 );
 const redmineCreateTimeEntryPayloadSchema = z.custom<RedmineCreateTimeEntryPayload>(
+  (value) => value instanceof Object && !Array.isArray(value),
+);
+const redmineProjectsPayloadSchema = z.custom<RedmineProjectsPayload>(
   (value) => value instanceof Object && !Array.isArray(value),
 );
 
@@ -500,4 +587,35 @@ function parseCreateTimeEntryResult(
   const entry = payload?.time_entry;
   const id = coerceRemoteId(entry?.id);
   return id ? { remoteLogId: id } : null;
+}
+
+/**
+ * Parses one page of the Redmine project catalog into adapter-neutral
+ * entries and the reported total count. Malformed elements are skipped.
+ */
+type RedmineProjectsPage = {
+  projects: RemoteProjectDto[];
+  totalCount: number;
+};
+
+function parseProjectsPage(payload: RedmineProjectsPayload | null): RedmineProjectsPage {
+  const elements = payload?.projects;
+  const projects: RemoteProjectDto[] = [];
+
+  if (elements) {
+    for (const element of elements) {
+      if (element.id == null || element.name == null) continue;
+      const dto: RemoteProjectDto = { remoteProjectId: String(element.id), title: element.name };
+      const parentId = coerceRemoteId(element.parent?.id);
+      if (parentId) dto.parentId = parentId;
+      projects.push(dto);
+    }
+  }
+
+  const totalCount =
+    payload?.total_count != null && Number.isFinite(payload.total_count)
+      ? payload.total_count
+      : projects.length;
+
+  return { projects, totalCount };
 }

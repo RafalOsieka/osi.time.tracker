@@ -28,6 +28,8 @@ type Project = {
   name: string;
   trackerId: string | null;
   trackerName: string | null;
+  remoteProjectId: string | null;
+  remoteProjectTitle: string | null;
   createdAt: string;
 };
 
@@ -96,14 +98,27 @@ const SelectStub = {
   props: ['modelValue', 'items', 'labelKey', 'valueKey', 'placeholder', 'loading'],
   emits: ['update:modelValue'],
 };
+interface StubColumn {
+  id?: string;
+  cell?: (context: { row: { original: Project } }) => string;
+}
+
+// Renders the real `tracker` column cell function so the composed
+// "tracker · remote project" text (REQ-325) is actually exercised.
+function trackerCellText(row: Project, columns: StubColumn[] | undefined): string {
+  const column = columns?.find((c) => c.id === 'tracker');
+  return column?.cell ? column.cell({ row: { original: row } }) : '';
+}
+
 const TableStub = {
   template: `
     <div data-testid="projects-table" :data-loading="loading ? 'true' : 'false'">
       <slot name="empty" v-if="!loading && (!data || data.length === 0)" />
-      <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} {{ row.trackerName }}</div>
+      <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} {{ trackerCellText(row, columns) }}</div>
     </div>
   `,
   props: ['data', 'columns', 'loading'],
+  methods: { trackerCellText },
 };
 const ModalStub = {
   template:
@@ -187,6 +202,40 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="new-project-button"]').exists()).toBe(true);
   });
 
+  it('shows the cached remote project title next to the tracker name, and omits it when unscoped', async () => {
+    mockTrackers = [{ id: 't1', name: 'Acme', createdAt: new Date().toISOString() }];
+    mockProjects = [
+      {
+        id: '1',
+        name: 'Scoped',
+        trackerId: 't1',
+        trackerName: 'Acme',
+        remoteProjectId: '3',
+        remoteProjectTitle: 'Spike Root',
+        createdAt: new Date().toISOString(),
+      },
+      {
+        id: '2',
+        name: 'Unscoped',
+        trackerId: 't1',
+        trackerName: 'Acme',
+        remoteProjectId: null,
+        remoteProjectTitle: null,
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    csrfFetchMock.mockResolvedValue({});
+
+    const wrapper = await mountSuspended(ProjectsPage, {
+      global: { stubs: commonStubs },
+    });
+    await flushPromises();
+
+    const rows = wrapper.findAll('[data-testid="projects-row"]');
+    expect(rows[0]?.text()).toBe('Scoped Acme · Spike Root');
+    expect(rows[1]?.text()).toBe('Unscoped Acme');
+  });
+
   it('does not show empty state while the projects list is still loading', async () => {
     projectsListPending = true;
     csrfFetchMock.mockResolvedValue({});
@@ -208,6 +257,8 @@ describe('projects page', () => {
         name: 'Alpha',
         trackerId: 't1',
         trackerName: 'Acme',
+        remoteProjectId: null,
+        remoteProjectTitle: null,
         createdAt: new Date().toISOString(),
       },
       {
@@ -215,6 +266,8 @@ describe('projects page', () => {
         name: 'Beta',
         trackerId: 't1',
         trackerName: 'Acme',
+        remoteProjectId: null,
+        remoteProjectTitle: null,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -237,6 +290,8 @@ describe('projects page', () => {
         name: 'Alpha',
         trackerId: null,
         trackerName: null,
+        remoteProjectId: null,
+        remoteProjectTitle: null,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -264,6 +319,8 @@ describe('projects page', () => {
         name: 'Orphaned',
         trackerId: 'deleted-tracker',
         trackerName: 'Deleted Tracker',
+        remoteProjectId: null,
+        remoteProjectTitle: null,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -285,6 +342,8 @@ describe('projects page', () => {
         name: 'Orphaned',
         trackerId: 'deleted-tracker',
         trackerName: 'Deleted Tracker',
+        remoteProjectId: null,
+        remoteProjectTitle: null,
         createdAt: new Date().toISOString(),
       },
     ];

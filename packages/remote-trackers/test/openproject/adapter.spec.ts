@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
+import {
+  OpenProjectAdapter,
+  OPENPROJECT_TIME_LOGS_MAX_PAGES,
+} from '@osi/remote-trackers/openproject';
 import type { ZodType } from 'zod';
 import {
   RemoteAdapterError,
@@ -149,6 +152,139 @@ describe('OpenProjectAdapter', () => {
     const result = await adapter.getIssueById('999');
 
     expect(result).toBeNull();
+  });
+
+  it('marks an unscoped lookup as in scope', async () => {
+    const transport = fakeTransport(() => ({
+      status: 200,
+      payload: { id: 42, subject: 'Ship it' },
+    }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const lookup = await adapter.getIssueById('42');
+
+    expect(lookup).toEqual({ result: { remoteIssueId: '42', title: 'Ship it' }, inScope: true });
+  });
+
+  it('finds a scoped descendant work package without a second request', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return {
+        status: 200,
+        payload: { _embedded: { elements: [{ id: 38, subject: 'Child wp' }] } },
+      };
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const lookup = await adapter.getIssueById('38', { remoteProjectId: '3' });
+
+    expect(calls).toBe(1);
+    expect(lookup).toEqual({ result: { remoteIssueId: '38', title: 'Child wp' }, inScope: true });
+  });
+
+  it('falls back to the direct lookup and marks it outside scope', async () => {
+    let calls = 0;
+    const transport = fakeTransport((request) => {
+      calls += 1;
+      if (calls === 1) {
+        expect(request.url).toContain('/api/v3/projects/3/work_packages');
+        return { status: 200, payload: { _embedded: { elements: [] } } };
+      }
+      expect(request.url).toBe('https://op.example.com/api/v3/work_packages/39');
+      return { status: 200, payload: { id: 39, subject: 'Unrelated wp' } };
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const lookup = await adapter.getIssueById('39', { remoteProjectId: '3' });
+
+    expect(calls).toBe(2);
+    expect(lookup).toEqual({
+      result: { remoteIssueId: '39', title: 'Unrelated wp' },
+      inScope: false,
+    });
+  });
+
+  it('resolves not-found when neither the scoped nor the direct lookup finds the work package', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return calls === 1
+        ? { status: 200, payload: { _embedded: { elements: [] } } }
+        : { status: 404, payload: {} };
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const lookup = await adapter.getIssueById('999', { remoteProjectId: '3' });
+
+    expect(lookup).toBeNull();
+  });
+
+  it('raises the search error when the scoped project is gone (404)', async () => {
+    const transport = fakeTransport(() => ({ status: 404, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    await expect(adapter.getIssueById('38', { remoteProjectId: 'bogus' })).rejects.toMatchObject({
+      messageKey: 'error.remoteIssueSearchFailed',
+    });
+  });
+
+  it('raises the search error when the scoped project is forbidden (403)', async () => {
+    const transport = fakeTransport(() => ({ status: 403, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    await expect(
+      adapter.searchIssues('anything', { remoteProjectId: 'forbidden' }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteIssueSearchFailed' });
+  });
+
+  it('lists projects across pages and stops at the pagination bound', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return {
+        status: 200,
+        payload: {
+          total: 1_000_000,
+          _embedded: { elements: [{ id: calls, name: `Project ${calls}` }] },
+        },
+      };
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const projects = await adapter.listProjects();
+
+    expect(calls).toBe(OPENPROJECT_TIME_LOGS_MAX_PAGES);
+    expect(projects).toHaveLength(OPENPROJECT_TIME_LOGS_MAX_PAGES);
+  });
+
+  it('stops paginating the catalog once the reported total is reached', async () => {
+    let calls = 0;
+    const transport = fakeTransport(() => {
+      calls += 1;
+      return {
+        status: 200,
+        payload: {
+          total: 1,
+          _embedded: { elements: [{ id: 1, name: 'Only project' }] },
+        },
+      };
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const projects = await adapter.listProjects();
+
+    expect(calls).toBe(1);
+    expect(projects).toHaveLength(1);
+  });
+
+  it('maps a project-catalog failure to its own messageKey', async () => {
+    const transport = fakeTransport(() => ({ status: 500, payload: {} }));
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    await expect(adapter.listProjects()).rejects.toMatchObject({
+      messageKey: 'error.remoteProjectsFetchFailed',
+    });
   });
 
   it('maps a rejected credential to a distinct auth-rejected messageKey', async () => {

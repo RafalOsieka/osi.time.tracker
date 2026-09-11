@@ -29,6 +29,23 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const nextTrackerId =
     parsedBody.trackerId === undefined ? existing.trackerId : (parsedBody.trackerId ?? null);
 
+  // A remote project id is meaningful only for the tracker it came from (REQ-326):
+  // changing or clearing trackerId forces the scope to null regardless of the
+  // request body, even when the client still echoed the old scope.
+  const trackerChanged = nextTrackerId !== existing.trackerId;
+  const nextRemoteProjectId = trackerChanged ? null : (parsedBody.remoteProjectId ?? null);
+  const nextRemoteProjectTitle = trackerChanged ? null : (parsedBody.remoteProjectTitle ?? null);
+
+  // A local project (no tracker, and not being reassigned to one this request)
+  // cannot carry a remote project scope (REQ-325). A tracker change/detach is
+  // handled above by force-nulling instead of rejecting (REQ-326).
+  if (!trackerChanged && !nextTrackerId && parsedBody.remoteProjectId) {
+    throw createError({
+      statusCode: 422,
+      data: { messageKey: 'error.projectRemoteScopeRequiresTracker' } satisfies ApiMessage,
+    });
+  }
+
   // Only re-validate tracker ownership/soft-delete when attaching a different
   // non-null tracker, so rename works after the current tracker is soft-deleted.
   if (nextTrackerId && nextTrackerId !== existing.trackerId) {
@@ -76,7 +93,13 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   try {
     const [updated] = await db
       .update(projects)
-      .set({ name: parsedBody.name, trackerId: nextTrackerId, updatedAt: new Date() })
+      .set({
+        name: parsedBody.name,
+        trackerId: nextTrackerId,
+        remoteProjectId: nextRemoteProjectId,
+        remoteProjectTitle: nextRemoteProjectTitle,
+        updatedAt: new Date(),
+      })
       .where(and(eq(projects.id, id!), eq(projects.userId, user.id)))
       .returning();
 
@@ -103,6 +126,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       name: updated.name,
       trackerId: updated.trackerId,
       trackerName,
+      remoteProjectId: updated.remoteProjectId,
+      remoteProjectTitle: updated.remoteProjectTitle,
       createdAt: updated.createdAt.toISOString(),
     };
   } catch (err) {

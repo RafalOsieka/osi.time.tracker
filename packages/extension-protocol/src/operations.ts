@@ -4,6 +4,7 @@ import { z } from 'zod';
 export const EXTENSION_OPERATION_NAMES = [
   'searchIssues',
   'getIssueById',
+  'listProjects',
   'getActivityOptions',
   'getCurrentAccount',
   'fetchTimeLogs',
@@ -30,6 +31,21 @@ export const remoteIssueSearchResultSchema = z.object({
   remoteProjectTitle: z.string().optional(),
 });
 
+export const remoteIssueScopeSchema = z.object({
+  remoteProjectId: z.string(),
+});
+
+export const remoteIssueLookupSchema = z.object({
+  result: remoteIssueSearchResultSchema,
+  inScope: z.boolean(),
+});
+
+export const remoteProjectSchema = z.object({
+  remoteProjectId: z.string(),
+  title: z.string(),
+  parentId: z.string().optional(),
+});
+
 export const remoteFieldOptionSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -51,11 +67,20 @@ export const remoteTimeLogSchema = z.object({
   remoteUserId: z.string().nullable(),
 });
 
-export const searchIssuesInputSchema = z.string();
+export const searchIssuesInputSchema = z.object({
+  query: z.string(),
+  scope: remoteIssueScopeSchema.optional(),
+});
 export const searchIssuesResultSchema = z.array(remoteIssueSearchResultSchema);
 
-export const getIssueByIdInputSchema = z.string();
-export const getIssueByIdResultSchema = remoteIssueSearchResultSchema.nullable();
+export const getIssueByIdInputSchema = z.object({
+  remoteIssueId: z.string(),
+  scope: remoteIssueScopeSchema.optional(),
+});
+export const getIssueByIdResultSchema = remoteIssueLookupSchema.nullable();
+
+export const listProjectsInputSchema = z.null();
+export const listProjectsResultSchema = z.array(remoteProjectSchema);
 
 export const getActivityOptionsInputSchema = z.string();
 export const getActivityOptionsResultSchema = z.array(remoteFieldOptionSchema);
@@ -100,6 +125,8 @@ export type SearchIssuesInput = z.infer<typeof searchIssuesInputSchema>;
 export type SearchIssuesResult = z.infer<typeof searchIssuesResultSchema>;
 export type GetIssueByIdInput = z.infer<typeof getIssueByIdInputSchema>;
 export type GetIssueByIdResult = z.infer<typeof getIssueByIdResultSchema>;
+export type ListProjectsInput = z.infer<typeof listProjectsInputSchema>;
+export type ListProjectsResult = z.infer<typeof listProjectsResultSchema>;
 export type GetActivityOptionsInput = z.infer<typeof getActivityOptionsInputSchema>;
 export type GetActivityOptionsResult = z.infer<typeof getActivityOptionsResultSchema>;
 export type GetCurrentAccountInput = z.infer<typeof getCurrentAccountInputSchema>;
@@ -131,6 +158,12 @@ export const getIssueByIdRequestSchema = z.object({
   ...operationRequestBase,
   operation: z.literal('getIssueById'),
   input: getIssueByIdInputSchema,
+});
+
+export const listProjectsRequestSchema = z.object({
+  ...operationRequestBase,
+  operation: z.literal('listProjects'),
+  input: listProjectsInputSchema,
 });
 
 export const getActivityOptionsRequestSchema = z.object({
@@ -172,6 +205,7 @@ export const deleteTimeEntryRequestSchema = z.object({
 export const operationRequestSchema = z.discriminatedUnion('operation', [
   searchIssuesRequestSchema,
   getIssueByIdRequestSchema,
+  listProjectsRequestSchema,
   getActivityOptionsRequestSchema,
   getCurrentAccountRequestSchema,
   fetchTimeLogsRequestSchema,
@@ -196,6 +230,14 @@ export const getIssueByIdSuccessSchema = z.object({
   operation: z.literal('getIssueById'),
   ok: z.literal(true),
   result: getIssueByIdResultSchema,
+});
+
+export const listProjectsSuccessSchema = z.object({
+  type: z.literal('operation-result'),
+  requestId: requestIdSchema,
+  operation: z.literal('listProjects'),
+  ok: z.literal(true),
+  result: listProjectsResultSchema,
 });
 
 export const getActivityOptionsSuccessSchema = z.object({
@@ -249,6 +291,7 @@ export const deleteTimeEntrySuccessSchema = z.object({
 export const operationSuccessSchema = z.discriminatedUnion('operation', [
   searchIssuesSuccessSchema,
   getIssueByIdSuccessSchema,
+  listProjectsSuccessSchema,
   getActivityOptionsSuccessSchema,
   getCurrentAccountSuccessSchema,
   fetchTimeLogsSuccessSchema,

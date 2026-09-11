@@ -72,7 +72,7 @@ async function executeOperation(
 ): Promise<OperationResult> {
   switch (request.operation) {
     case 'searchIssues': {
-      const result = await adapter.searchIssues(request.input);
+      const result = await adapter.searchIssues(request.input.query, request.input.scope);
       return {
         type: 'operation-result',
         requestId: request.requestId,
@@ -82,11 +82,21 @@ async function executeOperation(
       };
     }
     case 'getIssueById': {
-      const result = await adapter.getIssueById(request.input);
+      const result = await adapter.getIssueById(request.input.remoteIssueId, request.input.scope);
       return {
         type: 'operation-result',
         requestId: request.requestId,
         operation: 'getIssueById',
+        ok: true,
+        result,
+      };
+    }
+    case 'listProjects': {
+      const result = await adapter.listProjects();
+      return {
+        type: 'operation-result',
+        requestId: request.requestId,
+        operation: 'listProjects',
         ok: true,
         result,
       };

@@ -50,6 +50,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       projectName: projects.name,
       trackerId: projects.trackerId,
       trackerName: trackers.name,
+      remoteProjectId: projects.remoteProjectId,
+      remoteProjectTitle: projects.remoteProjectTitle,
       startedAt: timeEntries.startedAt,
       stoppedAt: timeEntries.stoppedAt,
     })
@@ -180,6 +182,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       projectName: string | null;
       trackerName: string | null;
       trackerId: string | null;
+      remoteProjectId: string | null;
+      remoteProjectTitle: string | null;
       totalSeconds: number;
       entries: RemoteSyncDayEntryDto[];
     }
@@ -200,6 +204,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
         projectName: row.projectName ?? null,
         trackerName: row.trackerName ?? null,
         trackerId: row.trackerId ?? null,
+        remoteProjectId: row.remoteProjectId ?? null,
+        remoteProjectTitle: row.remoteProjectTitle ?? null,
         totalSeconds: 0,
         entries: [],
       };
@@ -230,6 +236,8 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       taskName: entry.taskName,
       projectName: entry.projectName,
       trackerName: entry.trackerName,
+      remoteProjectId: entry.remoteProjectId,
+      remoteProjectTitle: entry.remoteProjectTitle,
       totalSeconds: entry.totalSeconds,
       config,
       issueRef: ref ? { remoteIssueId: ref.remoteIssueId, cachedTitle: ref.cachedTitle } : null,

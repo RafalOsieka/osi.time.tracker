@@ -45,7 +45,8 @@ async function approved() {
 function probeAdapter(overrides: Partial<RemoteTrackerAdapter> = {}): RemoteTrackerAdapter {
   return {
     searchIssues: async () => [{ remoteIssueId: '1', title: 'Issue' }],
-    getIssueById: async () => ({ remoteIssueId: '1', title: 'Issue' }),
+    getIssueById: async () => ({ result: { remoteIssueId: '1', title: 'Issue' }, inScope: true }),
+    listProjects: async () => [{ remoteProjectId: '1', title: 'Acme' }],
     getActivityOptions: async () => [{ id: 'a', name: 'Dev' }],
     getCurrentAccount: async () => ({ id: 'u', name: 'Ada' }),
     fetchTimeLogs: async () => [
@@ -289,17 +290,21 @@ describe('worker dispatch', () => {
       expect(fetchImpl).toHaveBeenCalledOnce();
     },
   );
-  it('dispatches all eight operations through the shared adapter', async () => {
+  it('dispatches all nine operations through the shared adapter', async () => {
     const approvals = await approved();
     const seen: string[] = [];
     const adapter = probeAdapter({
-      searchIssues: async (query) => {
-        seen.push(`searchIssues:${query}`);
+      searchIssues: async (query, scope) => {
+        seen.push(`searchIssues:${query}:${scope?.remoteProjectId ?? '-'}`);
         return [{ remoteIssueId: '1', title: query }];
       },
-      getIssueById: async (id) => {
-        seen.push(`getIssueById:${id}`);
-        return { remoteIssueId: id, title: 'Issue' };
+      getIssueById: async (id, scope) => {
+        seen.push(`getIssueById:${id}:${scope?.remoteProjectId ?? '-'}`);
+        return { result: { remoteIssueId: id, title: 'Issue' }, inScope: !scope };
+      },
+      listProjects: async () => {
+        seen.push('listProjects');
+        return [{ remoteProjectId: '3', title: 'Spike Root' }];
       },
       getActivityOptions: async (id) => {
         seen.push(`getActivityOptions:${id}`);
@@ -328,8 +333,23 @@ describe('worker dispatch', () => {
     });
     const createAdapter = vi.fn(() => adapter);
     const cases = [
-      ['searchIssues', 'bug', { result: [{ remoteIssueId: '1', title: 'bug' }] }],
-      ['getIssueById', '1', { result: { remoteIssueId: '1', title: 'Issue' } }],
+      ['searchIssues', { query: 'bug' }, { result: [{ remoteIssueId: '1', title: 'bug' }] }],
+      [
+        'searchIssues',
+        { query: 'bug', scope: { remoteProjectId: '3' } },
+        { result: [{ remoteIssueId: '1', title: 'bug' }] },
+      ],
+      [
+        'getIssueById',
+        { remoteIssueId: '1' },
+        { result: { result: { remoteIssueId: '1', title: 'Issue' }, inScope: true } },
+      ],
+      [
+        'getIssueById',
+        { remoteIssueId: '1', scope: { remoteProjectId: '3' } },
+        { result: { result: { remoteIssueId: '1', title: 'Issue' }, inScope: false } },
+      ],
+      ['listProjects', null, { result: [{ remoteProjectId: '3', title: 'Spike Root' }] }],
       ['getActivityOptions', '1', { result: [{ id: 'a', name: 'Dev' }] }],
       ['getCurrentAccount', null, { result: { id: 'u', name: 'Ada' } }],
       ['fetchTimeLogs', { spentOn: '2026-01-01', workPackageIds: ['1'] }, { result: [] }],
@@ -358,8 +378,11 @@ describe('worker dispatch', () => {
       expect(result).toMatchObject({ ok: true, operation, ...expected });
     }
     expect(seen).toEqual([
-      'searchIssues:bug',
-      'getIssueById:1',
+      'searchIssues:bug:-',
+      'searchIssues:bug:3',
+      'getIssueById:1:-',
+      'getIssueById:1:3',
+      'listProjects',
       'getActivityOptions:1',
       'getCurrentAccount',
       'fetchTimeLogs:2026-01-01',

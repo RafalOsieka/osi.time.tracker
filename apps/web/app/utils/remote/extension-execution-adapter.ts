@@ -9,7 +9,10 @@ import {
   RemoteAdapterError,
   type RemoteAccount,
   type RemoteFieldOption,
+  type RemoteIssueLookup,
+  type RemoteIssueScope,
   type RemoteIssueSearchResult,
+  type RemoteProjectDto,
   type RemoteTimeEntryDeleteOutcome,
   type RemoteTimeLogDto,
   type RemoteTrackerAdapter,
@@ -34,7 +37,7 @@ function permissionError(messageKey = EXTENSION_ERROR_MESSAGE_KEYS.destinationUn
 
 /**
  * `extension` execution-mode adapter: handshakes without a secret, then
- * forwards the eight contract operations through the document bridge.
+ * forwards the nine contract operations through the document bridge.
  */
 export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
   constructor(
@@ -43,12 +46,19 @@ export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
     private readonly options: ExtensionExecutionAdapterOptions = {},
   ) {}
 
-  async searchIssues(query: string): Promise<RemoteIssueSearchResult[]> {
-    return this.invoke('searchIssues', query);
+  async searchIssues(query: string, scope?: RemoteIssueScope): Promise<RemoteIssueSearchResult[]> {
+    return this.invoke('searchIssues', scope ? { query, scope } : { query });
   }
 
-  async getIssueById(remoteIssueId: string): Promise<RemoteIssueSearchResult | null> {
-    return this.invoke('getIssueById', remoteIssueId);
+  async getIssueById(
+    remoteIssueId: string,
+    scope?: RemoteIssueScope,
+  ): Promise<RemoteIssueLookup | null> {
+    return this.invoke('getIssueById', scope ? { remoteIssueId, scope } : { remoteIssueId });
+  }
+
+  async listProjects(): Promise<RemoteProjectDto[]> {
+    return this.invoke('listProjects', null);
   }
 
   async getActivityOptions(remoteIssueId: string): Promise<RemoteFieldOption[]> {

@@ -38,11 +38,21 @@ export async function createProject(
   token: string,
   name: string,
   trackerId?: string | null,
-): Promise<{ id: string; name: string; trackerId: string | null }> {
+  overrides: JsonObject = {},
+): Promise<{
+  id: string;
+  name: string;
+  trackerId: string | null;
+  remoteProjectId: string | null;
+  remoteProjectTitle: string | null;
+}> {
   const res = await fetch(url('/api/projects'), {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify(trackerId === undefined ? { name } : { name, trackerId }),
+    body: JSON.stringify({
+      ...(trackerId === undefined ? { name } : { name, trackerId }),
+      ...overrides,
+    }),
   });
   return res.json();
 }

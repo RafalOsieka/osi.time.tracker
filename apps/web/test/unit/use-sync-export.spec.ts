@@ -28,6 +28,8 @@ function row(taskId = 'task-1', taskName = 'Ship it'): RemoteSyncDayRowDto {
     taskName,
     projectName: 'P',
     trackerName: 'C',
+    remoteProjectId: null,
+    remoteProjectTitle: null,
     totalSeconds: 3600,
     entries: [],
     exports: [],

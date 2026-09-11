@@ -128,7 +128,7 @@ describeChromium('website/content/worker bridge', () => {
       baseUrl: openProject.baseUrl,
       secret: SECRET,
       operation: 'searchIssues',
-      input: 'Ship',
+      input: { query: 'Ship' },
     });
     expect(search).toMatchObject({
       ok: true,
@@ -144,9 +144,12 @@ describeChromium('website/content/worker bridge', () => {
       baseUrl: openProject.baseUrl,
       secret: SECRET,
       operation: 'getIssueById',
-      input: '42',
+      input: { remoteIssueId: '42' },
     });
-    expect(lookup).toMatchObject({ ok: true, result: { remoteIssueId: '42' } });
+    expect(lookup).toMatchObject({
+      ok: true,
+      result: { result: { remoteIssueId: '42' }, inScope: true },
+    });
 
     const activities = await runOnPage(page, {
       type: 'operation',
@@ -235,7 +238,7 @@ describeChromium('website/content/worker bridge', () => {
       baseUrl: redmine.baseUrl,
       secret: SECRET,
       operation: 'searchIssues',
-      input: 'Ship',
+      input: { query: 'Ship' },
     });
     expect(redmineSearch).toMatchObject({ ok: true, result: [{ remoteIssueId: '42' }] });
     const redmineLookup = await runOnPage(page, {
@@ -245,7 +248,7 @@ describeChromium('website/content/worker bridge', () => {
       baseUrl: redmine.baseUrl,
       secret: SECRET,
       operation: 'getIssueById',
-      input: '42',
+      input: { remoteIssueId: '42' },
     });
     expect(redmineLookup).toMatchObject({ ok: true });
     const redmineActivities = await runOnPage(page, {

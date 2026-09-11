@@ -2,7 +2,12 @@ import type { ZodType } from 'zod';
 import type { JsonValue } from './json.js';
 import type { RemoteFieldOption } from './remote-field-option.js';
 import type { RemoteAccount } from './remote-account.js';
-import type { RemoteIssueSearchResult } from './remote-issue.js';
+import type {
+  RemoteIssueLookup,
+  RemoteIssueScope,
+  RemoteIssueSearchResult,
+} from './remote-issue.js';
+import type { RemoteProjectDto } from './remote-project.js';
 import type { RemoteTimeEntryDeleteOutcome, RemoteTimeLogDto } from './remote-time-log.js';
 
 /** A pure, transport-agnostic HTTP request description. */
@@ -38,8 +43,9 @@ export interface Transport {
  * response shapes to callers.
  */
 export interface RemoteTrackerAdapter {
-  searchIssues(query: string): Promise<RemoteIssueSearchResult[]>;
-  getIssueById(remoteIssueId: string): Promise<RemoteIssueSearchResult | null>;
+  searchIssues(query: string, scope?: RemoteIssueScope): Promise<RemoteIssueSearchResult[]>;
+  getIssueById(remoteIssueId: string, scope?: RemoteIssueScope): Promise<RemoteIssueLookup | null>;
+  listProjects(): Promise<RemoteProjectDto[]>;
   getActivityOptions(remoteIssueId: string): Promise<RemoteFieldOption[]>;
   getCurrentAccount(): Promise<RemoteAccount>;
   fetchTimeLogs(input: {

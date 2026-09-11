@@ -92,12 +92,20 @@ const TooltipStub = {
   template: '<span v-bind="$attrs" :data-tooltip-text="text"><slot /></span>',
 };
 
+const CheckboxStub = {
+  template:
+    '<label v-bind="$attrs"><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />{{ label }}</label>',
+  props: ['modelValue', 'label'],
+  emits: ['update:modelValue'],
+};
+
 const stubs = {
   UButton: ButtonStub,
   UInput: InputStub,
   URadioGroup: RadioGroupStub,
   UPopover: PopoverStub,
   UTooltip: TooltipStub,
+  UCheckbox: CheckboxStub,
 };
 
 function hintFor(wrapper: { find: (selector: string) => { element: Element } }, testid: string) {
@@ -105,6 +113,11 @@ function hintFor(wrapper: { find: (selector: string) => { element: Element } }, 
     .find(`[data-testid="${testid}"]`)
     .element.closest('[data-tooltip-text]')
     ?.getAttribute('data-tooltip-text');
+}
+
+function isChecked(wrapper: { find: (selector: string) => { element: Element } }, testid: string) {
+  // SAFETY: the CheckboxStub template always renders `input type="checkbox"` for this testid.
+  return (wrapper.find(`[data-testid="${testid}"] input`).element as HTMLInputElement).checked;
 }
 
 function testI18n() {
@@ -130,6 +143,7 @@ const config: TrackerDto = {
 
 type PickerMountProps = {
   currentRef?: RemoteIssueRefDto;
+  scope?: { remoteProjectId: string; remoteProjectTitle: string } | null;
   linkTestid?: string;
   cachedTestid?: string;
   unlinkedTestid?: string;
@@ -350,6 +364,144 @@ describe('RemoteIssuePicker', () => {
       vi.useRealTimers();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: previousWidth });
     }
+  });
+
+  it('hides the scope toggle when the project has no scope', async () => {
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-issue-picker-scope-toggle"]').exists()).toBe(false);
+  });
+
+  it('shows the scope toggle on by default and applies scope on submit', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ _embedded: { elements: [] } }),
+    });
+    const wrapper = await mount({
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+
+    const toggle = wrapper.find('[data-testid="remote-issue-picker-scope-toggle"] input');
+    expect(toggle.exists()).toBe(true);
+    expect(isChecked(wrapper, 'remote-issue-picker-scope-toggle')).toBe(true);
+    expect(wrapper.find('[data-testid="remote-issue-picker-scope-toggle"]').text()).toContain(
+      'remoteIssuePicker.scopeToggleLabel',
+    );
+
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    await modeButtons[1]?.trigger('click');
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('login bug');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const [requestUrl] = fetchMock.mock.calls[0]!;
+    expect(String(requestUrl)).toContain('/api/v3/projects/3/work_packages');
+  });
+
+  it('resets the scope toggle to on when the popover reopens after being turned off', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ _embedded: { elements: [] } }),
+    });
+    const wrapper = await mount({
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="remote-issue-picker-scope-toggle"] input').setValue(false);
+    expect(isChecked(wrapper, 'remote-issue-picker-scope-toggle')).toBe(false);
+
+    // Close via the popover's own dismissal (e.g. Escape/outside click), then reopen.
+    await wrapper.findComponent(PopoverStub).vm.$emit('update:open', false);
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    expect(isChecked(wrapper, 'remote-issue-picker-scope-toggle')).toBe(true);
+  });
+
+  it('widening the toggle off searches the whole tracker', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ _embedded: { elements: [] } }),
+    });
+    const wrapper = await mount({
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-scope-toggle"] input').setValue(false);
+
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    await modeButtons[1]?.trigger('click');
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('login bug');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const [requestUrl] = fetchMock.mock.calls[0]!;
+    expect(String(requestUrl)).not.toContain('/projects/3/');
+    expect(String(requestUrl)).toContain('/api/v3/work_packages');
+  });
+
+  it('shows the outside-scope hint on an out-of-scope id-mode result and keeps it selectable', async () => {
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ _embedded: { elements: [] } }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ id: 39, subject: 'Unrelated wp' }),
+      });
+    const wrapper = await mount({
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('39');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const result = wrapper.find('[data-testid="remote-issue-picker-result-39"]');
+    expect(result.exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-issue-picker-out-of-scope-hint"]').exists()).toBe(
+      true,
+    );
+    expect(result.attributes('aria-label')).toContain('remoteIssuePicker.outOfScopeHint');
+
+    await result.trigger('click');
+    expect(wrapper.emitted('link')).toEqual([
+      [{ remoteIssueId: '39', cachedTitle: 'Unrelated wp', cachedRemoteProjectTitle: undefined }],
+    ]);
+  });
+
+  it('shows no outside-scope hint for an in-scope id-mode result', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      json: async () => ({ _embedded: { elements: [{ id: 38, subject: 'Child wp' }] } }),
+    });
+    const wrapper = await mount({
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('38');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="remote-issue-picker-result-38"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-issue-picker-out-of-scope-hint"]').exists()).toBe(
+      false,
+    );
   });
 
   it('maps a direct-mode connection failure without calling an OSI remote route', async () => {
