@@ -96,27 +96,35 @@ The system SHALL expose `GET /api/reports/monthly?month=YYYY-MM` for the authent
 
 ### Requirement: REQ-292 Live remote hours split into App and Direct
 
-After the monthly aggregation is loaded, the client SHALL fetch date-range time logs once per active tracker for the month's inclusive `from`/`to` local dates via the neutral adapter (REQ-296), using the tracker's execution mode and existing credential rules. It SHALL NOT call the same-day time-log operation once per day. App hours for a tracker-day SHALL be the sum of fetched logs whose `spentOn` is that day and whose `remoteLogId` matches a finalized export for the user. Direct hours SHALL be the sum of fetched logs for that day whose `remoteLogId` does not match any known export. Tracker Total SHALL be App + Direct. A missing browser secret or a failed range fetch SHALL mark that tracker as unavailable for the month: its cells SHALL NOT display `0:00` as if no hours existed.
+After monthly aggregation loads, the client SHALL fetch date-range logs once per active tracker. App hours
+SHALL be fetched logs whose tracker-scoped remote identity matches current finalized provenance; Direct
+hours SHALL be fetched logs without such provenance. Linking an entry SHALL reclassify it from Direct to
+App on refresh, while deleting its provenance after confirmed remote deletion SHALL remove the absent log
+from live totals and from the App identity set. Fetch failures SHALL remain unavailable rather than zero.
 
 #### Scenario: Export id matches App
-- **WHEN** a remote log for 2026-08-03 has a `remoteLogId` stored on a finalized export
-- **THEN** that log's duration SHALL count toward App for that tracker and day and SHALL NOT count toward Direct
+- **WHEN** a fetched log's tracker and remote log ID match finalized provenance
+- **THEN** its duration SHALL count as App and not Direct
 
 #### Scenario: Unrecognized remote log is Direct
-- **WHEN** a remote log for the current account exists on 2026-08-03 with a `remoteLogId` that is not in `remote_exports`
-- **THEN** that log's duration SHALL count toward Direct for that tracker and day
+- **WHEN** a fetched log has no matching tracker-scoped provenance
+- **THEN** its duration SHALL count as Direct
+
+#### Scenario: Linked entry is reclassified
+- **WHEN** an Unlinked remote entry is linked and the report refreshes
+- **THEN** that entry SHALL move from Direct to App without changing the remote total
 
 #### Scenario: One range fetch per tracker
-- **WHEN** the monthly page loads with three active trackers
-- **THEN** the client SHALL issue at most one date-range time-log fetch per tracker for the month, not one fetch per day
-
-#### Scenario: Fetch failure is not zero
-- **WHEN** a tracker's range fetch fails or no secret is available
-- **THEN** that tracker column group SHALL show a translated error state and SHALL NOT present `0:00` totals for the month
+- **WHEN** the report loads for a month with active trackers
+- **THEN** the client SHALL perform at most one date-range log fetch per tracker
 
 #### Scenario: Remote-only day appears
-- **WHEN** a tracker has Direct or App hours on a day with Local of zero
-- **THEN** that day SHALL appear in the table
+- **WHEN** a tracker has App or Direct hours on a day with no local hours
+- **THEN** that day SHALL appear in the report
+
+#### Scenario: Fetch failure is not zero
+- **WHEN** a tracker range fetch fails or lacks a secret
+- **THEN** its report group SHALL show an unavailable state rather than zero hours
 
 ### Requirement: REQ-293 Attention indicators
 
