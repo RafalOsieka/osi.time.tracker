@@ -17,6 +17,7 @@ const TRACKER_SECRET = 'e2e-scope-secret';
 
 describeProjectRemoteScopeUi('project remote scope UI flow', async () => {
   const dbUrl = await provisionDatabase();
+  await setupServer({ databaseUrl: dbUrl, browser: true });
 
   async function seedBrowserSecret(page: Page, trackerId: string) {
     await page.evaluate(({ id, secret }) => window.localStorage.setItem(`rsc:${id}`, secret), {
@@ -49,7 +50,6 @@ describeProjectRemoteScopeUi('project remote scope UI flow', async () => {
   }
 
   it('5.1 loads the remote project catalog, persists the selection, and re-shows it pre-selected on reopen; switching tracker clears it', async () => {
-    await setupServer({ databaseUrl: dbUrl, browser: true });
     const user = await seedUser(dbUrl, { displayName: 'scopeuidialog' });
     const { jar, token } = await apiLogin(user.email, user.password);
     const trackerA = await createTracker(jar, token, 'Scope Dialog Tracker A ' + Date.now(), {
@@ -128,7 +128,6 @@ describeProjectRemoteScopeUi('project remote scope UI flow', async () => {
   });
 
   it('5.3 disables the remote project control with an incompatibility hint when the extension lacks the catalog operation, and enables it when advertised', async () => {
-    await setupServer({ databaseUrl: dbUrl, browser: true });
     const user = await seedUser(dbUrl, { displayName: 'scopeuiextension' });
     const { jar, token } = await apiLogin(user.email, user.password);
     const tracker = await createTracker(jar, token, 'Scope Extension Tracker ' + Date.now(), {
