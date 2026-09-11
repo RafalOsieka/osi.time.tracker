@@ -527,7 +527,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.waitForFunction(() =>
       /now linked|jest teraz powiązany/i.test(document.body.textContent ?? ''),
     );
-    await page.click(`[data-testid="remote-sync-expand-${taskId}"]`);
+    // Refresh keeps the row expanded; toggling here would collapse details.
     await page.waitForSelector('[data-testid="remote-sync-delete-entry-11"]');
     await page.click('[data-testid="remote-sync-delete-entry-11"]');
     await page.waitForSelector('[data-testid="confirm-modal"]');
