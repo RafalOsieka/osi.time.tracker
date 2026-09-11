@@ -54,10 +54,12 @@ describe('SyncExportDialog', () => {
       },
     });
     expect(wrapper.find('[data-testid="remote-sync-export-progress"]').exists()).toBe(true);
-    expect(wrapper.get('[data-testid="remote-sync-export-confirm"]').attributes('data-loading')).toBe(
-      'true',
-    );
-    expect(wrapper.get('[data-testid="remote-sync-export-cancel"]').attributes('disabled')).toBeDefined();
+    expect(
+      wrapper.get('[data-testid="remote-sync-export-confirm"]').attributes('data-loading'),
+    ).toBe('true');
+    expect(
+      wrapper.get('[data-testid="remote-sync-export-cancel"]').attributes('disabled'),
+    ).toBeDefined();
     wrapper.unmount();
   });
 });

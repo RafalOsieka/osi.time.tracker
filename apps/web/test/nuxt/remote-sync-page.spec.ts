@@ -1038,7 +1038,9 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
 
     const wrapper = await mount();
-    await wrapper.find('[data-testid="remote-sync-task-name-task-comment-dialog"]').trigger('click');
+    await wrapper
+      .find('[data-testid="remote-sync-task-name-task-comment-dialog"]')
+      .trigger('click');
     await flushPromises();
     const input = wrapper.find<HTMLInputElement>(
       '[data-testid="remote-sync-comment-task-comment-dialog"]',

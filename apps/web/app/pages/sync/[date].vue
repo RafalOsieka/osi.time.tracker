@@ -7,10 +7,7 @@ import type {
 } from '~~/shared/types/remote-sync-day';
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
-import {
-  resolveDefaultExportComment,
-  resolveExportComment,
-} from '~~/shared/utils/export-comment';
+import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
 import type { ActivityByTask, ExportCommentsByTask, IssueRefByTask } from '~/types/sync-ui-maps';
 
 const route = useRoute();

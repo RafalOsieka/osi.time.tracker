@@ -77,10 +77,7 @@ const title = computed(() =>
           </li>
         </ul>
 
-        <div
-          class="flex justify-between text-sm"
-          data-testid="remote-sync-export-dialog-to-send"
-        >
+        <div class="flex justify-between text-sm" data-testid="remote-sync-export-dialog-to-send">
           <span>{{ t('remoteSync.toSendLabel') }}</span>
           <span>{{ formatDuration(toSendSeconds) }}</span>
         </div>
