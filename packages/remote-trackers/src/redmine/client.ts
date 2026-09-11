@@ -245,6 +245,18 @@ export class RedmineClient {
     return { status, result: parseCreateTimeEntryResult(payload) };
   }
 
+  async deleteTimeEntry(remoteLogId: string, secret: string | null): Promise<{ status: number }> {
+    const { status } = await this.transport.execute(
+      {
+        url: `${this.base()}/time_entries/${encodeURIComponent(remoteLogId)}.json`,
+        method: 'DELETE',
+        headers: redmineAuthHeaders(secret),
+      },
+      z.unknown(),
+    );
+    return { status };
+  }
+
   private base(): string {
     return normalizeBaseUrl(this.baseUrl);
   }

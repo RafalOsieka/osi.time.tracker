@@ -62,6 +62,7 @@ function probeAdapter(overrides: Partial<RemoteTrackerAdapter> = {}): RemoteTrac
     ],
     fetchTimeLogsInRange: async () => [],
     createTimeEntry: async () => ({ remoteLogId: 'log-1' }),
+    deleteTimeEntry: async () => ({ status: 'deleted' as const }),
     ...overrides,
   };
 }
@@ -288,7 +289,7 @@ describe('worker dispatch', () => {
       expect(fetchImpl).toHaveBeenCalledOnce();
     },
   );
-  it('dispatches all seven operations through the shared adapter', async () => {
+  it('dispatches all eight operations through the shared adapter', async () => {
     const approvals = await approved();
     const seen: string[] = [];
     const adapter = probeAdapter({
@@ -320,6 +321,10 @@ describe('worker dispatch', () => {
         seen.push(`createTimeEntry:${input.remoteIssueId}`);
         return { remoteLogId: 'log-1' };
       },
+      deleteTimeEntry: async (remoteLogId) => {
+        seen.push(`deleteTimeEntry:${remoteLogId}`);
+        return { status: 'not_found' };
+      },
     });
     const createAdapter = vi.fn(() => adapter);
     const cases = [
@@ -339,6 +344,7 @@ describe('worker dispatch', () => {
         },
         { result: { remoteLogId: 'log-1' } },
       ],
+      ['deleteTimeEntry', 'log-1', { result: { status: 'not_found' } }],
     ] as const;
 
     for (const [operation, input, expected] of cases) {
@@ -359,6 +365,7 @@ describe('worker dispatch', () => {
       'fetchTimeLogs:2026-01-01',
       'fetchTimeLogsInRange:2026-01-01:2026-01-31',
       'createTimeEntry:1',
+      'deleteTimeEntry:log-1',
     ]);
   });
 

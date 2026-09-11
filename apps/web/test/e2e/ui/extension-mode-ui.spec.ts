@@ -235,9 +235,9 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     await page.click('[data-testid="remote-sync-export-button"]');
     await page.waitForSelector('[data-testid="remote-sync-export-dialog-body"]');
     await page.click('[data-testid="remote-sync-export-confirm"]');
-    await page.waitForSelector('[data-testid="remote-sync-export-group-uncertain"]');
+    await page.waitForSelector('[data-testid="remote-sync-export-dialog"]', { state: 'hidden' });
     await page.waitForFunction(() =>
-      /may already exist|mógł już powstać/i.test(document.body.textContent ?? ''),
+      /were not exported|nie została wyeksportowana/i.test(document.body.textContent ?? ''),
     );
 
     const fakeState = await readFakeExtensionState(page);
@@ -257,15 +257,6 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     expect(markers[0]?.trackerId).toBe(tracker.id);
     expect(markers[0]?.taskId).toBe(taskId);
     expect(markers[0]?.spentOn).toBe(dayKey);
-
-    await page.click(`[data-testid="remote-sync-export-retry-${taskId}"]`);
-    await page.waitForSelector('[data-testid="confirm-modal"]');
-    await page.waitForFunction(() =>
-      /Retry creating the remote log|Ponowić tworzenie zdalnego wpisu/i.test(
-        document.body.textContent ?? '',
-      ),
-    );
-    await page.click('[data-testid="confirm-reject"]');
     expect((await readFakeExtensionState(page)).creates).toBe(1);
 
     await page.reload();

@@ -10,6 +10,7 @@ const SUPPORTED_OPERATIONS = [
   'fetchTimeLogs',
   'fetchTimeLogsInRange',
   'createTimeEntry',
+  'deleteTimeEntry',
 ] as const;
 
 export interface FakeExtensionState {
@@ -87,7 +88,11 @@ export async function installLostCreateExtension(page: Page): Promise<void> {
         port: MessagePort,
         requestId: string,
         operation: string,
-        result: { id: string; name: string }[] | { id: string; name: string } | null,
+        result:
+          | { id: string; name: string }[]
+          | { id: string; name: string }
+          | { status: string }
+          | null,
       ) {
         port.postMessage({
           type: 'operation-result',
@@ -143,6 +148,10 @@ export async function installLostCreateExtension(page: Page): Promise<void> {
         }
         if (operation === 'getIssueById') {
           succeed(port, requestId, operation, null);
+          return;
+        }
+        if (operation === 'deleteTimeEntry') {
+          succeed(port, requestId, operation, { status: 'deleted' });
           return;
         }
         if (operation === 'createTimeEntry') {

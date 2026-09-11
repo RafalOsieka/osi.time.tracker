@@ -6,15 +6,12 @@ import type {
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
 import type { TrackerDto } from '~~/shared/types/tracker';
-import { resolveExportComment } from '~~/shared/utils/export-comment';
-import type {
-  ActivityByTask,
-  DismissedDuplicatesByTask,
-  ExportCommentsByTask,
-  IssueRefByTask,
-} from '~/types/sync-ui-maps';
-
-type ExportDialogPhase = 'review' | 'running' | 'report';
+import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import {
+  resolveDefaultExportComment,
+  resolveExportComment,
+} from '~~/shared/utils/export-comment';
+import type { ActivityByTask, ExportCommentsByTask, IssueRefByTask } from '~/types/sync-ui-maps';
 
 const route = useRoute();
 const router = useRouter();
@@ -84,13 +81,12 @@ function toPickerConfig(config: RemoteSyncConfigSurfaceDto): TrackerDto {
 const activitySelections = ref<ActivityByTask>({});
 const localIssueRefs = ref<IssueRefByTask>({});
 const expanded = ref<Record<string, boolean>>({});
-const dismissedDuplicates = ref<DismissedDuplicatesByTask>({});
 const exportComments = ref<ExportCommentsByTask>({});
 const editingTitleTaskId = ref<string | null>(null);
 const titleEditSnapshot = ref<Record<string, string>>({});
 const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
-const exportDialogPhase = ref<ExportDialogPhase>('review');
+const reconciling = ref(false);
 
 /** Allow multi-line explanations on dense summary chips (default tooltip is single-line). */
 const summaryTooltipUi = {
@@ -121,26 +117,13 @@ const {
 } = useRoundedDurations();
 
 const {
-  outcomes,
   progress: exportProgress,
   isRunning: exporting,
   completedCount: exportCompletedCount,
   totalCount: exportTotalCount,
   runExport,
-  requestStop,
-  retryTask,
-  reconcileTask,
 } = useSyncExport({
   createTimeEntry: (config, input) => clientFor(config).createTimeEntry(input),
-  validateExistingRemoteLog: (task, remoteLogId) =>
-    clientFor(task.config).validateExistingTimeLog({
-      remoteLogId,
-      remoteIssueId: task.remoteIssueId,
-      spentOn: task.spentOn,
-      durationSeconds: task.durationSeconds,
-      activityId: task.activityId,
-      comment: resolveExportComment(task.comment, task.row.taskName),
-    }),
   finalizeExport: (body) =>
     $csrfFetch('/api/sync/export', {
       method: 'POST',
@@ -149,24 +132,12 @@ const {
   onTaskFinalized: async (row) => {
     await retryRemoteLogs(row);
   },
-  refresh: async () => {
-    // Refresh is triggered on report close / retry completion, not mid-batch.
-  },
-  confirmUnknownCreateRetry: () =>
-    confirm({
-      title: t('remoteSync.exportDialog.unknownCreateRetryTitle'),
-      description: t('remoteSync.exportDialog.unknownCreateRetryMessage'),
-      confirmLabel: t('remoteSync.exportDialog.unknownCreateRetryAccept'),
-      cancelLabel: t('remoteSync.exportDialog.unknownCreateRetryReject'),
-      confirmColor: 'error',
-    }),
 });
 
 function resetUiState() {
   activitySelections.value = {};
   localIssueRefs.value = {};
   expanded.value = {};
-  dismissedDuplicates.value = {};
   exportComments.value = {};
   editingTitleTaskId.value = null;
   titleEditSnapshot.value = {};
@@ -174,7 +145,6 @@ function resetUiState() {
   roundedOverrides.value = {};
   roundedInputText.value = {};
   exportDialogOpen.value = false;
-  exportDialogPhase.value = 'review';
 }
 
 watch(date, () => {
@@ -237,20 +207,6 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
     default:
       return t('remoteSync.state.manageable');
   }
-}
-
-/** Skip copy for the export dialog — includes exclusion/activity gaps, not only row state. */
-function skipReasonFor(row: RemoteSyncDayRowDto): string {
-  if (stateFor(row) !== 'manageable') {
-    return reasonKeyFor(row);
-  }
-  if (isZeroDuration(row)) {
-    return t('remoteSync.roundedDurationHint');
-  }
-  if (!selectedActivity(row)) {
-    return t('remoteSync.activityEmptyOption');
-  }
-  return reasonKeyFor(row);
 }
 
 function stateBadgeColor(row: RemoteSyncDayRowDto): 'success' | 'warning' | 'error' | 'neutral' {
@@ -504,13 +460,6 @@ function rowDeltaSeconds(row: RemoteSyncDayRowDto): number {
   return toSendSecondsFor(row) - trackedSecondsFor(row);
 }
 
-function duplicateLogFor(row: RemoteSyncDayRowDto) {
-  const logsState = remoteLogsFor(row);
-  if (!logsState.loaded || logsState.loading || logsState.errorKey) return null;
-  if (!issueRefFor(row) || !row.config) return null;
-  return findDuplicateRemoteLog(roundedSecondsFor(row), logsState.logs);
-}
-
 function ensureDefaultComment(row: RemoteSyncDayRowDto) {
   if (row.taskId in exportComments.value) return;
   const logs = remoteLogsFor(row).logs;
@@ -572,53 +521,26 @@ function setComment(row: RemoteSyncDayRowDto, value: string | undefined) {
   exportComments.value = { ...exportComments.value, [row.taskId]: value ?? '' };
 }
 
-function activityLabelFor(row: RemoteSyncDayRowDto): string {
-  const id = selectedActivity(row);
-  const match = activitiesFor(row).options.find((option) => option.id === id);
-  return match?.name ?? id ?? t('remoteSync.activityEmptyOption');
-}
-
 const exportIncludedRows = computed(() =>
-  pushableRows().map((row) => {
-    const issue = issueRefFor(row);
-    return {
-      taskId: row.taskId,
-      taskName: row.taskName,
-      issueLabel: issue
-        ? `${issue.cachedTitle} (#${issue.remoteIssueId})`
-        : t('remoteSync.emptyCell'),
-      activityLabel: activityLabelFor(row),
-      trackedSeconds: trackedSecondsFor(row),
-      toSendSeconds: toSendSecondsFor(row),
-      comment: resolveExportComment(commentFor(row), row.taskName),
-      isRepeat: false,
-      isDuplicate: !!duplicateLogFor(row),
-      baseUrl: row.config?.baseUrl ?? null,
-      row,
-    };
-  }),
+  pushableRows().map((row) => ({
+    taskId: row.taskId,
+    comment: resolveExportComment(commentFor(row), row.taskName),
+    toSendSeconds: toSendSecondsFor(row),
+  })),
 );
 
-const exportSkippedRows = computed(() =>
-  rows.value
-    .filter((row) => !isPushable(row))
-    .map((row) => ({
-      taskId: row.taskId,
-      taskName: row.taskName,
-      reason: skipReasonFor(row),
-    })),
+const exportIncludedTotalSeconds = computed(() =>
+  exportIncludedRows.value.reduce((sum, row) => sum + row.toSendSeconds, 0),
 );
 
 function openExportDialog() {
   if (pushableRows().length === 0) return;
-  exportDialogPhase.value = 'review';
   exportDialogOpen.value = true;
 }
 
 async function confirmExportDialog() {
   const candidates = pushableRows();
   if (candidates.length === 0) return;
-  exportDialogPhase.value = 'running';
   await runExport(
     candidates.map((row) => ({
       row,
@@ -631,31 +553,99 @@ async function confirmExportDialog() {
       comment: commentFor(row),
     })),
   );
-  exportDialogPhase.value = 'report';
+  await refresh();
+  exportDialogOpen.value = false;
+  const allSucceeded = candidates.every((row) => exportProgress.value[row.taskId] === 'done');
+  if (allSucceeded) {
+    toast.success(t('remoteSync.exportSuccessToast'));
+  } else {
+    toast.warning(t('remoteSync.exportWarningToast'));
+  }
 }
 
 function cancelExportDialog() {
-  if (exportDialogPhase.value === 'running') return;
+  if (exporting.value) return;
   exportDialogOpen.value = false;
-  exportDialogPhase.value = 'review';
 }
 
-async function closeExportDialog() {
-  exportDialogOpen.value = false;
-  exportDialogPhase.value = 'review';
-  await refresh();
-}
-
-async function onExportRetry(taskId: string) {
-  await retryTask(taskId);
-}
-
-async function onExportReconcile(taskId: string, remoteLogId: string) {
+async function linkDiscoveredEntry(row: RemoteSyncDayRowDto, log: RemoteTimeLogDto) {
+  if (!row.config) return;
+  const accepted = await confirm({
+    title: t('remoteSync.linkConfirmTitle'),
+    description: t('remoteSync.linkConfirmMessage', {
+      duration: formatDuration(log.durationSeconds),
+      comment: log.comment?.trim() || t('remoteSync.remoteLogNoComment'),
+      task: row.taskName,
+      count: row.entries.length,
+    }),
+    confirmLabel: t('remoteSync.linkRemoteEntry'),
+    cancelLabel: t('remoteSync.exportDialog.cancel'),
+  });
+  if (!accepted) return;
+  reconciling.value = true;
   try {
-    await reconcileTask(taskId, remoteLogId);
+    await $csrfFetch('/api/sync/link', {
+      method: 'POST',
+      body: {
+        taskId: row.taskId,
+        trackerId: row.config.id,
+        localDate: date.value,
+        spentOn: log.spentOn,
+        remoteIssueId: log.remoteIssueId,
+        remoteLogId: log.remoteLogId,
+        exportDurationSeconds: log.durationSeconds,
+        requiredFieldValues: log.activityId ? { activity: log.activityId } : {},
+      },
+    });
+    await refresh();
+    await retryRemoteLogs(row);
+    toast.success(t('remoteSync.linkSuccessToast'));
   } catch (err) {
     toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
+  } finally {
+    reconciling.value = false;
   }
+}
+
+async function deleteLinkedEntry(
+  row: RemoteSyncDayRowDto,
+  log: RemoteTimeLogDto,
+  exportId: string,
+) {
+  const config = row.config;
+  if (!config) return;
+  await confirm({
+    title: t('remoteSync.deleteConfirmTitle'),
+    description: t('remoteSync.deleteConfirmMessage', {
+      id: log.remoteLogId,
+      duration: formatDuration(log.durationSeconds),
+      issue: issueRefFor(row)?.remoteIssueId ?? log.remoteIssueId,
+    }),
+    confirmLabel: t('remoteSync.deleteRemoteEntry'),
+    cancelLabel: t('remoteSync.exportDialog.cancel'),
+    confirmColor: 'error',
+    onConfirm: async () => {
+      reconciling.value = true;
+      try {
+        const outcome = await clientFor(toPickerConfig(config)).deleteTimeEntry(log.remoteLogId);
+        if (outcome.status === 'deleted' || outcome.status === 'not_found') {
+          await $csrfFetch('/api/sync/export', {
+            method: 'DELETE',
+            body: { exportId },
+          });
+          await refresh();
+          await retryRemoteLogs(row);
+          toast.success(t('remoteSync.deleteSuccessToast'));
+          return;
+        }
+        toast.error(t(outcome.messageKey));
+      } catch (err) {
+        toast.error(t(extractCaughtMessageKey(err, 'errors.unexpected')));
+      } finally {
+        reconciling.value = false;
+      }
+    },
+  });
 }
 
 function formatEntryStart(iso: string): string {
@@ -865,19 +855,20 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           <SyncRowDetail
             :task-id="row.taskId"
             :entries="row.entries"
+            :export-records="row.exports"
+            :tracker-id="row.config?.id ?? null"
             :show-remote-logs="!!issueRefFor(row) && !!row.config"
             :remote-logs="remoteLogsFor(row).logs"
             :remote-logs-loading="remoteLogsFor(row).loading"
             :remote-logs-error-key="remoteLogsFor(row).errorKey"
             :remote-logs-loaded="remoteLogsFor(row).loaded"
-            :duplicate-log="duplicateLogFor(row)"
-            :duplicate-dismissed="!!dismissedDuplicates[row.taskId]"
+            :can-reconcile="!!issueRefFor(row) && !!row.config"
+            :busy="reconciling"
             :format-entry-start="formatEntryStart"
             :format-entry-stop="formatEntryStop"
             @retry-remote-logs="retryRemoteLogs(row)"
-            @dismiss-duplicate="
-              dismissedDuplicates = { ...dismissedDuplicates, [row.taskId]: true }
-            "
+            @link="(log) => linkDiscoveredEntry(row, log)"
+            @delete="(log, exportId) => deleteLinkedEntry(row, log, exportId)"
           />
         </template>
       </SyncDayRow>
@@ -895,23 +886,13 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
 
     <SyncExportDialog
       v-model:open="exportDialogOpen"
-      :phase="exportDialogPhase"
       :included="exportIncludedRows"
-      :skipped="exportSkippedRows"
-      :day-total-seconds="dayTotalsSafe.dayTotal"
-      :tracked-seconds="dayTotalsSafe.tracked"
-      :to-send-seconds="dayTotalsSafe.toSend"
-      :progress="exportProgress"
-      :outcomes="outcomes"
+      :to-send-seconds="exportIncludedTotalSeconds"
       :completed-count="exportCompletedCount"
       :total-count="exportTotalCount"
       :is-running="exporting"
       @confirm="confirmExportDialog"
       @cancel="cancelExportDialog"
-      @stop="requestStop"
-      @close="closeExportDialog"
-      @retry="onExportRetry"
-      @reconcile="onExportReconcile"
     />
   </section>
 </template>

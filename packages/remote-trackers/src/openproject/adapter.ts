@@ -1,9 +1,16 @@
 import type { RemoteFieldOption } from '../contracts/remote-field-option.js';
 import type { RemoteAccount } from '../contracts/remote-account.js';
 import type { RemoteIssueSearchResult } from '../contracts/remote-issue.js';
-import type { RemoteTimeLogDto } from '../contracts/remote-time-log.js';
+import type {
+  RemoteTimeEntryDeleteOutcome,
+  RemoteTimeLogDto,
+} from '../contracts/remote-time-log.js';
 import type { RemoteTrackerAdapter, Transport } from '../contracts/remote-adapter.js';
 import { RemoteAdapterError } from '../contracts/remote-adapter.js';
+import {
+  mapTimeEntryDeleteFailure,
+  mapTimeEntryDeleteStatus,
+} from '../contracts/time-entry-delete.js';
 import { rethrowAsAdapterError, UpstreamHttpError } from '../contracts/upstream-error.js';
 import { OpenProjectClient, OPENPROJECT_TIME_LOGS_MAX_PAGES } from './client.js';
 
@@ -150,6 +157,22 @@ export class OpenProjectAdapter implements RemoteTrackerAdapter {
       return result;
     } catch (err) {
       rethrowAsAdapterError(err, 'error.remoteExportCreateFailed');
+    }
+  }
+
+  async deleteTimeEntry(remoteLogId: string): Promise<RemoteTimeEntryDeleteOutcome> {
+    try {
+      const { status } = await this.client.deleteTimeEntry(remoteLogId, this.secret);
+      return mapTimeEntryDeleteStatus(status);
+    } catch (err) {
+      if (
+        err instanceof UpstreamHttpError ||
+        err instanceof RemoteAdapterError ||
+        err instanceof Error
+      ) {
+        return mapTimeEntryDeleteFailure(err);
+      }
+      return { status: 'unknown', messageKey: 'error.remoteExportDeleteUnknown' };
     }
   }
 }

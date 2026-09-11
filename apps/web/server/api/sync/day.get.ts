@@ -107,6 +107,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       .select({
         exportId: remoteExports.id,
         taskId: remoteExports.taskId,
+        trackerId: remoteExports.trackerId,
         remoteLogId: remoteExports.remoteLogId,
         remoteIssueId: remoteExports.remoteIssueId,
         exportDurationSeconds: remoteExports.exportDurationSeconds,
@@ -140,6 +141,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
       seenExportIds.add(row.exportId);
       const provenance: RemoteSyncExportProvenanceDto = {
         exportId: row.exportId,
+        trackerId: row.trackerId,
         remoteLogId: row.remoteLogId,
         remoteIssueId: row.remoteIssueId,
         exportDurationSeconds: row.exportDurationSeconds,

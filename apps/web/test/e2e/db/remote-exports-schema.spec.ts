@@ -71,6 +71,7 @@ describeDb('remote exports schema', () => {
         .values({
           userId: user.id,
           taskId: task.id,
+          trackerId: tracker.id,
           localDate: '2026-03-15',
           remoteIssueId: '42',
           remoteLogId: 'log-1',
@@ -80,12 +81,13 @@ describeDb('remote exports schema', () => {
         .returning();
       if (!export1) throw new Error('export1 not inserted');
 
-      // Same task/day can receive another export (no uniqueness constraint).
+      // Same task/day can receive another export (no task/day uniqueness).
       const [export2] = await db
         .insert(remoteExports)
         .values({
           userId: user.id,
           taskId: task.id,
+          trackerId: tracker.id,
           localDate: '2026-03-15',
           remoteIssueId: '42',
           remoteLogId: 'log-2',
@@ -148,6 +150,106 @@ describeDb('remote exports schema', () => {
       expect(exportsAfterTaskDelete).toHaveLength(1);
       expect(exportsAfterTaskDelete[0]!.id).toBe(export2.id);
       expect(exportsAfterTaskDelete[0]!.taskId).toBeNull();
+      expect(exportsAfterTaskDelete[0]!.trackerId).toBe(tracker.id);
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+  });
+
+  it('scopes remote log identity to the tracker and rejects same-tracker duplicates', async () => {
+    const dbUrl = await provisionDatabase();
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 5 });
+
+    try {
+      const [user] = await db
+        .insert(users)
+        .values({ email: 'remote-export-identity@example.com', passwordHash: 'hash' })
+        .returning();
+      if (!user) throw new Error('user not inserted');
+
+      const [trackerA] = await db
+        .insert(trackers)
+        .values({
+          userId: user.id,
+          name: 'Tracker A',
+          systemType: 'openproject',
+          baseUrl: 'https://a.example.com',
+          directBrowserAccess: true,
+          roundingRule: 'none',
+        })
+        .returning();
+      const [trackerB] = await db
+        .insert(trackers)
+        .values({
+          userId: user.id,
+          name: 'Tracker B',
+          systemType: 'redmine',
+          baseUrl: 'https://b.example.com',
+          directBrowserAccess: true,
+          roundingRule: 'none',
+        })
+        .returning();
+      if (!trackerA || !trackerB) throw new Error('trackers not inserted');
+
+      const [projectA] = await db
+        .insert(projects)
+        .values({ userId: user.id, trackerId: trackerA.id, name: 'Project A' })
+        .returning();
+      const [projectB] = await db
+        .insert(projects)
+        .values({ userId: user.id, trackerId: trackerB.id, name: 'Project B' })
+        .returning();
+      if (!projectA || !projectB) throw new Error('projects not inserted');
+
+      const [taskA] = await db
+        .insert(tasks)
+        .values({ userId: user.id, projectId: projectA.id, name: 'Task A' })
+        .returning();
+      const [taskB] = await db
+        .insert(tasks)
+        .values({ userId: user.id, projectId: projectB.id, name: 'Task B' })
+        .returning();
+      if (!taskA || !taskB) throw new Error('tasks not inserted');
+
+      await db.insert(remoteExports).values({
+        userId: user.id,
+        taskId: taskA.id,
+        trackerId: trackerA.id,
+        localDate: '2026-03-15',
+        remoteIssueId: '42',
+        remoteLogId: 'shared-log',
+        exportDurationSeconds: 1800,
+        requiredFieldValues: {},
+      });
+
+      const [crossTracker] = await db
+        .insert(remoteExports)
+        .values({
+          userId: user.id,
+          taskId: taskB.id,
+          trackerId: trackerB.id,
+          localDate: '2026-03-15',
+          remoteIssueId: '99',
+          remoteLogId: 'shared-log',
+          exportDurationSeconds: 900,
+          requiredFieldValues: {},
+        })
+        .returning();
+      expect(crossTracker?.remoteLogId).toBe('shared-log');
+      expect(crossTracker?.trackerId).toBe(trackerB.id);
+
+      await expect(
+        db.insert(remoteExports).values({
+          userId: user.id,
+          taskId: taskA.id,
+          trackerId: trackerA.id,
+          localDate: '2026-03-16',
+          remoteIssueId: '42',
+          remoteLogId: 'shared-log',
+          exportDurationSeconds: 600,
+          requiredFieldValues: {},
+        }),
+      ).rejects.toThrow();
     } finally {
       await sql.end({ timeout: 5 });
     }

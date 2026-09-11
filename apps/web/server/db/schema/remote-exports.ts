@@ -14,11 +14,13 @@ import { sql } from 'drizzle-orm';
 import { users } from './users';
 import { tasks } from './tasks';
 import { timeEntries } from './time-entries';
+import { trackers } from './trackers';
 
 /**
- * One append-only record per successfully finalized remote time log.
+ * One record per successfully finalized or linked remote time log.
  * There is intentionally no task/day or entry uniqueness constraint: later
- * and intentional repeat exports are valid (REQ-119).
+ * exports after deletion remain valid (REQ-119). Remote-entry identity is the
+ * workspace pair `(trackerId, remoteLogId)` (REQ-304).
  * `exportRequestKey` is unique per user when present so retries reconcile
  * to the same logical export (REQ-233).
  *
@@ -35,6 +37,10 @@ export const remoteExports = pgTable(
       .notNull()
       .references(() => users.id),
     taskId: uuid('taskId').references(() => tasks.id, { onDelete: 'set null' }),
+    /** Tracker that owns the remote log; required for tracker-scoped identity. */
+    trackerId: uuid('trackerId')
+      .notNull()
+      .references(() => trackers.id),
     /** Local calendar day the export covers (`YYYY-MM-DD` in the user's timezone). */
     localDate: date('localDate').notNull(),
     remoteIssueId: text('remoteIssueId').notNull(),
@@ -58,12 +64,18 @@ export const remoteExports = pgTable(
     index('remote_exports_userId_idx').on(table.userId),
     index('remote_exports_userId_localDate_idx').on(table.userId, table.localDate),
     index('remote_exports_taskId_idx').on(table.taskId),
+    index('remote_exports_trackerId_idx').on(table.trackerId),
     index('remote_exports_userId_taskId_localDate_idx').on(
       table.userId,
       table.taskId,
       table.localDate,
     ),
     index('remote_exports_remoteLogId_idx').on(table.remoteLogId),
+    uniqueIndex('remote_exports_userId_trackerId_remoteLogId_uidx').on(
+      table.userId,
+      table.trackerId,
+      table.remoteLogId,
+    ),
     uniqueIndex('remote_exports_userId_exportRequestKey_uidx')
       .on(table.userId, table.exportRequestKey)
       .where(sql`${table.exportRequestKey} is not null`),

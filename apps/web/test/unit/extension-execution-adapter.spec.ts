@@ -161,6 +161,14 @@ function operationSuccess(request: {
         ok: true,
         result: { remoteLogId: '99' },
       };
+    case 'deleteTimeEntry':
+      return {
+        type: 'operation-result',
+        requestId: request.requestId,
+        operation: 'deleteTimeEntry',
+        ok: true,
+        result: { status: 'deleted' },
+      };
     default: {
       const _exhaustive: never = request.operation;
       return _exhaustive;
@@ -415,7 +423,7 @@ describe('ExtensionExecutionAdapter', () => {
     ).toHaveLength(3);
   });
 
-  it('handshakes without a secret, then runs all seven operations', async () => {
+  it('handshakes without a secret, then runs all eight operations', async () => {
     const host = createFakeHost();
     const adapter = new ExtensionExecutionAdapter(config, 'top-secret', {
       isClient: true,
@@ -440,6 +448,7 @@ describe('ExtensionExecutionAdapter', () => {
         activityId: '1',
       }),
     ).toEqual({ remoteLogId: '99' });
+    expect(await adapter.deleteTimeEntry('99')).toEqual({ status: 'deleted' });
 
     const handshake = host.portMessages.find(
       (message) => handshakeRequestSchema.safeParse(message).success,
@@ -460,7 +469,7 @@ describe('ExtensionExecutionAdapter', () => {
     const operations = host.portMessages.filter(
       (message) => operationRequestSchema.safeParse(message).success,
     );
-    expect(operations).toHaveLength(7);
+    expect(operations).toHaveLength(8);
   });
 
   it('reconstructs upstream adapter errors without treating them as availability failures', async () => {
@@ -532,6 +541,21 @@ describe('ExtensionExecutionAdapter', () => {
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate,
     });
     expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });
+  });
+
+  it('returns typed delete outcomes and still throws guarded extension failures', async () => {
+    const host = createFakeHost();
+    const adapter = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+    });
+    await expect(adapter.deleteTimeEntry('99')).resolves.toEqual({ status: 'deleted' });
+
+    const unavailable = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: false,
+      openBridge: vi.fn(),
+    });
+    await expect(unavailable.deleteTimeEntry('99')).rejects.toBeInstanceOf(ExtensionProtocolError);
   });
 });
 

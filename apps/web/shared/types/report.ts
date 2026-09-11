@@ -22,6 +22,7 @@ export interface MonthlyReportDayDto {
 
 export interface MonthlyReportExportDto {
   localDate: string;
+  trackerId: string;
   remoteLogId: string;
   exportDurationSeconds: number;
 }

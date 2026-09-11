@@ -92,7 +92,7 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
 
   return {
     async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
-      if (request.method !== 'GET' && request.method !== 'POST') {
+      if (request.method !== 'GET' && request.method !== 'POST' && request.method !== 'DELETE') {
         throw new CanonicalizationError('error.extensionDestinationUnapproved');
       }
       const canonical = canonicalizeRequestUrl(request.url);
@@ -121,7 +121,9 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
       const body = request.body !== undefined ? JSON.stringify(request.body) : undefined;
       let response: Response;
       try {
-        if (request.method === 'POST') options.onWriteOutcome?.('dispatched');
+        if (request.method === 'POST' || request.method === 'DELETE') {
+          options.onWriteOutcome?.('dispatched');
+        }
         response = await fetchImpl(request.url, {
           method: request.method,
           headers,
@@ -137,7 +139,7 @@ export function createGuardedTransport(options: GuardedTransportOptions): Transp
       // A timeout or server failure can follow a committed write; ordinary client
       // rejections are definite even if their error body cannot be read.
       if (
-        request.method === 'POST' &&
+        (request.method === 'POST' || request.method === 'DELETE') &&
         response.status >= 400 &&
         response.status < 500 &&
         response.status !== 408

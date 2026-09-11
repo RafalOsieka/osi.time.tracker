@@ -47,6 +47,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     return {
       exportId: record.id,
       taskId: record.taskId,
+      trackerId: record.trackerId,
       localDate: String(record.localDate),
       remoteIssueId: record.remoteIssueId,
       remoteLogId: record.remoteLogId,
@@ -75,19 +76,6 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     return toResult(byKey, undefined, true);
   }
 
-  // Known-result replay: never recreate provenance for an already-finalized remote log.
-  const [existing] = await db
-    .select()
-    .from(remoteExports)
-    .where(
-      and(eq(remoteExports.userId, user.id), eq(remoteExports.remoteLogId, parsed.remoteLogId)),
-    )
-    .limit(1);
-
-  if (existing) {
-    return toResult(existing, undefined, true);
-  }
-
   const [task] = await db
     .select({ id: tasks.id })
     .from(tasks)
@@ -107,6 +95,23 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
       statusCode: 422,
       data: { messageKey: 'error.remoteExportIssueMismatch' } satisfies ApiMessage,
     });
+  }
+
+  // Known-result replay: never recreate provenance for an already-finalized remote log.
+  const [existing] = await db
+    .select()
+    .from(remoteExports)
+    .where(
+      and(
+        eq(remoteExports.userId, user.id),
+        eq(remoteExports.trackerId, issueRef.trackerId),
+        eq(remoteExports.remoteLogId, parsed.remoteLogId),
+      ),
+    )
+    .limit(1);
+
+  if (existing) {
+    return toResult(existing, undefined, true);
   }
 
   const [userRow] = await db
@@ -162,6 +167,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
       .values({
         userId: user.id,
         taskId: parsed.taskId,
+        trackerId: issueRef.trackerId,
         localDate: parsed.localDate,
         remoteIssueId: parsed.remoteIssueId,
         remoteLogId: parsed.remoteLogId,

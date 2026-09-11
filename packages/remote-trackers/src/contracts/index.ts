@@ -7,7 +7,8 @@ export type {
   RemoteIssueSearchQuery,
   RemoteIssueSearchResult,
 } from './remote-issue.js';
-export type { RemoteTimeLogDto } from './remote-time-log.js';
+export type { RemoteTimeEntryDeleteOutcome, RemoteTimeLogDto } from './remote-time-log.js';
+export { mapTimeEntryDeleteFailure, mapTimeEntryDeleteStatus } from './time-entry-delete.js';
 export {
   trackerSystemTypeSchema,
   TRACKER_SYSTEM_TYPE_ORDER,

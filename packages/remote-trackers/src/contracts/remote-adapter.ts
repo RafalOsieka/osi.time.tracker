@@ -3,12 +3,12 @@ import type { JsonValue } from './json.js';
 import type { RemoteFieldOption } from './remote-field-option.js';
 import type { RemoteAccount } from './remote-account.js';
 import type { RemoteIssueSearchResult } from './remote-issue.js';
-import type { RemoteTimeLogDto } from './remote-time-log.js';
+import type { RemoteTimeEntryDeleteOutcome, RemoteTimeLogDto } from './remote-time-log.js';
 
 /** A pure, transport-agnostic HTTP request description. */
 export interface RemoteRequest {
   url: string;
-  method: 'GET' | 'POST';
+  method: 'GET' | 'POST' | 'DELETE';
   /** JSON body for `POST`/form endpoints; unused by `GET` requests. */
   body?: JsonValue;
   /**
@@ -59,6 +59,7 @@ export interface RemoteTrackerAdapter {
     activityId: string;
     comment?: string;
   }): Promise<{ remoteLogId: string }>;
+  deleteTimeEntry(remoteLogId: string): Promise<RemoteTimeEntryDeleteOutcome>;
 }
 
 /**

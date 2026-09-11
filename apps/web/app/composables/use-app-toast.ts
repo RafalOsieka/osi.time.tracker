@@ -21,5 +21,13 @@ export function useAppToast() {
         duration,
       });
     },
+    warning(title: string, description?: string, duration = 4000) {
+      toast.add({
+        title,
+        description,
+        color: 'warning',
+        duration,
+      });
+    },
   };
 }

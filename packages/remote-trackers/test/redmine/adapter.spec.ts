@@ -236,4 +236,42 @@ describe('RedmineAdapter', () => {
 
     expect(result).toEqual({ remoteLogId: '99' });
   });
+
+  it('deletes a time entry', async () => {
+    const transport = fakeTransport(() => ({ status: 204, payload: null }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', 'secret');
+
+    await expect(adapter.deleteTimeEntry('99')).resolves.toEqual({ status: 'deleted' });
+  });
+
+  it('maps a missing time entry to not_found', async () => {
+    const transport = fakeTransport(() => ({ status: 404, payload: null }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', 'secret');
+
+    await expect(adapter.deleteTimeEntry('missing')).resolves.toEqual({ status: 'not_found' });
+  });
+
+  it('maps an auth rejection to a rejected delete outcome', async () => {
+    const transport = fakeTransport(() => ({ status: 401, payload: {} }));
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', 'bad-secret');
+
+    await expect(adapter.deleteTimeEntry('99')).resolves.toEqual({
+      status: 'rejected',
+      messageKey: 'error.remoteServerModeAuthRejected',
+    });
+  });
+
+  it('maps a lost delete response to unknown', async () => {
+    const transport: Transport = {
+      async execute<T>(_request: RemoteRequest, _schema: ZodType<T>): Promise<RemoteResponse<T>> {
+        throw new Error('ECONNRESET');
+      },
+    };
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', 'secret');
+
+    await expect(adapter.deleteTimeEntry('99')).resolves.toEqual({
+      status: 'unknown',
+      messageKey: 'error.remoteExportDeleteUnknown',
+    });
+  });
 });

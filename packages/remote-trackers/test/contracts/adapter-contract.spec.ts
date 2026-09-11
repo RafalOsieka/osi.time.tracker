@@ -3,6 +3,7 @@ import type {
   RemoteAccount,
   RemoteFieldOption,
   RemoteIssueSearchResult,
+  RemoteTimeEntryDeleteOutcome,
   RemoteTimeLogDto,
   RemoteTrackerAdapter,
 } from '@osi/remote-trackers/contracts';
@@ -49,10 +50,14 @@ class ContractProbeAdapter implements RemoteTrackerAdapter {
   }): Promise<{ remoteLogId: string }> {
     return { remoteLogId: 'log-1' };
   }
+
+  async deleteTimeEntry(_remoteLogId: string): Promise<RemoteTimeEntryDeleteOutcome> {
+    return { status: 'deleted' };
+  }
 }
 
 describe('RemoteTrackerAdapter contract', () => {
-  it('exposes the seven provider-neutral operations', async () => {
+  it('exposes the eight provider-neutral operations', async () => {
     const adapter: RemoteTrackerAdapter = new ContractProbeAdapter();
     expect(await adapter.searchIssues('q')).toEqual([]);
     expect(await adapter.getIssueById('1')).toBeNull();
@@ -72,5 +77,6 @@ describe('RemoteTrackerAdapter contract', () => {
         activityId: '2',
       }),
     ).toEqual({ remoteLogId: 'log-1' });
+    expect(await adapter.deleteTimeEntry('log-1')).toEqual({ status: 'deleted' });
   });
 });
