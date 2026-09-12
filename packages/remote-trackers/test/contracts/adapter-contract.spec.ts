@@ -11,6 +11,26 @@ import type {
   RemoteTrackerAdapter,
 } from '@osi/remote-trackers/contracts';
 
+/** A time log carrying none of the REQ-341 optional fields. */
+const BARE_LOG: RemoteTimeLogDto = {
+  remoteLogId: '1',
+  remoteIssueId: '1',
+  spentOn: '2026-01-01',
+  durationSeconds: 3600,
+  activityId: null,
+  activityName: null,
+  comment: null,
+  remoteUserId: null,
+};
+
+/** A time log carrying every REQ-341 optional field. */
+const ENRICHED_LOG: RemoteTimeLogDto = {
+  ...BARE_LOG,
+  remoteProjectId: '12',
+  remoteProjectTitle: 'CMPL',
+  remoteIssueTitle: 'Fix rounding',
+};
+
 class ContractProbeAdapter implements RemoteTrackerAdapter {
   async searchIssues(
     _query: string,
@@ -43,7 +63,7 @@ class ContractProbeAdapter implements RemoteTrackerAdapter {
     workPackageIds: string[];
     userId?: string;
   }): Promise<RemoteTimeLogDto[]> {
-    return [];
+    return [BARE_LOG];
   }
 
   async fetchTimeLogsInRange(_input: {
@@ -51,7 +71,7 @@ class ContractProbeAdapter implements RemoteTrackerAdapter {
     to: string;
     userId?: string;
   }): Promise<RemoteTimeLogDto[]> {
-    return [];
+    return [ENRICHED_LOG];
   }
 
   async createTimeEntry(_input: {
@@ -79,12 +99,12 @@ describe('RemoteTrackerAdapter contract', () => {
     expect(await adapter.listProjects()).toEqual([]);
     expect(await adapter.getActivityOptions('1')).toEqual([]);
     expect(await adapter.getCurrentAccount()).toEqual({ id: '1', name: 'Ada' });
-    expect(await adapter.fetchTimeLogs({ spentOn: '2026-01-01', workPackageIds: ['1'] })).toEqual(
-      [],
-    );
-    expect(await adapter.fetchTimeLogsInRange({ from: '2026-01-01', to: '2026-01-31' })).toEqual(
-      [],
-    );
+    expect(await adapter.fetchTimeLogs({ spentOn: '2026-01-01', workPackageIds: ['1'] })).toEqual([
+      BARE_LOG,
+    ]);
+    expect(await adapter.fetchTimeLogsInRange({ from: '2026-01-01', to: '2026-01-31' })).toEqual([
+      ENRICHED_LOG,
+    ]);
     expect(
       await adapter.createTimeEntry({
         remoteIssueId: '1',

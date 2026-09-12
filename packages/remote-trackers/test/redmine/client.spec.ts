@@ -450,6 +450,96 @@ describe('RedmineClient', () => {
     expect(page.nextOffset).toBeNull();
   });
 
+  it('maps the remote project from the payload on a same-day page', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          time_entries: [
+            {
+              id: 11,
+              spent_on: '2026-03-15',
+              hours: 1,
+              issue: { id: 42 },
+              project: { id: 7, name: 'Internal' },
+            },
+          ],
+          total_count: 1,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.fetchTimeLogsPage({ spentOn: '2026-03-15', issueIds: ['42'] }, null);
+
+    expect(page.logs[0]).toMatchObject({ remoteProjectId: '7', remoteProjectTitle: 'Internal' });
+  });
+
+  it('maps the remote project from the payload on a date-range page', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          time_entries: [
+            {
+              id: 88,
+              spent_on: '2026-08-12',
+              hours: 2,
+              issue: { id: 99 },
+              project: { id: 12, name: 'CMPL' },
+            },
+          ],
+          total_count: 1,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.fetchTimeLogsRangePage(
+      { from: '2026-08-01', to: '2026-08-31' },
+      null,
+    );
+
+    expect(page.logs[0]).toMatchObject({ remoteProjectId: '12', remoteProjectTitle: 'CMPL' });
+  });
+
+  it('omits the project fields when the payload has no project', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          time_entries: [{ id: 1, spent_on: '2026-03-15', hours: 1, issue: { id: 42 } }],
+          total_count: 1,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.fetchTimeLogsPage({ spentOn: '2026-03-15', issueIds: ['42'] }, null);
+
+    expect(page.logs[0]).not.toHaveProperty('remoteProjectId');
+    expect(page.logs[0]).not.toHaveProperty('remoteProjectTitle');
+  });
+
+  it('drops a time entry with a project but no issue', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          time_entries: [
+            { id: 1, spent_on: '2026-03-15', hours: 1, project: { id: 7, name: 'Internal' } },
+          ],
+          total_count: 1,
+        },
+      },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const page = await client.fetchTimeLogsPage({ spentOn: '2026-03-15', issueIds: [] }, null);
+
+    expect(page.logs).toHaveLength(0);
+  });
+
   it('skips malformed time-entry elements rather than throwing', async () => {
     const transport = fakeTransport([
       {

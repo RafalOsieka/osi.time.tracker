@@ -151,4 +151,56 @@ describeSyncDay('sync day-review API integration', async () => {
     const res = await getDay(anonJar, '2026-03-15');
     expect(res.status).toBe(401);
   });
+
+  it('shows a backfilled (imported) day as Sent, matching an app-exported row (REQ-344)', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    await setTimezone(jar, token, 'UTC');
+    const tracker = await createTracker(jar, token, 'Import Sync Client ' + Date.now(), {
+      systemType: 'openproject',
+      baseUrl: 'https://op.example.com',
+      directBrowserAccess: true,
+      roundingRule: 'none',
+    });
+    const project = await createProject(
+      jar,
+      token,
+      'Import Sync Project ' + Date.now(),
+      tracker.id,
+    );
+    const date = '2026-04-05';
+    const comment = 'Backfilled task ' + Date.now();
+
+    const importRes = await fetch(url(`/api/trackers/${tracker.id}/import`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        dryRun: false,
+        groups: [
+          {
+            projectId: project.id,
+            logs: [
+              {
+                remoteLogId: `sync-${Date.now()}`,
+                remoteIssueId: '42',
+                spentOn: date,
+                durationSeconds: 1800,
+                activityId: '1',
+                comment,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    expect(importRes.status).toBe(200);
+
+    const body = await (await getDay(jar, date)).json();
+    const row = body.rows.find((r: { taskName: string }) => r.taskName === comment);
+    expect(row).toBeDefined();
+    expect(row.entries).toHaveLength(1);
+    expect(row.entries[0].previouslyExported).toBe(true);
+    expect(row.entries[0].durationSeconds).toBe(1800);
+    expect(row.exports).toHaveLength(1);
+    expect(row.exports[0].exportDurationSeconds).toBe(1800);
+  });
 });

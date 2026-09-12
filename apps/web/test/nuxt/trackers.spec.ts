@@ -1,13 +1,32 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
+import { defineComponent, h, type PropType, type VNode } from 'vue';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TrackersPage from '../../app/pages/trackers.vue';
+import RowActions from '../../app/components/RowActions.vue';
+import type { TrackerDto } from '../../shared/types/tracker';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
 const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
+const getSecretMock = vi.hoisted(() => vi.fn(() => ''));
+const createRemoteAdapterMock = vi.hoisted(() => vi.fn());
+
+// oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
+vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
+  createRemoteAdapter: (
+    config: { id: string; systemType: string; baseUrl: string },
+    secret: string | null,
+  ) => {
+    createRemoteAdapterMock(config, secret);
+    return {
+      listProjects: vi.fn().mockResolvedValue([]),
+      fetchTimeLogsInRange: vi.fn().mockResolvedValue([]),
+    };
+  },
+}));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- `$fetch`/`ofetch` is a Nuxt global without a project DI port
 vi.mock('ofetch', async (importOriginal) => {
@@ -64,7 +83,7 @@ mockNuxtImport('useUserSettings', () => () => ({
   effective: { value: { timeZone: 'UTC' } },
 }));
 mockNuxtImport('useTrackerSecret', () => () => ({
-  get: vi.fn(() => ''),
+  get: getSecretMock,
   set: vi.fn(),
   clear: vi.fn(),
 }));
@@ -100,8 +119,12 @@ const TableStub = {
   props: ['data', 'columns', 'loading'],
 };
 const ModalStub = {
+  // `data-testid="tracker-dialog"` here is only a fallback: usages that pass
+  // their own `data-testid` (e.g. TrackerImportDialog) override it via
+  // attribute fallthrough. `#footer` is rendered too — TrackerImportDialog's
+  // phase-specific action buttons live there, not in the default slot.
   template:
-    '<div v-if="open !== false" data-testid="tracker-dialog"><slot name="body" /><slot /></div>',
+    '<div v-if="open !== false" data-testid="tracker-dialog"><slot name="body" /><slot /><slot name="footer" /></div>',
   props: {
     open: { type: Boolean, default: true },
     title: { type: String, default: '' },
@@ -158,6 +181,7 @@ describe('trackers page', () => {
     vi.clearAllMocks();
     trackersListPending = false;
     useAsyncDataTrackers.length = 0;
+    getSecretMock.mockReturnValue('');
     try {
       Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
     } catch {
@@ -260,5 +284,156 @@ describe('trackers page', () => {
     }
 
     expect(wrapper.find('[data-testid="trackers-page"]').exists()).toBe(true);
+  });
+});
+
+describe('trackers page import action', () => {
+  // Renders the real RowActions via the actions column's `cell` function
+  // (commonStubs' TableStub above never invokes `cell`), so the secret-gated
+  // import action is exercised end to end rather than just the page shell.
+  // The page's `actions` column always defines `cell` as a plain render
+  // function of `{ row: { original } }` (never a component/string, and never
+  // reading the other `CellContext` fields), so this narrow prop typing matches
+  // how the stub is actually driven below.
+  type ActionsCellRenderer = (context: { row: { original: TrackerDto } }) => VNode;
+  const TableWithActionsStub = defineComponent({
+    props: {
+      // SAFETY: Vue's `PropType` cast is the documented way to type a plain-object
+      // prop; the runtime `type: Array` check is unaffected by the cast.
+      data: { type: Array as PropType<TrackerDto[]>, default: () => [] },
+      columns: {
+        // SAFETY: same `PropType` cast pattern as `data` above.
+        type: Array as PropType<{ id?: string; cell?: ActionsCellRenderer }[]>,
+        default: () => [],
+      },
+      loading: { type: Boolean, default: false },
+    },
+    setup(props) {
+      return () =>
+        h(
+          'div',
+          { 'data-testid': 'trackers-table' },
+          props.data.map((row) => {
+            const actionsColumn = props.columns.find((column) => column.id === 'actions');
+            const cellVNode = actionsColumn?.cell?.({ row: { original: row } });
+            return h(
+              'div',
+              { key: row.id, 'data-testid': `trackers-row-${row.id}` },
+              cellVNode ? [cellVNode] : [],
+            );
+          }),
+        );
+    },
+  });
+
+  const stubsWithActions = { ...commonStubs, UTable: TableWithActionsStub, RowActions };
+
+  const tracker = {
+    id: 'tracker-1',
+    name: 'Acme Tracker',
+    systemType: 'openproject',
+    baseUrl: 'https://a.example.com',
+    directBrowserAccess: true,
+    roundingRule: 'none',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  const trackerB = {
+    id: 'tracker-2',
+    name: 'Beta Tracker',
+    systemType: 'redmine',
+    baseUrl: 'https://b.example.com',
+    directBrowserAccess: true,
+    roundingRule: 'none',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    trackersListPending = false;
+    useAsyncDataTrackers.length = 0;
+    getSecretMock.mockReturnValue('');
+    fetchMock.mockResolvedValue([tracker]);
+    csrfFetchMock.mockResolvedValue({});
+    try {
+      Object.assign(useNuxtApp(), { $csrfFetch: csrfFetchMock });
+    } catch {
+      // ignore
+    }
+  });
+
+  it('enables the import action when a secret is stored', async () => {
+    getSecretMock.mockReturnValue('secret');
+    const wrapper = await mountSuspended(TrackersPage, { global: { stubs: stubsWithActions } });
+    await flushPromises();
+
+    const importButton = wrapper.find(`[data-testid="import-tracker-${tracker.id}"]`);
+    expect(importButton.exists()).toBe(true);
+    expect(importButton.attributes('disabled')).toBeUndefined();
+    expect(importButton.attributes('aria-label')).toBe('trackers.importButton');
+  });
+
+  it('disables the import action with a hint when no secret is stored', async () => {
+    getSecretMock.mockReturnValue('');
+    const wrapper = await mountSuspended(TrackersPage, { global: { stubs: stubsWithActions } });
+    await flushPromises();
+
+    const importButton = wrapper.find(`[data-testid="import-tracker-${tracker.id}"]`);
+    expect(importButton.attributes('disabled')).toBeDefined();
+    expect(importButton.attributes('aria-label')).toBe('trackers.importNoSecretHint');
+  });
+
+  it('keeps import, edit, and delete as sibling buttons with none nested', async () => {
+    getSecretMock.mockReturnValue('secret');
+    const wrapper = await mountSuspended(TrackersPage, { global: { stubs: stubsWithActions } });
+    await flushPromises();
+
+    const row = wrapper.find(`[data-testid="trackers-row-${tracker.id}"]`);
+    const buttons = row.findAll('button');
+    expect(buttons.length).toBeGreaterThanOrEqual(3);
+    for (const button of buttons) {
+      expect(button.element.querySelector('button')).toBeNull();
+    }
+  });
+
+  it('opens the import dialog when the action is activated', async () => {
+    getSecretMock.mockReturnValue('secret');
+    const wrapper = await mountSuspended(TrackersPage, { global: { stubs: stubsWithActions } });
+    await flushPromises();
+
+    await wrapper.find(`[data-testid="import-tracker-${tracker.id}"]`).trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="tracker-import-dialog"]').exists()).toBe(true);
+  });
+
+  it("scans with the correct tracker's adapter after switching trackers, not a stale reused instance", async () => {
+    // Regression: the dialog used to stay mounted across tracker switches
+    // (`v-if` alone never toggles false->true between two truthy trackers),
+    // so `useRemoteLogImport`'s `config` — captured once at setup — stayed
+    // frozen to whichever tracker was opened first. Fixed with `:key` on the
+    // dialog usage in pages/trackers.vue, forcing a fresh instance per tracker.
+    getSecretMock.mockReturnValue('secret');
+    fetchMock.mockResolvedValue([tracker, trackerB]);
+    const wrapper = await mountSuspended(TrackersPage, { global: { stubs: stubsWithActions } });
+    await flushPromises();
+
+    await wrapper.find(`[data-testid="import-tracker-${tracker.id}"]`).trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="tracker-import-scan"]').trigger('click');
+    await flushPromises();
+    expect(createRemoteAdapterMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: tracker.id, systemType: 'openproject' }),
+      'secret',
+    );
+
+    await wrapper.find(`[data-testid="import-tracker-${trackerB.id}"]`).trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="tracker-import-scan"]').trigger('click');
+    await flushPromises();
+    expect(createRemoteAdapterMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: trackerB.id, systemType: 'redmine' }),
+      'secret',
+    );
   });
 });
