@@ -1,0 +1,36 @@
+## 1. Remote-trackers package (contract + adapters)
+
+- [ ] 1.1 Extend `RemoteTimeLogDto` in `packages/remote-trackers/src/contracts/remote-time-log.ts` with optional `remoteProjectId`, `remoteProjectTitle`, `remoteIssueTitle` (REQ-341); verify `pnpm package:check` type-checks with both adapters unchanged
+- [ ] 1.2 OpenProject `parseTimeLogsPage`: map `_links.project.href` → id, `_links.project.title`, and `_links.entity.title` (fallback `_links.workPackage.title`), omitting absent values (REQ-342); verify `packages/remote-trackers/test/openproject/` covers full links, legacy work-package link, and missing project on both same-day and range pages
+- [ ] 1.3 Redmine `parseTimeLogsPage`: map `project.id` / `project.name`, keep dropping issue-less entries (REQ-343); verify `packages/remote-trackers/test/redmine/` covers project present, project missing, and issue-less drop on both fetches
+- [ ] 1.4 Update `test/contracts/adapter-contract.spec.ts` so a log with and without the optional fields round-trips through both adapters; verify `pnpm package:check` is green
+
+## 2. Extension protocol + extension
+
+- [ ] 2.1 `packages/extension-protocol` `remoteTimeLogSchema`: add the three optional keys so the bridge does not strip them (REQ-341 extension scenario); verify `packages/extension-protocol/test/protocol.spec.ts` accepts logs with and without the fields and `contract-agreement.ts` still compiles
+- [ ] 2.2 `apps/extension`: rebuild against the updated packages and confirm `dispatch.spec.ts` passes a range fetch whose logs carry `remoteProjectId` through unchanged; update `apps/web/test/e2e/helpers/fake-extension.ts` fixtures to include the fields; verify `pnpm test:unit` in `apps/extension` is green
+
+## 3. Backend (web server)
+
+- [ ] 3.1 `shared/types/remote-log-import.ts`: `importRemoteLogsSchema` (`dryRun`, `groups[{ projectId, logs[] }]`, ≤500 logs, unique `remoteLogId`, positive integer duration, ISO `spentOn`, nullable `activityId`/`comment`, optional titles) and `ImportRemoteLogsResultDto` (per-project + total `imported`/`wouldImport`/`skippedExisting`) (REQ-339); verify a unit spec in `apps/web/test/unit/` covers valid body, empty groups, duplicate ids, >500 logs, bad duration/date with expected messageKeys
+- [ ] 3.2 `server/utils/import-placement.ts`: pure `placeImportedEntries(dayStart, dayEnd, existingMaxStop, logs)` implementing REQ-337 (08:00 anchor, cursor after last stopped entry, numeric remoteLogId order, midnight fallback); verify `apps/web/test/unit/import-placement.spec.ts` covers the empty day, second-tracker continuation, real local entry, 17 h spill, 20 h midnight fallback, and a 23 h DST day
+- [ ] 3.3 `server/utils/task-name-from-comment.ts` (trim, `empty` fallback) (REQ-336); verify a unit spec covers comment, null, whitespace
+- [ ] 3.4 `POST /api/trackers/[id]/import` (`server/api/trackers/[id]/import.post.ts`): `requireAuth`, tracker 404 rules, project-binding 422, existing-identity skip, dry run vs write, one transaction per request, per-day `computeDayBoundary` + max stopped `stoppedAt` query, `resolveTaskId` with tracker/cached titles, entry + `remote_exports` (`requiredFieldValues: { activity }`) + `remote_export_entries` inserts, unique-violation → skipped (REQ-335, REQ-338, REQ-339); verify `pnpm type-check` passes
+- [ ] 3.5 e2e-api `apps/web/test/e2e/api/trackers-import.spec.ts`: dry run counts without rows; write run creates task/entry/provenance with expected instants (08:00 stacking) and reuses a task across days; sibling tasks for different comments; `empty` name; re-run skips all; app-exported log skipped; project bound to another tracker → 422; foreign tracker → 404; invalid body → 422; missing CSRF rejected; verify `pnpm test:e2e:api` is green
+- [ ] 3.6 e2e-api: extend `sync-day.spec.ts` and `reports-monthly.spec.ts` with a backfilled day — Remote Sync row is Sent and the report's export provenance includes the imported log (REQ-344); verify both specs pass
+- [ ] 3.7 Add i18n keys for the new server messageKeys (`en`/`pl`); verify `pnpm lint` i18n parity passes
+
+## 4. Frontend (web app)
+
+- [ ] 4.1 `app/utils/remote/route-logs-by-scope.ts`: pure ancestor-walk routing over `RemoteProjectDto[]` + scoped `ProjectDto[]` returning matched groups and unmatched buckets keyed by remote project (REQ-334); verify `apps/web/test/unit/route-logs-by-scope.spec.ts` covers descendant match, nested most-specific, unmatched root, project absent from catalog, missing `remoteProjectId`, unscoped project receives nothing
+- [ ] 4.2 `app/utils/month-range.ts`: split an inclusive `from`/`to` into month chunks and 500-log request splits; verify a unit spec covers partial first/last months and the split cap
+- [ ] 4.3 `app/composables/use-remote-log-import.ts`: phase state machine (range → scanning → preview → importing → done/error), per-month fetch via `createRemoteAdapter(config, secret)` + `listProjects()` once, dry-run and write calls to `POST /api/trackers/[id]/import`, aggregated per-remote-project preview, stop-on-failure with committed-months message (REQ-334, REQ-340); verify `apps/web/test/unit/use-remote-log-import.spec.ts` covers a two-month happy path, a failing second month, nothing-to-import, and the no-project-id hint
+- [ ] 4.4 `app/components/TrackerImportDialog.vue`: range form (defaults, inverted-range inline error, scoped-projects list with unscoped ones flagged), scanning progress with `aria-live` and cancel, preview table with "no scoped project" state and totals, importing phase without cancel, done phase with synthetic-times note, failure state with committed months and Retry; add i18n keys `en`/`pl` (REQ-340); verify `apps/web/test/nuxt/tracker-import-dialog.spec.ts` covers each phase with a mocked composable, the unscoped flag, cancel present only while scanning, retry re-running the range, disabled import when nothing to import, and accessible names
+- [ ] 4.5 `pages/trackers.vue` + `RowActions.vue`: add the import action (icon, tooltip, disabled + hint without a secret), open the dialog (REQ-345); verify `apps/web/test/nuxt/trackers.spec.ts` covers enabled, disabled-without-secret, and sibling-button structure
+- [ ] 4.6 e2e-ui `apps/web/test/e2e/ui/tracker-import-ui.spec.ts`: seed a tracker with a browser secret and two scoped projects, mock catalog and two months of range logs with `page.route` (one unmatched remote project), run the dialog through preview and import, assert the timer view shows the stacked entries and Remote Sync shows Linked; re-run and assert all skipped; in a second case fail the second month via `page.route`, assert the committed-months message, retry, and assert it resumes with the first month skipped; verify the spec passes under `pnpm test:e2e:ui`
+- [ ] 4.7 e2e-ui: repeat the import journey in extension mode via `fake-extension.ts` and assert the same result; verify the spec passes
+
+## 5. Wrap-up
+
+- [ ] 5.1 Update `docs/wbs.md` and `docs/user-stories.md` with the import-history feature and the routing/idempotency rules; verify the docs diff reads correctly
+- [ ] 5.2 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:e2e`; verify all green before opening the PR
