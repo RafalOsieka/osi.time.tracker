@@ -229,6 +229,46 @@ describe('worker dispatch', () => {
     expect(JSON.stringify(result).length).toBeLessThan(1000);
   });
 
+  it('passes the REQ-341 remote project id through a range fetch unchanged', async () => {
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            _embedded: {
+              elements: [
+                {
+                  id: 1,
+                  spentOn: '2026-01-01',
+                  hours: 'PT1H',
+                  _links: {
+                    entity: { href: '/api/v3/work_packages/1', title: 'Fix rounding' },
+                    project: { href: '/api/v3/projects/12', title: 'CMPL' },
+                  },
+                },
+              ],
+            },
+          }),
+        ),
+    );
+    const result = await handleOperation({
+      sender: trustedSender(),
+      expectedExtensionId: extensionId,
+      approvals: await approved(),
+      fetchImpl,
+      value: operationValue('fetchTimeLogsInRange', { from: '2026-01-01', to: '2026-01-02' }),
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      result: [
+        expect.objectContaining({
+          remoteProjectId: '12',
+          remoteProjectTitle: 'CMPL',
+          remoteIssueTitle: 'Fix rounding',
+        }),
+      ],
+    });
+  });
+
   const malformedAccount: RemoteAccount = {
     // @ts-expect-error Deliberately violate the provider contract to test the outgoing boundary.
     id: 42,

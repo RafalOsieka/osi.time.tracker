@@ -26,6 +26,9 @@ export interface RedmineTimeLogEntry {
   activityName: string | null;
   comment: string | null;
   remoteUserId: string | null;
+  /** Present only when the payload's `project` field supplies it (REQ-343). */
+  remoteProjectId?: string;
+  remoteProjectTitle?: string;
 }
 
 export interface RedmineTimeLogsPageResult {
@@ -376,6 +379,7 @@ interface RedmineTimeEntryElement {
   issue?: { id?: string | number };
   activity?: { id?: string | number; name?: string };
   user?: { id?: string | number };
+  project?: { id?: string | number; name?: string };
 }
 
 interface RedmineTimeEntriesPayload {
@@ -556,7 +560,7 @@ function parseTimeLogsPage(payload: RedmineTimeEntriesPayload | null): RedmineTi
         continue;
       }
 
-      logs.push({
+      const entry: RedmineTimeLogEntry = {
         remoteLogId,
         remoteIssueId,
         spentOn,
@@ -565,7 +569,13 @@ function parseTimeLogsPage(payload: RedmineTimeEntriesPayload | null): RedmineTi
         activityName: element.activity?.name ?? null,
         comment: element.comments ?? null,
         remoteUserId: coerceRemoteId(element.user?.id),
-      });
+      };
+      const remoteProjectId = coerceRemoteId(element.project?.id);
+      if (remoteProjectId) entry.remoteProjectId = remoteProjectId;
+      const remoteProjectTitle = element.project?.name?.trim();
+      if (remoteProjectTitle) entry.remoteProjectTitle = remoteProjectTitle;
+
+      logs.push(entry);
     }
   }
 

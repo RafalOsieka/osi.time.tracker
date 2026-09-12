@@ -346,6 +346,101 @@ describe('OpenProjectClient', () => {
     expect(page.nextPageUrl).toBe('https://op.example.com/api/v3/time_entries?offset=2');
   });
 
+  it('maps the remote project and issue title from full HAL links on a same-day page', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 11,
+                spentOn: '2026-03-15',
+                hours: 'PT1H',
+                _links: {
+                  entity: { href: '/api/v3/work_packages/42', title: 'Fix rounding' },
+                  project: { href: '/api/v3/projects/12', title: 'CMPL' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const page = await client.fetchTimeLogsPage(
+      { spentOn: '2026-03-15', workPackageIds: ['42'] },
+      null,
+    );
+
+    expect(page.logs[0]).toMatchObject({
+      remoteProjectId: '12',
+      remoteProjectTitle: 'CMPL',
+      remoteIssueTitle: 'Fix rounding',
+    });
+  });
+
+  it('falls back to the legacy workPackage title when entity carries none', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 88,
+                spentOn: '2026-08-12',
+                hours: 'PT2H',
+                _links: {
+                  workPackage: { href: '/api/v3/work_packages/99', title: 'Legacy issue' },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const page = await client.fetchTimeLogsRangePage(
+      { from: '2026-08-01', to: '2026-08-31' },
+      null,
+    );
+
+    expect(page.logs[0]).toMatchObject({ remoteIssueTitle: 'Legacy issue' });
+  });
+
+  it('omits the project and issue-title fields when the payload has no usable links', async () => {
+    const transport = fakeTransport([
+      {
+        status: 200,
+        payload: {
+          _embedded: {
+            elements: [
+              {
+                id: 5,
+                spentOn: '2026-08-12',
+                hours: 'PT1H',
+                _links: { entity: { href: '/api/v3/work_packages/1' } },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    const page = await client.fetchTimeLogsRangePage(
+      { from: '2026-08-01', to: '2026-08-31' },
+      null,
+    );
+
+    expect(page.logs[0]).not.toHaveProperty('remoteProjectId');
+    expect(page.logs[0]).not.toHaveProperty('remoteProjectTitle');
+    expect(page.logs[0]).not.toHaveProperty('remoteIssueTitle');
+  });
+
   it('defaults the same-day time-log query to the current user when no userId is supplied', async () => {
     const transport = fakeTransport([{ status: 200, payload: {} }]);
     const client = new OpenProjectClient(transport, 'https://op.example.com');

@@ -209,6 +209,68 @@ describe('extension protocol', () => {
     }
   });
 
+  it('accepts time logs with and without the REQ-341 optional fields, without stripping them', () => {
+    const withFields = parseMatchedOperationResult(
+      'fetchTimeLogsInRange',
+      asJson({
+        type: 'operation-result',
+        requestId: 'req-1',
+        operation: 'fetchTimeLogsInRange',
+        ok: true,
+        result: [
+          {
+            remoteLogId: 'l1',
+            remoteIssueId: '1',
+            spentOn: '2026-01-01',
+            durationSeconds: 60,
+            activityId: null,
+            activityName: null,
+            comment: null,
+            remoteUserId: null,
+            remoteProjectId: '12',
+            remoteProjectTitle: 'CMPL',
+            remoteIssueTitle: 'Fix rounding',
+          },
+        ],
+      }),
+    );
+    expect(withFields.success).toBe(true);
+    if (withFields.success && withFields.data.type === 'operation-result' && withFields.data.ok) {
+      expect(withFields.data.result).toEqual([
+        expect.objectContaining({
+          remoteProjectId: '12',
+          remoteProjectTitle: 'CMPL',
+          remoteIssueTitle: 'Fix rounding',
+        }),
+      ]);
+    } else {
+      expect.unreachable('expected a successful fetchTimeLogsInRange result');
+    }
+
+    const withoutFields = parseMatchedOperationResult(
+      'fetchTimeLogs',
+      asJson({
+        type: 'operation-result',
+        requestId: 'req-1',
+        operation: 'fetchTimeLogs',
+        ok: true,
+        result: [
+          {
+            remoteLogId: 'l1',
+            remoteIssueId: '1',
+            spentOn: '2026-01-01',
+            durationSeconds: 60,
+            activityId: null,
+            activityName: null,
+            comment: null,
+            remoteUserId: null,
+          },
+        ],
+      }),
+    );
+    expect(withoutFields.success).toBe(true);
+  });
+
   it('rejects malformed operation requests', () => {
     const parsed = parseOperationRequest(
       asJson({

@@ -4,13 +4,31 @@ defineProps<{
   deleteLabel: string;
   editTestid: string;
   deleteTestid: string;
+  /** Optional extra row action (e.g. import), rendered before edit. Omit the icon to skip it. */
+  extraIcon?: string;
+  extraLabel?: string;
+  extraTestid?: string;
+  extraDisabled?: boolean;
 }>();
 
-const emit = defineEmits<{ edit: []; delete: [] }>();
+const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
 </script>
 
 <template>
   <div class="flex shrink-0 justify-end gap-0.5">
+    <UTooltip v-if="extraIcon" :text="extraLabel" :content="{ side: 'top' }">
+      <UButton
+        :icon="extraIcon"
+        color="neutral"
+        variant="ghost"
+        size="sm"
+        square
+        :disabled="extraDisabled"
+        :aria-label="extraLabel"
+        :data-testid="extraTestid"
+        @click="emit('extra')"
+      />
+    </UTooltip>
     <UTooltip :text="editLabel" :content="{ side: 'top' }">
       <UButton
         icon="i-lucide-pencil"
