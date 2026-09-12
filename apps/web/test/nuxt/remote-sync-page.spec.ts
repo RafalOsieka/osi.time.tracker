@@ -32,7 +32,6 @@ vi.mock('ofetch', async (importOriginal) => {
 // oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
 vi.mock('../../app/composables/use-remote-sync-client', () => ({
   useRemoteSyncClient: () => ({
-    resolveAccount: vi.fn().mockResolvedValue({ id: '7', name: 'Ada' }),
     fetchTimeLogs: fetchTimeLogsMock,
     fetchTimeLogsInRange: vi.fn().mockResolvedValue([]),
     createTimeEntry: createTimeEntryMock,
@@ -660,6 +659,124 @@ describe('RemoteSync page', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('shares one activity fetch across different work packages on a Redmine tracker (REQ-332)', async () => {
+    const redmineConfig = {
+      ...baseConfig,
+      id: 'config-redmine-scope',
+      systemType: 'redmine' as const,
+      baseUrl: 'https://rm.example.com',
+    };
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-rm-a',
+          taskName: 'Redmine Scope A',
+          projectName: 'Project',
+          trackerName: 'Client',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          totalSeconds: 1800,
+          config: redmineConfig,
+          issueRef: { remoteIssueId: '7', cachedTitle: 'Issue Seven' },
+          entries: [entry({ id: 'e-rm-a', durationSeconds: 1800 })],
+          exports: [],
+        },
+        {
+          taskId: 'task-rm-b',
+          taskName: 'Redmine Scope B',
+          projectName: 'Project',
+          trackerName: 'Client',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          totalSeconds: 900,
+          config: redmineConfig,
+          issueRef: { remoteIssueId: '8', cachedTitle: 'Issue Eight' },
+          entries: [entry({ id: 'e-rm-b', durationSeconds: 900 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ time_entry_activities: [{ id: 9, name: 'Development' }] }),
+    });
+
+    const wrapper = await mount();
+    // Redmine activities are a global enumeration: two different work
+    // packages on the same tracker share one fetch rather than one each.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await chooseActivity(wrapper, 'task-rm-a', '9');
+    await chooseActivity(wrapper, 'task-rm-b', '9');
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('retrying a shared activity scope clears the error for every row sharing it', async () => {
+    const redmineConfig = {
+      ...baseConfig,
+      id: 'config-redmine-retry',
+      systemType: 'redmine' as const,
+      baseUrl: 'https://rm.example.com',
+    };
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-rm-retry-a',
+          taskName: 'Redmine Retry A',
+          projectName: 'Project',
+          trackerName: 'Client',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          totalSeconds: 1800,
+          config: redmineConfig,
+          issueRef: { remoteIssueId: '7', cachedTitle: 'Issue Seven' },
+          entries: [entry({ id: 'e-rm-retry-a', durationSeconds: 1800 })],
+          exports: [],
+        },
+        {
+          taskId: 'task-rm-retry-b',
+          taskName: 'Redmine Retry B',
+          projectName: 'Project',
+          trackerName: 'Client',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          totalSeconds: 900,
+          config: redmineConfig,
+          issueRef: { remoteIssueId: '8', cachedTitle: 'Issue Eight' },
+          entries: [entry({ id: 'e-rm-retry-b', durationSeconds: 900 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValueOnce({ ok: false, status: 500 }).mockResolvedValue({
+      ok: true,
+      json: async () => ({ time_entry_activities: [{ id: 9, name: 'Development' }] }),
+    });
+
+    const wrapper = await mount();
+    expect(
+      wrapper.find('[data-testid="remote-sync-activity-error-task-rm-retry-a"]').exists(),
+    ).toBe(true);
+    expect(
+      wrapper.find('[data-testid="remote-sync-activity-error-task-rm-retry-b"]').exists(),
+    ).toBe(true);
+
+    await wrapper
+      .find('[data-testid="remote-sync-activity-retry-task-rm-retry-a"]')
+      .trigger('click');
+    await flushPromises();
+
+    expect(
+      wrapper.find('[data-testid="remote-sync-activity-error-task-rm-retry-a"]').exists(),
+    ).toBe(false);
+    expect(
+      wrapper.find('[data-testid="remote-sync-activity-error-task-rm-retry-b"]').exists(),
+    ).toBe(false);
+    // One retry for the shared scope, not one per row.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('shows a translated error and retry control when the activities fetch fails', async () => {
     dayData = makeDay({
       rows: [
@@ -1020,6 +1137,10 @@ describe('RemoteSync page', () => {
     );
     expect(toastSuccessMock).toHaveBeenCalled();
     expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(false);
+    // Post-finalize refresh (REQ-118) refetches that tracker's day logs and
+    // nothing else: the mocked client exposes no account-resolution call to
+    // make in the first place.
+    expect(fetchTimeLogsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 
   it('does not reassign the local task when title-to-send is edited', async () => {

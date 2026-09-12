@@ -106,11 +106,11 @@ async function loadRemoteHours(report: MonthlyReportDto, configs: TrackerDto[]):
       }
       try {
         const adapter = createRemoteAdapter(config, secret);
-        const account = await adapter.getCurrentAccount();
+        // REQ-333: the range fetch is already scoped to the current account
+        // server-side; no preceding account-resolution call is needed.
         const logs = await adapter.fetchTimeLogsInRange({
           from: range.from,
           to: range.to,
-          userId: account.id,
         });
         next[tracker.id] = { status: 'ok', logs, errorKey: null };
       } catch (err) {

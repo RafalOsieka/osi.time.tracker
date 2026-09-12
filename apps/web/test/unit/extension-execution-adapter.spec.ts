@@ -4,6 +4,7 @@ import {
   EXTENSION_ERROR_MESSAGE_KEYS,
   EXTENSION_OPERATION_NAMES,
   EXTENSION_PROTOCOL_VERSION,
+  EXTENSION_RESOURCE_LIMITS,
   ExtensionProtocolError,
   handshakeRequestSchema,
   operationRequestSchema,
@@ -29,8 +30,14 @@ import type {
 } from '../../app/utils/remote/extension-bridge';
 import { ExtensionDocumentBridge } from '../../app/utils/remote/extension-bridge';
 import { ExtensionExecutionAdapter } from '../../app/utils/remote/extension-execution-adapter';
+import { ExtensionOperationGate } from '../../app/utils/remote/extension-operation-gate';
 import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
 import type { TrackerDto } from '../../shared/types/tracker';
+
+/** Resolves once pending microtasks settle, without a fixed timer wait. */
+function flushMicrotasks(): Promise<void> {
+  return Promise.resolve().then(() => Promise.resolve());
+}
 
 const config: TrackerDto = {
   id: 'config-1',
@@ -632,6 +639,133 @@ describe('ExtensionExecutionAdapter', () => {
       openBridge: vi.fn(),
     });
     await expect(unavailable.deleteTimeEntry('99')).rejects.toBeInstanceOf(ExtensionProtocolError);
+  });
+});
+
+describe('ExtensionExecutionAdapter admission gate (REQ-331)', () => {
+  it('completes a page-load-sized burst without any operation seeing the extension limit error', async () => {
+    const limit = EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument;
+    const gate = new ExtensionOperationGate(limit);
+    let activeBridges = 0;
+    let maxActiveBridges = 0;
+    const host = createFakeHost();
+    const trackingOpenBridge: typeof host.openBridge = () => {
+      activeBridges += 1;
+      maxActiveBridges = Math.max(maxActiveBridges, activeBridges);
+      const bridge = host.openBridge();
+      const close = bridge.close.bind(bridge);
+      bridge.close = () => {
+        activeBridges -= 1;
+        close();
+      };
+      return bridge;
+    };
+
+    // A Remote Sync day with more linked tasks than the extension's in-flight
+    // cap, each resolving one activity fetch concurrently.
+    const taskCount = limit + 2;
+    const adapters = Array.from(
+      { length: taskCount },
+      () =>
+        new ExtensionExecutionAdapter(config, 'secret', {
+          isClient: true,
+          openBridge: trackingOpenBridge,
+          gate,
+        }),
+    );
+
+    const results = await Promise.all(adapters.map((adapter) => adapter.getActivityOptions('42')));
+
+    expect(results).toEqual(Array.from({ length: taskCount }, () => [activity]));
+    expect(maxActiveBridges).toBeLessThanOrEqual(limit);
+    expect(host.connectMessages).toHaveLength(taskCount);
+  });
+
+  it('queues an operation behind a full gate and dispatches it once a slot frees', async () => {
+    const gate = new ExtensionOperationGate(1);
+    const blockerResolvers: Array<() => void> = [];
+    // Fill the single slot with a task the gate has no other visibility into,
+    // proving the gate is a page-wide resource shared across call sites, not
+    // just a per-adapter-instance counter.
+    const blocker = gate.run(() => new Promise<void>((resolve) => blockerResolvers.push(resolve)));
+
+    const host = createFakeHost();
+    const adapter = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+      gate,
+    });
+    const queued = adapter.getCurrentAccount();
+
+    await flushMicrotasks();
+    expect(host.connectMessages).toHaveLength(0);
+
+    blockerResolvers[0]!();
+    await blocker;
+
+    await expect(queued).resolves.toEqual(account);
+    expect(host.connectMessages).toHaveLength(1);
+  });
+
+  it('releases the slot after a rejection so the next queued operation still runs and reports its own result', async () => {
+    const gate = new ExtensionOperationGate(1);
+    const failingHost = createFakeHost({
+      handshake: () => ({
+        kind: 'incompatible',
+        messageKey: EXTENSION_ERROR_MESSAGE_KEYS.incompatible,
+      }),
+    });
+    const failing = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: true,
+      openBridge: failingHost.openBridge,
+      gate,
+    });
+    const succeedingHost = createFakeHost();
+    const succeeding = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: true,
+      openBridge: succeedingHost.openBridge,
+      gate,
+    });
+
+    const [failed, succeeded] = await Promise.allSettled([
+      failing.getCurrentAccount(),
+      succeeding.getCurrentAccount(),
+    ]);
+
+    expect(failed).toMatchObject({ status: 'rejected', reason: { kind: 'incompatible' } });
+    expect(succeeded).toEqual({ status: 'fulfilled', value: account });
+  });
+
+  it('never dispatches a creation while it is only queued for a gate slot', async () => {
+    const gate = new ExtensionOperationGate(1);
+    const blockerResolvers: Array<() => void> = [];
+    const blocker = gate.run(() => new Promise<void>((resolve) => blockerResolvers.push(resolve)));
+
+    const host = createFakeHost();
+    const adapter = new ExtensionExecutionAdapter(config, 'secret', {
+      isClient: true,
+      openBridge: host.openBridge,
+      gate,
+    });
+    const queuedCreate = adapter.createTimeEntry({
+      remoteIssueId: '42',
+      spentOn: '2026-03-15',
+      durationSeconds: 1800,
+      activityId: '1',
+    });
+
+    await flushMicrotasks();
+    // Still queued: no bridge opened, so nothing has been dispatched that
+    // could later be mistaken for a lost create reply (REQ-312/unknown-create).
+    expect(host.connectMessages).toHaveLength(0);
+    expect(
+      host.portMessages.some((message) => operationRequestSchema.safeParse(message).success),
+    ).toBe(false);
+
+    blockerResolvers[0]!();
+    await blocker;
+
+    await expect(queuedCreate).resolves.toEqual({ remoteLogId: '99' });
   });
 });
 

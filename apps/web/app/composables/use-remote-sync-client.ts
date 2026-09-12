@@ -1,8 +1,6 @@
-import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
 import {
   RemoteAdapterError,
-  type RemoteAccount,
   type RemoteTimeEntryDeleteOutcome,
   type RemoteTimeLogDto,
 } from '@osi/remote-trackers/contracts';
@@ -11,50 +9,31 @@ import { extractCaughtMessageKey } from '../utils/extract-message-key';
 import { useTrackerSecret } from './use-tracker-secret';
 
 /**
- * Feature composable for browser-orchestrated remote sync: current account,
- * paginated same-day logs, and time-entry create, over the
- * `RemoteTrackerAdapter` selected for `config.directBrowserAccess`. Keeps the
- * account/logs caches and in-flight request dedup; delegates all I/O and
- * provider quirks to the adapter, which behaves identically regardless of
- * transport.
+ * Feature composable for browser-orchestrated remote sync: paginated
+ * same-day logs and time-entry create, over the `RemoteTrackerAdapter`
+ * selected for `config.directBrowserAccess`. Log fetches rely on the
+ * provider's own current-user filter (REQ-333) rather than a preceding
+ * account-resolution call. Keeps the logs caches and in-flight request
+ * dedup; delegates all I/O and provider quirks to the adapter, which behaves
+ * identically regardless of transport.
  */
 export function useRemoteSyncClient(config: TrackerDto) {
   const { get: getSecret } = useTrackerSecret();
 
-  const accountCache = ref<RemoteAccount | null>(null);
   const logsCache = new Map<string, RemoteTimeLogDto[]>();
   const inFlightLogs = new Map<string, Promise<RemoteTimeLogDto[]>>();
   const rangeLogsCache = new Map<string, RemoteTimeLogDto[]>();
   const inFlightRangeLogs = new Map<string, Promise<RemoteTimeLogDto[]>>();
-  let accountInFlight: Promise<RemoteAccount> | null = null;
 
   function adapter() {
     return createRemoteAdapter(config, getSecret(config.id));
-  }
-
-  async function resolveAccount(): Promise<RemoteAccount> {
-    if (accountCache.value) return accountCache.value;
-    if (accountInFlight) return accountInFlight;
-
-    accountInFlight = (async () => {
-      const account = await adapter().getCurrentAccount();
-      accountCache.value = account;
-      return account;
-    })();
-
-    try {
-      return await accountInFlight;
-    } finally {
-      accountInFlight = null;
-    }
   }
 
   async function fetchTimeLogs(input: {
     spentOn: string;
     workPackageIds: string[];
   }): Promise<RemoteTimeLogDto[]> {
-    const account = await resolveAccount();
-    const key = `${input.spentOn}:${[...input.workPackageIds].sort().join(',')}:${account.id}`;
+    const key = `${input.spentOn}:${[...input.workPackageIds].sort().join(',')}`;
     const cached = logsCache.get(key);
     if (cached) return cached;
 
@@ -65,7 +44,6 @@ export function useRemoteSyncClient(config: TrackerDto) {
       const logs = await adapter().fetchTimeLogs({
         spentOn: input.spentOn,
         workPackageIds: input.workPackageIds,
-        userId: account.id,
       });
       logsCache.set(key, logs);
       return logs;
@@ -83,8 +61,7 @@ export function useRemoteSyncClient(config: TrackerDto) {
     from: string;
     to: string;
   }): Promise<RemoteTimeLogDto[]> {
-    const account = await resolveAccount();
-    const key = `${input.from}:${input.to}:${account.id}`;
+    const key = `${input.from}:${input.to}`;
     const cached = rangeLogsCache.get(key);
     if (cached) return cached;
 
@@ -95,7 +72,6 @@ export function useRemoteSyncClient(config: TrackerDto) {
       const logs = await adapter().fetchTimeLogsInRange({
         from: input.from,
         to: input.to,
-        userId: account.id,
       });
       rangeLogsCache.set(key, logs);
       return logs;
@@ -123,7 +99,11 @@ export function useRemoteSyncClient(config: TrackerDto) {
     return adapter().deleteTimeEntry(remoteLogId);
   }
 
-  /** Explicit reconciliation uses fresh data, never the display cache or a new create. */
+  /**
+   * Explicit reconciliation uses fresh data, never the display cache or a new
+   * create. The fetch is already scoped to the current account (REQ-333), so
+   * matching stops re-deriving that identity itself.
+   */
   async function validateExistingTimeLog(input: {
     remoteLogId: string;
     remoteIssueId: string;
@@ -133,11 +113,9 @@ export function useRemoteSyncClient(config: TrackerDto) {
     comment?: string;
   }): Promise<void> {
     const remote = adapter();
-    const account = await remote.getCurrentAccount();
     const logs = await remote.fetchTimeLogs({
       spentOn: input.spentOn,
       workPackageIds: [input.remoteIssueId],
-      userId: account.id,
     });
     const matches = logs.some(
       (log) =>
@@ -146,20 +124,17 @@ export function useRemoteSyncClient(config: TrackerDto) {
         log.spentOn === input.spentOn &&
         log.durationSeconds === input.durationSeconds &&
         log.activityId === input.activityId &&
-        log.remoteUserId === account.id &&
         (log.comment ?? '') === (input.comment ?? ''),
     );
     if (!matches) throw new RemoteAdapterError('error.remoteExportExistingLogMismatch');
   }
 
   function invalidateCaches(): void {
-    accountCache.value = null;
     logsCache.clear();
     rangeLogsCache.clear();
   }
 
   return {
-    resolveAccount,
     fetchTimeLogs,
     fetchTimeLogsInRange,
     createTimeEntry,

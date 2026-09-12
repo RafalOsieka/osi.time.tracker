@@ -11,10 +11,12 @@ import { apiLogin, type CookieJar } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
 import { createProject, createTracker } from '../helpers/http';
 import {
+  installExtension,
   installLostCreateExtension,
   installUnavailableExtension,
   readFakeExtensionState,
 } from '../helpers/fake-extension';
+import { EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
 import {
   PENDING_CREATE_STORAGE_KEY,
   pendingCreateMarkerSchema,
@@ -70,6 +72,42 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     await install(page);
     await fillLogin(page, email, 'secret', { height: 900 });
     return page;
+  }
+
+  /** Creates `count` tasks with entries on `startedAt`'s day, each linked to a distinct remote issue. */
+  async function seedLinkedTasks(
+    jar: CookieJar,
+    token: string,
+    projectId: string,
+    count: number,
+    startedAt: string,
+    stoppedAt: string,
+  ): Promise<string[]> {
+    const taskIds: string[] = [];
+    for (let index = 0; index < count; index += 1) {
+      const entry = await createEntry(jar, token, {
+        title: `Burst Task ${index} ${Date.now()}`,
+        projectId,
+        startedAt,
+        stoppedAt,
+      });
+      const linkRes = await fetch(url('/api/time-entries/reassign'), {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'csrf-token': token,
+          cookie: jar.header(),
+        },
+        body: JSON.stringify({
+          ids: [entry.id],
+          remoteIssueId: `${100 + index}`,
+          cachedTitle: `Remote Issue ${100 + index}`,
+        }),
+      });
+      const linked = await linkRes.json();
+      taskIds.push(linked[0]?.taskId ?? entry.taskId);
+    }
+    return taskIds;
   }
 
   it('blocks remote picker, sync, and reports actions until the extension is available', async () => {
@@ -266,6 +304,117 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     );
     expect(markersAfterReload).toBe(markersRaw);
     expect(markersAfterReload).not.toContain(TRACKER_SECRET);
+
+    await page.close();
+  });
+
+  it('loads a day with more linked tasks than the extension in-flight limit without any limit error (REQ-331)', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'extensionburstredmine' });
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await setTimezone(jar, token);
+    const tracker = await createTracker(jar, token, 'Extension Burst Redmine ' + Date.now(), {
+      baseUrl: OPENPROJECT_BASE_URL,
+      systemType: 'redmine',
+      directBrowserAccess: false,
+    });
+    const project = await createProject(
+      jar,
+      token,
+      'Extension Burst Redmine Project ' + Date.now(),
+      tracker.id,
+    );
+    const startedAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const stoppedAt = new Date().toISOString();
+    const dayKey = startedAt.slice(0, 10);
+    const taskCount = EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument + 2;
+    const taskIds = await seedLinkedTasks(jar, token, project.id, taskCount, startedAt, stoppedAt);
+
+    const page = await loginPage(user.email, (p) => installExtension(p));
+    await seedBrowserSecret(page, tracker.id);
+
+    await page.goto(url(`/sync/${dayKey}`));
+    await page.waitForSelector('[data-testid="remote-sync-page"]');
+    for (const taskId of taskIds) {
+      await page.waitForSelector(`[data-testid="remote-sync-activity-select-${taskId}"]`);
+    }
+    expect(await page.locator('[data-testid^="remote-sync-activity-error-"]').count()).toBe(0);
+
+    const state = await readFakeExtensionState(page);
+    expect(state.limitErrors).toBe(0);
+    expect(state.maxConcurrent).toBeLessThanOrEqual(
+      EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument,
+    );
+    // Redmine activities are a global enumeration: every task shares one scope.
+    expect(state.operationCounts.getActivityOptions).toBe(1);
+    expect(state.operationCounts.fetchTimeLogs).toBe(1);
+    expect(state.operationCounts.getCurrentAccount ?? 0).toBe(0);
+
+    // Export two of the six tasks; the post-finalize refresh (REQ-118) should
+    // cost only more `fetchTimeLogs` calls, never another activity or account
+    // fetch, and none of it should hit the in-flight limit either.
+    for (const taskId of taskIds.slice(0, 2)) {
+      await page.locator(`[data-testid="remote-sync-activity-select-${taskId}"]`).click();
+      await page.getByRole('option', { name: 'Development' }).click();
+    }
+    await page.waitForFunction(() => {
+      const btn = document.querySelector('[data-testid="remote-sync-export-button"]');
+      return btn instanceof HTMLButtonElement && !btn.disabled;
+    });
+    await page.click('[data-testid="remote-sync-export-button"]');
+    await page.waitForSelector('[data-testid="remote-sync-export-dialog-body"]');
+    await page.click('[data-testid="remote-sync-export-confirm"]');
+    await page.waitForSelector('[data-testid="remote-sync-export-dialog"]', { state: 'hidden' });
+
+    const afterExport = await readFakeExtensionState(page);
+    expect(afterExport.creates).toBe(2);
+    expect(afterExport.limitErrors).toBe(0);
+    expect(afterExport.operationCounts.getActivityOptions).toBe(1);
+    expect(afterExport.operationCounts.getCurrentAccount ?? 0).toBe(0);
+    expect(afterExport.operationCounts.fetchTimeLogs).toBeGreaterThan(
+      state.operationCounts.fetchTimeLogs ?? 0,
+    );
+
+    await page.close();
+  });
+
+  it('loads a day with more linked OpenProject tasks than the extension in-flight limit without any limit error', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'extensionburstopenproject' });
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await setTimezone(jar, token);
+    const tracker = await createTracker(jar, token, 'Extension Burst OpenProject ' + Date.now(), {
+      baseUrl: OPENPROJECT_BASE_URL,
+      directBrowserAccess: false,
+    });
+    const project = await createProject(
+      jar,
+      token,
+      'Extension Burst OpenProject Project ' + Date.now(),
+      tracker.id,
+    );
+    const startedAt = new Date(Date.now() - 20 * 60 * 1000).toISOString();
+    const stoppedAt = new Date().toISOString();
+    const dayKey = startedAt.slice(0, 10);
+    const taskCount = EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument + 2;
+    const taskIds = await seedLinkedTasks(jar, token, project.id, taskCount, startedAt, stoppedAt);
+
+    const page = await loginPage(user.email, (p) => installExtension(p));
+    await seedBrowserSecret(page, tracker.id);
+
+    await page.goto(url(`/sync/${dayKey}`));
+    await page.waitForSelector('[data-testid="remote-sync-page"]');
+    for (const taskId of taskIds) {
+      await page.waitForSelector(`[data-testid="remote-sync-activity-select-${taskId}"]`);
+    }
+    expect(await page.locator('[data-testid^="remote-sync-activity-error-"]').count()).toBe(0);
+
+    const state = await readFakeExtensionState(page);
+    expect(state.limitErrors).toBe(0);
+    expect(state.maxConcurrent).toBeLessThanOrEqual(
+      EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument,
+    );
+    // OpenProject activities depend on the work package: one fetch per task.
+    expect(state.operationCounts.getActivityOptions).toBe(taskCount);
+    expect(state.operationCounts.getCurrentAccount ?? 0).toBe(0);
 
     await page.close();
   });

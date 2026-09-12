@@ -1,6 +1,7 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import type { RemoteFieldOption } from '@osi/remote-trackers/contracts';
+import type { RemoteFieldOption, TrackerSystemType } from '@osi/remote-trackers/contracts';
+import { resolveActivityScope } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { extractCaughtMessageKey } from '../utils/extract-message-key';
 import { useTrackerSecret } from './use-tracker-secret';
@@ -12,6 +13,12 @@ export interface RemoteActivitiesState {
   loaded: boolean;
 }
 
+/** The slice of a tracker config needed to resolve an activity scope. */
+export interface ActivityScopeConfig {
+  id: string;
+  systemType: TrackerSystemType;
+}
+
 const EMPTY_ACTIVITIES_STATE: RemoteActivitiesState = {
   options: [],
   loading: false,
@@ -19,13 +26,17 @@ const EMPTY_ACTIVITIES_STATE: RemoteActivitiesState = {
   loaded: false,
 };
 
-function scopeKeyFor(configId: string, remoteIssueId: string): string {
-  return `${configId}:${remoteIssueId}`;
+function scopeKeyFor(config: ActivityScopeConfig, remoteIssueId: string): string {
+  return `${config.id}:${resolveActivityScope(config.systemType, remoteIssueId)}`;
 }
 
 /**
- * Scope-keyed remote activity options loader (configId + remoteIssueId).
- * Owns cache, in-flight dedupe, ensureLoaded/retry, and selectors.
+ * Scope-keyed remote activity options loader. The cache key is
+ * `configId:<provider-defined scope>` (REQ-332): a tracker whose activities
+ * are a global enumeration (Redmine) shares one entry across every issue, and
+ * one whose activities depend on the work package (OpenProject) keeps a
+ * distinct entry per issue. Owns cache, in-flight dedupe, ensureLoaded/retry,
+ * and selectors.
  */
 export function useRemoteActivities() {
   const { get: getSecret } = useTrackerSecret();
@@ -37,7 +48,7 @@ export function useRemoteActivities() {
     remoteIssueId: string,
     force = false,
   ): Promise<void> {
-    const scopeKey = scopeKeyFor(config.id, remoteIssueId);
+    const scopeKey = scopeKeyFor(config, remoteIssueId);
     if (!force && activitiesByScopeKey.value[scopeKey]?.loaded) return;
     if (!force) {
       const inflight = activitiesInFlight.get(scopeKey);
@@ -91,11 +102,12 @@ export function useRemoteActivities() {
     await ensureLoaded(config, remoteIssueId, true);
   }
 
-  function stateFor(configId: string | null | undefined, remoteIssueId: string | null | undefined) {
-    if (!configId || !remoteIssueId) return EMPTY_ACTIVITIES_STATE;
-    return (
-      activitiesByScopeKey.value[scopeKeyFor(configId, remoteIssueId)] ?? EMPTY_ACTIVITIES_STATE
-    );
+  function stateFor(
+    config: ActivityScopeConfig | null | undefined,
+    remoteIssueId: string | null | undefined,
+  ) {
+    if (!config || !remoteIssueId) return EMPTY_ACTIVITIES_STATE;
+    return activitiesByScopeKey.value[scopeKeyFor(config, remoteIssueId)] ?? EMPTY_ACTIVITIES_STATE;
   }
 
   return {

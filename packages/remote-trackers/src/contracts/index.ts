@@ -20,6 +20,7 @@ export {
 export type { TrackerSystemType } from './tracker-system-type.js';
 export { normalizeBaseUrl } from './normalize-base-url.js';
 export { deriveIssueUrl } from './issue-url.js';
+export { resolveActivityScope } from './activity-scope.js';
 export { UpstreamHttpError } from './upstream-http-error.js';
 export { toAdapterError, rethrowAsAdapterError } from './upstream-error.js';
 export { RemoteAdapterError } from './remote-adapter.js';

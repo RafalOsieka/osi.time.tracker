@@ -39,10 +39,10 @@ describe('useRemoteActivities', () => {
     getActivityOptionsMock.mockResolvedValue([{ id: 'a1', name: 'Development' }]);
     const { ensureLoaded, stateFor } = useRemoteActivities();
 
-    expect(stateFor(config.id, '42').loaded).toBe(false);
+    expect(stateFor(config, '42').loaded).toBe(false);
     await ensureLoaded(config, '42');
 
-    const state = stateFor(config.id, '42');
+    const state = stateFor(config, '42');
     expect(state.loaded).toBe(true);
     expect(state.loading).toBe(false);
     expect(state.errorKey).toBeNull();
@@ -77,13 +77,40 @@ describe('useRemoteActivities', () => {
     const { ensureLoaded, retry, stateFor } = useRemoteActivities();
 
     await ensureLoaded(config, '9');
-    expect(stateFor(config.id, '9').errorKey).toBe('error.remoteActivitiesFetchFailed');
-    expect(stateFor(config.id, '9').options).toEqual([]);
+    expect(stateFor(config, '9').errorKey).toBe('error.remoteActivitiesFetchFailed');
+    expect(stateFor(config, '9').options).toEqual([]);
 
     await retry(config, '9');
-    expect(stateFor(config.id, '9').errorKey).toBeNull();
-    expect(stateFor(config.id, '9').options).toEqual([{ id: 'a2', name: 'Support' }]);
+    expect(stateFor(config, '9').errorKey).toBeNull();
+    expect(stateFor(config, '9').options).toEqual([{ id: 'a2', name: 'Support' }]);
     expect(getActivityOptionsMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares one fetch across different issues on a tracker-wide activity scope (REQ-332)', async () => {
+    getActivityOptionsMock.mockResolvedValue([{ id: 'a1', name: 'Development' }]);
+    const redmineConfig: TrackerDto = { ...config, systemType: 'redmine' };
+    const { ensureLoaded, stateFor } = useRemoteActivities();
+
+    await ensureLoaded(redmineConfig, '10');
+    await ensureLoaded(redmineConfig, '11');
+
+    expect(getActivityOptionsMock).toHaveBeenCalledTimes(1);
+    expect(stateFor(redmineConfig, '10').options).toEqual([{ id: 'a1', name: 'Development' }]);
+    expect(stateFor(redmineConfig, '11').options).toEqual([{ id: 'a1', name: 'Development' }]);
+  });
+
+  it('keeps a distinct scope per issue for a work-package-dependent provider', async () => {
+    getActivityOptionsMock
+      .mockResolvedValueOnce([{ id: 'a1', name: 'Development' }])
+      .mockResolvedValueOnce([{ id: 'a2', name: 'Support' }]);
+    const { ensureLoaded, stateFor } = useRemoteActivities();
+
+    await ensureLoaded(config, '10');
+    await ensureLoaded(config, '11');
+
+    expect(getActivityOptionsMock).toHaveBeenCalledTimes(2);
+    expect(stateFor(config, '10').options).toEqual([{ id: 'a1', name: 'Development' }]);
+    expect(stateFor(config, '11').options).toEqual([{ id: 'a2', name: 'Support' }]);
   });
 
   it('preserves extension failures for linked activity UI and clears them on recheck', async () => {
@@ -95,9 +122,9 @@ describe('useRemoteActivities', () => {
     const { ensureLoaded, retry, stateFor } = useRemoteActivities();
     const extensionConfig = { ...config, directBrowserAccess: false };
     await ensureLoaded(extensionConfig, '42');
-    expect(stateFor(config.id, '42').errorKey).toBe('error.extensionDestinationUnapproved');
+    expect(stateFor(config, '42').errorKey).toBe('error.extensionDestinationUnapproved');
     await retry(extensionConfig, '42');
-    expect(stateFor(config.id, '42')).toMatchObject({
+    expect(stateFor(config, '42')).toMatchObject({
       errorKey: null,
       loading: false,
       loaded: true,

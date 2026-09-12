@@ -12,7 +12,6 @@ vi.mock('../../app/composables/use-remote-sync-client', () => ({
     fetchTimeLogs: fetchTimeLogsMock,
     invalidateCaches: invalidateCachesMock,
     createTimeEntry: vi.fn(),
-    resolveAccount: vi.fn(),
   }),
   mapRemoteSyncClientError: (_err: Error, fallback: string) => fallback,
 }));
