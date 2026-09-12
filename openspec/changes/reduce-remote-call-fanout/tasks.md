@@ -22,7 +22,7 @@
 ## 4. E2E (frontend journeys)
 
 - [x] 4.1 `test/e2e/helpers/fake-extension.ts`: enforce the per-document in-flight cap with the protocol's `limit` error and expose per-operation call counts in `readFakeExtensionState`.
-- [x] 4.2 `test/e2e/ui/extension-mode-ui.spec.ts`: seed a Redmine extension tracker with 6 linked tasks on one day; assert no row shows the activity-error badge, `getActivityOptions` = 1, `fetchTimeLogs` = 1, `getCurrentAccount` = 0, and no operation ever hit the extension's in-flight limit; export two tasks and assert the refresh issued only more `fetchTimeLogs` calls.
+- [x] 4.2 `test/e2e/ui/extension-mode-ui.spec.ts`: seed a Redmine extension tracker with 6 linked tasks on one day; assert no row shows the activity-error badge, `getActivityOptions` = 1, `fetchTimeLogs` = 1, `getCurrentAccount` = 0, and no operation ever hit the extension's in-flight limit; export one task and assert the refresh issued only another `fetchTimeLogs` call. (CI caught that looping the activity-select UI interaction across two rows was flaky — one iteration's dropdown could still be closing when the next opened, per Playwright's strict-mode locator resolution; reduced to one task, which uses the exact pattern the adjacent lost-create test already exercises reliably. The two-task/refresh assertion is covered deterministically at the nuxt-page level in 3.5.)
 - [x] 4.3 Same journey against an OpenProject extension tracker with 6 linked tasks: no limit error, `getActivityOptions` = 6. Not runnable locally in this sandbox — no Chromium binary reachable (network egress blocked) — confirmed both specs skip gracefully (matching the local-skip/CI-fail contract) rather than erroring; verify in CI.
 
 ## 5. Specs, docs, housekeeping

@@ -349,13 +349,11 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     expect(state.operationCounts.fetchTimeLogs).toBe(1);
     expect(state.operationCounts.getCurrentAccount ?? 0).toBe(0);
 
-    // Export two of the six tasks; the post-finalize refresh (REQ-118) should
-    // cost only more `fetchTimeLogs` calls, never another activity or account
-    // fetch, and none of it should hit the in-flight limit either.
-    for (const taskId of taskIds.slice(0, 2)) {
-      await page.locator(`[data-testid="remote-sync-activity-select-${taskId}"]`).click();
-      await page.getByRole('option', { name: 'Development' }).click();
-    }
+    // Export one of the six tasks; the post-finalize refresh (REQ-118) should
+    // cost only another `fetchTimeLogs` call, never another activity or
+    // account fetch, and none of it should hit the in-flight limit either.
+    await page.locator(`[data-testid="remote-sync-activity-select-${taskIds[0]}"]`).click();
+    await page.getByRole('option', { name: 'Development' }).click();
     await page.waitForFunction(() => {
       const btn = document.querySelector('[data-testid="remote-sync-export-button"]');
       return btn instanceof HTMLButtonElement && !btn.disabled;
@@ -366,7 +364,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     await page.waitForSelector('[data-testid="remote-sync-export-dialog"]', { state: 'hidden' });
 
     const afterExport = await readFakeExtensionState(page);
-    expect(afterExport.creates).toBe(2);
+    expect(afterExport.creates).toBe(1);
     expect(afterExport.limitErrors).toBe(0);
     expect(afterExport.operationCounts.getActivityOptions).toBe(1);
     expect(afterExport.operationCounts.getCurrentAccount ?? 0).toBe(0);
