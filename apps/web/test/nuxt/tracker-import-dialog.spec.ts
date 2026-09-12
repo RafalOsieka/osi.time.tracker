@@ -95,10 +95,15 @@ function project(overrides: Partial<ProjectDto> = {}): ProjectDto {
 const stubs = {
   UModal: {
     props: { open: { type: Boolean, default: true }, title: { type: String, default: '' } },
-    // `data-testid` on the real usage falls through onto this stub's root,
-    // so it is not declared here (it would just be overwritten).
+    // This single-root stub lets `data-testid` fall through onto its own
+    // root the way a plain element would — the real `UModal` cannot (its
+    // template has two sibling root nodes, so Vue disables attrs
+    // fallthrough there), which is why the dialog's own `data-testid` lives
+    // on an inner element inside `#body` instead (see TrackerImportDialog.vue).
+    // `role`/`aria-label` here stand in for the real component's own
+    // accessible-dialog wiring (`DialogContent role="dialog"` + `:title`).
     template:
-      '<div v-if="open !== false" :aria-label="title"><slot name="body" /><slot name="footer" /></div>',
+      '<div v-if="open !== false" role="dialog" :aria-label="title"><slot name="body" /><slot name="footer" /></div>',
   },
   UInput: {
     props: ['modelValue'],
@@ -293,8 +298,6 @@ describe('TrackerImportDialog', () => {
 
   it('exposes an accessible dialog title naming the tracker', async () => {
     const wrapper = await mount();
-    expect(
-      wrapper.find('[data-testid="tracker-import-dialog"]').attributes('aria-label'),
-    ).toContain(tracker.name);
+    expect(wrapper.find('[role="dialog"]').attributes('aria-label')).toContain(tracker.name);
   });
 });

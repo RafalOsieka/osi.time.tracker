@@ -150,10 +150,17 @@ function closeDialog() {
     :dismissible="phase !== 'scanning' && phase !== 'importing'"
     :close="phase !== 'scanning' && phase !== 'importing'"
     :ui="{ content: 'sm:max-w-lg' }"
-    data-testid="tracker-import-dialog"
   >
     <template #body>
-      <div class="grid gap-4" data-testid="tracker-import-dialog-body">
+      <!--
+        The testid lives on this inner element, not on `UModal` itself:
+        `UModal`'s template has two sibling root nodes (`DialogTrigger` +
+        `DialogPortal`), so Vue disables automatic `$attrs` fallthrough and a
+        `data-testid` passed to `UModal` is silently dropped in a real
+        browser — every other dialog in this codebase follows the same rule
+        (`TrackerFormDialog`, `TimerAddEntryDialog`, …).
+      -->
+      <div class="grid gap-4" data-testid="tracker-import-dialog">
         <!-- Range phase -->
         <div v-if="phase === 'range'" class="grid gap-3" data-testid="tracker-import-range">
           <p class="text-sm text-muted">{{ t('trackerImport.description') }}</p>
