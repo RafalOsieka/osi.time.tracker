@@ -276,10 +276,7 @@ export async function installExtension(
       };
       let active = 0;
 
-      // TEMP DEBUG — remove before merge
-      console.log('[DBG fake-ext] listener installed');
       window.addEventListener('message', (event) => {
-        console.log('[DBG fake-ext] window message', JSON.stringify(event.data));
         if (event.source !== window) return;
         // SAFETY: the page bridge posts `{ channel, type: 'connect' }` on this channel.
         const data = event.data as { channel?: string; type?: string };
@@ -287,7 +284,6 @@ export async function installExtension(
         const port = event.ports[0];
         if (!port) return;
         port.start();
-        console.log('[DBG fake-ext] port ready, listening');
         port.addEventListener('message', (message) => {
           // SAFETY: protocol envelopes are JSON objects with type/operation fields.
           const payload = message.data as {
@@ -297,7 +293,6 @@ export async function installExtension(
             baseUrl?: string;
             secret?: string;
           };
-          console.log('[DBG fake-ext] port message', JSON.stringify(payload));
           void handlePortMessage(port, payload);
         });
       });
@@ -367,7 +362,6 @@ export async function installExtension(
         const requestId = payload.requestId;
         const operation = payload.operation;
         const secret = payload.secret;
-        console.log('[DBG fake-ext] handlePortMessage entered', JSON.stringify(payload));
         if (payload.type === 'handshake') {
           port.postMessage({
             type: 'handshake-result',
@@ -375,7 +369,6 @@ export async function installExtension(
             supportedOperations: operations,
             destinationApproved: true,
           });
-          console.log('[DBG fake-ext] handshake-result sent');
           return;
         }
         if (payload.type !== 'operation' || !requestId || !operation) return;

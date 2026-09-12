@@ -10,7 +10,7 @@ import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import { createProject, createTracker } from '../helpers/http';
 import { pageIncludesTextScript } from '../helpers/dom';
-import { installExtension } from '../helpers/fake-extension';
+import { installExtension, readFakeExtensionState } from '../helpers/fake-extension';
 
 const describeTrackerImportExtensionUi = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
@@ -59,9 +59,6 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
 
     const comment = 'Extension mode import task ' + Date.now();
     const page = await createPage('/');
-    // TEMP DEBUG — remove before merge
-    page.on('console', (msg) => console.log('[DBG console]', msg.type(), msg.text()));
-    page.on('pageerror', (err) => console.log('[DBG pageerror]', err.message));
     // The extension only routes the request through the approved tracker
     // destination; a browser-held secret is still required (REQ-203/REQ-345).
     await installExtension(page, {
@@ -97,7 +94,24 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
     await page.fill('[data-testid="tracker-import-to-input"]', '2026-08-31');
     await page.click('[data-testid="tracker-import-scan"]');
 
-    await page.waitForSelector('[data-testid="tracker-import-preview"]');
+    // TEMP DEBUG — remove before merge
+    try {
+      await page.waitForSelector('[data-testid="tracker-import-preview"]', { timeout: 10000 });
+    } catch (err) {
+      const installed = await page.evaluate(() => Boolean(window.__osiFakeExtension));
+      const state = await readFakeExtensionState(page);
+      const phaseEl = await page
+        .locator('[data-testid="tracker-import-dialog"]')
+        .getAttribute('data-testid')
+        .catch(() => null);
+      const bodyText = await page.locator('body').innerText();
+      // SAFETY: this catch only runs after page.waitForSelector, which always rejects with an Error.
+      const originalMessage = (err as Error).message;
+      throw new Error(
+        `DBG: extensionInstalled=${installed} state=${JSON.stringify(state)} phaseElExists=${phaseEl} bodyText=${bodyText.slice(0, 500)} original=${originalMessage}`,
+        { cause: err },
+      );
+    }
     const previewText = await page.textContent('[data-testid="tracker-import-preview"]');
     expect(previewText).toContain(project.name);
 
