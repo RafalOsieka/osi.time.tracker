@@ -69,7 +69,15 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
           remoteIssueId: '1001',
           spentOn: '2026-08-03',
           durationSeconds: 2 * 3600,
+          // `remoteTimeLogSchema` declares these `.nullable()` but not
+          // `.optional()`: an absent key (not even `null`) fails validation,
+          // which the bridge then drops silently — leaving the pending
+          // operation to hang until the 130s page deadline rather than
+          // resolving or rejecting quickly.
+          activityId: null,
+          activityName: null,
           comment,
+          remoteUserId: null,
           remoteProjectId: '12',
           remoteProjectTitle: 'CMPL Web',
         },

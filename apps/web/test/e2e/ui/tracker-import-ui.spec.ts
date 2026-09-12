@@ -208,8 +208,11 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
     await page.waitForSelector('[data-testid="tracker-import-preview"]');
 
+    // Only the web + mobile logs are matched (2); the Sales log has no
+    // scoped Project and is reported separately as unmatched, never counted
+    // toward the importable total (REQ-334).
     const totalsText = await page.textContent('[data-testid="tracker-import-preview-totals"]');
-    expect(totalsText).toContain('3');
+    expect(totalsText).toContain('2');
     await page.waitForSelector('[data-testid="tracker-import-unmatched-hint"]');
     const previewText = await page.textContent('[data-testid="tracker-import-preview"]');
     expect(previewText).toContain('Sales');
@@ -218,7 +221,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
 
     await page.click('[data-testid="tracker-import-confirm"]');
     await page.waitForSelector('[data-testid="tracker-import-done"]');
-    expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('3');
+    expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('2');
     await page.click('[data-testid="tracker-import-close"]');
     await page.waitForSelector('[data-testid="tracker-import-dialog"]', { state: 'hidden' });
 
