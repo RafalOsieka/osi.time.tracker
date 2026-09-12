@@ -192,3 +192,19 @@ Conventions that apply to every story:
 - Selecting previously exported entries requires explicit repeat-export confirmation; intentional repeats are allowed.
 - Per-task outcomes report success, remote failure, or uncertain finalization (remote create succeeded, local finalize failed) and warn that retry may duplicate a remote log. Known finalized remote log ids are replayed without creating another remote log.
 - Direct browser transport and authenticated Nitro proxy transport are both supported with equivalent behavior; the browser remains the batch orchestrator.
+
+---
+
+## 11c. Import historical time logs from a Tracker
+
+> **As a user with years of history logged directly in a Tracker, I want to backfill that history into OSI, so my local reports cover more than the day I switched.** (WBS 5.18)
+
+**Acceptance criteria**
+
+- From the Trackers page I can open an import dialog for a Tracker whose API key is stored in this browser; without a key the action is disabled with a hint to enter it first.
+- I choose a date range; the app scans it month by month, fetching my own remote logs and routing each to a Project by that Project's remote-project scope (the nearest scoped ancestor wins over a broader ancestor scope).
+- Before anything is written I see a preview: for each remote project, the routed local Project (or a "no scoped project" state) plus counts of new vs. already-linked logs, and any unmatched remote projects with their counts.
+- Confirming imports month by month. Each imported log becomes a Task named after the log's comment (`empty` when the comment is blank), a stopped time entry on the log's day, and export provenance — so it shows as Linked/Sent in Remote Sync and as App hours in the monthly report, exactly like an entry I exported from the app myself.
+- Re-running the same import, or retrying after a failed month, never duplicates anything: logs already imported or already exported from the app are skipped, and only genuinely new logs are added.
+- A remote project with no scoped Project never receives logs; I scope a Project to it and re-run to pick those up.
+- Import never writes to the Tracker itself — only reads.

@@ -134,4 +134,55 @@ describeReportsMonthly('monthly report API', async () => {
     expect(trackerNames).toContain(unused.name);
     expect(trackerNames).not.toContain(deleted.name);
   });
+
+  it('includes an imported log in export provenance, exactly like an app-exported one (REQ-344)', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    await setTimezone(jar, token, 'UTC');
+    const tracker = await createTracker(jar, token, 'Import Report Tracker ' + Date.now());
+    const project = await createProject(
+      jar,
+      token,
+      'Import Report Project ' + Date.now(),
+      tracker.id,
+    );
+    const remoteLogId = `report-import-${Date.now()}`;
+
+    const importRes = await fetch(url(`/api/trackers/${tracker.id}/import`), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({
+        dryRun: false,
+        groups: [
+          {
+            projectId: project.id,
+            logs: [
+              {
+                remoteLogId,
+                remoteIssueId: '42',
+                spentOn: '2026-09-03',
+                durationSeconds: 5400,
+                activityId: '1',
+                comment: 'Report import task',
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    expect(importRes.status).toBe(200);
+
+    const res = await fetch(url('/api/reports/monthly?month=2026-09'), {
+      headers: { cookie: jar.header() },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.exports).toEqual([
+      {
+        localDate: '2026-09-03',
+        trackerId: tracker.id,
+        remoteLogId,
+        exportDurationSeconds: 5400,
+      },
+    ]);
+  });
 });

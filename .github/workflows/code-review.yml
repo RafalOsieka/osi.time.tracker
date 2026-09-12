@@ -27,7 +27,7 @@ jobs:
         with:
           fetch-depth: 1
 
-      - uses: JetBrains/junie-github-action@2f33c71d9d74cbbe1662bddeb0d1f6f59ea05b29 # v1.7.9
+      - uses: JetBrains/junie-github-action@8c442773960f53c76920978f485e0e25a66ef0fb # v1.7.10
         with:
           junie_api_key: ${{ secrets.JUNIE_API_KEY }}
           use_single_comment: true

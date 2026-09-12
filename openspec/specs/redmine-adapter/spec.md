@@ -77,6 +77,21 @@ The Redmine adapter SHALL implement the contract's date-range time-log operation
 - **WHEN** Redmine rejects or fails the range fetch
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with the shared time-logs-fetch translation key and SHALL NOT return a silent empty list
 
+### Requirement: REQ-343 Redmine time logs map the project from the payload
+When mapping a Redmine time entry to the neutral time-log DTO (REQ-341), the adapter SHALL derive the remote project id from `project.id` and the remote project title from `project.name`, omitting each when missing. Redmine time-entry payloads do not carry the issue subject, so the adapter SHALL omit the remote issue title and SHALL NOT look it up. The mapping SHALL apply to both the same-day and the date-range fetch. Time entries without an issue SHALL continue to be dropped.
+
+#### Scenario: Project present
+- **WHEN** a time entry carries `project: { id: 7, name: "Internal" }`
+- **THEN** the neutral log SHALL have remote project id `7` and remote project title `Internal` and no remote issue title
+
+#### Scenario: Project missing
+- **WHEN** a time entry carries no `project`
+- **THEN** the neutral log SHALL omit both project fields and SHALL still be returned
+
+#### Scenario: Issue-less entry is still dropped
+- **WHEN** a time entry carries a project but no `issue`
+- **THEN** it SHALL NOT appear in the neutral result
+
 ### Requirement: REQ-094 Redmine authentication uses the API access key header
 
 The Redmine client SHALL authenticate every upstream request with the user's Redmine API access key sent in the `X-Redmine-API-Key` request header. The auth header SHALL be constructed by the Redmine client in exactly one place; transports SHALL remain credential-scheme-agnostic and SHALL only attach headers provided with the request, per the contract's transport-neutrality rule (`remote-adapter-contract` REQ-202). Existing credential-hygiene rules apply unchanged (`remote-adapter-contract` REQ-203): the secret SHALL NOT be persisted, logged, serialized, or returned by the OSI server, and under `client` execution mode it SHALL be sent only to the configured Redmine origin.

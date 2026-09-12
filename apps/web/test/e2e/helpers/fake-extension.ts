@@ -212,6 +212,21 @@ export async function readFakeExtensionState(page: Page): Promise<FakeExtensionS
   return page.evaluate((fallback) => window.__osiFakeExtension ?? fallback, DEFAULT_STATE);
 }
 
+/** Fixture shape for a fake `RemoteTimeLogDto`, including the REQ-341 optional fields. */
+export interface FakeRemoteTimeLog {
+  remoteLogId: string;
+  remoteIssueId: string;
+  spentOn: string;
+  durationSeconds: number;
+  activityId?: string | null;
+  activityName?: string | null;
+  comment?: string | null;
+  remoteUserId?: string | null;
+  remoteProjectId?: string;
+  remoteProjectTitle?: string;
+  remoteIssueTitle?: string;
+}
+
 export interface InstallExtensionOptions {
   /** Neutral activity options returned for `getActivityOptions` (default: one). */
   activities?: { id: string; name: string }[];
@@ -219,6 +234,12 @@ export interface InstallExtensionOptions {
   limit?: number;
   /** Milliseconds an operation stays "open" before replying, so a burst genuinely overlaps. */
   responseDelayMs?: number;
+  /** Logs returned for every `fetchTimeLogs` (same-day) call (default: none). */
+  timeLogs?: FakeRemoteTimeLog[];
+  /** Logs returned for every `fetchTimeLogsInRange` call (default: none). */
+  timeLogsInRange?: FakeRemoteTimeLog[];
+  /** Remote project catalog returned for `listProjects` (default: none). */
+  projects?: { remoteProjectId: string; title: string; parentId?: string }[];
 }
 
 /**
@@ -235,7 +256,17 @@ export async function installExtension(
   options: InstallExtensionOptions = {},
 ): Promise<void> {
   await page.addInitScript(
-    ({ channel, protocolVersion, operations, activities, limit, responseDelayMs }) => {
+    ({
+      channel,
+      protocolVersion,
+      operations,
+      activities,
+      limit,
+      responseDelayMs,
+      timeLogs,
+      timeLogsInRange,
+      projects,
+    }) => {
       window.__osiFakeExtension = {
         creates: 0,
         seenSecrets: [],
@@ -275,6 +306,8 @@ export async function installExtension(
           | { id: string; name: string }
           | { status: string }
           | { remoteLogId: string }
+          | FakeRemoteTimeLog[]
+          | { remoteProjectId: string; title: string; parentId?: string }[]
           | null,
       ) {
         port.postMessage({ type: 'operation-result', requestId, operation, ok: true, result });
@@ -290,9 +323,15 @@ export async function installExtension(
             succeed(port, requestId, operation, { id: '7', name: 'Ada' });
             return;
           case 'fetchTimeLogs':
+            succeed(port, requestId, operation, timeLogs);
+            return;
           case 'fetchTimeLogsInRange':
-          case 'searchIssues':
+            succeed(port, requestId, operation, timeLogsInRange);
+            return;
           case 'listProjects':
+            succeed(port, requestId, operation, projects);
+            return;
+          case 'searchIssues':
             succeed(port, requestId, operation, []);
             return;
           case 'getIssueById':
@@ -368,6 +407,9 @@ export async function installExtension(
       activities: options.activities ?? [{ id: '1', name: 'Development' }],
       limit: options.limit ?? EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument,
       responseDelayMs: options.responseDelayMs ?? 20,
+      timeLogs: options.timeLogs ?? [],
+      timeLogsInRange: options.timeLogsInRange ?? [],
+      projects: options.projects ?? [],
     },
   );
 }

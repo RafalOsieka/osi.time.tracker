@@ -65,6 +65,12 @@ export const remoteTimeLogSchema = z.object({
   activityName: z.string().nullable(),
   comment: z.string().nullable(),
   remoteUserId: z.string().nullable(),
+  // REQ-341: optional, present only when the provider's payload already
+  // supplies it. Listed explicitly so the bridge's z.object does not strip
+  // them when present.
+  remoteProjectId: z.string().optional(),
+  remoteProjectTitle: z.string().optional(),
+  remoteIssueTitle: z.string().optional(),
 });
 
 export const searchIssuesInputSchema = z.object({
