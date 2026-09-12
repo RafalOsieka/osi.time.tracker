@@ -59,6 +59,9 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
 
     const comment = 'Extension mode import task ' + Date.now();
     const page = await createPage('/');
+    // TEMP DEBUG — remove before merge
+    page.on('console', (msg) => console.log('[DBG console]', msg.type(), msg.text()));
+    page.on('pageerror', (err) => console.log('[DBG pageerror]', err.message));
     // The extension only routes the request through the approved tracker
     // destination; a browser-held secret is still required (REQ-203/REQ-345).
     await installExtension(page, {
