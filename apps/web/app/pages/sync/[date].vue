@@ -319,7 +319,7 @@ watch(
 );
 
 function activitiesFor(row: RemoteSyncDayRowDto) {
-  return activitiesStateFor(row.config?.id, issueRefFor(row)?.remoteIssueId);
+  return activitiesStateFor(row.config, issueRefFor(row)?.remoteIssueId);
 }
 
 function selectedActivity(row: RemoteSyncDayRowDto): string | undefined {

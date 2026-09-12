@@ -1,4 +1,5 @@
 import type { Page } from 'playwright-core';
+import { EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
 
 const CHANNEL = 'osi-extension-protocol';
 const PROTOCOL_VERSION = 1;
@@ -17,6 +18,12 @@ const SUPPORTED_OPERATIONS = [
 export interface FakeExtensionState {
   creates: number;
   seenSecrets: string[];
+  /** Successfully served requests, keyed by operation name. */
+  operationCounts: Record<string, number>;
+  /** Highest number of operations this fake ever had open at once. */
+  maxConcurrent: number;
+  /** Requests this fake rejected with the extension's own in-flight limit. */
+  limitErrors: number;
 }
 
 declare global {
@@ -24,6 +31,14 @@ declare global {
     __osiFakeExtension?: FakeExtensionState;
   }
 }
+
+const DEFAULT_STATE: FakeExtensionState = {
+  creates: 0,
+  seenSecrets: [],
+  operationCounts: {},
+  maxConcurrent: 0,
+  limitErrors: 0,
+};
 
 /**
  * Page-side protocol stub that rejects every handshake as unavailable.
@@ -63,7 +78,13 @@ export async function installUnavailableExtension(page: Page): Promise<void> {
 export async function installLostCreateExtension(page: Page): Promise<void> {
   await page.addInitScript(
     ({ channel, protocolVersion, operations }) => {
-      window.__osiFakeExtension = { creates: 0, seenSecrets: [] };
+      window.__osiFakeExtension = {
+        creates: 0,
+        seenSecrets: [],
+        operationCounts: {},
+        maxConcurrent: 0,
+        limitErrors: 0,
+      };
       window.addEventListener('message', (event) => {
         if (event.source !== window) return;
         // SAFETY: the page bridge posts `{ channel, type: 'connect' }` on this channel.
@@ -188,5 +209,165 @@ export async function installLostCreateExtension(page: Page): Promise<void> {
 }
 
 export async function readFakeExtensionState(page: Page): Promise<FakeExtensionState> {
-  return page.evaluate(() => window.__osiFakeExtension ?? { creates: 0, seenSecrets: [] });
+  return page.evaluate((fallback) => window.__osiFakeExtension ?? fallback, DEFAULT_STATE);
+}
+
+export interface InstallExtensionOptions {
+  /** Neutral activity options returned for `getActivityOptions` (default: one). */
+  activities?: { id: string; name: string }[];
+  /** In-flight cap this fake enforces, mirroring the real worker's limit. */
+  limit?: number;
+  /** Milliseconds an operation stays "open" before replying, so a burst genuinely overlaps. */
+  responseDelayMs?: number;
+}
+
+/**
+ * Full page-side protocol stub used to exercise REQ-331: unconditionally
+ * approves the destination, serves every read operation and creates, and
+ * enforces the same per-document in-flight cap the real extension worker
+ * does (REQ-310 companion), rejecting the overflow with the `limit` wire
+ * error rather than queueing it. Every served operation is counted by name,
+ * and the highest concurrent count observed is tracked, so a caller can
+ * assert both "nothing hit the limit" and "no more calls than expected".
+ */
+export async function installExtension(
+  page: Page,
+  options: InstallExtensionOptions = {},
+): Promise<void> {
+  await page.addInitScript(
+    ({ channel, protocolVersion, operations, activities, limit, responseDelayMs }) => {
+      window.__osiFakeExtension = {
+        creates: 0,
+        seenSecrets: [],
+        operationCounts: {},
+        maxConcurrent: 0,
+        limitErrors: 0,
+      };
+      let active = 0;
+
+      window.addEventListener('message', (event) => {
+        if (event.source !== window) return;
+        // SAFETY: the page bridge posts `{ channel, type: 'connect' }` on this channel.
+        const data = event.data as { channel?: string; type?: string };
+        if (data.channel !== channel || data.type !== 'connect') return;
+        const port = event.ports[0];
+        if (!port) return;
+        port.start();
+        port.addEventListener('message', (message) => {
+          // SAFETY: protocol envelopes are JSON objects with type/operation fields.
+          const payload = message.data as {
+            type?: string;
+            requestId?: string;
+            operation?: string;
+            baseUrl?: string;
+            secret?: string;
+          };
+          void handlePortMessage(port, payload);
+        });
+      });
+
+      function succeed(
+        port: MessagePort,
+        requestId: string,
+        operation: string,
+        result:
+          | { id: string; name: string }[]
+          | { id: string; name: string }
+          | { status: string }
+          | { remoteLogId: string }
+          | null,
+      ) {
+        port.postMessage({ type: 'operation-result', requestId, operation, ok: true, result });
+      }
+
+      function respond(port: MessagePort, requestId: string, operation: string) {
+        const state = window.__osiFakeExtension!;
+        switch (operation) {
+          case 'getActivityOptions':
+            succeed(port, requestId, operation, activities);
+            return;
+          case 'getCurrentAccount':
+            succeed(port, requestId, operation, { id: '7', name: 'Ada' });
+            return;
+          case 'fetchTimeLogs':
+          case 'fetchTimeLogsInRange':
+          case 'searchIssues':
+          case 'listProjects':
+            succeed(port, requestId, operation, []);
+            return;
+          case 'getIssueById':
+            succeed(port, requestId, operation, null);
+            return;
+          case 'deleteTimeEntry':
+            succeed(port, requestId, operation, { status: 'deleted' });
+            return;
+          case 'createTimeEntry':
+            state.creates += 1;
+            succeed(port, requestId, operation, { remoteLogId: `fake-${state.creates}` });
+            return;
+          default:
+            return;
+        }
+      }
+
+      async function handlePortMessage(
+        port: MessagePort,
+        payload: {
+          type?: string;
+          requestId?: string;
+          operation?: string;
+          baseUrl?: string;
+          secret?: string;
+        },
+      ): Promise<void> {
+        const requestId = payload.requestId;
+        const operation = payload.operation;
+        const secret = payload.secret;
+        if (payload.type === 'handshake') {
+          port.postMessage({
+            type: 'handshake-result',
+            protocolVersion,
+            supportedOperations: operations,
+            destinationApproved: true,
+          });
+          return;
+        }
+        if (payload.type !== 'operation' || !requestId || !operation) return;
+
+        const state = window.__osiFakeExtension!;
+        // Mirror the worker's own check-then-admit ordering exactly (REQ-310/331).
+        if (active >= limit) {
+          state.limitErrors += 1;
+          port.postMessage({
+            type: 'operation-result',
+            requestId,
+            operation,
+            ok: false,
+            error: { kind: 'limit', messageKey: 'error.extensionLimitExceeded' },
+          });
+          return;
+        }
+        active += 1;
+        state.maxConcurrent = Math.max(state.maxConcurrent, active);
+        if (secret) state.seenSecrets.push(secret);
+        try {
+          if (responseDelayMs > 0) {
+            await new Promise((resolve) => setTimeout(resolve, responseDelayMs));
+          }
+          state.operationCounts[operation] = (state.operationCounts[operation] ?? 0) + 1;
+          respond(port, requestId, operation);
+        } finally {
+          active -= 1;
+        }
+      }
+    },
+    {
+      channel: CHANNEL,
+      protocolVersion: PROTOCOL_VERSION,
+      operations: [...SUPPORTED_OPERATIONS],
+      activities: options.activities ?? [{ id: '1', name: 'Development' }],
+      limit: options.limit ?? EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument,
+      responseDelayMs: options.responseDelayMs ?? 20,
+    },
+  );
 }

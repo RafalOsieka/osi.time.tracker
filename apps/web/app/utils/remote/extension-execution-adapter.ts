@@ -20,11 +20,14 @@ import {
 } from '@osi/remote-trackers/contracts';
 import type { ExtensionBridgeOptions, ExtensionDocumentBridge } from './extension-bridge';
 import { openExtensionBridge } from './extension-availability';
+import { extensionOperationGate, type ExtensionOperationGate } from './extension-operation-gate';
 
 export interface ExtensionExecutionAdapterOptions {
   isClient?: boolean;
   openBridge?: (options?: Partial<ExtensionBridgeOptions>) => ExtensionDocumentBridge;
   bridgeOptions?: Partial<ExtensionBridgeOptions>;
+  /** Overrides the shared page-wide admission gate (tests only). */
+  gate?: ExtensionOperationGate;
 }
 
 function unavailableError(): ExtensionProtocolError {
@@ -110,26 +113,32 @@ export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
     const isClient = this.options.isClient ?? import.meta.client;
     if (!isClient) throw unavailableError();
 
-    const bridge = (this.options.openBridge ?? openExtensionBridge)(this.options.bridgeOptions);
-    try {
-      const handshake = await bridge.handshake(this.destination());
-      if (handshake.destinationApproved !== true) throw permissionError();
-      if (!handshake.supportedOperations.includes(operation)) {
-        throw new ExtensionProtocolError('incompatible', EXTENSION_ERROR_MESSAGE_KEYS.incompatible);
-      }
-      if (!this.secret) throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
+    const gate = this.options.gate ?? extensionOperationGate;
+    return gate.run(async () => {
+      const bridge = (this.options.openBridge ?? openExtensionBridge)(this.options.bridgeOptions);
+      try {
+        const handshake = await bridge.handshake(this.destination());
+        if (handshake.destinationApproved !== true) throw permissionError();
+        if (!handshake.supportedOperations.includes(operation)) {
+          throw new ExtensionProtocolError(
+            'incompatible',
+            EXTENSION_ERROR_MESSAGE_KEYS.incompatible,
+          );
+        }
+        if (!this.secret) throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
 
-      const result = await bridge.request({
-        operation,
-        provider: this.config.systemType,
-        baseUrl: this.config.baseUrl,
-        secret: this.secret,
-        payload,
-      });
-      // SAFETY: protocol result schema for `operation` matches T at each call site.
-      return result as T;
-    } finally {
-      bridge.close();
-    }
+        const result = await bridge.request({
+          operation,
+          provider: this.config.systemType,
+          baseUrl: this.config.baseUrl,
+          secret: this.secret,
+          payload,
+        });
+        // SAFETY: protocol result schema for `operation` matches T at each call site.
+        return result as T;
+      } finally {
+        bridge.close();
+      }
+    });
   }
 }

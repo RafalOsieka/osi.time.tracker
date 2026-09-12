@@ -346,6 +346,17 @@ describe('OpenProjectClient', () => {
     expect(page.nextPageUrl).toBe('https://op.example.com/api/v3/time_entries?offset=2');
   });
 
+  it('defaults the same-day time-log query to the current user when no userId is supplied', async () => {
+    const transport = fakeTransport([{ status: 200, payload: {} }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    await client.fetchTimeLogsPage({ spentOn: '2026-03-15', workPackageIds: ['42'] }, null);
+
+    const url = new URL(transport.requests[0]!.url);
+    const filters = JSON.parse(url.searchParams.get('filters')!);
+    expect(filters).toContainEqual({ user_id: { operator: '=', values: ['me'] } });
+  });
+
   it('builds a date-range time-log query without a work-package filter', async () => {
     const transport = fakeTransport([
       {
@@ -388,6 +399,17 @@ describe('OpenProjectClient', () => {
       { user_id: { operator: '=', values: ['7'] } },
     ]);
     expect(JSON.stringify(filters)).not.toContain('entity_id');
+  });
+
+  it('defaults the date-range time-log query to the current user when no userId is supplied', async () => {
+    const transport = fakeTransport([{ status: 200, payload: {} }]);
+    const client = new OpenProjectClient(transport, 'https://op.example.com');
+
+    await client.fetchTimeLogsRangePage({ from: '2026-08-01', to: '2026-08-31' }, null);
+
+    const url = new URL(transport.requests[0]!.url);
+    const filters = JSON.parse(url.searchParams.get('filters')!);
+    expect(filters).toContainEqual({ user_id: { operator: '=', values: ['me'] } });
   });
 
   it('builds a create-time-entry request and parses the remote log id', async () => {

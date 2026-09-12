@@ -45,8 +45,18 @@ async function createEntry(jar: CookieJar, token: string, body: JsonObject) {
   return res.json();
 }
 
-async function mockAccount(page: Page, origin: string) {
+/** Counts hits so REQ-333 (no account resolution before a log fetch) is verifiable. */
+interface AccountRequestCounter {
+  count: number;
+}
+
+function accountRequestCounter(): AccountRequestCounter {
+  return { count: 0 };
+}
+
+async function mockAccount(page: Page, origin: string, counter?: AccountRequestCounter) {
   await page.route(`${origin}/api/v3/users/me**`, async (route) => {
+    if (counter) counter.count += 1;
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -131,8 +141,9 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
     });
 
     const page = await openAuthed(user.email);
-    await mockAccount(page, TRACKER_A);
-    await mockAccount(page, TRACKER_B);
+    const accountRequests = accountRequestCounter();
+    await mockAccount(page, TRACKER_A, accountRequests);
+    await mockAccount(page, TRACKER_B, accountRequests);
     await mockTimeLogs(page, TRACKER_A, emptyLogs());
     await mockTimeLogs(page, TRACKER_B, emptyLogs());
     await page.evaluate(
@@ -173,6 +184,7 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
     expect(
       await page.locator(`[data-testid="reports-tracker-group-${trackerB.id}"]`).textContent(),
     ).toBe(trackerB.name);
+    expect(accountRequests.count).toBe(0);
   });
 
   it('splits App vs Direct from routed remote logs and flags attention; fetch failure is not zero', async () => {
@@ -210,8 +222,9 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
     }
 
     const page = await openAuthed(user.email);
-    await mockAccount(page, TRACKER_A);
-    await mockAccount(page, TRACKER_FAIL);
+    const accountRequests = accountRequestCounter();
+    await mockAccount(page, TRACKER_A, accountRequests);
+    await mockAccount(page, TRACKER_FAIL, accountRequests);
     await mockTimeLogs(
       page,
       TRACKER_A,
@@ -260,5 +273,8 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
     expect(await page.locator('[data-testid="reports-summary-remote"]').textContent()).toMatch(
       /3:00/,
     );
+    // REQ-333: the range fetch is scoped to the current account server-side;
+    // the report loader never resolves the account first.
+    expect(accountRequests.count).toBe(0);
   });
 });
