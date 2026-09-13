@@ -3,6 +3,7 @@
 #
 # Default:   docker compose up -d                       # db + pgadmin
 # Trackers:  docker compose --profile trackers up -d    # + OpenProject + Redmine
+# Seed:      pnpm trackers:seed                         # accounts, dev API keys, fixture
 # Stop:      docker compose --profile trackers down     # keeps volumes
 # Wipe:      docker compose --profile trackers down -v  # deletes ALL dev volumes
 #
@@ -60,8 +61,10 @@ services:
       OPENPROJECT_HTTPS: 'false'
       OPENPROJECT_HOST__NAME: localhost:${OPENPROJECT_PORT:-8090}
       OPENPROJECT_DEFAULT__LANGUAGE: en
-      OPENPROJECT_DEMO__DATA: 'true'
       OPENPROJECT_SEED_ADMIN_USER_PASSWORD: ${OPENPROJECT_ADMIN_PASSWORD:-admin}
+      # Admin logs in without the forced password change; `pnpm trackers:seed`
+      # installs the API token and replaces the stock demo projects.
+      OPENPROJECT_SEED_ADMIN_USER_PASSWORD_RESET: 'false'
       SECRET_KEY_BASE: ${OPENPROJECT_SECRET_KEY_BASE:-change-me-to-a-random-64-character-development-secret-key-base}
     ports:
       - '${OPENPROJECT_PORT:-8090}:80'
@@ -108,12 +111,17 @@ services:
       # reads this and runs `rake redmine:load_default_data` on boot.
       REDMINE_LOAD_DEFAULT_DATA: ${REDMINE_LOAD_DEFAULT_DATA:-true}
       REDMINE_LANG: ${REDMINE_LANG:-en}
+      # Read by the admin bootstrap step below; defaults match .env.example.
+      REDMINE_ADMIN_PASSWORD: ${REDMINE_ADMIN_PASSWORD:-admin}
+      REDMINE_DEV_API_KEY: ${REDMINE_DEV_API_KEY:-d3adbeefd3adbeefd3adbeefd3adbeefd3adbeef}
     ports:
       - '${REDMINE_PORT:-8091}:3000'
     volumes:
       - redmine-files-dev:/usr/src/redmine/files
     # Wrap the stock entrypoint so first boot seeds roles, statuses, workflows,
-    # and time-entry activities (Design/Development) via load_default_data.
+    # and time-entry activities (Design/Development) via load_default_data, and
+    # every boot completes the admin account (idempotent): stable password, no
+    # forced password change, REST API on, fixed dev API key.
     entrypoint: ['/bin/bash', '-ec']
     command:
       - |
@@ -123,6 +131,20 @@ services:
             echo "redmine: default data already present or load skipped; continuing."
           fi
         fi
+        cat > /tmp/bootstrap-admin.rb <<'RUBY'
+        admin = User.find_by!(login: 'admin')
+        admin.password = admin.password_confirmation = ENV.fetch('REDMINE_ADMIN_PASSWORD')
+        admin.must_change_passwd = false
+        admin.save!(validate: false)
+        Setting.rest_api_enabled = '1'
+        key = ENV.fetch('REDMINE_DEV_API_KEY')
+        unless Token.where(user_id: admin.id, action: 'api', value: key).exists?
+          Token.where(user_id: admin.id, action: 'api').delete_all
+          Token.create!(user: admin, action: 'api').update_column(:value, key)
+        end
+        puts 'redmine: admin bootstrap done (REST API on, dev API key installed)'
+        RUBY
+        /docker-entrypoint.sh rails runner /tmp/bootstrap-admin.rb
         exec /docker-entrypoint.sh rails server -b 0.0.0.0
     healthcheck:
       test: ['CMD-SHELL', "bash -c 'exec 3<>/dev/tcp/127.0.0.1/3000'"]

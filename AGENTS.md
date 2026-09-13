@@ -33,7 +33,7 @@ pnpm db:migrate         # apply database migrations
 pnpm dev                # dev server on http://localhost:3000
 ```
 
-The dev compose file is infrastructure only; the dev server and migrations always run on the host. Add `--profile trackers` to also start local OpenProject (`:8090`) and Redmine (`:8091`) for adapter work.
+The dev compose file is infrastructure only; the dev server and migrations always run on the host. For adapter work add `--profile trackers` to also start local OpenProject (`:8090`) and Redmine (`:8091`), then run `pnpm trackers:seed` (package `apps/dev-seed`) to bootstrap the admin accounts, install the dev API keys and seed the Nordwind/Helios fixture (projects, issues, three months of time logs). Idempotent; `--dry-run` and `--reset` available.
 
 ### Required environment variables
 
@@ -136,10 +136,10 @@ Self-hosted via Docker. A multi-stage production `Dockerfile` and two Compose fi
 
 | File                      | Purpose                                                                                                                   |
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| `docker-compose.yml`      | Local development infrastructure: PostgreSQL 18 + PgAdmin, plus OpenProject and Redmine behind the `trackers` profile.    |
+| `docker-compose.yml`      | Local development infrastructure: PostgreSQL 18 + PgAdmin, plus OpenProject and Redmine behind the `trackers` profile (seed them with `pnpm trackers:seed`). |
 | `docker-compose.prod.yml` | Self-contained production stack (database, one-shot migrator, web app, PgAdmin). Trackers are the user's real instances.  |
 
-- `docker compose --profile trackers up -d` / `down` starts and stops the local trackers alongside the dev database. OpenProject: `http://localhost:8090`, `admin`/`admin`, API token under **My account → Access tokens → API** (HTTP Basic, user `apikey`). Redmine: `http://localhost:8091`, `admin`/`admin`; full one-time setup is in `README.md`.
+- `docker compose --profile trackers up -d` / `down` starts and stops the local trackers alongside the dev database; `pnpm trackers:seed` makes them usable (accounts, keys, fixture). OpenProject: `http://localhost:8090`, `admin`/`admin`, API key `OPENPROJECT_DEV_API_KEY` from `.env` (HTTP Basic, user `apikey`). Redmine: `http://localhost:8091`, `admin`/`admin`, API key `REDMINE_DEV_API_KEY` (`X-Redmine-API-Key` header). Both keys are valid only on the local instances; details in `README.md`.
 - Production build output lives in `apps/web/.output/`. The runtime image copies that output to `/app`.
 - Migrations must be applied before serving traffic; the prod stack runs the migration step automatically. It refuses to start until `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD`, and `PGADMIN_DEFAULT_PASSWORD` are set.
 - CI runs via GitHub Actions (`.github/workflows/ci.yml`).

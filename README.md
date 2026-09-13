@@ -66,8 +66,8 @@ cp .env.example .env
 
 # 3. Start a local PostgreSQL 18 container (plus PgAdmin)
 docker compose up -d
-#    ...or with local OpenProject + Redmine for adapter work:
-#    docker compose --profile trackers up -d
+#    ...or with local OpenProject + Redmine for adapter work, then seed them:
+#    docker compose --profile trackers up -d && pnpm trackers:seed
 
 # 4. Apply database migrations
 pnpm db:migrate
@@ -91,7 +91,9 @@ A single `.env` (copied from `.env.example`) feeds the host tooling and both Com
 | `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PORT`           | dev + prod compose            | pgAdmin overrides.                                                                                 |
 | `PGADMIN_DEFAULT_PASSWORD`                         | dev + prod compose            | Defaults to `admin` in dev; **required** in prod.                                                  |
 | `PORT`                                             | prod compose                  | Published app port (default `3000`).                                                               |
-| `OPENPROJECT_*` / `REDMINE_*`                      | dev compose (`trackers`)      | Local tracker instance overrides; never used in prod.                                              |
+| `REDMINE_DEV_API_KEY` / `OPENPROJECT_DEV_API_KEY`  | dev compose + `trackers:seed` | Fixed API keys installed on the **local** trackers; paste them into the OSI tracker form.          |
+| `REDMINE_ADMIN_PASSWORD`                           | dev compose (`trackers`)      | Local Redmine `admin` password (default `admin`), set on every boot.                               |
+| `OPENPROJECT_*` / `REDMINE_*`                      | dev compose (`trackers`)      | Other local tracker overrides (ports, secrets); never used in prod.                                |
 
 > [!IMPORTANT]
 > Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing, and the production stack refuses to start until its required secrets are set. Never log or commit these secrets.
@@ -174,27 +176,27 @@ The stack refuses to start until the required secrets are set. Migrations run in
 
 ### Local trackers (development only)
 
-`docker compose --profile trackers up -d` adds a local OpenProject and Redmine to the dev stack. **Never use them in production.** Note that `down -v` on the dev file removes every dev volume, including the app database.
+Two commands turn the local trackers into a ready-to-use environment. **Never use them in production.**
 
-**OpenProject**
+```bash
+docker compose --profile trackers up -d   # OpenProject :8090 + Redmine :8091 (first boot ~2 min)
+pnpm trackers:seed                        # bootstrap accounts + seed the fixture (~30 s)
+pnpm trackers:seed --dry-run              # show what would be created, write nothing
+pnpm trackers:seed --reset                # delete fixture time logs first, then re-seed
+docker compose --profile trackers down    # stop (keeps volumes)
+docker compose --profile trackers down -v # wipe EVERY dev volume, including the app database
+```
 
-- **URL:** `http://localhost:8090` (override with `OPENPROJECT_PORT`)
-- **Default login:** `admin` / `admin` (override with `OPENPROJECT_ADMIN_PASSWORD`)
-- **First boot:** demo data (a sample project, work packages, time-tracking activities) is seeded automatically; expect ~2 minutes before the healthcheck passes.
-- **API key:** **My account → Access tokens → API** → create a token; send it as HTTP Basic auth with user `apikey`.
+`pnpm trackers:seed` waits for both healthchecks, makes the `admin` accounts usable without any UI step (Redmine does this on boot; the OpenProject API token is installed through `rails runner`), removes OpenProject's stock demo projects, and seeds the fixture. It is idempotent: re-running creates only what is missing and never touches projects, issues or logs you made by hand. It ends by printing what to paste into the OSI tracker form:
 
-**Redmine**
+| Tracker     | URL                     | Login           | API key                                               |
+| ----------- | ----------------------- | --------------- | ----------------------------------------------------- |
+| Redmine     | `http://localhost:8091` | `admin`/`admin` | `REDMINE_DEV_API_KEY` (sent as `X-Redmine-API-Key`)   |
+| OpenProject | `http://localhost:8090` | `admin`/`admin` | `OPENPROJECT_DEV_API_KEY` (HTTP Basic, user `apikey`) |
 
-- **URL:** `http://localhost:8091` (override with `REDMINE_PORT`)
-- **Default login:** `admin` / `admin` (forced password change on first login)
-- **First boot:** `REDMINE_LOAD_DEFAULT_DATA=true` seeds roles, issue statuses, workflows, and time-entry activities (Design/Development). Sample projects and issues are not seeded.
+**What gets seeded.** One consultant, two clients: **Nordwind Logistics** on Redmine (`fleet-platform` → `dispatch`/`telemetry` → four leaf projects, plus `warehouse-scanner` and `internal-it`) and **Helios Energy** on OpenProject (`solar-portal` → `customer-app`/`gateway` → four leaf projects, plus `grid-analytics` and `helios-internal`). Every leaf and sibling project has 6–8 issues (older ones closed, two never logged), and the `admin` account has three months of weekday time logs: Monday/Tuesday on Nordwind, Wednesday/Thursday on Helios, Friday on both, with one holiday week. Runs in the same calendar week produce identical logs; on a new week the window slides.
 
-One-time Redmine setup for adapter work:
-
-1. Log in and complete the forced password change.
-2. Enable the REST web service: **Administration → Settings → API** → **Enable REST web service** → Save.
-3. Create a sample project and a few issues.
-4. Copy an API access key from **My account → API access key** and send it as the `X-Redmine-API-Key` header.
+**Trying import.** In OSI add both trackers with the keys above, create a Project scoped to `fleet-platform` (Redmine) and one scoped to `solar-portal` (OpenProject), then use **Import history** for the last three months. Every routing rule shows up: the same note across days reuses one Task, two notes on one issue become sibling Tasks, a blank note becomes the Task `empty`, and the `internal-it` / `helios-internal` logs are reported as unmatched until you scope a Project to them.
 
 ### VPN reachability
 
