@@ -24,7 +24,7 @@ _None._
 
 ## Impact
 
-- Compose files, `.env.example`; `Dockerfile` unchanged.
+- Compose files, `.env.example`, `.dockerignore` (nested `node_modules` exclusion, found during verification); `Dockerfile` unchanged.
 - Docs: `README.md`, `AGENTS.md`, `docs/e2e-guideline.md`.
 - No CI or e2e-harness impact: the harness provisions its own PostgreSQL and CI builds via `pnpm build`.
 - `data-persistence` REQ-040 (dedicated migrate step) is preserved: the `migrate` service moves unchanged into the prod file.

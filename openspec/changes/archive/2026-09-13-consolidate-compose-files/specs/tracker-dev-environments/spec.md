@@ -32,7 +32,7 @@ OpenProject instance via the `trackers` profile and how to obtain an API key for
 integration work.
 
 #### Scenario: Docs describe bring-up, teardown, and API key
-- **WHEN** a developer reads the "Docker Compose Files" section of `AGENTS.md`
+- **WHEN** a developer reads the "Build and Deployment" section of `AGENTS.md`
 - **THEN** they find the profile-based start/stop commands and the steps to obtain an API key
 
 ### Requirement: REQ-098 Opt-in local Redmine compose file

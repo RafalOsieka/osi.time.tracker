@@ -27,11 +27,13 @@ The package manager is **pnpm** (`^12`). Do not use `npm` or `yarn`.
 
 ```bash
 pnpm install            # install deps (web package postinstall runs `nuxt prepare`)
-cp .env.example .env    # create env file, then set required secrets
+cp .env.example .env    # create env file (defaults work for local development)
 docker compose up -d    # start local PostgreSQL 18 (+ PgAdmin)
 pnpm db:migrate         # apply database migrations
 pnpm dev                # dev server on http://localhost:3000
 ```
+
+The dev compose file is infrastructure only; the dev server and migrations always run on the host. Add `--profile trackers` to also start local OpenProject (`:8090`) and Redmine (`:8091`) for adapter work.
 
 ### Required environment variables
 
@@ -59,8 +61,8 @@ The schema lives in `apps/web/server/db/schema`; migrations are committed SQL fi
 ```bash
 pnpm db:generate        # generate a new migration after editing the schema
 pnpm db:migrate         # apply pending migrations (tsx apps/web/server/db/migrate.ts)
-docker compose down     # stop the local database (keeps data)
-docker compose down -v  # stop and delete the data volume
+docker compose --profile trackers down     # stop all dev containers (keeps data)
+docker compose --profile trackers down -v  # stop and delete ALL dev volumes (db, pgAdmin, trackers)
 ```
 
 Always apply migrations before the app serves traffic.
@@ -85,7 +87,7 @@ pnpm package:check  # tracker package build/type-check/tests without Nuxt
 - **E2E layout:** `apps/web/test/e2e/api`, `apps/web/test/e2e/ui`, `apps/web/test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
 - **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `apps/web/.output` with `NUXT_TEST_SKIP_BUILD=1` (the CI `build` artifact is built with `IS_E2E=true` so login rate limits match local e2e).
 - **Who owns a UI failure:** `apps/web/test/nuxt` = component + mocks; `apps/web/test/e2e/api` = HTTP contract; `apps/web/test/e2e/ui` = journey + production wiring.
-- **Remote trackers:** unit + e2e mock OpenProject/Redmine (fake HTTP / `page.route`). There is **no** live integration suite against `docker-compose.openproject.yml` / `docker-compose.redmine.yml`. See `docs/e2e-guideline.md` (“Follow-up: live OpenProject / Redmine e2e”).
+- **Remote trackers:** unit + e2e mock OpenProject/Redmine (fake HTTP / `page.route`). There is **no** live integration suite against the local `trackers` profile of `docker-compose.yml`. See `docs/e2e-guideline.md` (“Follow-up: live OpenProject / Redmine e2e”).
 - **E2E file names:** kebab-case (`setup-server.ts`).
 - **Determinism:** prefer deterministic tests; seed any randomness. Assert against stable `data-testid` selectors, not fragile markup.
 - Add or update tests alongside any code change, and keep the whole suite green.
@@ -130,18 +132,16 @@ openspec/                 OpenSpec change/spec documents (behavioral source of t
 
 ## Build and Deployment
 
-Self-hosted via Docker. A multi-stage production `Dockerfile` and several Compose files are provided:
+Self-hosted via Docker. A multi-stage production `Dockerfile` and two Compose files are provided:
 
-| File                              | Purpose                                                                     |
-| --------------------------------- | --------------------------------------------------------------------------- |
-| `docker-compose.yml`              | Local development database (PostgreSQL 18) + PgAdmin.                        |
-| `docker-compose.local-prod.yml`   | Build and run the production image against the dev database network.        |
-| `docker-compose.standalone.yml`   | Fully self-contained stack (database, migrator, web app) for daily hosting. |
-| `docker-compose.openproject.yml`  | Opt-in local OpenProject instance for remote-integration development.       |
-| `docker-compose.redmine.yml`      | Opt-in local Redmine instance for remote-integration development.           |
+| File                      | Purpose                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `docker-compose.yml`      | Local development infrastructure: PostgreSQL 18 + PgAdmin, plus OpenProject and Redmine behind the `trackers` profile.    |
+| `docker-compose.prod.yml` | Self-contained production stack (database, one-shot migrator, web app, PgAdmin). Trackers are the user's real instances.  |
 
+- `docker compose --profile trackers up -d` / `down` starts and stops the local trackers alongside the dev database. OpenProject: `http://localhost:8090`, `admin`/`admin`, API token under **My account → Access tokens → API** (HTTP Basic, user `apikey`). Redmine: `http://localhost:8091`, `admin`/`admin`; full one-time setup is in `README.md`.
 - Production build output lives in `apps/web/.output/`. The runtime image copies that output to `/app`.
-- Migrations must be applied before serving traffic; the standalone stack runs the migration step automatically.
+- Migrations must be applied before serving traffic; the prod stack runs the migration step automatically. It refuses to start until `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD`, and `PGADMIN_DEFAULT_PASSWORD` are set.
 - CI runs via GitHub Actions (`.github/workflows/ci.yml`).
 
 ## Pull Request Guidelines

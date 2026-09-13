@@ -1,9 +1,10 @@
-# Dependencies
-node_modules
+# Dependencies (bare names match only the context root; `**/` covers workspace packages,
+# whose host node_modules are pnpm symlinks that would clobber the in-image install)
+**/node_modules
 
 # Build outputs
-.output
-.nuxt
+**/.output
+**/.nuxt
 
 # Version control
 .git

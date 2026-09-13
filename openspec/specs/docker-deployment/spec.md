@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines requirements for containerising the OSI Time Tracker application for production use with Docker, including the multi-stage image build, runtime configuration, a local production verification compose file, cross-compose network connectivity, and pre-startup database migration.
+Defines requirements for containerising the OSI Time Tracker application for production use with Docker, including the multi-stage image build, runtime configuration, the self-contained production compose stack, the committed environment example, and pre-startup database migration.
 
 ## Requirements
 
@@ -39,28 +39,6 @@ The application container SHALL be configured entirely through environment varia
 - **WHEN** the container is started without `DATABASE_URL`
 - **THEN** the application SHALL fail fast with a clear error rather than starting in a broken state
 
-### Requirement: REQ-046 Production verification compose
-The system SHALL provide a separate Docker Compose file (`docker-compose.local-prod.yml`, distinct from the existing dev database compose) that builds the production image and runs the application container for local verification of the productive build.
-
-#### Scenario: Production stack runs the built image
-- **WHEN** the production compose file is brought up
-- **THEN** it builds the image from the `Dockerfile`, starts the app container, and exposes the app port on the host
-
-#### Scenario: Dev compose remains DB-only
-- **WHEN** a developer wants only the local dev workflow
-- **THEN** the existing `docker-compose.yml` SHALL continue to start only PostgreSQL (and pgAdmin) without building the app image
-
-### Requirement: REQ-047 Cross-compose network connectivity
-The production app container SHALL join the same Docker network used by the existing PostgreSQL compose (`osi-time-tracker`) so the app can resolve and connect to the database container by service name.
-
-#### Scenario: App reaches the database
-- **WHEN** the existing database compose and the production compose are both running
-- **THEN** the app container resolves the `db` service over the shared `osi-time-tracker` network and establishes a database connection
-
-#### Scenario: Shared network referenced as external
-- **WHEN** the production compose is started while the database compose owns the network
-- **THEN** the production compose references the `osi-time-tracker` network as external rather than creating a conflicting duplicate
-
 ### Requirement: REQ-048 Database migrations before serving traffic
 Pending database migrations SHALL be applied before the production application begins serving traffic, via a dedicated one-shot `migrate` compose service.
 
@@ -75,49 +53,68 @@ The `migrate` service is a short-lived container (not a long-running service) th
 - **THEN** the `app` service SHALL NOT start (its `service_completed_successfully` condition is unmet) and the failure is surfaced in container logs
 
 ### Requirement: REQ-049 Standalone daily-use compose stack
-The system SHALL provide a dedicated, self-contained Docker Compose file (`docker-compose.standalone.yml`, distinct from the dev `docker-compose.yml` and the verification `docker-compose.local-prod.yml`) that runs the complete productive stack — a `db` service (PostgreSQL 18), a one-shot `migrate` service, and the `app` service built from the existing `Dockerfile` — without depending on any other compose file or pre-existing external network.
+The system SHALL provide a dedicated, self-contained Docker Compose file (`docker-compose.prod.yml`, distinct from the dev `docker-compose.yml`) that runs the complete productive stack — a `db` service (PostgreSQL 18), a one-shot `migrate` service, the `app` service built from the existing `Dockerfile`, and a `pgadmin` service — without depending on any other compose file or pre-existing external network. The database port SHALL NOT be published to the host; only the app and pgadmin ports are. The stack SHALL NOT include local remote-tracker instances; the app connects to real OpenProject/Redmine instances configured in-app.
 
 #### Scenario: Single command brings up the full stack
-- **WHEN** `docker compose -f docker-compose.standalone.yml up -d` is run on a machine with only the repository cloned (given required env vars)
-- **THEN** the database starts, pending migrations are applied, the app starts, and the app is reachable on the published port without any other compose file running
+- **WHEN** `docker compose -f docker-compose.prod.yml up -d` is run on a machine with only the repository cloned (given required env vars)
+- **THEN** the database starts, pending migrations are applied, the app starts, and the app and pgadmin are reachable on their published ports without any other compose file running
 
 #### Scenario: No external network dependency
-- **WHEN** the standalone compose file is brought up while the dev `docker-compose.yml` stack is not running
+- **WHEN** the production compose file is brought up while the dev `docker-compose.yml` stack is not running
 - **THEN** the stack creates and uses its own network and starts successfully
 
+#### Scenario: Database is not exposed on the host
+- **WHEN** the production stack is running
+- **THEN** PostgreSQL is reachable from `app`, `migrate`, and `pgadmin` by service name but no host port is published for it
+
 #### Scenario: Existing compose files keep their roles
-- **WHEN** a developer uses the dev or local-prod workflows
-- **THEN** `docker-compose.yml` (dev DB + pgAdmin) and `docker-compose.local-prod.yml` (prod verification against the dev network) SHALL continue to work unchanged
+- **WHEN** a developer runs `docker compose up -d` (default file)
+- **THEN** no application image is built and no `app` or `migrate` container is started
 
 ### Requirement: REQ-050 Persistent state across restarts
-The standalone stack SHALL persist database state across container, Docker daemon, and host restarts. PostgreSQL data SHALL be stored in a dedicated named volume (separate from the dev database volume), and the long-running services (`db`, `app`) SHALL use `restart: unless-stopped` so the stack resumes automatically when Docker starts.
+The production stack SHALL persist database and pgadmin state across container, Docker daemon, and host restarts. PostgreSQL data SHALL be stored in a dedicated named volume (separate from the dev database volume), and the long-running services (`db`, `app`, `pgadmin`) SHALL use `restart: unless-stopped` so the stack resumes automatically when Docker starts.
 
 #### Scenario: Data survives a stack restart
-- **WHEN** the standalone stack is stopped with `docker compose -f docker-compose.standalone.yml down` (without `-v`) and brought up again
+- **WHEN** the production stack is stopped with `docker compose -f docker-compose.prod.yml down` (without `-v`) and brought up again
 - **THEN** previously stored users and tracking data are still present
 
 #### Scenario: Stack resumes after Docker/host restart
 - **WHEN** the Docker daemon or the host machine restarts
-- **THEN** the `db` and `app` containers restart automatically and the app serves traffic with the previous data intact
+- **THEN** the `db`, `app`, and `pgadmin` containers restart automatically and the app serves traffic with the previous data intact
 
 #### Scenario: Explicit data removal only
-- **WHEN** the user runs `down -v` against the standalone compose file
-- **THEN** only then is the standalone data volume deleted; the dev database volume is never affected
+- **WHEN** the user runs `down -v` against the production compose file
+- **THEN** only then are the production volumes deleted; the dev volumes are never affected
 
 ### Requirement: REQ-051 Standalone startup ordering and configuration
-Within the standalone stack, the `migrate` service SHALL wait for the `db` service to be healthy (via the PostgreSQL healthcheck) before applying migrations, and the `app` service SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_SESSION_PASSWORD` from the environment (no insecure default) while providing overridable defaults for database credentials, database name, and the published app port.
+Within the production stack, the `migrate` service SHALL wait for the `db` service to be healthy (via the PostgreSQL healthcheck) before applying migrations, and the `app` service SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD`, and `PGADMIN_DEFAULT_PASSWORD` from the environment (no insecure defaults) while providing overridable defaults for the database user, database name, pgadmin e-mail, and the published app and pgadmin ports.
 
 #### Scenario: Ordered cold start
-- **WHEN** the standalone stack starts from scratch
+- **WHEN** the production stack starts from scratch
 - **THEN** `migrate` runs only after the database healthcheck passes, and `app` starts only after `migrate` exits with status 0
 
 #### Scenario: Missing session secret fails fast
-- **WHEN** the stack is started without `NUXT_SESSION_PASSWORD` set
-- **THEN** the app SHALL NOT serve traffic with a baked-in or empty session secret, and the failure is surfaced to the user
+- **WHEN** the stack is started with any of `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD`, or `PGADMIN_DEFAULT_PASSWORD` unset or empty
+- **THEN** compose refuses to start the stack and the error names the missing variable
 
 #### Scenario: Defaults are overridable
-- **WHEN** the user overrides the published port or database credentials via environment variables (e.g. an `.env` file)
+- **WHEN** the user overrides the published ports, database user, or database name via environment variables (e.g. an `.env` file)
 - **THEN** the stack uses the overridden values without editing the compose file
+
+### Requirement: REQ-346 Single environment example grouped by audience
+The repository SHALL provide one committed `.env.example`, grouped into sections for host development, dev compose overrides, and the production compose stack, with every variable documented next to the stack that reads it. It SHALL contain working development defaults so `pnpm dev` runs after copying it to `.env` unchanged, with `DATABASE_URL` pointing at `localhost` (the published dev database port). Production-only secrets (`POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_PASSWORD`) SHALL be present only as commented-out entries with generation hints, and the development `NUXT_SESSION_PASSWORD` SHALL be marked as not for production use.
+
+#### Scenario: Dev example works unchanged
+- **WHEN** a developer copies `.env.example` to `.env`, starts the dev compose stack, and runs `pnpm db:migrate` then `pnpm dev`
+- **THEN** the app starts and connects to the dev database without editing any value
+
+#### Scenario: Unedited example does not start the production stack
+- **WHEN** a self-hoster copies `.env.example` to `.env` without uncommenting the production secrets and starts the production stack
+- **THEN** the stack refuses to start and names the first missing variable
+
+#### Scenario: Example is committed, real env files are not
+- **WHEN** the repository is inspected
+- **THEN** `.env.example` is tracked while `.env` and every other `.env.*` file are git-ignored
 
 ## Out of Scope
 

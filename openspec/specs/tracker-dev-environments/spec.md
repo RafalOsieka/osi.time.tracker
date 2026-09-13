@@ -2,23 +2,22 @@
 
 ## Purpose
 
-Defines requirements for committed, reproducible local remote-tracker instances — provided via dedicated, opt-in Docker Compose files with built-in data — that developers can start on demand to build and test remote-tracker integration. It covers the per-provider dev environments (OpenProject and Redmine), each isolated from the application's dev stack and from each other.
+Defines requirements for committed, reproducible local remote-tracker instances — provided in the dev `docker-compose.yml` behind an opt-in `trackers` compose profile with built-in data — that developers can start on demand to build and test remote-tracker integration. It covers the per-provider dev environments (OpenProject and Redmine), each isolated from the application's dev database, from each other, and from the production stack.
 
 ## Requirements
 
 ### Requirement: REQ-078 Opt-in local OpenProject compose file
-The project SHALL provide a dedicated `docker-compose.openproject.yml` that runs a
-local OpenProject instance and is NOT part of the default development stack started
-by `docker compose up`.
+The dev `docker-compose.yml` SHALL define a local OpenProject service assigned to the
+`trackers` compose profile, so it is NOT started by the default `docker compose up -d`
+and requires the profile to be activated explicitly.
 
 #### Scenario: Not started by the default stack
-- **WHEN** a developer runs `docker compose up -d` (default file)
-- **THEN** no OpenProject container is started
+- **WHEN** a developer runs `docker compose up -d` (default file, no profile)
+- **THEN** only the app development infrastructure (database, pgadmin) starts and no OpenProject container is started
 
 #### Scenario: Started explicitly on demand
-- **WHEN** a developer runs `docker compose -f docker-compose.openproject.yml up -d`
-- **THEN** a local OpenProject instance starts and becomes reachable on the
-  configured host port
+- **WHEN** a developer runs `docker compose --profile trackers up -d`
+- **THEN** a local OpenProject instance starts alongside the default services and becomes reachable on the configured host port
 
 ### Requirement: REQ-079 Demo data seeded on first boot
 The OpenProject instance SHALL seed built-in demo data on first boot via
@@ -41,34 +40,40 @@ without TLS termination.
 - **THEN** authentication succeeds and no HTTPS redirect breaks the session
 
 ### Requirement: REQ-081 Isolated persistent storage
-The instance SHALL persist its data in dedicated named volumes separate from the
-application's Postgres volumes, so tearing it down does not affect app dev data.
+The OpenProject service SHALL persist its data in dedicated named volumes separate from
+the app dev database volume and from every production stack volume, so its data can be
+inspected and wiped independently.
+
+#### Scenario: Teardown of the dev stack never touches production
+- **WHEN** a developer runs `docker compose --profile trackers down -v`
+- **THEN** the dev volumes (including OpenProject's) are removed and the production stack's volumes are untouched
 
 #### Scenario: Teardown removes only OpenProject data
-- **WHEN** a developer runs `docker compose -f docker-compose.openproject.yml down -v`
-- **THEN** only OpenProject's volumes are removed and `pg-osi-time-tracker` is untouched
+- **WHEN** a developer removes only OpenProject's named volumes
+- **THEN** the app dev database volume keeps its data
 
 ### Requirement: REQ-082 Documented usage
 The repository SHALL document, in `AGENTS.md`, how to start and stop the local
-OpenProject instance and how to obtain an API key for later integration work.
+OpenProject instance via the `trackers` profile and how to obtain an API key for
+integration work.
 
 #### Scenario: Docs describe bring-up, teardown, and API key
-- **WHEN** a developer reads the "Docker Compose Files" section of `AGENTS.md`
-- **THEN** they find the start/stop commands and the steps to obtain an API key
+- **WHEN** a developer reads the "Build and Deployment" section of `AGENTS.md`
+- **THEN** they find the profile-based start/stop commands and the steps to obtain an API key
 
 ### Requirement: REQ-098 Opt-in local Redmine compose file
-The project SHALL provide a dedicated `docker-compose.redmine.yml` that runs a
-local Redmine instance (official image plus a dedicated PostgreSQL service) and is
-NOT part of the default development stack started by `docker compose up`.
+The dev `docker-compose.yml` SHALL define a local Redmine instance (official image plus a
+dedicated PostgreSQL service) assigned to the `trackers` compose profile, so it is NOT
+started by the default `docker compose up -d` and requires the profile to be activated
+explicitly.
 
 #### Scenario: Not started by the default stack
-- **WHEN** a developer runs `docker compose up -d` (default file)
-- **THEN** no Redmine container is started
+- **WHEN** a developer runs `docker compose up -d` (default file, no profile)
+- **THEN** no Redmine or Redmine database container is started
 
 #### Scenario: Started explicitly on demand
-- **WHEN** a developer runs `docker compose -f docker-compose.redmine.yml up -d`
-- **THEN** a local Redmine instance starts and becomes reachable on the
-  configured host port
+- **WHEN** a developer runs `docker compose --profile trackers up -d`
+- **THEN** a local Redmine instance starts alongside the default services and becomes reachable on the configured host port
 
 ### Requirement: REQ-099 Default data seeded on first boot
 The Redmine instance SHALL seed built-in default data on first boot via
@@ -83,9 +88,9 @@ steps instead.
   and visible after logging in
 
 ### Requirement: REQ-100 Local HTTP access on a non-conflicting port
-The instance SHALL be reachable over plain HTTP on a fixed localhost port
+The Redmine instance SHALL be reachable over plain HTTP on a fixed localhost port
 (default `8091`, overridable via `REDMINE_PORT`) that does not conflict with the
-default dev stack (PgAdmin) or the local OpenProject instance.
+default dev services (database, pgadmin) or the local OpenProject instance.
 
 #### Scenario: Login over plain HTTP succeeds
 - **WHEN** a developer opens the configured `http://localhost:<port>` URL and logs in
@@ -94,29 +99,31 @@ default dev stack (PgAdmin) or the local OpenProject instance.
   be completed
 
 #### Scenario: Runs alongside the other dev stacks
-- **WHEN** the default dev stack, the OpenProject instance, and the Redmine
-  instance are all running with default ports
-- **THEN** no host-port conflict occurs
+- **WHEN** the dev stack is started with the `trackers` profile and default ports
+- **THEN** database, pgadmin, OpenProject, and Redmine all start and no host-port conflict occurs
 
 ### Requirement: REQ-101 Isolated persistent storage
-The instance SHALL persist its data in dedicated named volumes separate from the
-application's Postgres volumes and from the OpenProject dev volumes, so tearing it
-down does not affect other dev data.
+The Redmine services SHALL persist their data in dedicated named volumes separate from
+the app dev database volume, from the OpenProject dev volumes, and from every production
+stack volume.
 
 #### Scenario: Teardown removes only Redmine data
-- **WHEN** a developer runs `docker compose -f docker-compose.redmine.yml down -v`
-- **THEN** only Redmine's volumes are removed and `pg-osi-time-tracker` and the
-  OpenProject dev volumes are untouched
+- **WHEN** a developer removes only Redmine's named volumes
+- **THEN** the app dev database volume and the OpenProject volumes keep their data
+
+#### Scenario: Teardown of the dev stack never touches production
+- **WHEN** a developer runs `docker compose --profile trackers down -v`
+- **THEN** the production stack's volumes are untouched
 
 ### Requirement: REQ-102 Documented usage and manual setup steps
 The repository SHALL document, in `README.md`, how to start and stop the local
-Redmine instance and the one-time manual steps required for integration work:
-completing the forced admin password change, enabling the REST web service,
-creating a sample project with issues, and obtaining the API access key.
-`AGENTS.md` MAY mention the compose file only (e.g. in the Docker Compose table)
+Redmine instance via the `trackers` profile and the one-time manual steps required for
+integration work: completing the forced admin password change, enabling the REST web
+service, creating a sample project with issues, and obtaining the API access key.
+`AGENTS.md` MAY mention the profile only (e.g. in the Docker Compose table)
 without extended setup instructions.
 
 #### Scenario: Docs describe bring-up, teardown, and manual steps
 - **WHEN** a developer reads the Deployment section of `README.md`
-- **THEN** they find the start/stop commands and the steps to enable the REST API,
+- **THEN** they find the profile-based start/stop commands and the steps to enable the REST API,
   create sample data, and obtain the API access key

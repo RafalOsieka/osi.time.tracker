@@ -50,19 +50,30 @@ Since dev needs a working `NUXT_SESSION_PASSWORD`, the example must ship one; pr
 
 `host.docker.internal` is dropped from `DATABASE_URL`: only host processes read it (containers get a compose-built `@db:5432` URL), and the name does not resolve on Linux hosts.
 
-### D4: `migrate` service unchanged
+### D4: Explicit compose project names
+
+Both files sit in the same directory, so without a top-level `name:` they share the default project name (the directory) and `docker compose -f docker-compose.prod.yml up` would adopt and recreate the dev stack's `db`/`pgadmin` containers. `docker-compose.yml` sets `name: osi-time-tracker`, `docker-compose.prod.yml` sets `name: osi-time-tracker-prod`, giving disjoint container, volume, and network names.
+
+- *Alternative — rely on distinct volume/network keys only:* containers would still collide (`<project>-db-1`). Rejected.
+- *Trade-off:* an existing deployment of the old standalone file has its volumes under `<dirname>_pg-osi-time-tracker-standalone`; moving to the new prefix is a one-time `docker volume` rename, documented in the README.
+
+### D5: `.dockerignore` must exclude nested `node_modules`
+
+Found during verification: a bare `node_modules` pattern matches only the context root, so `COPY . .` shipped the host's `apps/web/node_modules` (pnpm symlinks into `.pnpm/<hash>` paths that do not exist in the image) over the in-image install and the Nuxt build failed. Patterns are now `**/node_modules`, `**/.output`, `**/.nuxt`. Outside the proposal's stated scope but a precondition for REQ-049 on any machine that has run `pnpm install`.
+
+### D6: `migrate` service unchanged
 
 It still builds from the `build` stage and runs `pnpm db:migrate` once. Slimming it (bundling the migrator into the runtime image, or running migrations on app boot) is a separate change; the latter would also conflict with REQ-040.
 
 ## Risks / Trade-offs
 
-- [Existing users of `docker-compose.standalone.yml` lose their volume names (`pg-osi-time-tracker-standalone`)] → Keep the same named volumes in `docker-compose.prod.yml` so data survives the rename; document the file rename in the README.
+- [Existing users of `docker-compose.standalone.yml` have volumes under the old project prefix] → Volume keys are unchanged; only the project prefix moves (D4). README documents the one-time rename.
 - [`down -v` on the dev file now wipes the dev app DB together with trackers] → Documented; per-service volumes allow targeted `docker volume rm`.
 - [A self-hoster copies `.env.example` and keeps the dev `NUXT_SESSION_PASSWORD`] → The example marks it as dev-only with a generation hint, and the prod stack still refuses to start until the database and pgadmin passwords are set, which forces a pass over the file.
 - [Port `8080` (pgadmin) and `3000` (app) collide if dev and prod stacks run on one machine] → Not a supported setup; the prod ports are overridable (`PORT`, `PGADMIN_PORT`) for ad-hoc local verification.
 
 ## Migration Plan
 
-1. Add `docker-compose.prod.yml`; rewrite `docker-compose.yml`; regroup `.env.example`.
+1. Add `docker-compose.prod.yml`; rewrite `docker-compose.yml`; regroup `.env.example`; fix `.dockerignore` nesting.
 2. Delete the four retired compose files and update README / AGENTS.md / e2e-guideline in the same commit.
 3. Rollback: revert the commit; volume names are unchanged so no data is affected either way.
