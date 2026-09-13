@@ -1,33 +1,37 @@
-# Dependencies
-node_modules
+# Allowlist: ignore everything, then re-include only what the image build needs.
+# Later patterns win, so the trailing block re-excludes junk nested inside allowed dirs.
+*
 
-# Build outputs
-.output
-.nuxt
+# Workspace manifests
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
 
-# Version control
-.git
-.gitignore
+# Workspace packages the web app depends on (built from source in the image)
+!packages/remote-trackers/package.json
+!packages/remote-trackers/tsconfig.json
+!packages/remote-trackers/src
+!packages/extension-protocol/package.json
+!packages/extension-protocol/tsconfig.json
+!packages/extension-protocol/src
 
-# Tests
-test
-apps/web/test
-apps/extension/test
-apps/extension/dist
+# Web app (Nuxt) — config, source, locales, static assets, migrations
+!apps/web/package.json
+!apps/web/nuxt.config.ts
+!apps/web/tsconfig.json
+!apps/web/.nuxtrc
+!apps/web/app
+!apps/web/i18n
+!apps/web/public
+!apps/web/server
+!apps/web/shared
 
-# Local env files
-.env
-.env.*
-!.env.example
-
-# Editor / OS
-.idea
-.vscode
-*.DS_Store
-
-# Misc
-*.log
-.github
-.junie
-docs
-openspec
+# Never let these through even when nested inside an allowed directory
+**/node_modules
+**/dist
+**/.output
+**/.nuxt
+**/test
+**/*.spec.ts
+**/*.log
+**/.DS_Store

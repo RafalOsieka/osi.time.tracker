@@ -61,11 +61,13 @@ It solves a recurring problem for multi-client work: your clients run different 
 # 1. Install dependencies (also runs `nuxt prepare`)
 pnpm install
 
-# 2. Create your environment file and set the required secrets
+# 2. Create your environment file (the defaults work for local development)
 cp .env.example .env
 
 # 3. Start a local PostgreSQL 18 container (plus PgAdmin)
 docker compose up -d
+#    ...or with local OpenProject + Redmine for adapter work, then seed them:
+#    docker compose --profile trackers up -d && pnpm trackers:seed
 
 # 4. Apply database migrations
 pnpm db:migrate
@@ -76,13 +78,25 @@ pnpm dev
 
 ### Environment variables
 
-| Variable                | Description                                                                                        |
-| ----------------------- | -------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`          | PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`. |
-| `NUXT_SESSION_PASSWORD` | 32+ character secret used by `nuxt-auth-utils` to seal session cookies.                            |
+A single `.env` (copied from `.env.example`) feeds the host tooling and both Compose files. The example is grouped by who reads each variable:
+
+| Variable                                           | Read by                       | Description                                                                                        |
+| -------------------------------------------------- | ----------------------------- | -------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                     | `pnpm dev`, `pnpm db:migrate` | PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`. |
+| `NUXT_SESSION_PASSWORD`                            | `pnpm dev`, prod compose      | 32+ character secret used by `nuxt-auth-utils` to seal session cookies. Required in prod.          |
+| `BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD` | migrator (host and prod)      | Optional; seeds the first user if it does not exist.                                               |
+| `POSTGRES_USER` / `POSTGRES_DB`                    | dev + prod compose            | Database overrides; defaults match `DATABASE_URL`.                                                 |
+| `POSTGRES_PORT`                                    | dev compose                   | Published dev database port (default `5432`); prod never publishes the database.                   |
+| `POSTGRES_PASSWORD`                                | dev + prod compose            | Defaults to `postgres` in dev; **required** in prod.                                               |
+| `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PORT`           | dev + prod compose            | pgAdmin overrides.                                                                                 |
+| `PGADMIN_DEFAULT_PASSWORD`                         | dev + prod compose            | Defaults to `admin` in dev; **required** in prod.                                                  |
+| `PORT`                                             | prod compose                  | Published app port (default `3000`).                                                               |
+| `REDMINE_DEV_API_KEY` / `OPENPROJECT_DEV_API_KEY`  | dev compose + `trackers:seed` | Fixed API keys installed on the **local** trackers; paste them into the OSI tracker form.          |
+| `REDMINE_ADMIN_PASSWORD`                           | dev compose (`trackers`)      | Local Redmine `admin` password (default `admin`), set on every boot.                               |
+| `OPENPROJECT_*` / `REDMINE_*`                      | dev compose (`trackers`)      | Other local tracker overrides (ports, secrets); never used in prod.                                |
 
 > [!IMPORTANT]
-> Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing. Never log or commit these secrets.
+> Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing, and the production stack refuses to start until its required secrets are set. Never log or commit these secrets.
 
 ## Development
 
@@ -105,9 +119,11 @@ The schema lives in `apps/web/server/db/schema` and migrations are committed SQL
 ```bash
 pnpm db:generate    # generate a new migration after editing the schema
 pnpm db:migrate     # apply pending migrations
-docker compose down # stop the local database (keeps data)
-docker compose down -v  # stop and delete the data volume
+docker compose --profile trackers down     # stop all dev containers (keeps data)
+docker compose --profile trackers down -v  # stop and delete ALL dev volumes (db, pgAdmin, trackers)
 ```
+
+To wipe a single service, remove only its named volume (`docker volume ls` / `docker volume rm`).
 
 ## Testing
 
@@ -135,38 +151,52 @@ pnpm exec vitest run -t "<test name>"
 
 ## Deployment
 
-OSI Time Tracker is designed to be self-hosted via Docker. A multi-stage production `Dockerfile` and several Compose files are provided:
+OSI Time Tracker is designed to be self-hosted via Docker. A multi-stage production `Dockerfile` and two Compose files are provided:
 
-| File                             | Purpose                                                                     |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| `docker-compose.yml`             | Local development database (PostgreSQL 18) + PgAdmin.                       |
-| `docker-compose.local-prod.yml`  | Build and run the production image against the dev database network.        |
-| `docker-compose.standalone.yml`  | Fully self-contained stack (database, migrator, web app) for daily hosting. |
-| `docker-compose.openproject.yml` | Opt-in local OpenProject instance for remote-integration development.       |
-| `docker-compose.redmine.yml`     | Opt-in local Redmine instance for remote-integration development.           |
+| File                      | Purpose                                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `docker-compose.yml`      | Local development infrastructure: PostgreSQL 18 + pgAdmin, plus OpenProject and Redmine behind the `trackers` profile.    |
+| `docker-compose.prod.yml` | Self-contained production stack (database, one-shot migrator, web app, pgAdmin). Trackers are your real remote instances. |
 
-Database migrations (`pnpm db:migrate`) must be applied before the app serves traffic. The standalone stack runs the migration step automatically.
-
-### Local Redmine (development only)
-
-Opt-in stack for building and testing the Redmine adapter. **Never use in production.**
+### Production (self-hosted)
 
 ```bash
-docker compose -f docker-compose.redmine.yml up -d    # start Redmine + its Postgres
-docker compose -f docker-compose.redmine.yml down     # stop (keeps volumes)
-docker compose -f docker-compose.redmine.yml down -v  # stop and wipe Redmine volumes only
+cp .env.example .env
+# set the "Production compose" section: POSTGRES_PASSWORD, PGADMIN_DEFAULT_PASSWORD,
+# and replace NUXT_SESSION_PASSWORD / BOOTSTRAP_USER_PASSWORD with real secrets
+docker compose -f docker-compose.prod.yml up -d --build   # builds the image, migrates, starts
+docker compose -f docker-compose.prod.yml down            # stop (keeps volumes)
+docker compose -f docker-compose.prod.yml down -v         # stop and delete prod volumes
 ```
 
-- **URL:** `http://localhost:8091` (override with `REDMINE_PORT`)
-- **Default login:** `admin` / `admin` (forced password change on first login)
-- **First boot:** `REDMINE_LOAD_DEFAULT_DATA=true` seeds roles, issue statuses, workflows, and time-entry activities (Design/Development). Sample projects and issues are not seeded.
+The stack refuses to start until the required secrets are set. Migrations run in a one-shot `migrate` container before the app accepts traffic. The app is published on `PORT` (default `3000`) and pgAdmin on `PGADMIN_PORT` (default `8080`); the database port is not published.
 
-One-time setup for adapter work:
+> [!NOTE]
+> Upgrading from the former `docker-compose.standalone.yml`: the stack now uses the fixed project name `osi-time-tracker-prod`, so its volumes are `osi-time-tracker-prod_pg-osi-time-tracker-standalone` and `osi-time-tracker-prod_pgadmin-osi-time-tracker-standalone`. Your existing data lives under `<clone-directory>_pg-osi-time-tracker-standalone`; copy it across once (e.g. `docker run --rm -v OLD:/from -v NEW:/to alpine cp -a /from/. /to/`) before the first `up`.
 
-1. Log in and complete the forced password change.
-2. Enable the REST web service: **Administration → Settings → API** → **Enable REST web service** → Save.
-3. Create a sample project and a few issues.
-4. Copy an API access key from **My account → API access key** and send it as the `X-Redmine-API-Key` header.
+### Local trackers (development only)
+
+Two commands turn the local trackers into a ready-to-use environment. **Never use them in production.**
+
+```bash
+docker compose --profile trackers up -d   # OpenProject :8090 + Redmine :8091 (first boot ~2 min)
+pnpm trackers:seed                        # bootstrap accounts + seed the fixture (~30 s)
+pnpm trackers:seed --dry-run              # show what would be created, write nothing
+pnpm trackers:seed --reset                # delete fixture time logs first, then re-seed
+docker compose --profile trackers down    # stop (keeps volumes)
+docker compose --profile trackers down -v # wipe EVERY dev volume, including the app database
+```
+
+`pnpm trackers:seed` waits for both healthchecks, makes the `admin` accounts usable without any UI step (Redmine does this on boot; the OpenProject API token is installed through `rails runner`), removes OpenProject's stock demo projects, and seeds the fixture. It is idempotent: re-running creates only what is missing and never touches projects, issues or logs you made by hand. It ends by printing what to paste into the OSI tracker form:
+
+| Tracker     | URL                     | Login           | API key                                               |
+| ----------- | ----------------------- | --------------- | ----------------------------------------------------- |
+| Redmine     | `http://localhost:8091` | `admin`/`admin` | `REDMINE_DEV_API_KEY` (sent as `X-Redmine-API-Key`)   |
+| OpenProject | `http://localhost:8090` | `admin`/`admin` | `OPENPROJECT_DEV_API_KEY` (HTTP Basic, user `apikey`) |
+
+**What gets seeded.** One consultant, two clients: **Nordwind Logistics** on Redmine (`fleet-platform` → `dispatch`/`telemetry` → four leaf projects, plus `warehouse-scanner` and `internal-it`) and **Helios Energy** on OpenProject (`solar-portal` → `customer-app`/`gateway` → four leaf projects, plus `grid-analytics` and `helios-internal`). Every leaf and sibling project has 6–8 issues (older ones closed, two never logged), and the `admin` account has three months of weekday time logs: Monday/Tuesday on Nordwind, Wednesday/Thursday on Helios, Friday on both, with one holiday week. Runs in the same calendar week produce identical logs; on a new week the window slides.
+
+**Trying import.** In OSI add both trackers with the keys above, create a Project scoped to `fleet-platform` (Redmine) and one scoped to `solar-portal` (OpenProject), then use **Import history** for the last three months. Every routing rule shows up: the same note across days reuses one Task, two notes on one issue become sibling Tasks, a blank note becomes the Task `empty`, and the `internal-it` / `helios-internal` logs are reported as unmatched until you scope a Project to them.
 
 ### VPN reachability
 

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@osi/dev-seed",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Seeds the local OpenProject and Redmine dev instances with a ready-to-use fixture",
+  "scripts": {
+    "seed": "tsx src/cli.ts",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@osi/remote-trackers": "workspace:*",
+    "zod": "^4.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.5.1",
+    "tsx": "^4.23.13",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.11"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}
