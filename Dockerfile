@@ -2,7 +2,7 @@
 
 # ── base ──────────────────────────────────────────────────────────────────────
 FROM node:25-alpine AS base
-RUN npm install -g pnpm@latest
+RUN npm install -g pnpm@12
 
 # ── build ─────────────────────────────────────────────────────────────────────
 FROM base AS build
@@ -13,13 +13,13 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/remote-trackers/package.json packages/remote-trackers/
 COPY packages/extension-protocol/package.json packages/extension-protocol/
 COPY apps/web/package.json apps/web/
-COPY apps/extension/package.json apps/extension/
 
 # Skip postinstall (nuxt prepare) here — source isn't copied yet, so it would
 # run against an empty workspace and produce incomplete type stubs.
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Copy source, then generate Nuxt types and build
+# Copy source (the build context is an allowlist — see .dockerignore), then
+# generate Nuxt types and build
 COPY . .
 RUN pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/time-tracker exec nuxt prepare && pnpm --filter @osi/time-tracker build
 

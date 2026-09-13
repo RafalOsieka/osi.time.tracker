@@ -1,3 +1,20 @@
+# Local development infrastructure. The app itself runs on the host (`pnpm dev`),
+# and migrations are applied from the host (`pnpm db:migrate`).
+#
+# Default:   docker compose up -d                       # db + pgadmin
+# Trackers:  docker compose --profile trackers up -d    # + OpenProject + Redmine
+# Seed:      pnpm trackers:seed                         # accounts, dev API keys, fixture
+# Stop:      docker compose --profile trackers down     # keeps volumes
+# Wipe:      docker compose --profile trackers down -v  # deletes ALL dev volumes
+#
+# OpenProject: http://localhost:8090 (admin / admin)   — override with OPENPROJECT_PORT
+# Redmine:     http://localhost:8091 (admin / admin)   — override with REDMINE_PORT
+# The tracker services are for local development only — never use them in production.
+
+# Explicit project name so this stack never shares containers/volumes with
+# docker-compose.prod.yml, which lives in the same directory.
+name: osi-time-tracker
+
 services:
   db:
     image: postgres:18-alpine
@@ -19,7 +36,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    networks: [osi-time-tracker]
 
   pgadmin:
     image: dpage/pgadmin4:9.16
@@ -34,12 +50,113 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    networks: [osi-time-tracker]
+
+  # ── trackers profile ────────────────────────────────────────────────────────
+
+  openproject:
+    profiles: [trackers]
+    image: openproject/openproject:17.5.1
+    restart: unless-stopped
+    environment:
+      OPENPROJECT_HTTPS: 'false'
+      OPENPROJECT_HOST__NAME: localhost:${OPENPROJECT_PORT:-8090}
+      OPENPROJECT_DEFAULT__LANGUAGE: en
+      OPENPROJECT_SEED_ADMIN_USER_PASSWORD: ${OPENPROJECT_ADMIN_PASSWORD:-admin}
+      # Admin logs in without the forced password change; `pnpm trackers:seed`
+      # installs the API token and replaces the stock demo projects.
+      OPENPROJECT_SEED_ADMIN_USER_PASSWORD_RESET: 'false'
+      SECRET_KEY_BASE: ${OPENPROJECT_SECRET_KEY_BASE:-change-me-to-a-random-64-character-development-secret-key-base}
+    ports:
+      - '${OPENPROJECT_PORT:-8090}:80'
+    volumes:
+      - pg-openproject-dev:/var/openproject/pgdata
+      - openproject-assets-dev:/var/openproject/assets
+    healthcheck:
+      test: ['CMD-SHELL', 'curl --fail http://localhost/health_checks/default || exit 1']
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 2m
+
+  redmine-db:
+    profiles: [trackers]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${REDMINE_DB_USERNAME:-redmine}
+      POSTGRES_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine}
+      POSTGRES_DB: ${REDMINE_DB_DATABASE:-redmine}
+    volumes:
+      - pg-redmine-dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER:-redmine} -d $${POSTGRES_DB:-redmine}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redmine:
+    profiles: [trackers]
+    image: redmine:6
+    restart: unless-stopped
+    depends_on:
+      redmine-db:
+        condition: service_healthy
+    environment:
+      REDMINE_DB_POSTGRES: redmine-db
+      REDMINE_DB_DATABASE: ${REDMINE_DB_DATABASE:-redmine}
+      REDMINE_DB_USERNAME: ${REDMINE_DB_USERNAME:-redmine}
+      REDMINE_DB_PASSWORD: ${REDMINE_DB_PASSWORD:-redmine}
+      REDMINE_SECRET_KEY_BASE: ${REDMINE_SECRET_KEY_BASE:-change-me-to-a-random-64-character-development-secret-key-base}
+      # Official image has no built-in default-data flag; our entrypoint wrapper
+      # reads this and runs `rake redmine:load_default_data` on boot.
+      REDMINE_LOAD_DEFAULT_DATA: ${REDMINE_LOAD_DEFAULT_DATA:-true}
+      REDMINE_LANG: ${REDMINE_LANG:-en}
+      # Read by the admin bootstrap step below; defaults match .env.example.
+      REDMINE_ADMIN_PASSWORD: ${REDMINE_ADMIN_PASSWORD:-admin}
+      REDMINE_DEV_API_KEY: ${REDMINE_DEV_API_KEY:-d3adbeefd3adbeefd3adbeefd3adbeefd3adbeef}
+    ports:
+      - '${REDMINE_PORT:-8091}:3000'
+    volumes:
+      - redmine-files-dev:/usr/src/redmine/files
+    # Wrap the stock entrypoint so first boot seeds roles, statuses, workflows,
+    # and time-entry activities (Design/Development) via load_default_data, and
+    # every boot completes the admin account (idempotent): stable password, no
+    # forced password change, REST API on, fixed dev API key.
+    entrypoint: ['/bin/bash', '-ec']
+    command:
+      - |
+        if [ "$${REDMINE_LOAD_DEFAULT_DATA:-true}" = "true" ]; then
+          /docker-entrypoint.sh rake db:migrate
+          if ! REDMINE_LANG="$${REDMINE_LANG:-en}" /docker-entrypoint.sh rake redmine:load_default_data; then
+            echo "redmine: default data already present or load skipped; continuing."
+          fi
+        fi
+        cat > /tmp/bootstrap-admin.rb <<'RUBY'
+        admin = User.find_by!(login: 'admin')
+        admin.password = admin.password_confirmation = ENV.fetch('REDMINE_ADMIN_PASSWORD')
+        admin.must_change_passwd = false
+        admin.save!(validate: false)
+        Setting.rest_api_enabled = '1'
+        key = ENV.fetch('REDMINE_DEV_API_KEY')
+        unless Token.where(user_id: admin.id, action: 'api', value: key).exists?
+          Token.where(user_id: admin.id, action: 'api').delete_all
+          Token.create!(user: admin, action: 'api').update_column(:value, key)
+        end
+        puts 'redmine: admin bootstrap done (REST API on, dev API key installed)'
+        RUBY
+        /docker-entrypoint.sh rails runner /tmp/bootstrap-admin.rb
+        exec /docker-entrypoint.sh rails server -b 0.0.0.0
+    healthcheck:
+      test: ['CMD-SHELL', "bash -c 'exec 3<>/dev/tcp/127.0.0.1/3000'"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 2m
 
 volumes:
   pg-osi-time-tracker:
   pgadmin-osi-time-tracker:
-
-networks:
-  osi-time-tracker:
-    name: osi-time-tracker
+  pg-openproject-dev:
+  openproject-assets-dev:
+  pg-redmine-dev:
+  redmine-files-dev:
