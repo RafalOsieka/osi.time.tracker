@@ -166,6 +166,33 @@ describeTrackersImport('tracker remote-log import API', async () => {
     expect(day2?.stoppedAt).toBe('2026-04-02T08:30:00.000Z');
   });
 
+  it('accepts a comment containing angle brackets and derives the task name verbatim (xssValidator disabled)', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    await setUtcTimezone(jar, token);
+    const tracker = await createTracker(jar, token, `Import Xss ${Date.now()}`);
+    const project = await createProject(jar, token, `Import Project ${Date.now()}`, tracker.id);
+    const suffix = String(Date.now());
+    const comment = `<review> a > b ${suffix}`;
+
+    const res = await postImport(jar, token, tracker.id, {
+      dryRun: false,
+      groups: [
+        {
+          projectId: project.id,
+          logs: [importLog({ remoteLogId: `xss-${suffix}`, comment })],
+        },
+      ],
+    });
+
+    expect(res.status).toBe(200);
+    const result = await res.json();
+    expect(result.totalImported).toBe(1);
+
+    const tasks = await listTasks(jar, suffix);
+    expect(tasks).toHaveLength(1);
+    expect(tasks[0].name).toBe(comment);
+  });
+
   it('places an imported entry after a real local entry already on that day (existingMaxStop from the DB)', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     await setUtcTimezone(jar, token);

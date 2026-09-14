@@ -25,6 +25,7 @@
     "@nuxt/ui": "^4.11.1",
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
+    "consola": "3.4.2",
     "drizzle-orm": "^0.45.2",
     "nuxt": "^4.5.2",
     "nuxt-auth-utils": "^0.5.30",

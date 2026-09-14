@@ -44,6 +44,8 @@ The dev compose file is infrastructure only; the dev server and migrations alway
 
 Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing. Never log or commit secrets.
 
+Optional: `CONSOLA_LEVEL` (`0` fatal … `3` info default … `5` trace) raises server log verbosity — `4`+ also logs every Drizzle statement — without a rebuild.
+
 ## Development Workflow
 
 ```bash
