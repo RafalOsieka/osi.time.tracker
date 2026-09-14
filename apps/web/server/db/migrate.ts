@@ -20,7 +20,9 @@ export async function runMigrations(
   connectionString: string = resolveDatabaseUrl(),
   migrationsFolder: string = MIGRATIONS_FOLDER,
 ): Promise<void> {
-  const { db, sql } = createDatabaseClient(connectionString, { max: 1 });
+  // `logger: false`: this bootstraps a user with a password hash bound as a query
+  // parameter, which the shared query logger must never print (see client.ts).
+  const { db, sql } = createDatabaseClient(connectionString, { max: 1, logger: false });
 
   try {
     await migrate(db, { migrationsFolder });
