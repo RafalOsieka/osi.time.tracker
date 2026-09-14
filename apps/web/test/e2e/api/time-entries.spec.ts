@@ -144,6 +144,23 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(runningNow).toBeNull();
   });
 
+  it('accepts and round-trips a title containing angle brackets (xssValidator disabled)', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const title = 'Fix List<string> serialization > 0';
+
+    const res = await startEntry(jar, token, { title });
+    expect(res.status).toBe(200);
+    const created = await res.json();
+    expect(created.taskName).toBe(title);
+
+    const runningRes = await getRunning(jar);
+    expect(runningRes.status).toBe(200);
+    const running = await runningRes.json();
+    expect(running.taskName).toBe(title);
+
+    await patchEntry(jar, token, created.id, { stoppedAt: new Date().toISOString() });
+  });
+
   it('4.6f foreign/unknown id → 404', async () => {
     const alice = await seedAndLogin(dbUrl);
     const bob = await seedAndLogin(dbUrl);

@@ -1,4 +1,5 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
+import { consola } from 'consola';
 import {
   importRemoteLogsSchema,
   type ImportRemoteLogDto,
@@ -22,11 +23,20 @@ import { isUniqueViolation } from '../../../utils/is-unique-violation';
 import { readZodBody } from '../../../utils/zod-input';
 import type { ApiMessage } from '../../../types/api-message';
 
+const log = consola.withTag('import');
+
 function reject(statusCode: number, messageKey: string): never {
   throw createError({
     statusCode,
     data: { messageKey } satisfies ApiMessage,
   });
+}
+
+/** Logs the outcome of an import request (server-logging REQ-357): counts only, never a title or comment. */
+function logImportSummary(result: ImportRemoteLogsResultDto): void {
+  log.info(
+    `dryRun=${result.dryRun} projects=${result.projects.length} imported=${result.totalImported} wouldImport=${result.totalWouldImport} skippedExisting=${result.totalSkippedExisting}`,
+  );
 }
 
 interface PendingLog extends PlaceableLog {
@@ -100,13 +110,15 @@ export default defineEventHandler(async (event): Promise<ImportRemoteLogsResultD
 
   if (parsed.dryRun) {
     const projectsResult = [...projectResults.values()];
-    return {
+    const result: ImportRemoteLogsResultDto = {
       dryRun: true,
       projects: projectsResult,
       totalImported: 0,
       totalWouldImport: projectsResult.reduce((sum, p) => sum + p.wouldImport, 0),
       totalSkippedExisting: projectsResult.reduce((sum, p) => sum + p.skippedExisting, 0),
     };
+    logImportSummary(result);
+    return result;
   }
 
   const [userRow] = await db
@@ -216,11 +228,13 @@ export default defineEventHandler(async (event): Promise<ImportRemoteLogsResultD
     ...p,
     wouldImport: p.imported,
   }));
-  return {
+  const result: ImportRemoteLogsResultDto = {
     dryRun: false,
     projects: projectsResult,
     totalImported: projectsResult.reduce((sum, p) => sum + p.imported, 0),
     totalWouldImport: projectsResult.reduce((sum, p) => sum + p.wouldImport, 0),
     totalSkippedExisting: projectsResult.reduce((sum, p) => sum + p.skippedExisting, 0),
   };
+  logImportSummary(result);
+  return result;
 });

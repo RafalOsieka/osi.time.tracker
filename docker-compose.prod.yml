@@ -61,6 +61,9 @@ services:
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-osi_time_tracker}
       NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:?NUXT_SESSION_PASSWORD is required}
+      # Optional; raises server log verbosity for troubleshooting (server-logging REQ-357).
+      # 0 fatal, 1 error, 2 warn, 3 info (default), 4 debug, 5 trace.
+      CONSOLA_LEVEL: ${CONSOLA_LEVEL:-3}
     depends_on:
       migrate:
         condition: service_completed_successfully

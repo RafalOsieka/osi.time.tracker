@@ -83,6 +83,14 @@ export default defineNuxtConfig({
     },
   },
   security: {
+    // Disabled: every API body is JSON, stored verbatim, and rendered through
+    // Vue template interpolation (escaped) under the CSP below (authentication
+    // REQ-011) -- not through v-html. The xss-package heuristic this validator
+    // uses rewrites any '<'/'>' in a JSON body, which false-positives on
+    // ordinary free text ("List<T>", imported comments like "a > b") and
+    // rejects it with a bare, undocumented HTTP 400 (see api-endpoint-conventions
+    // REQ-353). It adds no protection here, so it stays off entirely.
+    xssValidator: false,
     // Disable the global rate limiter in development and E2E tests to prevent
     // ordinary application requests from exhausting the shared test bucket.
     // The login route keeps its dedicated limiter below for auth-specific tests.

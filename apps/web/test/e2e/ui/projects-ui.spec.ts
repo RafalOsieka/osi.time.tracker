@@ -126,6 +126,40 @@ describeProjectsUI('projects UI flow', async () => {
     );
   });
 
+  it('a project name with markup-like text is rendered as literal text, not executed (xssValidator disabled)', async () => {
+    const page = await loginAs('projectsui@example.com');
+    let dialogFired = false;
+    page.on('dialog', (dialog) => {
+      dialogFired = true;
+      void dialog.dismiss();
+    });
+
+    await page.click('[data-testid="app-sidebar"] a[href="/projects"]');
+    await page.waitForSelector('[data-testid="projects-page"]');
+
+    const name = `<script>alert(1)</script> ${Date.now()}`;
+    await page.click('[data-testid="new-project-button"]');
+    await page.waitForSelector('[data-testid="project-dialog"]');
+    await page
+      .locator('[data-testid="project-name-input"] input, [data-testid="project-name-input"]')
+      .first()
+      .fill(name);
+    await page.click('[data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="project-dialog"]', { state: 'hidden' });
+    await page.waitForFunction(
+      (text) => document.body.textContent?.includes(text),
+      name.slice(0, 20),
+    );
+
+    const row = page.locator('tr', { hasText: name });
+    expect(await row.count()).toBe(1);
+    expect(await row.innerText()).toContain(name);
+    // The tag was never parsed as an element: no <script> node exists in the row,
+    // and no alert() dialog fired.
+    expect(await row.locator('script').count()).toBe(0);
+    expect(dialogFired).toBe(false);
+  });
+
   it('hard navigation shows project list or empty state without tracker filter', async () => {
     const page = await loginAs('projectsui@example.com');
     // Hard navigation (full document load) of the projects page
