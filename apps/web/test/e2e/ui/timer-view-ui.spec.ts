@@ -213,7 +213,16 @@ describeTimerViewUI('timer view UI flow', async () => {
       .first()
       .fill('09:30');
 
+    // DIAGNOSTIC: capture the exact wire payload sent to the API — the DOM
+    // value of the title field was confirmed correct at every checkpoint in
+    // an earlier run, so this settles whether the client ever sends the
+    // title at all, or whether the loss happens after the request.
+    const createRequest = page.waitForRequest(
+      (req) => req.url().includes('/api/time-entries') && req.method() === 'POST',
+    );
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
+    const request = await createRequest;
+    console.log('[diag] POST /api/time-entries body:', request.postData());
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
     await page.waitForFunction(pageIncludesText, title);
