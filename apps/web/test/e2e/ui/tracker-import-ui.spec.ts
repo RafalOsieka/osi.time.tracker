@@ -9,6 +9,7 @@ import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import { createProject, createTracker } from '../helpers/http';
+import { typeDateField } from '../helpers/date-field';
 import { pageIncludesTextScript } from '../helpers/dom';
 import type { JsonObject } from '@osi/remote-trackers/contracts';
 
@@ -133,8 +134,28 @@ async function openImportDialog(page: Page, trackerId: string): Promise<void> {
 }
 
 async function fillRangeAndScan(page: Page, from: string, to: string): Promise<void> {
-  await page.fill('[data-testid="tracker-import-from-input"]', from);
-  await page.fill('[data-testid="tracker-import-to-input"]', to);
+  await typeDateField(page, 'tracker-import-range-input', from, 0);
+  await typeDateField(page, 'tracker-import-range-input', to, 1);
+  await page.click('[data-testid="tracker-import-scan"]');
+}
+
+/**
+ * Picks a same-month range from the field's calendar popover instead of
+ * typing it. Typing the start first shifts the field's bound range (and the
+ * calendar's synced placeholder) to that month before the popover opens, so
+ * both day cells are on-screen without month navigation. The calendar's
+ * two-click range gesture then applies: the first click (re)starts the
+ * range at `from`, the second completes it at `to`.
+ */
+async function pickRangeFromCalendarAndScan(page: Page, from: string, to: string): Promise<void> {
+  await typeDateField(page, 'tracker-import-range-input', from, 0);
+  await page.click('[data-testid="tracker-import-range-calendar-button"]');
+  await page.waitForSelector('[data-testid="tracker-import-range-calendar"]');
+  await page.click(`[data-testid="tracker-import-range-calendar"] [data-value="${from}"]`);
+  await page.click(`[data-testid="tracker-import-range-calendar"] [data-value="${to}"]`);
+  await page.waitForSelector('[data-testid="tracker-import-range-calendar"]', {
+    state: 'detached',
+  });
   await page.click('[data-testid="tracker-import-scan"]');
 }
 
@@ -395,7 +416,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await fillLogin(page, user.email, user.password, { height: 900 });
 
     await openImportDialog(page, tracker.id);
-    await fillRangeAndScan(page, '2026-08-01', '2026-08-31');
+    await pickRangeFromCalendarAndScan(page, '2026-08-01', '2026-08-31');
     await page.waitForSelector('[data-testid="tracker-import-mapping"]');
 
     // Sales has no scoped Project, so its row starts unassigned; override it

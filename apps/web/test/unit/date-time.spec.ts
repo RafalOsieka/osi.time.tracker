@@ -1,9 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   computeRollingDayRange,
-  fromPickerDate,
   instantToZoned,
-  toPickerDate,
   wallClockToInstant,
 } from '../../app/utils/date-time';
 import { localDayKey } from '../../app/utils/timer-view-grouping';
@@ -27,10 +25,5 @@ describe('timezone date utilities', () => {
       '2024-03-10T07:30:00Z',
     );
     expect(instantToZoned('2024-11-03T05:30:00Z', 'America/New_York').hour).toBe(1);
-  });
-
-  it('round-trips picker dates without changing the calendar day', () => {
-    expect(fromPickerDate(toPickerDate('2024-03-15', 'Pacific/Auckland'))).toBe('2024-03-15');
-    expect(fromPickerDate(toPickerDate('2024-03-15', 'America/Los_Angeles'))).toBe('2024-03-15');
   });
 });

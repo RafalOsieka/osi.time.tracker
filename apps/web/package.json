@@ -22,6 +22,7 @@
     "db:migrate": "tsx server/db/migrate.ts"
   },
   "dependencies": {
+    "@internationalized/date": "^3.12.4",
     "@nuxt/ui": "^4.11.1",
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",

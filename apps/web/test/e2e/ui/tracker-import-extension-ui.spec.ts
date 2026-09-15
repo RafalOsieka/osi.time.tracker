@@ -9,6 +9,7 @@ import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import { createProject, createTracker } from '../helpers/http';
+import { typeDateField } from '../helpers/date-field';
 import { pageIncludesTextScript } from '../helpers/dom';
 import { installExtension } from '../helpers/fake-extension';
 
@@ -95,8 +96,8 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
     await page.waitForSelector('[data-testid="trackers-page"]');
     await page.click(`[data-testid="import-tracker-${tracker.id}"]`);
     await page.waitForSelector('[data-testid="tracker-import-dialog"]');
-    await page.fill('[data-testid="tracker-import-from-input"]', '2026-08-01');
-    await page.fill('[data-testid="tracker-import-to-input"]', '2026-08-31');
+    await typeDateField(page, 'tracker-import-range-input', '2026-08-01', 0);
+    await typeDateField(page, 'tracker-import-range-input', '2026-08-31', 1);
     await page.click('[data-testid="tracker-import-scan"]');
 
     await page.waitForSelector('[data-testid="tracker-import-mapping"]');

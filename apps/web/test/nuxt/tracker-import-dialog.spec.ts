@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { ref, computed } from 'vue';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { parseDate } from '@internationalized/date';
 import TrackerImportDialog from '../../app/components/TrackerImportDialog.vue';
 import type { TrackerDto } from '../../shared/types/tracker';
 import type { ProjectDto } from '../../shared/types/project';
@@ -109,6 +110,16 @@ function project(overrides: Partial<ProjectDto> = {}): ProjectDto {
   };
 }
 
+// Stands in for Nuxt UI's segmented `UInputDate`: tests drive it directly via
+// `vm.$emit('update:modelValue', ...)` rather than simulating segment
+// keystrokes (jsdom/happy-dom cannot run reka's segment key handling).
+const InputDateStub = {
+  inheritAttrs: false,
+  props: ['modelValue', 'range'],
+  emits: ['update:modelValue'],
+  template: '<div v-bind="$attrs" class="input-date-stub"><slot name="trailing" /></div>',
+};
+
 const stubs = {
   UModal: {
     props: { open: { type: Boolean, default: true }, title: { type: String, default: '' } },
@@ -128,6 +139,7 @@ const stubs = {
     template:
       '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   },
+  UInputDate: InputDateStub,
   USelect: {
     props: ['modelValue', 'items', 'valueKey', 'labelKey'],
     emits: ['update:modelValue'],
@@ -143,11 +155,6 @@ const stubs = {
   UProgress: { props: ['modelValue', 'max'], template: '<div role="progressbar" />' },
   UIcon: { props: ['name'], template: '<i />' },
 };
-
-function inputValue(wrapper: { find: (selector: string) => { element: Element } }, testid: string) {
-  // SAFETY: the UInput stub above always renders a plain `<input>` for this testid.
-  return (wrapper.find(`[data-testid="${testid}"]`).element as HTMLInputElement).value;
-}
 
 function selectValue(
   wrapper: { find: (selector: string) => { element: Element } },
@@ -199,10 +206,15 @@ describe('TrackerImportDialog', () => {
     });
     await flushPromises();
 
-    const fromValue = inputValue(wrapper, 'tracker-import-from-input');
-    const toValue = inputValue(wrapper, 'tracker-import-to-input');
-    expect(fromValue).toBeTruthy();
-    expect(toValue).toBeTruthy();
+    // SAFETY: the InputDateStub above always receives the range's `{ start, end }` shape.
+    const range = wrapper.findComponent(InputDateStub).props('modelValue') as {
+      start?: { toString(): string };
+      end?: { toString(): string };
+    } | null;
+    expect(range?.start).toBeTruthy();
+    expect(range?.end).toBeTruthy();
+    const fromValue = range!.start!.toString();
+    const toValue = range!.end!.toString();
     expect(fromValue < toValue).toBe(true);
     expect(new Date(toValue).getFullYear() - new Date(fromValue).getFullYear()).toBe(5);
   });
@@ -222,13 +234,44 @@ describe('TrackerImportDialog', () => {
 
   it('rejects an inverted range inline without starting a scan', async () => {
     const wrapper = await mount();
-    await wrapper.find('[data-testid="tracker-import-from-input"]').setValue('2026-05-01');
-    await wrapper.find('[data-testid="tracker-import-to-input"]').setValue('2026-04-01');
+    await wrapper.findComponent(InputDateStub).vm.$emit('update:modelValue', {
+      start: parseDate('2026-05-01'),
+      end: parseDate('2026-04-01'),
+    });
 
     await wrapper.find('[data-testid="tracker-import-scan"]').trigger('click');
 
-    expect(wrapper.find('[data-testid="tracker-import-range-error"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="tracker-import-range-error"]').text()).toBe(
+      'trackerImport.rangeInverted',
+    );
     expect(startScanMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects an incomplete range inline without starting a scan', async () => {
+    const wrapper = await mount();
+    await wrapper.findComponent(InputDateStub).vm.$emit('update:modelValue', {
+      start: parseDate('2026-05-01'),
+      end: undefined,
+    });
+
+    await wrapper.find('[data-testid="tracker-import-scan"]').trigger('click');
+
+    expect(wrapper.find('[data-testid="tracker-import-range-error"]').text()).toBe(
+      'trackerImport.rangeRequired',
+    );
+    expect(startScanMock).not.toHaveBeenCalled();
+  });
+
+  it('starts a scan with the explicitly picked range converted to ISO strings', async () => {
+    const wrapper = await mount();
+    await wrapper.findComponent(InputDateStub).vm.$emit('update:modelValue', {
+      start: parseDate('2020-01-01'),
+      end: parseDate('2020-06-30'),
+    });
+
+    await wrapper.find('[data-testid="tracker-import-scan"]').trigger('click');
+
+    expect(startScanMock).toHaveBeenCalledWith({ from: '2020-01-01', to: '2020-06-30' });
   });
 
   it('shows scanning progress and offers cancel only while scanning', async () => {

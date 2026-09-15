@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Temporal } from 'temporal-polyfill';
+import { CalendarDate, parseDate } from '@internationalized/date';
 
 const { date, dateLabel, exportLabel, exportDisabled } = defineProps<{
   date: string;
@@ -15,25 +16,19 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const calendarOpen = ref(false);
-const dateInput = ref(date);
-
-watch(
-  () => date,
-  (value) => {
-    dateInput.value = value;
-  },
-);
+const calendarValue = computed(() => parseDate(date));
 
 function shift(days: number) {
   const next = Temporal.PlainDate.from(date).add({ days }).toString();
   emit('navigate', next);
 }
 
-function onDateInputChange() {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateInput.value)) return;
-  if (Number.isNaN(new Date(`${dateInput.value}T00:00:00Z`).getTime())) return;
+function onCalendarSelect(value: CalendarDate | null) {
   calendarOpen.value = false;
-  emit('navigate', dateInput.value);
+  if (!value) return;
+  const iso = value.toString();
+  if (iso === date) return;
+  emit('navigate', iso);
 }
 </script>
 
@@ -65,17 +60,14 @@ function onDateInputChange() {
           {{ dateLabel }}
         </UButton>
         <template #content>
-          <div class="grid gap-2 p-3" data-testid="remote-sync-calendar">
-            <label for="remote-sync-calendar-input" class="text-sm text-muted">
-              {{ t('remoteSync.calendarLabel') }}
-            </label>
-            <UInput
-              id="remote-sync-calendar-input"
-              v-model="dateInput"
-              type="date"
-              data-testid="remote-sync-calendar-input"
-              @change="onDateInputChange"
-              @keydown.enter.prevent="onDateInputChange"
+          <div data-testid="remote-sync-calendar">
+            <UCalendar
+              class="p-2"
+              :model-value="calendarValue"
+              :aria-label="t('remoteSync.calendarLabel')"
+              @update:model-value="
+                (value) => onCalendarSelect(value instanceof CalendarDate ? value : null)
+              "
             />
           </div>
         </template>

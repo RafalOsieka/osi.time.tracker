@@ -3,7 +3,9 @@ import { locks } from 'node:worker_threads';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
+import { CalendarDate } from '@internationalized/date';
 import RemoteSyncPage from '../../app/pages/sync/[date].vue';
+import SyncDayHeader from '../../app/components/sync/SyncDayHeader.vue';
 import type {
   RemoteSyncDayDto,
   RemoteSyncDayEntryDto,
@@ -158,6 +160,15 @@ const IconStub = {
   template: '<span v-bind="$attrs" />',
   props: ['name'],
 };
+// Stands in for Nuxt UI's `UCalendar`: tests drive it directly via
+// `vm.$emit('update:modelValue', ...)` rather than clicking calendar cells
+// (that grid interaction is covered by the Playwright journey instead).
+const CalendarStub = {
+  name: 'UCalendar',
+  props: ['modelValue', 'ariaLabel'],
+  emits: ['update:modelValue'],
+  template: '<div data-testid="remote-sync-calendar-grid-stub" />',
+};
 const ModalStub = {
   template:
     '<div v-if="open" v-bind="$attrs"><slot /><slot name="body" /><slot name="footer" /></div>',
@@ -179,6 +190,7 @@ const stubs = {
   UBadge: BadgeStub,
   UTooltip: TooltipStub,
   UPopover: PopoverStub,
+  UCalendar: CalendarStub,
   UIcon: IconStub,
   UModal: ModalStub,
   UAlert: AlertStub,
@@ -359,6 +371,10 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-exclude-all"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-export-button"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-calendar"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="remote-sync-calendar"] input[type="date"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.findComponent(CalendarStub).exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-table"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-include-task-1"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
@@ -1381,5 +1397,46 @@ describe('RemoteSync page', () => {
     expect(
       wrapper.find('[data-testid="remote-sync-remote-log-comment-log-empty-comment"]').text(),
     ).toBe('remoteSync.remoteLogNoComment');
+  });
+});
+
+describe('SyncDayHeader', () => {
+  function mountHeader() {
+    return mountSuspended(SyncDayHeader, {
+      props: {
+        date: '2026-03-15',
+        dateLabel: 'March 15, 2026',
+        exportLabel: 'Export',
+        exportDisabled: false,
+      },
+      global: {
+        stubs: {
+          UPopover: PopoverStub,
+          UButton: ButtonStub,
+          UTooltip: TooltipStub,
+          UCalendar: CalendarStub,
+        },
+      },
+    });
+  }
+
+  it('renders a calendar grid rather than a native date input', async () => {
+    const wrapper = await mountHeader();
+
+    expect(wrapper.find('[data-testid="remote-sync-calendar"] input[type="date"]').exists()).toBe(
+      false,
+    );
+    expect(wrapper.findComponent(CalendarStub).exists()).toBe(true);
+  });
+
+  it('emits navigate for a different picked day and closes without emitting for the same day', async () => {
+    const wrapper = await mountHeader();
+    const calendar = wrapper.findComponent(CalendarStub);
+
+    await calendar.vm.$emit('update:modelValue', new CalendarDate(2026, 3, 15));
+    expect(wrapper.emitted('navigate')).toBeUndefined();
+
+    await calendar.vm.$emit('update:modelValue', new CalendarDate(2026, 3, 20));
+    expect(wrapper.emitted('navigate')).toEqual([['2026-03-20']]);
   });
 });

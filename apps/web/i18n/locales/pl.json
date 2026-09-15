@@ -1,4 +1,7 @@
 ﻿{
+  "common": {
+    "openCalendar": "Otwórz kalendarz"
+  },
   "auth": {
     "emailLabel": "E-mail",
     "passwordLabel": "Hasło",
@@ -141,8 +144,7 @@
     "stepMappingTitle": "Przypisanie",
     "stepPreviewTitle": "Podgląd",
     "stepDoneTitle": "Gotowe",
-    "fromLabel": "Od",
-    "toLabel": "Do",
+    "rangeLabel": "Zakres dat",
     "rangeRequired": "Podaj datę początkową i końcową.",
     "rangeInverted": "Data początkowa musi być wcześniejsza niż data końcowa.",
     "scopedProjectsHeading": "Projekty w tym trackerze",
