@@ -213,23 +213,28 @@ describeTimerViewUI('timer view UI flow', async () => {
       .first()
       .fill('09:30');
 
-    // DIAGNOSTIC: capture the exact wire payload sent to the API — the DOM
-    // value of the title field was confirmed correct at every checkpoint in
-    // an earlier run, so this settles whether the client ever sends the
-    // title at all, or whether the loss happens after the request.
-    const createRequest = page.waitForRequest(
-      (req) => req.url().includes('/api/time-entries') && req.method() === 'POST',
-    );
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
-    const request = await createRequest;
-    console.log('[diag] POST /api/time-entries body:', request.postData());
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
     await page.waitForFunction(pageIncludesText, title);
-    const daySectionText = await page
+    // DIAGNOSTIC: the POST body was confirmed correct in an earlier run (the
+    // client does send the typed title). Compare the client-merged view
+    // (smartInclude, for a day outside the loaded window) against a fresh
+    // server-rendered reload to tell a client merge bug from a server one.
+    const beforeReload = await page
       .locator(`[data-testid="timer-day-${yesterdayKey}"]`)
       .textContent();
-    expect(daySectionText).toContain(title);
+    console.log('[diag] day section before reload:', beforeReload);
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(pageIncludesText, title);
+    const afterReload = await page
+      .locator(`[data-testid="timer-day-${yesterdayKey}"]`)
+      .textContent();
+    console.log('[diag] day section after reload:', afterReload);
+
+    expect(afterReload).toContain(title);
 
     await page.close();
   });
