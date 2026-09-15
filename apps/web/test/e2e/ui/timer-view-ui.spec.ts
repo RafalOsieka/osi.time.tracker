@@ -167,6 +167,49 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
       .first()
       .fill('Manual Add Entry Task');
+    // Use a range that is always in the past on the current local day, including
+    // when the suite runs shortly after midnight (08:00–09:00 would be "future").
+    await page
+      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
+      .first()
+      .fill('00:00');
+    await page
+      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
+      .first()
+      .fill('00:01');
+    await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
+
+    await page.waitForFunction(pageIncludesText, 'Manual Add Entry Task');
+
+    await page.close();
+  });
+
+  it('adds a manual entry on a picked date and sees it grouped under that day', async () => {
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    await page.click('[data-testid="timer-view-add-entry"]');
+    await page.waitForSelector('[data-testid="add-entry-dialog"]');
+
+    // Pick yesterday so the date field is exercised and the entry lands under
+    // a distinct, verifiable day section rather than "today"'s default.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const title = 'Picked Date Entry ' + Date.now();
+    const titleInput = page
+      .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
+      .first();
+
+    await titleInput.fill(title);
+    // DIAGNOSTIC: pin down whether the date-field interaction below wipes the
+    // title's committed DOM value, its Vue model, or neither (a submit-time
+    // race) — remove once the root cause is confirmed and fixed.
+    console.log('[diag] title after fill:', await titleInput.evaluate((el: HTMLInputElement) => el.value));
+
+    await typeDateField(page, 'add-entry-date-input', yesterdayKey);
+    console.log('[diag] title after date field:', await titleInput.evaluate((el: HTMLInputElement) => el.value));
+
     await page
       .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
       .first()
@@ -175,21 +218,16 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
       .first()
       .fill('09:30');
-
-    // Pick yesterday so the date field is exercised and the entry lands under
-    // a distinct, verifiable day section rather than "today"'s default.
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-    await typeDateField(page, 'add-entry-date-input', yesterdayKey);
+    console.log('[diag] title before save:', await titleInput.evaluate((el: HTMLInputElement) => el.value));
 
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
-    await page.waitForFunction(pageIncludesText, 'Manual Add Entry Task');
+    await page.waitForFunction(pageIncludesText, title);
     const daySectionText = await page
       .locator(`[data-testid="timer-day-${yesterdayKey}"]`)
       .textContent();
-    expect(daySectionText).toContain('Manual Add Entry Task');
+    expect(daySectionText).toContain(title);
 
     await page.close();
   });
