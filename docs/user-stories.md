@@ -202,9 +202,10 @@ Conventions that apply to every story:
 **Acceptance criteria**
 
 - From the Trackers page I can open an import dialog for a Tracker whose API key is stored in this browser; without a key the action is disabled with a hint to enter it first.
-- I choose a date range; the app scans it month by month, fetching my own remote logs and routing each to a Project by that Project's remote-project scope (the nearest scoped ancestor wins over a broader ancestor scope).
-- Before anything is written I see a preview: for each remote project, the routed local Project (or a "no scoped project" state) plus counts of new vs. already-linked logs, and any unmatched remote projects with their counts.
+- I choose a date range; the app scans it month by month, fetching my own remote logs and, for each remote project encountered, computing a default target Project from that Project's remote-project scope (the nearest scoped ancestor wins over a broader ancestor scope).
+- Before anything is written I get a mapping step: one row per remote project, pre-selected with its scope-based default (or left unassigned when nothing matches), and I can freely change any of them — assign a Project to one that had no match, redirect one that did, or even send two different remote projects to the same Project.
+- Once I confirm the mapping, I see a preview: for each Project I assigned, the count of new vs. already-linked logs, plus a reminder of how many logs I left unassigned and will be skipped.
 - Confirming imports month by month. Each imported log becomes a Task named after the log's comment (`empty` when the comment is blank), a stopped time entry on the log's day, and export provenance — so it shows as Linked/Sent in Remote Sync and as App hours in the monthly report, exactly like an entry I exported from the app myself.
 - Re-running the same import, or retrying after a failed month, never duplicates anything: logs already imported or already exported from the app are skipped, and only genuinely new logs are added.
-- A remote project with no scoped Project never receives logs; I scope a Project to it and re-run to pick those up.
+- A remote project I leave unassigned in the mapping step never receives logs; I can scope a Project to it so it's pre-selected next time, or just assign it directly in the mapping step and re-run to pick those up.
 - Import never writes to the Tracker itself — only reads.

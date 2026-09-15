@@ -99,6 +99,8 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
     await page.fill('[data-testid="tracker-import-to-input"]', '2026-08-31');
     await page.click('[data-testid="tracker-import-scan"]');
 
+    await page.waitForSelector('[data-testid="tracker-import-mapping"]');
+    await page.click('[data-testid="tracker-import-mapping-continue"]');
     await page.waitForSelector('[data-testid="tracker-import-preview"]');
     const previewText = await page.textContent('[data-testid="tracker-import-preview"]');
     expect(previewText).toContain(project.name);
