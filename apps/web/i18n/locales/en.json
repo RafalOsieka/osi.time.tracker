@@ -137,6 +137,10 @@
   "trackerImport": {
     "dialogTitle": "Import history from {name}",
     "description": "Logs are routed to projects by their remote project scope. Already linked logs are skipped.",
+    "stepRangeTitle": "Range",
+    "stepMappingTitle": "Mapping",
+    "stepPreviewTitle": "Preview",
+    "stepDoneTitle": "Done",
     "fromLabel": "From",
     "toLabel": "To",
     "rangeRequired": "Enter a start and end date.",

@@ -137,6 +137,10 @@
   "trackerImport": {
     "dialogTitle": "Import historii z {name}",
     "description": "Wpisy są przypisywane do projektów według ich zakresu zdalnego projektu. Wpisy już powiązane są pomijane.",
+    "stepRangeTitle": "Zakres",
+    "stepMappingTitle": "Przypisanie",
+    "stepPreviewTitle": "Podgląd",
+    "stepDoneTitle": "Gotowe",
     "fromLabel": "Od",
     "toLabel": "Do",
     "rangeRequired": "Podaj datę początkową i końcową.",
