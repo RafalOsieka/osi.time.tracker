@@ -119,6 +119,37 @@ describe('TimerAddEntryDialog', () => {
     expect(wrapper.emitted('update:visible')).toEqual([[false]]);
   });
 
+  it('falls back to the typed search term when no suggestion is selected', async () => {
+    // Real UInputMenu (autocomplete) commits typed text to `searchTerm`
+    // continuously but only commits `modelValue` (state.title) when the user
+    // selects a suggestion; typing a brand-new title and saving without
+    // picking one must still submit it rather than dropping it as untitled.
+    const created = { id: 'entry-2' };
+    csrfFetchMock.mockResolvedValue(created);
+    const wrapper = await mount();
+    await wrapper
+      .findComponent(InputDateStub)
+      .vm.$emit('update:modelValue', new CalendarDate(2024, 3, 15));
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Freeform Title');
+    const start = wrapper.find('[data-testid="add-entry-start-input"]');
+    const end = wrapper.find('[data-testid="add-entry-end-input"]');
+    await start.setValue('900');
+    await start.trigger('blur');
+    await end.setValue('1030');
+    await end.trigger('blur');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries', {
+      method: 'POST',
+      body: {
+        title: 'Freeform Title',
+        startedAt: wallClockToInstant('2024-03-15', '09:00', 'UTC'),
+        stoppedAt: wallClockToInstant('2024-03-15', '10:30', 'UTC'),
+      },
+    });
+  });
+
   it('blocks an end time before the start with an inline error', async () => {
     const wrapper = await mount();
     const start = wrapper.find('[data-testid="add-entry-start-input"]');

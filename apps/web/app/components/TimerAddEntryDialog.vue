@@ -112,6 +112,17 @@ function onError(event: FormErrorEvent) {
 async function onSave() {
   rangeError.value = '';
 
+  // UInputMenu (autocomplete) keeps freeform typed text in `searchTerm` until
+  // the user picks a suggestion; fall back to it so a typed title that
+  // matches no existing task still submits instead of being silently
+  // dropped as untitled (mirrors AppTimer's onToggle behavior).
+  if (!state.title.trim()) {
+    const typed = (searchTerm.value ?? '').trim();
+    if (typed) {
+      state.title = typed;
+    }
+  }
+
   const startedAt = wallClockToInstant(state.date, state.startTime, timeZone);
   const stoppedAt = wallClockToInstant(state.date, state.endTime, timeZone);
 
