@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CalendarDate, parseDate } from '@internationalized/date';
 import type { TaskDto } from '../../shared/types/task';
 
 const { t } = useI18n();
@@ -16,8 +17,8 @@ const stopping = ref(false);
 const overlayOpen = ref(false);
 
 const startEditorOpen = ref(false);
-const startDate = ref<Date | null>(null);
-const startDateText = ref('');
+const startCalendarOpen = ref(false);
+const startDate = shallowRef<CalendarDate | null>(null);
 const startTime = ref<string | null>(null);
 const startEditorError = ref('');
 const savingStartedAt = ref(false);
@@ -178,36 +179,22 @@ async function onEnter() {
 function openStartEditor() {
   if (!running.value) return;
   const current = instantToZoned(running.value.startedAt, effective.value.timeZone);
-  startDateText.value = current.toPlainDate().toString();
-  startDate.value = toPickerDate(startDateText.value, effective.value.timeZone);
+  startDate.value = parseDate(current.toPlainDate().toString());
   startTime.value = `${String(current.hour).padStart(2, '0')}:${String(current.minute).padStart(2, '0')}`;
   startEditorError.value = '';
   startEditorOpen.value = true;
 }
 
-function commitStartDateText() {
-  const match = startDateText.value.trim().match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
-  if (!match) {
-    if (startDate.value) {
-      startDateText.value = `${startDate.value.getFullYear()}-${String(startDate.value.getMonth() + 1).padStart(2, '0')}-${String(startDate.value.getDate()).padStart(2, '0')}`;
-    }
-    return;
-  }
-  startDateText.value = `${match[1]}-${String(Number(match[2])).padStart(2, '0')}-${String(Number(match[3])).padStart(2, '0')}`;
-  try {
-    startDate.value = toPickerDate(startDateText.value, effective.value.timeZone);
-  } catch {
-    startDateText.value = '';
+function onSelectStartDate(value: CalendarDate | null) {
+  startCalendarOpen.value = false;
+  if (value) {
+    startDate.value = value;
   }
 }
 
 function combineStartedAt(): string | null {
   if (!startDate.value || !startTime.value) return null;
-  return wallClockToInstant(
-    fromPickerDate(startDate.value),
-    startTime.value,
-    effective.value.timeZone,
-  );
+  return wallClockToInstant(startDate.value.toString(), startTime.value, effective.value.timeZone);
 }
 
 async function onSaveStartedAt() {
@@ -270,25 +257,38 @@ async function onSaveStartedAt() {
         <div class="grid min-w-64 gap-3 p-3" data-testid="timer-start-editor-popover">
           <div class="grid gap-1">
             <label for="timer-start-editor-date">{{ t('timer.startEditor.dateLabel') }}</label>
-            <UInput
+            <UInputDate
               id="timer-start-editor-date"
-              v-model="startDateText"
-              type="date"
+              v-model="startDate"
+              :aria-label="t('timer.startEditor.dateLabel')"
               data-testid="timer-start-editor-date-input"
-              @blur="commitStartDateText"
-              @keydown.enter.prevent="commitStartDateText"
-              @change="
-                () => {
-                  if (startDateText) {
-                    try {
-                      startDate = toPickerDate(startDateText, effective.timeZone);
-                    } catch {
-                      /* ignore invalid */
-                    }
-                  }
-                }
-              "
-            />
+            >
+              <template #trailing>
+                <UPopover v-model:open="startCalendarOpen">
+                  <UButton
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    icon="i-lucide-calendar"
+                    class="px-0"
+                    :aria-label="t('common.openCalendar')"
+                    data-testid="timer-start-editor-calendar-button"
+                  />
+                  <template #content>
+                    <div data-testid="timer-start-editor-calendar">
+                      <UCalendar
+                        class="p-2"
+                        :model-value="startDate"
+                        :aria-label="t('timer.startEditor.dateLabel')"
+                        @update:model-value="
+                          (value) => onSelectStartDate(value instanceof CalendarDate ? value : null)
+                        "
+                      />
+                    </div>
+                  </template>
+                </UPopover>
+              </template>
+            </UInputDate>
           </div>
           <div class="grid gap-1">
             <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
@@ -319,6 +319,7 @@ async function onSaveStartedAt() {
             <UButton
               :label="t('timer.startEditor.saveButton')"
               :loading="savingStartedAt"
+              :disabled="!startDate || !startTime"
               data-testid="timer-start-editor-save-button"
               @click="onSaveStartedAt"
             />

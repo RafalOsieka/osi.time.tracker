@@ -1,6 +1,12 @@
 <script setup lang="ts">
 import { Temporal } from 'temporal-polyfill';
+import { parseDate, type CalendarDate } from '@internationalized/date';
 import type { StepperItem } from '@nuxt/ui';
+
+interface DateRangeValue {
+  start: CalendarDate | undefined;
+  end: CalendarDate | undefined;
+}
 
 const { open, tracker } = defineProps<{
   open: boolean;
@@ -21,17 +27,24 @@ const dialogOpen = computed({
 
 const projects = ref<ProjectDto[]>([]);
 const projectsLoaded = ref(false);
-const fromDate = ref('');
-const toDate = ref('');
+const range = shallowRef<DateRangeValue | null>(null);
+const rangeCalendarOpen = ref(false);
 const rangeError = ref('');
 const advancingToPreview = ref(false);
 
 function defaultRange() {
   const today = localDayKeyFromInstant(new Date().toISOString(), effective.value.timeZone);
   const fiveYearsAgo = Temporal.PlainDate.from(today).subtract({ years: 5 }).toString();
-  fromDate.value = fiveYearsAgo;
-  toDate.value = today;
+  range.value = { start: parseDate(fiveYearsAgo), end: parseDate(today) };
 }
+
+// Close the range calendar once both ends are picked; a click on only one
+// end (start or end) keeps it open for the second pick.
+watch(range, (value) => {
+  if (value?.start && value?.end) {
+    rangeCalendarOpen.value = false;
+  }
+});
 
 async function importLogs(body: ImportRemoteLogsDto): Promise<ImportRemoteLogsResultDto> {
   return $csrfFetch<ImportRemoteLogsResultDto>(`/api/trackers/${tracker.id}/import`, {
@@ -158,15 +171,17 @@ watch(
 
 function submitRange() {
   rangeError.value = '';
-  if (!fromDate.value || !toDate.value) {
+  const start = range.value?.start;
+  const end = range.value?.end;
+  if (!start || !end) {
     rangeError.value = t('trackerImport.rangeRequired');
     return;
   }
-  if (Temporal.PlainDate.compare(fromDate.value, toDate.value) > 0) {
+  if (Temporal.PlainDate.compare(start.toString(), end.toString()) > 0) {
     rangeError.value = t('trackerImport.rangeInverted');
     return;
   }
-  void importState.startScan({ from: fromDate.value, to: toDate.value });
+  void importState.startScan({ from: start.toString(), to: end.toString() });
 }
 
 async function continueToPreview() {
@@ -231,25 +246,39 @@ function closeDialog() {
             <div v-if="phase === 'range'" class="grid gap-3" data-testid="tracker-import-range">
               <p class="text-sm text-muted">{{ t('trackerImport.description') }}</p>
 
-              <div class="grid grid-cols-2 gap-3">
-                <div class="grid gap-1">
-                  <label for="tracker-import-from">{{ t('trackerImport.fromLabel') }}</label>
-                  <UInput
-                    id="tracker-import-from"
-                    v-model="fromDate"
-                    type="date"
-                    data-testid="tracker-import-from-input"
-                  />
-                </div>
-                <div class="grid gap-1">
-                  <label for="tracker-import-to">{{ t('trackerImport.toLabel') }}</label>
-                  <UInput
-                    id="tracker-import-to"
-                    v-model="toDate"
-                    type="date"
-                    data-testid="tracker-import-to-input"
-                  />
-                </div>
+              <div class="grid gap-1">
+                <label for="tracker-import-range">{{ t('trackerImport.rangeLabel') }}</label>
+                <UInputDate
+                  id="tracker-import-range"
+                  v-model="range"
+                  range
+                  :aria-label="t('trackerImport.rangeLabel')"
+                  data-testid="tracker-import-range-input"
+                >
+                  <template #trailing>
+                    <UPopover v-model:open="rangeCalendarOpen">
+                      <UButton
+                        color="neutral"
+                        variant="link"
+                        size="sm"
+                        icon="i-lucide-calendar"
+                        class="px-0"
+                        :aria-label="t('common.openCalendar')"
+                        data-testid="tracker-import-range-calendar-button"
+                      />
+                      <template #content>
+                        <div data-testid="tracker-import-range-calendar">
+                          <UCalendar
+                            v-model="range"
+                            range
+                            class="p-2"
+                            :aria-label="t('trackerImport.rangeLabel')"
+                          />
+                        </div>
+                      </template>
+                    </UPopover>
+                  </template>
+                </UInputDate>
               </div>
 
               <p

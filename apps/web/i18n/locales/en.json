@@ -1,4 +1,7 @@
 {
+  "common": {
+    "openCalendar": "Open calendar"
+  },
   "auth": {
     "emailLabel": "Email",
     "passwordLabel": "Password",
@@ -141,8 +144,7 @@
     "stepMappingTitle": "Mapping",
     "stepPreviewTitle": "Preview",
     "stepDoneTitle": "Done",
-    "fromLabel": "From",
-    "toLabel": "To",
+    "rangeLabel": "Date range",
     "rangeRequired": "Enter a start and end date.",
     "rangeInverted": "The start date must be before the end date.",
     "scopedProjectsHeading": "Projects on this tracker",
