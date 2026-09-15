@@ -163,12 +163,6 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click('[data-testid="timer-view-add-entry"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
-    // Pick yesterday so the date field is exercised and the entry lands under
-    // a distinct, verifiable day section rather than "today"'s default.
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
-    await typeDateField(page, 'add-entry-date-input', yesterdayKey);
-
     await page
       .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
       .first()
@@ -181,6 +175,13 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
       .first()
       .fill('09:30');
+
+    // Pick yesterday so the date field is exercised and the entry lands under
+    // a distinct, verifiable day section rather than "today"'s default.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    await typeDateField(page, 'add-entry-date-input', yesterdayKey);
+
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
