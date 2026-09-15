@@ -138,6 +138,13 @@ async function fillRangeAndScan(page: Page, from: string, to: string): Promise<v
   await page.click('[data-testid="tracker-import-scan"]');
 }
 
+/** Leaves every remote project's mapping at its scope-based default and advances to preview (REQ-358). */
+async function advanceMappingToPreview(page: Page): Promise<void> {
+  await page.waitForSelector('[data-testid="tracker-import-mapping"]');
+  await page.click('[data-testid="tracker-import-mapping-continue"]');
+  await page.waitForSelector('[data-testid="tracker-import-preview"]');
+}
+
 describeTrackerImportUi('tracker remote-log import UI flow', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl, browser: true });
@@ -206,16 +213,22 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
 
     await openImportDialog(page, tracker.id);
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
+
+    // The Sales remote project has no scoped Project, so its mapping row is
+    // visible but starts unassigned (REQ-334/REQ-358) — left untouched here.
+    await page.waitForSelector('[data-testid="tracker-import-mapping"]');
+    const mappingText = await page.textContent('[data-testid="tracker-import-mapping"]');
+    expect(mappingText).toContain('Sales');
+    await page.click('[data-testid="tracker-import-mapping-continue"]');
     await page.waitForSelector('[data-testid="tracker-import-preview"]');
 
-    // Only the web + mobile logs are matched (2); the Sales log has no
-    // scoped Project and is reported separately as unmatched, never counted
-    // toward the importable total (REQ-334).
+    // Only the web + mobile logs are matched (2); the unassigned Sales log
+    // is excluded from the preview and its own total, never counted toward
+    // the importable total (REQ-334/REQ-358).
     const totalsText = await page.textContent('[data-testid="tracker-import-preview-totals"]');
     expect(totalsText).toContain('2');
     await page.waitForSelector('[data-testid="tracker-import-unmatched-hint"]');
     const previewText = await page.textContent('[data-testid="tracker-import-preview"]');
-    expect(previewText).toContain('Sales');
     expect(previewText).toContain(projectWeb.name);
     expect(previewText).toContain(projectMobile.name);
 
@@ -247,10 +260,14 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     // Re-running the same import over the same range skips every log (REQ-338).
     await openImportDialog(page, tracker.id);
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
-    await page.waitForSelector('[data-testid="tracker-import-preview"]');
+    await advanceMappingToPreview(page);
     const rerunTotals = await page.textContent('[data-testid="tracker-import-preview-totals"]');
     expect(rerunTotals).toContain('0');
+    // Preview's back returns to mapping (REQ-358), mapping's back returns to range.
     await page.click('[data-testid="tracker-import-back"]');
+    await page.waitForSelector('[data-testid="tracker-import-mapping"]');
+    await page.click('[data-testid="tracker-import-mapping-back"]');
+    await page.waitForSelector('[data-testid="tracker-import-range"]');
     await page.click('[data-testid="tracker-import-cancel"]');
 
     await page.close();
@@ -322,7 +339,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
 
     await openImportDialog(page, tracker.id);
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
-    await page.waitForSelector('[data-testid="tracker-import-preview"]');
+    await advanceMappingToPreview(page);
 
     await page.click('[data-testid="tracker-import-confirm"]');
     await page.waitForSelector('[data-testid="tracker-import-error"]');
@@ -335,6 +352,80 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     // committed on the first attempt and is skipped, not recreated.
     expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('1');
     expect(await page.textContent('[data-testid="tracker-import-done-linked"]')).toBe('1');
+
+    await page.close();
+  });
+
+  it('overrides an unmatched remote project to a chosen Project in the mapping phase (REQ-358)', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'importuimapping' });
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await setTimezone(jar, token);
+    const tracker = await createTracker(jar, token, 'Import Mapping Tracker ' + Date.now(), {
+      baseUrl: TRACKER_BASE_URL,
+      systemType: 'openproject',
+      directBrowserAccess: true,
+    });
+    const projectWeb = await createProject(
+      jar,
+      token,
+      'Import Mapping Web ' + Date.now(),
+      tracker.id,
+      { remoteProjectId: '12', remoteProjectTitle: 'CMPL Web' },
+    );
+
+    const page = await createPage('/');
+    await seedBrowserSecret(page, tracker.id);
+    await mockCatalog(page, TRACKER_BASE_URL, [
+      { id: '12', name: 'CMPL Web' },
+      { id: '99', name: 'Sales' },
+    ]);
+    const commentSales = 'Unrouted sales work ' + Date.now();
+    await mockRangeLogsByMonth(page, TRACKER_BASE_URL, {
+      '2026-08': [
+        {
+          id: 701,
+          spentOn: '2026-08-03',
+          hours: 'PT2H',
+          comment: commentSales,
+          issueId: '9001',
+          projectId: '99',
+        },
+      ],
+    });
+    await fillLogin(page, user.email, user.password, { height: 900 });
+
+    await openImportDialog(page, tracker.id);
+    await fillRangeAndScan(page, '2026-08-01', '2026-08-31');
+    await page.waitForSelector('[data-testid="tracker-import-mapping"]');
+
+    // Sales has no scoped Project, so its row starts unassigned; override it
+    // to the Web project instead of leaving it excluded from import.
+    await page.click('[data-testid="tracker-import-mapping-select-99"]');
+    await page.getByRole('option', { name: projectWeb.name }).click();
+    await page.click('[data-testid="tracker-import-mapping-continue"]');
+    await page.waitForSelector('[data-testid="tracker-import-preview"]');
+
+    const previewText = await page.textContent('[data-testid="tracker-import-preview"]');
+    expect(previewText).toContain('Sales');
+    expect(previewText).toContain(projectWeb.name);
+    expect(await page.textContent('[data-testid="tracker-import-preview-totals"]')).toContain('1');
+
+    await page.click('[data-testid="tracker-import-confirm"]');
+    await page.waitForSelector('[data-testid="tracker-import-done"]');
+    expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('1');
+    await page.click('[data-testid="tracker-import-close"]');
+
+    // The imported log's Task landed in the overridden Project, not left
+    // unassigned (REQ-358).
+    const tasksRes = await fetch(
+      url(`/api/tasks?projectId=${projectWeb.id}&search=${encodeURIComponent(commentSales)}`),
+      { headers: { cookie: jar.header() } },
+    );
+    // SAFETY: this route only ever returns this test's own `/api/tasks` response shape.
+    const taskRows = (await tasksRes.json()) as { name: string; projectId: string | null }[];
+    expect(taskRows).toHaveLength(1);
+    expect(taskRows[0]?.name).toBe(commentSales);
+    expect(taskRows[0]?.projectId).toBe(projectWeb.id);
 
     await page.close();
   });

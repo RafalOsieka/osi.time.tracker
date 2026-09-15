@@ -99,7 +99,7 @@ describe('useRemoteLogImport', () => {
     listProjects.mockResolvedValue([{ remoteProjectId: 'R1', title: 'Remote Project' }]);
   });
 
-  it('scans two months, previews, and imports end to end', async () => {
+  it('scans two months, lands on mapping with the scope default, and imports end to end after advancing', async () => {
     fetchTimeLogsInRange.mockImplementation(async ({ from }: { from: string }) => {
       if (from === '2026-04-15') return [log('a'), log('b')];
       return [log('c')];
@@ -109,12 +109,34 @@ describe('useRemoteLogImport', () => {
 
     await composable.startScan({ from: '2026-04-15', to: '2026-05-10' });
 
-    expect(composable.phase.value).toBe('preview');
+    expect(composable.phase.value).toBe('mapping');
     expect(composable.totalMonths.value).toBe(2);
     expect(composable.scannedMonths.value).toBe(2);
-    expect(composable.preview.value.matched).toEqual([
-      { projectId: 'proj-1', wouldImport: 3, skippedExisting: 0, remoteProjectTitles: ['R1'] },
+    expect(importLogs).not.toHaveBeenCalled();
+    expect(composable.mappingRows.value).toEqual([
+      {
+        remoteProjectId: 'R1',
+        remoteProjectTitle: 'Remote Project',
+        logCount: 3,
+        defaultProjectId: 'proj-1',
+      },
     ]);
+    expect(composable.getMapping('R1')).toBe('proj-1');
+
+    await composable.advanceToPreview();
+
+    expect(composable.phase.value).toBe('preview');
+    expect(composable.preview.value).toEqual({
+      matched: [
+        {
+          projectId: 'proj-1',
+          wouldImport: 3,
+          skippedExisting: 0,
+          remoteProjectTitles: ['Remote Project'],
+        },
+      ],
+      unassignedCount: 0,
+    });
     expect(composable.hasNothingToImport.value).toBe(false);
 
     await composable.startImport();
@@ -128,7 +150,7 @@ describe('useRemoteLogImport', () => {
     expect(composable.importedMonths.value).toBe(2);
   });
 
-  it('stops at a failing month and lets retry continue via the server-side skip', async () => {
+  it('stops at a failing month during scan and lets retry continue to mapping', async () => {
     fetchTimeLogsInRange
       .mockResolvedValueOnce([log('a')])
       .mockRejectedValueOnce(new Error('network down'))
@@ -146,24 +168,30 @@ describe('useRemoteLogImport', () => {
 
     await composable.retry();
 
-    expect(composable.phase.value).toBe('preview');
+    expect(composable.phase.value).toBe('mapping');
     expect(composable.scannedMonths.value).toBe(2);
   });
 
-  it('reports nothing to import when every log is already linked', async () => {
+  it('reports nothing to import once advanced to preview when every log is already linked', async () => {
     fetchTimeLogsInRange.mockResolvedValue([log('a'), log('b')]);
     const importLogs = makeImportLogs(new Set(['a', 'b']));
     const composable = useRemoteLogImport({ config, projects: [project], importLogs });
 
     await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    await composable.advanceToPreview();
 
     expect(composable.preview.value.matched).toEqual([
-      { projectId: 'proj-1', wouldImport: 0, skippedExisting: 2, remoteProjectTitles: ['R1'] },
+      {
+        projectId: 'proj-1',
+        wouldImport: 0,
+        skippedExisting: 2,
+        remoteProjectTitles: ['Remote Project'],
+      },
     ]);
     expect(composable.hasNothingToImport.value).toBe(true);
   });
 
-  it('flags logs with no remote project id', async () => {
+  it('flags logs with no remote project id and defaults their row to unassigned', async () => {
     fetchTimeLogsInRange.mockResolvedValue([log('a', { remoteProjectId: undefined })]);
     const importLogs = makeImportLogs();
     const composable = useRemoteLogImport({ config, projects: [project], importLogs });
@@ -171,31 +199,43 @@ describe('useRemoteLogImport', () => {
     await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
 
     expect(composable.missingProjectIdHint.value).toBe(true);
-    expect(composable.preview.value.unmatched).toEqual([
-      { remoteProjectId: null, remoteProjectTitle: null, count: 1 },
+    expect(composable.mappingRows.value).toEqual([
+      { remoteProjectId: null, remoteProjectTitle: null, logCount: 1, defaultProjectId: null },
     ]);
+    expect(composable.getMapping(null)).toBeNull();
+
+    await composable.advanceToPreview();
+    expect(composable.preview.value).toEqual({ matched: [], unassignedCount: 1 });
   });
 
-  it('picks up a previously unmatched log once its remote project is scoped (REQ-338)', async () => {
+  it('picks up a previously unmatched remote project once scoped, purely from the new default (REQ-338)', async () => {
     fetchTimeLogsInRange.mockResolvedValue([log('a')]);
     const importLogs = makeImportLogs();
 
-    // No Project is scoped to R1 yet, so the log is unmatched.
+    // No Project is scoped to R1 yet, so the row defaults to unassigned.
     const unscoped = useRemoteLogImport({ config, projects: [], importLogs });
     await unscoped.startScan({ from: '2026-04-01', to: '2026-04-30' });
-    expect(unscoped.preview.value.matched).toEqual([]);
-    expect(unscoped.preview.value.unmatched).toEqual([
-      { remoteProjectId: 'R1', remoteProjectTitle: 'Remote Project', count: 1 },
-    ]);
+    expect(unscoped.getMapping('R1')).toBeNull();
+    await unscoped.advanceToPreview();
+    expect(unscoped.preview.value).toEqual({ matched: [], unassignedCount: 1 });
 
-    // A Project is now scoped to R1; re-scanning the same range matches the
-    // same log without needing anything server-side to change.
+    // A Project is now scoped to R1; re-scanning the same range defaults the
+    // row to that Project without anything server-side changing.
     const scoped = useRemoteLogImport({ config, projects: [project], importLogs });
     await scoped.startScan({ from: '2026-04-01', to: '2026-04-30' });
-    expect(scoped.preview.value.matched).toEqual([
-      { projectId: 'proj-1', wouldImport: 1, skippedExisting: 0, remoteProjectTitles: ['R1'] },
-    ]);
-    expect(scoped.preview.value.unmatched).toEqual([]);
+    expect(scoped.getMapping('R1')).toBe('proj-1');
+    await scoped.advanceToPreview();
+    expect(scoped.preview.value).toEqual({
+      matched: [
+        {
+          projectId: 'proj-1',
+          wouldImport: 1,
+          skippedExisting: 0,
+          remoteProjectTitles: ['Remote Project'],
+        },
+      ],
+      unassignedCount: 0,
+    });
   });
 
   it('cancels a running scan and returns to the range phase', async () => {
@@ -209,5 +249,110 @@ describe('useRemoteLogImport', () => {
     await composable.startScan({ from: '2026-04-01', to: '2026-05-31' });
 
     expect(composable.phase.value).toBe('range');
+  });
+
+  it('setMapping only mutates selection, never calling the server', async () => {
+    fetchTimeLogsInRange.mockResolvedValue([log('a')]);
+    const importLogs = makeImportLogs();
+    const composable = useRemoteLogImport({ config, projects: [project], importLogs });
+
+    await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    composable.setMapping('R1', 'proj-other');
+
+    expect(composable.getMapping('R1')).toBe('proj-other');
+    expect(importLogs).not.toHaveBeenCalled();
+  });
+
+  it('merges two remote projects assigned to the same target into one preview row', async () => {
+    fetchTimeLogsInRange.mockResolvedValue([
+      log('a', { remoteProjectId: 'R1' }),
+      log('b', { remoteProjectId: 'R2', remoteProjectTitle: 'Two' }),
+    ]);
+    const importLogs = makeImportLogs();
+    const composable = useRemoteLogImport({ config, projects: [project], importLogs });
+
+    await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    composable.setMapping('R2', 'proj-1');
+    await composable.advanceToPreview();
+
+    expect(composable.preview.value.matched).toEqual([
+      {
+        projectId: 'proj-1',
+        wouldImport: 2,
+        skippedExisting: 0,
+        remoteProjectTitles: ['Remote Project', 'Two'],
+      },
+    ]);
+  });
+
+  it('excludes a row left unassigned from the preview and re-grouping reflects a later selection change', async () => {
+    fetchTimeLogsInRange.mockResolvedValue([
+      log('a', { remoteProjectId: 'R1' }),
+      log('b', { remoteProjectId: 'R2', remoteProjectTitle: 'Two' }),
+    ]);
+    const importLogs = makeImportLogs();
+    const composable = useRemoteLogImport({ config, projects: [project], importLogs });
+
+    await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    // R2 has no default target: left unassigned.
+    await composable.advanceToPreview();
+    expect(composable.preview.value).toEqual({
+      matched: [
+        {
+          projectId: 'proj-1',
+          wouldImport: 1,
+          skippedExisting: 0,
+          remoteProjectTitles: ['Remote Project'],
+        },
+      ],
+      unassignedCount: 1,
+    });
+
+    composable.backToMapping();
+    expect(composable.phase.value).toBe('mapping');
+    composable.setMapping('R2', 'proj-1');
+    await composable.advanceToPreview();
+
+    expect(composable.preview.value).toEqual({
+      matched: [
+        {
+          projectId: 'proj-1',
+          wouldImport: 2,
+          skippedExisting: 0,
+          remoteProjectTitles: ['Remote Project', 'Two'],
+        },
+      ],
+      unassignedCount: 0,
+    });
+  });
+
+  it('backToMapping then advanceToPreview re-dry-runs without re-fetching remote logs', async () => {
+    fetchTimeLogsInRange.mockResolvedValue([log('a')]);
+    const importLogs = makeImportLogs();
+    const composable = useRemoteLogImport({ config, projects: [project], importLogs });
+
+    await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    await composable.advanceToPreview();
+    const fetchCallsAfterFirstPreview = fetchTimeLogsInRange.mock.calls.length;
+
+    composable.backToMapping();
+    await composable.advanceToPreview();
+
+    expect(fetchTimeLogsInRange.mock.calls.length).toBe(fetchCallsAfterFirstPreview);
+  });
+
+  it('reset() after reaching mapping clears the selection and returns to range', async () => {
+    fetchTimeLogsInRange.mockResolvedValue([log('a')]);
+    const importLogs = makeImportLogs();
+    const composable = useRemoteLogImport({ config, projects: [project], importLogs });
+
+    await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    expect(composable.mappingRows.value.length).toBeGreaterThan(0);
+
+    composable.reset();
+
+    expect(composable.phase.value).toBe('range');
+    expect(composable.mappingRows.value).toEqual([]);
+    expect(composable.getMapping('R1')).toBeNull();
   });
 });

@@ -23,6 +23,7 @@ const projectsLoaded = ref(false);
 const fromDate = ref('');
 const toDate = ref('');
 const rangeError = ref('');
+const advancingToPreview = ref(false);
 
 function defaultRange() {
   const today = localDayKeyFromInstant(new Date().toISOString(), effective.value.timeZone);
@@ -45,8 +46,15 @@ const importState = useRemoteLogImport({
   },
   importLogs,
 });
-const { phase, scannedMonths, importedMonths, totalMonths, preview, missingProjectIdHint } =
-  importState;
+const {
+  phase,
+  scannedMonths,
+  importedMonths,
+  totalMonths,
+  mappingRows,
+  preview,
+  missingProjectIdHint,
+} = importState;
 const { hasNothingToImport, result, errorState } = importState;
 
 const scopedProjects = computed(() => projects.value.filter((p) => p.remoteProjectId));
@@ -56,32 +64,48 @@ function projectName(projectId: string): string {
   return projects.value.find((p) => p.id === projectId)?.name ?? projectId;
 }
 
+// Reka UI's underlying SelectItem forbids an empty-string value (reserved
+// internally to mean "cleared"), so the "leave this remote project
+// unassigned" choice needs a real, non-empty sentinel item instead (same
+// pattern as `WHOLE_TRACKER_VALUE` in ProjectFormDialog).
+const DO_NOT_IMPORT_VALUE = '__do-not-import__';
+
+interface MappingTargetItem {
+  value: string;
+  label: string;
+}
+
+const mappingTargetItems = computed<MappingTargetItem[]>(() => [
+  { value: DO_NOT_IMPORT_VALUE, label: t('trackerImport.doNotImportOption') },
+  ...projects.value.map((project) => ({ value: project.id, label: project.name })),
+]);
+
+function mappingSelection(remoteProjectId: string | null): string {
+  return importState.getMapping(remoteProjectId) ?? DO_NOT_IMPORT_VALUE;
+}
+
+function setMappingSelection(remoteProjectId: string | null, value: string): void {
+  importState.setMapping(remoteProjectId, value === DO_NOT_IMPORT_VALUE ? null : value);
+}
+
 interface PreviewRow {
   key: string;
   remoteProjectTitle: string | null;
-  localProjectName: string | null;
+  localProjectName: string;
   wouldImport: number;
-  skippedExisting: number | null;
+  skippedExisting: number;
 }
 
-const previewRows = computed<PreviewRow[]>(() => [
-  ...preview.value.matched.map((row): PreviewRow => ({
-    key: `matched-${row.projectId}`,
+const previewRows = computed<PreviewRow[]>(() =>
+  preview.value.matched.map((row): PreviewRow => ({
+    key: row.projectId,
     remoteProjectTitle:
       row.remoteProjectTitles.length > 0 ? row.remoteProjectTitles.join(', ') : null,
     localProjectName: projectName(row.projectId),
     wouldImport: row.wouldImport,
     skippedExisting: row.skippedExisting,
   })),
-  ...preview.value.unmatched.map((row): PreviewRow => ({
-    key: `unmatched-${row.remoteProjectId ?? 'none'}`,
-    remoteProjectTitle:
-      row.remoteProjectTitle ?? row.remoteProjectId ?? t('trackerImport.unknownRemoteProject'),
-    localProjectName: null,
-    wouldImport: row.count,
-    skippedExisting: null,
-  })),
-]);
+);
 
 const totalWouldImport = computed(() =>
   preview.value.matched.reduce((sum, row) => sum + row.wouldImport, 0),
@@ -89,9 +113,7 @@ const totalWouldImport = computed(() =>
 const totalSkippedExisting = computed(() =>
   preview.value.matched.reduce((sum, row) => sum + row.skippedExisting, 0),
 );
-const totalUnmatched = computed(() =>
-  preview.value.unmatched.reduce((sum, row) => sum + row.count, 0),
-);
+const totalUnassigned = computed(() => preview.value.unassignedCount);
 
 async function loadProjects() {
   projectsLoaded.value = false;
@@ -127,6 +149,15 @@ function submitRange() {
     return;
   }
   void importState.startScan({ from: fromDate.value, to: toDate.value });
+}
+
+async function continueToPreview() {
+  advancingToPreview.value = true;
+  try {
+    await importState.advanceToPreview();
+  } finally {
+    advancingToPreview.value = false;
+  }
 }
 
 function confirmImport() {
@@ -234,6 +265,74 @@ function closeDialog() {
           <UProgress :model-value="scannedMonths" :max="totalMonths || 1" />
         </div>
 
+        <!-- Mapping phase -->
+        <div
+          v-else-if="phase === 'mapping'"
+          class="grid gap-3"
+          data-testid="tracker-import-mapping"
+        >
+          <p class="text-sm text-muted">{{ t('trackerImport.mappingDescription') }}</p>
+
+          <p
+            v-if="missingProjectIdHint"
+            role="status"
+            class="m-0 text-sm text-warning"
+            data-testid="tracker-import-missing-project-id-hint"
+          >
+            {{ t('trackerImport.missingProjectIdHint') }}
+          </p>
+
+          <p
+            v-if="mappingRows.length === 0"
+            class="m-0 text-sm text-muted"
+            data-testid="tracker-import-mapping-empty"
+          >
+            {{ t('trackerImport.mappingEmptyState') }}
+          </p>
+
+          <table v-else class="w-full text-sm" data-testid="tracker-import-mapping-table">
+            <thead>
+              <tr class="text-left text-muted">
+                <th scope="col">{{ t('trackerImport.columnRemoteProject') }}</th>
+                <th scope="col" class="text-end">{{ t('trackerImport.columnLogCount') }}</th>
+                <th scope="col">{{ t('trackerImport.columnTarget') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="row in mappingRows"
+                :key="row.remoteProjectId ?? 'none'"
+                :data-testid="`tracker-import-mapping-row-${row.remoteProjectId ?? 'none'}`"
+              >
+                <td>
+                  {{
+                    row.remoteProjectId === null
+                      ? t('trackerImport.noRemoteProjectIdLabel')
+                      : (row.remoteProjectTitle ?? t('trackerImport.unknownRemoteProject'))
+                  }}
+                </td>
+                <td class="text-end tabular-nums">{{ row.logCount }}</td>
+                <td>
+                  <USelect
+                    :model-value="mappingSelection(row.remoteProjectId)"
+                    :items="mappingTargetItems"
+                    value-key="value"
+                    label-key="label"
+                    class="w-full"
+                    :aria-label="`${t('trackerImport.columnTarget')}: ${
+                      row.remoteProjectTitle ?? t('trackerImport.unknownRemoteProject')
+                    }`"
+                    :data-testid="`tracker-import-mapping-select-${row.remoteProjectId ?? 'none'}`"
+                    @update:model-value="
+                      (value) => setMappingSelection(row.remoteProjectId, value as string)
+                    "
+                  />
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
         <!-- Preview phase -->
         <div
           v-else-if="phase === 'preview'"
@@ -253,15 +352,12 @@ function closeDialog() {
               <tr
                 v-for="row in previewRows"
                 :key="row.key"
-                :data-testid="`tracker-import-row-${row.key}`"
+                :data-testid="`tracker-import-preview-row-${row.key}`"
               >
                 <td>{{ row.remoteProjectTitle ?? '—' }}</td>
-                <td>
-                  <span v-if="row.localProjectName">{{ row.localProjectName }}</span>
-                  <span v-else class="text-warning">{{ t('trackerImport.noScopedProject') }}</span>
-                </td>
+                <td>{{ row.localProjectName }}</td>
                 <td class="text-end tabular-nums">{{ row.wouldImport }}</td>
-                <td class="text-end tabular-nums">{{ row.skippedExisting ?? '—' }}</td>
+                <td class="text-end tabular-nums">{{ row.skippedExisting }}</td>
               </tr>
             </tbody>
           </table>
@@ -282,21 +378,12 @@ function closeDialog() {
           </div>
 
           <p
-            v-if="totalUnmatched > 0"
+            v-if="totalUnassigned > 0"
             role="status"
             class="m-0 text-sm text-warning"
             data-testid="tracker-import-unmatched-hint"
           >
-            {{ t('trackerImport.unmatchedHint', { count: totalUnmatched }) }}
-          </p>
-
-          <p
-            v-if="missingProjectIdHint"
-            role="status"
-            class="m-0 text-sm text-warning"
-            data-testid="tracker-import-missing-project-id-hint"
-          >
-            {{ t('trackerImport.missingProjectIdHint') }}
+            {{ t('trackerImport.unmatchedHint', { count: totalUnassigned }) }}
           </p>
 
           <p
@@ -411,13 +498,30 @@ function closeDialog() {
           />
         </template>
 
+        <template v-else-if="phase === 'mapping'">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            :label="t('trackerImport.backButton')"
+            data-testid="tracker-import-mapping-back"
+            @click="backToRange"
+          />
+          <UButton
+            color="primary"
+            :loading="advancingToPreview"
+            :label="t('trackerImport.continueButton')"
+            data-testid="tracker-import-mapping-continue"
+            @click="continueToPreview"
+          />
+        </template>
+
         <template v-else-if="phase === 'preview'">
           <UButton
             color="neutral"
             variant="ghost"
             :label="t('trackerImport.backButton')"
             data-testid="tracker-import-back"
-            @click="backToRange"
+            @click="importState.backToMapping()"
           />
           <UButton
             color="primary"

@@ -11,34 +11,41 @@ export interface RouteLogsByScopeGroup {
   logs: RemoteTimeLogDto[];
 }
 
-/** Logs that matched no scoped Project, bucketed by the remote project they belong to. */
-export interface UnmatchedRemoteProjectBucket {
+/**
+ * All of one remote project's logs from a scan, plus the scope-derived
+ * default target Project (REQ-334) — `null` when no scope covers it. This is
+ * only the mapping phase's starting suggestion (REQ-358): the final target is
+ * whatever the user selects, independent of `defaultProjectId`.
+ */
+export interface RemoteProjectBucket {
   /** `null` when the log carried no remote project id at all (REQ-334). */
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   logs: RemoteTimeLogDto[];
+  defaultProjectId: string | null;
 }
 
-export interface RouteLogsByScopeResult {
-  matched: RouteLogsByScopeGroup[];
-  unmatched: UnmatchedRemoteProjectBucket[];
+/** The map key a bucket or a mapping selection is keyed by: the remote project id, or `''` when it has none. */
+export function bucketKey(remoteProjectId: string | null): string {
+  return remoteProjectId ?? '';
 }
 
 /**
- * Routes fetched remote logs to local Projects by remote-project scope
- * (REQ-334): walks each log's remote project up through the catalog's parent
- * links until it finds a Project scoped to that id (the nearest scoped
- * ancestor wins, so a scope on a descendant takes precedence over one on its
- * ancestor). A log whose walk reaches the root without a match, whose remote
- * project id is absent from the catalog, or that carries no remote project id
- * at all is reported unmatched, grouped by its own remote project. Pure and
- * synchronous: no network calls.
+ * Buckets fetched remote logs by remote project (REQ-358): every remote
+ * project id encountered in `logs` gets exactly one bucket, including `null`
+ * for logs with no remote project id at all. Each bucket also carries a
+ * default target Project (REQ-334): the nearest scoped ancestor of the
+ * remote project, walking parent links from the log's project upward — the
+ * first match wins, so a scope on a descendant takes precedence over one on
+ * its ancestor. A bucket whose walk reaches the root without a match, or
+ * whose remote project id is absent from the catalog, gets `defaultProjectId:
+ * null`. Pure and synchronous: no network calls.
  */
 export function routeLogsByScope(
   logs: RemoteTimeLogDto[],
   catalog: RemoteProjectDto[],
   projects: ScopedProjectLike[],
-): RouteLogsByScopeResult {
+): RemoteProjectBucket[] {
   const parentById = new Map(catalog.map((entry) => [entry.remoteProjectId, entry.parentId]));
   const titleById = new Map(catalog.map((entry) => [entry.remoteProjectId, entry.title]));
   const scopedProjectByRemoteId = new Map(
@@ -49,62 +56,70 @@ export function routeLogsByScope(
       .map((project) => [project.remoteProjectId, project.id]),
   );
 
-  const matchedByProjectId = new Map<string, RemoteTimeLogDto[]>();
-  const unmatchedByKey = new Map<string, UnmatchedRemoteProjectBucket>();
+  function defaultProjectFor(remoteProjectId: string): string | null {
+    let current: string | undefined = remoteProjectId;
+    // Bound the walk by the catalog size so a malformed cyclic parent chain
+    // cannot loop forever.
+    for (let steps = 0; current != null && steps <= catalog.length; steps += 1) {
+      const owner = scopedProjectByRemoteId.get(current);
+      if (owner) return owner;
+      if (!parentById.has(current)) {
+        // The project itself is absent from the catalog (or we've walked off
+        // the top): nothing further to check.
+        return null;
+      }
+      current = parentById.get(current);
+    }
+    return null;
+  }
 
-  function addUnmatched(log: RemoteTimeLogDto, remoteProjectId: string | null): void {
-    const key = remoteProjectId ?? '';
-    const existing = unmatchedByKey.get(key);
+  const byKey = new Map<string, RemoteProjectBucket>();
+
+  for (const log of logs) {
+    const remoteProjectId = log.remoteProjectId ?? null;
+    const key = bucketKey(remoteProjectId);
+    const existing = byKey.get(key);
     if (existing) {
       existing.logs.push(log);
-      return;
+      continue;
     }
     const remoteProjectTitle =
       (remoteProjectId ? titleById.get(remoteProjectId) : undefined) ??
       log.remoteProjectTitle ??
       null;
-    unmatchedByKey.set(key, { remoteProjectId, remoteProjectTitle, logs: [log] });
+    byKey.set(key, {
+      remoteProjectId,
+      remoteProjectTitle,
+      logs: [log],
+      defaultProjectId: remoteProjectId ? defaultProjectFor(remoteProjectId) : null,
+    });
   }
 
-  for (const log of logs) {
-    const leafId = log.remoteProjectId ?? null;
-    if (!leafId) {
-      addUnmatched(log, null);
-      continue;
-    }
+  return [...byKey.values()];
+}
 
-    let current: string | undefined = leafId;
-    let matchedProjectId: string | undefined;
-    // Bound the walk by the catalog size so a malformed cyclic parent chain
-    // cannot loop forever.
-    for (let steps = 0; current != null && steps <= catalog.length; steps += 1) {
-      const owner = scopedProjectByRemoteId.get(current);
-      if (owner) {
-        matchedProjectId = owner;
-        break;
-      }
-      if (!parentById.has(current)) {
-        // The project itself is absent from the catalog (or we've walked off
-        // the top): nothing further to check.
-        break;
-      }
-      current = parentById.get(current);
-    }
-
-    if (matchedProjectId) {
-      const bucket = matchedByProjectId.get(matchedProjectId) ?? [];
-      bucket.push(log);
-      matchedByProjectId.set(matchedProjectId, bucket);
+/**
+ * Re-groups buckets by the caller's target selection (REQ-358), merging
+ * buckets assigned the same Project and dropping any bucket left unassigned
+ * (`selection` missing the key, or explicitly `null`). Pure and synchronous.
+ */
+export function groupLogsBySelection(
+  buckets: RemoteProjectBucket[],
+  selection: Map<string, string | null>,
+): RouteLogsByScopeGroup[] {
+  const logsByProjectId = new Map<string, RemoteTimeLogDto[]>();
+  for (const bucket of buckets) {
+    const target = selection.get(bucketKey(bucket.remoteProjectId)) ?? null;
+    if (!target) continue;
+    const existing = logsByProjectId.get(target);
+    if (existing) {
+      existing.push(...bucket.logs);
     } else {
-      addUnmatched(log, leafId);
+      logsByProjectId.set(target, [...bucket.logs]);
     }
   }
-
-  return {
-    matched: [...matchedByProjectId.entries()].map(([projectId, matchedLogs]) => ({
-      projectId,
-      logs: matchedLogs,
-    })),
-    unmatched: [...unmatchedByKey.values()],
-  };
+  return [...logsByProjectId.entries()].map(([projectId, groupLogs]) => ({
+    projectId,
+    logs: groupLogs,
+  }));
 }

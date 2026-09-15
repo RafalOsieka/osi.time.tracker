@@ -9,12 +9,16 @@ import type {
   ImportErrorState,
   ImportPhase,
   ImportPreview,
+  MappingRow,
   ImportRunResult,
 } from '../../app/composables/use-remote-log-import';
 
 const fetchMock = vi.hoisted(() => vi.fn());
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const startScanMock = vi.hoisted(() => vi.fn());
+const advanceToPreviewMock = vi.hoisted(() => vi.fn());
+const backToMappingMock = vi.hoisted(() => vi.fn());
+const setMappingMock = vi.hoisted(() => vi.fn());
 const startImportMock = vi.hoisted(() => vi.fn());
 const cancelScanMock = vi.hoisted(() => vi.fn());
 const retryMock = vi.hoisted(() => vi.fn());
@@ -29,11 +33,16 @@ const mockState = {
   scannedMonths: ref(0),
   importedMonths: ref(0),
   totalMonths: ref(0),
-  preview: ref<ImportPreview>({ matched: [], unmatched: [] }),
+  mappingRows: ref<MappingRow[]>([]),
+  preview: ref<ImportPreview>({ matched: [], unassignedCount: 0 }),
   missingProjectIdHint: ref(false),
   result: ref<ImportRunResult | null>(null),
   errorState: ref<ImportErrorState | null>(null),
 };
+// The mapping selection the mocked composable's `getMapping`/`setMapping`
+// read and write, kept separate from `mockState` since it is not a ref the
+// dialog watches directly — the dialog only ever calls the two functions.
+let mappingSelection = new Map<string, string | null>();
 
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
 
@@ -62,6 +71,14 @@ mockNuxtImport('useRemoteLogImport', () => () => ({
       mockState.preview.value.matched.every((row) => row.wouldImport === 0),
   ),
   startScan: startScanMock,
+  getMapping: (remoteProjectId: string | null) =>
+    mappingSelection.get(remoteProjectId ?? '') ?? null,
+  setMapping: (remoteProjectId: string | null, targetProjectId: string | null) => {
+    mappingSelection.set(remoteProjectId ?? '', targetProjectId);
+    setMappingMock(remoteProjectId, targetProjectId);
+  },
+  advanceToPreview: advanceToPreviewMock,
+  backToMapping: backToMappingMock,
   startImport: startImportMock,
   cancelScan: cancelScanMock,
   retry: retryMock,
@@ -111,6 +128,12 @@ const stubs = {
     template:
       '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   },
+  USelect: {
+    props: ['modelValue', 'items', 'valueKey', 'labelKey'],
+    emits: ['update:modelValue'],
+    template:
+      '<select v-bind="$attrs" :value="modelValue" @change="$emit(\'update:modelValue\', $event.target.value)"><option v-for="opt in items" :key="opt[valueKey]" :value="opt[valueKey]">{{ opt[labelKey] }}</option></select>',
+  },
   UButton: {
     props: ['label', 'disabled', 'loading'],
     emits: ['click'],
@@ -126,6 +149,14 @@ function inputValue(wrapper: { find: (selector: string) => { element: Element } 
   return (wrapper.find(`[data-testid="${testid}"]`).element as HTMLInputElement).value;
 }
 
+function selectValue(
+  wrapper: { find: (selector: string) => { element: Element } },
+  testid: string,
+) {
+  // SAFETY: the USelect stub above always renders a plain `<select>` for this testid.
+  return (wrapper.find(`[data-testid="${testid}"]`).element as HTMLSelectElement).value;
+}
+
 async function mount() {
   const wrapper = await mountSuspended(TrackerImportDialog, {
     props: { open: false, tracker },
@@ -139,11 +170,13 @@ async function mount() {
 describe('TrackerImportDialog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mappingSelection = new Map();
     mockState.phase.value = 'range';
     mockState.scannedMonths.value = 0;
     mockState.importedMonths.value = 0;
     mockState.totalMonths.value = 0;
-    mockState.preview.value = { matched: [], unmatched: [] };
+    mockState.mappingRows.value = [];
+    mockState.preview.value = { matched: [], unassignedCount: 0 };
     mockState.missingProjectIdHint.value = false;
     mockState.result.value = null;
     mockState.errorState.value = null;
@@ -211,27 +244,116 @@ describe('TrackerImportDialog', () => {
     expect(cancelScanMock).toHaveBeenCalledTimes(1);
   });
 
-  it('preview phase shows the "no scoped project" state and disables import when nothing is new', async () => {
+  it('mapping phase lists one row per remote project, pre-selected from the default target', async () => {
+    const wrapper = await mount();
+    mockState.phase.value = 'mapping';
+    mockState.mappingRows.value = [
+      {
+        remoteProjectId: 'R1',
+        remoteProjectTitle: 'Remote One',
+        logCount: 3,
+        defaultProjectId: 'proj-1',
+      },
+      { remoteProjectId: 'R9', remoteProjectTitle: 'Sales', logCount: 2, defaultProjectId: null },
+    ];
+    mappingSelection.set('R1', 'proj-1');
+    mappingSelection.set('R9', null);
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="tracker-import-mapping"]').exists()).toBe(true);
+    expect(selectValue(wrapper, 'tracker-import-mapping-select-R1')).toBe('proj-1');
+    expect(selectValue(wrapper, 'tracker-import-mapping-select-R9')).toBe('__do-not-import__');
+    expect(wrapper.find('[data-testid="tracker-import-confirm"]').exists()).toBe(false);
+  });
+
+  it('overriding a matched row calls setMapping with the newly chosen Project', async () => {
+    const wrapper = await mount();
+    mockState.phase.value = 'mapping';
+    mockState.mappingRows.value = [
+      {
+        remoteProjectId: 'R1',
+        remoteProjectTitle: 'Remote One',
+        logCount: 3,
+        defaultProjectId: 'proj-1',
+      },
+    ];
+    mappingSelection.set('R1', 'proj-1');
+    await flushPromises();
+
+    await wrapper.find('[data-testid="tracker-import-mapping-select-R1"]').setValue('proj-2');
+
+    expect(setMappingMock).toHaveBeenCalledWith('R1', 'proj-2');
+    expect(advanceToPreviewMock).not.toHaveBeenCalled();
+  });
+
+  it('assigning a previously unassigned row calls setMapping with the chosen Project', async () => {
+    const wrapper = await mount();
+    mockState.phase.value = 'mapping';
+    mockState.mappingRows.value = [
+      { remoteProjectId: 'R9', remoteProjectTitle: 'Sales', logCount: 2, defaultProjectId: null },
+    ];
+    await flushPromises();
+
+    await wrapper.find('[data-testid="tracker-import-mapping-select-R9"]').setValue('proj-2');
+
+    expect(setMappingMock).toHaveBeenCalledWith('R9', 'proj-2');
+  });
+
+  it('mapping phase back returns to range without advancing, continue advances to preview', async () => {
+    const wrapper = await mount();
+    mockState.phase.value = 'mapping';
+    mockState.mappingRows.value = [
+      {
+        remoteProjectId: 'R1',
+        remoteProjectTitle: 'Remote One',
+        logCount: 1,
+        defaultProjectId: 'proj-1',
+      },
+    ];
+    await flushPromises();
+    // `mount()` itself already triggered one `reset()` via the open watch.
+    const resetCallsBeforeBack = resetMock.mock.calls.length;
+
+    await wrapper.find('[data-testid="tracker-import-mapping-back"]').trigger('click');
+    expect(resetMock.mock.calls.length).toBe(resetCallsBeforeBack + 1);
+    expect(advanceToPreviewMock).not.toHaveBeenCalled();
+
+    await wrapper.find('[data-testid="tracker-import-mapping-continue"]').trigger('click');
+    expect(advanceToPreviewMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('mapping phase shows an empty state and the missing-project-id hint', async () => {
+    const wrapper = await mount();
+    mockState.phase.value = 'mapping';
+    mockState.mappingRows.value = [];
+    mockState.missingProjectIdHint.value = true;
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="tracker-import-mapping-empty"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="tracker-import-missing-project-id-hint"]').exists()).toBe(
+      true,
+    );
+  });
+
+  it('preview phase disables import when nothing is new and warns about unassigned logs', async () => {
     const wrapper = await mount();
     mockState.phase.value = 'preview';
     mockState.preview.value = {
       matched: [
         { projectId: 'proj-1', wouldImport: 0, skippedExisting: 5, remoteProjectTitles: ['R1'] },
       ],
-      unmatched: [{ remoteProjectId: 'R9', remoteProjectTitle: 'Sales', count: 2 }],
+      unassignedCount: 2,
     };
     await flushPromises();
 
-    expect(wrapper.find('[data-testid="tracker-import-row-unmatched-R9"]').text()).toContain(
-      'trackerImport.noScopedProject',
-    );
+    expect(wrapper.find('[data-testid="tracker-import-unmatched-hint"]').text()).toContain('2');
     const confirmButton = wrapper.find('[data-testid="tracker-import-confirm"]');
     expect(confirmButton.attributes('disabled')).toBeDefined();
     expect(wrapper.find('[data-testid="tracker-import-nothing-to-import"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="tracker-import-cancel-scan"]').exists()).toBe(false);
   });
 
-  it('preview phase shows the routed remote project title(s) on a matched row, not a dash', async () => {
+  it('preview phase shows the routed remote project title(s) on a row, not a dash', async () => {
     const wrapper = await mount();
     mockState.phase.value = 'preview';
     mockState.preview.value = {
@@ -243,14 +365,28 @@ describe('TrackerImportDialog', () => {
           remoteProjectTitles: ['CMPL API', 'CMPL Web'],
         },
       ],
-      unmatched: [],
+      unassignedCount: 0,
     };
     await flushPromises();
 
-    const row = wrapper.find('[data-testid="tracker-import-row-matched-proj-1"]');
+    const row = wrapper.find('[data-testid="tracker-import-preview-row-proj-1"]');
     expect(row.text()).toContain('CMPL API');
     expect(row.text()).toContain('CMPL Web');
     expect(row.text()).not.toContain('—');
+  });
+
+  it('preview back returns to mapping, not range', async () => {
+    const wrapper = await mount();
+    mockState.phase.value = 'preview';
+    mockState.preview.value = { matched: [], unassignedCount: 0 };
+    await flushPromises();
+    // `mount()` itself already triggered one `reset()` via the open watch.
+    const resetCallsBeforeBack = resetMock.mock.calls.length;
+
+    await wrapper.find('[data-testid="tracker-import-back"]').trigger('click');
+
+    expect(backToMappingMock).toHaveBeenCalledTimes(1);
+    expect(resetMock.mock.calls.length).toBe(resetCallsBeforeBack);
   });
 
   it('confirming the preview starts the import', async () => {
@@ -260,7 +396,7 @@ describe('TrackerImportDialog', () => {
       matched: [
         { projectId: 'proj-1', wouldImport: 3, skippedExisting: 0, remoteProjectTitles: ['R1'] },
       ],
-      unmatched: [],
+      unassignedCount: 0,
     };
     await flushPromises();
 
