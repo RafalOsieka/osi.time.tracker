@@ -14,6 +14,7 @@ import {
   pageIncludesTextScript,
 } from '../helpers/dom';
 import { createProject, createTracker } from '../helpers/http';
+import { typeDateField } from '../helpers/date-field';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
@@ -162,24 +163,32 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.click('[data-testid="timer-view-add-entry"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]');
 
+    // Pick yesterday so the date field is exercised and the entry lands under
+    // a distinct, verifiable day section rather than "today"'s default.
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const yesterdayKey = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    await typeDateField(page, 'add-entry-date-input', yesterdayKey);
+
     await page
       .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
       .first()
       .fill('Manual Add Entry Task');
-    // Use a range that is always in the past on the current local day, including
-    // when the suite runs shortly after midnight (08:00–09:00 would be "future").
     await page
       .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
       .first()
-      .fill('00:00');
+      .fill('09:00');
     await page
       .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
       .first()
-      .fill('00:01');
+      .fill('09:30');
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
     await page.waitForFunction(pageIncludesText, 'Manual Add Entry Task');
+    const daySectionText = await page
+      .locator(`[data-testid="timer-day-${yesterdayKey}"]`)
+      .textContent();
+    expect(daySectionText).toContain('Manual Add Entry Task');
 
     await page.close();
   });

@@ -190,7 +190,7 @@ The running title SHALL be editable in place: an edit SHALL be committed via `PA
 
 Pressing Enter in the title input SHALL start the timer when the suggestion overlay is closed; when the suggestion overlay is open, Enter SHALL retain the autocomplete's default select/close behavior and SHALL NOT start the timer.
 
-While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the user's effective timezone (REQ-165, user-settings). The time field SHALL be the shared smart time input (REQ-131, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field MAY offer a calendar picker, but a manually typed valid `yyyy-mm-dd` date (tolerating unpadded month/day, e.g. `2026-7-9`) SHALL be committed on blur or Enter rather than reverted; text that does not resolve to a valid date SHALL revert to the previous value. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-168) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-143); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
+While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the user's effective timezone (REQ-165, user-settings). The time field SHALL be the shared smart time input (REQ-131, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field SHALL be the shared segmented date field with its calendar affordance (REQ-359, shared-ui-components): digits typed into the day, month, and year segments SHALL fill the date without a separate commit step, the field SHALL never hold an invalid date, and a day chosen from the calendar popover SHALL fill the segments. While the date field is incomplete the save action SHALL be disabled and no request SHALL be sent. Opening the calendar popover from inside the start editor SHALL NOT dismiss the start editor, and choosing a day SHALL close only the calendar. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-168) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-143); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
 
 When a task edit affects the running entry (rename, project change, merge-on-collision, or bulk assignment binding the running entry to a task), the client SHALL re-fetch the running state (`GET /api/time-entries/running`) so the shell indicator reflects the updated title immediately.
 
@@ -238,19 +238,27 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 
 #### Scenario: Elapsed time opens the start edit popover
 - **WHEN** the user activates the elapsed-time control while a timer is running
-- **THEN** a popover SHALL open with a date field and a smart hours-and-minutes input seeded with the running entry's current start in the user's effective timezone
+- **THEN** a popover SHALL open with a segmented date field (with calendar affordance) and a smart hours-and-minutes input seeded with the running entry's current start in the user's effective timezone
 
 #### Scenario: Typed time is normalized in the popover
 - **WHEN** the user types a compact time such as `900` into the popover's time field and commits (blur or Enter)
 - **THEN** the field SHALL show the normalized `09:00` and the committed start SHALL use that time rather than reverting to the previous value
 
 #### Scenario: Typed date commits in the popover
-- **WHEN** the user types a valid date such as `2026-7-9` into the popover's date field and commits (blur or Enter)
-- **THEN** the field SHALL accept the date `2026-07-09` rather than reverting to the previous value
+- **WHEN** the user focuses the popover's date field and types the digits of `9 July 2026` in the active locale's segment order
+- **THEN** the field SHALL show `2026-07-09` in that locale's presentation and the save action SHALL use that date without a separate commit step
 
 #### Scenario: Invalid typed date reverts
-- **WHEN** the user types text that does not resolve to a valid date into the popover's date field and blurs it
-- **THEN** the field SHALL revert to the previous value and no request SHALL be sent
+- **WHEN** the user types digits that do not form a valid segment value (for example `3` `5` into the day segment, or `1` `3` into the month segment)
+- **THEN** the segment SHALL keep a valid value, the field SHALL never resolve to an invalid date, and no request SHALL be sent on that basis
+
+#### Scenario: Calendar pick stays inside the start editor
+- **WHEN** the user opens the date field's calendar from inside the start editor and chooses a day
+- **THEN** the calendar SHALL close, the start editor SHALL remain open with the chosen day in the date field, and no request SHALL be sent until the user saves
+
+#### Scenario: Incomplete date blocks saving
+- **WHEN** the user clears a segment of the popover's date field
+- **THEN** the save action SHALL be disabled and no request SHALL be sent until the date is complete again
 
 #### Scenario: Committing a new start rebases the ticker
 - **WHEN** the user commits a valid past start date/time in the popover
@@ -569,7 +577,7 @@ On success the page SHALL update the affected groups (including regrouping when 
 - **THEN** it SHALL NOT offer inline title, project or remote issue editing
 
 ### Requirement: REQ-154 Accessible, localized, tokenized timer view
-The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semantic headings/landmarks, expand/collapse controls SHALL be keyboard operable and expose their expanded state, action controls (continue, assign) SHALL be labelled, and the inline editors (group title, group project, entry fields, and the shared smart time inputs) SHALL be activatable buttons or labelled inputs with accessible names, keyboard operable including Escape to cancel, with the project select reachable and operable by keyboard. Interactive controls SHALL NOT be nested inside one another: a group header row that combines an expand/collapse action with inline edit triggers SHALL use a non-interactive layout container with the controls as siblings. The page SHALL prefer existing PrimeVue components — edit triggers and inline editors SHALL use PrimeVue `Button` and `InputText`/`Select` rather than native `<button>`/`<input>` elements — derive styling from theme tokens (no ad-hoc inline colors), format dates and durations via the active locale, and keep all user-facing strings (including the "(no project)" placeholder) in `en` and `pl` in parity. Server/network failures SHALL surface as a Toast translated from the `{ messageKey, params }` contract.
+The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semantic headings/landmarks, expand/collapse controls SHALL be keyboard operable and expose their expanded state, action controls (continue, assign) SHALL be labelled, and the inline editors (group title, group project, entry fields, and the shared smart time inputs) SHALL be activatable buttons or labelled inputs with accessible names, keyboard operable including Escape to cancel, with the project select reachable and operable by keyboard. Interactive controls SHALL NOT be nested inside one another: a group header row that combines an expand/collapse action with inline edit triggers SHALL use a non-interactive layout container with the controls as siblings. The page SHALL prefer existing Nuxt UI components — edit triggers and inline editors SHALL use Nuxt UI `UButton` and `UInput`/`USelect` rather than native `<button>`/`<input>`/`<select>` elements, and any date entry SHALL follow REQ-359 (shared-ui-components) — derive styling from Nuxt UI `--ui-*` theme tokens (no ad-hoc inline colors), format dates and durations via the active locale, and keep all user-facing strings (including the "(no project)" placeholder) in `en` and `pl` in parity. Server/network failures SHALL surface as a Toast translated from the `{ messageKey, params }` contract.
 
 #### Scenario: Group toggle is accessible
 - **WHEN** a task group's expand control is rendered
@@ -582,6 +590,10 @@ The timer view SHALL meet WCAG 2.1 AA: day and group structures SHALL use semant
 #### Scenario: Inline group editors are accessible
 - **WHEN** a task group's title and project context are rendered
 - **THEN** they SHALL be activatable buttons with accessible names, and the swapped-in input/select SHALL be labelled, keyboard operable, and cancellable with Escape
+
+#### Scenario: Native form elements are not used for editors
+- **WHEN** the timer view renders an edit trigger, an inline editor, or the manual add-entry dialog's fields
+- **THEN** they SHALL be Nuxt UI components (`UButton`, `UInput`, `USelect`, the shared time input, the shared date field) rather than native `<button>`, `<input>`, or `<select>` elements
 
 #### Scenario: Strings localized in parity
 - **WHEN** new user-facing timer-view strings are added

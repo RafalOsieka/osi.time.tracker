@@ -421,18 +421,26 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     await page.click('[data-testid="remote-sync-date-label"]');
     await page.waitForSelector('[data-testid="remote-sync-calendar"]');
-    // Drive the native date input directly so Nuxt UI's wrapper cannot swallow events.
-    await page
-      .locator('[data-testid="remote-sync-calendar"] input[type="date"]')
-      .evaluate((el: HTMLInputElement, value) => {
-        const proto = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
-        proto?.set?.call(el, value);
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-        el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-      }, next);
+    // Escape closes the calendar popover without navigating.
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('[data-testid="remote-sync-calendar"]', { state: 'detached' });
+    expect(page.url()).toContain(`/sync/${day}`);
+
+    // Pointer: click the target day's cell directly by its calendar value.
+    await page.click('[data-testid="remote-sync-date-label"]');
+    await page.waitForSelector('[data-testid="remote-sync-calendar"]');
+    await page.click(`[data-testid="remote-sync-calendar"] [data-value="${next}"]`);
     await page.waitForURL(`**/sync/${next}`);
     await page.waitForSelector('[data-testid="remote-sync-empty-state"]');
+
+    // Keyboard: focus the selected day's cell, arrow left to the previous day, Enter navigates.
+    await page.click('[data-testid="remote-sync-date-label"]');
+    await page.waitForSelector('[data-testid="remote-sync-calendar"]');
+    await page.locator(`[data-testid="remote-sync-calendar"] [data-value="${next}"]`).focus();
+    await page.keyboard.press('ArrowLeft');
+    await page.keyboard.press('Enter');
+    await page.waitForURL(`**/sync/${day}`);
+    await page.waitForSelector(`[data-testid="remote-sync-row-${entry.taskId}"]`);
 
     await page.close();
   });

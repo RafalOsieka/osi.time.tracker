@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { CalendarDate, parseDate } from '@internationalized/date';
 import type { FormErrorEvent } from '@nuxt/ui';
 import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
 
@@ -32,6 +33,23 @@ const suggestions = ref<TaskDto[]>([]);
 const searchTerm = ref('');
 const rangeError = ref('');
 const saving = ref(false);
+const calendarOpen = ref(false);
+
+// `state.date` stays the schema-validated `YYYY-MM-DD` string; the date field
+// works in `CalendarDate` and converts at this boundary.
+const dateValue = computed<CalendarDate | null>({
+  get: () => (state.date ? parseDate(state.date) : null),
+  set: (value) => {
+    state.date = value ? value.toString() : '';
+  },
+});
+
+function onSelectDate(value: CalendarDate | null) {
+  calendarOpen.value = false;
+  if (value) {
+    dateValue.value = value;
+  }
+}
 
 watch(
   () => visible,
@@ -145,12 +163,38 @@ async function onSave() {
 
         <div class="grid gap-1">
           <label for="add-entry-date">{{ t('timerView.addEntry.dateLabel') }}</label>
-          <UInput
+          <UInputDate
             id="add-entry-date"
-            v-model="state.date"
-            type="date"
+            v-model="dateValue"
+            :aria-label="t('timerView.addEntry.dateLabel')"
             data-testid="add-entry-date-input"
-          />
+          >
+            <template #trailing>
+              <UPopover v-model:open="calendarOpen">
+                <UButton
+                  color="neutral"
+                  variant="link"
+                  size="sm"
+                  icon="i-lucide-calendar"
+                  class="px-0"
+                  :aria-label="t('common.openCalendar')"
+                  data-testid="add-entry-calendar-button"
+                />
+                <template #content>
+                  <div data-testid="add-entry-calendar">
+                    <UCalendar
+                      class="p-2"
+                      :model-value="dateValue"
+                      :aria-label="t('timerView.addEntry.dateLabel')"
+                      @update:model-value="
+                        (value) => onSelectDate(value instanceof CalendarDate ? value : null)
+                      "
+                    />
+                  </div>
+                </template>
+              </UPopover>
+            </template>
+          </UInputDate>
         </div>
 
         <div class="grid gap-1">

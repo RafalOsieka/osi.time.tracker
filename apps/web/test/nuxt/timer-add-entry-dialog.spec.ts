@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
+import { CalendarDate } from '@internationalized/date';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
 import { wallClockToInstant } from '../../app/utils/date-time';
 
@@ -47,6 +48,16 @@ const InputStub = {
   props: ['modelValue', 'inputmode', 'type'],
   emits: ['update:modelValue', 'blur', 'keydown'],
 };
+// Stands in for Nuxt UI's segmented `UInputDate`: tests drive it directly via
+// `vm.$emit('update:modelValue', ...)` rather than simulating segment
+// keystrokes (jsdom/happy-dom cannot run reka's segment key handling).
+const InputDateStub = {
+  inheritAttrs: false,
+  template:
+    '<div v-bind="$attrs" class="input-date-stub" :data-model-value="modelValue ? modelValue.toString() : \'\'"><slot name="trailing" /></div>',
+  props: ['modelValue'],
+  emits: ['update:modelValue'],
+};
 
 function mount() {
   return mountSuspended(TimerAddEntryDialog, {
@@ -56,6 +67,7 @@ function mount() {
         UModal: ModalStub,
         UInputMenu: InputMenuStub,
         UInput: InputStub,
+        UInputDate: InputDateStub,
         UAlert: { template: '<div v-bind="$attrs"><slot /></div>' },
         FormDialogFooter: {
           template: '<div><button type="submit" data-testid="save-button">save</button></div>',
@@ -82,7 +94,9 @@ describe('TimerAddEntryDialog', () => {
     const created = { id: 'entry-1' };
     csrfFetchMock.mockResolvedValue(created);
     const wrapper = await mount();
-    await wrapper.find('[data-testid="add-entry-date-input"]').setValue('2024-03-15');
+    await wrapper
+      .findComponent(InputDateStub)
+      .vm.$emit('update:modelValue', new CalendarDate(2024, 3, 15));
     await wrapper.find('[data-testid="add-entry-title-input"]').setValue('  Manual task  ');
     const start = wrapper.find('[data-testid="add-entry-start-input"]');
     const end = wrapper.find('[data-testid="add-entry-end-input"]');
@@ -119,6 +133,18 @@ describe('TimerAddEntryDialog', () => {
     expect(csrfFetchMock).not.toHaveBeenCalled();
     expect(wrapper.find('[data-testid="add-entry-range-error"]').text()).toBe(
       'timerView.addEntry.rangeError',
+    );
+  });
+
+  it('blocks submit when the date is cleared to null', async () => {
+    const wrapper = await mount();
+    await wrapper.findComponent(InputDateStub).vm.$emit('update:modelValue', null);
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(csrfFetchMock).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="add-entry-range-error"]').text()).toBe(
+      'error.timeEntryStartedAtInvalid',
     );
   });
 });

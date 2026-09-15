@@ -8,6 +8,13 @@ import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
 import { startEntry } from '../helpers/http';
+import { typeDateField } from '../helpers/date-field';
+
+function isoDateFor(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+}
 
 const describeTopbarStartEdit = requireBrowser();
 
@@ -34,21 +41,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
 
     // Move the date to yesterday so any time of day is in the past.
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const yyyy = yesterday.getFullYear();
-    const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
-    const dd = String(yesterday.getDate()).padStart(2, '0');
-    await page.evaluate(
-      ({ dateValue }) => {
-        const input = document.querySelector<HTMLInputElement>(
-          '[data-testid="timer-start-editor-date-input"]',
-        );
-        if (!input) throw new Error('date input not found');
-        input.value = dateValue;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      },
-      { dateValue: `${yyyy}-${mm}-${dd}` },
-    );
+    await typeDateField(page, 'timer-start-editor-date-input', isoDateFor(yesterday));
 
     // Type a compact value: `830` must normalize to `08:30` on Enter.
     const timeInput = page.locator('[data-testid="timer-start-editor-time-input"]');
@@ -104,22 +97,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     await page.waitForSelector('[data-testid="timer-start-editor-popover"]');
 
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const yyyy = yesterday.getFullYear();
-    const mm = String(yesterday.getMonth() + 1).padStart(2, '0');
-    const dd = String(yesterday.getDate()).padStart(2, '0');
-
-    await page.evaluate(
-      ({ dateValue }) => {
-        const input = document.querySelector<HTMLInputElement>(
-          '[data-testid="timer-start-editor-date-input"]',
-        );
-        if (!input) throw new Error('date input not found');
-        input.value = dateValue;
-        input.dispatchEvent(new Event('input', { bubbles: true }));
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      },
-      { dateValue: `${yyyy}-${mm}-${dd}` },
-    );
+    await typeDateField(page, 'timer-start-editor-date-input', isoDateFor(yesterday));
 
     // The shared TimeInput commits on blur/Enter, so type and press Enter.
     const timeInput = page.locator('[data-testid="timer-start-editor-time-input"]');
@@ -137,6 +115,60 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
       const el = document.querySelector('[data-testid="timer-elapsed"]');
       return el?.textContent && !el.textContent.includes('00:00:0');
     });
+
+    const runningRes = await fetch(url('/api/time-entries/running'), {
+      headers: { cookie: jar.header() },
+    });
+    const updated = await runningRes.json();
+    expect(updated.id).toBe(running.id);
+    expect(updated.stoppedAt).toBeNull();
+    expect(new Date(updated.startedAt).getTime()).toBeLessThan(
+      new Date(running.startedAt).getTime(),
+    );
+
+    // Cleanup: stop the entry so it doesn't leak into other test files.
+    await fetch(url(`/api/time-entries/${updated.id}`), {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ stoppedAt: new Date().toISOString() }),
+    });
+
+    await page.close();
+  });
+
+  it('picks a date from the calendar without closing the start editor', async () => {
+    const { jar, token } = await apiLogin(user.email, user.password);
+    const running = await (await startEntry(jar, token, { title: 'Calendar Pick Edit' })).json();
+
+    const page = await openAuthed();
+    await page.waitForSelector('[data-testid="timer-elapsed"][aria-label="Edit start time"]');
+
+    await page.click('[data-testid="timer-elapsed"]');
+    await page.waitForSelector('[data-testid="timer-start-editor-popover"]');
+
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const iso = isoDateFor(yesterday);
+
+    await page.click('[data-testid="timer-start-editor-calendar-button"]');
+    await page.waitForSelector('[data-testid="timer-start-editor-calendar"]');
+    await page.click(`[data-testid="timer-start-editor-calendar"] [data-value="${iso}"]`);
+
+    // The calendar popover closes but the start editor stays open with the new date.
+    await page.waitForSelector('[data-testid="timer-start-editor-calendar"]', {
+      state: 'detached',
+    });
+    await page.waitForSelector('[data-testid="timer-start-editor-popover"]');
+
+    const timeInput = page.locator('[data-testid="timer-start-editor-time-input"]');
+    await timeInput.fill('08:00');
+    await timeInput.press('Enter');
+
+    await page.click('[data-testid="timer-start-editor-save-button"]');
+    const errorLocator = page.locator('[data-testid="timer-start-editor-error"]');
+    if (await errorLocator.count()) {
+      throw new Error(`start editor error: ${await errorLocator.textContent()}`);
+    }
+    await page.waitForSelector('[data-testid="timer-start-editor-popover"]', { state: 'hidden' });
 
     const runningRes = await fetch(url('/api/time-entries/running'), {
       headers: { cookie: jar.header() },
