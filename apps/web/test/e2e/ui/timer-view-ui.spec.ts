@@ -205,10 +205,16 @@ describeTimerViewUI('timer view UI flow', async () => {
     // DIAGNOSTIC: pin down whether the date-field interaction below wipes the
     // title's committed DOM value, its Vue model, or neither (a submit-time
     // race) — remove once the root cause is confirmed and fixed.
-    console.log('[diag] title after fill:', await titleInput.evaluate((el: HTMLInputElement) => el.value));
+    console.log(
+      '[diag] title after fill:',
+      await titleInput.evaluate((el: HTMLInputElement) => el.value),
+    );
 
     await typeDateField(page, 'add-entry-date-input', yesterdayKey);
-    console.log('[diag] title after date field:', await titleInput.evaluate((el: HTMLInputElement) => el.value));
+    console.log(
+      '[diag] title after date field:',
+      await titleInput.evaluate((el: HTMLInputElement) => el.value),
+    );
 
     await page
       .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
@@ -218,7 +224,10 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
       .first()
       .fill('09:30');
-    console.log('[diag] title before save:', await titleInput.evaluate((el: HTMLInputElement) => el.value));
+    console.log(
+      '[diag] title before save:',
+      await titleInput.evaluate((el: HTMLInputElement) => el.value),
+    );
 
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
