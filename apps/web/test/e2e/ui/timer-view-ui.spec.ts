@@ -18,6 +18,7 @@ import { typeDateField } from '../helpers/date-field';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
+import { tasks } from '../../../server/db/schema/tasks';
 import type { JsonObject } from '@osi/remote-trackers/contracts';
 
 const describeTimerViewUI = requireBrowser();
@@ -233,6 +234,22 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator(`[data-testid="timer-day-${yesterdayKey}"]`)
       .textContent();
     console.log('[diag] day section after reload:', afterReload);
+
+    // DIAGNOSTIC: the title is still missing after a fresh SSR reload, which
+    // rules out a client-side merge bug — read the persisted rows directly to
+    // see what the server actually stored for this task/entry.
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
+    try {
+      const taskRows = await db.select().from(tasks).where(eq(tasks.name, title));
+      console.log('[diag] tasks row for this title:', JSON.stringify(taskRows));
+      const entryRows = await db
+        .select()
+        .from(timeEntries)
+        .where(eq(timeEntries.taskId, taskRows[0]?.id ?? ''));
+      console.log('[diag] time_entries rows for that task:', JSON.stringify(entryRows));
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
 
     expect(afterReload).toContain(title);
 
