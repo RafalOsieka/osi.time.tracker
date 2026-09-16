@@ -259,8 +259,7 @@
       "titleLabel": "Tytuł",
       "titlePlaceholder": "Nazwa zadania (opcjonalnie)",
       "dateLabel": "Data",
-      "startLabel": "Czas rozpoczęcia",
-      "endLabel": "Czas zakończenia",
+      "timesLabel": "Czas rozpoczęcia i zakończenia",
       "rangeError": "Czas zakończenia nie może być wcześniejszy niż czas rozpoczęcia.",
       "saveButton": "Dodaj",
       "cancelButton": "Anuluj",
@@ -269,7 +268,7 @@
     "entryRow": {
       "titleLabel": "Tytuł",
       "startLabel": "Czas rozpoczęcia",
-      "stopLabel": "Czas zakończenia",
+      "timesLabel": "Czas rozpoczęcia i zakończenia",
       "separator": "–",
       "nowLabel": "teraz",
       "deleteLabel": "Usuń wpis",

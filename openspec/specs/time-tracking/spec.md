@@ -190,7 +190,7 @@ The running title SHALL be editable in place: an edit SHALL be committed via `PA
 
 Pressing Enter in the title input SHALL start the timer when the suggestion overlay is closed; when the suggestion overlay is open, Enter SHALL retain the autocomplete's default select/close behavior and SHALL NOT start the timer.
 
-While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hours-and-minutes time input, seeded with the entry's current start in the user's effective timezone (REQ-165, user-settings). The time field SHALL be the shared smart time input (REQ-131, shared-ui-components), so a time typed from the keyboard (including compact forms like `900`) SHALL be normalized and accepted rather than reverted. The date field SHALL be the shared segmented date field with its calendar affordance (REQ-359, shared-ui-components): digits typed into the day, month, and year segments SHALL fill the date without a separate commit step, the field SHALL never hold an invalid date, and a day chosen from the calendar popover SHALL fill the segments. While the date field is incomplete the save action SHALL be disabled and no request SHALL be sent. Opening the calendar popover from inside the start editor SHALL NOT dismiss the start editor, and choosing a day SHALL close only the calendar. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-168) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-143); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
+While a timer is running, the elapsed-time display SHALL be an activatable control: activating it SHALL open a popover for editing the running entry's start, containing a date field and a single hour-and-minute time field, seeded with the entry's current start in the user's effective timezone (REQ-165, user-settings). The time field SHALL be the shared segmented clock-time field (REQ-361, shared-ui-components): digits typed into the hour and minute segments SHALL fill the time without a separate commit step (`9` `0` `0` fills `09:00`), and the field SHALL never hold an invalid time. The date field SHALL be the shared segmented date field with its calendar affordance (REQ-359, shared-ui-components): digits typed into the day, month, and year segments SHALL fill the date without a separate commit step, the field SHALL never hold an invalid date, and a day chosen from the calendar popover SHALL fill the segments. While either the date field or the time field is incomplete the save action SHALL be disabled and no request SHALL be sent. Opening the calendar popover from inside the start editor SHALL NOT dismiss the start editor, and choosing a day SHALL close only the calendar. Committing SHALL convert the combined date and time from the effective timezone to a UTC instant (REQ-168) and send it as `startedAt` via `PATCH /api/time-entries/[id]` (REQ-143); a resulting instant in the future SHALL be blocked client-side with an inline error. Past dates SHALL be allowed, so the elapsed time MAY legitimately exceed 24 hours. On success the widget SHALL update the running entry from the response and the elapsed ticker SHALL rebase from the new start; dismissing the popover without committing SHALL change nothing.
 
 When a task edit affects the running entry (rename, project change, merge-on-collision, or bulk assignment binding the running entry to a task), the client SHALL re-fetch the running state (`GET /api/time-entries/running`) so the shell indicator reflects the updated title immediately.
 
@@ -238,11 +238,15 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 
 #### Scenario: Elapsed time opens the start edit popover
 - **WHEN** the user activates the elapsed-time control while a timer is running
-- **THEN** a popover SHALL open with a segmented date field (with calendar affordance) and a smart hours-and-minutes input seeded with the running entry's current start in the user's effective timezone
+- **THEN** a popover SHALL open with a segmented date field (with calendar affordance) and a segmented hour-and-minute time field seeded with the running entry's current start in the user's effective timezone
 
 #### Scenario: Typed time is normalized in the popover
-- **WHEN** the user types a compact time such as `900` into the popover's time field and commits (blur or Enter)
-- **THEN** the field SHALL show the normalized `09:00` and the committed start SHALL use that time rather than reverting to the previous value
+- **WHEN** the user focuses the popover's time field and types `9` `0` `0`
+- **THEN** the field SHALL show `09:00` without a separate commit step and the save action SHALL use that time
+
+#### Scenario: Incomplete time blocks saving
+- **WHEN** the user clears the minute segment of the popover's time field
+- **THEN** the save action SHALL be disabled and no request SHALL be sent until the time is complete again
 
 #### Scenario: Typed date commits in the popover
 - **WHEN** the user focuses the popover's date field and types the digits of `9 July 2026` in the active locale's segment order
@@ -375,9 +379,9 @@ The page SHALL load its list from the timer-view feed (REQ-264). The **initial f
 
 Each day section SHALL show a localized date heading, the day's total duration, and a **Remote Sync** navigation action for that day (`/sync/{dayKey}`). Day sections SHALL NOT host a per-day "add entry" control.
 
-**Page-level add entry:** the page header SHALL provide a primary create action (same pattern as Trackers' "Add tracker" / shared table header). It SHALL open the manual-entry dialog with an optional title (task autocomplete), a **date** field defaulting to **today** in the effective timezone, and start/end times via the shared smart time input (REQ-131). Wall-clock date+times SHALL convert to instants in the effective timezone (REQ-168) and submit via `POST /api/time-entries` (REQ-140 manual pair); end before start SHALL be blocked client-side with an inline error. On success the page SHALL **smart-include** the new entry: if its local day is not yet in the loaded set, that day SHALL be added to the visible list so the entry is shown without requiring load more; `hasMore` SHALL remain consistent with whether older unloaded activity days still exist.
+**Page-level add entry:** the page header SHALL provide a primary create action (same pattern as Trackers' "Add tracker" / shared table header). It SHALL open the manual-entry dialog with an optional title (task autocomplete), a **date** field defaulting to **today** in the effective timezone, and a start–end pair entered through one segmented time-range field (REQ-361) under a single label. Wall-clock date+times SHALL convert to instants in the effective timezone (REQ-168) and submit via `POST /api/time-entries` (REQ-140 manual pair); end before start SHALL be blocked client-side with an inline error, and an incomplete start or end SHALL block submission the same way. On success the page SHALL **smart-include** the new entry: if its local day is not yet in the loaded set, that day SHALL be added to the visible list so the entry is shown without requiring load more; `hasMore` SHALL remain consistent with whether older unloaded activity days still exist.
 
-Each listed entry SHALL remain inline-editable (start, stop, title) and deletable with confirmation as previously required (REQ-143, REQ-151). Retitling a single entry SHALL re-resolve only that entry's task. Cross-midnight start edits SHALL regroup under the new local day. The page SHALL observe the shell running-timer state and refresh/merge the list when the running entry stops or is replaced so finished work appears without a full navigation.
+Each listed entry SHALL remain inline-editable (start, stop, title) and deletable with confirmation as previously required (REQ-143, REQ-151). Start and stop are edited through the row's segmented time field (REQ-361, layout per REQ-265); an edit SHALL change only the hour and minute of the edited bound and SHALL preserve the entry's stored seconds and milliseconds, so the patched instant differs from the stored one only in the segments the user changed. Committing a time field whose value is unchanged SHALL send no request. Because seconds are invisible, the row SHALL enable the field's same-minute clamp: when an edit leaves both bounds in the same minute with the start's seconds after the stop's, the edited bound SHALL take the other bound's seconds so the patch is accepted as a zero-duration entry instead of surfacing a "stopped before started" error. Retitling a single entry SHALL re-resolve only that entry's task. Cross-midnight start edits SHALL regroup under the new local day. The page SHALL observe the shell running-timer state and refresh/merge the list when the running entry stops or is replaced so finished work appears without a full navigation.
 
 When the user's **timezone** setting changes, the page SHALL regroup already-loaded entries under the new day boundaries (pure re-render); a full feed refetch is NOT required for correctness of grouping of already-held entries.
 
@@ -436,20 +440,36 @@ Group continue, bulk-assign for "(no task)", mini task editor, and remote-issue 
 - **THEN** that day SHALL appear in the list with the new entry without requiring the user to press load more
 
 #### Scenario: Manual form accepts compact typed times
-- **WHEN** the user types `900` into the manual form's start-time field and commits
-- **THEN** the field SHALL normalize to `09:00` and the form SHALL submit that time
+- **WHEN** the user focuses the start group of the manual form's time-range field and types `9` `0` `0`
+- **THEN** the start SHALL show `09:00` without a separate commit step and the form SHALL submit that time
 
 #### Scenario: Manual form blocks inverted times
 - **WHEN** the user submits the manual-entry form with an end time earlier than the start time
 - **THEN** an inline error SHALL be shown and no request SHALL be sent
 
+#### Scenario: Manual form blocks an incomplete time
+- **WHEN** the user clears a segment of the start or end group and submits
+- **THEN** an inline error SHALL be shown and no request SHALL be sent
+
 #### Scenario: Inline edit of an entry's times
-- **WHEN** the user edits an entry's start or stop time inline (including a compact form like `93` normalized to `09:30`) and commits (blur or Enter)
+- **WHEN** the user changes a segment of an entry's start or stop in the row's time field and commits (focus leaving the field or Enter)
 - **THEN** the entry SHALL be patched and the row, group, and day totals SHALL update from the response
 
 #### Scenario: Invalid inline time reverts silently
-- **WHEN** the user types a value that cannot be normalized to a valid time (e.g. `59`) into an entry's inline time field and commits
-- **THEN** the field SHALL revert to the previous value and no request SHALL be sent
+- **WHEN** the user types digits that cannot form a valid segment value (e.g. `7` `5` into an entry's minute segment) or presses Escape while editing
+- **THEN** the field SHALL keep a valid value (Escape restores the committed one), no invalid time SHALL be committed, and no request SHALL be sent on that basis
+
+#### Scenario: Inline edit preserves stored seconds
+- **WHEN** an entry stopped at `10:42:31` and the user changes its stop minute segment to `45` and commits
+- **THEN** the patch SHALL set `stoppedAt` to `10:45:31` on the same day (seconds and milliseconds unchanged)
+
+#### Scenario: Unchanged inline time sends no request
+- **WHEN** an entry started at `10:42:17` and stopped at `10:42:31`, and the user focuses the stop minute segment, retypes `42`, and leaves the field
+- **THEN** no request SHALL be sent and no error toast SHALL appear
+
+#### Scenario: Same-minute inversion is clamped before patching
+- **WHEN** an entry started at `10:42:50` and stopped at `10:43:10`, and the user changes the start minute segment to `43` and commits
+- **THEN** the patch SHALL set `startedAt` to `10:43:10`, the server SHALL accept it, and the row SHALL show `10:43 – 10:43` with a zero duration
 
 #### Scenario: Inline retitle splits the entry off
 - **WHEN** the user retitles a single entry inside an expanded group
@@ -614,7 +634,7 @@ The group's entry count SHALL be shown as a compact numeric indicator immediatel
 
 Group and entry duration values SHALL use the same monospace, tabular-numeral presentation as the shell running-timer elapsed display. Those totals SHALL NOT be activating controls.
 
-Inline start and stop editors on an expanded entry SHALL display a complete `HH:mm` value without clipping. They SHALL continue to edit wall-clock time on the entry's existing local calendar day only; this requirement does not add a date control.
+An expanded entry's start and stop SHALL be one permanently rendered segmented time-range field (REQ-361) in a none-variant presentation, occupying a fixed-width slot derived from the field's segment widths; there SHALL be no separate read-only display that swaps to an editor. A running entry SHALL render a single start field plus the localized "now" label inside a slot of the same width, so every row's time slot and the duration column align regardless of whether the entry has stopped. The field SHALL display complete `HH:mm` values without clipping. It SHALL edit wall-clock time on the entry's existing local calendar day only; this requirement does not add a date control.
 
 Typing into a title, project, or time editor SHALL NOT grow or shrink the reserved slot or the surrounding row.
 
@@ -683,15 +703,19 @@ Typing into a title, project, or time editor SHALL NOT grow or shrink the reserv
 - **THEN** the project control SHALL be disabled and its accessible name SHALL explain that a title is required first
 
 #### Scenario: Inline time editor shows a full HH:mm
-- **WHEN** the user activates an entry's start or stop time
-- **THEN** the swapped-in time editor SHALL show the complete `HH:mm` value without clipping
+- **WHEN** an expanded entry row is rendered
+- **THEN** its start–stop field SHALL show both complete `HH:mm` values without clipping and without requiring activation
+
+#### Scenario: Running and stopped rows align
+- **WHEN** a group lists a running entry alongside stopped entries
+- **THEN** the running row's start field plus "now" label SHALL occupy the same slot width as a stopped row's range field, and the duration column SHALL align across the rows
 
 #### Scenario: Inline time edit stays on the same local day
 - **WHEN** the user commits a new start or stop time from the expanded row
 - **THEN** the entry SHALL keep its previous local calendar day and only the wall-clock time SHALL change
 
 #### Scenario: Activating an editor does not jump the layout
-- **WHEN** the user activates a group title, group project, entry title, or entry time control
+- **WHEN** the user activates a group title, group project, or entry title control, or focuses a segment of an entry's time field
 - **THEN** the reserved width of that control SHALL stay the same and neighboring controls SHALL NOT shift
 
 #### Scenario: Typing does not resize the slot

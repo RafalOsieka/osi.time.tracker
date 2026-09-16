@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { ZonedDateTime } from '@internationalized/date';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const {
@@ -18,18 +19,33 @@ const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
 
-const editingField = ref<'title' | 'start' | 'stop' | null>(null);
+const editingField = ref<'title' | null>(null);
 const titleValue = ref(entry.taskName ?? '');
-const startValue = ref(isoToLocalTime(entry.startedAt, timeZone));
-const stopValue = ref(entry.stoppedAt ? isoToLocalTime(entry.stoppedAt, timeZone) : '');
 const deleting = ref(false);
+
+type EntryTimes = { start: ZonedDateTime; end: ZonedDateTime | undefined };
+
+function deriveTimesFromEntry(): EntryTimes {
+  return {
+    start: instantToZonedDateTime(entry.startedAt, timeZone),
+    end: entry.stoppedAt ? instantToZonedDateTime(entry.stoppedAt, timeZone) : undefined,
+  };
+}
+
+// The field's own live draft; resynced from the entry whenever the parent
+// refreshes it (a successful commit, or a revert after a failed one).
+const timesModel = shallowRef<EntryTimes>(deriveTimesFromEntry());
+
+watch(
+  () => [entry.startedAt, entry.stoppedAt, timeZone],
+  () => {
+    timesModel.value = deriveTimesFromEntry();
+  },
+);
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(entry, now)));
 const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask'));
-const timeSlotUi = {
-  root: 'w-full min-w-0',
-  base: 'w-full min-w-0 px-2 py-1 text-center text-sm/4 tabular-nums',
-};
+const timeFieldUi = { base: 'px-2 py-1 text-sm/4 tabular-nums' };
 
 async function startEditTitle() {
   editingField.value = null;
@@ -38,26 +54,6 @@ async function startEditTitle() {
   await nextTick();
   document
     .querySelector<HTMLInputElement>(`[data-testid="timer-entry-title-input-${entry.id}"]`)
-    ?.focus();
-}
-
-async function startEditStart() {
-  editingField.value = null;
-  startValue.value = isoToLocalTime(entry.startedAt, timeZone);
-  editingField.value = 'start';
-  await nextTick();
-  document
-    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-start-input-${entry.id}"]`)
-    ?.focus();
-}
-
-async function startEditStop() {
-  editingField.value = null;
-  stopValue.value = entry.stoppedAt ? isoToLocalTime(entry.stoppedAt, timeZone) : '';
-  editingField.value = 'stop';
-  await nextTick();
-  document
-    .querySelector<HTMLInputElement>(`[data-testid="timer-entry-stop-input-${entry.id}"]`)
     ?.focus();
 }
 
@@ -86,45 +82,41 @@ async function commitTitle() {
   }
 }
 
-function combineWithEntryDay(iso: string, time: string): string {
-  const dateKey = localDayKey(iso, timeZone);
-  return wallClockToInstant(dateKey, time, timeZone);
-}
+/**
+ * Sends only the bound(s) that actually changed from the entry's stored
+ * instants; `TimeField` already reports an unchanged commit by not firing at
+ * all, so reaching here means at least one side moved (REQ-361, REQ-150).
+ */
+type TimeEntryTimesPatch = Partial<Pick<TimeEntryDto, 'startedAt' | 'stoppedAt'>>;
 
-async function commitStart() {
-  if (editingField.value !== 'start') return;
-  editingField.value = null;
-  const startedAt = combineWithEntryDay(entry.startedAt, startValue.value);
-  if (startedAt === entry.startedAt) return;
-  try {
-    await $csrfFetch<TimeEntryDto>(`/api/time-entries/${entry.id}`, {
-      method: 'PATCH',
-      body: { startedAt },
-    });
-    emit('changed');
-  } catch (err) {
-    const key = extractCaughtMessageKey(err, 'errors.unexpected');
-    toast.error(t(key));
-    startValue.value = isoToLocalTime(entry.startedAt, timeZone);
+async function commitTimes() {
+  const patch: TimeEntryTimesPatch = {};
+  const startedAt = zonedDateTimeToInstant(timesModel.value.start);
+  if (startedAt !== entry.startedAt) patch.startedAt = startedAt;
+  if (timesModel.value.end) {
+    const stoppedAt = zonedDateTimeToInstant(timesModel.value.end);
+    if (stoppedAt !== entry.stoppedAt) patch.stoppedAt = stoppedAt;
   }
-}
+  if (Object.keys(patch).length === 0) return;
 
-async function commitStop() {
-  if (editingField.value !== 'stop') return;
-  editingField.value = null;
-  if (!entry.stoppedAt) return;
-  const stoppedAt = combineWithEntryDay(entry.stoppedAt, stopValue.value);
-  if (stoppedAt === entry.stoppedAt) return;
   try {
     await $csrfFetch<TimeEntryDto>(`/api/time-entries/${entry.id}`, {
       method: 'PATCH',
-      body: { stoppedAt },
+      body: patch,
     });
     emit('changed');
   } catch (err) {
     const key = extractCaughtMessageKey(err, 'errors.unexpected');
     toast.error(t(key));
-    stopValue.value = entry.stoppedAt ? isoToLocalTime(entry.stoppedAt, timeZone) : '';
+    // KNOWN LIMITATION (accepted, not fixed): this correctly resets the
+    // underlying value, but reka-ui 2.10.4's range TimeRangeFieldRoot seeds
+    // its rendered segments from an internal ref once at mount and never
+    // re-syncs them from a later external modelValue change (unlike its
+    // single-value TimeFieldRoot, which is a properly controlled component).
+    // So a stopped entry's row keeps showing the rejected value until it
+    // remounts, even though `timesModel` (and the entry's stored instants)
+    // are correct. See design.md — Risks / Trade-offs.
+    timesModel.value = deriveTimesFromEntry();
   }
 }
 
@@ -168,59 +160,41 @@ async function onDelete() {
       />
     </span>
 
-    <span class="flex shrink-0 items-center gap-1.5">
-      <span class="inline-flex w-[10ch] shrink-0">
-        <TimeInput
-          v-if="editingField === 'start'"
-          v-model="startValue"
-          :label="t('timerView.entryRow.startLabel')"
-          :testid="`timer-entry-start-input-${entry.id}`"
-          @commit="commitStart"
-          @cancel="cancelEdit"
-        />
-        <UInput
-          v-else
-          :model-value="isoToLocalTime(entry.startedAt, timeZone)"
-          variant="none"
-          readonly
+    <!--
+      One fixed-width slot for either a stopped entry's start–stop range field
+      or a running entry's single start field plus the "now" label, so the
+      slot (and the duration column after it) never shifts between rows
+      (REQ-265, REQ-361).
+    -->
+    <span class="inline-flex w-[11.5rem] shrink-0 items-center gap-1.5">
+      <TimeField
+        v-if="entry.stoppedAt"
+        v-model="timesModel"
+        range
+        clamp-seconds
+        size="xs"
+        variant="none"
+        :ui="timeFieldUi"
+        :separator="t('timerView.entryRow.separator')"
+        :label="t('timerView.entryRow.timesLabel')"
+        :testid="`timer-entry-times-${entry.id}`"
+        class="flex-1"
+        @commit="commitTimes"
+      />
+      <template v-else>
+        <TimeField
+          v-model="timesModel.start"
           size="xs"
-          class="w-full min-w-0 cursor-pointer"
-          :ui="timeSlotUi"
-          :aria-label="t('timerView.entryRow.startLabel')"
-          :data-testid="`timer-entry-start-${entry.id}`"
-          @focus="startEditStart"
-          @click="startEditStart"
+          variant="none"
+          :ui="timeFieldUi"
+          :label="t('timerView.entryRow.startLabel')"
+          :testid="`timer-entry-times-${entry.id}`"
+          class="flex-1"
+          @commit="commitTimes"
         />
-      </span>
-
-      <span aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
-
-      <span class="inline-flex w-[10ch] shrink-0">
-        <template v-if="entry.stoppedAt">
-          <TimeInput
-            v-if="editingField === 'stop'"
-            v-model="stopValue"
-            :label="t('timerView.entryRow.stopLabel')"
-            :testid="`timer-entry-stop-input-${entry.id}`"
-            @commit="commitStop"
-            @cancel="cancelEdit"
-          />
-          <UInput
-            v-else
-            :model-value="isoToLocalTime(entry.stoppedAt, timeZone)"
-            variant="none"
-            readonly
-            size="xs"
-            class="w-full min-w-0 cursor-pointer"
-            :ui="timeSlotUi"
-            :aria-label="t('timerView.entryRow.stopLabel')"
-            :data-testid="`timer-entry-stop-${entry.id}`"
-            @focus="startEditStop"
-            @click="startEditStop"
-          />
-        </template>
-        <span v-else class="w-full text-center">{{ t('timerView.entryRow.nowLabel') }}</span>
-      </span>
+        <span aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
+        <span class="flex-1 text-center">{{ t('timerView.entryRow.nowLabel') }}</span>
+      </template>
     </span>
 
     <span class="min-w-[4.5rem] text-right font-mono text-sm font-medium tabular-nums text-muted">

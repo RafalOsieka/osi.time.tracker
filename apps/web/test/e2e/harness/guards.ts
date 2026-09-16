@@ -17,8 +17,15 @@ export function isDockerAvailable(): boolean {
 
 /**
  * Returns true when a browser binary is available locally.
+ *
+ * Honors `PLAYWRIGHT_CHROMIUM_CHANNEL` (e.g. `chrome`, `msedge`): when set, a
+ * system browser is trusted to exist rather than checking Playwright's own
+ * managed Chromium download, since `chromium.executablePath({ channel })`
+ * misreports the bundled path instead of resolving the system one — only
+ * `.launch({ channel })` actually does. Opt-in only; unset in CI.
  */
 export function isBrowserAvailable(): boolean {
+  if (process.env.PLAYWRIGHT_CHROMIUM_CHANNEL) return true;
   try {
     const path = chromium.executablePath();
     return Boolean(path) && existsSync(path);

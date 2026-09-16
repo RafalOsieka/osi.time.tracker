@@ -1,8 +1,8 @@
 /**
  * Normalizes free-form duration input (`H:MM:SS`, `H:MM`, or a bare number
  * of minutes) into a total number of seconds. Returns `null` for anything
- * that cannot be normalized (mirrors `normalizeTimeInput`'s revert-on-invalid
- * contract for the Remote Sync page's editable rounded duration).
+ * that cannot be normalized, so `DurationInput` (REQ-362) can revert the
+ * field for the Remote Sync page's editable rounded duration.
  */
 export function normalizeDurationInput(raw: string): number | null {
   const value = raw.trim();
