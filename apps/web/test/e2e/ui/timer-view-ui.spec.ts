@@ -27,6 +27,14 @@ const pageIncludesText = pageIncludesTextScript();
 const pageExcludesText = pageExcludesTextScript();
 const groupKeyForTitle = groupKeyForTitleScript();
 
+/** Parses a rendered `HH:MM:SS` duration (optionally prefixed, e.g. `"Total: 00:03:32"`) to seconds. */
+function parseHhMmSs(text: string | null): number {
+  const match = text?.match(/(\d+):(\d{2}):(\d{2})/);
+  if (!match) throw new Error(`parseHhMmSs: no HH:MM:SS found in "${text}"`);
+  const [, hours, minutes, seconds] = match;
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+}
+
 describeTimerViewUI('timer view UI flow', async () => {
   const dbUrl = await provisionDatabase();
   await seedUsers(dbUrl, [
@@ -528,6 +536,11 @@ describeTimerViewUI('timer view UI flow', async () => {
     // The field renders in the app's effective (browser-detected) timezone;
     // resolve it to type the same wall-clock hour/minute the row already shows.
     const timeZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const dayKey = localDayKey(startedAt, timeZone);
+    // The day total is shared with every other entry this suite seeds onto
+    // "today", so the edit's effect is asserted as a delta, not an absolute.
+    const dayTotalLocator = page.locator(`[data-testid="timer-day-total-${dayKey}"]`);
+    const originalDaySeconds = parseHhMmSs(await dayTotalLocator.textContent());
     const stopZoned = instantToZoned(stoppedAt, timeZone);
     const sameMinute = `${String(stopZoned.hour).padStart(2, '0')}:${String(stopZoned.minute).padStart(2, '0')}`;
 
@@ -563,33 +576,47 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.keyboard.press('Enter');
     await laterPatch;
 
-    const updatedGroupTotal = await page
-      .locator(`[data-testid="timer-group-total-${seeded.taskId}"]`)
-      .textContent();
-    expect(updatedGroupTotal?.trim()).toBe('00:02:30');
-    const dayKey = localDayKey(startedAt, timeZone);
-    const dayTotal = await page.locator(`[data-testid="timer-day-total-${dayKey}"]`).textContent();
-    expect(dayTotal?.trim()).toContain('00:02:30');
+    // The PATCH response landing is not the same as the page's own follow-up
+    // refresh (REQ-150's timer-view feed) finishing its re-render; poll.
+    const groupTotalLocator = page.locator(`[data-testid="timer-group-total-${seeded.taskId}"]`);
+    await expect.poll(async () => (await groupTotalLocator.textContent())?.trim()).toBe('00:02:30');
+    // The edit added exactly two minutes; the day total (shared with every
+    // other entry this suite seeds onto "today") rises by exactly that much.
+    await expect
+      .poll(async () => parseHhMmSs(await dayTotalLocator.textContent()))
+      .toBe(originalDaySeconds + 120);
 
     // A running entry's single-field-plus-"now" slot must be the same width
     // as a stopped entry's range field (REQ-265, REQ-361).
     const runningTitle = 'Seconds Precision Running Task ' + Date.now();
     const running = await startEntry(jar, token, { title: runningTitle });
-    await page.reload();
-    await page.waitForFunction(pageIncludesText, runningTitle);
-    const runningToggle = page.locator(`[data-testid="timer-group-toggle-${running.taskId}"]`);
-    await runningToggle.locator('button').or(runningToggle).first().click();
-    await page.waitForSelector(`[data-testid="timer-entry-${running.id}"]`, { timeout: 10000 });
+    try {
+      // A full reload collapses every group, including the one this test
+      // expanded earlier — both groups need re-expanding after it.
+      await page.reload();
+      await page.waitForFunction(pageIncludesText, runningTitle);
+      const reexpandedToggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
+      await reexpandedToggle.locator('button').or(reexpandedToggle).first().click();
+      await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
+      const runningToggle = page.locator(`[data-testid="timer-group-toggle-${running.taskId}"]`);
+      await runningToggle.locator('button').or(runningToggle).first().click();
+      await page.waitForSelector(`[data-testid="timer-entry-${running.id}"]`, { timeout: 10000 });
 
-    const stoppedWidth = (
-      await page.locator(`[data-testid="timer-entry-times-${seeded.id}"]`).boundingBox()
-    )?.width;
-    const runningWidth = (
-      await page.locator(`[data-testid="timer-entry-times-${running.id}"]`).boundingBox()
-    )?.width;
-    expect(runningWidth).toBeCloseTo(stoppedWidth ?? -1, 0);
+      // The reserved slot is the fixed-width wrapper the field sits in, not
+      // the field's own box — a running row's field shares that wrapper with
+      // a separator and the "now" label, so it is narrower on its own.
+      const stoppedSlotWidth = await page
+        .locator(`[data-testid="timer-entry-times-${seeded.id}"]`)
+        .evaluate((el) => el.parentElement?.getBoundingClientRect().width);
+      const runningSlotWidth = await page
+        .locator(`[data-testid="timer-entry-times-${running.id}"]`)
+        .evaluate((el) => el.parentElement?.getBoundingClientRect().width);
+      expect(runningSlotWidth).toBeCloseTo(stoppedSlotWidth ?? -1, 0);
+    } finally {
+      // Never leak a running entry into a later test, even if an assertion above throws.
+      await stopEntry(jar, token, running.id);
+    }
 
-    await stopEntry(jar, token, running.id);
     await page.close();
   });
 
