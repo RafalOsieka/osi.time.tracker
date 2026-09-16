@@ -1,9 +1,19 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { CalendarDate } from '@internationalized/date';
 import AppTimer from '../../app/components/AppTimer.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
+import type { TaskDto } from '../../shared/types/task';
+
+/** Matches `SUGGESTION_DEBOUNCE_MS` in `use-task-suggestions.ts`. */
+const SUGGESTION_DEBOUNCE_MS = 200;
+
+/** Advances past the suggestion debounce and settles the resulting fetch. */
+async function settleSuggestions() {
+  await vi.advanceTimersByTimeAsync(SUGGESTION_DEBOUNCE_MS);
+  await flushPromises();
+}
 
 type AppTimerRunning = { value: TimeEntryDto | null };
 type TimerMenuItem = { id: string; name: string; label: string; onSelect: () => void };
@@ -178,12 +188,18 @@ const baseStubs = {
 
 describe('AppTimer', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     vi.clearAllMocks();
     runningState.value = null;
     elapsedSecondsState.value = 0;
     loadingState.value = false;
     fetchMock.mockResolvedValue([]);
     vi.stubGlobal('$fetch', fetchMock);
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('renders the idle state with a play icon toggle', async () => {
@@ -402,7 +418,7 @@ describe('AppTimer', () => {
     // Trigger suggestion fetch via search-term, then simulate the real
     // select sequence: item onSelect (stash id) + model update (name string).
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
-    await flushPromises();
+    await settleSuggestions();
 
     const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     const suggestion = items.find((item) => item.id === 'task-42');
@@ -429,6 +445,45 @@ describe('AppTimer', () => {
     expect(startMock).toHaveBeenCalledWith('Linked Task', undefined, 'task-42');
   });
 
+  it('discards a stale suggestion response that resolves after a newer request', async () => {
+    let resolveFirst: (value: TaskDto[]) => void = () => {};
+    let resolveSecond: (value: TaskDto[]) => void = () => {};
+    const firstResponse = new Promise<TaskDto[]>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const secondResponse = new Promise<TaskDto[]>((resolve) => {
+      resolveSecond = resolve;
+    });
+    fetchMock.mockImplementationOnce(() => firstResponse);
+    fetchMock.mockImplementationOnce(() => secondResponse);
+
+    const wrapper = await mountSuspended(AppTimer, {
+      global: { stubs: baseStubs },
+    });
+
+    // Two searches far enough apart that each settles its own debounce and
+    // issues its own request, leaving both in flight at once.
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'a');
+    await vi.advanceTimersByTimeAsync(SUGGESTION_DEBOUNCE_MS);
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'ab');
+    await vi.advanceTimersByTimeAsync(SUGGESTION_DEBOUNCE_MS);
+
+    // The newer request ("ab") resolves first...
+    resolveSecond([
+      { id: 'task-ab', name: 'AB Task', projectId: null, projectName: null, createdAt: '' },
+    ]);
+    await flushPromises();
+    // ...then the stale "a" response arrives late and must be ignored.
+    resolveFirst([
+      { id: 'task-a', name: 'A Task', projectId: null, projectName: null, createdAt: '' },
+    ]);
+    await flushPromises();
+
+    const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
+    expect(items.some((item) => item.id === 'task-ab')).toBe(true);
+    expect(items.some((item) => item.id === 'task-a')).toBe(false);
+  });
+
   it('selecting a suggestion while running patches with taskId exactly once', async () => {
     runningState.value = runningEntry('My Task');
     fetchMock.mockResolvedValue([
@@ -446,7 +501,7 @@ describe('AppTimer', () => {
     });
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Other');
-    await flushPromises();
+    await settleSuggestions();
 
     const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     const suggestion = items.find((item) => item.id === 'task-99');
@@ -479,7 +534,7 @@ describe('AppTimer', () => {
     });
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Exact Match');
-    await flushPromises();
+    await settleSuggestions();
 
     const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     expect(items.some((item) => item.id === 'task-exact')).toBe(true);
@@ -530,7 +585,7 @@ describe('AppTimer', () => {
     });
 
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Linked');
-    await flushPromises();
+    await settleSuggestions();
     const items: TimerMenuItem[] = wrapper.findComponent(InputMenuStub).props('items');
     items.find((item) => item.id === 'task-42')!.onSelect();
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:modelValue', 'Linked Task');

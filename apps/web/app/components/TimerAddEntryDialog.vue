@@ -29,7 +29,7 @@ const state = reactive<TimerAddEntryFormDto>({
   startTime: '09:00',
   endTime: '10:00',
 });
-const suggestions = ref<TaskDto[]>([]);
+const { suggestions, search: searchSuggestions } = useTaskSuggestions();
 const searchTerm = ref('');
 const rangeError = ref('');
 const saving = ref(false);
@@ -65,12 +65,8 @@ watch(
   },
 );
 
-async function search(query: string) {
-  suggestions.value = await searchTasks(query);
-}
-
 watch(searchTerm, (query) => {
-  void search(query ?? '');
+  searchSuggestions(query ?? '');
 });
 
 function onSelectTask(task: TaskDto) {

@@ -10,7 +10,7 @@ const title = ref('');
 const editedTitle = ref('');
 const selectedTaskId = ref<string | null>(null);
 const selectedTaskName = ref<string | null>(null);
-const suggestions = ref<TaskDto[]>([]);
+const { suggestions, search: searchSuggestions } = useTaskSuggestions();
 const searchTerm = ref('');
 const starting = ref(false);
 const stopping = ref(false);
@@ -84,12 +84,8 @@ const elapsedLabel = computed(() => {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 });
 
-async function search(query: string) {
-  suggestions.value = await searchTasks(query);
-}
-
 watch(searchTerm, (query) => {
-  void search(query ?? '');
+  searchSuggestions(query ?? '');
 });
 
 function applyFreeformTitle(text: string) {
