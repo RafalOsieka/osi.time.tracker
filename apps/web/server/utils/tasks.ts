@@ -1,9 +1,34 @@
 import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import type { PgTransaction } from 'drizzle-orm/pg-core';
+import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { tasks, timeEntries } from '../db/schema';
+import type * as schema from '../db/schema';
 
 // oxlint-disable-next-line typescript/no-explicit-any -- drizzle transaction type parameters vary by driver internals and aren't exported in a reusable form
 type DrizzleTx = PgTransaction<any, any, any>;
+
+/** Either the process-wide pool from `getDb()` or a transaction bound to it. */
+type DrizzleExecutor = DrizzleTx | PostgresJsDatabase<typeof schema>;
+
+/**
+ * Correlated lateral subquery yielding a task's most-recently-used entry
+ * `startedAt` (or no row when the task has none). Callers select it after
+ * `tasks` is already in the query and join with
+ * `.leftJoinLateral(taskLastUsedAt(executor), sql\`true\`)`, so each task
+ * resolves via one backwards scan of `time_entries (taskId, startedAt)`
+ * instead of an aggregate over every entry. Shared by the REQ-137
+ * most-recently-used tie-break and the REQ-133 suggestion ranking so both
+ * agree on what "most recently used" means.
+ */
+export function taskLastUsedAt(executor: DrizzleExecutor) {
+  return executor
+    .select({ lastUsedAt: timeEntries.startedAt })
+    .from(timeEntries)
+    .where(eq(timeEntries.taskId, tasks.id))
+    .orderBy(desc(timeEntries.startedAt))
+    .limit(1)
+    .as('taskLastUsedAt');
+}
 
 export interface ResolveTaskRemoteIssueOptions {
   /**
@@ -96,17 +121,17 @@ export async function resolveTaskId(
   }
 
   // Tie-break: most recently used task in the (user, name, project) scope.
+  const lastUsed = taskLastUsedAt(tx);
   const candidates = await tx
     .select({
       id: tasks.id,
       createdAt: tasks.createdAt,
-      lastStartedAt: sql<Date | null>`max(${timeEntries.startedAt})`.as('lastStartedAt'),
+      lastUsedAt: lastUsed.lastUsedAt,
     })
     .from(tasks)
-    .leftJoin(timeEntries, eq(timeEntries.taskId, tasks.id))
+    .leftJoinLateral(lastUsed, sql`true`)
     .where(and(eq(tasks.userId, userId), eq(tasks.name, trimmedTitle), projectCondition))
-    .groupBy(tasks.id, tasks.createdAt)
-    .orderBy(sql`max(${timeEntries.startedAt}) DESC NULLS LAST`, desc(tasks.createdAt))
+    .orderBy(sql`${lastUsed.lastUsedAt} DESC NULLS LAST`, desc(tasks.createdAt))
     .limit(1);
 
   if (candidates[0]) {

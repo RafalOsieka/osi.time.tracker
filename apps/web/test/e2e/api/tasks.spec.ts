@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
 import { CookieJar, primeCsrf } from '../helpers/auth';
 import { seedAndLogin } from '../helpers/session';
-import { createProject, createTracker } from '../helpers/http';
+import { createProject, createTracker, startEntry } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
@@ -61,7 +61,7 @@ describeTasks('tasks API integration', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl });
 
-  it('list returns own tasks ordered by name and honors project/search filters', async () => {
+  it('list returns own tasks and honors project/search filters', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const tracker = await createTracker(jar, token, 'List Client ' + Date.now());
     const project = await createProject(jar, token, 'List Project ' + Date.now(), tracker.id);
@@ -90,6 +90,109 @@ describeTasks('tasks API integration', async () => {
     });
     const searchRows = await searchRes.json();
     expect(searchRows.map((r: { id: string }) => r.id)).toContain(t1.id);
+  });
+
+  it('ranks the most recently used task first, overriding alphabetical order', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const suffix = Date.now();
+
+    // Named so alphabetical order would put the older task first; MRU ranking
+    // must reverse that.
+    const olderRes = await startEntry(jar, token, {
+      title: `Aaa Older ${suffix}`,
+      startedAt: '2020-01-01T10:00:00.000Z',
+      stoppedAt: '2020-01-01T11:00:00.000Z',
+    });
+    const olderEntry = await olderRes.json();
+    const newerRes = await startEntry(jar, token, {
+      title: `Zzz Newer ${suffix}`,
+      startedAt: '2025-01-01T10:00:00.000Z',
+      stoppedAt: '2025-01-01T11:00:00.000Z',
+    });
+    const newerEntry = await newerRes.json();
+
+    const list = await fetch(url(`/api/tasks?search=${suffix}`), {
+      headers: { cookie: jar.header() },
+    });
+    const rows: { id: string }[] = await list.json();
+    const olderIndex = rows.findIndex((r) => r.id === olderEntry.taskId);
+    const newerIndex = rows.findIndex((r) => r.id === newerEntry.taskId);
+    expect(newerIndex).toBeGreaterThanOrEqual(0);
+    expect(olderIndex).toBeGreaterThan(newerIndex);
+  });
+
+  it('defaults to a cap of 20 tasks, keeping only the highest-ranked', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const suffix = Date.now();
+    const taskIdsOldestFirst: string[] = [];
+
+    for (let i = 0; i < 21; i++) {
+      const res = await startEntry(jar, token, {
+        title: `Cap${suffix}-${i}`,
+        startedAt: new Date(2020, 0, 1 + i, 10).toISOString(),
+        stoppedAt: new Date(2020, 0, 1 + i, 11).toISOString(),
+      });
+      const entry = await res.json();
+      taskIdsOldestFirst.push(entry.taskId);
+    }
+
+    const list = await fetch(url(`/api/tasks?search=Cap${suffix}`), {
+      headers: { cookie: jar.header() },
+    });
+    const rows: { id: string }[] = await list.json();
+    expect(rows).toHaveLength(20);
+    // Newest (last created) ranks first; oldest is dropped by the cap.
+    expect(rows[0]?.id).toBe(taskIdsOldestFirst[20]);
+    expect(rows.map((r) => r.id)).not.toContain(taskIdsOldestFirst[0]);
+  });
+
+  it('honors an explicit limit', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const suffix = Date.now();
+
+    for (let i = 0; i < 7; i++) {
+      await startEntry(jar, token, {
+        title: `Lim${suffix}-${i}`,
+        startedAt: new Date(2021, 0, 1 + i, 10).toISOString(),
+        stoppedAt: new Date(2021, 0, 1 + i, 11).toISOString(),
+      });
+    }
+
+    const list = await fetch(url(`/api/tasks?search=Lim${suffix}&limit=5`), {
+      headers: { cookie: jar.header() },
+    });
+    const rows = await list.json();
+    expect(rows).toHaveLength(5);
+  });
+
+  it('rejects a limit that is not a positive integer within range', async () => {
+    const { jar } = await seedAndLogin(dbUrl);
+
+    for (const invalid of ['0', 'abc', '101']) {
+      const res = await fetch(url(`/api/tasks?limit=${invalid}`), {
+        headers: { cookie: jar.header() },
+      });
+      expect(res.status).toBe(422);
+      const body = await res.json();
+      expect(body?.data?.messageKey).toBe('error.taskLimitInvalid');
+    }
+  });
+
+  it('treats a blank search the same as an absent one', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const suffix = Date.now();
+    const created = await createTaskViaEntry(jar, token, `Blank Search ${suffix}`);
+
+    const blank = await fetch(url('/api/tasks?search=%20%20'), {
+      headers: { cookie: jar.header() },
+    });
+    const absent = await fetch(url('/api/tasks'), { headers: { cookie: jar.header() } });
+    const blankRows = await blank.json();
+    const absentRows = await absent.json();
+    expect(blankRows.map((r: { id: string }) => r.id)).toEqual(
+      absentRows.map((r: { id: string }) => r.id),
+    );
+    expect(blankRows.map((r: { id: string }) => r.id)).toContain(created.id);
   });
 
   it('patch happy path rename and project reassignment when no collision', async () => {
