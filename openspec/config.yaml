@@ -10,6 +10,8 @@ rules:
     - "For every requirement, include a globally-unique traceability code in the title: `### Requirement: REQ-<NNN> Title`"
     - Include error and edge-case scenarios, not just the happy path
     - Scope to MVP unless explicitly marked 🟡 V1.1 or later
+    - "Spec ids are `<family>-<topic>` (kebab-case, flat directories — the CLI does not read nested spec folders). Families in use: `platform-` (build, test, ship tooling), `core-` (runtime cross-cutting foundations), `ui-` (app-wide UI foundation and shell), `workspace-` (local domain entities), `tracking-` (time entries, timer, reports), `remote-` (anything that talks to a tracker). Reuse an existing family whenever one fits; invent a new one only when no existing family is a reasonable home, and add it to this list."
+    - "Keep one surface or one contract per spec; when a spec outgrows that, split it along the family prefix rather than growing it."
   proposal:
     - Read vision.md/wbs.md/user-stories.md before writing; confirm the feature is in scope and at the correct priority
     - Include a "Non-goals" section to prevent scope creep
