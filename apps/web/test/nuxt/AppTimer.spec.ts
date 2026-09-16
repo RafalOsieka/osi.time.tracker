@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { CalendarDate } from '@internationalized/date';
+import { CalendarDate, Time } from '@internationalized/date';
 import AppTimer from '../../app/components/AppTimer.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 import type { TaskDto } from '../../shared/types/task';
@@ -155,6 +155,16 @@ const InputDateStub = {
   props: ['modelValue', 'range', 'minValue', 'maxValue'],
   emits: ['update:modelValue', 'blur', 'change'],
 };
+// Stands in for Nuxt UI's segmented `UInputTime`: the real component's model
+// is an `@internationalized/date` `Time`, but tests drive it directly via
+// `vm.$emit('update:modelValue', ...)` rather than simulating segment
+// keystrokes (jsdom/happy-dom cannot run reka's segment key handling).
+const InputTimeStub = {
+  inheritAttrs: false,
+  template: '<div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
+  props: ['modelValue', 'range', 'hourCycle', 'granularity'],
+  emits: ['update:modelValue'],
+};
 
 function calendarDateFrom(date: Date): CalendarDate {
   return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
@@ -183,6 +193,7 @@ const baseStubs = {
   UPopover: PopoverStub,
   UInput: InputStub,
   UInputDate: InputDateStub,
+  UInputTime: InputTimeStub,
   UTooltip: TooltipStub,
 };
 
@@ -635,11 +646,8 @@ describe('AppTimer', () => {
       await flushPromises();
 
       const dateInput = wrapper.find('[data-testid="timer-start-editor-date-input"]');
-      const timeInput = wrapper.find<HTMLInputElement>(
-        '[data-testid="timer-start-editor-time-input"]',
-      );
       expect(dateInput.attributes('data-model-value')).toBe('2024-01-05');
-      expect(timeInput.element.value).toBe('10:30');
+      expect(wrapper.findComponent(InputTimeStub).props('modelValue')).toEqual(new Time(10, 30));
     });
 
     it('blocks a future start with an inline error and does not call updateStartedAt', async () => {
@@ -654,11 +662,8 @@ describe('AppTimer', () => {
         .findComponent(InputDateStub)
         .vm.$emit('update:modelValue', calendarDateFrom(future));
       await wrapper
-        .find('[data-testid="timer-start-editor-time-input"]')
-        .setValue(
-          `${String(future.getHours()).padStart(2, '0')}:${String(future.getMinutes()).padStart(2, '0')}`,
-        );
-      await wrapper.find('[data-testid="timer-start-editor-time-input"]').trigger('blur');
+        .findComponent(InputTimeStub)
+        .vm.$emit('update:modelValue', new Time(future.getHours(), future.getMinutes()));
       await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
       await flushPromises();
 
@@ -680,18 +685,15 @@ describe('AppTimer', () => {
         .findComponent(InputDateStub)
         .vm.$emit('update:modelValue', calendarDateFrom(past));
       await wrapper
-        .find('[data-testid="timer-start-editor-time-input"]')
-        .setValue(
-          `${String(past.getHours()).padStart(2, '0')}:${String(past.getMinutes()).padStart(2, '0')}`,
-        );
-      await wrapper.find('[data-testid="timer-start-editor-time-input"]').trigger('blur');
+        .findComponent(InputTimeStub)
+        .vm.$emit('update:modelValue', new Time(past.getHours(), past.getMinutes()));
       await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
       await flushPromises();
 
       expect(updateStartedAtMock).toHaveBeenCalledTimes(1);
     });
 
-    it('commits a picked date and a compact typed time', async () => {
+    it('commits a picked date and time via updateStartedAt', async () => {
       runningState.value = runningEntry();
       const wrapper = await mount();
 
@@ -700,16 +702,11 @@ describe('AppTimer', () => {
       await wrapper
         .findComponent(InputDateStub)
         .vm.$emit('update:modelValue', new CalendarDate(2024, 7, 9));
-      const timeInput = wrapper.find<HTMLInputElement>(
-        '[data-testid="timer-start-editor-time-input"]',
-      );
-      await timeInput.setValue('900');
-      await timeInput.trigger('blur');
+      await wrapper.findComponent(InputTimeStub).vm.$emit('update:modelValue', new Time(9, 0));
       await wrapper.find('[data-testid="timer-start-editor-save-button"]').trigger('click');
       await flushPromises();
 
-      expect(updateStartedAtMock).toHaveBeenCalledWith('2024-07-09T09:00:00Z');
-      expect(timeInput.element.value).toBe('09:00');
+      expect(updateStartedAtMock).toHaveBeenCalledWith('2024-07-09T09:00:00.000Z');
     });
 
     it('disables saving while the date is incomplete', async () => {
@@ -720,6 +717,24 @@ describe('AppTimer', () => {
       await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
       await flushPromises();
       await wrapper.findComponent(InputDateStub).vm.$emit('update:modelValue', null);
+      await flushPromises();
+
+      const saveButton = wrapper.find('[data-testid="timer-start-editor-save-button"]');
+      expect(saveButton.attributes('disabled')).not.toBeUndefined();
+
+      await saveButton.trigger('click');
+      await flushPromises();
+      expect(updateStartedAtMock).not.toHaveBeenCalled();
+    });
+
+    it('disables saving while the time is incomplete', async () => {
+      const startedAt = new Date('2024-01-05T10:30:00.000Z');
+      runningState.value = { ...runningEntry(), startedAt: startedAt.toISOString() };
+      const wrapper = await mount();
+
+      await wrapper.find('[data-testid="timer-elapsed"]').trigger('click');
+      await flushPromises();
+      await wrapper.findComponent(InputTimeStub).vm.$emit('update:modelValue', null);
       await flushPromises();
 
       const saveButton = wrapper.find('[data-testid="timer-start-editor-save-button"]');

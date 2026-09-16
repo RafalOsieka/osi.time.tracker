@@ -1,5 +1,11 @@
 <script setup lang="ts">
-import { CalendarDate, parseDate } from '@internationalized/date';
+import {
+  CalendarDate,
+  parseDate,
+  Time,
+  toCalendarDateTime,
+  toZoned,
+} from '@internationalized/date';
 import type { TaskDto } from '../../shared/types/task';
 
 const { t } = useI18n();
@@ -19,7 +25,7 @@ const overlayOpen = ref(false);
 const startEditorOpen = ref(false);
 const startCalendarOpen = ref(false);
 const startDate = shallowRef<CalendarDate | null>(null);
-const startTime = ref<string | null>(null);
+const startTime = shallowRef<Time | null>(null);
 const startEditorError = ref('');
 const savingStartedAt = ref(false);
 
@@ -176,7 +182,7 @@ function openStartEditor() {
   if (!running.value) return;
   const current = instantToZoned(running.value.startedAt, effective.value.timeZone);
   startDate.value = parseDate(current.toPlainDate().toString());
-  startTime.value = `${String(current.hour).padStart(2, '0')}:${String(current.minute).padStart(2, '0')}`;
+  startTime.value = new Time(current.hour, current.minute);
   startEditorError.value = '';
   startEditorOpen.value = true;
 }
@@ -190,7 +196,12 @@ function onSelectStartDate(value: CalendarDate | null) {
 
 function combineStartedAt(): string | null {
   if (!startDate.value || !startTime.value) return null;
-  return wallClockToInstant(startDate.value.toString(), startTime.value, effective.value.timeZone);
+  const combined = toZoned(
+    toCalendarDateTime(startDate.value, startTime.value),
+    effective.value.timeZone,
+    'compatible',
+  );
+  return combined.toDate().toISOString();
 }
 
 async function onSaveStartedAt() {
@@ -288,11 +299,10 @@ async function onSaveStartedAt() {
           </div>
           <div class="grid gap-1">
             <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
-            <TimeInput
+            <TimeField
               id="timer-start-editor-time"
               v-model="startTime"
               :label="t('timer.startEditor.timeLabel')"
-              :compact="false"
               testid="timer-start-editor-time-input"
             />
           </div>

@@ -3,6 +3,7 @@ import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import TimerEntryRow from '../../app/components/TimerEntryRow.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
+import type { instantToZonedDateTime } from '../../app/utils/date-time';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const confirmMock = vi.hoisted(() => vi.fn(async () => true));
@@ -47,6 +48,21 @@ const InputStub = {
   props: ['modelValue', 'type', 'inputmode'],
   emits: ['update:modelValue', 'blur', 'keydown'],
 };
+// Stands in for Nuxt UI's segmented `UInputTime`: the real component's model
+// is an `@internationalized/date` `ZonedDateTime` (single, for a running
+// entry's start) or `{ start, end }` (range, for a stopped entry), but tests
+// drive it directly via `vm.$emit('update:modelValue', ...)` rather than
+// simulating segment keystrokes (jsdom/happy-dom cannot run reka's segment
+// key handling). `blur`/`keydown` are deliberately NOT declared as emits so
+// they fall through `$attrs` onto the rendered `<div>` as plain native
+// listeners, matching how the real `UInputTime` forwards them onto its own
+// DOM root.
+const InputTimeStub = {
+  inheritAttrs: false,
+  template: '<div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
+  props: ['modelValue', 'range', 'hourCycle', 'granularity', 'size', 'variant', 'ui', 'disabled'],
+  emits: ['update:modelValue'],
+};
 
 const TooltipStub = {
   props: ['text', 'content'],
@@ -56,6 +72,7 @@ const TooltipStub = {
 const commonStubs = {
   UButton: ButtonStub,
   UInput: InputStub,
+  UInputTime: InputTimeStub,
   UTooltip: TooltipStub,
 };
 
@@ -70,6 +87,15 @@ function makeEntry(overrides: Partial<TimeEntryDto> = {}): TimeEntryDto {
     stoppedAt: '2024-03-15T10:00:00.000Z',
     ...overrides,
   };
+}
+
+/** The `TimeField` rendered in the row's fixed time slot, regardless of running/stopped. */
+function findTimesField(wrapper: Awaited<ReturnType<typeof mountSuspended>>) {
+  return wrapper.find('[data-testid="timer-entry-times-entry-1"]');
+}
+
+function findTimesStub(wrapper: Awaited<ReturnType<typeof mountSuspended>>) {
+  return wrapper.findComponent(InputTimeStub);
 }
 
 describe('TimerEntryRow', () => {
@@ -121,44 +147,93 @@ describe('TimerEntryRow', () => {
     expect(wrapper.find('[data-testid="timer-entry-title-input-entry-1"]').exists()).toBe(false);
   });
 
-  it('normalizes and commits a compact start time via PATCH', async () => {
+  it('commits a changed minute on Enter, preserving stored seconds', async () => {
     csrfFetchMock.mockResolvedValue(makeEntry());
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now() },
+      props: {
+        entry: makeEntry({ startedAt: '2024-03-15T09:00:17.000Z' }),
+        now: Date.now(),
+        timeZone: 'UTC',
+      },
       global: { stubs: commonStubs },
     });
 
-    await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
-    await flushPromises();
-    const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
-    await input.setValue('901');
-    await input.trigger('keydown', { key: 'Enter' });
+    const stub = findTimesStub(wrapper);
+    // SAFETY: TimerEntryRow always seeds the stub with a { start, end } (or { start }) shape built from the entry.
+    const seeded = stub.props('modelValue') as { start: ReturnType<typeof instantToZonedDateTime> };
+    await stub.vm.$emit('update:modelValue', {
+      ...seeded,
+      start: seeded.start.set({ minute: 1 }),
+    });
+    await findTimesField(wrapper).trigger('keydown', { key: 'Enter' });
     await flushPromises();
 
     expect(csrfFetchMock).toHaveBeenCalledWith(
       '/api/time-entries/entry-1',
       expect.objectContaining({
         method: 'PATCH',
-        body: { startedAt: '2024-03-15T09:01:00Z' },
+        body: { startedAt: '2024-03-15T09:01:17.000Z' },
       }),
     );
   });
 
-  it('silently reverts an invalid stop time without sending a request', async () => {
+  it('sends no request when a commit leaves the value unchanged', async () => {
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now() },
+      props: { entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
       global: { stubs: commonStubs },
     });
 
-    await wrapper.find('[data-testid="timer-entry-stop-entry-1"]').trigger('click');
-    await flushPromises();
-    const input = wrapper.find<HTMLInputElement>('[data-testid="timer-entry-stop-input-entry-1"]');
-    await input.setValue('59');
-    await input.trigger('blur');
+    const stub = findTimesStub(wrapper);
+    const seeded = stub.props('modelValue');
+    // Retyping the same minute re-emits an equal value, as a real segmented
+    // field would (only the touched segment's digits change).
+    await stub.vm.$emit('update:modelValue', seeded);
+    await findTimesField(wrapper).trigger('keydown', { key: 'Enter' });
     await flushPromises();
 
     expect(csrfFetchMock).not.toHaveBeenCalled();
-    expect(input.element.value).toBe('10:00');
+  });
+
+  it('clamps a same-minute inversion instead of surfacing a stopped-before-started error', async () => {
+    csrfFetchMock.mockResolvedValue(makeEntry());
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: {
+        entry: makeEntry({
+          startedAt: '2024-03-15T10:42:50.000Z',
+          stoppedAt: '2024-03-15T10:43:10.000Z',
+        }),
+        now: Date.now(),
+        timeZone: 'UTC',
+      },
+      global: { stubs: commonStubs },
+    });
+
+    const stub = findTimesStub(wrapper);
+    // SAFETY: TimerEntryRow always seeds the stub with a { start, end } (or { start }) shape built from the entry.
+    const seeded = stub.props('modelValue') as {
+      start: ReturnType<typeof instantToZonedDateTime>;
+      end: ReturnType<typeof instantToZonedDateTime>;
+    };
+    // User retypes the start minute to 43 (its own seconds, 50, untouched by
+    // a minute-segment edit); start and stop now share minute 43 with start
+    // after stop.
+    await stub.vm.$emit('update:modelValue', {
+      ...seeded,
+      start: seeded.start.set({ minute: 43 }),
+    });
+    await findTimesField(wrapper).trigger('keydown', { key: 'Enter' });
+    await flushPromises();
+
+    // The clamp snaps the edited bound (start) to the untouched bound's
+    // seconds, so the server sees an ordered, zero-duration pair instead of
+    // a "stopped before started" rejection.
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/time-entries/entry-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: { startedAt: '2024-03-15T10:43:10.000Z' },
+      }),
+    );
   });
 
   it('shows a confirmation before deleting and calls DELETE on accept', async () => {
@@ -213,36 +288,47 @@ describe('TimerEntryRow', () => {
       global: { stubs: commonStubs },
     });
 
-    await wrapper.find('[data-testid="timer-entry-start-entry-1"]').trigger('click');
-    await flushPromises();
-    const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
-    await input.setValue('14:30');
-    await input.trigger('keydown', { key: 'Enter' });
+    const stub = findTimesStub(wrapper);
+    // SAFETY: TimerEntryRow always seeds the stub with a { start, end } (or { start }) shape built from the entry.
+    const seeded = stub.props('modelValue') as { start: ReturnType<typeof instantToZonedDateTime> };
+    await stub.vm.$emit('update:modelValue', {
+      ...seeded,
+      start: seeded.start.set({ hour: 14, minute: 30 }),
+    });
+    await findTimesField(wrapper).trigger('keydown', { key: 'Enter' });
     await flushPromises();
 
     expect(csrfFetchMock).toHaveBeenCalledWith(
       '/api/time-entries/entry-1',
       expect.objectContaining({
         method: 'PATCH',
-        body: { startedAt: '2024-03-15T14:30:00Z' },
+        body: { startedAt: '2024-03-15T14:30:00.000Z' },
       }),
     );
   });
 
-  it('keeps start and stop times in a stable slot when swapping to the editor', async () => {
+  it('keeps the time slot a stable width for a stopped entry', async () => {
     const wrapper = await mountSuspended(TimerEntryRow, {
       props: { entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
       global: { stubs: commonStubs },
     });
 
-    const start = wrapper.find('[data-testid="timer-entry-start-entry-1"]');
-    expect(start.classes()).toContain('w-full');
-    expect(start.element.closest('span')?.className ?? '').toContain('w-[10ch]');
+    const field = findTimesField(wrapper);
+    expect(field.element.closest('span')?.className ?? '').toContain('w-[11.5rem]');
+  });
 
-    await start.trigger('click');
-    await flushPromises();
-    const input = wrapper.find('[data-testid="timer-entry-start-input-entry-1"]');
-    expect(input.exists()).toBe(true);
-    expect(input.element.closest('span')?.className ?? '').toContain('w-[10ch]');
+  it('keeps the time slot the same width for a running entry', async () => {
+    const wrapper = await mountSuspended(TimerEntryRow, {
+      props: {
+        entry: makeEntry({ stoppedAt: null }),
+        now: Date.now(),
+        timeZone: 'UTC',
+      },
+      global: { stubs: commonStubs },
+    });
+
+    const field = findTimesField(wrapper);
+    expect(field.element.closest('span')?.className ?? '').toContain('w-[11.5rem]');
+    expect(wrapper.text()).toContain('timerView.entryRow.nowLabel');
   });
 });

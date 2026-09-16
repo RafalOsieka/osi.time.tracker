@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
+import { Time } from '@internationalized/date';
 import TableHeader from '../../app/components/TableHeader.vue';
 import EmptyState from '../../app/components/EmptyState.vue';
 import RowActions from '../../app/components/RowActions.vue';
-import TimeInput from '../../app/components/TimeInput.vue';
+import DurationInput from '../../app/components/DurationInput.vue';
+import TimeField from '../../app/components/TimeField.vue';
 
 const ButtonStub = {
   props: ['label', 'icon', 'ariaLabel'],
@@ -19,6 +21,20 @@ const InputStub = {
   template:
     '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
   props: ['modelValue', 'inputmode'],
+  emits: ['update:modelValue'],
+};
+// Stands in for Nuxt UI's segmented `UInputTime`: the real component's model
+// is an `@internationalized/date` `Time`/`ZonedDateTime` (single) or
+// `{ start, end }` (range), but tests drive it directly via
+// `vm.$emit('update:modelValue', ...)` rather than simulating segment
+// keystrokes (jsdom/happy-dom cannot run reka's segment key handling).
+// `blur`/`keydown` are deliberately NOT declared as emits here so they fall
+// through `$attrs` onto the rendered `<div>` as plain native listeners,
+// matching how the real `UInputTime` forwards them onto its own DOM root.
+const InputTimeStub = {
+  inheritAttrs: false,
+  template: '<div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
+  props: ['modelValue', 'range', 'hourCycle', 'granularity', 'size', 'variant', 'ui', 'disabled'],
   emits: ['update:modelValue'],
 };
 
@@ -86,82 +102,265 @@ describe('RowActions', () => {
   });
 });
 
-describe('TimeInput', () => {
-  function mount(modelValue = '08:00') {
-    return mountSuspended(TimeInput, {
-      props: { modelValue, label: 'Start time', testid: 'time-input' },
+describe('DurationInput', () => {
+  function mount(modelValue = '00:50:00') {
+    return mountSuspended(DurationInput, {
+      props: { modelValue, label: 'Export duration', testid: 'duration-input' },
       global: { stubs: { UInput: InputStub } },
     });
   }
 
-  it('has an accessible label and commits a normalized compact value on blur', async () => {
+  it('has an accessible label and normalizes bare minutes on blur', async () => {
     const wrapper = await mount();
-    const input = wrapper.find<HTMLInputElement>('[data-testid="time-input"]');
+    const input = wrapper.find<HTMLInputElement>('[data-testid="duration-input"]');
 
-    expect(input.attributes('aria-label')).toBe('Start time');
-    await input.setValue('900');
+    expect(input.attributes('aria-label')).toBe('Export duration');
+    await input.setValue('45');
     await input.trigger('blur');
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([['09:00']]);
-    expect(input.element.value).toBe('09:00');
+    expect(wrapper.emitted('update:modelValue')).toEqual([['00:45:00']]);
+    expect(input.element.value).toBe('00:45:00');
   });
 
-  it('commits a normalized value on Enter', async () => {
+  it('commits a normalized H:MM value on Enter', async () => {
     const wrapper = await mount();
-    const input = wrapper.find('[data-testid="time-input"]');
+    const input = wrapper.find('[data-testid="duration-input"]');
 
-    await input.setValue('93');
+    await input.setValue('1:5');
     await input.trigger('keydown.enter');
 
-    expect(wrapper.emitted('update:modelValue')).toEqual([['09:30']]);
+    expect(wrapper.emitted('update:modelValue')).toEqual([['01:05:00']]);
+  });
+
+  it('does not bound hours, so a duration may exceed 24 hours', async () => {
+    const wrapper = await mount();
+    const input = wrapper.find('[data-testid="duration-input"]');
+
+    await input.setValue('26:15');
+    await input.trigger('keydown.enter');
+
+    expect(wrapper.emitted('update:modelValue')).toEqual([['26:15:00']]);
   });
 
   it('silently reverts invalid input without updating the model', async () => {
     const wrapper = await mount();
-    const input = wrapper.find<HTMLInputElement>('[data-testid="time-input"]');
+    const input = wrapper.find<HTMLInputElement>('[data-testid="duration-input"]');
 
-    await input.setValue('59');
+    await input.setValue('1:75');
     await input.trigger('blur');
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-    expect(input.element.value).toBe('08:00');
+    expect(input.element.value).toBe('00:50:00');
   });
 
   it('reverts on Escape without updating the model', async () => {
     const wrapper = await mount();
-    const input = wrapper.find<HTMLInputElement>('[data-testid="time-input"]');
+    const input = wrapper.find<HTMLInputElement>('[data-testid="duration-input"]');
 
-    await input.setValue('12:30');
+    await input.setValue('12:30:00');
     await input.trigger('keydown.esc');
 
     expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-    expect(input.element.value).toBe('08:00');
+    expect(input.element.value).toBe('00:50:00');
   });
 
-  it('normalizes duration mode to HH:MM:SS', async () => {
-    const wrapper = await mountSuspended(TimeInput, {
-      props: {
-        modelValue: '00:50:00',
-        label: 'Export duration',
-        testid: 'duration-input',
-        duration: true,
-      },
-      global: { stubs: { UInput: InputStub } },
-    });
-    const input = wrapper.find<HTMLInputElement>('[data-testid="duration-input"]');
-    await input.setValue('45');
-    await input.trigger('blur');
-    expect(wrapper.emitted('update:modelValue')).toEqual([['00:45:00']]);
-  });
-
-  it('reserves compact width for a full HH:mm plus input chrome', async () => {
-    const wrapper = await mount('09:00');
+  it('reserves compact width for a full HH:MM:SS plus input chrome', async () => {
+    const wrapper = await mount('01:30:00');
     const root = wrapper.find('.time-input--compact');
     expect(root.exists()).toBe(true);
-    expect(wrapper.html()).not.toContain('5.5ch');
-    expect(wrapper.html()).toContain('10ch');
-    expect(wrapper.find<HTMLInputElement>('[data-testid="time-input"]').element.value).toBe(
-      '09:00',
+    // `ui` is a plain object prop, not a DOM attribute Vue merges into HTML,
+    // so its value is read off the stub instance rather than the markup.
+    // SAFETY: `DurationInput` always passes a `{ root, base }` shape.
+    const ui = wrapper.findComponent(InputStub).vm.$attrs.ui as { root?: string };
+    expect(ui.root).toContain('8ch');
+    expect(wrapper.find<HTMLInputElement>('[data-testid="duration-input"]').element.value).toBe(
+      '01:30:00',
     );
+  });
+});
+
+type TimeFieldStubValue = Time | { start: Time | undefined; end: Time | undefined };
+
+describe('TimeField', () => {
+  function emitModelValue(
+    wrapper: Awaited<ReturnType<typeof mountSuspended>>,
+    value: TimeFieldStubValue,
+  ) {
+    wrapper.findComponent(InputTimeStub).vm.$emit('update:modelValue', value);
+  }
+
+  /** Dispatches a real `focusout` so `relatedTarget` (unlike `.trigger()`) is honored. */
+  function dispatchFocusOut(
+    wrapper: Awaited<ReturnType<typeof mountSuspended>>,
+    relatedTarget: EventTarget | null,
+  ) {
+    wrapper
+      .find('[data-testid="time-field"]')
+      .element.dispatchEvent(new FocusEvent('focusout', { relatedTarget, bubbles: true }));
+  }
+
+  it('commits a changed value on Enter', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: new Time(9, 0), label: 'Start time', testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, new Time(9, 30));
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('commit')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([new Time(9, 30)]);
+  });
+
+  it('commits on focus leaving the field', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: new Time(9, 0), label: 'Start time', testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, new Time(9, 30));
+    dispatchFocusOut(wrapper, null);
+    await nextTick();
+
+    expect(wrapper.emitted('commit')).toHaveLength(1);
+  });
+
+  it('does not commit when focus moves within the field', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: new Time(9, 0), label: 'Start time', testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, new Time(9, 30));
+    // `Node.contains()` treats a node as containing itself, so a `relatedTarget`
+    // of the field's own root stands in for focus staying within the field
+    // (segment-to-segment movement is exercised for real in the Playwright layer).
+    dispatchFocusOut(wrapper, wrapper.find('.input-time-stub').element);
+    await nextTick();
+
+    expect(wrapper.emitted('commit')).toBeUndefined();
+  });
+
+  it('reports an unchanged commit by not emitting commit', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: new Time(9, 0), label: 'Start time', testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, new Time(9, 0));
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('commit')).toBeUndefined();
+  });
+
+  it('cancels on Escape, reverting to the last committed value', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: new Time(9, 0), label: 'Start time', testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, new Time(9, 30));
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Escape' });
+
+    expect(wrapper.emitted('cancel')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([new Time(9, 0)]);
+  });
+
+  it('clamps the edited start when it inverts within the same minute', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: {
+        modelValue: { start: new Time(10, 42, 50), end: new Time(10, 43, 10) },
+        range: true,
+        clampSeconds: true,
+        label: 'Start and stop time',
+        testid: 'time-field',
+      },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    // User retypes the start minute to 43; reka preserves the untouched seconds.
+    emitModelValue(wrapper, { start: new Time(10, 43, 50), end: new Time(10, 43, 10) });
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('commit')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+      { start: new Time(10, 43, 10), end: new Time(10, 43, 10) },
+    ]);
+  });
+
+  it('clamps the edited end when it inverts within the same minute', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: {
+        modelValue: { start: new Time(10, 42, 50), end: new Time(10, 43, 10) },
+        range: true,
+        clampSeconds: true,
+        label: 'Start and stop time',
+        testid: 'time-field',
+      },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    // User retypes the end minute back to 42; end's seconds (10) are untouched.
+    emitModelValue(wrapper, { start: new Time(10, 42, 50), end: new Time(10, 42, 10) });
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('update:modelValue')?.at(-1)).toEqual([
+      { start: new Time(10, 42, 50), end: new Time(10, 42, 50) },
+    ]);
+  });
+
+  it('leaves a non-inverted same-minute pair untouched', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: {
+        modelValue: { start: new Time(10, 43, 5), end: new Time(10, 43, 5) },
+        range: true,
+        clampSeconds: true,
+        label: 'Start and stop time',
+        testid: 'time-field',
+      },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, { start: new Time(10, 43, 5), end: new Time(10, 43, 20) });
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('commit')).toHaveLength(1);
+    // No clamp fired: only the live update from the segment edit itself.
+    expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
+  });
+
+  it('leaves an inverted pair unclamped when clampSeconds is off', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: {
+        modelValue: { start: new Time(10, 42, 50), end: new Time(10, 43, 10) },
+        range: true,
+        label: 'Start and stop time',
+        testid: 'time-field',
+      },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    emitModelValue(wrapper, { start: new Time(10, 43, 50), end: new Time(10, 43, 10) });
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Enter' });
+
+    expect(wrapper.emitted('commit')).toHaveLength(1);
+    expect(wrapper.emitted('update:modelValue')).toHaveLength(1);
+  });
+
+  it('accepts a range with no end', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: {
+        modelValue: { start: new Time(9, 0), end: undefined },
+        range: true,
+        label: 'Start and stop time',
+        testid: 'time-field',
+      },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+
+    expect(wrapper.findComponent(InputTimeStub).props('modelValue')).toEqual({
+      start: new Time(9, 0),
+      end: undefined,
+    });
   });
 });
