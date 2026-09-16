@@ -1,7 +1,7 @@
 # ui-theming Specification
 
 ## Purpose
-Define the application's visual theming standard: a single brand accent, a user-controllable light/dark mode that defaults to the operating-system preference, no flash of the wrong theme under SSR, and a tokenized (inline-style-free) auth surface — all consistent with the `accessibility` capability (WCAG 2.1 AA).
+Define the application's visual theming standard: a single brand accent, a user-controllable light/dark mode that defaults to the operating-system preference, no flash of the wrong theme under SSR, and a tokenized (inline-style-free) auth surface — all consistent with the `ui-accessibility` capability (WCAG 2.1 AA).
 
 ## Requirements
 
