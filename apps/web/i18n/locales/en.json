@@ -259,8 +259,7 @@
       "titleLabel": "Title",
       "titlePlaceholder": "Task name (optional)",
       "dateLabel": "Date",
-      "startLabel": "Start time",
-      "endLabel": "End time",
+      "timesLabel": "Start and end time",
       "rangeError": "End time cannot be before the start time.",
       "saveButton": "Add",
       "cancelButton": "Cancel",
@@ -269,7 +268,7 @@
     "entryRow": {
       "titleLabel": "Title",
       "startLabel": "Start time",
-      "stopLabel": "Stop time",
+      "timesLabel": "Start and stop time",
       "separator": "–",
       "nowLabel": "now",
       "deleteLabel": "Delete entry",

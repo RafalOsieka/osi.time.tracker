@@ -300,10 +300,9 @@ function onEditToSend() {
         >
           <span :data-testid="`remote-sync-tracked-${row.taskId}`">{{ trackedLabel }}</span>
           <span aria-hidden="true">{{ t('remoteSync.trackedToSendArrow') }}</span>
-          <TimeInput
+          <DurationInput
             v-if="showEditors && editingToSend"
             :model-value="toSendInput"
-            duration
             :label="t('remoteSync.roundedDurationLabel')"
             :testid="`remote-sync-to-send-input-${row.taskId}`"
             @update:model-value="(value) => emit('update:to-send', value ?? undefined)"

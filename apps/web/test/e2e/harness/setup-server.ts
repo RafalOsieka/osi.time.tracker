@@ -41,7 +41,18 @@ export async function setupServer({
   };
   const coverage = process.env.NODE_V8_COVERAGE;
   const setupEnv = coverage ? { ...env, NODE_V8_COVERAGE: coverage } : env;
-  const options = { browser, dev: isDev, env: setupEnv };
+  // Opt-in local override: launch a system Chrome/Edge via Playwright's
+  // `channel` instead of Playwright's own managed Chromium download, for
+  // environments where that download is unreachable. Unset in CI.
+  // `--lang=en-US` pins the UI language Playwright's own managed Chromium
+  // always has regardless of host OS; a real system browser otherwise
+  // inherits the host's OS locale and detectBrowserLanguage serves that
+  // locale's catalog, breaking English-string assertions.
+  const channel = process.env.PLAYWRIGHT_CHROMIUM_CHANNEL;
+  const browserOptions = channel
+    ? { type: 'chromium' as const, launch: { channel, headless: true, args: ['--lang=en-US'] } }
+    : undefined;
+  const options = { browser, dev: isDev, env: setupEnv, browserOptions };
   if (isDev) {
     await setup(options);
   } else {

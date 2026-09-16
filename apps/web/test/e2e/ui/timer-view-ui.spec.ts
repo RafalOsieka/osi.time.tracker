@@ -14,6 +14,9 @@ import {
   pageIncludesTextScript,
 } from '../helpers/dom';
 import { createProject, createTracker } from '../helpers/http';
+import { typeTimeField } from '../helpers/time-field';
+import { instantToZoned } from '../../../app/utils/date-time';
+import { localDayKey } from '../../../app/utils/timer-view-grouping';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
@@ -23,6 +26,14 @@ const describeTimerViewUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
 const pageExcludesText = pageExcludesTextScript();
 const groupKeyForTitle = groupKeyForTitleScript();
+
+/** Parses a rendered `HH:MM:SS` duration (optionally prefixed, e.g. `"Total: 00:03:32"`) to seconds. */
+function parseHhMmSs(text: string | null): number {
+  const match = text?.match(/(\d+):(\d{2}):(\d{2})/);
+  if (!match) throw new Error(`parseHhMmSs: no HH:MM:SS found in "${text}"`);
+  const [, hours, minutes, seconds] = match;
+  return Number(hours) * 3600 + Number(minutes) * 60 + Number(seconds);
+}
 
 describeTimerViewUI('timer view UI flow', async () => {
   const dbUrl = await provisionDatabase();
@@ -168,14 +179,8 @@ describeTimerViewUI('timer view UI flow', async () => {
       .fill('Manual Add Entry Task');
     // Use a range that is always in the past on the current local day, including
     // when the suite runs shortly after midnight (08:00–09:00 would be "future").
-    await page
-      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
-      .first()
-      .fill('00:00');
-    await page
-      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
-      .first()
-      .fill('00:01');
+    await typeTimeField(page, 'add-entry-time-input', '00:00', 0);
+    await typeTimeField(page, 'add-entry-time-input', '00:01', 1);
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
     await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
 
@@ -195,14 +200,8 @@ describeTimerViewUI('timer view UI flow', async () => {
       .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
       .first()
       .fill('Inverted Range Task');
-    await page
-      .locator('[data-testid="add-entry-start-input"] input, [data-testid="add-entry-start-input"]')
-      .first()
-      .fill('10:00');
-    await page
-      .locator('[data-testid="add-entry-end-input"] input, [data-testid="add-entry-end-input"]')
-      .first()
-      .fill('09:00');
+    await typeTimeField(page, 'add-entry-time-input', '10:00', 0);
+    await typeTimeField(page, 'add-entry-time-input', '09:00', 1);
     await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
 
     await page.waitForSelector('[data-testid="add-entry-range-error"]');
@@ -462,17 +461,14 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
 
     // Edit start time in place; the local calendar day must stay the same.
-    const startButton = page.locator(`[data-testid="timer-entry-start-${seeded.id}"]`);
-    await startButton.locator('button').or(startButton).first().click();
-    const startInput = page.locator(`[data-testid="timer-entry-start-input-${seeded.id}"]`);
     const startPatch = page.waitForResponse(
       (response) =>
         response.request().method() === 'PATCH' &&
         response.url().includes(`/api/time-entries/${seeded.id}`) &&
         response.ok(),
     );
-    await startInput.locator('input').or(startInput).first().fill('08:15');
-    await startInput.locator('input').or(startInput).first().press('Enter');
+    await typeTimeField(page, `timer-entry-times-${seeded.id}`, '08:15', 0);
+    await page.keyboard.press('Enter');
     await startPatch;
     const from = new Date(Date.now() - 60 * 60 * 1000).toISOString();
     const to = new Date(Date.now() + 60 * 60 * 1000).toISOString();
@@ -505,6 +501,121 @@ describeTimerViewUI('timer view UI flow', async () => {
     await deleteBtn.locator('button').or(deleteBtn).first().click();
     await page.locator('[data-testid="confirm-accept"]').click();
     await page.waitForFunction(pageExcludesText, 'Inline Edit Target Task');
+
+    await page.close();
+  });
+
+  it('retyping the same minute of a stopped entry sends no request; a later minute updates totals', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+
+    // Started and stopped 30 seconds apart within the same minute, safely in
+    // the past — the exact shape that used to be rejected as "stopped before
+    // started" once the invisible seconds were dropped by an edit.
+    const now = new Date();
+    now.setSeconds(0, 0);
+    const minuteStart = new Date(now.getTime() - 10 * 60 * 1000);
+    const startedAt = new Date(minuteStart.getTime() + 10_000).toISOString();
+    const stoppedAt = new Date(minuteStart.getTime() + 40_000).toISOString();
+    const title = 'Seconds Precision Task ' + Date.now();
+    const seeded = await startEntry(jar, token, { title, startedAt, stoppedAt });
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    await page.waitForFunction(pageIncludesText, title);
+
+    expect(seeded.taskId).toBeTruthy();
+    const toggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
+    await toggle.locator('button').or(toggle).first().click();
+    await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
+
+    const originalGroupTotal = await page
+      .locator(`[data-testid="timer-group-total-${seeded.taskId}"]`)
+      .textContent();
+    expect(originalGroupTotal?.trim()).toBe('00:00:30');
+
+    // The field renders in the app's effective (browser-detected) timezone;
+    // resolve it to type the same wall-clock hour/minute the row already shows.
+    const timeZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const dayKey = localDayKey(startedAt, timeZone);
+    // The day total is shared with every other entry this suite seeds onto
+    // "today", so the edit's effect is asserted as a delta, not an absolute.
+    const dayTotalLocator = page.locator(`[data-testid="timer-day-total-${dayKey}"]`);
+    const originalDaySeconds = parseHhMmSs(await dayTotalLocator.textContent());
+    const stopZoned = instantToZoned(stoppedAt, timeZone);
+    const sameMinute = `${String(stopZoned.hour).padStart(2, '0')}:${String(stopZoned.minute).padStart(2, '0')}`;
+
+    await typeTimeField(page, `timer-entry-times-${seeded.id}`, sameMinute, 1);
+    await page.keyboard.press('Tab');
+    // No PATCH is in flight; give the (absent) request time to have landed.
+    await page.waitForTimeout(500);
+
+    const from = new Date(minuteStart.getTime() - 60 * 60 * 1000).toISOString();
+    const to = new Date(minuteStart.getTime() + 60 * 60 * 1000).toISOString();
+    const rowsAfterNoop = await (
+      await fetch(
+        url(`/api/time-entries?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+        { headers: { cookie: jar.header() } },
+      )
+    ).json();
+    const noopRow = rowsAfterNoop.find((r: { id: string }) => r.id === seeded.id);
+    expect(noopRow.stoppedAt).toBe(stoppedAt);
+    const unchangedGroupTotal = await page
+      .locator(`[data-testid="timer-group-total-${seeded.taskId}"]`)
+      .textContent();
+    expect(unchangedGroupTotal?.trim()).toBe('00:00:30');
+
+    // Now move the stop two minutes later; row, group, and day totals update.
+    const laterMinute = `${String(stopZoned.hour).padStart(2, '0')}:${String((stopZoned.minute + 2) % 60).padStart(2, '0')}`;
+    const laterPatch = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes(`/api/time-entries/${seeded.id}`) &&
+        response.ok(),
+    );
+    await typeTimeField(page, `timer-entry-times-${seeded.id}`, laterMinute, 1);
+    await page.keyboard.press('Enter');
+    await laterPatch;
+
+    // The PATCH response landing is not the same as the page's own follow-up
+    // refresh (REQ-150's timer-view feed) finishing its re-render; poll.
+    const groupTotalLocator = page.locator(`[data-testid="timer-group-total-${seeded.taskId}"]`);
+    await expect.poll(async () => (await groupTotalLocator.textContent())?.trim()).toBe('00:02:30');
+    // The edit added exactly two minutes; the day total (shared with every
+    // other entry this suite seeds onto "today") rises by exactly that much.
+    await expect
+      .poll(async () => parseHhMmSs(await dayTotalLocator.textContent()))
+      .toBe(originalDaySeconds + 120);
+
+    // A running entry's single-field-plus-"now" slot must be the same width
+    // as a stopped entry's range field (REQ-265, REQ-361).
+    const runningTitle = 'Seconds Precision Running Task ' + Date.now();
+    const running = await startEntry(jar, token, { title: runningTitle });
+    try {
+      // A full reload collapses every group, including the one this test
+      // expanded earlier — both groups need re-expanding after it.
+      await page.reload();
+      await page.waitForFunction(pageIncludesText, runningTitle);
+      const reexpandedToggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
+      await reexpandedToggle.locator('button').or(reexpandedToggle).first().click();
+      await page.waitForSelector(`[data-testid="timer-entry-${seeded.id}"]`, { timeout: 10000 });
+      const runningToggle = page.locator(`[data-testid="timer-group-toggle-${running.taskId}"]`);
+      await runningToggle.locator('button').or(runningToggle).first().click();
+      await page.waitForSelector(`[data-testid="timer-entry-${running.id}"]`, { timeout: 10000 });
+
+      // The reserved slot is the fixed-width wrapper the field sits in, not
+      // the field's own box — a running row's field shares that wrapper with
+      // a separator and the "now" label, so it is narrower on its own.
+      const stoppedSlotWidth = await page
+        .locator(`[data-testid="timer-entry-times-${seeded.id}"]`)
+        .evaluate((el) => el.parentElement?.getBoundingClientRect().width);
+      const runningSlotWidth = await page
+        .locator(`[data-testid="timer-entry-times-${running.id}"]`)
+        .evaluate((el) => el.parentElement?.getBoundingClientRect().width);
+      expect(runningSlotWidth).toBeCloseTo(stoppedSlotWidth ?? -1, 0);
+    } finally {
+      // Never leak a running entry into a later test, even if an assertion above throws.
+      await stopEntry(jar, token, running.id);
+    }
 
     await page.close();
   });

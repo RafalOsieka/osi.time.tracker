@@ -9,6 +9,7 @@ import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
 import { startEntry } from '../helpers/http';
 import { typeDateField } from '../helpers/date-field';
+import { typeTimeField } from '../helpers/time-field';
 
 function isoDateFor(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
@@ -29,7 +30,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     return page;
   }
 
-  it('commits a compact typed time in the popover and rebases the elapsed ticker', async () => {
+  it('types a time via segments in the popover and rebases the elapsed ticker', async () => {
     const { jar, token } = await apiLogin(user.email, user.password);
     const running = await (await startEntry(jar, token, { title: 'Compact Time Edit' })).json();
 
@@ -43,11 +44,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     await typeDateField(page, 'timer-start-editor-date-input', isoDateFor(yesterday));
 
-    // Type a compact value: `830` must normalize to `08:30` on Enter.
-    const timeInput = page.locator('[data-testid="timer-start-editor-time-input"]');
-    await timeInput.fill('830');
-    await timeInput.press('Enter');
-    await expect.poll(() => timeInput.inputValue()).toBe('08:30');
+    await typeTimeField(page, 'timer-start-editor-time-input', '08:30');
 
     await page.click('[data-testid="timer-start-editor-save-button"]');
     const errorLocator = page.locator('[data-testid="timer-start-editor-error"]');
@@ -99,10 +96,8 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
     await typeDateField(page, 'timer-start-editor-date-input', isoDateFor(yesterday));
 
-    // The shared TimeInput commits on blur/Enter, so type and press Enter.
-    const timeInput = page.locator('[data-testid="timer-start-editor-time-input"]');
-    await timeInput.fill('08:00');
-    await timeInput.press('Enter');
+    // The popover binds the time field live, so no separate commit step is needed.
+    await typeTimeField(page, 'timer-start-editor-time-input', '08:00');
 
     await page.click('[data-testid="timer-start-editor-save-button"]');
     const errorLocator = page.locator('[data-testid="timer-start-editor-error"]');
@@ -159,9 +154,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
     });
     await page.waitForSelector('[data-testid="timer-start-editor-popover"]');
 
-    const timeInput = page.locator('[data-testid="timer-start-editor-time-input"]');
-    await timeInput.fill('08:00');
-    await timeInput.press('Enter');
+    await typeTimeField(page, 'timer-start-editor-time-input', '08:00');
 
     await page.click('[data-testid="timer-start-editor-save-button"]');
     const errorLocator = page.locator('[data-testid="timer-start-editor-error"]');

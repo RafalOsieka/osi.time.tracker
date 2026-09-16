@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CalendarDate, parseDate } from '@internationalized/date';
+import { CalendarDate, parseDate, parseTime, type Time } from '@internationalized/date';
 import type { FormErrorEvent } from '@nuxt/ui';
 import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
 
@@ -50,6 +50,18 @@ function onSelectDate(value: CalendarDate | null) {
     dateValue.value = value;
   }
 }
+
+/** `HH:mm` bridge to `Time`, mirroring `dateValue` above (`state` keeps the schema-validated strings). */
+const timesValue = computed<{ start: Time | undefined; end: Time | undefined }>({
+  get: () => ({
+    start: state.startTime ? parseTime(state.startTime) : undefined,
+    end: state.endTime ? parseTime(state.endTime) : undefined,
+  }),
+  set: (value) => {
+    state.startTime = value.start ? value.start.toString().slice(0, 5) : '';
+    state.endTime = value.end ? value.end.toString().slice(0, 5) : '';
+  },
+});
 
 watch(
   () => visible,
@@ -205,28 +217,15 @@ async function onSave() {
         </div>
 
         <div class="grid gap-1">
-          <label for="add-entry-start-time">{{ t('timerView.addEntry.startLabel') }}</label>
-          <TimeInput
-            id="add-entry-start-time"
-            v-model="state.startTime"
-            :label="t('timerView.addEntry.startLabel')"
-            :compact="false"
+          <label for="add-entry-times">{{ t('timerView.addEntry.timesLabel') }}</label>
+          <TimeField
+            id="add-entry-times"
+            v-model="timesValue"
+            range
+            :label="t('timerView.addEntry.timesLabel')"
             :invalid="!!rangeError"
             :describedby="rangeError ? 'add-entry-range-error' : undefined"
-            testid="add-entry-start-input"
-          />
-        </div>
-
-        <div class="grid gap-1">
-          <label for="add-entry-end-time">{{ t('timerView.addEntry.endLabel') }}</label>
-          <TimeInput
-            id="add-entry-end-time"
-            v-model="state.endTime"
-            :label="t('timerView.addEntry.endLabel')"
-            :compact="false"
-            :invalid="!!rangeError"
-            :describedby="rangeError ? 'add-entry-range-error' : undefined"
-            testid="add-entry-end-input"
+            testid="add-entry-time-input"
           />
         </div>
 

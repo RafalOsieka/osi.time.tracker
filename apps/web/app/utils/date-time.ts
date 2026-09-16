@@ -1,4 +1,5 @@
 import { Temporal } from 'temporal-polyfill';
+import { fromAbsolute, type ZonedDateTime } from '@internationalized/date';
 
 export interface DateTimeSettings {
   timeZone: string;
@@ -24,6 +25,21 @@ export function wallClockToInstant(date: string, time: string, timeZone: string)
 /** Local calendar day key (YYYY-MM-DD) for an ISO instant in `timeZone`. */
 export function localDayKeyFromInstant(iso: string, timeZone: string): string {
   return instantToZoned(iso, timeZone).toPlainDate().toString();
+}
+
+/**
+ * Converts an ISO instant to an `@internationalized/date` `ZonedDateTime` in
+ * `timeZone`, for the segmented time field (REQ-361 shared-ui-components).
+ * Unlike `wallClockToInstant`, editing only the hour/minute of the result via
+ * `.set({ hour, minute })` preserves the seconds and milliseconds of `iso`.
+ */
+export function instantToZonedDateTime(iso: string, timeZone: string): ZonedDateTime {
+  return fromAbsolute(Date.parse(iso), timeZone);
+}
+
+/** Converts a `ZonedDateTime` (REQ-361) back to an ISO instant string. */
+export function zonedDateTimeToInstant(value: ZonedDateTime): string {
+  return value.toDate().toISOString();
 }
 
 /** Inclusive start / exclusive end ISO instants. */

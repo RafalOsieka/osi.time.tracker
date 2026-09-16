@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
-import { CalendarDate } from '@internationalized/date';
+import { CalendarDate, parseTime } from '@internationalized/date';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
 import { wallClockToInstant } from '../../app/utils/date-time';
 
@@ -67,6 +67,15 @@ const InputDateStub = {
   props: ['modelValue'],
   emits: ['update:modelValue'],
 };
+// Stands in for Nuxt UI's segmented `UInputTime` (range): tests drive it
+// directly via `vm.$emit('update:modelValue', { start, end })` rather than
+// simulating segment keystrokes.
+const InputTimeStub = {
+  inheritAttrs: false,
+  template: '<div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
+  props: ['modelValue', 'range'],
+  emits: ['update:modelValue'],
+};
 
 function mount() {
   return mountSuspended(TimerAddEntryDialog, {
@@ -77,6 +86,7 @@ function mount() {
         UInputMenu: InputMenuStub,
         UInput: InputStub,
         UInputDate: InputDateStub,
+        UInputTime: InputTimeStub,
         UAlert: { template: '<div v-bind="$attrs"><slot /></div>' },
         FormDialogFooter: {
           template: '<div><button type="submit" data-testid="save-button">save</button></div>',
@@ -84,6 +94,10 @@ function mount() {
       },
     },
   });
+}
+
+function findTimesStub(wrapper: Awaited<ReturnType<typeof mount>>) {
+  return wrapper.findComponent(InputTimeStub);
 }
 
 describe('TimerAddEntryDialog', () => {
@@ -113,12 +127,10 @@ describe('TimerAddEntryDialog', () => {
       .findComponent(InputDateStub)
       .vm.$emit('update:modelValue', new CalendarDate(2024, 3, 15));
     await wrapper.find('[data-testid="add-entry-title-input"]').setValue('  Manual task  ');
-    const start = wrapper.find('[data-testid="add-entry-start-input"]');
-    const end = wrapper.find('[data-testid="add-entry-end-input"]');
-    await start.setValue('900');
-    await start.trigger('blur');
-    await end.setValue('1030');
-    await end.trigger('blur');
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:00'),
+      end: parseTime('10:30'),
+    });
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -146,12 +158,10 @@ describe('TimerAddEntryDialog', () => {
       .findComponent(InputDateStub)
       .vm.$emit('update:modelValue', new CalendarDate(2024, 3, 15));
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Freeform Title');
-    const start = wrapper.find('[data-testid="add-entry-start-input"]');
-    const end = wrapper.find('[data-testid="add-entry-end-input"]');
-    await start.setValue('900');
-    await start.trigger('blur');
-    await end.setValue('1030');
-    await end.trigger('blur');
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:00'),
+      end: parseTime('10:30'),
+    });
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -179,12 +189,10 @@ describe('TimerAddEntryDialog', () => {
 
   it('blocks an end time before the start with an inline error', async () => {
     const wrapper = await mount();
-    const start = wrapper.find('[data-testid="add-entry-start-input"]');
-    const end = wrapper.find('[data-testid="add-entry-end-input"]');
-    await start.setValue('1100');
-    await start.trigger('blur');
-    await end.setValue('1000');
-    await end.trigger('blur');
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('11:00'),
+      end: parseTime('10:00'),
+    });
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
@@ -197,6 +205,21 @@ describe('TimerAddEntryDialog', () => {
   it('blocks submit when the date is cleared to null', async () => {
     const wrapper = await mount();
     await wrapper.findComponent(InputDateStub).vm.$emit('update:modelValue', null);
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(csrfFetchMock).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="add-entry-range-error"]').text()).toBe(
+      'error.timeEntryStartedAtInvalid',
+    );
+  });
+
+  it('blocks submit when a time segment is cleared to incomplete', async () => {
+    const wrapper = await mount();
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: undefined,
+      end: parseTime('10:00'),
+    });
     await wrapper.find('form').trigger('submit');
     await flushPromises();
 
