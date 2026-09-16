@@ -56,7 +56,7 @@
     "playwright-core": "^1.63.0",
     "tsx": "^4.23.13",
     "typescript": "^6.0.3",
-    "vite-doctor": "^0.0.9",
+    "vite-doctor": "^0.0.11",
     "vitest": "^4.1.11",
     "vue-tsc": "^3.3.11"
   },
