@@ -1,15 +1,15 @@
 import { getDb } from '../../db/index';
 import { tasks, projects } from '../../db/schema';
-import { eq, isNull, asc, and, ilike } from 'drizzle-orm';
+import { eq, isNull, asc, and, ilike, sql } from 'drizzle-orm';
 import { listTasksQuerySchema, type TaskDto } from '../../../shared/types/task';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
+import { taskLastUsedAt } from '../../utils/tasks';
 import { getZodQuery } from '../../utils/zod-input';
 
 export default defineEventHandler(async (event): Promise<TaskDto[]> => {
   const db = getDb();
   const { user } = await requireAuth(event);
-  const { projectId, search: searchRaw } = await getZodQuery(event, listTasksQuerySchema);
-  const search = searchRaw?.trim();
+  const { projectId, search, limit } = await getZodQuery(event, listTasksQuerySchema);
 
   const conditions = [eq(tasks.userId, user.id)];
   if (projectId === 'none') {
@@ -21,6 +21,10 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     conditions.push(ilike(tasks.name, `%${search}%`));
   }
 
+  // Ranked most-recently-used first (REQ-133/REQ-137 share this notion of
+  // "recently used"), tasks with no entries last, then alphabetically; capped
+  // so a large task history never renders unbounded suggestions.
+  const lastUsed = taskLastUsedAt(db);
   const rows = await db
     .select({
       id: tasks.id,
@@ -31,8 +35,10 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     })
     .from(tasks)
     .leftJoin(projects, eq(projects.id, tasks.projectId))
+    .leftJoinLateral(lastUsed, sql`true`)
     .where(and(...conditions))
-    .orderBy(asc(tasks.name));
+    .orderBy(sql`${lastUsed.lastUsedAt} DESC NULLS LAST`, asc(tasks.name))
+    .limit(limit);
 
   const refs = await getRemoteIssueRefsForTasks(
     user.id,

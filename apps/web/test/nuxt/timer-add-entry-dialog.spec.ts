@@ -1,9 +1,18 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { CalendarDate } from '@internationalized/date';
 import TimerAddEntryDialog from '../../app/components/TimerAddEntryDialog.vue';
 import { wallClockToInstant } from '../../app/utils/date-time';
+
+/** Matches `SUGGESTION_DEBOUNCE_MS` in `use-task-suggestions.ts`. */
+const SUGGESTION_DEBOUNCE_MS = 200;
+
+/** Advances past the suggestion debounce and settles the resulting fetch. */
+async function settleSuggestions() {
+  await vi.advanceTimersByTimeAsync(SUGGESTION_DEBOUNCE_MS);
+  await flushPromises();
+}
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -79,6 +88,7 @@ function mount() {
 
 describe('TimerAddEntryDialog', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     csrfFetchMock.mockReset();
     fetchMock.mockReset();
     fetchMock.mockResolvedValue([]);
@@ -88,6 +98,11 @@ describe('TimerAddEntryDialog', () => {
     } catch {
       // ignore
     }
+  });
+
+  afterEach(() => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
   });
 
   it('submits converted local instants and emits the created entry', async () => {
@@ -148,6 +163,18 @@ describe('TimerAddEntryDialog', () => {
         stoppedAt: wallClockToInstant('2024-03-15', '10:30', 'UTC'),
       },
     });
+  });
+
+  it('issues one suggestion request carrying the final text after rapid typing', async () => {
+    const wrapper = await mount();
+
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'F');
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Fi');
+    await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Fix');
+    await settleSuggestions();
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith('/api/tasks', { query: { search: 'Fix' } });
   });
 
   it('blocks an end time before the start with an inline error', async () => {

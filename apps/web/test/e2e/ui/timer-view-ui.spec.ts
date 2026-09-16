@@ -600,6 +600,83 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
+  it('caps top-bar suggestions and ranks the most recently used task first', async () => {
+    const email = 'timerviewsuggestions@example.com';
+    await seedUsers(dbUrl, [{ email, displayName: 'timerviewsuggestionsuser' }]);
+    const { jar, token } = await apiLogin(email);
+
+    // Seed 22 tasks with strictly increasing `startedAt`, so the overlay's
+    // default cap (20) and most-recently-used ranking are both exercised.
+    const suffix = Date.now();
+    const searchTerm = `Sugg${suffix}`;
+    const taskTitles: string[] = [];
+    let mostRecentTaskId = '';
+    for (let i = 0; i < 22; i++) {
+      const title = `${searchTerm}-${String(i).padStart(2, '0')}`;
+      taskTitles.push(title);
+      const entry = await startEntry(jar, token, {
+        title,
+        startedAt: new Date(2020, 0, 1 + i, 10).toISOString(),
+        stoppedAt: new Date(2020, 0, 1 + i, 11).toISOString(),
+      });
+      if (i === 21) {
+        mostRecentTaskId = entry.taskId;
+      }
+    }
+    const mostRecentTitle = taskTitles[21]!;
+
+    const page = await loginAs(email);
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    const titleInput = page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first();
+
+    const suggestionsResponse = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('/api/tasks') &&
+        response.url().includes(searchTerm) &&
+        response.ok(),
+    );
+    await titleInput.click();
+    await titleInput.fill(searchTerm);
+    await suggestionsResponse;
+
+    await page.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 10000 });
+    const optionTexts = await page.locator('[role="option"]').allInnerTexts();
+
+    // First option is always the synthetic create-new-task row (REQ-180);
+    // the real suggestions follow it, capped at 20 and ranked
+    // most-recently-used first (REQ-133).
+    expect(optionTexts[0]).toMatch(/new task/i);
+    const suggestionTexts = optionTexts.slice(1);
+    expect(suggestionTexts.length).toBeLessThanOrEqual(20);
+    expect(suggestionTexts[0]).toContain(mostRecentTitle);
+
+    // Picking that suggestion binds the started entry to that exact task.
+    await page
+      .locator('[role="option"]')
+      .nth(1)
+      .evaluate((el: HTMLElement) => el.click());
+    await page.click('[data-testid="timer-toggle-button"]');
+    await page.waitForFunction(
+      () =>
+        document
+          .querySelector('[data-testid="timer-toggle-button"]')
+          ?.getAttribute('aria-pressed') === 'true',
+    );
+
+    const runningRes = await fetch(url('/api/time-entries/running'), {
+      headers: { cookie: jar.header() },
+    });
+    const running = await runningRes.json();
+    expect(running.taskId).toBe(mostRecentTaskId);
+
+    await stopEntry(jar, token, running.id);
+    await page.close();
+  });
+
   it('swaps the document favicon when the top-bar timer starts and stops', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
     const runningRes = await fetch(url('/api/time-entries/running'), {

@@ -23,9 +23,23 @@ export interface TaskDto {
   remoteIssueRef?: RemoteIssueRefDto;
 }
 
+/** Default and maximum for `listTasksQuerySchema`'s `limit` (title-suggestion cap). */
+export const TASK_LIST_DEFAULT_LIMIT = 20;
+export const TASK_LIST_MAX_LIMIT = 100;
+
 export const listTasksQuerySchema = z.object({
   projectId: z.string().optional(),
-  search: z.string().optional(),
+  // Trimmed; blank collapses to `undefined` so callers need not special-case it.
+  search: z
+    .string()
+    .optional()
+    .transform((value) => value?.trim() || undefined),
+  limit: z.coerce
+    .number({ error: 'error.taskLimitInvalid' })
+    .int({ error: 'error.taskLimitInvalid' })
+    .min(1, { error: 'error.taskLimitInvalid' })
+    .max(TASK_LIST_MAX_LIMIT, { error: 'error.taskLimitInvalid' })
+    .default(TASK_LIST_DEFAULT_LIMIT),
 });
 
 export type ListTasksQuery = z.infer<typeof listTasksQuerySchema>;

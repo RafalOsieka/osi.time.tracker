@@ -502,6 +502,7 @@
     "taskNameRequired": "Nazwa jest wymagana.",
     "taskNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
     "taskProjectInvalid": "Wybierz prawidłowy projekt.",
+    "taskLimitInvalid": "Podaj prawidłowy limit sugestii.",
     "notFound": "Nie znaleziono.",
     "timeEntryTitleInvalid": "Wprowadź prawidłowy tytuł.",
     "timeEntryTitleTooLong": "Tytuł może mieć maksymalnie 200 znaków.",

@@ -502,6 +502,7 @@
     "taskNameRequired": "Name is required.",
     "taskNameTooLong": "Name must be 100 characters or fewer.",
     "taskProjectInvalid": "Select a valid project.",
+    "taskLimitInvalid": "Enter a valid suggestion limit.",
     "notFound": "Not found.",
     "timeEntryTitleInvalid": "Enter a valid title.",
     "timeEntryTitleTooLong": "Title must be 200 characters or fewer.",

@@ -170,6 +170,36 @@ describeResolveTaskId('resolveTaskId', async () => {
     expect(chosen).toBe(withEntries!.id);
   });
 
+  it('prefers a candidate with an old entry over one with none', async () => {
+    const userId = await getUserId();
+    const name = `OldEntryBeatsNoEntry ${Date.now()}`;
+    const [withOldEntry] = await db
+      .insert(tasks)
+      .values({ userId, name, remoteIssueId: null })
+      .returning({ id: tasks.id });
+    await db.insert(timeEntries).values({
+      userId,
+      taskId: withOldEntry!.id,
+      startedAt: new Date('2018-01-01T00:00:00.000Z'),
+      stoppedAt: new Date('2018-01-01T01:00:00.000Z'),
+    });
+    // Second candidate with a different remote issue and no entries at all.
+    const tracker = await insertTracker(userId, `Cfg ${name}`);
+    const now = new Date();
+    await db.insert(tasks).values({
+      userId,
+      name,
+      remoteIssueId: '4242',
+      trackerId: tracker.id,
+      remoteIssueCachedTitle: 'No entries twin',
+      remoteIssueCreatedAt: now,
+      remoteIssueUpdatedAt: now,
+    });
+
+    const chosen = await db.transaction((tx) => resolveTaskId(tx, userId, name, null));
+    expect(chosen).toBe(withOldEntry!.id);
+  });
+
   it('explicit remote issue bypasses the tie-break and find-or-creates that task', async () => {
     const userId = await getUserId();
     const tracker = await insertTracker(userId, 'Exact Tracker');

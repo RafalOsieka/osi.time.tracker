@@ -3,6 +3,8 @@ import {
   updateTaskSchema,
   listTasksQuerySchema,
   TASK_NAME_MAX_LENGTH,
+  TASK_LIST_DEFAULT_LIMIT,
+  TASK_LIST_MAX_LIMIT,
 } from '../../shared/types/task';
 import { mapZodError } from '../../server/utils/zod-error';
 
@@ -86,17 +88,48 @@ describe('updateTaskSchema', () => {
 });
 
 describe('listTasksQuerySchema', () => {
-  it('accepts an empty query', () => {
-    expect(listTasksQuerySchema.parse({})).toEqual({});
+  it('accepts an empty query and applies the default limit', () => {
+    expect(listTasksQuerySchema.parse({})).toEqual({ limit: TASK_LIST_DEFAULT_LIMIT });
   });
 
   it('accepts projectId and search filters', () => {
     expect(listTasksQuerySchema.parse({ projectId: 'none', search: 'fix' })).toEqual({
       projectId: 'none',
       search: 'fix',
+      limit: TASK_LIST_DEFAULT_LIMIT,
     });
     expect(listTasksQuerySchema.parse({ projectId: validProjectId })).toEqual({
       projectId: validProjectId,
+      limit: TASK_LIST_DEFAULT_LIMIT,
     });
+  });
+
+  it('trims search and treats blank search as absent', () => {
+    expect(listTasksQuerySchema.parse({ search: '  fix  ' }).search).toBe('fix');
+    expect(listTasksQuerySchema.parse({ search: '' }).search).toBeUndefined();
+    expect(listTasksQuerySchema.parse({ search: '   ' }).search).toBeUndefined();
+  });
+
+  it('accepts an explicit limit within range', () => {
+    expect(listTasksQuerySchema.parse({ limit: '5' }).limit).toBe(5);
+    expect(listTasksQuerySchema.parse({ limit: TASK_LIST_MAX_LIMIT }).limit).toBe(
+      TASK_LIST_MAX_LIMIT,
+    );
+  });
+
+  it('rejects a non-positive, non-integer, or out-of-range limit', () => {
+    for (const invalid of [0, 'abc', TASK_LIST_MAX_LIMIT + 1, 1.5, -1]) {
+      const result = listTasksQuerySchema.safeParse({ limit: invalid });
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it('maps an invalid limit to error.taskLimitInvalid via mapZodError', () => {
+    const result = listTasksQuerySchema.safeParse({ limit: '0' });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const mapped = mapZodError(result.error);
+      expect(mapped.messageKey).toBe('error.taskLimitInvalid');
+    }
   });
 });
