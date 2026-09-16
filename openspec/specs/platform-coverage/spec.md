@@ -1,4 +1,4 @@
-# coverage-reporting Specification
+# platform-coverage Specification
 
 ## Purpose
 

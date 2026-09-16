@@ -1,7 +1,7 @@
-# user-settings Specification
+# workspace-settings Specification
 
 ## Purpose
-Define account-level user preferences — the effective display timezone — together with their persistence model, API, settings page, and the timezone-aware date-time foundation that renders all times and day groupings according to those preferences. Settings are scoped to the authenticated user, survive across devices and sessions, ride along in the session payload for first-render availability, and change the UI as a pure client-side re-render (the on-the-wire representation remains UTC ISO 8601 instants). The settings API (REQ-166) follows the shared `api-endpoint-conventions` for authentication, CSRF, validation, and the error contract.
+Define account-level user preferences — the effective display timezone — together with their persistence model, API, settings page, and the timezone-aware date-time foundation that renders all times and day groupings according to those preferences. Settings are scoped to the authenticated user, survive across devices and sessions, ride along in the session payload for first-render availability, and change the UI as a pure client-side re-render (the on-the-wire representation remains UTC ISO 8601 instants). The settings API (REQ-166) follows the shared `core-api-conventions` for authentication, CSRF, validation, and the error contract.
 
 ## Requirements
 
@@ -58,11 +58,11 @@ The system SHALL expose `GET /api/user/settings` returning the authenticated use
 ### Requirement: REQ-167 Settings preferences page
 The `/settings` page SHALL present an authenticated preferences surface with:
 
-1. **Language** — a control offering supported UI locales (`en`, `pl`); changing it SHALL apply immediately via the i18n locale cookie (internationalization) without a separate Save action.
+1. **Language** — a control offering supported UI locales (`en`, `pl`); changing it SHALL apply immediately via the i18n locale cookie (core-i18n) without a separate Save action.
 2. **Theme** — a 3-way control for `light`, `dark`, and `system`; changing it SHALL apply immediately via the color-mode cookie (ui-theming) without a separate Save action.
 3. **Timezone** — a filterable select populated from `Intl.supportedValuesOf('timeZone')` that, when no timezone is saved, pre-selects the browser-detected timezone and shows a localized "detected" hint; changing the value SHALL immediately persist via partial `PATCH /api/user/settings` with `{ timezone }` (REQ-166).
 
-The page SHALL NOT present a week-start control. The page SHALL NOT require a form-level Save button. Successful applies SHALL be silent (no success toast or banner). Failed account-setting PATCHes SHALL surface a translated toast only (from the `{ messageKey, params }` contract or a repurposed settings error string) and SHALL leave the control in a consistent state after the attempt. Concurrent PATCHes for account fields SHALL use last-write-wins. Applied timezone changes SHALL re-render times without a page reload. Controls SHALL meet WCAG 2.1 AA (labelled, keyboard operable), use Nuxt UI components, derive styling from theme tokens, keep form controls full-width (shared-ui-components), and keep all strings in `en`/`pl` parity.
+The page SHALL NOT present a week-start control. The page SHALL NOT require a form-level Save button. Successful applies SHALL be silent (no success toast or banner). Failed account-setting PATCHes SHALL surface a translated toast only (from the `{ messageKey, params }` contract or a repurposed settings error string) and SHALL leave the control in a consistent state after the attempt. Concurrent PATCHes for account fields SHALL use last-write-wins. Applied timezone changes SHALL re-render times without a page reload. Controls SHALL meet WCAG 2.1 AA (labelled, keyboard operable), use Nuxt UI components, derive styling from theme tokens, keep form controls full-width (ui-shared-components), and keep all strings in `en`/`pl` parity.
 
 #### Scenario: Detected timezone pre-selected with hint
 - **WHEN** a user with no saved timezone opens `/settings`

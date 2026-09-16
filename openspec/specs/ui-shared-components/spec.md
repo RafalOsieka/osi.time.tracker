@@ -1,4 +1,4 @@
-# shared-ui-components Specification
+# ui-shared-components Specification
 
 ## Purpose
 Define the reusable, presentational UI building blocks shared across list/detail pages (table header, empty state, row actions, app-level confirm dialog, and locale-aware date formatting) so pages stay consistent, accessible, and free of duplicated markup/CSS.

@@ -1,7 +1,8 @@
-# e2e-test-harness Specification
+# platform-e2e-harness Specification
 
 ## Purpose
-Define how the end-to-end (e2e) test harness provisions, isolates, and tears down its runtime so spec files run reliably and in parallel. Each spec file runs against its own PostgreSQL database cloned from a single pre-migrated template, ensuring no cross-file state bleed. The harness boots a per-file Nuxt server (build-once mode by default, dev mode when `NUXT_TEST_DEV` is set), provides unified seeding and environment-availability guards (Docker/browser), bounds parallelism with a worker cap, and guarantees clean teardown of containers and server processes. It also covers the migrator spec running against fresh empty databases and the use of a portable `127.0.0.1` connection host.
+Define how the end-to-end (e2e) test harness provisions, isolates, and tears down its runtime so spec files run reliably and in parallel, plus the project's testing conventions (test-first bug fixes, suite layout by runtime, user-per-test isolation, and unit-testing extracted composables at their own boundary). Each spec file runs against its own PostgreSQL database cloned from a single pre-migrated template, ensuring no cross-file state bleed. The harness boots a per-file Nuxt server (build-once mode by default, dev mode when `NUXT_TEST_DEV` is set), provides unified seeding and environment-availability guards (Docker/browser), bounds parallelism with a worker cap, and guarantees clean teardown of containers and server processes. It also covers the migrator spec running against fresh empty databases and the use of a portable `127.0.0.1` connection host.
+
 ## Requirements
 ### Requirement: REQ-052 Per-file database isolation
 Each e2e spec file SHALL run against its own PostgreSQL database, cloned from a single pre-migrated template database, so that files do not share mutable state.
@@ -157,7 +158,7 @@ The api Vitest project SHALL allow tests inside a spec file to run concurrently,
 - **THEN** multiple `it` blocks in that file MAY run at the same time against the same Nuxt server and cloned database
 
 #### Scenario: Auth throttle spec stays serial
-- **WHEN** the authentication spec asserts excessive login attempts are throttled
+- **WHEN** the `core-authentication` spec asserts excessive login attempts are throttled
 - **THEN** its tests SHALL run sequentially and SHALL NOT share the login bucket with concurrent siblings in the same file
 
 #### Scenario: UI specs stay serial
@@ -174,3 +175,19 @@ Historical migration specs under `db/` SHALL apply committed migration SQL files
 #### Scenario: Exclude-by-filename is insufficient
 - **WHEN** a new migration file is added whose name does not match the capsule's exclude string
 - **THEN** the prefix filter SHALL still omit it from the before-set (the suite MUST NOT rely on `!startsWith('0015_')` style excludes)
+### Requirement: REQ-177 Extracted composables are independently unit-tested
+
+Each capability composable extracted from the Remote Sync day page SHALL have unit/component tests at its own boundary covering its loading lifecycle (idle → loading → loaded/error), retry, and its derived selectors, independent of the page that consumes it. Those tests SHALL execute the composable under test; they MUST NOT replace that module with a mock. Collaborators (HTTP, adapters, other composables) MAY be mocked. The browser-orchestrated remote client used for current-account lookup, same-day log fetch with in-flight dedup and cache, and time-entry create SHALL be tested at this boundary as well.
+
+#### Scenario: Composable lifecycle is covered
+- **WHEN** an extracted composable is added
+- **THEN** tests SHALL assert its loading, error, retry, and selector behavior without rendering the full day page
+
+#### Scenario: Tests exercise the composable under test
+- **WHEN** a capability composable is unit-tested
+- **THEN** the test file SHALL import and call that composable's real implementation rather than substituting a mock of the same module
+
+#### Scenario: Remote client cache and errors are covered
+- **WHEN** the browser-orchestrated remote client is unit-tested
+- **THEN** tests SHALL assert account cache reuse, in-flight request coalescing, log cache hits, cache invalidation, successful create, and mapping of adapter failures to translation keys, without rendering the Remote Sync page
+

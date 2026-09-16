@@ -1,11 +1,7 @@
 # platform-toolchain Specification
 
 ## Purpose
-
-Define the baseline platform toolchain the application builds and runs on (the
-supported Nuxt/Vite/unhead versions) and the quality gates that must stay green,
-so toolchain upgrades preserve behavior, contracts, schema, and i18n without
-duplicate major dependency versions.
+Define the baseline the repository builds and runs on: the supported Nuxt/Vite/unhead versions, the single zod 4 validation baseline, the independently consumable tracker package, and the pnpm workspace workflows — together with the quality gates that must stay green so toolchain changes preserve behavior, contracts, schema, and i18n without duplicate major dependency versions.
 
 ## Requirements
 
@@ -46,4 +42,40 @@ catalog. All quality gates — `pnpm lint`, `pnpm format:check`, `pnpm type-chec
 #### Scenario: Incompatible dependency blocks the upgrade
 - **WHEN** a dependency that peers on zod (e.g. `@nuxt/ui`) has no release compatible with `zod@^4`
 - **THEN** the upgrade SHALL be reverted rather than worked around with forced resolutions or patches
+
+### Requirement: REQ-305 Tracker package is independently consumable
+
+The tracker package SHALL expose its neutral contracts and provider implementations through explicit public exports with executable JavaScript and TypeScript declarations. It SHALL build, type-check, and run its provider tests without preparing or building the web application. Consumers SHALL NOT need Nuxt-generated types, server globals, or browser-extension globals to use the package.
+
+#### Scenario: Independent clean package build
+- **WHEN** declared package dependencies are installed and no generated Nuxt artifacts exist
+- **THEN** the package build, type-check, and provider tests SHALL succeed
+
+#### Scenario: Downstream runtime compatibility
+- **WHEN** a server runtime or browser bundler consumes the package's public exports
+- **THEN** it SHALL resolve executable code and declarations without importing web application source or requiring Node-only globals in browser execution
+
+#### Scenario: Undeclared deep import
+- **WHEN** a consumer imports a non-exported package-internal module
+- **THEN** package resolution SHALL reject that import rather than relying on application source aliases
+
+### Requirement: REQ-306 Workspace workflows preserve web behavior
+
+The repository SHALL offer root commands for development, production build, type-checking, lint, formatting, tests, and migrations that resolve workspace dependencies in the required order. A clean frozen-lockfile install and build SHALL produce a deployable web application with existing client/server behavior, APIs, and database contents unchanged. Repository quality gates SHALL include extracted package tests without silently losing existing coverage.
+
+#### Scenario: Clean build and deployment
+- **WHEN** the workspace is built from a clean checkout using documented root commands
+- **THEN** package dependencies SHALL build before the web application and the production output SHALL start with the existing runtime configuration contract
+
+#### Scenario: Migration ordering retained
+- **WHEN** an isolated standalone deployment starts
+- **THEN** its migrator SHALL complete before the web service serves traffic, using the unchanged migration history
+
+#### Scenario: Package failure blocks consumers
+- **WHEN** a required package build or type-check fails
+- **THEN** the corresponding aggregate command SHALL fail rather than succeeding against stale generated output
+
+#### Scenario: Existing quality coverage retained
+- **WHEN** root test and coverage commands run
+- **THEN** web suites, extracted provider suites, and repository tooling suites SHALL remain included in their documented gates
 

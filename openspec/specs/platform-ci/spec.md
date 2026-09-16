@@ -1,4 +1,4 @@
-# ci-pipeline Specification
+# platform-ci Specification
 
 ## Purpose
 

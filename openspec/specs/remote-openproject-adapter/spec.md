@@ -1,4 +1,4 @@
-# openproject-adapter Specification
+# remote-openproject-adapter Specification
 
 ## Purpose
 

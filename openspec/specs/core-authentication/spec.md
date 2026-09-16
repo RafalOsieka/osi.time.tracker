@@ -1,4 +1,4 @@
-# authentication Specification
+# core-authentication Specification
 
 ## Purpose
 Define how the application authenticates users and protects server-side resources. Authentication is based on a sealed, server-side session cookie issued via `nuxt-auth-utils`, with email/password login, timing-safe and non-enumerating credential verification, logout, fixed-lifetime sessions, and client-side login-state detection. It also covers protection of private endpoints, CSRF protection, baseline security headers, login rate limiting via `nuxt-security`, and an environment-variable bootstrap user so MVP login is usable before self-registration exists.

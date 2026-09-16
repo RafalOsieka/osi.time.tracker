@@ -1,4 +1,4 @@
-# frontend-pages Specification
+# ui-routing Specification
 
 ## Purpose
 Define the application's page shell, layouts, and routing behavior. It activates Nuxt's file-based router with a minimal `app.vue` shell, a public `/login` page on the `auth` layout, and an authenticated home page on the `default` layout (with a logout control). A single private-by-default global middleware protects every route — pages are private unless they declare `public: true` — resolving server-side using the session cookie without browser-only APIs. This guarantees no login flash, safe handling of the `?redirect` target (rejecting open-redirect attempts), and preserved accessible route-change announcements.
@@ -34,7 +34,7 @@ The application SHALL expose a `/login` page that renders the login form within 
 - **THEN** the auth layout heading SHALL show the application brand mark beside the full application title`
 
 ### Requirement: REQ-061 Authenticated home page on the default layout
-The application SHALL expose a `/` page that renders within the `default` layout as the timer view (authenticated home). The page SHALL present a page-level header with title and primary create action for adding a manual time entry (shared header pattern used by other management pages). Initial timer-view data SHALL be available from SSR per time-tracking REQ-150 / REQ-264. Logout reachability for authenticated pages is part of the shell (see `frontend-shell` REQ-064 / REQ-069): the sidebar footer account control opens a menu that includes Log out.
+The application SHALL expose a `/` page that renders within the `default` layout as the timer view (authenticated home). The page SHALL present a page-level header with title and primary create action for adding a manual time entry (shared header pattern used by other management pages). Initial timer-view data SHALL be available from SSR per time-tracking REQ-150 / REQ-264. Logout reachability for authenticated pages is part of the shell (see `ui-shell` REQ-064 / REQ-069): the sidebar footer account control opens a menu that includes Log out.
 
 #### Scenario: Authenticated user sees the welcome placeholder
 - **WHEN** an authenticated user navigates to `/`

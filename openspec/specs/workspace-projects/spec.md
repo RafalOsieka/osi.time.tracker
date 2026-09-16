@@ -1,7 +1,7 @@
-# project-management Specification
+# workspace-projects Specification
 
 ## Purpose
-Define how authenticated users manage their own projects (the middle of the `Client → Project → Task` hierarchy): listing, creating, editing, and soft-deleting projects, each belonging to exactly one client owned by the same user, with an accessible, tokenized Projects UI. All project endpoints follow the shared `api-endpoint-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
+Define how authenticated users manage their own projects (the middle of the `Client → Project → Task` hierarchy): listing, creating, editing, and soft-deleting projects, each belonging to exactly one client owned by the same user, with an accessible, tokenized Projects UI. All project endpoints follow the shared `core-api-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
 
 ## Requirements
 

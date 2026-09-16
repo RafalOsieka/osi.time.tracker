@@ -1,4 +1,4 @@
-# lint-and-format-toolchain Specification
+# platform-lint-format Specification
 
 ## Purpose
 

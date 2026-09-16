@@ -1,4 +1,4 @@
-# accessibility Specification
+# ui-accessibility Specification
 
 ## Purpose
 Define the project-wide accessibility standard (WCAG 2.1 AA) that every page and component MUST follow, and the automated lint gate that enforces the statically checkable parts. This standard applies to all current and future UI under `app/`.

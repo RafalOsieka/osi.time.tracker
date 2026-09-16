@@ -1,4 +1,4 @@
-# tracker-management Specification
+# workspace-trackers Specification
 
 ## Purpose
 
@@ -238,7 +238,7 @@ The Trackers management page (`/trackers`) SHALL resolve the authenticated user'
 - **WHEN** the Trackers page resolves the list during SSR
 - **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request
 
-### Requirement: REQ-305 Persisted server execution modes migrate to client
+### Requirement: REQ-364 Persisted server execution modes migrate to client
 
 The system SHALL migrate every persisted tracker whose execution mode is `server` to `client` before application code that accepts only the two-mode contract reads it. Tracker identity, ownership, system type, base URL, rounding rule, timestamps, project associations, and remote issue references SHALL remain unchanged.
 

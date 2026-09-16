@@ -1,4 +1,4 @@
-# api-endpoint-conventions Specification
+# core-api-conventions Specification
 
 ## Purpose
 
@@ -20,7 +20,7 @@ session SHALL be rejected with HTTP 401 and SHALL NOT read or mutate any data.
 
 ### Requirement: REQ-170 CSRF-guarded mutating endpoints
 Mutating endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) SHALL be CSRF-protected
-using the mechanism defined in `authentication` REQ-011, and client-side
+using the mechanism defined in `core-authentication` REQ-011, and client-side
 mutations SHALL be issued through `$csrfFetch` / `useCsrfFetch`.
 
 #### Scenario: Missing CSRF token rejected

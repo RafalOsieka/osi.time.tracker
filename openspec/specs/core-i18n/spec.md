@@ -1,4 +1,4 @@
-# internationalization Specification
+# core-i18n Specification
 
 ## Purpose
 Define the project-wide internationalization standard: how the application provides multi-locale UI through `@nuxtjs/i18n`, how the active locale is resolved and persisted, how document and Nuxt UI locales stay in sync, the key-based server message contract, and the lint gate that forbids hardcoded UI strings. This standard applies to all current and future UI under `app/` and message-bearing server responses.

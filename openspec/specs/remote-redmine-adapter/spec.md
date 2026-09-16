@@ -1,4 +1,4 @@
-# redmine-adapter Specification
+# remote-redmine-adapter Specification
 
 ## Purpose
 

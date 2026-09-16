@@ -1,7 +1,7 @@
-# task-management Specification
+# workspace-tasks Specification
 
 ## Purpose
-Define authenticated, user-scoped CRUD for Tasks (the leaf of the `Client → Project → Task` hierarchy), with an optional project assignment (project-less tasks allowed), task names unique within a user's project scope, project ownership validation when assigned, soft delete, implicit task creation/matching from time-entry titles, and an accessible PrimeVue Dialog-based UI. The `uuidv7` `id` is the API identifier. All task endpoints follow the shared `api-endpoint-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
+Define authenticated, user-scoped CRUD for Tasks (the leaf of the `Client → Project → Task` hierarchy), with an optional project assignment (project-less tasks allowed), task names unique within a user's project scope, project ownership validation when assigned, soft delete, implicit task creation/matching from time-entry titles, and an accessible PrimeVue Dialog-based UI. The `uuidv7` `id` is the API identifier. All task endpoints follow the shared `core-api-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
 
 ## Requirements
 
@@ -161,7 +161,7 @@ Every task SHALL be uniquely identified among the user's tasks by `(userId, proj
 - **THEN** a second project-less unlinked "Code review" SHALL NOT be created, while a project-less "Code review" linked to a remote issue SHALL be allowed
 
 ### Requirement: REQ-137 Implicit task creation and matching via time entries
-The system SHALL create and match tasks implicitly from time-entry titles as defined by the time-tracking capability, using the matching key `(userId, name, projectId, remoteIssueId)`. Implicitly created tasks SHALL be first-class tasks that appear in `GET /api/tasks` and its `search` results. No task `number` SHALL be assigned to any task (implicit or explicit).
+The system SHALL create and match tasks implicitly from time-entry titles as defined by the `tracking-api` capability, using the matching key `(userId, name, projectId, remoteIssueId)`. Implicitly created tasks SHALL be first-class tasks that appear in `GET /api/tasks` and its `search` results. No task `number` SHALL be assigned to any task (implicit or explicit).
 
 Because a bare title no longer identifies a single task, resolution from a title alone SHALL apply a defined tie-break: among the user's tasks matching `(userId, name, effectiveProjectId)` the system SHALL select the task whose entries were **most recently used** (greatest `startedAt` among its time entries, falling back to the task's own creation order when it has none), and SHALL create a task only when no candidate exists. The system SHALL NOT reject a title for being ambiguous, and SHALL NOT create a duplicate task when a candidate exists. A caller that needs a specific task SHALL send that task's `id` instead of a title (REQ-143, REQ-180).
 

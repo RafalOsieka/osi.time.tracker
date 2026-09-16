@@ -1,4 +1,4 @@
-# browser-extension-execution Specification
+# remote-browser-extension Specification
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Allow approved OSI websites to execute bounded tracker operations through the us
 
 ## Requirements
 
-### Requirement: REQ-307 Desktop extension works without publication
+### Requirement: REQ-367 Desktop extension works without publication
 
 The extension SHALL support unpacked installation in desktop Chrome and Edge and use with an explicitly approved local OSI origin without a public domain or store listing. It SHALL execute on-demand tracker requests from its privileged background context, including against trackers that supply no website CORS permission. It SHALL NOT require a native companion or OSI server relay.
 

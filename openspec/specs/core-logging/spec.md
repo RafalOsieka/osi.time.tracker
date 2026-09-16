@@ -1,4 +1,4 @@
-# server-logging Specification
+# core-logging Specification
 
 ## Purpose
 
