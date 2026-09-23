@@ -58,7 +58,9 @@ Wherever the UI accepts a wall-clock time of day from the user, it SHALL use one
 
 The field's value SHALL be a structured date-time, not a string. When the field is seeded from an existing instant, editing a segment SHALL change only that segment: the calendar date, seconds, and milliseconds of the seeded value SHALL be preserved unchanged in the resulting value. Typing digits into a segment SHALL fill that segment and advance to the next one when the segment is complete; arrow keys SHALL step the focused segment; Backspace SHALL clear it. Because segments are constrained, the field SHALL never hold an invalid time; a partially filled field SHALL report `null` for that side rather than a guessed time, and the owning feature SHALL treat `null` as "incomplete" (block the action) rather than as a value.
 
-The field SHALL support two commit styles from the same component: a live binding that updates the owner on every segment change (forms with an explicit submit action), and an inline contract that emits a commit only when focus leaves the whole field or the user presses Enter, and a cancel that restores the last committed value when the user presses Escape. Moving focus between the field's own segments SHALL NOT count as leaving the field. In the inline contract, a commit whose resulting value equals the last committed value SHALL be reported as unchanged so the owner sends no request.
+For a zoned value, the field SHALL hide the visible timezone abbreviation when neither bound's calendar date has a timezone offset transition in that bound's timezone. It SHALL show the abbreviation if either bound's calendar date contains a transition, including when a range spans two dates. Hiding the abbreviation SHALL NOT remove the timezone or offset from the bound value or change conversion back to an instant. Plain times and date-times without a timezone SHALL not acquire a timezone label.
+
+The field SHALL support two commit styles from the same component: a live binding that updates the owner on every segment change (forms with an explicit submit action), and an inline contract that emits a commit only when focus leaves the whole field or the user presses Enter, and a cancel that restores the last committed value when the user presses Escape. Moving focus between the field's own segments SHALL NOT count as leaving the field, including moving between the start and end groups of a range. In the inline contract, a commit whose resulting value equals the last committed value SHALL be reported as unchanged so the owner sends no request. A partial or incomplete range SHALL NOT trigger an update request when focus moves inside the field.
 
 The field MAY be asked to clamp same-minute inversions: when this option is enabled on a range field and a commit would leave the start and end in the same calendar minute with the start's seconds later than the end's seconds, the field SHALL set the seconds and milliseconds of the bound the user edited equal to those of the other bound before emitting the commit, so the pair is ordered (a zero-length range) and matches what the segments display. The option SHALL default to off.
 
@@ -84,6 +86,22 @@ Replacing a text time input with the segmented field SHALL NOT change the height
 - **WHEN** the field is seeded from `10:42:31.812` on 12 March and the user changes the minute segment to `45`
 - **THEN** the resulting value SHALL be `10:45:31.812` on 12 March — same date, seconds, and milliseconds
 
+#### Scenario: Ordinary date hides timezone abbreviation
+- **WHEN** a zoned time is shown on a calendar date with no offset change in that timezone
+- **THEN** the timezone abbreviation SHALL NOT be visible, while edits SHALL retain that zoned value's instant conversion
+
+#### Scenario: Transition date shows timezone abbreviation
+- **WHEN** a zoned time is shown on a calendar date containing an offset transition in its timezone, including a repeated hour
+- **THEN** the timezone abbreviation SHALL be visible so the offset remains distinguishable
+
+#### Scenario: Range checks both dates
+- **WHEN** a zoned start–end range spans two calendar dates and only one date contains an offset transition in its timezone
+- **THEN** the timezone abbreviation SHALL be visible for the range
+
+#### Scenario: Unzoned value has no timezone abbreviation
+- **WHEN** the field contains a plain time or date-time without a timezone
+- **THEN** it SHALL NOT display a timezone abbreviation or invent a timezone
+
 #### Scenario: Unchanged commit is reported as unchanged
 - **WHEN** the user focuses a field seeded from `10:42:31`, retypes `42` into the minute segment, and leaves the field
 - **THEN** the field SHALL report that the value is unchanged and the owner SHALL send no request
@@ -95,6 +113,10 @@ Replacing a text time input with the segmented field SHALL NOT change the height
 #### Scenario: Focus between segments is not a commit
 - **WHEN** the user moves focus from the hour segment to the minute segment (or, in a range field, from the start group to the end group)
 - **THEN** no commit SHALL be emitted
+
+#### Scenario: Incomplete start does not send a premature update
+- **WHEN** the user partially edits a range's start time and moves focus to its end group, even if the departing segment does not identify the next focused segment
+- **THEN** no commit or update request SHALL occur until the user explicitly commits or leaves the entire field with a complete value
 
 #### Scenario: Escape cancels the edit
 - **WHEN** the user presses Escape while editing

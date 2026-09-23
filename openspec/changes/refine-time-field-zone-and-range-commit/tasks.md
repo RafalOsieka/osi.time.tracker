@@ -1,7 +1,7 @@
 ## 1. Frontend: Time Field Behavior
 
-- [ ] 1.1 Update `TimeField.vue` to hide timezone text only on non-transition dates for zoned single and range values; verify ordinary, spring/fall transition, spanning-range, and unzoned cases in `apps/web/test/nuxt/shared-ui-components.spec.ts`.
-- [ ] 1.2 Update `TimeField.vue` to commit on settled focus leaving the entire control, preserving Enter/Escape and preventing duplicate commits; verify missing `relatedTarget`, internal range transitions, outside blur, and cancellation in focused Nuxt tests.
+- [x] 1.1 Update `TimeField.vue` to hide timezone text only on non-transition dates for zoned single and range values; verify ordinary, spring/fall transition, spanning-range, and unzoned cases in `apps/web/test/nuxt/shared-ui-components.spec.ts`.
+- [x] 1.2 Update `TimeField.vue` to commit on settled focus leaving the entire control, preserving Enter/Escape and preventing duplicate commits; verify missing `relatedTarget`, internal range transitions, outside blur, and cancellation in focused Nuxt tests.
 - [ ] 1.3 Ensure `TimerEntryRow.vue` does not PATCH on an incomplete range after focus transitions, without changing instant conversion; verify with the timer-view UI test and existing entry editing behavior.
 
 ## 2. Frontend: Browser Journeys
@@ -11,7 +11,7 @@
 
 ## 3. Backend
 
-- [ ] 3.1 Confirm no backend/API changes are required by this UI-only change; verify the existing PATCH contract and that no server files were modified.
+- [x] 3.1 Confirm no backend/API changes are required by this UI-only change; verify the existing PATCH contract and that no server files were modified.
 
 ## 4. Validation
 

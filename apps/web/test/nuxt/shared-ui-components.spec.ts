@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import { Time } from '@internationalized/date';
+import { CalendarDateTime, parseZonedDateTime, Time } from '@internationalized/date';
 import TableHeader from '../../app/components/TableHeader.vue';
 import EmptyState from '../../app/components/EmptyState.vue';
 import RowActions from '../../app/components/RowActions.vue';
@@ -34,7 +34,17 @@ const InputStub = {
 const InputTimeStub = {
   inheritAttrs: false,
   template: '<div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
-  props: ['modelValue', 'range', 'hourCycle', 'granularity', 'size', 'variant', 'ui', 'disabled'],
+  props: [
+    'modelValue',
+    'range',
+    'hourCycle',
+    'granularity',
+    'size',
+    'variant',
+    'ui',
+    'disabled',
+    'hideTimeZone',
+  ],
   emits: ['update:modelValue'],
 };
 
@@ -182,6 +192,29 @@ describe('DurationInput', () => {
 type TimeFieldStubValue = Time | { start: Time | undefined; end: Time | undefined };
 
 describe('TimeField', () => {
+  it('hides the zone on ordinary dates but shows it on either transition date of a range', async () => {
+    const winter = parseZonedDateTime('2026-01-12T10:42+01:00[Europe/Warsaw]');
+    const spring = parseZonedDateTime('2026-03-29T10:42+02:00[Europe/Warsaw]');
+    const repeated = parseZonedDateTime('2026-10-25T02:42+01:00[Europe/Warsaw]');
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: winter, testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+    const field = wrapper.findComponent(InputTimeStub);
+    expect(field.props('hideTimeZone')).toBe(true);
+    await wrapper.setProps({ modelValue: spring });
+    expect(field.props('hideTimeZone')).toBe(false);
+    await wrapper.setProps({ modelValue: repeated });
+    expect(field.props('hideTimeZone')).toBe(false);
+    await wrapper.setProps({ modelValue: { start: winter, end: spring }, range: true });
+    expect(field.props('hideTimeZone')).toBe(false);
+    await wrapper.setProps({ modelValue: { start: winter, end: undefined } });
+    expect(field.props('hideTimeZone')).toBe(true);
+    await wrapper.setProps({ modelValue: new CalendarDateTime(2026, 3, 29, 10, 42), range: false });
+    expect(field.props('hideTimeZone')).toBe(true);
+    await wrapper.setProps({ modelValue: new Time(10, 42) });
+    expect(field.props('hideTimeZone')).toBe(true);
+  });
   function emitModelValue(
     wrapper: Awaited<ReturnType<typeof mountSuspended>>,
     value: TimeFieldStubValue,
@@ -220,7 +253,7 @@ describe('TimeField', () => {
 
     emitModelValue(wrapper, new Time(9, 30));
     dispatchFocusOut(wrapper, null);
-    await nextTick();
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(wrapper.emitted('commit')).toHaveLength(1);
   });
@@ -235,9 +268,54 @@ describe('TimeField', () => {
     // `Node.contains()` treats a node as containing itself, so a `relatedTarget`
     // of the field's own root stands in for focus staying within the field
     // (segment-to-segment movement is exercised for real in the Playwright layer).
-    dispatchFocusOut(wrapper, wrapper.find('.input-time-stub').element);
-    await nextTick();
+    const inside = document.createElement('button');
+    wrapper.find('.input-time-stub').element.append(inside);
+    document.body.append(wrapper.element);
+    inside.focus();
+    dispatchFocusOut(wrapper, null);
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
+    expect(wrapper.emitted('commit')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('does not commit an incomplete range on an internal move, then commits once outside', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: {
+        modelValue: { start: new Time(9, 0), end: new Time(10, 0) },
+        range: true,
+        testid: 'time-field',
+      },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+    const inside = document.createElement('button');
+    const outside = document.createElement('button');
+    wrapper.find('.input-time-stub').element.append(inside);
+    document.body.append(wrapper.element);
+    document.body.append(outside);
+    emitModelValue(wrapper, { start: undefined, end: new Time(10, 0) });
+    inside.focus();
+    dispatchFocusOut(wrapper, outside);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(wrapper.emitted('commit')).toBeUndefined();
+    emitModelValue(wrapper, { start: new Time(9, 30), end: new Time(10, 0) });
+    outside.focus();
+    dispatchFocusOut(wrapper, null);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(wrapper.emitted('commit')).toHaveLength(1);
+    outside.remove();
+    wrapper.unmount();
+  });
+
+  it('does not commit a pending blur after Escape', async () => {
+    const wrapper = await mountSuspended(TimeField, {
+      props: { modelValue: new Time(9, 0), testid: 'time-field' },
+      global: { stubs: { UInputTime: InputTimeStub } },
+    });
+    emitModelValue(wrapper, new Time(9, 30));
+    dispatchFocusOut(wrapper, null);
+    await wrapper.find('[data-testid="time-field"]').trigger('keydown', { key: 'Escape' });
+    await new Promise((resolve) => setTimeout(resolve, 10));
     expect(wrapper.emitted('commit')).toBeUndefined();
   });
 

@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import type { Time, CalendarDateTime, ZonedDateTime } from '@internationalized/date';
+import {
+  CalendarDate,
+  type Time,
+  type CalendarDateTime,
+  ZonedDateTime,
+} from '@internationalized/date';
 
 /** The value kinds Nuxt UI's `UInputTime` speaks: a plain time, or a date-time with or without a zone. */
 type TimeValue = Time | CalendarDateTime | ZonedDateTime;
@@ -130,6 +135,29 @@ const lastCommitted = shallowRef<TimeValue | TimeFieldRange | null>(draft.value)
 const editedSide = ref<'start' | 'end' | null>(null);
 /** Only `$el` is used, to check whether a blurred-to target is still inside the field. */
 const rootEl = ref<{ $el: Node } | null>(null);
+let pendingBlur: ReturnType<typeof setTimeout> | undefined;
+
+function hasOffsetTransition(value: TimeValue | null | undefined): boolean {
+  if (!(value instanceof ZonedDateTime)) return false;
+  const date = new CalendarDate(value.year, value.month, value.day);
+  const start = date.toDate(value.timeZone);
+  const end = date.add({ days: 1 }).toDate(value.timeZone);
+  return end.getTime() - start.getTime() !== 24 * 60 * 60 * 1000;
+}
+
+const hideTimeZone = computed(() => {
+  const value = draft.value;
+  return isRangeValue(value)
+    ? !hasOffsetTransition(value.start) && !hasOffsetTransition(value.end)
+    : !hasOffsetTransition(value);
+});
+
+function clearPendingBlur() {
+  if (pendingBlur !== undefined) clearTimeout(pendingBlur);
+  pendingBlur = undefined;
+}
+
+onBeforeUnmount(clearPendingBlur);
 
 watch(
   () => modelValue,
@@ -170,6 +198,7 @@ function clampInversion(value: TimeFieldRange): TimeFieldRange {
 }
 
 function commit() {
+  clearPendingBlur();
   let next = draft.value;
   if (range && clampSeconds && isRangeValue(next)) {
     const clamped = clampInversion(next);
@@ -186,22 +215,19 @@ function commit() {
 }
 
 function cancel() {
+  clearPendingBlur();
   draft.value = lastCommitted.value;
   emit('update:modelValue', draft.value);
   emit('cancel');
 }
 
-/**
- * Commits when focus leaves the whole field, not when it moves between the
- * field's own segments (REQ-361). Segment-to-segment focus changes are DOM
- * `focusout` events whose `relatedTarget` is still a descendant of the field.
- */
-function onFocusOut(event: FocusEvent) {
-  // SAFETY: `relatedTarget` is typed `EventTarget | null` by the DOM lib, but
-  // `Node.contains()` needs a `Node` — any real focus target is one.
-  const related = event.relatedTarget as Node | null;
-  if (related && rootEl.value?.$el?.contains(related)) return;
-  commit();
+/** Decide after the focus transition settles, including when relatedTarget is absent. */
+function onFocusOut() {
+  clearPendingBlur();
+  pendingBlur = setTimeout(() => {
+    pendingBlur = undefined;
+    if (!rootEl.value?.$el?.contains(document.activeElement)) commit();
+  }, 0);
 }
 </script>
 
@@ -211,6 +237,7 @@ function onFocusOut(event: FocusEvent) {
     ref="rootEl"
     :model-value="draft"
     :range="range"
+    :hide-time-zone="hideTimeZone"
     :hour-cycle="24"
     granularity="minute"
     :size="size"
