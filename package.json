@@ -31,15 +31,15 @@
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
     "@oxlint/plugins": "^1.85.0",
     "@typescript-eslint/parser": "^8.70.1",
-    "concurrently": "^9.2.4",
+    "concurrently": "^10.0.5",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "^1.85.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
-    "oxfmt": "^0.68.0",
+    "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.1"
   },
   "author": "Rafal Osieka",
   "repository": {

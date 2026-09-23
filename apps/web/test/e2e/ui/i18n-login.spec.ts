@@ -10,7 +10,7 @@ describeI18nLogin('i18n login page locale rendering', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
-  it.sequential('renders English labels by default (en locale)', async () => {
+  it('renders English labels by default (en locale)', async () => {
     const page = await createPage('/login');
     // Clear any locale cookie so default locale applies
     await page.context().clearCookies();
@@ -26,7 +26,7 @@ describeI18nLogin('i18n login page locale rendering', async () => {
     expect(loginButton?.trim()).toContain('Log in');
   });
 
-  it.sequential('renders Polish labels when locale cookie is set to pl', async () => {
+  it('renders Polish labels when locale cookie is set to pl', async () => {
     const page = await createPage('/login');
     // Set the i18n locale cookie to Polish
     await page.context().addCookies([
