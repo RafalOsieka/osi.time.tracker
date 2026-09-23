@@ -29,15 +29,15 @@
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
-    "@oxlint/plugins": "^1.83.0",
-    "@typescript-eslint/parser": "^8.70.0",
+    "@oxlint/plugins": "^1.85.0",
+    "@typescript-eslint/parser": "^8.70.1",
     "concurrently": "^9.2.4",
-    "eslint": "^10.10.0",
+    "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-oxlint": "^1.83.0",
+    "eslint-plugin-oxlint": "^1.85.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
-    "oxfmt": "^0.66.0",
-    "oxlint": "^1.83.0",
+    "oxfmt": "^0.68.0",
+    "oxlint": "^1.85.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.11"
   },
@@ -47,9 +47,16 @@
     "url": "git+https://github.com/RafalOsieka/osi.time.tracker.git"
   },
   "license": "MIT",
-  "engines": {
-    "node": ">=24",
-    "pnpm": "^12"
-  },
-  "packageManager": "pnpm@12.4.2"
+  "devEngines": {
+    "runtime": {
+      "name": "node",
+      "version": "^24.4.0",
+      "onFail": "download"
+    },
+    "packageManager": {
+      "name": "pnpm",
+      "version": ">=12.5.0 <13.0.0",
+      "onFail": "download"
+    }
+  }
 }

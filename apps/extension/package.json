@@ -16,7 +16,7 @@
   "dependencies": {
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
-    "vue": "^3.5.42",
+    "vue": "^3.5.43",
     "zod": "^4.6.5"
   },
   "devDependencies": {
