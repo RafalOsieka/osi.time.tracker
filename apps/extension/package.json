@@ -16,7 +16,7 @@
   "dependencies": {
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
-    "vue": "^3.5.42",
+    "vue": "^3.5.43",
     "zod": "^4.6.5"
   },
   "devDependencies": {
@@ -25,7 +25,7 @@
     "playwright": "^1.63.0",
     "typescript": "^6.0.3",
     "vite": "^8.3.0",
-    "vitest": "^4.1.11",
+    "vitest": "^5.0.1",
     "vue-tsc": "^3.3.11"
   },
   "engines": {
