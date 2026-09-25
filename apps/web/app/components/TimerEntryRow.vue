@@ -90,6 +90,7 @@ async function commitTitle() {
 type TimeEntryTimesPatch = Partial<Pick<TimeEntryDto, 'startedAt' | 'stoppedAt'>>;
 
 async function commitTimes() {
+  if (!timesModel.value.start) return;
   const patch: TimeEntryTimesPatch = {};
   const startedAt = zonedDateTimeToInstant(timesModel.value.start);
   if (startedAt !== entry.startedAt) patch.startedAt = startedAt;

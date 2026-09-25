@@ -445,6 +445,55 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
+  it('commits a range only after leaving both time groups', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const start = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    start.setSeconds(0, 0);
+    const stop = new Date(start.getTime() + 40 * 60 * 1000);
+    const seeded = await startEntry(jar, token, {
+      title: `Range Focus Task ${Date.now()}`,
+      startedAt: start.toISOString(),
+      stoppedAt: stop.toISOString(),
+    });
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    const toggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
+    await toggle.locator('button').or(toggle).first().click();
+    const field = page.locator(`[data-testid="timer-entry-times-${seeded.id}"]`);
+    await field.waitFor();
+
+    const patches: string[] = [];
+    page.on('request', (request) => {
+      if (
+        request.method() === 'PATCH' &&
+        request.url().includes(`/api/time-entries/${seeded.id}`)
+      ) {
+        patches.push(request.postData() ?? '');
+      }
+    });
+    const earlier = new Date(start.getTime() - 60_000);
+    const timeZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+    const local = instantToZoned(earlier.toISOString(), timeZone);
+    const hour = String(local.hour).padStart(2, '0');
+    const minute = String(local.minute).padStart(2, '0');
+    await typeTimeField(page, `timer-entry-times-${seeded.id}`, `${hour}:${minute}`, 0);
+    await field.locator('[data-segment="hour"]').nth(1).click();
+    await page.waitForTimeout(100);
+    expect(patches).toHaveLength(0);
+
+    const patched = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        response.url().includes(`/api/time-entries/${seeded.id}`) &&
+        response.ok(),
+    );
+    await page.locator('[data-testid="timer-view-page"]').click({ position: { x: 1, y: 1 } });
+    await patched;
+    expect(patches).toHaveLength(1);
+    expect(JSON.parse(patches[0] ?? '{}')).toMatchObject({ startedAt: earlier.toISOString() });
+    await page.close();
+  });
+
   it('edits an entry inline, retitles it to split into another group, and deletes it', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
     const seeded = await startEntry(jar, token, { title: 'Inline Edit Source Task' });
