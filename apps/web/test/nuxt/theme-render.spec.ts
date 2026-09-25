@@ -156,12 +156,21 @@ describe('theme UI and SSR head wiring', () => {
     expect(svgHref()).toBe('/favicon.svg');
   });
 
-  it('keeps AppBrandMark unbadged when a timer is running', async () => {
+  // REQ-369: the in-app mark is stateless. Asserting the idle and running renders are
+  // byte-identical catches any state leak, rather than banning one shape the glyph now
+  // legitimately uses (its lattice points are `<circle>` elements).
+  it('renders AppBrandMark identically whether or not a timer is running', async () => {
+    runningState.value = null;
+    const idle = await mountSuspended(AppBrandMark);
+    const idleMark = idle.find('[data-testid="app-brand-mark"]');
+    expect(idleMark.exists()).toBe(true);
+
     runningState.value = runningEntry;
-    const wrapper = await mountSuspended(AppBrandMark);
-    const mark = wrapper.find('[data-testid="app-brand-mark"]');
-    expect(mark.exists()).toBe(true);
-    expect(mark.html()).not.toContain('#22c55e');
-    expect(mark.html()).not.toMatch(/<circle/i);
+    const running = await mountSuspended(AppBrandMark);
+    const runningMark = running.find('[data-testid="app-brand-mark"]');
+    expect(runningMark.exists()).toBe(true);
+
+    expect(runningMark.html()).toBe(idleMark.html());
+    expect(runningMark.html()).not.toContain('#22c55e');
   });
 });
