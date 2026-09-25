@@ -133,8 +133,6 @@ function withSecondAndMillisecond(value: TimeValue, from: TimeValue): TimeValue 
 const draft = shallowRef<TimeValue | TimeFieldRange | null>(modelValue);
 const lastCommitted = shallowRef<TimeValue | TimeFieldRange | null>(draft.value);
 const editedSide = ref<'start' | 'end' | null>(null);
-/** Only `$el` is used, to check whether a blurred-to target is still inside the field. */
-const rootEl = ref<{ $el: Node } | null>(null);
 let pendingBlur: ReturnType<typeof setTimeout> | undefined;
 
 function hasOffsetTransition(value: TimeValue | null | undefined): boolean {
@@ -221,12 +219,18 @@ function cancel() {
   emit('cancel');
 }
 
-/** Decide after the focus transition settles, including when relatedTarget is absent. */
-function onFocusOut() {
+/**
+ * Decide after the focus transition settles, including when relatedTarget is
+ * absent. The field's own element comes from the event rather than a template
+ * ref on `UInputTime`: that component renders two root nodes, so its `$el` is
+ * a fragment anchor that contains none of the segments.
+ */
+function onFocusOut(event: FocusEvent) {
+  const root = event.currentTarget;
   clearPendingBlur();
   pendingBlur = setTimeout(() => {
     pendingBlur = undefined;
-    if (!rootEl.value?.$el?.contains(document.activeElement)) commit();
+    if (!(root instanceof Node) || !root.contains(document.activeElement)) commit();
   }, 0);
 }
 </script>
@@ -234,7 +238,6 @@ function onFocusOut() {
 <template>
   <UInputTime
     :id="id"
-    ref="rootEl"
     :model-value="draft"
     :range="range"
     :hide-time-zone="hideTimeZone"

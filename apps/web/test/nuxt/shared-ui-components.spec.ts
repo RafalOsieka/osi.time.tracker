@@ -31,9 +31,14 @@ const InputStub = {
 // `blur`/`keydown` are deliberately NOT declared as emits here so they fall
 // through `$attrs` onto the rendered `<div>` as plain native listeners,
 // matching how the real `UInputTime` forwards them onto its own DOM root.
+// The always-false leading node reproduces the real component's two root
+// nodes (a `createReusableTemplate` definition plus the field root), which
+// make its `$el` a fragment anchor containing none of the segments — a stub
+// with a single root would pass focus checks the real component fails.
 const InputTimeStub = {
   inheritAttrs: false,
-  template: '<div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
+  template:
+    '<span v-if="false" /><div v-bind="$attrs" class="input-time-stub"><slot name="separator" /></div>',
   props: [
     'modelValue',
     'range',
