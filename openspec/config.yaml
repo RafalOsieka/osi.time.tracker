@@ -1,9 +1,9 @@
 schema: spec-driven
 
 context: |
-  Tech stack: TypeScript, Node.js (≥25.0.0), Nuxt.js 4, Vue 3
+  Tech stack: TypeScript, Node.js (^24.21.0, from devEngines), Nuxt.js 4, Vue 3
   Database: PostgreSQL with Drizzle
-  Package manager: pnpm
+  Package manager: pnpm, driven through Vite+ (`vp`)
 
 rules:
   specs:

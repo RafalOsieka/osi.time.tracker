@@ -32,15 +32,19 @@ The workflow SHALL run the verify checks as separate parallel jobs — `lint` (`
 - **THEN** that job's status check SHALL be marked red while the other parallel jobs continue to run and report independently
 
 ### Requirement: REQ-016 Lockfile-integrity install with caching
-Each job SHALL install dependencies from the repository root using pnpm with `--frozen-lockfile`, and SHALL cache the pnpm store keyed on `pnpm-lock.yaml`.
+Each job SHALL set up the toolchain with the pinned Vite+ setup action, and SHALL install dependencies from the repository root with `vp install --frozen-lockfile`. Node.js and pnpm SHALL be resolved from the root `devEngines`, not pinned separately in the workflow. The setup step SHALL enable dependency caching keyed on the lockfile. Jobs that need only a subset of the workspace MAY install with a workspace filter and `--ignore-scripts`, provided the install remains frozen.
 
 #### Scenario: Install succeeds with an in-sync lockfile
 - **WHEN** `pnpm-lock.yaml` is in sync with `package.json`
-- **THEN** `pnpm install --frozen-lockfile` SHALL succeed, restoring the pnpm store from cache when available
+- **THEN** `vp install --frozen-lockfile` SHALL succeed, restoring cached dependencies when available
 
 #### Scenario: Out-of-sync lockfile fails fast
 - **WHEN** `pnpm-lock.yaml` is out of sync with `package.json`
-- **THEN** `pnpm install --frozen-lockfile` SHALL fail and the job SHALL report red
+- **THEN** `vp install --frozen-lockfile` SHALL fail and the job SHALL report red
+
+#### Scenario: Runtime follows devEngines
+- **WHEN** the root `devEngines` Node.js or pnpm range changes
+- **THEN** CI jobs SHALL run on a version in the new range without a separate workflow edit
 
 ### Requirement: REQ-017 Gated end-to-end job
 The workflow SHALL provide three Dockerized jobs after cheap verify work: `db` (`pnpm test:e2e:db`, needs cheap jobs except it MUST NOT need `build`), `api` (`pnpm test:e2e:api`, needs cheap jobs including `build`), and `ui` (`pnpm test:e2e:ui`, needs cheap jobs including `build`). `api` and `ui` MAY run in parallel with each other. Each SHALL receive `NUXT_SESSION_PASSWORD` from repository secrets when a server is booted and SHALL self-provision `postgres:18-alpine` via the harness. Missing Docker in these jobs SHALL fail the job (e2e-test-harness CI skip policy).
@@ -83,11 +87,15 @@ The workflow SHALL declare a least-privilege `permissions:` block (default `cont
 - **THEN** the `GITHUB_TOKEN` SHALL be granted only the minimum permissions required (read-only by default)
 
 ### Requirement: REQ-021 Automated dependency and action updates
-The system SHALL provide a Dependabot configuration covering the `npm` and `github-actions` ecosystems so dependencies and pinned actions are kept current automatically.
+The system SHALL provide a Dependabot configuration covering the `npm`, `github-actions` and `docker` ecosystems, so dependencies, pinned actions and Dockerfile base images (including the Vite+ build image) are kept current automatically.
 
 #### Scenario: Dependabot opens update PRs
-- **WHEN** a tracked npm dependency or pinned GitHub Action has a newer version
+- **WHEN** a tracked npm dependency, pinned GitHub Action, or Dockerfile base image has a newer version
 - **THEN** Dependabot SHALL open a pull request that is itself verified by the CI workflow
+
+#### Scenario: Vite+ bumps are split across ecosystems
+- **WHEN** Dependabot bumps the `vite-plus` catalog version and the Vite+ Docker image in separate pull requests
+- **THEN** neither pull request SHALL be merged on its own while the versions disagree (platform-toolchain REQ-370)
 
 ### Requirement: REQ-022 Security scanning via CodeQL
 The repository SHALL have CodeQL analysis enabled (via GitHub default setup) to provide free static security scanning of the JavaScript/TypeScript codebase.
@@ -132,4 +140,3 @@ The `ui` job SHALL install Playwright Chromium and required OS dependencies befo
 #### Scenario: Install failure is red
 - **WHEN** Playwright Chromium installation fails
 - **THEN** the `ui` job SHALL fail
-
