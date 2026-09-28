@@ -30,7 +30,7 @@ RUN vp run build:packages \
 # ── runtime ───────────────────────────────────────────────────────────────────
 # The Nitro output is self-contained (no native modules), so a slim Node image
 # on the same major as `devEngines.runtime` is enough.
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 
 # Fix production environment
