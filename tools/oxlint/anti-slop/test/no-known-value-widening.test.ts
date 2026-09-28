@@ -1,5 +1,5 @@
-import { describe, it } from 'vitest';
-import { RuleTester } from 'oxlint/plugins-dev';
+import { describe, it } from 'vite-plus/test';
+import { RuleTester } from 'vite-plus/lint/plugins-dev';
 
 import { noKnownValueWideningRule } from '../rules/no-known-value-widening.ts';
 

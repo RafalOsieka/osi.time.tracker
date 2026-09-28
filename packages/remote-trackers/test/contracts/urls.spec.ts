@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { deriveIssueUrl, normalizeBaseUrl } from '@osi/remote-trackers/contracts';
 
 describe('normalizeBaseUrl', () => {

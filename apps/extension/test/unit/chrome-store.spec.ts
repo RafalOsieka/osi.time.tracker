@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { ApprovalService, createMemoryHostPermissions } from '../../src/approvals/approvals.js';
 import {
   APPROVAL_STORAGE_KEY,

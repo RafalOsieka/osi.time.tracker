@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
   DEFAULT_OPENPROJECT_DEV_API_KEY,
   DEFAULT_REDMINE_DEV_API_KEY,

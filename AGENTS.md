@@ -18,12 +18,12 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 - **Auth & security:** `nuxt-auth-utils` (sealed cookie sessions), `nuxt-security` (CSRF, rate limiting, CSP).
 - **Validation:** `zod` `^4` — single source of truth for boundary types.
 - **i18n:** `@nuxtjs/i18n` with `en` and `pl` catalogs kept in strict parity.
-- **Testing:** Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`.
-- **Tooling:** pnpm, Oxlint + leftover ESLint (Vue templates / a11y / i18n), Oxfmt, Docker Compose. Use `pnpm` / `pnpx`, not npm / npx.
+- **Testing:** Vitest 5, bundled by Vite+ (`unit`, `e2e-*`, `nuxt` projects) + `@nuxt/test-utils`.
+- **Tooling:** pnpm, Vite+ (`vp`: Vite, Vitest, Oxlint, Oxfmt — configured in the root `vite.config.ts`) + leftover ESLint (Vue templates / a11y / i18n), Docker Compose. Use `pnpm` / `pnpx`, not npm / npx.
 
 ## Setup Commands
 
-The package manager is **pnpm** (`^12`). Do not use `npm` or `yarn`.
+The package manager is **pnpm** (`^12`). Do not use `npm` or `yarn`. Run `pnpm install` (equivalent to `vp install`) again after pulling changes.
 
 ```bash
 pnpm install            # install deps (web package postinstall runs `nuxt prepare`)
@@ -51,10 +51,20 @@ Optional: `CONSOLA_LEVEL` (`0` fatal … `3` info default … `5` trace) raises 
 ```bash
 pnpm dev            # start dev server (hot reload) on http://localhost:3000
 pnpm build          # production build (output in apps/web/.output/)
+pnpm build:packages # build workspace libraries in dependency order (cached by `vp run`)
 pnpm preview        # preview the production build locally
 pnpm generate       # generate a static site
-pnpm type-check     # tracker package type-check, then nuxt typecheck (vue-tsc)
+pnpm type-check     # builds the libraries, then type-checks every workspace package (tsc / vue-tsc / nuxt typecheck)
 ```
+
+### Vite+ (`vp`)
+
+Vite+ bundles Vite, Vitest, Oxlint and Oxfmt behind one CLI, `vp`. The root `vite.config.ts` holds the shared `lint` and `fmt` settings plus the root `test` project (anti-slop plugin tests only); each workspace package keeps its own `vitest.config.ts`, and `apps/extension` its `vite.config.ts`. Run `vp help` or `vp <command> --help` for commands; docs are in `node_modules/vite-plus/docs` or at https://viteplus.dev/guide/.
+
+- **Built-ins vs scripts:** `vp <name>` runs a built-in (`vp lint`, `vp fmt`, `vp test`, `vp build`); `vp run <name>` runs the `package.json` script of that name, like `pnpm <name>`. They differ here — `vp dev` is not `pnpm dev`, and root `vp test` runs only the anti-slop tests — so prefer the `pnpm` scripts in this file.
+- **Workspace scripts:** root scripts drive packages with `vp run --filter …`, which orders builds by workspace dependencies; `pnpm build:packages` builds the libraries with caching. `vp run -r` also selects the root package (whose scripts are the orchestrators), so root scripts filter `./packages/*` and `./apps/*` instead.
+- **`vp check`** covers formatting and Oxlint only — not ESLint and not type checking. Validate with `pnpm lint`, `pnpm format:check` and `pnpm type-check`.
+- **Diagnostics:** `vp toolchain` shows the bundled tool versions (`--global` ignores the local `vite-plus`); `vp why <package>` explains the dependency graph; `vp env doctor` diagnoses runtime or package-manager problems — include its output when asking for help.
 
 ### Database
 
@@ -74,7 +84,7 @@ Always apply migrations before the app serves traffic.
 Root commands forward to workspace packages. Web Vitest projects live in `apps/web/vitest.config.ts`; anti-slop plugin tests live under `tools/oxlint/anti-slop/test/`.
 
 ```bash
-pnpm test:unit      # tracker package + web unit + anti-slop plugin tests
+pnpm test:unit      # unit tests of every workspace package + anti-slop plugin tests
 pnpm test:e2e:db    # Postgres-only (schema, migrator, server-util)
 pnpm test:e2e:api   # HTTP against a booted Nuxt server
 pnpm test:e2e:ui    # Playwright journeys (needs Chromium)
@@ -84,7 +94,7 @@ pnpm test:coverage  # Vitest v8 coverage for web unit + nuxt (exclude migrations
 pnpm package:check  # tracker package build/type-check/tests without Nuxt
 ```
 
-- **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
+- **Focus one test by name:** from the package directory, `pnpm exec vp test run -t "<test name>"`.
 - **Naming:** test files use `*.spec.ts` under the matching `test/` project directory.
 - **E2E layout:** `apps/web/test/e2e/api`, `apps/web/test/e2e/ui`, `apps/web/test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
 - **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `apps/web/.output` with `NUXT_TEST_SKIP_BUILD=1` (the CI `build` artifact is built with `IS_E2E=true` so login rate limits match local e2e).
@@ -110,26 +120,30 @@ Follow `CODING_STANDARDS.md` — key rules summarized here:
 ### Linting & formatting
 
 ```bash
-pnpm lint           # oxlint then ESLint (Vue i18n + accessibility stay on ESLint)
+pnpm lint           # vp lint (Oxlint) then ESLint (Vue i18n + accessibility stay on ESLint)
 pnpm lint:fix       # auto-fix Oxlint + ESLint issues
-pnpm format         # format with Oxfmt
-pnpm format:check   # verify Oxfmt
+pnpm format         # format with vp fmt (Oxfmt)
+pnpm format:check   # verify formatting
 ```
 
 `pnpm lint` includes vendored anti-slop rules (`tools/oxlint/anti-slop`). Explicit `any` is an Oxlint `typescript/no-explicit-any` error; justified exceptions use `// oxlint-disable-next-line typescript/no-explicit-any -- reason`. Do not use npm or npx; one-off CLIs use `pnpx`.
 
-**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `tools/oxlint/anti-slop/test/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
+**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `tools/oxlint/anti-slop/test/` and may change the `lint` block of `vite.config.ts` to enable/disable `anti-slop/*` rules only when asked. Do not “fix” anti-slop by rewriting its rules.
 
 Run lint, format check, and the relevant test projects before opening a PR. After moving files or changing imports, re-run `pnpm lint`.
 
 ## Project Structure
 
 ```
-apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
-packages/remote-trackers/ Provider adapters, neutral contracts, and package tests
-tools/                    Vendored tooling (anti-slop Oxlint plugin — do not edit rules unless asked)
-docs/                     Project vision and work-breakdown notes
-openspec/                 OpenSpec change/spec documents (behavioral source of truth)
+apps/web/                    Nuxt application (app, server, shared, i18n, public, tests)
+apps/extension/              Browser extension (Chrome / Edge, MV3) built with Vite
+apps/dev-seed/               Seeds the local OpenProject / Redmine instances (`pnpm trackers:seed`)
+packages/remote-trackers/    Provider adapters, neutral contracts, and package tests
+packages/extension-protocol/ Message protocol shared by the web app and the extension
+tools/                       Vendored tooling (anti-slop Oxlint plugin — do not edit rules unless asked)
+docs/                        Project vision and work-breakdown notes
+openspec/                    OpenSpec change/spec documents (behavioral source of truth)
+vite.config.ts               Vite+ root config: shared lint/fmt settings and root test project
 ```
 
 ## Build and Deployment

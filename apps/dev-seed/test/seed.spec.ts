@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import type { TrackerSeeder } from '../src/executor.js';
 import { CLIENT_FIXTURES } from '../src/fixture/index.js';
 import type { TrackerKey } from '../src/fixture/types.js';

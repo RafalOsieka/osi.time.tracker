@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
 import {

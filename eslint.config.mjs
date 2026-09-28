@@ -5,6 +5,7 @@ import oxlint from 'eslint-plugin-oxlint';
 import vueA11y from 'eslint-plugin-vuejs-accessibility';
 import vueI18n from '@intlify/eslint-plugin-vue-i18n';
 import tsParser from '@typescript-eslint/parser';
+import viteConfig from './vite.config.ts';
 
 export default withNuxt()
   .prepend({
@@ -110,7 +111,8 @@ export default withNuxt()
       '@typescript-eslint/no-explicit-any': 'error',
     },
   })
-  .append(...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'))
+  // Oxlint rules live in the `lint` block of vite.config.ts (Vite+).
+  .append(...oxlint.buildFromOxlintConfig(viteConfig.lint))
   .append(prettier) // Keep last: disables ESLint stylistic rules that conflict with Oxfmt.
   .append({
     ignores: [

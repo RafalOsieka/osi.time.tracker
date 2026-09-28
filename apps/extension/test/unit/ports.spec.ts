@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
 import type { JsonValue, RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
 import {
