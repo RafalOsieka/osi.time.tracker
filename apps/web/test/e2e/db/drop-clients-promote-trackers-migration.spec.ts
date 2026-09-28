@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
+import { MIGRATIONS_FOLDER } from '@osi/migrator';
 import { createDatabaseClient } from '../../../server/db/client';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';
-import { join } from 'node:path';
 import { applySqlFile, migrationFilesBefore, readMigrationSql } from '../harness/migrations';
 
 const describeDb = requireDocker();
@@ -18,7 +18,7 @@ describeDb('drop-clients-promote-trackers migration', () => {
     const { sql } = createDatabaseClient(dbUrl, { max: 5 });
 
     try {
-      const migrationsDir = join(process.cwd(), 'server', 'db', 'migrations');
+      const migrationsDir = MIGRATIONS_FOLDER;
       for (const file of migrationFilesBefore(15, migrationsDir)) {
         await applySqlFile(sql, readMigrationSql(file, migrationsDir));
       }

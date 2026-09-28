@@ -68,11 +68,11 @@ Vite+ bundles Vite, Vitest, Oxlint and Oxfmt behind one CLI, `vp`. The root `vit
 
 ### Database
 
-The schema lives in `apps/web/server/db/schema`; migrations are committed SQL files under `apps/web/server/db/migrations`.
+The schema lives in `apps/web/server/db/schema`; migrations are committed SQL files under `apps/migrator/migrations`. `drizzle-kit` in `apps/web` writes new migrations there, and `@osi/migrator` applies them and seeds the `BOOTSTRAP_USER_*` user — locally, in the e2e harness (`runMigrations`), and in production as the Dockerfile's `migrator` image.
 
 ```bash
-pnpm db:generate        # generate a new migration after editing the schema
-pnpm db:migrate         # apply pending migrations (tsx apps/web/server/db/migrate.ts)
+pnpm db:generate        # generate a new migration after editing the schema (into apps/migrator/migrations)
+pnpm db:migrate         # apply pending migrations (vp run --filter @osi/migrator migrate)
 docker compose --profile trackers down     # stop all dev containers (keeps data)
 docker compose --profile trackers down -v  # stop and delete ALL dev volumes (db, pgAdmin, trackers)
 ```
@@ -138,6 +138,7 @@ Run lint, format check, and the relevant test projects before opening a PR. Afte
 apps/web/                    Nuxt application (app, server, shared, i18n, public, tests)
 apps/extension/              Browser extension (Chrome / Edge, MV3) built with Vite
 apps/dev-seed/               Seeds the local OpenProject / Redmine instances (`pnpm trackers:seed`)
+apps/migrator/               SQL migrations + one-shot runner (`pnpm db:migrate`, prod `migrate` service)
 packages/remote-trackers/    Provider adapters, neutral contracts, and package tests
 packages/extension-protocol/ Message protocol shared by the web app and the extension
 tools/                       Vendored tooling (anti-slop Oxlint plugin — do not edit rules unless asked)

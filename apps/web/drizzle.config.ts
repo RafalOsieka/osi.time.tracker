@@ -17,7 +17,9 @@ if (!databaseUrl) {
 export default defineConfig({
   dialect: 'postgresql',
   schema: './server/db/schema/*.ts',
-  out: './server/db/migrations',
+  // The schema lives here, but the committed migrations belong to the migrator app,
+  // which ships them in its Docker image and applies them (`pnpm db:migrate`).
+  out: '../migrator/migrations',
   dbCredentials: {
     url: databaseUrl,
   },

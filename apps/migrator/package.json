@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@osi/migrator",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Applies the committed SQL migrations and seeds the bootstrap user",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "migrate": "tsx src/cli.ts",
+    "build": "vp pack",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "test:unit": "vp test run"
+  },
+  "dependencies": {
+    "@adonisjs/hash": "^9.1.1",
+    "drizzle-orm": "^0.45.3",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

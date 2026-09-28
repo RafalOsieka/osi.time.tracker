@@ -57,18 +57,13 @@ describe('createQueryLogger', () => {
   });
 });
 
-describe('createDatabaseClient logger option', () => {
+describe('createDatabaseClient', () => {
   beforeEach(() => {
     drizzle.mockClear();
   });
 
-  it('attaches the query logger by default', () => {
+  it('attaches the query logger', () => {
     createDatabaseClient('postgres://user:pass@localhost/db');
     expect(drizzle.mock.calls[0]?.[1]?.logger).toBeDefined();
-  });
-
-  it('omits the query logger when disabled (the migrator opts out to avoid logging a password hash)', () => {
-    createDatabaseClient('postgres://user:pass@localhost/db', { logger: false });
-    expect(drizzle.mock.calls[0]?.[1]?.logger).toBeUndefined();
   });
 });
