@@ -38,8 +38,7 @@ services:
   migrate:
     build:
       context: .
-      target: build
-    command: vp run db:migrate
+      target: migrator
     restart: 'no'
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-osi_time_tracker}

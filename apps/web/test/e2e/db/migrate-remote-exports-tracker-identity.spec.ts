@@ -3,14 +3,14 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createDatabaseClient } from '../../../server/db/client';
-import { runMigrations } from '../../../server/db/migrate';
+import { MIGRATIONS_FOLDER, runMigrations } from '@osi/migrator';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';
 import { applySqlFile, migrationFilesBefore, readMigrationSql } from '../harness/migrations';
 
 const describeDb = requireDocker();
 
-const migrationsDir = join(process.cwd(), 'server', 'db', 'migrations');
+const migrationsDir = MIGRATIONS_FOLDER;
 const migrationFile = '0021_remote_exports_tracker_identity.sql';
 
 async function seedUserAndTrackers(sql: ReturnType<typeof createDatabaseClient>['sql']) {

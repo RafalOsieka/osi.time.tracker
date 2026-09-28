@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import postgres from 'postgres';
 import { getAdminUrl, TEST_DATABASE_URL } from './postgres';
-import { runMigrations } from '../../../server/db/migrate';
+import { runMigrations } from '@osi/migrator';
 
 /**
  * Prepares the template database. It migrates the template DB once,

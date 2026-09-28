@@ -1,8 +1,8 @@
-import { afterAll, describe, expect, it, beforeEach } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import postgres from 'postgres';
 import { sql as drizzleSql, eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../../server/db/client';
-import { runMigrations } from '../../../server/db/migrate';
+import { readBootstrapUser, runMigrations } from '@osi/migrator';
 import { users } from '../../../server/db/schema/users';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';
@@ -12,21 +12,9 @@ const describeDb = requireDocker();
 
 describeDb('database integration', () => {
   let dbUrl: string;
-  const backupEmail = process.env.BOOTSTRAP_USER_EMAIL;
-  const backupPassword = process.env.BOOTSTRAP_USER_PASSWORD;
 
   beforeEach(async () => {
     dbUrl = await provisionEmptyDatabase();
-    // Temporarily delete bootstrap env vars by default for all tests in this file
-    // to prevent runMigrations with mock directories from attempting to seed users.
-    delete process.env.BOOTSTRAP_USER_EMAIL;
-    delete process.env.BOOTSTRAP_USER_PASSWORD;
-  });
-
-  afterAll(() => {
-    // Restore backup env vars after all tests in this file complete
-    if (backupEmail) process.env.BOOTSTRAP_USER_EMAIL = backupEmail;
-    if (backupPassword) process.env.BOOTSTRAP_USER_PASSWORD = backupPassword;
   });
 
   it('connects to Postgres and runs SELECT 1', async () => {
@@ -44,7 +32,7 @@ describeDb('database integration', () => {
     const dir = writeMigrations(['CREATE TABLE migrate_target (id integer PRIMARY KEY);']);
     const probe = postgres(dbUrl, { max: 1 });
     try {
-      await runMigrations(dbUrl, dir);
+      await runMigrations(dbUrl, { migrationsFolder: dir });
 
       const tables = await probe`
         SELECT table_name FROM information_schema.tables
@@ -64,11 +52,11 @@ describeDb('database integration', () => {
     const dir = writeMigrations(['CREATE TABLE idem_target (id integer PRIMARY KEY);']);
     const probe = postgres(dbUrl, { max: 1 });
     try {
-      await runMigrations(dbUrl, dir);
+      await runMigrations(dbUrl, { migrationsFolder: dir });
       const first = await probe`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
 
       // Second run must succeed without error and without re-applying.
-      await expect(runMigrations(dbUrl, dir)).resolves.toBeUndefined();
+      await expect(runMigrations(dbUrl, { migrationsFolder: dir })).resolves.toBeUndefined();
       const second = await probe`SELECT count(*)::int AS n FROM drizzle.__drizzle_migrations`;
 
       expect(second[0]!.n).toBe(first[0]!.n);
@@ -81,7 +69,7 @@ describeDb('database integration', () => {
   it('fails (rejects) on a deliberately broken migration', async () => {
     const dir = writeMigrations(['THIS IS NOT VALID SQL;']);
     try {
-      await expect(runMigrations(dbUrl, dir)).rejects.toBeTruthy();
+      await expect(runMigrations(dbUrl, { migrationsFolder: dir })).rejects.toBeTruthy();
     } finally {
       removeMigrations(dir);
     }
@@ -135,25 +123,14 @@ describeDb('database integration', () => {
   });
 
   describe('bootstrap user seeding', () => {
-    const backupEmail = process.env.BOOTSTRAP_USER_EMAIL;
-    const backupPassword = process.env.BOOTSTRAP_USER_PASSWORD;
-
-    beforeEach(() => {
-      delete process.env.BOOTSTRAP_USER_EMAIL;
-      delete process.env.BOOTSTRAP_USER_PASSWORD;
-    });
-
-    afterAll(() => {
-      if (backupEmail) process.env.BOOTSTRAP_USER_EMAIL = backupEmail;
-      if (backupPassword) process.env.BOOTSTRAP_USER_PASSWORD = backupPassword;
-    });
-
     it('fresh DB + vars set creates user', async () => {
-      process.env.BOOTSTRAP_USER_EMAIL = 'bootstrap@example.com';
-      process.env.BOOTSTRAP_USER_PASSWORD = 'bootstrappassword';
+      const bootstrapUser = readBootstrapUser({
+        BOOTSTRAP_USER_EMAIL: ' Bootstrap@Example.com ',
+        BOOTSTRAP_USER_PASSWORD: 'bootstrappassword',
+      });
 
       // Run migrations which includes seeding
-      await runMigrations(dbUrl);
+      await runMigrations(dbUrl, { bootstrapUser });
 
       // Verify user was created
       const probeClient = createDatabaseClient(dbUrl);
@@ -189,11 +166,13 @@ describeDb('database integration', () => {
         await sql.end({ timeout: 5 });
       }
 
-      // Set vars and run migrations
-      process.env.BOOTSTRAP_USER_EMAIL = 'bootstrap@example.com';
-      process.env.BOOTSTRAP_USER_PASSWORD = 'newpassword';
+      // Run migrations with vars set for the same email
+      const bootstrapUser = readBootstrapUser({
+        BOOTSTRAP_USER_EMAIL: 'bootstrap@example.com',
+        BOOTSTRAP_USER_PASSWORD: 'newpassword',
+      });
 
-      await runMigrations(dbUrl);
+      await runMigrations(dbUrl, { bootstrapUser });
 
       // Verify original user was not modified
       const probeClient = createDatabaseClient(dbUrl);
@@ -212,8 +191,8 @@ describeDb('database integration', () => {
     });
 
     it('unset vars skip silently', async () => {
-      // Run migrations on fresh DB
-      await runMigrations(dbUrl);
+      // Run migrations on fresh DB with neither variable set
+      await runMigrations(dbUrl, { bootstrapUser: readBootstrapUser({}) });
 
       // Verify no user was created
       const probeClient = createDatabaseClient(dbUrl);
@@ -231,7 +210,7 @@ describeDb('database integration', () => {
     // serving traffic after migrations complete; a migration failure blocks it.
     async function startupSequence(migrationsDir: string): Promise<string[]> {
       const events: string[] = [];
-      await runMigrations(dbUrl, migrationsDir);
+      await runMigrations(dbUrl, { migrationsFolder: migrationsDir });
       events.push('migrations-complete');
       events.push('serving-traffic');
       return events;
@@ -251,7 +230,7 @@ describeDb('database integration', () => {
       const dir = writeMigrations(['BROKEN SQL HERE;']);
       let served = false;
       try {
-        await runMigrations(dbUrl, dir);
+        await runMigrations(dbUrl, { migrationsFolder: dir });
         served = true;
       } catch {
         // Skip assignment since served is already false

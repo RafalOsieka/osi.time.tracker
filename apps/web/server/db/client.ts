@@ -20,11 +20,6 @@ export function resolveDatabaseUrl(env: NodeJS.ProcessEnv = process.env): string
   return url;
 }
 
-/**
- * Creates a new Drizzle client backed by a postgres.js connection.
- * Exposed mainly for tests and the migrator; application code SHOULD use the
- * shared `getDb()` client exported from `./index`.
- */
 export type DatabaseClientPair = {
   db: PostgresJsDatabase<typeof schema>;
   sql: Sql;
@@ -49,18 +44,17 @@ function logNotice(notice: Notice): void {
   consola.debug('[postgres] notice', notice);
 }
 
+/**
+ * Creates a new Drizzle client backed by a postgres.js connection.
+ * Exposed mainly for tests; application code SHOULD use the shared `getDb()`
+ * client exported from `./index`.
+ */
 export function createDatabaseClient(
   connectionString: string = resolveDatabaseUrl(),
-  options?: { max?: number; logger?: boolean },
+  options?: { max?: number },
 ): DatabaseClientPair {
   const sql = postgres(connectionString, { max: options?.max ?? 10, onnotice: logNotice });
-  // The migrator opts out (`logger: false`): its one-shot bootstrap-user insert binds a
-  // password hash as a query parameter, which the debug-level query logger would otherwise
-  // print verbatim -- a credential-derived secret REQ-356 forbids logging at any level.
-  const db = drizzle(sql, {
-    schema,
-    logger: (options?.logger ?? true) ? createQueryLogger() : undefined,
-  });
+  const db = drizzle(sql, { schema, logger: createQueryLogger() });
 
   return { db, sql };
 }

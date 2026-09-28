@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { MIGRATIONS_FOLDER } from '@osi/migrator';
 
 const PREFIX = /^(\d{4})_/;
 
@@ -10,10 +11,10 @@ function numericPrefix(fileName: string): number | null {
 }
 
 /**
- * SQL files in `server/db/migrations` whose numeric prefix is strictly less than `n`.
+ * SQL files in the migrator's migrations folder whose numeric prefix is strictly less than `n`.
  */
 export function migrationFilesBefore(n: number, migrationsDir?: string): string[] {
-  const dir = migrationsDir ?? join(process.cwd(), 'server', 'db', 'migrations');
+  const dir = migrationsDir ?? MIGRATIONS_FOLDER;
   return readdirSync(dir)
     .filter((file) => file.endsWith('.sql'))
     .filter((file) => {
@@ -24,7 +25,7 @@ export function migrationFilesBefore(n: number, migrationsDir?: string): string[
 }
 
 export function readMigrationSql(fileName: string, migrationsDir?: string): string {
-  const dir = migrationsDir ?? join(process.cwd(), 'server', 'db', 'migrations');
+  const dir = migrationsDir ?? MIGRATIONS_FOLDER;
   return readFileSync(join(dir, fileName), 'utf8');
 }
 

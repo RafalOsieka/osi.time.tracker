@@ -122,7 +122,7 @@ export default withNuxt()
       'dist',
       'apps/web/.nuxt',
       'apps/web/.output',
-      'apps/web/server/db/migrations',
+      'apps/migrator/migrations',
       'packages/*/dist',
       'apps/extension/dist',
       'apps/web/app/pages/**/*.vue',
