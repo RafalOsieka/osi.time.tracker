@@ -45,7 +45,7 @@ It solves a recurring problem for multi-client work: your clients run different 
 | Validation      | `zod` (single source of truth for boundary types)                       |
 | i18n            | `@nuxtjs/i18n` (`en`, `pl`)                                             |
 | Testing         | Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`          |
-| Tooling         | pnpm, Oxlint + leftover ESLint, Oxfmt, Docker Compose                   |
+| Tooling         | pnpm, Vite+ (Oxlint, Oxfmt, Vitest) + leftover ESLint, Docker Compose   |
 
 ## Getting started
 
@@ -144,7 +144,7 @@ pnpm test:extension # build extension, run unit + unpacked browser tests (needs 
 Focus on a single test by name:
 
 ```bash
-pnpm exec vitest run -t "<test name>"
+pnpm exec vp test run -t "<test name>"
 ```
 
 > [!TIP]

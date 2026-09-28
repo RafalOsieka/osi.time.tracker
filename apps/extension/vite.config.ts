@@ -1,7 +1,7 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vue from '@vitejs/plugin-vue';
-import { build as viteBuild, defineConfig, type Plugin } from 'vite';
+import { build as viteBuild, defineConfig, type Plugin, lazyPlugins } from 'vite-plus';
 import { extensionManifest } from './src/manifest.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -39,7 +39,7 @@ function emitContentScript(): Plugin {
 
 export default defineConfig({
   base: './',
-  plugins: [vue(), emitManifest(), emitContentScript()],
+  plugins: lazyPlugins(() => [vue(), emitManifest(), emitContentScript()]),
   build: {
     outDir: 'dist',
     emptyOutDir: true,

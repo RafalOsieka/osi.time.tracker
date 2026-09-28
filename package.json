@@ -9,7 +9,7 @@
     "generate": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/time-tracker generate",
     "preview": "pnpm --filter @osi/time-tracker preview",
     "type-check": "pnpm --filter @osi/remote-trackers type-check && pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol type-check && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/extension type-check && pnpm --filter @osi/dev-seed type-check && pnpm --filter @osi/time-tracker type-check",
-    "test:unit": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/remote-trackers test && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/extension-protocol test && pnpm --filter @osi/extension build && pnpm --filter @osi/extension test:unit && pnpm --filter @osi/dev-seed test && pnpm --filter @osi/time-tracker test:unit && vitest run --project anti-slop",
+    "test:unit": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/remote-trackers test && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/extension-protocol test && pnpm --filter @osi/extension build && pnpm --filter @osi/extension test:unit && pnpm --filter @osi/dev-seed test && pnpm --filter @osi/time-tracker test:unit && vp test run --project anti-slop",
     "test:e2e": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/time-tracker test:e2e",
     "test:e2e:db": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/time-tracker test:e2e:db",
     "test:e2e:api": "pnpm --filter @osi/time-tracker test:e2e:api",
@@ -22,24 +22,21 @@
     "db:generate": "pnpm --filter @osi/time-tracker db:generate",
     "db:migrate": "pnpm --filter @osi/time-tracker db:migrate",
     "trackers:seed": "pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/dev-seed seed",
-    "lint": "oxlint && eslint .",
-    "lint:fix": "oxlint --fix && eslint . --fix",
-    "format": "oxfmt",
-    "format:check": "oxfmt --check"
+    "lint": "vp lint && eslint .",
+    "lint:fix": "vp lint --fix && eslint . --fix",
+    "format": "vp fmt",
+    "format:check": "vp fmt --check"
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
-    "@oxlint/plugins": "^1.85.0",
     "@typescript-eslint/parser": "^8.70.1",
     "concurrently": "^10.0.5",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-oxlint": "^1.85.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
-    "oxfmt": "^0.70.0",
-    "oxlint": "^1.85.0",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.2"
+    "vite-plus": "catalog:"
   },
   "author": "Rafal Osieka",
   "repository": {

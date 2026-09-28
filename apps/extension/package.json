@@ -5,13 +5,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "vite build",
-    "dev": "vite build --watch",
-    "lint": "pnpm --dir ../.. exec oxlint apps/extension && eslint .",
+    "build": "vp build",
+    "dev": "vp build --watch",
+    "lint": "pnpm --dir ../.. exec vp lint apps/extension && eslint .",
     "type-check": "vue-tsc -p tsconfig.json --noEmit",
-    "test": "vitest run --project unit",
-    "test:unit": "vitest run --project unit",
-    "test:browser": "vitest run --project browser"
+    "test": "vp test run --project unit",
+    "test:unit": "vp test run --project unit",
+    "test:browser": "vp test run --project browser"
   },
   "dependencies": {
     "@osi/extension-protocol": "workspace:*",
@@ -24,9 +24,9 @@
     "eslint-plugin-vue": "^10.11.1",
     "playwright": "^1.63.0",
     "typescript": "^6.0.3",
-    "vite": "^8.3.1",
-    "vitest": "^5.0.2",
-    "vue-tsc": "^3.3.11"
+    "vite": "catalog:",
+    "vue-tsc": "^3.3.11",
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=24"

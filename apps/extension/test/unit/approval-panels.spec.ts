@@ -1,4 +1,4 @@
-import { afterAll, expect, it, vi } from 'vitest';
+import { afterAll, expect, it, vi } from 'vite-plus/test';
 import { createSSRApp } from 'vue';
 import { renderToString } from 'vue/server-renderer';
 import DestinationApprovals from '../../src/ui/DestinationApprovals.vue';

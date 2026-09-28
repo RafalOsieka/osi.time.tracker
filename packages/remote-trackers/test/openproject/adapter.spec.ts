@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import {
   OpenProjectAdapter,
   OPENPROJECT_TIME_LOGS_MAX_PAGES,

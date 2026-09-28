@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { describe } from 'vitest';
+import { describe } from 'vite-plus/test';
 import { chromium } from 'playwright';
 
 export function isCi(): boolean {

@@ -19,7 +19,7 @@ OSI Time Tracker is a self-hosted, open-source personal time tracker for IT cons
 - **Validation:** `zod` `^4` — single source of truth for boundary types.
 - **i18n:** `@nuxtjs/i18n` with `en` and `pl` catalogs kept in strict parity.
 - **Testing:** Vitest 4 (`unit`, `e2e`, `nuxt` projects) + `@nuxt/test-utils`.
-- **Tooling:** pnpm, Oxlint + leftover ESLint (Vue templates / a11y / i18n), Oxfmt, Docker Compose. Use `pnpm` / `pnpx`, not npm / npx.
+- **Tooling:** pnpm, Vite+ (`vp`: Vite, Vitest, Oxlint, Oxfmt — configured in the root `vite.config.ts`) + leftover ESLint (Vue templates / a11y / i18n), Docker Compose. Use `pnpm` / `pnpx`, not npm / npx.
 
 ## Setup Commands
 
@@ -84,7 +84,7 @@ pnpm test:coverage  # Vitest v8 coverage for web unit + nuxt (exclude migrations
 pnpm package:check  # tracker package build/type-check/tests without Nuxt
 ```
 
-- **Focus one test by name:** `pnpm exec vitest run -t "<test name>"`.
+- **Focus one test by name:** `pnpm exec vp test run -t "<test name>"`.
 - **Naming:** test files use `*.spec.ts` under the matching `test/` project directory.
 - **E2E layout:** `apps/web/test/e2e/api`, `apps/web/test/e2e/ui`, `apps/web/test/e2e/db`, plus `harness/` and `helpers/`. HTTP/UI specs seed a unique user per mutating test. Missing Docker/Chromium skips locally and **fails in CI**.
 - **E2E runtimes:** api/ui use a production build by default (`postgres:18-alpine`). `pnpm test:e2e:db` does not build Nuxt. Faster loop: `pnpm test:e2e:dev`. Reuse `apps/web/.output` with `NUXT_TEST_SKIP_BUILD=1` (the CI `build` artifact is built with `IS_E2E=true` so login rate limits match local e2e).
@@ -118,7 +118,7 @@ pnpm format:check   # verify Oxfmt
 
 `pnpm lint` includes vendored anti-slop rules (`tools/oxlint/anti-slop`). Explicit `any` is an Oxlint `typescript/no-explicit-any` error; justified exceptions use `// oxlint-disable-next-line typescript/no-explicit-any -- reason`. Do not use npm or npx; one-off CLIs use `pnpx`.
 
-**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `tools/oxlint/anti-slop/test/` and may change `.oxlintrc.json` enable/disable of `anti-slop/*` only when asked. Do not “fix” anti-slop by rewriting its rules.
+**Do not modify the anti-slop plugin.** Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unless the developer explicitly asks for that change. Agents may add or update tests under `tools/oxlint/anti-slop/test/` and may change the `lint` block of `vite.config.ts` to enable/disable `anti-slop/*` rules only when asked. Do not “fix” anti-slop by rewriting its rules.
 
 Run lint, format check, and the relevant test projects before opening a PR. After moving files or changing imports, re-run `pnpm lint`.
 

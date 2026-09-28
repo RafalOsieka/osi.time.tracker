@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { CLIENT_FIXTURES, projectDepth, projectsWithIssues } from '../src/fixture/index.js';
 
 describe.each(CLIENT_FIXTURES.map((fixture) => [fixture.clientName, fixture] as const))(

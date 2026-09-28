@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import en from '../../src/i18n/en.json' with { type: 'json' };
 import pl from '../../src/i18n/pl.json' with { type: 'json' };
 
