@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { executePlan, SeedStepError } from '../src/executor.js';
 import { HELIOS } from '../src/fixture/index.js';
 import type { GeneratedLog } from '../src/generator/logs.js';

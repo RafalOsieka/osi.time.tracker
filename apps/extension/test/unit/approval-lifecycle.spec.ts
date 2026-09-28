@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { APPROVAL_STORAGE_KEY } from '../../src/approvals/chrome-store.js';
 import { contentScriptId } from '../../src/content/registration.js';
 

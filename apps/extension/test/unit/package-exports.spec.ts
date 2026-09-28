@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
 import { RedmineAdapter } from '@osi/remote-trackers/redmine';
 import { RemoteAdapterError } from '@osi/remote-trackers/contracts';

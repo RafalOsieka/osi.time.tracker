@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { CLIENT_FIXTURES } from '../src/fixture/index.js';
 import { isoWeekday, mondayOf, formatIsoDate, parseIsoDate } from '../src/generator/calendar.js';
 import { generateLogs, isIssueActive, type GeneratedLog } from '../src/generator/logs.js';

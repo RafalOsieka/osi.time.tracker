@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { z } from 'zod';
 import { ExtensionProtocolError } from '@osi/extension-protocol';
 import { UpstreamHttpError, type JsonValue } from '@osi/remote-trackers/contracts';

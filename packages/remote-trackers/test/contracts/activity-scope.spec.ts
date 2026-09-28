@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { resolveActivityScope, TRACKER_SYSTEM_TYPE_ORDER } from '@osi/remote-trackers/contracts';
 
 describe('resolveActivityScope', () => {

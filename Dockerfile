@@ -1,30 +1,36 @@
 # syntax=docker/dockerfile:1
 
-# ── base ──────────────────────────────────────────────────────────────────────
-FROM node:25-alpine AS base
-RUN npm install -g pnpm@12
-
 # ── build ─────────────────────────────────────────────────────────────────────
-FROM base AS build
+# The official Vite+ image ships the `vp` CLI and resolves Node.js and pnpm from
+# `devEngines` in package.json. Keep the tag in sync with the `vite-plus` catalog
+# entry in pnpm-workspace.yaml.
+FROM ghcr.io/voidzero-dev/vite-plus:1.0.0 AS build
 WORKDIR /app
 
-# Copy package manifests first for better layer caching
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/remote-trackers/package.json packages/remote-trackers/
-COPY packages/extension-protocol/package.json packages/extension-protocol/
-COPY apps/web/package.json apps/web/
+# Copy package manifests first for better layer caching. The image runs as the
+# non-root `vp` user, so copied files must be owned by it. Only the web app and
+# its workspace dependencies are installed; the filter keeps the frozen install
+# from requiring the manifests of the other workspace projects.
+COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --chown=vp:vp packages/remote-trackers/package.json packages/remote-trackers/
+COPY --chown=vp:vp packages/extension-protocol/package.json packages/extension-protocol/
+COPY --chown=vp:vp apps/web/package.json apps/web/
 
 # Skip postinstall (nuxt prepare) here — source isn't copied yet, so it would
 # run against an empty workspace and produce incomplete type stubs.
-RUN pnpm install --frozen-lockfile --ignore-scripts
+RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/time-tracker..."
 
 # Copy source (the build context is an allowlist — see .dockerignore), then
-# generate Nuxt types and build
-COPY . .
-RUN pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build && pnpm --filter @osi/time-tracker exec nuxt prepare && pnpm --filter @osi/time-tracker build
+# build the workspace libraries, generate Nuxt types and build the app
+COPY --chown=vp:vp . .
+RUN vp run build:packages \
+  && vp exec --filter @osi/time-tracker nuxt prepare \
+  && vp run --filter @osi/time-tracker build
 
 # ── runtime ───────────────────────────────────────────────────────────────────
-FROM node:25-alpine AS runtime
+# The Nitro output is self-contained (no native modules), so a slim Node image
+# on the same major as `devEngines.runtime` is enough.
+FROM node:24-alpine AS runtime
 WORKDIR /app
 
 # Fix production environment

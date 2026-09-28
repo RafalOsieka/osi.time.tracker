@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { contentScriptId, reconcileWebsiteContentScripts } from '../../src/content/registration.js';
 
 describe('content registration reconciliation', () => {

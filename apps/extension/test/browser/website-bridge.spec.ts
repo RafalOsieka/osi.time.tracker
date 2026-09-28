@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { afterAll, beforeAll, expect, it } from 'vitest';
+import { afterAll, beforeAll, expect, it } from 'vite-plus/test';
 import type { Page } from 'playwright';
 import {
   extensionDistPath,

@@ -5,6 +5,7 @@ import prettier from 'eslint-config-prettier';
 import oxlint from 'eslint-plugin-oxlint';
 import vue from 'eslint-plugin-vue';
 import vueA11y from 'eslint-plugin-vuejs-accessibility';
+import viteConfig from '../../vite.config.ts';
 
 export default [
   { ignores: ['dist/**', 'node_modules/**'] },
@@ -48,8 +49,6 @@ export default [
       },
     },
   },
-  ...oxlint.buildFromOxlintConfigFile(
-    fileURLToPath(new URL('../../.oxlintrc.json', import.meta.url)),
-  ),
+  ...oxlint.buildFromOxlintConfig(viteConfig.lint),
   prettier,
 ];

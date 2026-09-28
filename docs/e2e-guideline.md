@@ -41,7 +41,7 @@ There is no round-trip: create/search a real work package or issue, export time,
 
 ## 1. Stale Nuxt build cache after adding new `shared/` modules
 
-**Symptom:** `pnpm exec vitest run --project e2e-ui` fails during global setup with a `RollupError:
+**Symptom:** `pnpm exec vp test run --project e2e-ui` fails during global setup with a `RollupError:
 Could not resolve "../shared/utils/<new-file>.ts"` coming from a stale chunk under
 `node_modules/.cache/nuxt/.nuxt/dist/server/_nuxt/...js`. `pnpm build` fails the same way when run
 directly.

@@ -28,14 +28,14 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test:unit": "vp test run"
   },
   "dependencies": {
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "typescript": "^6.0.3",
-    "vitest": "^5.0.1"
+    "vite-plus": "catalog:"
   },
   "engines": {
     "node": ">=24"

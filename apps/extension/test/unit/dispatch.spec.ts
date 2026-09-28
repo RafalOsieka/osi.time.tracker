@@ -1,6 +1,6 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
 import type {
   JsonValue,
