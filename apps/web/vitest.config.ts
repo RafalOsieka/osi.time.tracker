@@ -26,7 +26,6 @@ export default defineConfig({
         '.nuxt/**',
         '.output/**',
         '**/*.d.ts',
-        'server/db/migrations/**',
         '**/*.{sql,json}',
         'app/plugins/shared-chunk-warmup.ts',
       ],

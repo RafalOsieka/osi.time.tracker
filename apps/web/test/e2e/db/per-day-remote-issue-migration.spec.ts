@@ -1,8 +1,8 @@
 import { expect, it } from 'vitest';
+import { MIGRATIONS_FOLDER } from '@osi/migrator';
 import { createDatabaseClient } from '../../../server/db/client';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';
-import { join } from 'node:path';
 import { applySqlFile, migrationFilesBefore, readMigrationSql } from '../harness/migrations';
 
 const describeDb = requireDocker();
@@ -22,7 +22,7 @@ describeDb('per-day remote issue refs migration', () => {
 
     try {
       // Apply migrations 0000..0013 only (pre-change schema still has remote_issue_refs).
-      const migrationsDir = join(process.cwd(), 'server', 'db', 'migrations');
+      const migrationsDir = MIGRATIONS_FOLDER;
       for (const file of migrationFilesBefore(14, migrationsDir)) {
         await applySqlFile(sql, readMigrationSql(file, migrationsDir));
       }

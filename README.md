@@ -116,11 +116,11 @@ pnpm format:check   # verify Oxfmt
 
 ### Database
 
-The schema lives in `apps/web/server/db/schema` and migrations are committed SQL files under `apps/web/server/db/migrations`.
+The schema lives in `apps/web/server/db/schema`. Migrations are committed SQL files under `apps/migrator/migrations`, owned by the migrator app that applies them — locally via `pnpm db:migrate`, and in production as the one-shot `migrate` service (the Dockerfile's `migrator` image).
 
 ```bash
-pnpm db:generate    # generate a new migration after editing the schema
-pnpm db:migrate     # apply pending migrations
+pnpm db:generate    # generate a new migration after editing the schema (written to apps/migrator/migrations)
+pnpm db:migrate     # apply pending migrations and seed the BOOTSTRAP_USER_* user if set
 docker compose --profile trackers down     # stop all dev containers (keeps data)
 docker compose --profile trackers down -v  # stop and delete ALL dev volumes (db, pgAdmin, trackers)
 ```
@@ -243,6 +243,7 @@ Isolated fake trackers for development/tests live in `apps/extension/test/browse
 ```
 apps/web/                 Nuxt application (app, server, shared, i18n, public, tests)
 apps/extension/           Optional Chrome/Edge companion (unpacked load)
+apps/migrator/            SQL migrations + the one-shot runner that applies them
 packages/remote-trackers/ Provider adapters and neutral contracts
 packages/extension-protocol/ Versioned website/extension envelopes
 tools/                    Vendored tooling (anti-slop Oxlint plugin and its tests)

@@ -52,7 +52,7 @@ The hash comes from `new Hash(new Scrypt({}))` imported normally from `@adonisjs
 - `apps/migrator/vite.config.ts` sets `pack: { entry: ['src/cli.ts'], platform: 'node', deps: { alwaysBundle: ['drizzle-orm', 'postgres', '@adonisjs/hash'] } }`, producing a single `dist/cli.mjs` that needs no `node_modules`. The dependencies stay declared in `dependencies`.
 - Dockerfile stages, with the runtime last so it remains the default target:
   1. `migrator-build` (Vite+ image): filtered install `--filter "@osi/migrator..."`, then `vp run --filter @osi/migrator build`.
-  2. `migrator` (`node:24-alpine`): copies `dist/cli.mjs` and `migrations/`, runs as `USER node`, `CMD ["node", "dist/cli.mjs"]`.
+  2. `migrator` (`node:24-alpine`): deletes the image's bundled npm, corepack and yarn (`platform-docker` REQ-048 forbids a package manager), copies `dist/cli.mjs` and `migrations/`, runs as `USER node`, `CMD ["node", "dist/cli.mjs"]`. *Alternative:* copy only the `node` binary into plain Alpine, as the Vite+ Docker guide does. It's smaller, but the Alpine tag must track the Node image's musl/libstdc++ versions exactly, or the binary breaks at runtime. Rejected for that coupling.
   3. The existing `build` and `runtime` stages, unchanged.
 - The compose `migrate` service uses `target: migrator` and drops `command`.
 - *Alternative: `vp pack --exe` single executable.* It needs Node ≥ 25.7 at build time (`devEngines` pins 24) and yields a larger binary than Node + one file. Rejected for now.

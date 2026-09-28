@@ -1,5 +1,40 @@
 # syntax=docker/dockerfile:1
 
+# Two images come out of this file:
+#   docker build .                   -> the web app (the last stage, `runtime`)
+#   docker build --target migrator . -> the one-shot migrator used by the prod compose
+
+# ── migrator-build ────────────────────────────────────────────────────────────
+# Bundles the migrator CLI (`vp pack`) into a single file with its dependencies
+# inlined. Keep the tag in sync with the `vite-plus` catalog entry.
+FROM ghcr.io/voidzero-dev/vite-plus:1.0.0 AS migrator-build
+WORKDIR /app
+
+COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY --chown=vp:vp apps/migrator/package.json apps/migrator/
+RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/migrator..."
+
+COPY --chown=vp:vp apps/migrator apps/migrator
+RUN vp run --filter @osi/migrator build
+
+# ── migrator ──────────────────────────────────────────────────────────────────
+# Node, the bundled CLI and the committed SQL — no package manager, toolchain or
+# node_modules. Applies pending migrations, seeds the bootstrap user, then exits.
+FROM node:24-alpine AS migrator
+WORKDIR /app
+
+# The official image ships npm, corepack and yarn; the migrator needs only `node`.
+RUN rm -rf /usr/local/lib/node_modules /opt/yarn-* \
+  /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
+  /usr/local/bin/yarn /usr/local/bin/yarnpkg
+
+COPY --from=migrator-build /app/apps/migrator/dist ./dist
+COPY --from=migrator-build /app/apps/migrator/migrations ./migrations
+
+USER node
+
+CMD ["node", "dist/cli.mjs"]
+
 # ── build ─────────────────────────────────────────────────────────────────────
 # The official Vite+ image ships the `vp` CLI and resolves Node.js and pnpm from
 # `devEngines` in package.json. Keep the tag in sync with the `vite-plus` catalog
@@ -15,6 +50,9 @@ COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=vp:vp packages/remote-trackers/package.json packages/remote-trackers/
 COPY --chown=vp:vp packages/extension-protocol/package.json packages/extension-protocol/
 COPY --chown=vp:vp apps/web/package.json apps/web/
+# The web e2e harness depends on the migrator, so its manifest is part of the
+# filtered install even though the image never runs it.
+COPY --chown=vp:vp apps/migrator/package.json apps/migrator/
 
 # Skip postinstall (nuxt prepare) here — source isn't copied yet, so it would
 # run against an empty workspace and produce incomplete type stubs.

@@ -15,7 +15,14 @@
 !packages/extension-protocol/tsconfig.json
 !packages/extension-protocol/src
 
-# Web app (Nuxt) — config, source, locales, static assets, migrations
+# Migrator — bundled by `vp pack` into the `migrator` image with its SQL migrations
+!apps/migrator/package.json
+!apps/migrator/tsconfig.json
+!apps/migrator/vite.config.ts
+!apps/migrator/src
+!apps/migrator/migrations
+
+# Web app (Nuxt) — config, source, locales, static assets
 !apps/web/package.json
 !apps/web/nuxt.config.ts
 !apps/web/tsconfig.json

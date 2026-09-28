@@ -18,11 +18,9 @@
     "test:e2e:dev": "cross-env NUXT_TEST_DEV=1 vp test --project e2e-api --project e2e-ui",
     "test:nuxt": "vp test --project nuxt",
     "test:coverage": "vp test run --coverage --project unit --project nuxt",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx server/db/migrate.ts"
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@adonisjs/hash": "^9.1.1",
     "@internationalized/date": "^3.12.4",
     "@nuxt/ui": "^4.11.2",
     "@osi/extension-protocol": "workspace:*",
@@ -45,6 +43,7 @@
     "@nuxt/schema": "^4.5.2",
     "@nuxt/test-utils": "^4.3.2",
     "@nuxtjs/i18n": "^10.6.0",
+    "@osi/migrator": "workspace:*",
     "@types/node": "^26.6.3",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "^2.5.1",

@@ -21,7 +21,7 @@
     "test:extension": "vp run build:packages && vp run --filter @osi/extension build && vp run --filter @osi/extension test:unit && vp run --filter @osi/extension test:browser",
     "package:check": "vp run build:packages && vp run --log grouped --filter \"./packages/*\" type-check && vp run --log grouped --filter \"./packages/*\" test:unit",
     "db:generate": "vp run --filter @osi/time-tracker db:generate",
-    "db:migrate": "vp run --filter @osi/time-tracker db:migrate",
+    "db:migrate": "vp run --filter @osi/migrator migrate",
     "trackers:seed": "vp run build:packages && vp run --filter @osi/dev-seed seed",
     "lint": "vp lint && eslint .",
     "lint:fix": "vp lint --fix && eslint . --fix",
