@@ -104,6 +104,7 @@ A single `.env` (copied from `.env.example`) feeds the host tooling and both Com
 ```bash
 pnpm dev            # start the dev server (http://localhost:3000)
 pnpm build          # production build (output in apps/web/.output/)
+pnpm build:packages # build workspace libraries in dependency order (cached by `vp run`)
 pnpm preview        # preview the production build locally
 pnpm generate       # generate a static site
 
@@ -220,8 +221,7 @@ The OSI server does not contact your tracker. Direct browser access and the exte
 Turn off **Direct browser connection allowed** when the hosted website cannot call your tracker (no CORS) but your desktop browser can. Transport is then always the extension; there is no automatic fallback. The production web image does **not** include the extension; each person loads it unpacked locally.
 
 ```bash
-pnpm --filter @osi/remote-trackers build
-pnpm --filter @osi/extension-protocol build
+pnpm build:packages
 pnpm --filter @osi/extension build
 ```
 

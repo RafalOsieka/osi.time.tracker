@@ -28,7 +28,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "type-check": "tsc -p tsconfig.json --noEmit",
-    "test": "vp test run"
+    "test:unit": "vp test run"
   },
   "dependencies": {
     "zod": "^4.6.5"

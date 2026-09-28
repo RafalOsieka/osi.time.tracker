@@ -51,6 +51,7 @@ Optional: `CONSOLA_LEVEL` (`0` fatal … `3` info default … `5` trace) raises 
 ```bash
 pnpm dev            # start dev server (hot reload) on http://localhost:3000
 pnpm build          # production build (output in apps/web/.output/)
+pnpm build:packages # build workspace libraries in dependency order (cached by `vp run`)
 pnpm preview        # preview the production build locally
 pnpm generate       # generate a static site
 pnpm type-check     # tracker package type-check, then nuxt typecheck (vue-tsc)

@@ -155,7 +155,7 @@ jobs:
         run: pnpm --filter @osi/extension lint
 
       - name: Build extension workspace dependencies
-        run: pnpm --filter @osi/remote-trackers build && pnpm --filter @osi/extension-protocol build
+        run: pnpm build:packages
 
       - name: Run independent extension type check
         run: pnpm --filter @osi/extension type-check

@@ -7,7 +7,7 @@
   "scripts": {
     "build": "vp build",
     "dev": "vp build --watch",
-    "lint": "pnpm --dir ../.. exec vp lint apps/extension && eslint .",
+    "lint": "vp lint && eslint .",
     "type-check": "vue-tsc -p tsconfig.json --noEmit",
     "test": "vp test run --project unit",
     "test:unit": "vp test run --project unit",
