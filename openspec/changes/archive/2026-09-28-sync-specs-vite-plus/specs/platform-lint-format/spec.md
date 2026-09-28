@@ -1,10 +1,6 @@
-# platform-lint-format Specification
+# Spec Delta
 
-## Purpose
-
-Define the hybrid lint and format toolchain: Oxlint as the fast first pass (including vendored anti-slop), leftover ESLint for Vue-template gates, and Oxfmt as the project formatter, without changing product behavior. Oxlint and Oxfmt run through Vite+ (`vp lint` / `vp fmt`) and are configured in the `lint` and `fmt` blocks of the root `vite.config.ts`.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: REQ-280 Hybrid lint gate runs Oxlint then ESLint
 `pnpm lint` SHALL run Oxlint first through `vp lint`, then ESLint, and SHALL exit non-zero if either pass reports an error. The Oxlint configuration SHALL live in the `lint` block of the root `vite.config.ts`; a separate `.oxlintrc.json` SHALL NOT exist. Oxlint SHALL lint JavaScript, TypeScript, and Vue `<script>` / `<script setup>` blocks. ESLint SHALL remain responsible for Vue `<template>` rules that require template parsing — including `eslint-plugin-vuejs-accessibility`, `@intlify/eslint-plugin-vue-i18n` (`no-raw-text`), remaining `vue/*` template rules, and leftover `nuxt/*` rules. Type-aware Oxlint (`--type-aware` / `oxlint-tsgolint`) SHALL NOT be enabled. Nursery rules SHALL NOT be bulk-enabled.
@@ -32,17 +28,6 @@ Define the hybrid lint and format toolchain: Oxlint as the fast first pass (incl
 #### Scenario: Stale standalone config is rejected
 - **WHEN** a `.oxlintrc.json` is added at the repository root
 - **THEN** it SHALL be treated as a defect, because rules belong in the `lint` block of `vite.config.ts`, which both `vp lint` and the ESLint overlap-disable set read
-
-### Requirement: REQ-281 Overlapping ESLint rules are disabled
-ESLint SHALL disable rules that Oxlint already enforces, via `eslint-plugin-oxlint` (or an equivalent generated disable set derived from the Oxlint config). `eslint-config-prettier` SHALL remain the last ESLint config entry so leftover ESLint stylistic rules do not conflict with Oxfmt.
-
-#### Scenario: Duplicate rule is not reported twice
-- **WHEN** a file violates a rule implemented by both Oxlint and ESLint
-- **THEN** `pnpm lint` SHALL report it from Oxlint and SHALL NOT emit a second ESLint diagnostic for the same rule
-
-#### Scenario: Formatter ownership preserved
-- **WHEN** the ESLint config is assembled
-- **THEN** `eslint-config-prettier` SHALL be the last entry
 
 ### Requirement: REQ-282 Anti-slop generic rules fail `pnpm lint`
 The Oxlint configuration used by `pnpm lint` (the `lint` block of `vite.config.ts`) SHALL load the vendored anti-slop JS plugin and SHALL set every generic anti-slop rule to `error`. Effect-specific anti-slop rules SHALL NOT be enabled. The plugin sources under `tools/oxlint/anti-slop/` SHALL NOT be edited to silence diagnostics. Remaining `vi.mock` / `jest.mock` call sites SHALL each carry a next-line `anti-slop/no-module-mocking` disable with `-- <reason>`; there SHALL NOT be a blanket `test/` allowlist for that rule. The same configuration SHALL load the Vite+ Oxlint plugin with `vite-plus/prefer-vite-plus-imports` set to `error`, so code that can import Vite or Vitest APIs from `vite-plus` entry points (for example `vite-plus/test`) does so.
