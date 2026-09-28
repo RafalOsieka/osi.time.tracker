@@ -22,6 +22,7 @@
     "db:migrate": "tsx server/db/migrate.ts"
   },
   "dependencies": {
+    "@adonisjs/hash": "^9.1.1",
     "@internationalized/date": "^3.12.4",
     "@nuxt/ui": "^4.11.2",
     "@osi/extension-protocol": "workspace:*",
