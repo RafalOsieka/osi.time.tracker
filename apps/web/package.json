@@ -39,17 +39,17 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.136",
+    "@iconify-json/lucide": "^1.2.137",
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/schema": "^4.5.2",
     "@nuxt/test-utils": "^4.3.2",
     "@nuxtjs/i18n": "^10.6.0",
-    "@types/node": "^26.6.2",
+    "@types/node": "^26.6.3",
     "@vitest/coverage-v8": "5.0.1",
     "@vue/test-utils": "^2.5.1",
     "c8": "^12.0.0",
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.3",
+    "dotenv": "^18.0.4",
     "drizzle-kit": "^0.31.11",
     "happy-dom": "^20.14.5",
     "playwright": "^1.63.0",
@@ -57,7 +57,7 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vite-doctor": "^0.0.11",
-    "vitest": "^5.0.1",
+    "vitest": "^5.0.2",
     "vue-tsc": "^3.3.11"
   },
   "engines": {

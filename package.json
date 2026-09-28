@@ -39,7 +39,7 @@
     "oxfmt": "^0.70.0",
     "oxlint": "^1.85.0",
     "typescript": "^6.0.3",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   },
   "author": "Rafal Osieka",
   "repository": {
@@ -50,12 +50,12 @@
   "devEngines": {
     "runtime": {
       "name": "node",
-      "version": "^24.4.0",
+      "version": "^24.21.0",
       "onFail": "download"
     },
     "packageManager": {
       "name": "pnpm",
-      "version": ">=12.5.0 <13.0.0",
+      "version": "^12.6.0",
       "onFail": "download"
     }
   }
