@@ -40,4 +40,4 @@ All work is backend, build and deploy; this change has no frontend tasks.
 
 ## 6. Integration checks
 
-- [ ] 6.1 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check` and `openspec validate extract-migrator-app --strict`, and confirm the CI jobs (unit, db, api, ui, package, extension) pass on the pull request.
+- [x] 6.1 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check` and `openspec validate extract-migrator-app --strict`, and confirm the CI jobs (unit, db, api, ui, package, extension) pass on the pull request.

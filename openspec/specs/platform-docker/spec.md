@@ -7,15 +7,19 @@ Defines requirements for containerising the OSI Time Tracker application for pro
 ## Requirements
 
 ### Requirement: REQ-043 Multi-stage production image build
-The system SHALL provide a `Dockerfile` that builds the application in stages: a dependency/build stage that installs all dependencies with pnpm and runs the Nuxt production build, and a final runtime stage that contains only the artifacts required to run the application in production.
+The system SHALL provide a `Dockerfile` that builds the application in stages: a build stage that installs the web application's dependencies with the project toolchain and runs the Nuxt production build, and a final runtime stage that contains only the artifacts required to run the application in production. The same `Dockerfile` SHALL also produce the dedicated migrator image (REQ-048) as a separately addressable target, while building the application runtime image by default.
 
 #### Scenario: Successful image build
-- **WHEN** `docker build` is run against the repository root
-- **THEN** the build installs dependencies, executes `nuxt build`, and completes successfully producing a runnable image
+- **WHEN** `docker build` is run against the repository root without selecting a target
+- **THEN** the build installs dependencies, executes `nuxt build`, and completes successfully producing a runnable application image
 
 #### Scenario: Build fails fast on broken build
 - **WHEN** the Nuxt production build fails during image build
 - **THEN** the `docker build` command exits non-zero and no runtime image is produced
+
+#### Scenario: Migrator image is built from the same Dockerfile
+- **WHEN** `docker build` is run against the repository root selecting the migrator target
+- **THEN** it produces the migrator image without running the Nuxt production build
 
 ### Requirement: REQ-044 Slim final runtime layer
 The final image stage SHALL include only the production runtime artifacts — the generated Nitro server output (`.output/`) and the Node 24 runtime — and MUST NOT include development dependencies, source build caches, test files, or the local build context excluded via `.dockerignore`.
@@ -42,15 +46,23 @@ The application container SHALL be configured entirely through environment varia
 ### Requirement: REQ-048 Database migrations before serving traffic
 Pending database migrations SHALL be applied before the production application begins serving traffic, via a dedicated one-shot `migrate` compose service.
 
-The `migrate` service is a short-lived container (not a long-running service) that runs the project migration command (`pnpm db:migrate`) exactly once and then exits. It is built from the build stage (which retains the full dev `node_modules` and source needed by `tsx`), connects to the same database over the shared network, and applies any pending SQL migrations. The `app` service declares `depends_on` the `migrate` service with `condition: service_completed_successfully`, so the app container is only started after the `migrate` container has exited with a zero (success) status code.
+The `migrate` service is a short-lived container (not a long-running service) that runs the migrator exactly once and then exits. It SHALL run the dedicated migrator image (REQ-043), which contains only the Node runtime, the bundled migration runner and the committed SQL migrations. That image MUST NOT contain a package manager, the build toolchain, development dependencies, or web application sources. The service connects to the same database over the shared network, applies any pending SQL migrations, and runs the bootstrap-user seeding (core-authentication REQ-012). The `app` service declares `depends_on` the `migrate` service with `condition: service_completed_successfully`, so the app container is only started after the `migrate` container has exited with a zero (success) status code.
 
 #### Scenario: Migrations applied on startup
 - **WHEN** the production stack starts with pending migrations
-- **THEN** the one-shot `migrate` service runs `pnpm db:migrate` to completion, exits successfully, and only then does the `app` service start and accept requests
+- **THEN** the one-shot `migrate` service applies them to completion, exits successfully, and only then does the `app` service start and accept requests
 
 #### Scenario: Startup blocked on migration failure
 - **WHEN** the one-shot `migrate` service exits with a non-zero status
 - **THEN** the `app` service SHALL NOT start (its `service_completed_successfully` condition is unmet) and the failure is surfaced in container logs
+
+#### Scenario: Missing database configuration
+- **WHEN** the migrator image is started without `DATABASE_URL`
+- **THEN** it SHALL exit non-zero with a clear error naming the missing variable, without attempting a connection
+
+#### Scenario: Migrator image carries no build tooling
+- **WHEN** the migrator image is inspected
+- **THEN** it contains the Node runtime, the bundled runner and the SQL migrations, and does not contain a package manager, `node_modules`, the build toolchain, or web application sources
 
 ### Requirement: REQ-049 Standalone daily-use compose stack
 The system SHALL provide a dedicated, self-contained Docker Compose file (`docker-compose.prod.yml`, distinct from the dev `docker-compose.yml`) that runs the complete productive stack — a `db` service (PostgreSQL 18), a one-shot `migrate` service, the `app` service built from the existing `Dockerfile`, and a `pgadmin` service — without depending on any other compose file or pre-existing external network. The database port SHALL NOT be published to the host; only the app and pgadmin ports are. The stack SHALL NOT include local remote-tracker instances; the app connects to real OpenProject/Redmine instances configured in-app.
