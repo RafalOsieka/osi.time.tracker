@@ -20,7 +20,7 @@ RUN vp run --filter @osi/migrator build
 # ── migrator ──────────────────────────────────────────────────────────────────
 # Node, the bundled CLI and the committed SQL — no package manager, toolchain or
 # node_modules. Applies pending migrations, seeds the bootstrap user, then exits.
-FROM node:24-alpine AS migrator
+FROM node:25-alpine AS migrator
 WORKDIR /app
 
 # The official image ships npm, corepack and yarn; the migrator needs only `node`.
@@ -68,7 +68,7 @@ RUN vp run build:packages \
 # ── runtime ───────────────────────────────────────────────────────────────────
 # The Nitro output is self-contained (no native modules), so a slim Node image
 # on the same major as `devEngines.runtime` is enough.
-FROM node:24-alpine AS runtime
+FROM node:25-alpine AS runtime
 WORKDIR /app
 
 # Fix production environment
