@@ -6,7 +6,7 @@ import {
   toCalendarDateTime,
   toZoned,
 } from '@internationalized/date';
-import type { TaskDto } from '../../shared/types/task';
+import type { TitleProject, TitleTask } from '../utils/title-mention';
 
 const { t } = useI18n();
 const { running, elapsedSeconds, loading, start, stop, updateTitle, updateStartedAt } = useTimer();
@@ -14,13 +14,13 @@ const { effective } = useUserSettings();
 
 const title = ref('');
 const editedTitle = ref('');
-const selectedTaskId = ref<string | null>(null);
-const selectedTaskName = ref<string | null>(null);
-const { suggestions, search: searchSuggestions } = useTaskSuggestions();
-const searchTerm = ref('');
+/** Suggestion bound to the title text, if any (REQ-180). */
+const boundTask = ref<TitleTask | null>(null);
+/** Project chip (REQ-374). */
+const chipProject = ref<TitleProject | null>(null);
+const titleInput = useTemplateRef('titleInput');
 const starting = ref(false);
 const stopping = ref(false);
-const overlayOpen = ref(false);
 
 const startEditorOpen = ref(false);
 const startCalendarOpen = ref(false);
@@ -32,13 +32,36 @@ const savingStartedAt = ref(false);
 const isRunning = computed(() => running.value !== null);
 const isLoading = computed(() => loading.value);
 
+/** The running entry's title while a timer runs, the draft otherwise. */
+const inputText = computed({
+  get: () => (isRunning.value ? editedTitle.value : title.value),
+  set: (value: string) => {
+    if (isRunning.value) {
+      editedTitle.value = value;
+    } else {
+      title.value = value;
+    }
+  },
+});
+
 watch(
   () => running.value?.taskName ?? null,
   (taskName) => {
     editedTitle.value = taskName ?? '';
-    searchTerm.value = taskName ?? '';
-    selectedTaskId.value = running.value?.taskId ?? null;
-    selectedTaskName.value = taskName;
+    const taskId = running.value?.taskId;
+    boundTask.value = taskId && taskName ? { id: taskId, name: taskName } : null;
+  },
+  { immediate: true },
+);
+
+// The chip follows the running entry's project and resets when the timer stops (REQ-376).
+watch(
+  () => running.value,
+  (entry) => {
+    chipProject.value =
+      entry?.projectId && entry.projectName
+        ? { id: entry.projectId, name: entry.projectName }
+        : null;
   },
   { immediate: true },
 );
@@ -50,36 +73,25 @@ watch(isRunning, (running) => {
   }
 });
 
-const displayedTitle = computed(() => (isRunning.value ? editedTitle.value : title.value));
+function onPickProject(project: TitleProject, strippedText: string) {
+  // Untitled entries cannot carry a project: keep the chip locally (REQ-376).
+  if (isRunning.value && strippedText.trim()) {
+    void updateTitle(strippedText, null, project.id);
+  }
+}
 
-/**
- * Menu items use a string `name` as the model value (autocomplete mode
- * stringifies objects to "[object Object]"). `onSelect` captures the
- * concrete task id before the model update lands.
- */
-const menuItems = computed(() =>
-  buildTaskTitleMenuItems({
-    suggestions: suggestions.value,
-    searchText: searchTerm.value ?? '',
-    noProjectLabel: t('timer.noTask'),
-    createOptionLabel: (typed) => t('timer.createOption', { title: typed }),
-    onSelectTask: (task) => {
-      selectedTaskId.value = task.id;
-      selectedTaskName.value = task.name;
-    },
-    onSelectCreate: (typed) => {
-      // Clear any previously captured task identity so start is freeform.
-      selectedTaskId.value = null;
-      selectedTaskName.value = null;
-      if (isRunning.value) {
-        editedTitle.value = typed;
-      } else {
-        title.value = typed;
-      }
-      overlayOpen.value = false;
-    },
-  }),
-);
+function onRemoveProject() {
+  if (isRunning.value && editedTitle.value.trim()) {
+    boundTask.value = null;
+    void updateTitle(editedTitle.value, null, null);
+  }
+}
+
+function onPickTask(task: TitleTask) {
+  if (isRunning.value) {
+    void updateTitle(task.name, task.id);
+  }
+}
 
 const elapsedLabel = computed(() => {
   const total = elapsedSeconds.value;
@@ -89,48 +101,6 @@ const elapsedLabel = computed(() => {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 });
-
-watch(searchTerm, (query) => {
-  searchSuggestions(query ?? '');
-});
-
-function applyFreeformTitle(text: string) {
-  selectedTaskId.value = null;
-  selectedTaskName.value = null;
-  if (isRunning.value) {
-    editedTitle.value = text;
-  } else {
-    title.value = text;
-  }
-  searchTerm.value = text;
-}
-
-function applySelectedTitle(name: string, taskId: string) {
-  selectedTaskId.value = taskId;
-  selectedTaskName.value = name;
-  if (isRunning.value) {
-    editedTitle.value = name;
-  } else {
-    title.value = name;
-  }
-  searchTerm.value = name;
-}
-
-function onTitleModelUpdate(value: string | null | undefined) {
-  const text = value ?? '';
-
-  // Selection path: item onSelect already stashed the task id for this name.
-  // Create-sentinel onSelect clears the id so this branch is skipped (freeform).
-  if (selectedTaskId.value && selectedTaskName.value === text) {
-    applySelectedTitle(text, selectedTaskId.value);
-    if (isRunning.value) {
-      void updateTitle(text, selectedTaskId.value);
-    }
-    return;
-  }
-
-  applyFreeformTitle(text);
-}
 
 async function onToggle() {
   if (isRunning.value) {
@@ -143,36 +113,40 @@ async function onToggle() {
   } else {
     starting.value = true;
     try {
-      // UInputMenu autocomplete keeps typed text in `searchTerm` until a menu
-      // item commits `model-value`. Commit freeform text before starting so a
-      // typed title is not dropped as an untitled entry.
-      if (!selectedTaskId.value) {
-        const typed = (searchTerm.value ?? '').trim();
-        if (typed) {
-          title.value = typed;
-        }
-      }
-      await start(title.value || undefined, undefined, selectedTaskId.value);
+      const commit = titleInput.value?.resolveCommit();
+      if (!commit) return;
+      await start(commit.title || undefined, commit.projectId, commit.taskId);
       title.value = '';
-      searchTerm.value = '';
-      selectedTaskId.value = null;
-      selectedTaskName.value = null;
     } finally {
       starting.value = false;
     }
   }
 }
 
+/** Commits the running entry's title with the chip's project, sent explicitly (REQ-376). */
+async function commitRunningTitle() {
+  const commit = titleInput.value?.resolveCommit();
+  if (!commit) return;
+  if (commit.taskId) {
+    await updateTitle(editedTitle.value, commit.taskId);
+    return;
+  }
+  if (commit.resolved) {
+    chipProject.value = commit.resolved;
+    editedTitle.value = commit.title;
+  }
+  await updateTitle(commit.title, null, commit.title ? (commit.projectId ?? null) : undefined);
+}
+
 async function onBlur() {
   if (isRunning.value) {
-    await updateTitle(editedTitle.value, selectedTaskId.value);
+    await commitRunningTitle();
   }
 }
 
 async function onEnter() {
-  if (overlayOpen.value) return;
   if (isRunning.value) {
-    await updateTitle(editedTitle.value, selectedTaskId.value);
+    await commitRunningTitle();
   } else if (!loading.value) {
     await onToggle();
   }
@@ -225,23 +199,21 @@ async function onSaveStartedAt() {
 
 <template>
   <div class="flex w-full min-w-0 items-center gap-2" data-testid="app-timer">
-    <UInputMenu
-      v-model:search-term="searchTerm"
-      v-model:open="overlayOpen"
-      :model-value="displayedTitle"
-      :items="menuItems"
-      value-key="name"
-      label-key="label"
+    <TaskTitleInput
+      ref="titleInput"
+      v-model:text="inputText"
+      v-model:project="chipProject"
+      v-model:task="boundTask"
       :disabled="isLoading"
       :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
       :aria-label="t('timer.titleLabel')"
-      mode="autocomplete"
-      ignore-filter
-      class="min-w-0 flex-1"
+      chip-testid="timer-project"
       data-testid="timer-title-input"
-      @update:model-value="onTitleModelUpdate"
+      @pick-project="onPickProject"
+      @remove-project="onRemoveProject"
+      @pick-task="onPickTask"
       @blur="onBlur"
-      @keydown.enter="onEnter"
+      @enter="onEnter"
     />
 
     <!--

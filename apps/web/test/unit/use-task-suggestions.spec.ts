@@ -50,6 +50,18 @@ describe('useTaskSuggestions', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/tasks', { query: { search: 'abc' } });
   });
 
+  it('restricts the request to a project when one is given', async () => {
+    fetchMock.mockResolvedValue([taskA]);
+    const { search } = useTaskSuggestions();
+
+    search('fix', 'project-1');
+    await vi.advanceTimersByTimeAsync(SUGGESTION_DEBOUNCE_MS);
+
+    expect(fetchMock).toHaveBeenCalledWith('/api/tasks', {
+      query: { search: 'fix', projectId: 'project-1' },
+    });
+  });
+
   it('discards a stale response that resolves after a newer request', async () => {
     let resolveFirst: (value: TaskDto[]) => void = () => {};
     let resolveSecond: (value: TaskDto[]) => void = () => {};

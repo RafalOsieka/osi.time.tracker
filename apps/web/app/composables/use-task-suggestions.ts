@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { TaskDto } from '../../shared/types/task';
+import type { ListTasksQuery, TaskDto } from '../../shared/types/task';
 
 /** Trailing-edge debounce before a keystroke turns into a suggestion request. */
 const SUGGESTION_DEBOUNCE_MS = 200;
@@ -21,10 +21,12 @@ export function useTaskSuggestions() {
   // Monotonically increasing token used to suppress stale/superseded responses.
   let requestToken = 0;
 
-  async function fetchSuggestions(query: string): Promise<void> {
+  async function fetchSuggestions(query: string, projectId?: string): Promise<void> {
     const token = ++requestToken;
     try {
-      const results = await $fetch<TaskDto[]>('/api/tasks', { query: { search: query } });
+      const params: Partial<ListTasksQuery> = { search: query };
+      if (projectId) params.projectId = projectId;
+      const results = await $fetch<TaskDto[]>('/api/tasks', { query: params });
       if (token !== requestToken) return; // superseded by a newer request
       suggestions.value = results;
     } catch {
@@ -33,13 +35,14 @@ export function useTaskSuggestions() {
     }
   }
 
-  function search(query: string): void {
+  /** `projectId` restricts suggestions to one project (the project chip, REQ-374). */
+  function search(query: string, projectId?: string): void {
     if (debounceTimer !== undefined) {
       clearTimeout(debounceTimer);
     }
     debounceTimer = setTimeout(() => {
       debounceTimer = undefined;
-      void fetchSuggestions(query);
+      void fetchSuggestions(query, projectId);
     }, SUGGESTION_DEBOUNCE_MS);
   }
 

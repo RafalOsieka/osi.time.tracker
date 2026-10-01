@@ -257,7 +257,7 @@
       "buttonLabel": "New",
       "dialogTitle": "Add time entry",
       "titleLabel": "Title",
-      "titlePlaceholder": "Task name (optional)",
+      "titlePlaceholder": "Task name (optional), {'@'} picks a project",
       "dateLabel": "Date",
       "timesLabel": "Start and end time",
       "rangeError": "End time cannot be before the start time.",
@@ -287,12 +287,17 @@
     }
   },
   "timer": {
-    "titlePlaceholder": "What are you working on?",
+    "titlePlaceholder": "What are you working on? Type {'@'} to pick a project",
     "titleLabel": "Timer title",
     "start": "Start",
     "stop": "Stop",
     "noTask": "(no task)",
     "createOption": "{title} (new task)",
+    "createOptionInProject": "{title} (new task in {project})",
+    "mention": {
+      "projectsLabel": "Projects",
+      "removeProject": "Remove project {project}"
+    },
     "elapsedLabel": "Elapsed time",
     "editStartLabel": "Edit start time",
     "startEditor": {

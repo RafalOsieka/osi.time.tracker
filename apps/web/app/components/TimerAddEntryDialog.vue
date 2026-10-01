@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { CalendarDate, parseDate, parseTime, type Time } from '@internationalized/date';
 import type { FormErrorEvent } from '@nuxt/ui';
-import type { TimeEntryDto, TimerAddEntryFormDto } from '~~/shared/types/time-entry';
+import type {
+  StartTimeEntryDto,
+  TimeEntryDto,
+  TimerAddEntryFormDto,
+} from '~~/shared/types/time-entry';
+import type { TitleProject, TitleTask } from '../utils/title-mention';
 
 const { visible, timeZone } = defineProps<{
   visible: boolean;
@@ -29,8 +34,10 @@ const state = reactive<TimerAddEntryFormDto>({
   startTime: '09:00',
   endTime: '10:00',
 });
-const { suggestions, search: searchSuggestions } = useTaskSuggestions();
-const searchTerm = ref('');
+const titleInput = useTemplateRef('titleInput');
+const chipProject = ref<TitleProject | null>(null);
+/** Suggestion picked from the overlay; binds the entry by identity until the text is edited. */
+const pickedTask = ref<TitleTask | null>(null);
 const rangeError = ref('');
 const saving = ref(false);
 const calendarOpen = ref(false);
@@ -67,39 +74,15 @@ watch(
   () => visible,
   (visible) => {
     if (visible) {
+      chipProject.value = null;
+      pickedTask.value = null;
       state.title = '';
-      searchTerm.value = '';
       state.date = todayKey();
       state.startTime = '09:00';
       state.endTime = '10:00';
       rangeError.value = '';
     }
   },
-);
-
-watch(searchTerm, (query) => {
-  searchSuggestions(query ?? '');
-});
-
-function onSelectTask(task: TaskDto) {
-  state.title = task.name;
-  searchTerm.value = task.name;
-}
-
-function onSelectCreate(title: string) {
-  state.title = title;
-  searchTerm.value = title;
-}
-
-const titleMenuItems = computed(() =>
-  buildTaskTitleMenuItems({
-    suggestions: suggestions.value,
-    searchText: searchTerm.value ?? '',
-    noProjectLabel: t('timer.noTask'),
-    createOptionLabel: (typed) => t('timer.createOption', { title: typed }),
-    onSelectTask,
-    onSelectCreate,
-  }),
 );
 
 function close() {
@@ -120,26 +103,24 @@ function onError(event: FormErrorEvent) {
 async function onSave() {
   rangeError.value = '';
 
-  // UInputMenu (autocomplete) keeps freeform typed text in `searchTerm` until
-  // the user picks a suggestion; fall back to it so a typed title that
-  // matches no existing task still submits instead of being silently
-  // dropped as untitled (mirrors AppTimer's onToggle behavior).
-  if (!state.title.trim()) {
-    const typed = (searchTerm.value ?? '').trim();
-    if (typed) {
-      state.title = typed;
-    }
-  }
+  const commit = titleInput.value?.resolveCommit();
+  if (!commit) return;
 
   const startedAt = wallClockToInstant(state.date, state.startTime, timeZone);
   const stoppedAt = wallClockToInstant(state.date, state.endTime, timeZone);
 
   saving.value = true;
   try {
-    const trimmed = state.title.trim();
+    const body: StartTimeEntryDto = { startedAt, stoppedAt };
+    if (commit.taskId) {
+      body.taskId = commit.taskId;
+    } else {
+      body.title = commit.title || null;
+      if (commit.projectId) body.projectId = commit.projectId;
+    }
     const created = await $csrfFetch<TimeEntryDto>('/api/time-entries', {
       method: 'POST',
-      body: { title: trimmed || null, startedAt, stoppedAt },
+      body,
     });
     toast.success(t('timerView.addEntry.toastSuccessSummary'));
     close();
@@ -166,16 +147,15 @@ async function onSave() {
       >
         <div class="grid gap-1">
           <label for="add-entry-title">{{ t('timerView.addEntry.titleLabel') }}</label>
-          <UInputMenu
+          <TaskTitleInput
             id="add-entry-title"
-            v-model="state.title"
-            v-model:search-term="searchTerm"
-            :items="titleMenuItems"
-            value-key="name"
-            label-key="label"
-            mode="autocomplete"
-            ignore-filter
+            ref="titleInput"
+            v-model:text="state.title"
+            v-model:project="chipProject"
+            v-model:task="pickedTask"
+            eager
             :placeholder="t('timerView.addEntry.titlePlaceholder')"
+            chip-testid="add-entry-project"
             data-testid="add-entry-title-input"
           />
         </div>

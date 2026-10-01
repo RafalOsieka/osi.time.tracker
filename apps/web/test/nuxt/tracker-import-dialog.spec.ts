@@ -105,6 +105,7 @@ function project(overrides: Partial<ProjectDto> = {}): ProjectDto {
     trackerName: tracker.name,
     remoteProjectId: 'R1',
     remoteProjectTitle: 'Remote One',
+    recentTrackedSeconds: 0,
     createdAt: '',
     ...overrides,
   };

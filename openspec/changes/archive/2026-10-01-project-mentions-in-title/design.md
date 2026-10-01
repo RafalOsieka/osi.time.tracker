@@ -64,6 +64,10 @@ Each component holds `chipProject: { id, name } | null`.
 ### D8. Caret access
 The `UInputMenu` template ref exposes its input element. The caret is read from `selectionStart` on `searchTerm` updates and on `keyup`/`click`, so arrowing back into a token re-enters project mode.
 
+### D9. Shared `TaskTitleInput` component
+The overlay, caret tracking, mention mode, chip and suggestion lookup live in `TaskTitleInput.vue`, used by both the top bar and the add-entry dialog. Callers bind `v-model:text`, `v-model:project` and `v-model:task`, react to `pickProject` / `removeProject` / `pickTask` / `enter` / `blur`, and call the exposed `resolveCommit()` for `{ title, projectId, taskId, resolved }`. Start, PATCH and POST stay in the callers.
+- *Alternative:* a composable that shares only the logic. Rejected because the template (chip slot, padding, `UInputMenu` props) was half the duplication.
+
 ## Risks / Trade-offs
 
 - [`UInputMenu` internals change (input ref, group items)] → Covered by Nuxt component tests on both surfaces and a UI e2e journey.

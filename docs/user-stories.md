@@ -58,6 +58,7 @@ Conventions that apply to every story:
 
 - I can start a timer with an optional title; a running timer is a TimeEntry with no stop time, persisted server-side, surviving reloads.
 - While typing a title, autocomplete suggests my existing Tasks (name + project context); picking one binds the entry to it.
+- Typing `@` followed by part of a project name in the title (top bar or add-entry dialog) lists up to 5 matching projects, ranked by name match and recent usage; picking one removes the `@…` text and shows the project as a removable chip, so the entry is created in that project. A fully typed `@project-name` also resolves on start/save; partial or ambiguous names stay literal text. While a timer runs, mentioning another project or removing the chip re-projects it immediately.
 - Typing a new title creates a Task behind the scenes; typing an existing project-less task's name without picking silently binds to it; if the existing task has a project, a new project-less Task is created.
 - I can leave the title empty — the entry stays unassigned (`taskId = null`).
 - Only one timer can be active at a time; starting a new one follows Toggl behavior (stops the running one).

@@ -1,4 +1,4 @@
-import type { TimeEntryDto } from '../../shared/types/time-entry';
+import type { TimeEntryDto, UpdateTimeEntryDto } from '../../shared/types/time-entry';
 
 /**
  * Shared running-timer state and actions. Uses `useState` so the running
@@ -103,9 +103,25 @@ export function useTimer() {
     elapsedSeconds.value = 0;
   }
 
-  async function updateTitle(title: string | null, taskId?: string | null): Promise<void> {
+  /**
+   * Retitle / re-project the running entry. A `taskId` binds to that task
+   * (its project comes with it). Otherwise `projectId` is sent explicitly:
+   * `null` makes the entry project-less, `undefined` keeps the current
+   * project (REQ-143).
+   */
+  async function updateTitle(
+    title: string | null,
+    taskId?: string | null,
+    projectId?: string | null,
+  ): Promise<void> {
     if (!running.value) return;
-    const body = taskId ? { taskId } : { title: title && title.trim().length > 0 ? title : null };
+    const body: UpdateTimeEntryDto = {};
+    if (taskId) {
+      body.taskId = taskId;
+    } else {
+      body.title = title && title.trim().length > 0 ? title : null;
+      if (projectId !== undefined) body.projectId = projectId;
+    }
     const entry = await $csrfFetch<TimeEntryDto>(`/api/time-entries/${running.value.id}`, {
       method: 'PATCH',
       body,
