@@ -86,7 +86,10 @@ function timeEntriesPayload(entries: ImportLogFixture[]): JsonObject {
         hours: entry.hours,
         comment: { raw: entry.comment },
         _links: {
-          entity: { href: `/api/v3/work_packages/${entry.issueId}` },
+          entity: {
+            href: `/api/v3/work_packages/${entry.issueId}`,
+            title: `Issue ${entry.issueId}`,
+          },
           project: { href: `/api/v3/projects/${entry.projectId}` },
           user: { href: '/api/v3/users/7' },
         },
@@ -164,6 +167,56 @@ async function advanceMappingToPreview(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="tracker-import-mapping"]');
   await page.click('[data-testid="tracker-import-mapping-continue"]');
   await page.waitForSelector('[data-testid="tracker-import-preview"]');
+}
+
+/**
+ * Serves a minimal Redmine for one scoped project: the catalog, the current
+ * account, every time-entry query (range scan and Remote Sync's same-day
+ * fetch) with the same logs, and the batched issue-subject lookup (REQ-378).
+ */
+async function mockRedmine(
+  page: Page,
+  origin: string,
+  fixture: {
+    project: { id: number; name: string };
+    issue: { id: number; subject: string };
+    entries: { id: number; spentOn: string; hours: number; comment: string }[];
+  },
+): Promise<void> {
+  function bodyFor(pathname: string): JsonObject | null {
+    switch (pathname) {
+      case '/projects.json':
+        return { projects: [fixture.project], total_count: 1 };
+      case '/users/current.json':
+        return { user: { id: 7, firstname: 'Ada', lastname: 'Lovelace' } };
+      case '/time_entries.json':
+        return {
+          time_entries: fixture.entries.map((entry) => ({
+            id: entry.id,
+            spent_on: entry.spentOn,
+            hours: entry.hours,
+            comments: entry.comment,
+            issue: { id: fixture.issue.id },
+            project: fixture.project,
+            user: { id: 7 },
+          })),
+          total_count: fixture.entries.length,
+        };
+      case '/issues.json':
+        return { issues: [fixture.issue] };
+      default:
+        return null;
+    }
+  }
+
+  await page.route(`${origin}/**`, async (route) => {
+    const body = bodyFor(new URL(route.request().url()).pathname);
+    await route.fulfill(
+      body
+        ? { status: 200, contentType: 'application/json', body: JSON.stringify(body) }
+        : { status: 404, contentType: 'application/json', body: '{}' },
+    );
+  });
 }
 
 describeTrackerImportUi('tracker remote-log import UI flow', async () => {
@@ -290,6 +343,48 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.click('[data-testid="tracker-import-mapping-back"]');
     await page.waitForSelector('[data-testid="tracker-import-range"]');
     await page.click('[data-testid="tracker-import-cancel"]');
+
+    await page.close();
+  });
+
+  it('caches the Redmine issue subject on an imported log so Remote Sync shows it (REQ-343/REQ-378)', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'importuiredmine' });
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await setTimezone(jar, token);
+    const redmineBaseUrl = 'https://rm.import-ui.example.com';
+    const tracker = await createTracker(jar, token, 'Import UI Redmine ' + Date.now(), {
+      baseUrl: redmineBaseUrl,
+      systemType: 'redmine',
+      directBrowserAccess: true,
+    });
+    await createProject(jar, token, 'Import UI Internal ' + Date.now(), tracker.id, {
+      remoteProjectId: '7',
+      remoteProjectTitle: 'Internal',
+    });
+
+    const page = await createPage('/');
+    await seedBrowserSecret(page, tracker.id);
+    await mockRedmine(page, redmineBaseUrl, {
+      project: { id: 7, name: 'Internal' },
+      issue: { id: 77, subject: 'Closed rounding bug' },
+      entries: [{ id: 601, spentOn: '2026-08-05', hours: 1.5, comment: 'Redmine task' }],
+    });
+    await fillLogin(page, user.email, user.password, { height: 900 });
+
+    await openImportDialog(page, tracker.id);
+    await fillRangeAndScan(page, '2026-08-01', '2026-08-31');
+    await advanceMappingToPreview(page);
+    await page.click('[data-testid="tracker-import-confirm"]');
+    await page.waitForSelector('[data-testid="tracker-import-done"]');
+    expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('1');
+    await page.click('[data-testid="tracker-import-close"]');
+
+    // Before REQ-378 a Redmine import cached the bare issue id as the title.
+    await page.goto(new URL('/sync/2026-08-05', page.url()).href);
+    await page.waitForSelector('[data-testid^="remote-sync-issue-"]');
+    const issueText = await page.textContent('[data-testid^="remote-sync-issue-"]');
+    expect(issueText).toContain('Closed rounding bug');
+    expect(issueText).toContain('#77');
 
     await page.close();
   });

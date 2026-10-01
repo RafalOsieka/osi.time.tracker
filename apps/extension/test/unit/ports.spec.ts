@@ -130,7 +130,10 @@ describe('worker runtime ports', () => {
     });
     port.emit({ type: 'handshake', protocolVersion: EXTENSION_PROTOCOL_VERSION });
     await vi.waitFor(() => expect(port.messages).toHaveLength(1));
-    expect(port.messages[0]).toMatchObject({ type: 'handshake-result', protocolVersion: 1 });
+    expect(port.messages[0]).toMatchObject({
+      type: 'handshake-result',
+      protocolVersion: EXTENSION_PROTOCOL_VERSION,
+    });
 
     port.emit({
       type: 'operation',

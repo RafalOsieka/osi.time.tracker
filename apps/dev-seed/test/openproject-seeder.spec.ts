@@ -55,6 +55,7 @@ describe('createOpenProjectSeeder', () => {
           activityName: 'Development',
           comment: '',
           remoteUserId: '4',
+          remoteIssueTitle: 'Fixture issue',
         },
       ],
     });

@@ -38,6 +38,7 @@ describe('createRedmineSeeder', () => {
           activityName: 'Development',
           comment: '  Reorder API + optimistic UI ',
           remoteUserId: '1',
+          remoteIssueTitle: 'Fixture issue',
         },
       ],
     });
@@ -217,6 +218,7 @@ describe('createRedmineSeeder', () => {
           activityName: 'Development',
           comment: 'Reorder API + optimistic UI',
           remoteUserId: '1',
+          remoteIssueTitle: 'Fixture issue',
         },
       ],
       createFailure: new Error('Upstream HTTP 422'),

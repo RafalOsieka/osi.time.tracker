@@ -45,8 +45,12 @@ export interface OpenProjectTimeLogEntry {
   /** Present only when the payload's `_links.project` supplies it (REQ-342). */
   remoteProjectId?: string;
   remoteProjectTitle?: string;
-  /** Present only when the payload's entity/work-package link supplies it (REQ-342). */
-  remoteIssueTitle?: string;
+  /**
+   * From the entity/work-package link title, which OpenProject sets even for
+   * work packages the account can no longer see; `null` when the link has
+   * none (REQ-342). Never looked up separately.
+   */
+  remoteIssueTitle: string | null;
 }
 
 export interface OpenProjectTimeLogsPageResult {
@@ -600,13 +604,13 @@ function parseTimeLogsPage(
         activityName: element._links?.activity?.title ?? null,
         comment: timeEntryComment(element.comment),
         remoteUserId: hrefId(element._links?.user?.href),
+        remoteIssueTitle:
+          element._links?.entity?.title || element._links?.workPackage?.title || null,
       };
       const remoteProjectId = hrefId(element._links?.project?.href);
       if (remoteProjectId) entry.remoteProjectId = remoteProjectId;
       const remoteProjectTitle = element._links?.project?.title;
       if (remoteProjectTitle) entry.remoteProjectTitle = remoteProjectTitle;
-      const remoteIssueTitle = element._links?.entity?.title || element._links?.workPackage?.title;
-      if (remoteIssueTitle) entry.remoteIssueTitle = remoteIssueTitle;
 
       logs.push(entry);
     }

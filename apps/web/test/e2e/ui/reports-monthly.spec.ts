@@ -91,7 +91,10 @@ function logsOf(entries: { id: number; spentOn: string; hours: string; issueId: 
         spentOn: entry.spentOn,
         hours: entry.hours,
         _links: {
-          entity: { href: `/api/v3/work_packages/${entry.issueId}` },
+          entity: {
+            href: `/api/v3/work_packages/${entry.issueId}`,
+            title: `Issue ${entry.issueId}`,
+          },
           user: { href: '/api/v3/users/7' },
         },
       })),

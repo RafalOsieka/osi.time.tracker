@@ -9,7 +9,7 @@ describe('extension package resolution', () => {
   it('resolves tracker and protocol exports without Nuxt', () => {
     expect(OpenProjectAdapter.name).toBe('OpenProjectAdapter');
     expect(RedmineAdapter.name).toBe('RedmineAdapter');
-    expect(EXTENSION_PROTOCOL_VERSION).toBe(1);
+    expect(EXTENSION_PROTOCOL_VERSION).toBe(2);
     expect(new RemoteAdapterError('error.remoteIssueSearchFailed').name).toBe('RemoteAdapterError');
     expect(createProviderAdapter).toBeTypeOf('function');
   });

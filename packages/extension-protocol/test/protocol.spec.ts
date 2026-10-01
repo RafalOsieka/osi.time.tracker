@@ -167,6 +167,7 @@ describe('extension protocol', () => {
               activityName: null,
               comment: null,
               remoteUserId: null,
+              remoteIssueTitle: 'Fix rounding',
             },
           ],
         },
@@ -209,7 +210,7 @@ describe('extension protocol', () => {
     }
   });
 
-  it('accepts time logs with and without the REQ-341 optional fields, without stripping them', () => {
+  it('accepts time logs with and without the REQ-341 optional project fields, without stripping them', () => {
     const withFields = parseMatchedOperationResult(
       'fetchTimeLogsInRange',
       asJson({
@@ -264,11 +265,37 @@ describe('extension protocol', () => {
             activityName: null,
             comment: null,
             remoteUserId: null,
+            remoteIssueTitle: null,
           },
         ],
       }),
     );
     expect(withoutFields.success).toBe(true);
+  });
+
+  it('rejects a time log without the required remote issue title key', () => {
+    const parsed = parseMatchedOperationResult(
+      'fetchTimeLogsInRange',
+      asJson({
+        type: 'operation-result',
+        requestId: 'req-1',
+        operation: 'fetchTimeLogsInRange',
+        ok: true,
+        result: [
+          {
+            remoteLogId: 'l1',
+            remoteIssueId: '1',
+            spentOn: '2026-01-01',
+            durationSeconds: 60,
+            activityId: null,
+            activityName: null,
+            comment: null,
+            remoteUserId: null,
+          },
+        ],
+      }),
+    );
+    expect(parsed.success).toBe(false);
   });
 
   it('rejects malformed operation requests', () => {
@@ -304,6 +331,17 @@ describe('extension protocol', () => {
       type: 'handshake',
       protocolVersion: EXTENSION_PROTOCOL_VERSION + 1,
     });
+    expect(parsed).toEqual({
+      success: false,
+      error: {
+        kind: 'incompatible',
+        messageKey: EXTENSION_ERROR_MESSAGE_KEYS.incompatible,
+      },
+    });
+  });
+
+  it('rejects a v1 handshake from an extension built before resolved issue titles', () => {
+    const parsed = parseHandshakeRequest({ type: 'handshake', protocolVersion: 1 });
     expect(parsed).toEqual({
       success: false,
       error: {

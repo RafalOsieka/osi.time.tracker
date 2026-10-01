@@ -112,7 +112,7 @@ describeChromium('website/content/worker bridge', () => {
     const page = await openFixture(harness!, website.url);
     const handshake = await runOnPage(page, {
       type: 'handshake',
-      protocolVersion: 1,
+      protocolVersion: 2,
       destination: { provider: 'openproject', baseUrl: openProject.baseUrl },
     });
     expect(handshake).toMatchObject({
@@ -198,7 +198,8 @@ describeChromium('website/content/worker bridge', () => {
       operation: 'fetchTimeLogsInRange',
       input: { from: '2026-03-01', to: '2026-03-31', userId: '7' },
     });
-    expect(range).toMatchObject({ ok: true });
+    // OpenProject titles come from the time-entry link (REQ-342); Redmine below resolves them via /issues.json (REQ-378).
+    expect(range).toMatchObject({ ok: true, result: [{ remoteIssueTitle: 'Ship it' }] });
 
     const create = await runOnPage(page, {
       type: 'operation',
@@ -280,7 +281,7 @@ describeChromium('website/content/worker bridge', () => {
       operation: 'fetchTimeLogsInRange',
       input: { from: '2026-03-01', to: '2026-03-31', userId: '7' },
     });
-    expect(redmineRange).toMatchObject({ ok: true });
+    expect(redmineRange).toMatchObject({ ok: true, result: [{ remoteIssueTitle: 'Ship it' }] });
     const redmineCreate = await runOnPage(page, {
       type: 'operation',
       requestId: 'r-rm-create',
@@ -329,7 +330,7 @@ describeChromium('website/content/worker bridge', () => {
         expect(result).toMatchObject({ ok: false, error: { kind: 'unknown-create' } });
         expect(tracker.createdLogIds).toEqual([9001]);
         await page.reload();
-        await runOnPage(page, { type: 'handshake', protocolVersion: 1 });
+        await runOnPage(page, { type: 'handshake', protocolVersion: 2 });
         expect(tracker.createdLogIds).toEqual([9001]);
         expect(await readExtensionStorage(harness!)).not.toContain(SECRET);
       } finally {
@@ -379,7 +380,7 @@ describeChromium('website/content/worker bridge', () => {
     try {
       foreignHandshake = await runOnPage(foreignPage, {
         type: 'handshake',
-        protocolVersion: 1,
+        protocolVersion: 2,
       });
     } catch {
       foreignHandshake = 'timeout';
@@ -390,7 +391,7 @@ describeChromium('website/content/worker bridge', () => {
     const page = await openFixture(harness!, website.url);
     const unapprovedDestination = await runOnPage(page, {
       type: 'handshake',
-      protocolVersion: 1,
+      protocolVersion: 2,
       destination: { provider: 'openproject', baseUrl: 'https://evil.example' },
     });
     expect(unapprovedDestination).toMatchObject({ destinationApproved: false });

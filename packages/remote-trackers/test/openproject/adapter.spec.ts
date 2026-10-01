@@ -7,6 +7,7 @@ import type { ZodType } from 'zod';
 import {
   RemoteAdapterError,
   UpstreamHttpError,
+  type JsonObject,
   type RemoteRequest,
   type RemoteResponse,
   type Transport,
@@ -28,6 +29,27 @@ function fakeTransport(
   };
 }
 
+/** One OpenProject time entry on work package `workPackageId`, with a link title when given. */
+function timeEntry(id: number, workPackageId: number, title?: string): JsonObject {
+  const href = `/api/v3/work_packages/${workPackageId}`;
+  return {
+    id,
+    spentOn: '2026-09-01',
+    hours: 'PT1H',
+    _links: { entity: title ? { href, title } : { href } },
+  };
+}
+
+/** A single-page time-entries response. */
+function timeEntriesPage(elements: JsonObject[]): RemoteResponse {
+  return { status: 200, payload: { _embedded: { elements } } };
+}
+
+/** Whether `request` targets the work-packages collection (never used for titles, REQ-342). */
+function isWorkPackageLookup(request: RemoteRequest): boolean {
+  return new URL(request.url).pathname === '/api/v3/work_packages';
+}
+
 describe('OpenProjectAdapter', () => {
   it('follows time-log pagination across pages until nextPageUrl is absent', async () => {
     let calls = 0;
@@ -43,7 +65,7 @@ describe('OpenProjectAdapter', () => {
                   id: 1,
                   spentOn: '2026-03-15',
                   hours: 'PT1H',
-                  _links: { entity: { href: '/api/v3/work_packages/42' } },
+                  _links: { entity: { href: '/api/v3/work_packages/42', title: 'Fix rounding' } },
                 },
               ],
             },
@@ -60,7 +82,7 @@ describe('OpenProjectAdapter', () => {
                 id: 2,
                 spentOn: '2026-03-15',
                 hours: 'PT30M',
-                _links: { entity: { href: '/api/v3/work_packages/42' } },
+                _links: { entity: { href: '/api/v3/work_packages/42', title: 'Fix rounding' } },
               },
             ],
           },
@@ -90,7 +112,7 @@ describe('OpenProjectAdapter', () => {
                   id: 1,
                   spentOn: '2026-08-03',
                   hours: 'PT1H',
-                  _links: { entity: { href: '/api/v3/work_packages/99' } },
+                  _links: { entity: { href: '/api/v3/work_packages/99', title: 'Report' } },
                 },
               ],
             },
@@ -107,7 +129,7 @@ describe('OpenProjectAdapter', () => {
                 id: 2,
                 spentOn: '2026-08-12',
                 hours: 'PT30M',
-                _links: { entity: { href: '/api/v3/work_packages/99' } },
+                _links: { entity: { href: '/api/v3/work_packages/99', title: 'Report' } },
               },
             ],
           },
@@ -134,6 +156,34 @@ describe('OpenProjectAdapter', () => {
     await expect(
       adapter.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' }),
     ).rejects.toMatchObject({ messageKey: 'error.remoteTimeLogsFetchFailed' });
+  });
+
+  it('takes issue titles from the time-entry links without a work-package request', async () => {
+    const requests: RemoteRequest[] = [];
+    const transport = fakeTransport((request) => {
+      requests.push(request);
+      return timeEntriesPage([timeEntry(1, 42, 'Fix rounding')]);
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const logs = await adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' });
+
+    expect(logs[0]?.remoteIssueTitle).toBe('Fix rounding');
+    expect(requests.filter(isWorkPackageLookup)).toHaveLength(0);
+  });
+
+  it('nulls the issue title of a title-less link without a work-package request', async () => {
+    const requests: RemoteRequest[] = [];
+    const transport = fakeTransport((request) => {
+      requests.push(request);
+      return timeEntriesPage([timeEntry(1, 42, 'Fix rounding'), timeEntry(2, 7)]);
+    });
+    const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', null);
+
+    const logs = await adapter.fetchTimeLogs({ spentOn: '2026-09-01', workPackageIds: [] });
+
+    expect(logs.map((log) => log.remoteIssueTitle)).toEqual(['Fix rounding', null]);
+    expect(requests.filter(isWorkPackageLookup)).toHaveLength(0);
   });
 
   it('treats a 403 activities response as empty rather than a hard failure', async () => {

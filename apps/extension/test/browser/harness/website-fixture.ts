@@ -13,7 +13,7 @@ const PAGE = `<!doctype html>
     <p data-testid="fixture-ready">ready</p>
     <script>
       const CHANNEL = 'osi-extension-protocol';
-      const PROTOCOL_VERSION = 1;
+      const PROTOCOL_VERSION = 2;
       window.__osiLast = null;
       window.__osiRun = async function (message) {
         const channel = new MessageChannel();

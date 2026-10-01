@@ -8,6 +8,7 @@ import type { ZodType } from 'zod';
 import {
   RemoteAdapterError,
   UpstreamHttpError,
+  type JsonObject,
   type RemoteRequest,
   type RemoteResponse,
   type Transport,
@@ -29,48 +30,77 @@ function fakeTransport(
   };
 }
 
+/**
+ * Answers the batched issue-title lookup (`/issues.json`) with `issues` and
+ * delegates every other request (time-entry pages) to `handler`.
+ */
+function withIssueLookup(
+  handler: (request: RemoteRequest) => RemoteResponse,
+  issues: Array<{ id: number; subject: string }> = [],
+): (request: RemoteRequest) => RemoteResponse {
+  return (request) =>
+    isIssueLookup(request) ? { status: 200, payload: { issues } } : handler(request);
+}
+
+/** One Redmine time entry on `issueId`. */
+function timeEntry(id: number, issueId: number): JsonObject {
+  return { id, spent_on: '2026-09-01', hours: 1, issue: { id: issueId } };
+}
+
+/** A single-page time-entries response. */
+function timeEntriesPage(entries: JsonObject[]): RemoteResponse {
+  return { status: 200, payload: { time_entries: entries, total_count: entries.length } };
+}
+
+/** Whether `request` is the batched issue-title lookup. */
+function isIssueLookup(request: RemoteRequest): boolean {
+  return new URL(request.url).pathname === '/issues.json';
+}
+
 describe('RedmineAdapter', () => {
   it('follows offset/limit pagination across pages until nextOffset is null', async () => {
     let calls = 0;
-    const transport = fakeTransport((request) => {
-      calls += 1;
-      const url = new URL(request.url);
-      const offset = Number(url.searchParams.get('offset') ?? '0');
-      if (offset === 0) {
+    const transport = fakeTransport(
+      withIssueLookup((request) => {
+        calls += 1;
+        const url = new URL(request.url);
+        const offset = Number(url.searchParams.get('offset') ?? '0');
+        if (offset === 0) {
+          return {
+            status: 200,
+            payload: {
+              time_entries: [
+                {
+                  id: 1,
+                  spent_on: '2026-03-15',
+                  hours: 1,
+                  issue: { id: 42 },
+                },
+              ],
+              total_count: REDMINE_TIME_LOGS_PAGE_SIZE + 1,
+              offset: 0,
+              limit: REDMINE_TIME_LOGS_PAGE_SIZE,
+            },
+          };
+        }
         return {
           status: 200,
           payload: {
             time_entries: [
               {
-                id: 1,
+                id: 2,
                 spent_on: '2026-03-15',
-                hours: 1,
+                hours: 0.5,
                 issue: { id: 42 },
               },
             ],
             total_count: REDMINE_TIME_LOGS_PAGE_SIZE + 1,
-            offset: 0,
+            offset: REDMINE_TIME_LOGS_PAGE_SIZE,
             limit: REDMINE_TIME_LOGS_PAGE_SIZE,
           },
         };
-      }
-      return {
-        status: 200,
-        payload: {
-          time_entries: [
-            {
-              id: 2,
-              spent_on: '2026-03-15',
-              hours: 0.5,
-              issue: { id: 42 },
-            },
-          ],
-          total_count: REDMINE_TIME_LOGS_PAGE_SIZE + 1,
-          offset: REDMINE_TIME_LOGS_PAGE_SIZE,
-          limit: REDMINE_TIME_LOGS_PAGE_SIZE,
-        },
-      };
-    });
+      }),
+    );
     const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
 
     const logs = await adapter.fetchTimeLogs({ spentOn: '2026-03-15', workPackageIds: ['42'] });
@@ -81,24 +111,26 @@ describe('RedmineAdapter', () => {
 
   it('bounds the pagination loop at the fixed maximum page count', async () => {
     let calls = 0;
-    const transport = fakeTransport(() => {
-      calls += 1;
-      return {
-        status: 200,
-        payload: {
-          // Always claim there are more pages.
-          time_entries: [
-            {
-              id: calls,
-              spent_on: '2026-03-15',
-              hours: 1,
-              issue: { id: 42 },
-            },
-          ],
-          total_count: 1_000_000,
-        },
-      };
-    });
+    const transport = fakeTransport(
+      withIssueLookup(() => {
+        calls += 1;
+        return {
+          status: 200,
+          payload: {
+            // Always claim there are more pages.
+            time_entries: [
+              {
+                id: calls,
+                spent_on: '2026-03-15',
+                hours: 1,
+                issue: { id: 42 },
+              },
+            ],
+            total_count: 1_000_000,
+          },
+        };
+      }),
+    );
     const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
 
     const logs = await adapter.fetchTimeLogs({ spentOn: '2026-03-15', workPackageIds: ['42'] });
@@ -109,43 +141,45 @@ describe('RedmineAdapter', () => {
 
   it('paginates a date-range fetch without filtering issues and includes unlinked logs', async () => {
     let calls = 0;
-    const transport = fakeTransport(() => {
-      calls += 1;
-      if (calls === 1) {
+    const transport = fakeTransport(
+      withIssueLookup(() => {
+        calls += 1;
+        if (calls === 1) {
+          return {
+            status: 200,
+            payload: {
+              time_entries: [
+                {
+                  id: 1,
+                  spent_on: '2026-08-03',
+                  hours: 1,
+                  issue: { id: 99 },
+                },
+              ],
+              total_count: 2,
+              offset: 0,
+              limit: REDMINE_TIME_LOGS_PAGE_SIZE,
+            },
+          };
+        }
         return {
           status: 200,
           payload: {
             time_entries: [
               {
-                id: 1,
-                spent_on: '2026-08-03',
-                hours: 1,
+                id: 2,
+                spent_on: '2026-08-12',
+                hours: 0.5,
                 issue: { id: 99 },
               },
             ],
             total_count: 2,
-            offset: 0,
+            offset: REDMINE_TIME_LOGS_PAGE_SIZE,
             limit: REDMINE_TIME_LOGS_PAGE_SIZE,
           },
         };
-      }
-      return {
-        status: 200,
-        payload: {
-          time_entries: [
-            {
-              id: 2,
-              spent_on: '2026-08-12',
-              hours: 0.5,
-              issue: { id: 99 },
-            },
-          ],
-          total_count: 2,
-          offset: REDMINE_TIME_LOGS_PAGE_SIZE,
-          limit: REDMINE_TIME_LOGS_PAGE_SIZE,
-        },
-      };
-    });
+      }),
+    );
     const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
 
     const logs = await adapter.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' });
@@ -162,6 +196,124 @@ describe('RedmineAdapter', () => {
     await expect(
       adapter.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' }),
     ).rejects.toMatchObject({ messageKey: 'error.remoteTimeLogsFetchFailed' });
+  });
+
+  it('resolves issue titles across every status after paging a range fetch', async () => {
+    const requests: RemoteRequest[] = [];
+    const transport = fakeTransport((request) => {
+      requests.push(request);
+      return isIssueLookup(request)
+        ? { status: 200, payload: { issues: [{ id: 42, subject: 'Closed: fix rounding' }] } }
+        : timeEntriesPage([timeEntry(1, 42), timeEntry(2, 42)]);
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const logs = await adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' });
+
+    expect(logs.map((log) => log.remoteIssueTitle)).toEqual([
+      'Closed: fix rounding',
+      'Closed: fix rounding',
+    ]);
+    const lookups = requests.filter(isIssueLookup).map((request) => new URL(request.url));
+    expect(lookups).toHaveLength(1);
+    expect(lookups[0]?.searchParams.get('issue_id')).toBe('42');
+    expect(lookups[0]?.searchParams.get('status_id')).toBe('*');
+  });
+
+  it('resolves issue titles on a same-day fetch and nulls an issue the tracker does not return', async () => {
+    const transport = fakeTransport(
+      withIssueLookup(
+        () => timeEntriesPage([timeEntry(1, 42), timeEntry(2, 7)]),
+        [{ id: 42, subject: 'Fix rounding' }],
+      ),
+    );
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const logs = await adapter.fetchTimeLogs({
+      spentOn: '2026-09-01',
+      workPackageIds: ['42', '7'],
+    });
+
+    expect(logs.map((log) => [log.remoteIssueId, log.remoteIssueTitle])).toEqual([
+      ['42', 'Fix rounding'],
+      ['7', null],
+    ]);
+  });
+
+  it('batches the title lookup by 100 distinct issues', async () => {
+    const entries = Array.from({ length: 230 }, (_, i) => timeEntry(i + 1, i + 1));
+    const lookupSizes: number[] = [];
+    const transport = fakeTransport((request) => {
+      if (!isIssueLookup(request)) return timeEntriesPage(entries);
+      const ids = new URL(request.url).searchParams.get('issue_id')!.split(',');
+      lookupSizes.push(ids.length);
+      return {
+        status: 200,
+        payload: { issues: ids.map((id) => ({ id: Number(id), subject: `Issue ${id}` })) },
+      };
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const logs = await adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' });
+
+    expect(lookupSizes).toEqual([100, 100, 30]);
+    expect(logs[229]?.remoteIssueTitle).toBe('Issue 230');
+  });
+
+  it('makes no lookup when no fetched entry has an issue', async () => {
+    const requests: RemoteRequest[] = [];
+    const transport = fakeTransport((request) => {
+      requests.push(request);
+      return timeEntriesPage([{ id: 1, spent_on: '2026-09-01', hours: 1 }]);
+    });
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    const logs = await adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' });
+
+    expect(logs).toEqual([]);
+    expect(requests.filter(isIssueLookup)).toHaveLength(0);
+  });
+
+  it('fails the fetch when the title lookup fails upstream', async () => {
+    const transport = fakeTransport((request) =>
+      isIssueLookup(request) ? { status: 500, payload: {} } : timeEntriesPage([timeEntry(1, 42)]),
+    );
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    await expect(
+      adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteTimeLogsFetchFailed' });
+  });
+
+  it('fails the fetch when the title lookup is forbidden or unparseable', async () => {
+    for (const response of [
+      { status: 403, payload: {} },
+      { status: 200, payload: { unexpected: true } },
+    ]) {
+      const transport = fakeTransport((request) =>
+        isIssueLookup(request) ? response : timeEntriesPage([timeEntry(1, 42)]),
+      );
+      const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+      await expect(
+        adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' }),
+      ).rejects.toBeInstanceOf(RemoteAdapterError);
+    }
+  });
+
+  it('fails a title-lookup timeout like a time-log page timeout', async () => {
+    const transport: Transport = {
+      async execute<T>(request: RemoteRequest, schema: ZodType<T>): Promise<RemoteResponse<T>> {
+        if (isIssueLookup(request)) throw new Error('timeout');
+        const parsed = schema.safeParse(timeEntriesPage([timeEntry(1, 42)]).payload);
+        return { status: 200, payload: parsed.success ? parsed.data : null };
+      },
+    };
+    const adapter = new RedmineAdapter(transport, 'https://rm.example.com', null);
+
+    await expect(
+      adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' }),
+    ).rejects.toMatchObject({ messageKey: 'error.remoteServerModeConnectionFailed' });
   });
 
   it('resolves a 404 exact-id lookup to null rather than throwing', async () => {

@@ -13,7 +13,7 @@ const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
 describe('extension-protocol public exports', () => {
   it('resolves contracts without Nuxt types', () => {
-    expect(EXTENSION_PROTOCOL_VERSION).toBe(1);
+    expect(EXTENSION_PROTOCOL_VERSION).toBe(2);
     const error = reconstructAdapterError(
       serializeAdapterError(new RemoteAdapterError('error.remoteIssueSearchFailed', 502)),
     );

@@ -64,6 +64,7 @@ const log = {
   activityName: 'Development',
   comment: null,
   remoteUserId: '7',
+  remoteIssueTitle: 'Fix rounding',
 };
 
 function createLinkedChannel(): ExtensionChannel {
