@@ -87,6 +87,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       trackerName,
       remoteProjectId: created.remoteProjectId,
       remoteProjectTitle: created.remoteProjectTitle,
+      recentTrackedSeconds: 0,
       createdAt: created.createdAt.toISOString(),
     };
   } catch (err) {

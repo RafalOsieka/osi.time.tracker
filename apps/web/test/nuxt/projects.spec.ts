@@ -30,6 +30,7 @@ type Project = {
   trackerName: string | null;
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
+  recentTrackedSeconds: number;
   createdAt: string;
 };
 
@@ -212,6 +213,7 @@ describe('projects page', () => {
         trackerName: 'Acme',
         remoteProjectId: '3',
         remoteProjectTitle: 'Spike Root',
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
       {
@@ -221,6 +223,7 @@ describe('projects page', () => {
         trackerName: 'Acme',
         remoteProjectId: null,
         remoteProjectTitle: null,
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -259,6 +262,7 @@ describe('projects page', () => {
         trackerName: 'Acme',
         remoteProjectId: null,
         remoteProjectTitle: null,
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
       {
@@ -268,6 +272,7 @@ describe('projects page', () => {
         trackerName: 'Acme',
         remoteProjectId: null,
         remoteProjectTitle: null,
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -292,6 +297,7 @@ describe('projects page', () => {
         trackerName: null,
         remoteProjectId: null,
         remoteProjectTitle: null,
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -321,6 +327,7 @@ describe('projects page', () => {
         trackerName: 'Deleted Tracker',
         remoteProjectId: null,
         remoteProjectTitle: null,
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
     ];
@@ -344,6 +351,7 @@ describe('projects page', () => {
         trackerName: 'Deleted Tracker',
         remoteProjectId: null,
         remoteProjectTitle: null,
+        recentTrackedSeconds: 0,
         createdAt: new Date().toISOString(),
       },
     ];

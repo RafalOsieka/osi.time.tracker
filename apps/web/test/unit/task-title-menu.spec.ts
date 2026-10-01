@@ -93,3 +93,48 @@ describe('buildTaskTitleMenuItems', () => {
     expect(items).toEqual([]);
   });
 });
+
+describe('buildTaskTitleMenuItems project mode', () => {
+  const base = {
+    suggestions: [task()],
+    noProjectLabel: '(no project)',
+    createOptionLabel: (title: string) => `Create "${title}"`,
+    onSelectTask: () => undefined,
+    onSelectCreate: () => undefined,
+  };
+
+  it('returns only a labelled project group whose rows carry the stripped text', () => {
+    const onSelectProject = vi.fn();
+    const items = buildTaskTitleMenuItems({
+      ...base,
+      searchText: 'fix login @hel',
+      mention: {
+        projects: [
+          { id: 'p1', name: 'Helios', trackerName: 'Acme' },
+          { id: 'p2', name: 'Helix', trackerName: null },
+        ],
+        textWithoutToken: 'fix login',
+        groupLabel: 'Projects',
+        onSelectProject,
+      },
+    });
+
+    expect(items[0]).toMatchObject({ type: 'label', label: 'Projects' });
+    expect(items.slice(1)).toMatchObject([
+      { id: 'p1', name: 'fix login', label: 'Helios · Acme' },
+      { id: 'p2', name: 'fix login', label: 'Helix' },
+    ]);
+    items[2]?.onSelect();
+    expect(onSelectProject).toHaveBeenCalledWith({ id: 'p2', name: 'Helix', trackerName: null });
+  });
+
+  it('names the project in the create row label when the commit carries one', () => {
+    const items = buildTaskTitleMenuItems({
+      ...base,
+      searchText: 'fix login',
+      createProjectName: 'Helios',
+      createOptionLabelWithProject: (title, project) => `${title} (new task in ${project})`,
+    });
+    expect(items[0]?.label).toBe('fix login (new task in Helios)');
+  });
+});

@@ -78,9 +78,11 @@ const InputMenuStub = {
         :disabled="disabled"
         :value="modelValue"
         @input="$emit('update:modelValue', $event.target.value); $emit('update:searchTerm', $event.target.value)"
+        @focus="$emit('focus')"
         @blur="$emit('blur')"
         @keydown.enter="$emit('keydown', $event)"
       />
+      <slot name="leading" />
       <button
         v-for="item in createItems"
         :key="item.id"
@@ -92,8 +94,8 @@ const InputMenuStub = {
       </button>
     </div>
   `,
-  props: ['modelValue', 'searchTerm', 'items', 'disabled', 'placeholder', 'mode', 'open'],
-  emits: ['update:modelValue', 'update:searchTerm', 'update:open', 'blur', 'keydown'],
+  props: ['modelValue', 'searchTerm', 'items', 'disabled', 'placeholder', 'mode', 'open', 'ui'],
+  emits: ['update:modelValue', 'update:searchTerm', 'update:open', 'focus', 'blur', 'keydown'],
   computed: {
     createItems(this: {
       items?: Array<{ id?: string; name?: string; label?: string; onSelect?: () => void }>;
@@ -369,7 +371,7 @@ describe('AppTimer', () => {
     await input.setValue('Renamed Task');
     await input.trigger('blur');
 
-    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task', null);
+    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task', null, null);
   });
 
   it('commits an edited running title via updateTitle on Enter', async () => {
@@ -383,7 +385,7 @@ describe('AppTimer', () => {
     await input.setValue('Renamed Task');
     await input.trigger('keydown.enter');
 
-    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task', null);
+    expect(updateTitleMock).toHaveBeenCalledWith('Renamed Task', null, null);
     expect(stopMock).not.toHaveBeenCalled();
   });
 
@@ -398,7 +400,7 @@ describe('AppTimer', () => {
     await input.setValue('');
     await input.trigger('blur');
 
-    expect(updateTitleMock).toHaveBeenCalledWith('', null);
+    expect(updateTitleMock).toHaveBeenCalledWith('', null, undefined);
   });
 
   it('selecting a suggestion fires once, sends taskId, and never sets [object Object]', async () => {
@@ -616,7 +618,7 @@ describe('AppTimer', () => {
 
     await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
     await flushPromises();
-    expect(startMock).toHaveBeenCalledWith('Linked Task', undefined, null);
+    expect(startMock).toHaveBeenCalledWith('Linked Task', 'project-1', null);
   });
 
   describe('start-time editor popover', () => {
@@ -743,6 +745,109 @@ describe('AppTimer', () => {
       await saveButton.trigger('click');
       await flushPromises();
       expect(updateStartedAtMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('@project mentions', () => {
+    const helios = {
+      id: 'p-helios',
+      name: 'Helios',
+      trackerId: null,
+      trackerName: null,
+      remoteProjectId: null,
+      remoteProjectTitle: null,
+      recentTrackedSeconds: 100,
+      createdAt: '',
+    };
+    const nordwind = { ...helios, id: 'p-nord', name: 'Nordwind', recentTrackedSeconds: 0 };
+
+    async function mountWithProjects() {
+      fetchMock.mockImplementation(async (url: string) =>
+        url === '/api/projects' ? [helios, nordwind] : [],
+      );
+      const wrapper = await mountSuspended(AppTimer, { global: { stubs: baseStubs } });
+      const menu = wrapper.findComponent(InputMenuStub);
+      await menu.vm.$emit('focus');
+      await flushPromises();
+      // SAFETY: the stubbed menu receives the items built by buildTaskTitleMenuItems.
+      const rows = () => menu.props('items') as Array<TimerMenuItem & { type?: string }>;
+      return { wrapper, menu, rows, input: wrapper.find('[data-testid="timer-title-input"]') };
+    }
+
+    it('picking a project strips the token, shows the chip and starts in that project', async () => {
+      const { wrapper, menu, rows, input } = await mountWithProjects();
+
+      await input.setValue('fix login @hel');
+      const picked = rows()[1]!;
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      await flushPromises();
+
+      expect(wrapper.find('[data-testid="timer-project-chip"]').text()).toContain('Helios');
+      expect(wrapper.find('[data-testid="timer-title-input"]').attributes('value')).toBe(
+        'fix login',
+      );
+
+      await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+      await flushPromises();
+      expect(startMock).toHaveBeenCalledWith('fix login', 'p-helios', null);
+    });
+
+    it('Enter while the project overlay is open does not start the timer', async () => {
+      const { menu, input } = await mountWithProjects();
+
+      await input.setValue('@hel');
+      await menu.vm.$emit('update:open', true);
+      await input.trigger('keydown.enter');
+      expect(startMock).not.toHaveBeenCalled();
+    });
+
+    it('resolves a fully typed mention on start but keeps a partial one literal', async () => {
+      const { wrapper, input } = await mountWithProjects();
+
+      await input.setValue('fix login @helios');
+      await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+      await flushPromises();
+      expect(startMock).toHaveBeenLastCalledWith('fix login', 'p-helios', null);
+
+      await input.setValue('fix login @hel');
+      await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+      await flushPromises();
+      expect(startMock).toHaveBeenLastCalledWith('fix login @hel', undefined, null);
+    });
+
+    it('drops the chip when starting with an empty title', async () => {
+      const { wrapper, menu, rows, input } = await mountWithProjects();
+
+      await input.setValue('@nord');
+      const picked = rows()[1]!;
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      await flushPromises();
+
+      await wrapper.find('[data-testid="timer-toggle-button"]').trigger('click');
+      await flushPromises();
+      expect(startMock).toHaveBeenLastCalledWith(undefined, undefined, null);
+    });
+
+    it('re-projects a running entry immediately and removes its project via the chip', async () => {
+      runningState.value = {
+        ...runningEntry('My Task'),
+        projectId: 'p-helios',
+        projectName: 'Helios',
+      };
+      const { wrapper, menu, rows, input } = await mountWithProjects();
+      expect(wrapper.find('[data-testid="timer-project-chip"]').text()).toContain('Helios');
+
+      await input.setValue('My Task @nord');
+      const picked = rows()[1]!;
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      expect(updateTitleMock).toHaveBeenCalledWith('My Task', null, 'p-nord');
+
+      updateTitleMock.mockClear();
+      await wrapper.find('[data-testid="timer-project-chip-remove"]').trigger('click');
+      expect(updateTitleMock).toHaveBeenCalledWith('My Task', null, null);
     });
   });
 });

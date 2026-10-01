@@ -5,6 +5,7 @@ import { getDb } from '../../db/index';
 import { projects, trackers } from '../../db/schema';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
 import { readZodBody } from '../../utils/zod-input';
+import { getRecentTrackedSeconds } from '../../utils/project-recent-time';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event): Promise<ProjectDto> => {
@@ -128,6 +129,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       trackerName,
       remoteProjectId: updated.remoteProjectId,
       remoteProjectTitle: updated.remoteProjectTitle,
+      recentTrackedSeconds: await getRecentTrackedSeconds(user.id, updated.id),
       createdAt: updated.createdAt.toISOString(),
     };
   } catch (err) {

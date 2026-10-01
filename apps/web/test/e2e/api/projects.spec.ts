@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
 import { seedAndLogin } from '../helpers/session';
-import { createTracker } from '../helpers/http';
+import { createProject, createTracker, patchEntry, startEntry } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
@@ -668,5 +668,59 @@ describeProjects('projects API integration', async () => {
     expect(scopedRow?.remoteProjectTitle).toBe('Spike Root');
     expect(unscopedRow?.remoteProjectId).toBeNull();
     expect(unscopedRow?.remoteProjectTitle).toBeNull();
+  });
+  it('list reports recentTrackedSeconds over the last 30 days, per user, without reordering', async () => {
+    const alice = await seedAndLogin(dbUrl);
+    const bob = await seedAndLogin(dbUrl);
+    const helios = await createProject(alice.jar, alice.token, 'Helios');
+    const nordwind = await createProject(alice.jar, alice.token, 'Nordwind');
+    await createProject(alice.jar, alice.token, 'Idle');
+    const bobHelios = await createProject(bob.jar, bob.token, 'Helios');
+
+    const hour = 3_600_000;
+    const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
+    const track = (
+      who: typeof alice,
+      title: string,
+      projectId: string,
+      startedAt: string,
+      stoppedAt?: string,
+    ) =>
+      startEntry(who.jar, who.token, { title, projectId, startedAt, stoppedAt: stoppedAt ?? null });
+
+    expect((await track(alice, 'a', helios.id, ago(5 * hour), ago(4 * hour))).status).toBe(200);
+    expect(
+      (await track(alice, 'b', helios.id, ago(3 * hour), ago(3 * hour - 30 * 60_000))).status,
+    ).toBe(200);
+    expect(
+      (await track(alice, 'old', nordwind.id, ago(31 * 24 * hour), ago(31 * 24 * hour - hour)))
+        .status,
+    ).toBe(200);
+    expect((await track(bob, 'c', bobHelios.id, ago(2 * hour), ago(hour))).status).toBe(200);
+
+    const list = async (who: typeof alice) =>
+      (await fetch(url('/api/projects'), { headers: { cookie: who.jar.header() } })).json();
+    const rows: { name: string; recentTrackedSeconds: number }[] = await list(alice);
+    expect(rows.map((r) => r.name)).toEqual(['Helios', 'Idle', 'Nordwind']);
+    expect(rows.map((r) => r.recentTrackedSeconds)).toEqual([5400, 0, 0]);
+
+    // A running entry counts up to now.
+    const runRes = await startEntry(alice.jar, alice.token, {
+      title: 'run',
+      projectId: nordwind.id,
+    });
+    expect(runRes.status).toBe(200);
+    const runEntry = await runRes.json();
+    expect(
+      (await patchEntry(alice.jar, alice.token, runEntry.id, { startedAt: ago(10 * 60_000) }))
+        .status,
+    ).toBe(200);
+    const running: { name: string; recentTrackedSeconds: number }[] = await list(alice);
+    expect(running.find((r) => r.name === 'Nordwind')?.recentTrackedSeconds).toBeGreaterThanOrEqual(
+      600,
+    );
+
+    const unauth = await fetch(url('/api/projects'));
+    expect(unauth.status).toBe(401);
   });
 });

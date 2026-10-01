@@ -46,9 +46,10 @@ const ModalStub = {
     '<div v-if="open !== false" data-testid="add-entry-dialog"><slot name="body" /><slot /></div>',
 };
 const InputMenuStub = {
+  inheritAttrs: false,
   template:
-    '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'update:searchTerm\', $event.target.value)" />',
-  props: ['modelValue', 'searchTerm', 'items', 'placeholder', 'mode'],
+    '<div><input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value); $emit(\'update:searchTerm\', $event.target.value)" /><slot name="leading" /></div>',
+  props: ['modelValue', 'searchTerm', 'items', 'placeholder', 'mode', 'ui'],
   emits: ['update:modelValue', 'update:searchTerm'],
 };
 const InputStub = {
@@ -175,6 +176,155 @@ describe('TimerAddEntryDialog', () => {
     });
   });
 
+  describe('@project mentions and picked suggestions', () => {
+    const helios = {
+      id: 'p-helios',
+      name: 'Helios',
+      trackerId: null,
+      trackerName: null,
+      remoteProjectId: null,
+      remoteProjectTitle: null,
+      recentTrackedSeconds: 0,
+      createdAt: '',
+    };
+    const suggestion = {
+      id: 'task-7',
+      name: 'fix login',
+      projectId: 'p-nord',
+      projectName: 'Nordwind',
+      createdAt: '',
+    };
+    const times = { start: parseTime('09:00'), end: parseTime('10:30') };
+    const range = {
+      startedAt: wallClockToInstant('2024-03-15', '09:00', 'UTC'),
+      stoppedAt: wallClockToInstant('2024-03-15', '10:30', 'UTC'),
+    };
+
+    async function mountReady(tasks: unknown[] = []) {
+      fetchMock.mockImplementation(async (url: string) =>
+        url === '/api/projects' ? [helios] : tasks,
+      );
+      csrfFetchMock.mockResolvedValue({ id: 'entry-x' });
+      const wrapper = await mountSuspended(TimerAddEntryDialog, {
+        props: { visible: false, timeZone: 'UTC' },
+        global: {
+          stubs: {
+            UModal: ModalStub,
+            UInputMenu: InputMenuStub,
+            UInput: InputStub,
+            UInputDate: InputDateStub,
+            UInputTime: InputTimeStub,
+            FormDialogFooter: {
+              template: '<div><button type="submit" data-testid="save-button">save</button></div>',
+            },
+          },
+        },
+      });
+      await wrapper.setProps({ visible: true });
+      await flushPromises();
+      await wrapper
+        .findComponent(InputDateStub)
+        .vm.$emit('update:modelValue', new CalendarDate(2024, 3, 15));
+      await findTimesStub(wrapper).vm.$emit('update:modelValue', times);
+      const menu = wrapper.findComponent(InputMenuStub);
+      // SAFETY: the stubbed menu receives the items built by buildTaskTitleMenuItems.
+      const rows = () =>
+        menu.props('items') as Array<{
+          id: string;
+          name: string;
+          label: string;
+          onSelect: () => void;
+        }>;
+      const save = async () => {
+        await wrapper.find('form').trigger('submit');
+        await flushPromises();
+      };
+      return {
+        wrapper,
+        menu,
+        rows,
+        save,
+        input: wrapper.find('[data-testid="add-entry-title-input"]'),
+      };
+    }
+
+    it('binds an unedited picked suggestion by taskId', async () => {
+      const { menu, rows, save } = await mountReady([suggestion]);
+      await menu.vm.$emit('update:searchTerm', 'fix');
+      await settleSuggestions();
+      const picked = rows().find((row) => row.id === 'task-7')!;
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      await flushPromises();
+
+      await save();
+      expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries', {
+        method: 'POST',
+        body: { taskId: 'task-7', ...range },
+      });
+    });
+
+    it('falls back to title and the chip project after editing a picked suggestion', async () => {
+      const { wrapper, menu, rows, save } = await mountReady([suggestion]);
+      await menu.vm.$emit('update:searchTerm', 'fix');
+      await settleSuggestions();
+      const picked = rows().find((row) => row.id === 'task-7')!;
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      await flushPromises();
+      expect(wrapper.find('[data-testid="add-entry-project-chip"]').text()).toContain('Nordwind');
+
+      await menu.vm.$emit('update:searchTerm', 'fix login again');
+      await save();
+      expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries', {
+        method: 'POST',
+        body: { title: 'fix login again', projectId: 'p-nord', ...range },
+      });
+    });
+
+    it('picking a project sets the chip, strips the token and saves in that project', async () => {
+      const { wrapper, menu, rows, save } = await mountReady();
+      await menu.vm.$emit('update:searchTerm', 'review @hel');
+      const picked = rows()[1]!;
+      expect(rows()[0]).toMatchObject({ type: 'label' });
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      await flushPromises();
+      expect(wrapper.find('[data-testid="add-entry-project-chip"]').text()).toContain('Helios');
+
+      await save();
+      expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries', {
+        method: 'POST',
+        body: { title: 'review', projectId: 'p-helios', ...range },
+      });
+    });
+
+    it('resolves a fully typed mention on save', async () => {
+      const { menu, save } = await mountReady();
+      await menu.vm.$emit('update:searchTerm', 'review @helios');
+      await save();
+      expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries', {
+        method: 'POST',
+        body: { title: 'review', projectId: 'p-helios', ...range },
+      });
+    });
+
+    it('saves an untitled entry without a project when only the chip is set', async () => {
+      const { menu, rows, save } = await mountReady();
+      await menu.vm.$emit('update:searchTerm', '@hel');
+      const picked = rows()[1]!;
+      picked.onSelect();
+      await menu.vm.$emit('update:modelValue', picked.name);
+      await flushPromises();
+
+      await save();
+      expect(csrfFetchMock).toHaveBeenCalledWith('/api/time-entries', {
+        method: 'POST',
+        body: { title: null, ...range },
+      });
+    });
+  });
+
   it('issues one suggestion request carrying the final text after rapid typing', async () => {
     const wrapper = await mount();
 
@@ -183,8 +333,8 @@ describe('TimerAddEntryDialog', () => {
     await wrapper.findComponent(InputMenuStub).vm.$emit('update:searchTerm', 'Fix');
     await settleSuggestions();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith('/api/tasks', { query: { search: 'Fix' } });
+    const taskCalls = fetchMock.mock.calls.filter(([path]) => path === '/api/tasks');
+    expect(taskCalls).toEqual([['/api/tasks', { query: { search: 'Fix' } }]]);
   });
 
   it('blocks an end time before the start with an inline error', async () => {

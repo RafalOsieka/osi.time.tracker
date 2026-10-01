@@ -210,6 +210,45 @@ describe('useTimer', () => {
     expect(elapsedSeconds.value).toBeGreaterThanOrEqual(2);
   });
 
+  it('updateTitle() sends projectId explicitly, keeps the project when omitted, and prefers taskId', async () => {
+    const entry = {
+      id: 'entry-3',
+      taskId: null,
+      taskName: 'Task',
+      projectId: null,
+      projectName: null,
+      startedAt: new Date().toISOString(),
+      stoppedAt: null,
+    };
+    const { seedRunning, updateTitle } = await setupTimer();
+    seedRunning(entry);
+    csrfFetchMock.mockResolvedValue(entry);
+
+    await updateTitle('Task', null, 'project-1');
+    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/entry-3', {
+      method: 'PATCH',
+      body: { title: 'Task', projectId: 'project-1' },
+    });
+
+    await updateTitle('Task', null, null);
+    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/entry-3', {
+      method: 'PATCH',
+      body: { title: 'Task', projectId: null },
+    });
+
+    await updateTitle('Task');
+    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/entry-3', {
+      method: 'PATCH',
+      body: { title: 'Task' },
+    });
+
+    await updateTitle('Task', 'task-9', 'project-1');
+    expect(csrfFetchMock).toHaveBeenLastCalledWith('/api/time-entries/entry-3', {
+      method: 'PATCH',
+      body: { taskId: 'task-9' },
+    });
+  });
+
   it('stop() clears the running entry and resets elapsed time', async () => {
     const startedAt = new Date().toISOString();
     csrfFetchMock.mockResolvedValueOnce({

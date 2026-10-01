@@ -189,6 +189,40 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
+  it('adds a manual entry in a project picked with @ in the dialog', async () => {
+    const { jar, token } = await apiLogin('timerviewui@example.com');
+    const projectName = 'Dialog Mention Project';
+    await createProject(jar, token, projectName);
+
+    const page = await loginAs('timerviewui@example.com');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+
+    await page.click('[data-testid="timer-view-add-entry"]');
+    await page.waitForSelector('[data-testid="add-entry-dialog"]');
+
+    const titleInput = page
+      .locator('[data-testid="add-entry-title-input"] input, [data-testid="add-entry-title-input"]')
+      .first();
+    await titleInput.click();
+    await titleInput.fill('Dialog Mention Task @dialog');
+    const option = page.locator('[role="option"]').filter({ hasText: projectName }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    // Combobox options can re-render mid-click; use a DOM click for stability.
+    await option.evaluate((el: HTMLElement) => el.click());
+    await page.waitForSelector('[data-testid="add-entry-project-chip"]');
+    expect(await titleInput.inputValue()).toBe('Dialog Mention Task');
+
+    await typeTimeField(page, 'add-entry-time-input', '00:00', 0);
+    await typeTimeField(page, 'add-entry-time-input', '00:01', 1);
+    await page.click('[data-testid="add-entry-dialog"] [data-testid="save-button"]');
+    await page.waitForSelector('[data-testid="add-entry-dialog"]', { state: 'hidden' });
+
+    await page.waitForFunction(pageIncludesText, 'Dialog Mention Task');
+    await page.waitForFunction(pageIncludesText, projectName);
+
+    await page.close();
+  });
+
   it('blocks adding a manual entry with an inverted time range', async () => {
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');

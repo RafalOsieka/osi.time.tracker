@@ -40,7 +40,6 @@ The shell's reserved running-timer region SHALL host the live timer widget inste
 - **WHEN** a timer is running and the user prefers reduced motion
 - **THEN** the stop control SHALL remain visually distinct without requiring continuous animation
 
-
 ### Requirement: REQ-146 Persistent running-timer indicator
 The application shell SHALL display an always-visible running indicator whenever the authenticated user has a running entry, showing the running entry's title and its live-updating elapsed time. The running state SHALL be sourced from the server (`GET /api/time-entries/running`) so it survives page reloads and is consistent across devices. On a full document load of an authenticated page, that fetch SHALL complete during SSR and seed shared timer state so the widget's running vs idle mode and title are correct on first paint (see ui-shell REQ-258).
 
@@ -148,18 +147,17 @@ The indicator and timer widget SHALL meet WCAG 2.1 AA (labelled controls, keyboa
 - **WHEN** new user-facing timer strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
-
 ### Requirement: REQ-180 Top-bar suggestion binding, labels, and popover anchoring
 
-The top-bar timer widget's title autocomplete SHALL present each suggestion as a single object-based item resolved from `GET /api/tasks?search=`, using exactly one selection handler; it SHALL NOT nest an independently clickable control inside a menu item nor cast object items to strings. Selecting a suggestion by mouse or keyboard SHALL fire a single selection and SHALL NOT issue duplicate requests nor set a stringified-object (`[object Object]`) title.
+The top-bar timer widget's title autocomplete SHALL present each suggestion as a single object-based item resolved from `GET /api/tasks?search=`, using exactly one selection handler; it SHALL NOT nest an independently clickable control inside a menu item nor cast object items to strings. Selecting a suggestion by mouse or keyboard SHALL fire a single selection and SHALL NOT issue duplicate requests nor set a stringified-object (`[object Object]`) title. While the project chip (REQ-374, tracking-project-mentions) holds a project, suggestions SHALL be requested for that project only.
 
 Each suggestion label SHALL show the task name with its project/client context when present, and SHALL additionally append the remote issue id (from the task's remote issue reference) when the task has one.
 
-When the user selects an existing suggestion, the widget SHALL capture that task's identity and send it to the server so the started/updated entry binds to that exact task (its project and remote reference), rather than reconstructing project/reference from front-end state. When the user commits a free-form title that matches no suggestion, the widget SHALL fall back to the title-based create path (REQ-142).
+When the user selects an existing suggestion, the widget SHALL capture that task's identity and send it to the server so the started/updated entry binds to that exact task (its project and remote reference), rather than reconstructing project/reference from front-end state. When the user commits a free-form title that matches no suggestion, the widget SHALL fall back to the title-based create path (REQ-142) in the project held by the project chip, or in the project-less scope when the chip is empty (REQ-376).
 
-The suggestion overlay SHALL additionally offer, whenever the typed text is non-empty, a distinct **create-new-task option** labelled with the typed text and a localized "(new task)" marker, rendered separately from the task suggestions and shown even when one or more suggestions match the typed text exactly. That option SHALL be the **first** item in the overlay. The overlay's initial keyboard highlight SHALL land on it. Activating it (by mouse or by overlay-open Enter while it is highlighted) SHALL commit the typed text as a free-form title with **no task binding** — the widget SHALL clear any captured task identity and send `title` only — so the entry resolves through the project-less title path (REQ-142) instead of binding to a matching suggestion. Activating it SHALL close the overlay so a subsequent Enter starts the timer per REQ-146. The option SHALL be keyboard reachable, SHALL expose an accessible name including the typed text, and its strings SHALL exist in `en` and `pl` in parity.
+The suggestion overlay SHALL additionally offer, whenever the typed text is non-empty, a distinct **create-new-task option** labelled with the title to be committed and a localized "(new task)" marker, which reads "(new task in {project})" when the commit would carry a project (the chip's project, or a typed mention resolved per REQ-375). It SHALL be rendered separately from the task suggestions and shown even when one or more suggestions match the typed text exactly. That option SHALL be the **first** item in the overlay. The overlay's initial keyboard highlight SHALL land on it. Activating it (by mouse or by overlay-open Enter while it is highlighted) SHALL commit the typed text as a free-form title with **no task binding** — the widget SHALL clear any captured task identity and send `title` together with the chip's `projectId` (null when the chip is empty) — so the entry resolves through the title path (REQ-142) in that scope instead of binding to a matching suggestion. Activating it SHALL close the overlay so a subsequent Enter starts the timer per REQ-146. The option SHALL be keyboard reachable, SHALL expose an accessible name including the typed text, and its strings SHALL exist in `en` and `pl` in parity. While the overlay is in project mode (REQ-372) neither suggestions nor the create-new-task option SHALL be shown.
 
-The same create-new-task ordering, labelling, and free-form commit contract SHALL apply to the add-entry dialog title autocomplete.
+The same suggestion binding, create-new-task ordering, labelling, free-form commit contract, and project chip SHALL apply to the add-entry dialog title autocomplete: picking a suggestion there SHALL bind the created entry to that exact task by identity (`taskId`) as long as the title text is not edited afterwards.
 
 The elapsed-time start-edit popover SHALL be anchored to the elapsed-time control that opens it, so it appears adjacent to that control rather than to an unrelated element.
 
@@ -183,13 +181,21 @@ The elapsed-time start-edit popover SHALL be anchored to the elapsed-time contro
 - **WHEN** the typed text is non-empty and the overlay lists one or more task suggestions
 - **THEN** the create-new-task option SHALL appear before every suggestion
 
+#### Scenario: Create option names the chip's project
+- **WHEN** the project chip shows "Helios" and the user types `fix login`
+- **THEN** the create-new-task option SHALL read "fix login (new task in Helios)"
+
 #### Scenario: Overlay Enter on the highlighted create option commits freeform
 - **WHEN** the overlay is open, the create-new-task option is highlighted, and the user presses Enter
 - **THEN** the typed text SHALL be committed as a free-form title with no task binding and the overlay SHALL close
 
 #### Scenario: Create option sends the title without a task binding
-- **WHEN** the user activates the create-new-task option and starts the timer
+- **WHEN** the project chip is empty and the user activates the create-new-task option and starts the timer
 - **THEN** the request SHALL carry the typed `title` with no `taskId` and the entry SHALL resolve in the project-less scope per REQ-142
+
+#### Scenario: Create option sends the chip's project
+- **WHEN** the project chip shows "Helios" and the user activates the create-new-task option and starts the timer
+- **THEN** the request SHALL carry the typed `title` and Helios's `projectId` with no `taskId`, and the entry SHALL resolve in "Helios" per REQ-142
 
 #### Scenario: Create option clears a previously captured suggestion
 - **WHEN** the user first selects a suggestion, edits the text, and then activates the create-new-task option
@@ -207,10 +213,17 @@ The elapsed-time start-edit popover SHALL be anchored to the elapsed-time contro
 - **WHEN** the user types a non-empty title in the add-entry dialog autocomplete
 - **THEN** the create-new-task option SHALL be first in that overlay and SHALL commit the typed text as a free-form title
 
+#### Scenario: Add-entry dialog binds a picked suggestion
+- **WHEN** the user picks the suggestion "fix login · Nordwind #412" in the add-entry dialog and saves without editing the title
+- **THEN** the request SHALL carry that task's `taskId` and the created entry SHALL bind to that task, including its remote reference
+
+#### Scenario: Add-entry dialog edit after pick falls back to title
+- **WHEN** the user picks a suggestion in the add-entry dialog, then edits the title text, and saves
+- **THEN** the request SHALL carry the edited `title` with the chip's `projectId` and no `taskId`
+
 #### Scenario: Popover anchored to the elapsed control
 - **WHEN** the user activates the elapsed-time control to edit the start
 - **THEN** the popover SHALL open anchored to that control rather than misaligned to an unrelated element
-
 
 ### Requirement: REQ-360 Bounded and debounced title suggestion requests
 The title autocompletes in the top-bar timer widget and the add-entry dialog SHALL request suggestions from `GET /api/tasks` through one shared mechanism so both behave identically. The mechanism SHALL debounce typing: while the user keeps typing, the system SHALL NOT issue a request for every keystroke, and SHALL issue one request for the latest text once typing pauses. The mechanism SHALL guard against out-of-order responses: when a response for an older search text arrives after a request for newer text has been issued, the older response SHALL be discarded and SHALL NOT replace the suggestions. A request that fails SHALL leave the previous suggestions untouched and SHALL NOT surface an error toast, so a transient failure does not interrupt typing a title. The request SHALL rely on the server-side cap and ranking of REQ-133 and SHALL NOT ask for more suggestions than the overlay presents.
@@ -234,4 +247,3 @@ The title autocompletes in the top-bar timer widget and the add-entry dialog SHA
 #### Scenario: Overlay stays responsive with a large task history
 - **WHEN** the user has tens of thousands of tasks and focuses or types in the title input
 - **THEN** the overlay SHALL present at most the server cap of suggestions and the page SHALL remain interactive
-

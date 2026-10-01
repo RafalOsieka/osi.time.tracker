@@ -236,6 +236,7 @@ describe('TimerTaskGroup', () => {
           trackerName: null,
           remoteProjectId: null,
           remoteProjectTitle: null,
+          recentTrackedSeconds: 0,
           createdAt: '',
         },
       ],

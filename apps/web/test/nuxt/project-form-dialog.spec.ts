@@ -128,6 +128,7 @@ function scopedProject(overrides: Partial<ProjectDto> = {}): ProjectDto {
     trackerName: tracker.name,
     remoteProjectId: '3',
     remoteProjectTitle: 'Spike Root',
+    recentTrackedSeconds: 0,
     createdAt: '',
     ...overrides,
   };
