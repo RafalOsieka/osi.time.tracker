@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client report - table page</title>
+<!-- Static mockup of one A4 PDF page (794x1123 CSS px = A4 at 96 dpi). Reference only; the real PDF is built with pdfmake. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#0e7490}a:hover{color:#155e75}
+</style>
+<style>
+html{background:#e2e8f0}
+body{padding:32px 16px;display:flex;justify-content:center}
+body > div{box-shadow:0 2px 16px rgba(15,23,42,.18);flex-shrink:0}
+@media print{html{background:#fff}body{padding:0}body > div{box-shadow:none}@page{size:A4;margin:0}}
+</style>
+</head>
+<body>
+<div style="width: 794px; height: 1123px; box-sizing: border-box; padding: 48px 56px 36px; display: flex; flex-direction: column; font-family: 'IBM Plex Sans', 'Segoe UI', Helvetica, sans-serif; color: #0f172a; background: #ffffff; font-variant-numeric: tabular-nums">
+
+<div style="display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #5b6470">
+<div><span style="font-weight: 600; color: #0f172a">Zestawienie godzin</span> · wrzesień 2026</div>
+<div>Helios Energy</div>
+</div>
+
+<div style="display: flex; margin-top: 20px; border-bottom: 2px solid #0f172a; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #334155">
+<div style="width: 120px; padding: 0 12px 8px 0">Data</div>
+<div style="flex-grow: 1; padding: 0 12px 8px">Zadanie</div>
+<div style="width: 84px; padding: 0 0 8px 12px; text-align: right">Godziny</div>
+</div>
+
+
+<div style="display: flex; flex-direction: column; border-bottom: 1px solid #94a3b8">
+<div style="display: flex">
+<div style="width: 120px; flex-shrink: 0; box-sizing: border-box; padding: 10px 12px 10px 0; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 12px; color: #5b6470">wtorek</div>
+<div style="font-size: 14px; font-weight: 600">01.09.2026</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column">
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios OpenProject · <a href="https://openproject.helios.example/work_packages/4821" style="color: #0e7490; font-weight: 600">#4821</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Portal klienta: lista faktur</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Development]</span> Paginacja i filtry listy faktur</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">3,50</div>
+</div>
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios OpenProject · <a href="https://openproject.helios.example/work_packages/4830" style="color: #0e7490; font-weight: 600">#4830</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Kalkulator uzysku PV – API prognoz</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Development]</span> Endpoint prognozy miesięcznej</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">4,00</div>
+</div>
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios Redmine · <a href="https://redmine.helios.example/issues/112" style="color: #0e7490; font-weight: 600">#112</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Spotkania zespołu</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Meeting]</span> Standup i planowanie sprintu</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">0,50</div>
+</div>
+
+</div>
+</div>
+<div style="display: flex; align-items: center; background: #ecfeff">
+<div style="flex-grow: 1; padding: 7px 12px; text-align: right; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #155e75">Suma dnia</div>
+<div style="width: 84px; box-sizing: border-box; padding: 7px 0 7px 12px; text-align: right; font-size: 14px; font-weight: 700; color: #164e63">8,00</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; border-bottom: 1px solid #94a3b8">
+<div style="display: flex">
+<div style="width: 120px; flex-shrink: 0; box-sizing: border-box; padding: 10px 12px 10px 0; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 12px; color: #5b6470">środa</div>
+<div style="font-size: 14px; font-weight: 600">02.09.2026</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column">
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios OpenProject · <a href="https://openproject.helios.example/work_packages/4830" style="color: #0e7490; font-weight: 600">#4830</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Kalkulator uzysku PV – API prognoz</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Development]</span> Walidacja danych nasłonecznienia</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">5,00</div>
+</div>
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios OpenProject · <a href="https://openproject.helios.example/work_packages/4830" style="color: #0e7490; font-weight: 600">#4830</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Kalkulator uzysku PV – API prognoz</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Code review]</span> Review PR #212 – cache prognoz</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">1,00</div>
+</div>
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios Redmine · <a href="https://redmine.helios.example/issues/118" style="color: #0e7490; font-weight: 600">#118</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Migracja bazy instalacji do nowego CRM</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Development]</span> Skrypt migracji – tabela adresów</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">2,00</div>
+</div>
+
+</div>
+</div>
+<div style="display: flex; align-items: center; background: #ecfeff">
+<div style="flex-grow: 1; padding: 7px 12px; text-align: right; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #155e75">Suma dnia</div>
+<div style="width: 84px; box-sizing: border-box; padding: 7px 0 7px 12px; text-align: right; font-size: 14px; font-weight: 700; color: #164e63">8,00</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; border-bottom: 1px solid #94a3b8">
+<div style="display: flex">
+<div style="width: 120px; flex-shrink: 0; box-sizing: border-box; padding: 10px 12px 10px 0; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 12px; color: #5b6470">czwartek</div>
+<div style="font-size: 14px; font-weight: 600">03.09.2026</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column">
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios OpenProject · <a href="https://openproject.helios.example/work_packages/4857" style="color: #0e7490; font-weight: 600">#4857</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Integracja z falownikami Fronius</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Development]</span> Klient Modbus TCP – odczyt mocy chwilowej</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">6,25</div>
+</div>
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios OpenProject · <a href="https://openproject.helios.example/work_packages/4821" style="color: #0e7490; font-weight: 600">#4821</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Portal klienta: lista faktur</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Testing]</span> Poprawki po testach UAT</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">1,75</div>
+</div>
+
+</div>
+</div>
+<div style="display: flex; align-items: center; background: #ecfeff">
+<div style="flex-grow: 1; padding: 7px 12px; text-align: right; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #155e75">Suma dnia</div>
+<div style="width: 84px; box-sizing: border-box; padding: 7px 0 7px 12px; text-align: right; font-size: 14px; font-weight: 700; color: #164e63">8,00</div>
+</div>
+</div>
+
+<div style="display: flex; flex-direction: column; border-bottom: 1px solid #94a3b8">
+<div style="display: flex">
+<div style="width: 120px; flex-shrink: 0; box-sizing: border-box; padding: 10px 12px 10px 0; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 2px">
+<div style="font-size: 12px; color: #5b6470">piątek</div>
+<div style="font-size: 14px; font-weight: 600">04.09.2026</div>
+</div>
+<div style="flex-grow: 1; display: flex; flex-direction: column">
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios Redmine · <a href="https://redmine.helios.example/issues/118" style="color: #0e7490; font-weight: 600">#118</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Migracja bazy instalacji do nowego CRM</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Development]</span> Weryfikacja sum kontrolnych po migracji</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">4,00</div>
+</div>
+
+<div style="display: flex; border-bottom: 1px solid #e2e8f0">
+<div style="flex-grow: 1; padding: 9px 12px; display: flex; flex-direction: column; gap: 1px">
+<div style="font-size: 12px; color: #5b6470">Helios Redmine · <a href="https://redmine.helios.example/issues/118" style="color: #0e7490; font-weight: 600">#118</a></div>
+<div style="font-size: 14px; font-weight: 600; line-height: 1.35">Migracja bazy instalacji do nowego CRM</div>
+<div style="font-size: 13px; color: #1e293b; line-height: 1.35"><span style="color: #5b6470">[Deployment]</span> Uruchomienie migracji na stagingu</div>
+</div>
+<div style="width: 84px; flex-shrink: 0; box-sizing: border-box; padding: 9px 0 9px 12px; text-align: right; font-size: 14px; font-weight: 500">3,00</div>
+</div>
+
+</div>
+</div>
+<div style="display: flex; align-items: center; background: #ecfeff">
+<div style="flex-grow: 1; padding: 7px 12px; text-align: right; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #155e75">Suma dnia</div>
+<div style="width: 84px; box-sizing: border-box; padding: 7px 0 7px 12px; text-align: right; font-size: 14px; font-weight: 700; color: #164e63">7,00</div>
+</div>
+</div>
+
+
+<div style="flex-grow: 1"></div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #5b6470">
+<div>John Doe · wygenerowano 01.10.2026, 14:32 (Europe/Warsaw)</div>
+<div>Strona 2 z 6</div>
+</div>
+
+</div>
+</body>
+</html>
