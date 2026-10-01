@@ -341,6 +341,7 @@ describe('OpenProjectClient', () => {
         activityName: 'Dev',
         comment: 'hello',
         remoteUserId: '7',
+        remoteIssueTitle: null,
       },
     ]);
     expect(page.nextPageUrl).toBe('https://op.example.com/api/v3/time_entries?offset=2');
@@ -411,7 +412,7 @@ describe('OpenProjectClient', () => {
     expect(page.logs[0]).toMatchObject({ remoteIssueTitle: 'Legacy issue' });
   });
 
-  it('omits the project and issue-title fields when the payload has no usable links', async () => {
+  it('omits the project fields and nulls the issue title when the payload has no usable links', async () => {
     const transport = fakeTransport([
       {
         status: 200,
@@ -438,7 +439,7 @@ describe('OpenProjectClient', () => {
 
     expect(page.logs[0]).not.toHaveProperty('remoteProjectId');
     expect(page.logs[0]).not.toHaveProperty('remoteProjectTitle');
-    expect(page.logs[0]).not.toHaveProperty('remoteIssueTitle');
+    expect(page.logs[0]?.remoteIssueTitle).toBeNull();
   });
 
   it('defaults the same-day time-log query to the current user when no userId is supplied', async () => {

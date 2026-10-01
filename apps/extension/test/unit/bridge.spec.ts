@@ -151,7 +151,7 @@ describe('content bridge', () => {
   it('answers incompatible handshakes without connecting', () => {
     const pagePort = fakePagePort();
     const accepted = acceptConnectEvent(
-      { origin, source, data: connectData(2), ports: [pagePort] },
+      { origin, source, data: connectData(EXTENSION_PROTOCOL_VERSION + 1), ports: [pagePort] },
       { expectedOrigin: origin, source, isTopFrame: true },
     );
     expect(accepted).toBeUndefined();

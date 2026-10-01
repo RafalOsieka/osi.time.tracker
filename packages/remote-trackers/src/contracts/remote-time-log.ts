@@ -33,9 +33,11 @@ export interface RemoteTimeLogDto {
   /** Remote project display title, present under the same condition. */
   remoteProjectTitle?: string;
   /**
-   * Remote issue display title, present only when the provider's time-log
-   * payload already carries it (REQ-341/REQ-342). Redmine time-entry
-   * payloads never carry it (REQ-343).
+   * Remote issue display title for every provider: taken from the time-log
+   * payload when present, otherwise resolved by the adapter through a
+   * batched issue lookup (REQ-341/REQ-378). `null` only when the tracker
+   * does not disclose the issue to this account (deleted or not visible) —
+   * never because of the provider type.
    */
-  remoteIssueTitle?: string;
+  remoteIssueTitle: string | null;
 }

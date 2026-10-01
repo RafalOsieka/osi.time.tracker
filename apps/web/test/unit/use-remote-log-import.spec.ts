@@ -2,7 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import type { ProjectDto } from '../../shared/types/project';
-import type { ImportRemoteLogsResultDto } from '../../shared/types/remote-log-import';
+import {
+  importRemoteLogSchema,
+  type ImportRemoteLogsResultDto,
+} from '../../shared/types/remote-log-import';
 
 const listProjects = vi.fn();
 const fetchTimeLogsInRange = vi.fn();
@@ -56,6 +59,7 @@ function log(remoteLogId: string, overrides: Partial<RemoteTimeLogDto> = {}): Re
     comment: 'Task',
     remoteUserId: '7',
     remoteProjectId: 'R1',
+    remoteIssueTitle: null,
     ...overrides,
   };
 }
@@ -149,6 +153,25 @@ describe('useRemoteLogImport', () => {
       totalUnmatched: 0,
     });
     expect(composable.importedMonths.value).toBe(2);
+  });
+
+  it('omits an undisclosed (null) issue title and forwards a resolved one in an accepted body', async () => {
+    fetchTimeLogsInRange.mockResolvedValue([
+      log('hidden'),
+      log('redmine', { remoteIssueId: '7', remoteIssueTitle: 'Fix rounding' }),
+    ]);
+    const importLogs = makeImportLogs();
+    const composable = useRemoteLogImport({ config, projects: [project], importLogs });
+
+    await composable.startScan({ from: '2026-04-01', to: '2026-04-30' });
+    await composable.advanceToPreview();
+
+    const body = importLogs.mock.calls[0]![0];
+    const [hidden, redmine] = body.groups[0]!.logs;
+    expect(hidden).not.toHaveProperty('remoteIssueTitle');
+    expect(redmine).toMatchObject({ remoteIssueTitle: 'Fix rounding' });
+    for (const sent of [hidden, redmine])
+      expect(importRemoteLogSchema.safeParse(sent).success).toBe(true);
   });
 
   it('stops at a failing month during scan and lets retry continue to mapping', async () => {

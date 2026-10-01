@@ -85,6 +85,7 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
           remoteUserId: null,
           remoteProjectId: '12',
           remoteProjectTitle: 'Nordwind Web',
+          remoteIssueTitle: 'Checkout redesign',
         },
       ],
     });

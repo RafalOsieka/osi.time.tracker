@@ -17,6 +17,7 @@ function log(remoteLogId: string): RemoteTimeLogDto {
     activityName: null,
     comment: null,
     remoteUserId: null,
+    remoteIssueTitle: null,
   };
 }
 

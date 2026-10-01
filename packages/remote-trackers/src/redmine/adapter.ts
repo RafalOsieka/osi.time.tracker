@@ -17,13 +17,19 @@ import {
   mapTimeEntryDeleteStatus,
 } from '../contracts/time-entry-delete.js';
 import { rethrowAsAdapterError, UpstreamHttpError } from '../contracts/upstream-error.js';
-import { RedmineClient, REDMINE_TIME_LOGS_MAX_PAGES } from './client.js';
+import {
+  RedmineClient,
+  REDMINE_ISSUE_TITLE_BATCH_SIZE,
+  REDMINE_TIME_LOGS_MAX_PAGES,
+  type RedmineTimeLogEntry,
+} from './client.js';
 
 /**
  * L2: implements the neutral `RemoteTrackerAdapter` use-case surface over
  * `RedmineClient` (L3), owning every provider quirk so `client` and
  * `extension` execution modes behave identically: the bounded time-log pagination loop,
- * 404-on-id → `null` issue, and upstream-status → `RemoteAdapterError` mapping.
+ * issue-title resolution for time logs (REQ-343/REQ-378), 404-on-id → `null` issue,
+ * and upstream-status → `RemoteAdapterError` mapping.
  */
 export class RedmineAdapter implements RemoteTrackerAdapter {
   private readonly client: RedmineClient;
@@ -120,7 +126,7 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
     workPackageIds: string[];
     userId?: string;
   }): Promise<RemoteTimeLogDto[]> {
-    const logs: RemoteTimeLogDto[] = [];
+    const logs: RedmineTimeLogEntry[] = [];
     let offset = 0;
 
     try {
@@ -138,11 +144,10 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
         if (result.nextOffset == null) break;
         offset = result.nextOffset;
       }
+      return await this.withIssueTitles(logs);
     } catch (err) {
       rethrowAsAdapterError(err, 'error.remoteTimeLogsFetchFailed');
     }
-
-    return logs;
   }
 
   async fetchTimeLogsInRange(input: {
@@ -150,7 +155,7 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
     to: string;
     userId?: string;
   }): Promise<RemoteTimeLogDto[]> {
-    const logs: RemoteTimeLogDto[] = [];
+    const logs: RedmineTimeLogEntry[] = [];
     let offset = 0;
 
     try {
@@ -168,11 +173,39 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
         if (result.nextOffset == null) break;
         offset = result.nextOffset;
       }
+      return await this.withIssueTitles(logs);
     } catch (err) {
       rethrowAsAdapterError(err, 'error.remoteTimeLogsFetchFailed');
     }
+  }
 
-    return logs;
+  /**
+   * Resolves issue subjects (any status) for the given ids, one request per
+   * 100 ids (REQ-378). Ids the tracker does not return are absent from the
+   * map. Any non-success response or unusable payload throws, so the calling
+   * fetch fails instead of reporting `null` titles. Provider-private: not
+   * part of `RemoteTrackerAdapter` or the extension bridge.
+   */
+  async getIssuesByIds(remoteIssueIds: string[]): Promise<Map<string, string>> {
+    const titles = new Map<string, string>();
+    for (let i = 0; i < remoteIssueIds.length; i += REDMINE_ISSUE_TITLE_BATCH_SIZE) {
+      const chunk = remoteIssueIds.slice(i, i + REDMINE_ISSUE_TITLE_BATCH_SIZE);
+      const result = await this.client.getIssueTitlesByIds(chunk, this.secret);
+      if (result.status !== 200) throw new UpstreamHttpError(result.status);
+      if (!result.titles) throw new RemoteAdapterError('error.remoteTimeLogsFetchFailed', 502);
+      for (const [id, title] of result.titles) titles.set(id, title);
+    }
+    return titles;
+  }
+
+  /**
+   * Time-entry payloads never carry the issue subject (REQ-343), so every
+   * log's title comes from one lookup over the distinct issue ids; ids the
+   * tracker does not return become `null` (REQ-341/REQ-378).
+   */
+  private async withIssueTitles(logs: RedmineTimeLogEntry[]): Promise<RemoteTimeLogDto[]> {
+    const titles = await this.getIssuesByIds([...new Set(logs.map((log) => log.remoteIssueId))]);
+    return logs.map((log) => ({ ...log, remoteIssueTitle: titles.get(log.remoteIssueId) ?? null }));
   }
 
   async createTimeEntry(input: {

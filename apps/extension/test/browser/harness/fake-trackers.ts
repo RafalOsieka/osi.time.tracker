@@ -91,7 +91,7 @@ function handleOpenProject(request: IncomingMessage, response: ServerResponse): 
             hours: 'PT30M',
             _links: {
               self: { href: '/api/v3/time_entries/9001' },
-              entity: { href: '/api/v3/work_packages/42' },
+              entity: { href: '/api/v3/work_packages/42', title: 'Ship it' },
               activity: { href: '/api/v3/time_entries/activities/1', title: 'Development' },
               user: { href: '/api/v3/users/7' },
             },

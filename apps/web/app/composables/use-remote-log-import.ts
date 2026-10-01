@@ -103,6 +103,23 @@ function buildMappingRows(bucketsByMonth: RemoteProjectBucket[][]): MappingRow[]
  * the write reuse the same idempotent endpoint, so a failed month can simply
  * be retried — already-imported logs are skipped server-side (REQ-338).
  */
+/**
+ * Builds one import request body from routed groups. A `null` issue title
+ * (the tracker does not disclose the issue, REQ-341) is omitted, so the
+ * server keeps its id fallback; a resolved title is forwarded and cached.
+ */
+function importBody(dryRun: boolean, groups: RouteLogsByScopeGroup[]): ImportRemoteLogsDto {
+  return {
+    dryRun,
+    groups: groups.map((group) => ({
+      projectId: group.projectId,
+      logs: group.logs.map(({ remoteIssueTitle, ...log }) =>
+        remoteIssueTitle === null ? log : { ...log, remoteIssueTitle },
+      ),
+    })),
+  };
+}
+
 export function useRemoteLogImport(options: {
   config: TrackerDto;
   /** The tracker's own non-deleted Projects (scoped or not). */
@@ -286,7 +303,7 @@ export function useRemoteLogImport(options: {
 
       try {
         for (const batch of splitGroupsIntoRequestBatches(groups)) {
-          const dryRunResult = await options.importLogs({ dryRun: true, groups: batch });
+          const dryRunResult = await options.importLogs(importBody(true, batch));
           mergeProjectPreview(matchedTotals, dryRunResult);
         }
       } catch (err) {
@@ -331,7 +348,7 @@ export function useRemoteLogImport(options: {
 
       try {
         for (const batch of splitGroupsIntoRequestBatches(nonEmpty)) {
-          const writeResult = await options.importLogs({ dryRun: false, groups: batch });
+          const writeResult = await options.importLogs(importBody(false, batch));
           totalImported += writeResult.totalImported;
           totalSkippedExisting += writeResult.totalSkippedExisting;
         }

@@ -59,6 +59,7 @@ function probeAdapter(overrides: Partial<RemoteTrackerAdapter> = {}): RemoteTrac
         activityName: 'Dev',
         comment: null,
         remoteUserId: 'u',
+        remoteIssueTitle: 'Issue',
       },
     ],
     fetchTimeLogsInRange: async () => [],
@@ -208,7 +209,7 @@ describe('worker dispatch', () => {
                 spentOn: '2026-01-01',
                 hours: 'PT1H',
                 comment: { raw: comment },
-                _links: { entity: { href: '/api/v3/work_packages/1' } },
+                _links: { entity: { href: '/api/v3/work_packages/1', title: 'Issue' } },
               },
             ],
           },
@@ -474,6 +475,19 @@ describe('worker dispatch', () => {
     expect(JSON.stringify(redmineResult)).not.toContain(secret);
   });
 
+  it('rejects an issue-lookup-by-ids operation as unsupported before any tracker request', async () => {
+    const fetchImpl = vi.fn(async () => new Response('{}'));
+    const result = await handleOperation({
+      sender: trustedSender(),
+      expectedExtensionId: extensionId,
+      approvals: await approved(),
+      fetchImpl,
+      value: operationValue('getIssuesByIds', ['1', '2']),
+    });
+    expect(result).toMatchObject({ kind: 'malformed' });
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
   it('rejects an unapproved sender origin without calling fetch', async () => {
     const fetchImpl = vi.fn(async () => new Response('{}'));
     const approvals = await approved();
@@ -574,7 +588,10 @@ describe('worker dispatch', () => {
       approvals,
       value: { type: 'handshake', protocolVersion: EXTENSION_PROTOCOL_VERSION },
     });
-    expect(ok).toMatchObject({ type: 'handshake-result', protocolVersion: 1 });
+    expect(ok).toMatchObject({
+      type: 'handshake-result',
+      protocolVersion: EXTENSION_PROTOCOL_VERSION,
+    });
     const denied = await handleHandshake({
       sender: {
         ...trustedSender(),

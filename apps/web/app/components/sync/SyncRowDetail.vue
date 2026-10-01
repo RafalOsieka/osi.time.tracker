@@ -81,6 +81,8 @@ function logFromProvenance(record: RemoteSyncExportProvenanceDto): RemoteTimeLog
     activityName: null,
     comment: null,
     remoteUserId: null,
+    // The tracker did not return this log, so its issue title is not known here.
+    remoteIssueTitle: null,
   };
 }
 

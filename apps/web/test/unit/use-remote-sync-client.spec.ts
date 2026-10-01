@@ -51,6 +51,7 @@ function log(overrides: Partial<RemoteTimeLogDto> = {}): RemoteTimeLogDto {
     activityName: 'Dev',
     comment: null,
     remoteUserId: '7',
+    remoteIssueTitle: 'Fix rounding',
     ...overrides,
   };
 }

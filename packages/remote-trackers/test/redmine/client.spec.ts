@@ -169,6 +169,34 @@ describe('RedmineClient', () => {
     expect(result).toBeNull();
   });
 
+  it('looks up issue subjects by ids across every status', async () => {
+    const transport = fakeTransport([
+      { status: 200, payload: { issues: [{ id: 42, subject: 'Fix rounding' }, { id: 7 }] } },
+    ]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { status, titles } = await client.getIssueTitlesByIds(['42', '7', '99'], 'key');
+
+    expect(status).toBe(200);
+    expect(titles).toEqual(new Map([['42', 'Fix rounding']]));
+    const request = transport.requests[0]!;
+    expect(request.headers?.['X-Redmine-API-Key']).toBe('key');
+    const url = new URL(request.url);
+    expect(url.pathname).toBe('/issues.json');
+    expect(url.searchParams.get('issue_id')).toBe('42,7,99');
+    expect(url.searchParams.get('status_id')).toBe('*');
+    expect(url.searchParams.get('limit')).toBe('100');
+  });
+
+  it('reports a null title map when the lookup payload has no issues collection', async () => {
+    const transport = fakeTransport([{ status: 200, payload: { error: 'nope' } }]);
+    const client = new RedmineClient(transport, 'https://rm.example.com');
+
+    const { titles } = await client.getIssueTitlesByIds(['42'], null);
+
+    expect(titles).toBeNull();
+  });
+
   it('lists a page of the project catalog with parent ids', async () => {
     const transport = fakeTransport([
       {

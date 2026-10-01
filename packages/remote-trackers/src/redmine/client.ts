@@ -14,6 +14,9 @@ export const REDMINE_TITLE_SEARCH_MAX_RESULTS = 25;
 /** Fixed upper bound on time-log pages fetched per multi-page fetch. */
 export const REDMINE_TIME_LOGS_MAX_PAGES = 50;
 
+/** Maximum issue ids per batched issue-title lookup (REQ-378); equals Redmine's default `limit` cap. */
+export const REDMINE_ISSUE_TITLE_BATCH_SIZE = 100;
+
 /** Default page size for offset/limit time-entry pagination. */
 export const REDMINE_TIME_LOGS_PAGE_SIZE = 100;
 
@@ -139,6 +142,31 @@ export class RedmineClient {
     );
     const results = parseTitleSearchResults(payload);
     return { status, result: results[0] ?? null };
+  }
+
+  /**
+   * Resolves issue subjects for up to 100 ids in one request (REQ-343/REQ-378),
+   * every status included. Ids the tracker does not return are absent from
+   * the map; `titles` is `null` when the payload has no `issues` collection.
+   */
+  async getIssueTitlesByIds(
+    remoteIssueIds: string[],
+    secret: string | null,
+  ): Promise<{ status: number; titles: Map<string, string> | null }> {
+    const params = new URLSearchParams({
+      issue_id: remoteIssueIds.join(','),
+      status_id: '*',
+      limit: String(REDMINE_ISSUE_TITLE_BATCH_SIZE),
+    });
+    const { status, payload } = await this.transport.execute(
+      {
+        url: `${this.base()}/issues.json?${params.toString()}`,
+        method: 'GET',
+        headers: redmineAuthHeaders(secret),
+      },
+      redmineIssuesPayloadSchema,
+    );
+    return { status, titles: parseIssueTitles(payload) };
   }
 
   /**
@@ -450,6 +478,18 @@ function parseTitleSearchResults(payload: RedmineIssuesPayload | null): RemoteIs
   }
 
   return results;
+}
+
+/** Maps an issues collection to id → subject; `null` when the collection is missing. */
+function parseIssueTitles(payload: RedmineIssuesPayload | null): Map<string, string> | null {
+  const issues = payload?.issues;
+  if (!Array.isArray(issues)) return null;
+  const titles = new Map<string, string>();
+  for (const element of issues) {
+    const id = coerceRemoteId(element.id);
+    if (id && element.subject) titles.set(id, element.subject);
+  }
+  return titles;
 }
 
 /**

@@ -21,6 +21,7 @@ function log(
     activityName: null,
     comment: null,
     remoteUserId: null,
+    remoteIssueTitle: null,
   };
   if (remoteProjectId) entry.remoteProjectId = remoteProjectId;
   return entry;

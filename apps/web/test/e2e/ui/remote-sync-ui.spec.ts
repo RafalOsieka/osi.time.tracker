@@ -512,7 +512,10 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
                       hours: 'PT1H',
                       comment: { raw: 'Existing remote' },
                       _links: {
-                        workPackage: { href: '/api/v3/work_packages/123' },
+                        workPackage: {
+                          href: '/api/v3/work_packages/123',
+                          title: 'Remote work package',
+                        },
                         activity: { href: '/api/v3/time_entry_activities/1', title: 'Development' },
                         user: { href: '/api/v3/users/7' },
                       },

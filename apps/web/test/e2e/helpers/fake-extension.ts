@@ -1,8 +1,8 @@
 import type { Page } from 'playwright-core';
-import { EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
+import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
 
 const CHANNEL = 'osi-extension-protocol';
-const PROTOCOL_VERSION = 1;
+const PROTOCOL_VERSION = EXTENSION_PROTOCOL_VERSION;
 const SUPPORTED_OPERATIONS = [
   'searchIssues',
   'getIssueById',
@@ -212,7 +212,7 @@ export async function readFakeExtensionState(page: Page): Promise<FakeExtensionS
   return page.evaluate((fallback) => window.__osiFakeExtension ?? fallback, DEFAULT_STATE);
 }
 
-/** Fixture shape for a fake `RemoteTimeLogDto`, including the REQ-341 optional fields. */
+/** Fixture shape for a fake `RemoteTimeLogDto`, including the REQ-341 fields. */
 export interface FakeRemoteTimeLog {
   remoteLogId: string;
   remoteIssueId: string;
@@ -224,7 +224,8 @@ export interface FakeRemoteTimeLog {
   remoteUserId?: string | null;
   remoteProjectId?: string;
   remoteProjectTitle?: string;
-  remoteIssueTitle?: string;
+  /** Required by the bridge schema (REQ-379); `null` when the issue is not disclosed. */
+  remoteIssueTitle: string | null;
 }
 
 export interface InstallExtensionOptions {
