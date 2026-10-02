@@ -30,10 +30,10 @@
   },
   "devDependencies": {
     "@intlify/eslint-plugin-vue-i18n": "^4.5.1",
-    "@typescript-eslint/parser": "^8.70.1",
+    "@typescript-eslint/parser": "^8.71.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-oxlint": "^1.85.0",
+    "eslint-plugin-oxlint": "^1.86.0",
     "eslint-plugin-vuejs-accessibility": "^2.6.0",
     "typescript": "^6.0.3",
     "vite-plus": "catalog:"
@@ -52,7 +52,7 @@
     },
     "packageManager": {
       "name": "pnpm",
-      "version": "^12.6.0",
+      "version": "^12.8.1",
       "onFail": "download"
     }
   }
