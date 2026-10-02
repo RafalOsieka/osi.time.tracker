@@ -25,7 +25,7 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 | Functions / methods         | `camelCase()`          | `formatDuration()`, `search()`    |
 | Composables                 | `useXxx()`             | `useTrackerSecret()`              |
 | Composable files            | `kebab-case`           | `use-timer.ts`                    |
-| Vue components (files/tags) | `PascalCase`           | `EntityPicker.vue`                |
+| Vue components (files/tags) | `PascalCase`           | `TimeField.vue`                   |
 | Types / interfaces          | `PascalCase`           | `EntityRef`                       |
 | Response DTO types          | `PascalCase` + `Dto`   | `EntityDto`, `CreateEntityDto`    |
 | Zod schemas                 | `camelCase` + `Schema` | `createEntitySchema`              |
@@ -82,7 +82,7 @@ Prefer, in order:
 Rules:
 
 - **`as unknown as` is forbidden** in `app/` components, pages, layouts, composables, and client utilities. Isolate unavoidable library friction in one adapter util that returns the real prop or DOM type — never cast in templates.
-- Do not cast form fields or submit payloads (`clientId as string`) when container annotation or schema-typed `FormSubmitEvent` removes the need.
+- Do not cast form fields or submit payloads (`projectId as string`) when container annotation or schema-typed `FormSubmitEvent` removes the need.
 - Do not use `as Record<string, unknown>` for “I don’t know the prop type”; prefer the component’s prop type or a narrow adapter.
 - Freeform task-title autocomplete (`UInputMenu` autocomplete mode) uses the shared builder in `app/utils/task-title-menu.ts`: object items with string model via `value-key` / `label-key` and `onSelect` closures over real `TaskDto` identity — never double-cast task DTOs to/from strings.
 
@@ -108,11 +108,11 @@ Rules:
 ## 7. Date/Time & Timezone Handling
 
 - All timezone-sensitive date arithmetic (day keys, day/week boundaries, combining a wall-clock date and time into an instant) MUST use the `Temporal` API (`temporal-polyfill`), never browser-local `Date` getters (`getFullYear()`, `getDay()`, etc.) or server-local `Date` math.
-- The effective timezone is the authenticated user's saved `timezone` setting (`useUserSettings().effective.timeZone` on the client, the `users.timezone` column on the server), falling back to the browser-detected timezone only when nothing is saved yet — never assume `UTC` or the host machine's timezone.
+- The effective timezone is the authenticated user's required `timezone` profile field (`useProfile().effective.timeZone` on the client, the `users.timezone` column on the server) — never assume `UTC` or the host machine's timezone.
 - Every human-readable date/time format call (`Intl.DateTimeFormat`, `Date#toLocaleDateString`/`toLocaleTimeString`, and any wrapper such as `formatDate`) MUST pass an explicit `timeZone` option derived from the effective setting. Omitting `timeZone` silently falls back to the runtime's local timezone and will render the wrong day/time for users whose saved timezone differs.
 - Utilities that accept a `timeZone` parameter (e.g. `app/utils/date-time.ts`, `app/utils/timer-view-grouping.ts`) may default it to the browser-detected timezone for convenience, but every call site with access to a signed-in user's settings MUST pass the effective timezone explicitly rather than relying on the default.
 - UTC ISO 8601 instants remain the only on-the-wire representation; the server performs no timezone-aware rendering, only timezone-aware bucketing/boundary math when explicitly given the user's timezone (see `server/utils/day-boundary.ts`).
-- Interop with browser-local `Date` objects (e.g. date inputs) is confined to the dedicated adapter pair (`toPickerDate`/`fromPickerDate` in `app/utils/date-time.ts`); no other code should construct dates from browser-local getters.
+- Interop with picker values is confined to dedicated adapters: `instantToZonedDateTime` / `zonedDateTimeToInstant` in `app/utils/date-time.ts` for the segmented time field, and `combineLocalDateAndTime` in `app/utils/timer-view-grouping.ts` for browser-local `Date` values; no other code should construct dates from browser-local getters.
 
 ## 8. Comments & Documentation
 

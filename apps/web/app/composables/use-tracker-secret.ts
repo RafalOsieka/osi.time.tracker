@@ -13,7 +13,7 @@ const STORAGE_KEY_PREFIX = 'rsc:';
  *
  * Plaintext `localStorage` is accepted: same-origin JavaScript can always use
  * the token (client-side encryption would not change that), CSP is the XSS
- * control, and encrypted server-side credentials remain WBS 5.4.
+ * control, and secrets are never stored server-side by design.
  */
 export function useTrackerSecret() {
   function key(trackerId: string) {

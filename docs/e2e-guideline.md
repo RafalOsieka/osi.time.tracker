@@ -1,109 +1,106 @@
-# E2E Troubleshooting Guideline
+# E2E guideline
 
-Notes for recurring issues hit while writing/running `apps/web/test/e2e` specs, and how to resolve them
-without wasting time re-diagnosing the same root causes.
+How the end-to-end suites under `apps/web/test/e2e` are organized and run, and how to resolve the problems that keep coming back. The harness contract itself is specified in `openspec/specs/platform-e2e-harness`.
 
-## Layout and ownership
+## Suites
 
-| Directory                | Runtime                      | Owns                                          |
-| ------------------------ | ---------------------------- | --------------------------------------------- |
-| `apps/web/test/e2e/api/` | HTTP + Nuxt + Postgres       | Server contracts (`apps/web/server/api`)      |
-| `apps/web/test/e2e/ui/`  | Playwright + Nuxt + Postgres | Journeys, SSR, production wiring              |
-| `apps/web/test/e2e/db/`  | Postgres only                | Migrator, schema, historical SQL, server-util |
-| `apps/web/test/nuxt/`    | happy-dom, mocked fetch      | Component behavior given data X               |
+| Directory                | Vitest project | Runtime                      | Owns                                           |
+| ------------------------ | -------------- | ---------------------------- | ---------------------------------------------- |
+| `apps/web/test/e2e/db/`  | `e2e-db`       | Postgres only                | Migrator, schema, historical SQL, server utils |
+| `apps/web/test/e2e/api/` | `e2e-api`      | HTTP + Nuxt + Postgres       | Server contracts (`apps/web/server/api`)       |
+| `apps/web/test/e2e/ui/`  | `e2e-ui`       | Playwright + Nuxt + Postgres | Journeys, SSR, production wiring               |
+| `apps/web/test/nuxt/`    | `nuxt`         | happy-dom, mocked fetch      | Component behavior for given data (not e2e)    |
 
-Scripts: `pnpm test:e2e:db`, `pnpm test:e2e:api`, `pnpm test:e2e:ui`. `NUXT_TEST_SKIP_BUILD=1` reuses `apps/web/.output` and fails if it is missing. In CI, missing Docker or Chromium **fails** (does not skip).
+Shared code lives in `apps/web/test/e2e/harness/` (global setup, database provisioning, server boot, coverage) and `apps/web/test/e2e/helpers/` (seeding, login and similar).
 
-The CI `build` job is the e2e artifact, not the production image: it sets `IS_E2E=true` and `NUXT_BUILD_SOURCEMAP=1` before `pnpm build`. nuxt-security login/global rate limits are compiled into `routeRules`, so a production-limit artifact reused under skip-build yields CI-only 429s, missing CSRF meta tags, login timeouts, and 401s. Local global-setup already sets `IS_E2E` before it builds.
+When a UI behavior fails, pick the suite by what is wrong: rendering for given data belongs to `nuxt`, the HTTP contract to `api`, the end-to-end wiring to `ui`.
 
-E2E TypeScript files use kebab-case names (`setup-server.ts`, `helper-isolation.spec.ts`). Function names stay `camelCase` (`setupServer()`).
+## Running the suites
 
-## Coverage tools (`c8` vs Vitest v8)
+```bash
+pnpm test:e2e:db    # no Nuxt build
+pnpm test:e2e:api   # production build, then HTTP specs
+pnpm test:e2e:ui    # production build, then Playwright (needs Chromium)
+pnpm test:e2e       # all three
+pnpm test:e2e:dev   # api + ui against the Nuxt dev server (NUXT_TEST_DEV=1), faster loop
+```
 
-`pnpm test:coverage` uses Vitest's `@vitest/coverage-v8` on the **test process** (unit + nuxt). API e2e does not run handlers in that process — it `fetch()`es a child Nitro server — so those hits never appear in Vitest coverage.
+Each spec file gets its own database cloned from one pre-migrated template (`postgres:18-alpine`), and mutating HTTP/UI specs seed a unique user per test.
 
-`c8` is only the converter for that child process: Node writes raw V8 JSON when `NODE_V8_COVERAGE` is set, and `test/e2e/harness/report-e2e-coverage.ts` runs `c8 report` to turn that dump into `lcov` for Codecov flag `e2e-api`. It is not a second test runner.
+### Build modes
 
-Vitest `test:coverage` include/exclude (`app/**`, `server/**`, `shared/**`, plus migrations/SQL/JSON/warmup/`.output`) apply only to the in-process unit+nuxt run. `c8 report` must **not** reuse those globs: it filters compiled `.output` chunks before sourcemap remap, so `--include app/**` or `--exclude .output/**` would drop the Nitro dump. `c8` uses its defaults; the converter still refuses an lcov that has no first-party `app/`/`server/`/`shared/` paths. The ui job still does **not** upload Playwright/client coverage; journeys stay in `test/e2e/ui` without a Codecov flag.
+The api/ui global setup (`harness/global-setup.ts`) decides how to get a server:
 
-## Follow-up: live OpenProject / Redmine e2e (not done)
+| Environment              | Behavior                                           |
+| ------------------------ | -------------------------------------------------- |
+| default                  | Sets `IS_E2E=true` and runs `pnpm -w build`.       |
+| `NUXT_TEST_SKIP_BUILD=1` | Reuses `apps/web/.output`; fails if it is missing. |
+| `NUXT_TEST_DEV=1`        | No build; boots the dev server.                    |
 
-Current tests never talk to a real tracker:
+`IS_E2E` must be set **at build time**: nuxt-security's login and global rate limits are compiled into `routeRules`. A build made without it and reused under skip-build produces CI-only 429s, missing CSRF meta tags, login timeouts and 401s.
 
-| Layer       | What exists today                                                                         | What it is not          |
-| ----------- | ----------------------------------------------------------------------------------------- | ----------------------- |
-| Unit        | `openproject-*` / `redmine-*` adapter and client tests with mocked `fetch`                | No network              |
-| API e2e     | Authenticated tracker/sync/export contracts; former `/api/remote/*` routes assert 404     | Not OpenProject/Redmine |
-| UI e2e      | Playwright `page.route` stubs of `/api/v3/...`                                            | Not the real API        |
-| Dev compose | `docker compose --profile trackers up -d` (OpenProject + Redmine in `docker-compose.yml`) | Manual only; not in CI  |
+### CI
 
-There is no round-trip: create/search a real work package or issue, export time, and assert the remote time log. That needs a separate change (suggested: opt-in `test:e2e:trackers` against the compose stacks, skip unless an env flag is set, one smoke per provider for search, lookup, activities, and export). Do not fold it into the default `api`/`ui` jobs — those stacks are slow and stateful.
+- The `build` job builds the e2e artifact (not the production image) with `IS_E2E=true` and `NUXT_BUILD_SOURCEMAP=1`; `api` and `ui` download it and run with skip-build.
+- `db` does not need the build.
+- Missing Docker or Chromium **fails** the job in CI; locally it skips the suite.
 
-## 1. Stale Nuxt build cache after adding new `shared/` modules
+## Conventions
 
-**Symptom:** `pnpm exec vp test run --project e2e-ui` fails during global setup with a `RollupError:
-Could not resolve "../shared/utils/<new-file>.ts"` coming from a stale chunk under
-`node_modules/.cache/nuxt/.nuxt/dist/server/_nuxt/...js`. `pnpm build` fails the same way when run
-directly.
+- Spec files are `*.spec.ts`; e2e TypeScript files use kebab-case names (`setup-server.ts`, `helper-isolation.spec.ts`), functions stay `camelCase` (`setupServer()`).
+- Wait on and assert against `data-testid` selectors, not markup.
+- Before writing a new spec, copy the shape of a passing sibling of the same kind (login helper, seeding order, waits), e.g. `ui/timer-view-ui.spec.ts`.
+- Trackers are never real: api specs assert server contracts, ui specs stub tracker HTTP with `page.route`.
 
-**Cause:** `test/e2e/harness/global-setup.ts` runs `pnpm build` before api/ui suites
-(unless `NUXT_TEST_DEV=1`). When new files are added under `shared/` mid-session, Nitro's Rollup
-build can leave behind a cached chunk graph that still points at the old module layout, producing
-resolution errors that look like a real code problem but are just a dirty cache.
+## Coverage
 
-**Remediation:**
+- `pnpm test:coverage` measures only the in-process unit + nuxt projects with `@vitest/coverage-v8`.
+- API e2e runs handlers in a child Nitro process, so Vitest cannot see those hits. In CI, Node writes raw V8 data (`NODE_V8_COVERAGE`) and `harness/report-e2e-coverage.ts` runs `c8 report` to turn it into lcov for the Codecov flag `e2e-api`. `c8` is a converter here, not a test runner.
+- Do not pass the Vitest include/exclude globs to `c8 report`: it filters compiled `.output` chunks before sourcemap remapping, so `--include app/**` or `--exclude .output/**` drops the whole Nitro dump. The converter refuses an lcov without first-party `app/`, `server/` or `shared/` paths.
+- UI e2e (Playwright) coverage is not collected.
 
-1. Clear the Nuxt build cache and output before rebuilding: remove `node_modules/.cache/nuxt` and
-   `.output`.
-2. Run `pnpm exec nuxi cleanup` then `pnpm exec nuxt prepare` to regenerate `.nuxt` types cleanly.
-3. Re-run `pnpm build`. If it still fails with a `RollupError` referencing a file that clearly
-   exists on disk, treat it as a caching issue first, not a code issue — repeat the cleanup once
-   more before assuming a real regression.
+## Troubleshooting
 
-## 2. Page-scoped route chunk breaks relative imports into `shared/`
+### `RollupError: Could not resolve "../shared/..."` after adding a `shared/` module
 
-**Symptom:** Same `RollupError: Could not resolve "../shared/..."` as above, but reproducible even
-against a clean build — only for modules imported exclusively from one page's own component
-(e.g. only `sync/[date].vue` imports a given `shared/` helper).
+**Cause:** a stale Nuxt build cache that still points at the old module layout. It looks like a code problem but is not.
 
-**Cause:** When a `shared/` module is referenced from only a single route's own chunk, Nitro's
-production chunking can isolate that module into the page's chunk and miscompute its relative
-import path back into `shared/` (the path assumes the module still lives next to the app's stable
-chunks). Modules that are already referenced from multiple chunks (shared across pages/components)
-don't hit this, because they get promoted into the common/stable chunk instead.
+**Fix:**
 
-**Remediation options, in order of preference:**
+1. Remove `node_modules/.cache/nuxt` and `.output` in `apps/web`.
+2. Run `pnpm exec nuxi cleanup`, then `pnpm exec nuxt prepare`.
+3. Re-run `pnpm build`. If the error still names a file that exists, clean once more before assuming a regression.
 
-- Reference the new `shared/` module from at least one more already-multi-referenced chunk (e.g. a
-  composable or component used elsewhere), so the bundler naturally promotes it to the stable
-  chunk. This needs no extra file.
-- If there's no natural second call site yet, add a trivial no-op reference from an app-wide
-  plugin, as done in `app/plugins/shared-chunk-warmup.ts`. This forces the bundler to place the
-  module in the stable chunk without changing runtime behavior. Treat this as a last-resort
-  workaround, not a pattern to reach for by default — prefer a real second usage site once one
-  exists naturally, and revisit/remove the warmup plugin if it does.
-- Do not "fix" this by weakening or skipping the affected e2e test, and don't downgrade to
-  `NUXT_TEST_DEV=1` as a permanent workaround — that only hides the production-build-only bug.
+### The same `RollupError`, even on a clean build
 
-## 3. Directly comparing raw diagnostic dumps instead of existing test patterns
+**Cause:** the `shared/` module is imported from only one page's own chunk (e.g. only `sync/[date].vue`). Nitro's production chunking isolates it into that page chunk and miscomputes its relative import back into `shared/`. Modules referenced from several chunks are promoted to the stable chunk and do not hit this.
 
-**Symptom:** Debugging a single failing/hanging e2e spec by capturing full verbose output to a
-file and grepping through hundreds of lines (`*> out.txt` + `Select-String`), burning time and
-tokens without converging.
+**Fix, in order of preference:**
 
-**Cause:** Treating the failure as a black box, rather than first comparing the new spec's
-structure/timing/selectors against sibling specs that already work (e.g. `timer-view-ui.spec.ts`,
-`remote-issue-proxy.spec.ts`) for the same kind of flow (login, `waitForSelector` before
-`waitForFunction`, seeding order, etc.). Most of these UI e2e failures for this change traced back
-to the build-cache issues in sections 1–2 above, not to anything unusual in the new spec itself.
+1. Reference the module from a second, already shared chunk (a composable or component used elsewhere).
+2. If no natural second call site exists yet, add a no-op reference in `app/plugins/shared-chunk-warmup.ts`. This is a last resort; remove the entry once a real second usage exists.
 
-**Remediation:**
+Do not weaken or skip the failing test, and do not settle on `NUXT_TEST_DEV=1`; that only hides a production-build bug.
 
-- Before dumping full output, diff the new spec against an existing, passing spec of the same
-  shape (login helper, seeding helpers, `data-testid` waits) to rule out a self-inflicted pattern
-  deviation.
-- Only capture/redirect full verbose output to a file as a last resort, and grep it for
-  `Error|Failed Tests|✓|×` rather than paging through everything.
-- Re-run the single failing test in isolation (`-t "<name>"`) after a clean build before assuming
-  the test logic itself is wrong — a hanging `waitForFunction` was, in this case, a downstream
-  symptom of the stale-build issues above, not a selector/timing bug.
+### A single spec fails or hangs and the output is huge
+
+**Cause:** usually a deviation from the patterns of passing specs, or a stale build (see above), not the new test logic.
+
+**Fix:**
+
+1. Diff the spec against a passing sibling of the same shape (login helper, seeding helpers, `data-testid` waits).
+2. Rebuild cleanly and re-run only that test with `-t "<name>"`.
+3. Only then capture full output to a file, and search it for `Error|Failed Tests|✓|×` instead of reading it end to end.
+
+## Known gaps
+
+No suite talks to a real OpenProject or Redmine:
+
+| Layer   | What exists                                                                                     |
+| ------- | ----------------------------------------------------------------------------------------------- |
+| Unit    | Adapter and client tests in `packages/remote-trackers` with mocked `fetch`                      |
+| API e2e | Tracker, sync and export contracts; removed `/api/remote/*` routes assert 404                   |
+| UI e2e  | Playwright `page.route` stubs of the tracker APIs                                               |
+| Manual  | Local trackers from [`development.md`](./development.md#local-trackers-openproject-and-redmine) |
+
+A round trip (search a real issue, export time, assert the remote log) would need its own opt-in suite, e.g. `test:e2e:trackers` gated by an env flag with one smoke test per provider. Keep it out of the default `api`/`ui` jobs: those stacks are slow and stateful.

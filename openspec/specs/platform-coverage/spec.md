@@ -52,7 +52,7 @@ The workflow SHALL provide a `coverage` job that runs `pnpm test:coverage` and u
 - **THEN** it SHALL NOT start Postgres or Playwright
 
 ### Requirement: REQ-026 Report-only coverage policy
-Coverage SHALL be informational only and MUST NOT block merges: a `codecov.yml` SHALL configure the coverage status as `informational: true` (no failing threshold) to establish a baseline before any gating is introduced. The `coverage` job MAY run in parallel with the other verify jobs and SHALL NOT be added to the merge-blocking required checks (REQ-023) as part of this change.
+Coverage SHALL be informational only and MUST NOT block merges: a `codecov.yml` SHALL configure the coverage status as `informational: true` (no failing threshold) to establish a baseline before any gating is introduced. The `coverage` job MAY run in parallel with the other verify jobs and SHALL NOT be added to the merge-blocking required checks (REQ-406) as part of this change.
 
 #### Scenario: Low coverage does not block merge
 - **WHEN** coverage decreases on a pull request
@@ -90,7 +90,7 @@ The unit+nuxt `coverage` job SHALL upload its lcov with Codecov flag `unit-nuxt`
 
 #### Scenario: Api job failure does not block on coverage policy
 - **WHEN** the api tests themselves fail
-- **THEN** the `api` job SHALL be red as a required check (REQ-023) for the tests, independent of the informational coverage flags
+- **THEN** the `api` job SHALL be red as a required check (REQ-406) for the tests, independent of the informational coverage flags
 
 ### Requirement: REQ-279 Non-executable sources are omitted from coverage
 The in-process unit+nuxt coverage run SHALL omit files that are not executable application logic: SQL and JSON under the database migrations directory, other `*.sql` / `*.json` under `app/`, `server/`, or `shared/`, and the bundler-warmup plugin whose body is never executed at runtime. Those files SHALL NOT appear as uncovered rows in the unit-nuxt lcov. The Nitro-side e2e-api `c8` conversion SHALL NOT apply that Vitest include/exclude list to compiled output chunks (those globs would drop remappable `.output` files before sourcemaps run). Playwright/UI client coverage SHALL remain uncollected (REQ-277).
