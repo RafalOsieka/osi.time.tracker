@@ -66,7 +66,6 @@ const sidebarStub = {
     '<a data-testid="nav-link-trackers" href="/trackers">Trackers</a>' +
     '<a data-testid="nav-link-projects" href="/projects">Projects</a>' +
     '<a data-testid="nav-link-reports" href="/reports">Reports</a>' +
-    '<a data-testid="nav-link-settings" href="/settings">Settings</a>' +
     '</nav>',
 };
 
@@ -167,8 +166,8 @@ describe('REQ-064: shell regions', () => {
   });
 });
 
-describe('REQ-065: sidebar nav skeleton', () => {
-  it('sidebar lists all five destinations', async () => {
+describe('REQ-404: sidebar nav skeleton', () => {
+  it('sidebar lists every destination without Settings or Profile', async () => {
     const wrapper = await mountSuspended(AppSidebar, {
       global: {
         stubs: {
@@ -205,7 +204,8 @@ describe('REQ-065: sidebar nav skeleton', () => {
     expect(hrefs).not.toContain('/reports');
     expect(hrefs).toContain('/reports/monthly');
     expect(hrefs).toContain('/reports/client');
-    expect(hrefs).toContain('/settings');
+    expect(hrefs).not.toContain('/settings');
+    expect(hrefs).not.toContain('/profile');
   });
 
   it('does not mark the Reports group as active when Monthly is current', async () => {
@@ -305,7 +305,7 @@ describe('REQ-068/070: timer lives in the navbar', () => {
   });
 });
 
-describe('REQ-069: sidebar footer user area', () => {
+describe('REQ-405: sidebar footer account menu', () => {
   it('user footer with account menu is rendered in the sidebar', async () => {
     const wrapper = await mountShell();
     const sidebar = wrapper.find('[data-testid="app-sidebar"]');

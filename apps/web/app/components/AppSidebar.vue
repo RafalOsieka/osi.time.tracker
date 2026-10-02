@@ -53,12 +53,6 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       },
     ],
   },
-  {
-    label: t('nav.settings'),
-    to: '/settings',
-    icon: 'i-lucide-settings',
-    active: route.path.startsWith('/settings'),
-  },
 ]);
 </script>
 

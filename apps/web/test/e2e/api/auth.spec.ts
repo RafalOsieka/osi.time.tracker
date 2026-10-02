@@ -43,10 +43,11 @@ describeAuth('authentication integration', async () => {
     const resData = await ok.json();
     expect(resData).toMatchObject({
       loggedIn: true,
-      user: { email: 'alice@example.com', displayName: 'Alice Liddell' },
+      user: { email: 'alice@example.com', displayName: 'Alice Liddell', timezone: 'UTC' },
     });
     expect(resData.user.id).toBeDefined();
-    expect(jar.has('nuxt-session')).toBe(true);
+    expect(resData.user).not.toHaveProperty('settings');
+    expect(jar.has('osi-session')).toBe(true);
 
     // Case-insensitive email match
     const caseJar = new CookieJar();
@@ -158,6 +159,25 @@ describeAuth('authentication integration', async () => {
     const ok = await fetch(url('/api/protected'), { headers: { cookie: jar.header() } });
     expect(ok.status).toBe(200);
     expect(await ok.json()).toMatchObject({ user: { email: 'alice@example.com' } });
+  });
+
+  it('3.3b a session sealed under the pre-profile cookie name does not authenticate', async () => {
+    const jar = new CookieJar();
+    const token = await primeCsrf(jar);
+    const login = await fetch(url('/api/auth/login'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+      body: JSON.stringify({ email: 'alice@example.com', password: 'secret' }),
+    });
+    jar.capture(login);
+    const sealed = jar.get('osi-session');
+    expect(sealed).toBeDefined();
+
+    // Same sealed value under the old `nuxt-session` name (core-authentication REQ-007).
+    const stale = await fetch(url('/api/protected'), {
+      headers: { cookie: `nuxt-session=${sealed}` },
+    });
+    expect(stale.status).toBe(401);
   });
 
   it('3.4 mutating request without a valid CSRF token is rejected; with a token it succeeds', async () => {

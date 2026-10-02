@@ -37,6 +37,10 @@ export class CookieJar {
   has(name: string): boolean {
     return this.cookies.has(name);
   }
+
+  get(name: string): string | undefined {
+    return this.cookies.get(name);
+  }
 }
 
 /**
@@ -87,4 +91,22 @@ export async function apiLogin(email: string, password = 'secret'): Promise<ApiS
     await new Promise((resolve) => setTimeout(resolve, E2E_LOGIN_RATE_LIMIT.interval));
   }
   throw new Error(`apiLogin failed for ${email}: HTTP ${lastStatus}`);
+}
+
+/**
+ * Sets the user's timezone via `PATCH /api/user/profile` and keeps the refreshed
+ * session cookie, since server routes read the timezone from the session.
+ */
+export async function patchTimezone(
+  jar: CookieJar,
+  token: string,
+  timezone: string,
+): Promise<void> {
+  const res = await fetch(url('/api/user/profile'), {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+    body: JSON.stringify({ timezone }),
+  });
+  if (!res.ok) throw new Error(`PATCH /api/user/profile failed: HTTP ${res.status}`);
+  jar.capture(res);
 }

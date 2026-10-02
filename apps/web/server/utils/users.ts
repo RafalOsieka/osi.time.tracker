@@ -20,16 +20,19 @@ export async function findUserByEmail(email: string) {
 }
 
 /**
- * Creates a new user with a hashed password.
+ * Creates a new user with a hashed password. Display name and timezone are
+ * required on every user (workspace-settings REQ-397 / REQ-398).
  */
 export async function createUser({
   email,
   password,
   displayName,
+  timezone,
 }: {
   email: string;
   password: string;
-  displayName?: string | null;
+  displayName: string;
+  timezone: string;
 }) {
   const db = getDb();
   const normalized = normalizeEmail(email);
@@ -41,6 +44,7 @@ export async function createUser({
       email: normalized,
       passwordHash,
       displayName,
+      timezone,
     })
     .returning();
 

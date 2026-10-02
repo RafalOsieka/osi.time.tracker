@@ -57,7 +57,7 @@ describeBootstrap('bootstrap user login', async () => {
       loggedIn: true,
       user: { email: 'bootstrap.admin@example.com' },
     });
-    expect(jar.has('nuxt-session')).toBe(true);
+    expect(jar.has('osi-session')).toBe(true);
   });
 
   it('rejects a wrong password with the standard credentials error', async () => {
@@ -65,7 +65,7 @@ describeBootstrap('bootstrap user login', async () => {
 
     expect(res.status).toBe(401);
     expect((await res.json())?.data?.messageKey).toBe('errors.auth.invalidCredentials');
-    expect(jar.has('nuxt-session')).toBe(false);
+    expect(jar.has('osi-session')).toBe(false);
   });
 
   it('keeps the original password when seeding runs again with a different one', async () => {

@@ -51,7 +51,7 @@ export interface ClientReportExportResult {
 export function useClientReportExport() {
   const { $csrfFetch, $i18n } = useNuxtApp();
   const { user } = useUserSession();
-  const { effective } = useUserSettings();
+  const { effective } = useProfile();
   const { get: getSecret } = useTrackerSecret();
   const exporting = ref(false);
 

@@ -10,11 +10,7 @@ export default defineEventHandler(async (event): Promise<MonthlyReportDto> => {
   const db = getDb();
   const { user } = await requireAuth(event);
   const parsedQuery = await getZodQuery(event, monthlyReportQuerySchema);
-  const { month, timeZone } = resolveReportMonth(
-    parsedQuery.month,
-    new Date(),
-    user.settings?.timezone,
-  );
+  const { month, timeZone } = resolveReportMonth(parsedQuery.month, new Date(), user.timezone);
   const instants = monthInstantRange(month, timeZone);
   const dates = monthDateRange(month);
 

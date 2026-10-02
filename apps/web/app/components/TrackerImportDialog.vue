@@ -17,7 +17,7 @@ const emit = defineEmits<{ 'update:open': [boolean] }>();
 
 const { t } = useI18n();
 const { $csrfFetch } = useNuxtApp();
-const { effective } = useUserSettings();
+const { effective } = useProfile();
 const requestFetch = useRequestFetch();
 
 const dialogOpen = computed({

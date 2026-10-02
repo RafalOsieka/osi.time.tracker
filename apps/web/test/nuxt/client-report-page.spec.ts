@@ -94,7 +94,7 @@ mockNuxtImport('useAsyncData', () => {
     return { data, status, refresh };
   };
 });
-mockNuxtImport('useUserSettings', () => () => ({ effective: ref({ timeZone: 'UTC' }) }));
+mockNuxtImport('useProfile', () => () => ({ effective: ref({ timeZone: 'UTC' }) }));
 mockNuxtImport('useUserSession', () => () => ({
   user: ref({ id: 'user-1', email: 'john.doe@example.com', displayName: 'John Doe' }),
 }));

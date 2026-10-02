@@ -11,6 +11,7 @@
   },
   "layout": {
     "title": "OSI Time Tracker",
+    "profile": "Profil",
     "logoutButton": "Wyloguj się",
     "extensionStatus": {
       "notRequired": "Nie wymagane",
@@ -35,8 +36,7 @@
     "timer": "Stoper",
     "trackers": "Trackery",
     "projects": "Projekty",
-    "reports": "Raporty",
-    "settings": "Ustawienia"
+    "reports": "Raporty"
   },
   "locale": {
     "en": "English",
@@ -72,12 +72,16 @@
       "reasonFetchFailed": "Nie udało się wczytać zdalnych godzin dla trackera."
     }
   },
-  "settings": {
-    "language": "Język",
-    "theme": "Motyw",
+  "profile": {
+    "title": "Profil",
+    "account": "Konto",
+    "preferences": "Preferencje",
+    "displayName": "Nazwa wyświetlana",
+    "email": "E-mail",
     "timezone": "Strefa czasowa",
-    "detectedTimezone": "Wykryta strefa czasowa: {timezone}",
-    "saveError": "Nie udało się zapisać ustawień."
+    "language": "Język",
+    "languageHint": "Dotyczy tej przeglądarki.",
+    "saveError": "Nie udało się zapisać profilu."
   },
   "theme": {
     "toggleLabel": "Motyw",
@@ -657,8 +661,10 @@
       "credentialsRequired": "E-mail i hasło są wymagane.",
       "invalidCredentials": "Nieprawidłowe dane logowania."
     },
-    "userSettings": {
-      "invalidTimezone": "Wybierz prawidłową strefę czasową."
+    "profile": {
+      "invalidTimezone": "Wybierz prawidłową strefę czasową.",
+      "displayNameRequired": "Podaj nazwę wyświetlaną.",
+      "displayNameTooLong": "Nazwa wyświetlana może mieć maksymalnie {max} znaków."
     },
     "unexpected": "Wystąpił nieoczekiwany błąd."
   }

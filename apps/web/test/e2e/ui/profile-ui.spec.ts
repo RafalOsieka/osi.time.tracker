@@ -9,7 +9,7 @@ import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
 
-const describeSettingsUI = requireBrowser();
+const describeProfileUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
 
 // `Pacific/Pago_Pago` (UTC-11) and `Pacific/Kiritimati` (UTC+14) are both
@@ -47,27 +47,77 @@ function dayIncludesTitleScript(): (args: { dayKey: string; title: string }) => 
 
 const dayIncludesTitle = dayIncludesTitleScript();
 
-describeSettingsUI('user settings UI flow', async () => {
+describeProfileUI('profile UI flow', async () => {
   const dbUrl = await provisionDatabase();
-  const user = await seedUser(dbUrl, { displayName: 'settingsuiuser' });
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
-  async function openAuthed() {
+  async function openAuthed(user: { email: string; password: string }) {
     const page = await createPage('/');
     await fillLogin(page, user.email, user.password, { height: 900 });
     return page;
   }
 
-  it('changes timezone on /settings, persists across reload, and regroups the timer view', async () => {
-    const { jar, token } = await apiLogin(user.email, user.password);
+  /** Opens /profile through the sidebar account menu (REQ-405). */
+  async function openProfileFromMenu(page: Awaited<ReturnType<typeof openAuthed>>) {
+    await page.click('[data-testid="app-user-footer-trigger"]');
+    await page.getByRole('menuitem', { name: 'Profile' }).click();
+    await page.waitForSelector('[data-testid="page-profile"]');
+    // The menu returns focus to its trigger as it closes; let that finish before the
+    // test opens another popover, or the timezone list closes under the click.
+    await page.getByRole('menu').waitFor({ state: 'detached' });
+  }
 
-    // Deterministic baseline so the "before" grouping doesn't depend on the
-    // browser's detected timezone.
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: BASELINE_TIME_ZONE }),
-    });
+  it('edits the display name on blur and updates the footer without a reload', async () => {
+    const user = await seedUser(dbUrl, { displayName: 'Profile Before' });
+    const page = await openAuthed(user);
+    await openProfileFromMenu(page);
+    expect(await page.title()).toBe('Profile | OSI Time Tracker');
+    expect(await page.locator('[data-testid="profile-email"]').inputValue()).toBe(user.email);
+
+    const name = page.locator('[data-testid="profile-display-name"]');
+    expect(await name.inputValue()).toBe('Profile Before');
+    await name.fill('  Profile After  ');
+    await name.blur();
+
+    await expect
+      .poll(() => page.locator('[data-testid="app-user-footer-primary"]').textContent())
+      .toBe('Profile After');
+    expect(await name.inputValue()).toBe('Profile After');
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="page-profile"]');
+    expect(await page.locator('[data-testid="profile-display-name"]').inputValue()).toBe(
+      'Profile After',
+    );
+    expect(await page.locator('[data-testid="app-user-footer-primary"]').textContent()).toBe(
+      'Profile After',
+    );
+    await page.close();
+  });
+
+  it('switches the language from the profile page', async () => {
+    const user = await seedUser(dbUrl);
+    const page = await openAuthed(user);
+    await openProfileFromMenu(page);
+
+    await page.click('#profile-language');
+    await page.getByRole('option', { name: 'Polish' }).click();
+    await page.waitForFunction(pageIncludesText, 'Nazwa wyświetlana');
+    expect(await page.locator('html').getAttribute('lang')).toMatch(/^pl/);
+    await page.close();
+  });
+
+  it('no longer serves /settings', async () => {
+    const user = await seedUser(dbUrl);
+    const page = await openAuthed(user);
+    const response = await page.goto(url('/settings'));
+    expect(response?.status()).toBe(404);
+    await page.close();
+  });
+
+  it('changes timezone on /profile, persists across reload, and regroups the timer view', async () => {
+    const user = await seedUser(dbUrl, { timezone: BASELINE_TIME_ZONE });
+    const { jar, token } = await apiLogin(user.email, user.password);
 
     // A recent (safely-in-the-past) instant: its calendar day under the
     // baseline zone and under the shifted zone is guaranteed to differ.
@@ -79,57 +129,47 @@ describeSettingsUI('user settings UI flow', async () => {
       method: 'POST',
       headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
       body: JSON.stringify({
-        title: 'Settings UI Task',
+        title: 'Profile UI Task',
         startedAt: startedAt.toISOString(),
         stoppedAt: stoppedAt.toISOString(),
       }),
     });
     expect(createRes.status).toBe(200);
 
-    const page = await openAuthed();
+    const page = await openAuthed(user);
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(pageIncludesText, 'Settings UI Task');
+    await page.waitForFunction(pageIncludesText, 'Profile UI Task');
     await page.waitForSelector(`[data-testid="timer-day-${baselineDayKey}"]`);
     expect(
       await page.evaluate(dayIncludesTitle, {
         dayKey: baselineDayKey,
-        title: 'Settings UI Task',
+        title: 'Profile UI Task',
       }),
     ).toBe(true);
 
-    // --- Navigate to the settings page and change timezone ---
-    // Preferences auto-apply on change (no Save button).
-    await page.click('a[href="/settings"]');
-    await page.waitForSelector('[data-testid="page-settings"]');
-    // Controls mount only after client preference sources settle (no default flash).
-    await page.waitForSelector('[data-testid="settings-preferences"]');
-    expect(await page.locator('button:has-text("Save settings")').count()).toBe(0);
-    expect(await page.locator('[data-testid="settings-saved-message"]').count()).toBe(0);
-    expect(await page.locator('[data-testid="settings-week-start"]').count()).toBe(0);
+    // --- Open the profile page and change timezone (auto-applies, no Save button) ---
+    await openProfileFromMenu(page);
+    expect(await page.locator('button:has-text("Save")').count()).toBe(0);
+    expect(await page.locator('[data-testid="profile-language"]').count()).toBe(1);
 
-    // Language and theme controls live on Settings (not the utility menu).
-    expect(await page.locator('[data-testid="settings-language"]').count()).toBe(1);
-    expect(await page.locator('[data-testid="settings-theme"]').count()).toBe(1);
-
-    await page.click('#settings-timezone');
+    await page.click('#profile-timezone');
     await page.getByRole('option', { name: SHIFTED_TIME_ZONE }).click();
 
-    // Wait for auto-persist: controls should keep the selected values after network settles.
     await expect
-      .poll(() => page.locator('#settings-timezone').textContent())
+      .poll(() => page.locator('#profile-timezone').textContent())
       .toContain(SHIFTED_TIME_ZONE);
 
     // --- Persistence across reload ---
     await page.reload();
-    await page.waitForSelector('[data-testid="page-settings"]');
+    await page.waitForSelector('[data-testid="page-profile"]');
     await expect
-      .poll(() => page.locator('#settings-timezone').textContent())
+      .poll(() => page.locator('#profile-timezone').textContent())
       .toContain(SHIFTED_TIME_ZONE);
 
     // --- The timer view regroups the same data under the new timezone ---
     await page.goto(url('/'));
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(pageIncludesText, 'Settings UI Task');
+    await page.waitForFunction(pageIncludesText, 'Profile UI Task');
 
     // The entry has moved out of its previous day bucket...
     const stillInBaselineDay = await page
@@ -139,7 +179,7 @@ describeSettingsUI('user settings UI flow', async () => {
       expect(
         await page.evaluate(dayIncludesTitle, {
           dayKey: baselineDayKey,
-          title: 'Settings UI Task',
+          title: 'Profile UI Task',
         }),
       ).toBe(false);
     }
@@ -151,7 +191,7 @@ describeSettingsUI('user settings UI flow', async () => {
     expect(
       await page.evaluate(dayIncludesTitle, {
         dayKey: shiftedDayKey,
-        title: 'Settings UI Task',
+        title: 'Profile UI Task',
       }),
     ).toBe(true);
 

@@ -7,7 +7,7 @@ import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
-import { apiLogin, type CookieJar } from '../helpers/auth';
+import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
 import { createProject, createTracker } from '../helpers/http';
 import {
@@ -35,15 +35,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
   async function setTimezone(jar: CookieJar, token: string) {
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: {
-        'content-type': 'application/json',
-        'csrf-token': token,
-        cookie: jar.header(),
-      },
-      body: JSON.stringify({ timezone: 'UTC' }),
-    });
+    await patchTimezone(jar, token, 'UTC');
   }
 
   async function createEntry(jar: CookieJar, token: string, body: JsonObject) {

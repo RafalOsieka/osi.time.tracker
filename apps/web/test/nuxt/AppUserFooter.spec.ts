@@ -5,7 +5,7 @@ import type { DropdownMenuItem } from '@nuxt/ui';
 
 const logoutMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const navigateToMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
-type SessionUser = { email: string; displayName?: string | null };
+type SessionUser = { email: string; displayName: string };
 const userState = vi.hoisted(() => {
   const value: SessionUser = {
     email: 'alice@example.com',
@@ -32,6 +32,9 @@ mockNuxtImport('useAuth', () => () => ({
 }));
 
 mockNuxtImport('navigateTo', () => navigateToMock);
+
+const colorMode = vi.hoisted(() => ({ preference: 'dark' }));
+mockNuxtImport('useColorMode', () => () => colorMode);
 
 const DropdownMenuStub = {
   props: {
@@ -113,6 +116,7 @@ const baseStubs = {
 describe('AppUserFooter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    colorMode.preference = 'dark';
     userState.value = {
       email: 'alice@example.com',
       displayName: 'Alice Liddell',
@@ -130,22 +134,9 @@ describe('AppUserFooter', () => {
     expect(
       wrapper.find('[data-testid="app-user-footer-trigger"]').attributes('data-avatar-text'),
     ).toBe('A');
-    expect(wrapper.find('[data-testid="logout-button"]').text()).toContain('layout.logoutButton');
-  });
-
-  it('falls back to email as name with avatar initial when display name is empty', async () => {
-    userState.value = { email: 'solo@example.com', displayName: null };
-
-    const wrapper = await mountSuspended(AppUserFooter, {
-      props: { collapsed: false },
-      global: { stubs: baseStubs },
-    });
-
-    expect(wrapper.find('[data-testid="app-user-footer-primary"]').text()).toBe('solo@example.com');
-    expect(wrapper.find('[data-testid="app-user-footer-email"]').exists()).toBe(false);
-    expect(
-      wrapper.find('[data-testid="app-user-footer-trigger"]').attributes('data-avatar-text'),
-    ).toBe('S');
+    expect(wrapper.findAll('[data-testid="logout-button"]').map((b) => b.text())).toContain(
+      'layout.logoutButton',
+    );
   });
 
   it('uses avatar button trigger when collapsed', async () => {
@@ -167,14 +158,17 @@ describe('AppUserFooter', () => {
       global: { stubs: baseStubs },
     });
 
-    await wrapper.find('[data-testid="logout-button"]').trigger('click');
+    const logout = wrapper
+      .findAll('[data-testid="logout-button"]')
+      .find((button) => button.text() === 'layout.logoutButton');
+    await logout!.trigger('click');
     await vi.waitFor(() => {
       expect(logoutMock).toHaveBeenCalled();
     });
     expect(navigateToMock).toHaveBeenCalledWith('/login');
   });
 
-  it('exposes a logout dropdown item', async () => {
+  it('lists Profile and the Theme submenu, then Log out in its own group', async () => {
     let items: DropdownMenuItem[][] = [];
     await mountSuspended(AppUserFooter, {
       props: { collapsed: false },
@@ -201,10 +195,25 @@ describe('AppUserFooter', () => {
       },
     });
 
-    const flat = items.flat();
-    expect(flat).toHaveLength(1);
-    expect(flat[0]?.icon).toBe('i-lucide-log-out');
-    expect(flat[0]?.label).toBe('layout.logoutButton');
-    expect(flat[0]?.onSelect).toEqual(expect.any(Function));
+    expect(items.map((group) => group.map((item) => item.label))).toEqual([
+      ['layout.profile', 'theme.toggleLabel'],
+      ['layout.logoutButton'],
+    ]);
+    const [profile, theme] = items[0]!;
+    expect(profile?.to).toBe('/profile');
+    expect(items[1]![0]?.icon).toBe('i-lucide-log-out');
+
+    // The active preference (dark) is the only checked theme item.
+    const themeItems = (theme?.children ?? []).flat();
+    expect(themeItems.map((item) => [item.label, item.type, item.checked])).toEqual([
+      ['theme.light', 'checkbox', false],
+      ['theme.dark', 'checkbox', true],
+      ['theme.system', 'checkbox', false],
+    ]);
+
+    const event = new Event('select', { cancelable: true });
+    themeItems[0]?.onSelect?.(event);
+    expect(colorMode.preference).toBe('light');
+    expect(event.defaultPrevented).toBe(true);
   });
 });

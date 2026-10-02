@@ -4,7 +4,7 @@ import type { TimerViewFeedDto, TimeEntryDto } from '~~/shared/types/time-entry'
 const { t, locale } = useI18n();
 usePageTitle(() => t('timerView.pageTitle'));
 const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
-const { effective } = useUserSettings();
+const { effective } = useProfile();
 const requestFetch = useRequestFetch();
 
 // Lazy: client navigation renders at once with a skeleton (REQ-391); SSR still waits for the feed.

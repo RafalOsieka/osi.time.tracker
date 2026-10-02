@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
-import { CookieJar, primeCsrf } from '../helpers/auth';
+import { CookieJar, primeCsrf, patchTimezone } from '../helpers/auth';
 import { seedAndLogin } from '../helpers/session';
 import { createProject, createTracker } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
@@ -63,11 +63,7 @@ describeSyncExport('sync export finalization API', async () => {
   await setupServer({ databaseUrl: dbUrl });
 
   async function seedLinkedTask(jar: CookieJar, token: string, suffix: string) {
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: 'UTC' }),
-    });
+    await patchTimezone(jar, token, 'UTC');
     const tracker = await createTracker(jar, token, `Export Client ${suffix}`, {
       systemType: 'openproject',
       baseUrl: 'https://op.example.com',

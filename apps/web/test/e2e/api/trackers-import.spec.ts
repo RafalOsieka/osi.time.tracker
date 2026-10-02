@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
-import { CookieJar, primeCsrf } from '../helpers/auth';
+import { CookieJar, primeCsrf, patchTimezone } from '../helpers/auth';
 import { seedAndLogin } from '../helpers/session';
 import { createProject, createTracker } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
@@ -37,11 +37,7 @@ async function postImport(
 }
 
 async function setUtcTimezone(jar: CookieJar, token: string): Promise<void> {
-  await fetch(url('/api/user/settings'), {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ timezone: 'UTC' }),
-  });
+  await patchTimezone(jar, token, 'UTC');
 }
 
 async function listTasks(jar: CookieJar, search: string) {

@@ -17,6 +17,24 @@ describe('main', () => {
     expect(String(error.mock.calls[0]?.[0])).toContain('DATABASE_URL is not set');
   });
 
+  it('fails naming an invalid bootstrap timezone before connecting', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Port 1 would refuse a connection; the validation error must win.
+    await expect(
+      main({
+        DATABASE_URL: 'postgres://user:pass@127.0.0.1:1/db?connect_timeout=2',
+        BOOTSTRAP_USER_EMAIL: 'jan@example.com',
+        BOOTSTRAP_USER_PASSWORD: 'secret',
+        BOOTSTRAP_USER_TIMEZONE: 'Mars/Olympus',
+      }),
+    ).resolves.toBe(1);
+    expect(error.mock.calls[0]).toEqual([
+      'Migration failed:',
+      expect.stringContaining('BOOTSTRAP_USER_TIMEZONE'),
+    ]);
+  });
+
   it('reports a connection failure as exit code 1 with only the message', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
 

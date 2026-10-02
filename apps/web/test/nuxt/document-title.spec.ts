@@ -12,14 +12,14 @@ const { useHeadMock, localeState } = vi.hoisted(() => ({
 const catalogs = {
   en: {
     'timerView.pageTitle': 'Timer',
-    'nav.settings': 'Settings',
+    'profile.title': 'Profile',
     'auth.pageTitle': 'Log in',
     'remoteSync.pageTitle': 'Remote Sync',
     'layout.title': 'OSI Time Tracker',
   },
   pl: {
     'timerView.pageTitle': 'Stoper',
-    'nav.settings': 'Ustawienia',
+    'profile.title': 'Profil',
     'auth.pageTitle': 'Logowanie',
     'remoteSync.pageTitle': 'Synchronizacja zdalna',
     'layout.title': 'OSI Time Tracker',
@@ -34,7 +34,7 @@ function translate(key: string, params?: MessageParams) {
   const table = catalogFor(localeState.value);
   let base = key;
   if (key === 'timerView.pageTitle') base = table['timerView.pageTitle'];
-  else if (key === 'nav.settings') base = table['nav.settings'];
+  else if (key === 'profile.title') base = table['profile.title'];
   else if (key === 'auth.pageTitle') base = table['auth.pageTitle'];
   else if (key === 'remoteSync.pageTitle') base = table['remoteSync.pageTitle'];
   else if (key === 'layout.title') base = table['layout.title'];
@@ -76,12 +76,12 @@ describe('document title page segment', () => {
     useHeadMock.mockClear();
   });
 
-  it('sets timer, settings, login, and sync titles from catalog keys', async () => {
+  it('sets timer, profile, login, and sync titles from catalog keys', async () => {
     await mountTitledPage('timerView.pageTitle');
     expect(titleFromHead()).toBe('Timer');
 
-    await mountTitledPage('nav.settings');
-    expect(titleFromHead()).toBe('Settings');
+    await mountTitledPage('profile.title');
+    expect(titleFromHead()).toBe('Profile');
 
     await mountTitledPage('auth.pageTitle');
     expect(titleFromHead()).toBe('Log in');

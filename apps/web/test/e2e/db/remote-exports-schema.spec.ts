@@ -20,7 +20,12 @@ describeDb('remote exports schema', () => {
     try {
       const [user] = await db
         .insert(users)
-        .values({ email: 'remote-export-schema@example.com', passwordHash: 'hash' })
+        .values({
+          email: 'remote-export-schema@example.com',
+          passwordHash: 'hash',
+          displayName: 'Test User',
+          timezone: 'UTC',
+        })
         .returning();
       if (!user) throw new Error('user not inserted');
 
@@ -163,7 +168,12 @@ describeDb('remote exports schema', () => {
     try {
       const [user] = await db
         .insert(users)
-        .values({ email: 'remote-export-identity@example.com', passwordHash: 'hash' })
+        .values({
+          email: 'remote-export-identity@example.com',
+          passwordHash: 'hash',
+          displayName: 'Test User',
+          timezone: 'UTC',
+        })
         .returning();
       if (!user) throw new Error('user not inserted');
 

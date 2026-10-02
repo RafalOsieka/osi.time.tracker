@@ -12,22 +12,43 @@ import postgres, { type Sql } from 'postgres';
  */
 export const MIGRATIONS_FOLDER = fileURLToPath(new URL('../migrations', import.meta.url));
 
-/** Credentials for the initial user seeded during the migrate step (core-authentication REQ-012). */
+/** The initial user seeded during the migrate step (core-authentication REQ-012). */
 export type BootstrapUser = {
   email: string;
   password: string;
+  displayName: string;
+  timezone: string;
 };
 
+/** Mirrors the app's display name limit (workspace-settings REQ-397). */
+const DISPLAY_NAME_MAX_LENGTH = 100;
+
 /**
- * Reads the bootstrap user from `BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD`.
- * Returns `undefined` when either is unset or empty, so seeding is skipped silently.
- * The email is trimmed and lowercased to match how the app looks users up.
+ * Reads the bootstrap user from the `BOOTSTRAP_USER_*` variables.
+ * Returns `undefined` when the email or password is unset or empty, so seeding is
+ * skipped silently. The email is trimmed and lowercased to match how the app looks
+ * users up. The display name defaults to the email local part and the timezone to
+ * `UTC`. Throws, naming the variable, when either optional value is invalid.
  */
 export function readBootstrapUser(env: NodeJS.ProcessEnv): BootstrapUser | undefined {
   const email = env.BOOTSTRAP_USER_EMAIL?.trim().toLowerCase();
   const password = env.BOOTSTRAP_USER_PASSWORD;
+  if (!email || !password) return undefined;
 
-  return email && password ? { email, password } : undefined;
+  const displayName = env.BOOTSTRAP_USER_DISPLAY_NAME?.trim() || email.split('@')[0] || email;
+  if (displayName.length > DISPLAY_NAME_MAX_LENGTH) {
+    throw new Error(
+      `BOOTSTRAP_USER_DISPLAY_NAME must be at most ${DISPLAY_NAME_MAX_LENGTH} characters.`,
+    );
+  }
+
+  const timezone = env.BOOTSTRAP_USER_TIMEZONE?.trim() || 'UTC';
+  // `UTC` is the default but is not part of Intl's canonical zone list.
+  if (timezone !== 'UTC' && !Intl.supportedValuesOf('timeZone').includes(timezone)) {
+    throw new Error(`BOOTSTRAP_USER_TIMEZONE "${timezone}" is not a supported IANA timezone.`);
+  }
+
+  return { email, password, displayName, timezone };
 }
 
 /**
@@ -40,14 +61,14 @@ export async function hashPassword(password: string): Promise<string> {
 
 /**
  * Inserts the bootstrap user unless a user with that email already exists; an
- * existing user's password is never touched. Returns whether a row was inserted.
+ * existing user's password, display name and timezone are never touched. Returns whether a row was inserted.
  * Expects an already-normalized email (see {@link readBootstrapUser}).
  */
 export async function seedBootstrapUser(sql: Sql, user: BootstrapUser): Promise<boolean> {
   const passwordHash = await hashPassword(user.password);
   const inserted = await sql`
-    INSERT INTO users ("email", "passwordHash")
-    VALUES (${user.email}, ${passwordHash})
+    INSERT INTO users ("email", "passwordHash", "displayName", "timezone")
+    VALUES (${user.email}, ${passwordHash}, ${user.displayName}, ${user.timezone})
     ON CONFLICT ("email") DO NOTHING
     RETURNING "id"
   `;

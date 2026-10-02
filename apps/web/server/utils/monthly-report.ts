@@ -1,4 +1,4 @@
-import { feedTimeZone, localDayKey } from './timer-view-feed';
+import { localDayKey } from './timer-view-feed';
 import type { MonthlyReportDayDto } from '../../shared/types/report';
 import { currentCalendarMonth } from '../../shared/utils/report-month';
 
@@ -10,9 +10,8 @@ export interface ResolvedReportMonth {
 export function resolveReportMonth(
   month: string | undefined,
   now: Date,
-  storedTimezone: string | null | undefined,
+  timeZone: string,
 ): ResolvedReportMonth {
-  const timeZone = feedTimeZone(storedTimezone);
   return { month: month ?? currentCalendarMonth(now, timeZone), timeZone };
 }
 

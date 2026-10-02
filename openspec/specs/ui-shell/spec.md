@@ -6,7 +6,7 @@ Define the global authenticated application shell rendered by the `default` layo
 ## Requirements
 
 ### Requirement: REQ-064 Authenticated shell regions and slots
-The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar inside the panel) and a **full-height left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a sidebar footer **account control** (identity + logout via menu), a reserved running-timer region in the top bar, and the page content (`<NuxtPage />`). The shell SHALL NOT render a top-bar utility menu. Logout from REQ-061 SHALL remain reachable from the sidebar footer account control on every authenticated route (open the account control, then activate Log out). Locale and theme controls SHALL NOT appear in the shell chrome; they live on the settings page (workspace-settings, ui-theming, core-i18n).
+The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar inside the panel) and a **full-height left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a sidebar footer **account control** (identity + account menu), a reserved running-timer region in the top bar, and the page content (`<NuxtPage />`). The shell SHALL NOT render a top-bar utility menu. Logout from REQ-061 SHALL remain reachable from the sidebar footer account control on every authenticated route (open the account control, then activate Log out). The locale control SHALL NOT appear in the shell chrome; it lives on the `/profile` page (core-i18n REQ-401). The theme control SHALL live only in the sidebar footer account menu (ui-theming REQ-402) and SHALL NOT appear elsewhere in the sidebar or top bar.
 
 #### Scenario: Shell renders on an authenticated route
 - **WHEN** an authenticated user navigates to any page using the `default` layout
@@ -18,51 +18,7 @@ The `default` layout SHALL render a global authenticated shell built on the Nuxt
 
 #### Scenario: Utility menu excludes locale and theme
 - **WHEN** the authenticated shell is rendered
-- **THEN** it SHALL NOT offer locale or theme selection controls in the sidebar or top bar (there is no top-bar utility menu)
-
-
-### Requirement: REQ-065 Sidebar navigation skeleton with placeholder routes
-The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Projects, Reports, Settings. Timer, Trackers, Projects, and Settings SHALL be navigation links: Timer to `/` (timer view); Trackers to `/trackers`; Settings to `/settings` (preferences, REQ-167). Reports SHALL be a nested group, not a navigation link: it SHALL have no destination href, SHALL NOT navigate when activated, and SHALL keep its nested children visible whenever the sidebar is showing labels (expanded desktop rail or open mobile drawer). The group SHALL include a Monthly timesheet child that routes to `/reports/monthly` (reports REQ-289) and a Client report child that routes to `/reports/client` (REQ-384). There SHALL be no Clients navigation entry, no Tasks navigation entry, no Dashboard entry, and no navigation link to `/reports`. Destinations that do not yet have a real feature page SHALL route to a placeholder page rather than a broken route. All navigation labels SHALL come from the i18n catalogs with `en`/`pl` parity.
-
-#### Scenario: All skeleton destinations are listed
-- **WHEN** the sidebar is rendered
-- **THEN** it SHALL list links for Timer, Trackers, Projects, Monthly timesheet, Client report, and Settings — and SHALL NOT list Clients, Tasks, Dashboard, or a Reports destination link to `/reports`
-
-#### Scenario: Timer link opens the timer view
-- **WHEN** the user activates the Timer link
-- **THEN** the application SHALL navigate to `/` and render the timer view page
-
-#### Scenario: Trackers link opens the trackers page
-- **WHEN** the user activates the Trackers link
-- **THEN** the application SHALL navigate to `/trackers` and render the Trackers management page
-
-#### Scenario: Settings link opens the preferences page
-- **WHEN** the user activates the Settings link
-- **THEN** the application SHALL navigate to `/settings` and render the preferences form, not a "coming soon" placeholder
-
-#### Scenario: Reports link opens the reports hub
-- **WHEN** the user looks for Reports in the sidebar
-- **THEN** the application SHALL NOT navigate to a `/reports` hub; Monthly timesheet and Client report SHALL be nested children that open `/reports/monthly` and `/reports/client`
-
-#### Scenario: Monthly child opens the monthly timesheet
-- **WHEN** the labelled sidebar is showing and the user activates the Monthly timesheet child
-- **THEN** the application SHALL navigate to `/reports/monthly` and render the monthly timesheet
-
-#### Scenario: Client report child opens the client report
-- **WHEN** the labelled sidebar is showing and the user activates the Client report child
-- **THEN** the application SHALL navigate to `/reports/client` and render the client report page
-
-#### Scenario: Reports group does not navigate
-- **WHEN** the user activates the Reports group control
-- **THEN** the application SHALL NOT navigate and SHALL NOT expose an `href` of `/reports`
-
-#### Scenario: Reports children stay visible on the labelled rail
-- **WHEN** the desktop sidebar is expanded or the mobile drawer is open
-- **THEN** the Monthly timesheet and Client report children SHALL be visible without the user first expanding Reports
-
-#### Scenario: Unbuilt destination resolves to a placeholder
-- **WHEN** the user activates a destination that has no real feature page yet
-- **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
+- **THEN** it SHALL NOT offer a locale control anywhere in the sidebar or top bar, and SHALL offer theme selection only inside the sidebar footer account menu (there is no top-bar utility menu)
 
 ### Requirement: REQ-066 Desktop collapsible rail with persisted state
 On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static full-height rail that the user can toggle between a full (labelled) state and an icon-only (collapsed) state, using `UDashboardSidebar`'s built-in `collapsible` behavior. The desktop collapse/expand control SHALL be available in the top bar (navbar) left region. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed). When expanded, the brand region SHALL show the application brand mark beside the full application title (`layout.title`). When collapsed, the brand region SHALL show the same brand mark centered in the header and SHALL NOT show the full title or a short letter-only substitute. The collapsed mark SHALL expose the full application title as its accessible name.
@@ -87,7 +43,6 @@ On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a sta
 - **WHEN** the desktop sidebar is collapsed to icon-only
 - **THEN** the brand mark SHALL expose the full application title as its accessible name
 
-
 ### Requirement: REQ-067 Off-canvas drawer below the lg breakpoint
 On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented as an off-canvas drawer (the `UDashboardSidebar` mobile slideover) opened by the top-bar menu toggle control (mobile-only), with a scrim, focus trapping while open, and dismissal via `Escape` or scrim activation. The reserved timer region SHALL remain present in the top bar at this tier. The mobile menu toggle SHALL appear in the top bar on viewports below `lg` and SHALL NOT appear on desktop. The desktop rail collapse control SHALL NOT appear below `lg`.
 
@@ -102,7 +57,6 @@ On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented
 #### Scenario: Mobile drawer shows expanded footer identity
 - **WHEN** the mobile drawer is open
 - **THEN** the sidebar footer SHALL show the expanded account control presentation (`UUser` identity row as the menu trigger), not the desktop collapsed avatar-only trigger
-
 
 ### Requirement: REQ-068 Top bar hosts centered timer and right-side utility menu
 The top bar (`UDashboardNavbar`) SHALL host the reserved timer region at every viewport width (a single instance — no separate stacked row beneath the bar). The timer region SHALL use the remaining width of the top bar after the left control cluster, left-aligned (not centered in a capped max-width column). The top bar's right region SHALL NOT host a utility menu or user/logout control. The left region SHALL host the mobile sidebar open control below `lg` and the desktop rail collapse control at `lg` and above.
@@ -120,39 +74,6 @@ The top bar (`UDashboardNavbar`) SHALL host the reserved timer region at every v
 - **THEN** the top bar left SHALL expose the mobile sidebar open control and SHALL NOT expose the desktop rail collapse control
 - **WHEN** the shell is rendered at `lg` or above
 - **THEN** the top bar left SHALL expose the desktop rail collapse control and SHALL NOT expose the mobile sidebar open control
-
-
-### Requirement: REQ-069 Logout-only utility menu
-The sidebar footer SHALL present a single **account control** for the authenticated user on every authenticated route (replacing the former top-bar utility menu). Primary identity text SHALL be the trimmed `displayName` when non-empty, otherwise the user's email. When a non-empty `displayName` is shown, the email SHALL appear as a secondary description line. When only email is available as the primary line, the secondary email line SHALL be omitted. Locale and theme controls SHALL NOT appear in the footer or top bar.
-
-The account control SHALL open a dropdown menu that includes Log out (i18n label and logout icon). Activating Log out SHALL clear the session and navigate to `/login`.
-
-On the **expanded** desktop rail and in the **mobile drawer**, the account control trigger SHALL be a user identity presentation (avatar initial plus primary name/email and optional secondary email), implemented with Nuxt UI `UUser` (or equivalent) as a button.
-
-On the **desktop icon-only (collapsed)** rail, the account control trigger SHALL be an **avatar** (initial) control that opens the **same** account menu. It SHALL NOT require a separate always-visible logout row; identity text MAY be omitted from the collapsed trigger itself.
-
-All footer and menu labels SHALL come from the i18n catalogs with `en`/`pl` parity.
-
-#### Scenario: Utility menu is a single top-bar entry
-- **WHEN** the shell is rendered at any viewport size
-- **THEN** logout SHALL be reachable from the sidebar footer account menu (not from a top-bar utility menu)
-
-#### Scenario: Locale and theme are not in the utility menu
-- **WHEN** the sidebar footer account menu is opened
-- **THEN** language and theme options SHALL be absent from that menu and from the shell chrome
-
-#### Scenario: Expanded footer shows name and email
-- **WHEN** the sidebar is expanded (or the mobile drawer is open) and the user has a non-empty display name and an email
-- **THEN** the account control trigger SHALL show the display name as the primary line, the email as a secondary line, and an avatar initial, and opening the control SHALL expose Log out
-
-#### Scenario: Expanded footer falls back to email only
-- **WHEN** the sidebar is expanded and the user has no non-empty display name
-- **THEN** the account control trigger SHALL show the email as the primary identity line without a duplicate secondary email line, and opening the control SHALL expose Log out
-
-#### Scenario: Collapsed footer is logout icon only
-- **WHEN** the desktop sidebar is collapsed to icon-only
-- **THEN** the footer account control trigger SHALL be an avatar (initial) that opens the account menu containing Log out, and SHALL NOT show a separate full-width labelled logout row outside the menu
-
 
 ### Requirement: REQ-071 Accessible shell navigation
 The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be a `<nav>` landmark with an accessible name (`aria-label`), and its links SHALL be rendered natively by `UNavigationMenu` from the `navItems` definition (icon + label) rather than through a custom per-item slot. Each navigation link SHALL be addressable by its destination `href` (e.g. `a[href="/trackers"]`) for test and automation hooks, including `a[href="/reports/monthly"]` for Monthly timesheet. The link matching the current route SHALL expose `aria-current="page"`; when the route is `/reports/monthly` that SHALL be the Monthly child, not the Reports group. The menu toggle SHALL expose `aria-expanded` reflecting the sidebar/drawer open state. When the desktop rail is icon-only, each primary navigation item SHALL expose a text tooltip with that item's navigation label, and the Reports group SHALL expose its children (Monthly timesheet) through a popover so the child remains operable. The shell SHALL be fully operable by keyboard.
@@ -181,14 +102,12 @@ The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be
 - **WHEN** the desktop sidebar is collapsed to icon-only
 - **THEN** the user SHALL be able to activate Monthly timesheet from the Reports item's popover and navigate to `/reports/monthly`
 
-
 ### Requirement: REQ-072 Tokenized shell styling
 The shell SHALL be styled using Tailwind utilities and Nuxt UI `--ui-*` design tokens, with no ad-hoc inline `style` attributes in `default.vue`. Brand accent usage SHALL rely on the configured `primary` color (per REQ-160) rather than inline colors or raw hex values.
 
 #### Scenario: No inline ad-hoc styling in the shell
 - **WHEN** the shell is implemented
 - **THEN** its layout and color SHALL derive from Tailwind utilities and Nuxt UI design tokens and not from ad-hoc inline `style` attributes
-
 
 ### Requirement: REQ-258 Running entry resolved during authenticated shell SSR
 The authenticated `default` layout SHALL resolve the current user's running time entry (`GET /api/time-entries/running`) during server-side rendering of any authenticated route and SHALL seed the shared running-timer state used by the live timer widget before first paint. The SSR fetch SHALL authenticate using the incoming session cookie (cookie-forwarding request fetch), matching other authenticated SSR data loads. When no running entry exists, the shell SHALL seed idle state (`null`) rather than leaving the widget in an unknown pre-fetch idle that could accept start actions incorrectly after hydrate without a resolved server result.
@@ -207,7 +126,6 @@ Client-side navigations within an already-hydrated session MAY reuse the shared 
 - **WHEN** the shell resolves the running entry during SSR
 - **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request so the endpoint authorizes the same user as a browser navigation
 
-
 ### Requirement: REQ-301 Document title is page plus brand
 
 Every rendered app route SHALL set the HTML document title to `{page} | {brand}` where `{brand}` is the translated `layout.title` string and `{page}` is the translated label for the current destination (the same wording as the page heading or sidebar item when one exists). The title SHALL be present on first SSR paint so the tab is never the request hostname. Client navigation and locale changes SHALL update the title without a full reload. The title SHALL NOT include running-timer elapsed time or task names.
@@ -219,8 +137,8 @@ Every rendered app route SHALL set the HTML document title to `{page} | {brand}`
 
 #### Scenario: Named management pages
 
-- **WHEN** the user is on `/trackers`, `/projects`, `/reports/monthly`, or `/settings` in English
-- **THEN** the document title SHALL be `Trackers | OSI Time Tracker`, `Projects | OSI Time Tracker`, `Monthly timesheet | OSI Time Tracker`, or `Settings | OSI Time Tracker` respectively
+- **WHEN** the user is on `/trackers`, `/projects`, `/reports/monthly`, or `/profile` in English
+- **THEN** the document title SHALL be `Trackers | OSI Time Tracker`, `Projects | OSI Time Tracker`, `Monthly timesheet | OSI Time Tracker`, or `Profile | OSI Time Tracker` respectively
 
 #### Scenario: Login uses the auth layout
 
@@ -246,3 +164,81 @@ Every rendered app route SHALL set the HTML document title to `{page} | {brand}`
 
 - **WHEN** the app renders a not-found or other page without a dedicated heading key
 - **THEN** the document title SHALL still include `layout.title` and SHALL NOT fall back to the request hostname
+
+### Requirement: REQ-404 Sidebar navigation skeleton with placeholder routes
+The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Projects, Reports. Timer, Trackers, and Projects SHALL be navigation links: Timer to `/` (timer view); Trackers to `/trackers`. There SHALL be no Settings or Profile navigation entry; the profile page is reached from the account menu (REQ-405). Reports SHALL be a nested group, not a navigation link: it SHALL have no destination href, SHALL NOT navigate when activated, and SHALL keep its nested children visible whenever the sidebar is showing labels (expanded desktop rail or open mobile drawer). The group SHALL include a Monthly timesheet child that routes to `/reports/monthly` (reports REQ-289) and a Client report child that routes to `/reports/client` (REQ-384). There SHALL be no Clients navigation entry, no Tasks navigation entry, no Dashboard entry, and no navigation link to `/reports`. Destinations that do not yet have a real feature page SHALL route to a placeholder page rather than a broken route. All navigation labels SHALL come from the i18n catalogs with `en`/`pl` parity.
+
+#### Scenario: All skeleton destinations are listed
+- **WHEN** the sidebar is rendered
+- **THEN** it SHALL list links for Timer, Trackers, Projects, Monthly timesheet, and Client report — and SHALL NOT list Settings, Profile, Clients, Tasks, Dashboard, or a Reports destination link to `/reports`
+
+#### Scenario: Timer link opens the timer view
+- **WHEN** the user activates the Timer link
+- **THEN** the application SHALL navigate to `/` and render the timer view page
+
+#### Scenario: Trackers link opens the trackers page
+- **WHEN** the user activates the Trackers link
+- **THEN** the application SHALL navigate to `/trackers` and render the Trackers management page
+
+#### Scenario: No Settings link
+- **WHEN** the sidebar navigation is rendered at any viewport size
+- **THEN** it SHALL NOT contain a link to `/settings` or `/profile`
+
+#### Scenario: Reports link opens the reports hub
+- **WHEN** the user looks for Reports in the sidebar
+- **THEN** the application SHALL NOT navigate to a `/reports` hub; Monthly timesheet and Client report SHALL be nested children that open `/reports/monthly` and `/reports/client`
+
+#### Scenario: Monthly child opens the monthly timesheet
+- **WHEN** the labelled sidebar is showing and the user activates the Monthly timesheet child
+- **THEN** the application SHALL navigate to `/reports/monthly` and render the monthly timesheet
+
+#### Scenario: Client report child opens the client report
+- **WHEN** the labelled sidebar is showing and the user activates the Client report child
+- **THEN** the application SHALL navigate to `/reports/client` and render the client report page
+
+#### Scenario: Reports group does not navigate
+- **WHEN** the user activates the Reports group control
+- **THEN** the application SHALL NOT navigate and SHALL NOT expose an `href` of `/reports`
+
+#### Scenario: Reports children stay visible on the labelled rail
+- **WHEN** the desktop sidebar is expanded or the mobile drawer is open
+- **THEN** the Monthly timesheet and Client report children SHALL be visible without the user first expanding Reports
+
+#### Scenario: Unbuilt destination resolves to a placeholder
+- **WHEN** the user activates a destination that has no real feature page yet
+- **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
+
+### Requirement: REQ-405 Account menu
+The sidebar footer SHALL present a single **account control** for the authenticated user on every authenticated route (replacing the former top-bar utility menu). The primary identity text SHALL be the user's `displayName` (always non-empty, workspace-settings REQ-397), and the email SHALL appear as a secondary description line. The locale control SHALL NOT appear in the footer or top bar.
+
+The account control SHALL open a dropdown menu with, in order: a **Profile** item (user icon) that navigates to `/profile`; a **Theme** submenu (ui-theming REQ-402); then, in a separate group, **Log out** (logout icon). Activating Log out SHALL clear the session and navigate to `/login`. A display name saved on `/profile` SHALL be reflected in the account control without a reload.
+
+On the **expanded** desktop rail and in the **mobile drawer**, the account control trigger SHALL be a user identity presentation (avatar initial plus display name and secondary email), implemented with Nuxt UI `UUser` (or equivalent) as a button.
+
+On the **desktop icon-only (collapsed)** rail, the account control trigger SHALL be an **avatar** (initial of the display name) control with the display name as its accessible name, opening the **same** account menu. It SHALL NOT require a separate always-visible logout row; identity text MAY be omitted from the collapsed trigger itself.
+
+All footer and menu labels SHALL come from the i18n catalogs with `en`/`pl` parity.
+
+#### Scenario: Utility menu is a single top-bar entry
+- **WHEN** the shell is rendered at any viewport size
+- **THEN** logout SHALL be reachable from the sidebar footer account menu (not from a top-bar utility menu)
+
+#### Scenario: Account menu contents and order
+- **WHEN** the sidebar footer account menu is opened
+- **THEN** it SHALL show Profile, then the Theme submenu, then Log out in a separate group, and SHALL NOT show language options
+
+#### Scenario: Profile item opens the profile page
+- **WHEN** the user activates Profile in the account menu
+- **THEN** the application SHALL navigate to `/profile` and render the profile page
+
+#### Scenario: Expanded footer shows name and email
+- **WHEN** the sidebar is expanded (or the mobile drawer is open)
+- **THEN** the account control trigger SHALL show the display name as the primary line, the email as a secondary line, and an avatar initial, and opening the control SHALL expose Profile, Theme, and Log out
+
+#### Scenario: Footer updates after a display name change
+- **WHEN** the user saves a new display name on `/profile`
+- **THEN** the account control SHALL show the new display name and its initial without a page reload
+
+#### Scenario: Collapsed footer is logout icon only
+- **WHEN** the desktop sidebar is collapsed to icon-only
+- **THEN** the footer account control trigger SHALL be an avatar (initial) that opens the account menu containing Profile, Theme, and Log out, and SHALL NOT show a separate full-width labelled logout row outside the menu
