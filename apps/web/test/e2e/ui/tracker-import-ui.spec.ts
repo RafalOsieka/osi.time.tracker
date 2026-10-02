@@ -313,13 +313,10 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.waitForSelector('[data-testid="tracker-import-dialog"]', { state: 'hidden' });
 
     // Imported entries show up in the timer view under the comment-derived task
-    // name. Both backfilled days are well outside the default feed window, so
-    // only the newer one (Aug 4, "Mobile task") loads initially; "Load more"
-    // reveals Aug 3 ("Fix invoice rounding ...").
+    // name; both backfilled days are among the user's newest seven activity days.
     await page.click('[data-testid="app-sidebar"] a[href="/"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Mobile task');
-    await page.click('[data-testid="timer-view-load-more"]');
     await page.waitForFunction(pageIncludesText, commentWeb);
 
     // The backfilled day shows as Sent on the Remote Sync review (REQ-344).

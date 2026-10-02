@@ -4,6 +4,7 @@ import {
   entryDurationSeconds,
   groupTimeEntriesByDay,
   isoToLocalTime,
+  liveSeconds,
   localDayKey,
   UNTITLED_GROUP_KEY,
 } from '../../app/utils/timer-view-grouping';
@@ -102,6 +103,65 @@ describe('groupTimeEntriesByDay', () => {
     });
     const day = groupTimeEntriesByDay([untitled, titled])[0]!;
     expect(day.groups.map((g) => g.key)).toEqual(['task-1', UNTITLED_GROUP_KEY]);
+  });
+});
+
+describe('groupTimeEntriesByDay with a running entry', () => {
+  const stopped = entry({
+    id: 'stopped',
+    taskId: 'task-1',
+    taskName: 'Task One',
+    startedAt: '2024-03-15T09:00:00.000Z',
+    stoppedAt: '2024-03-15T10:00:00.000Z',
+  });
+  const running = entry({
+    id: 'running',
+    taskId: 'task-1',
+    taskName: 'Task One',
+    startedAt: '2024-03-15T11:00:00.000Z',
+    stoppedAt: null,
+  });
+  const other = entry({
+    id: 'other',
+    taskId: 'task-2',
+    taskName: 'Task Two',
+    startedAt: '2024-03-15T07:00:00.000Z',
+    stoppedAt: '2024-03-15T07:30:00.000Z',
+  });
+
+  it('counts only stopped seconds and exposes the running start on its group and day', () => {
+    const day = groupTimeEntriesByDay([stopped, running, other], { timeZone: 'UTC' })[0]!;
+    const live = day.groups.find((group) => group.key === 'task-1')!;
+    const idle = day.groups.find((group) => group.key === 'task-2')!;
+
+    expect(live.totalSeconds).toBe(3600);
+    expect(live.liveStartedAt).toBe(running.startedAt);
+    expect(idle.liveStartedAt).toBeNull();
+    expect(day.totalSeconds).toBe(3600 + 1800);
+    expect(day.liveStartedAt).toBe(running.startedAt);
+  });
+
+  it('leaves days and groups without a running entry free of a live start', () => {
+    const [day] = groupTimeEntriesByDay([stopped, other], { timeZone: 'UTC' });
+    expect(day!.liveStartedAt).toBeNull();
+    expect(day!.groups.every((group) => group.liveStartedAt === null)).toBe(true);
+  });
+});
+
+describe('liveSeconds', () => {
+  const startedAt = '2024-03-15T11:00:00.000Z';
+  const start = new Date(startedAt).getTime();
+
+  it('is 0 when nothing runs', () => {
+    expect(liveSeconds(null, start + 60_000)).toBe(0);
+  });
+
+  it('counts whole elapsed seconds since the running start', () => {
+    expect(liveSeconds(startedAt, start + 61_900)).toBe(61);
+  });
+
+  it('never goes negative when the clock is behind the start', () => {
+    expect(liveSeconds(startedAt, start - 5_000)).toBe(0);
   });
 });
 

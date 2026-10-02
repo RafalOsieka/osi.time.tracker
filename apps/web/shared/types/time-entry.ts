@@ -81,9 +81,19 @@ export const listTimeEntriesQuerySchema = z
 
 export type ListTimeEntriesQuery = z.infer<typeof listTimeEntriesQuerySchema>;
 
-export const timerViewFeedQuerySchema = z.object({
-  before: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }).optional(),
-});
+/**
+ * Feed query: no cursor = newest page, `before` = next older page,
+ * `from` = everything started at or after `from` (refresh of a loaded window).
+ */
+export const timerViewFeedQuerySchema = z
+  .object({
+    before: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }).optional(),
+    from: z.iso.datetime({ offset: true, error: 'error.timeEntryRangeInvalid' }).optional(),
+  })
+  .refine((value) => !(value.before && value.from), {
+    path: ['from'],
+    error: 'error.timeEntryFeedCursorConflict',
+  });
 
 export type TimerViewFeedQuery = z.infer<typeof timerViewFeedQuerySchema>;
 
@@ -93,8 +103,8 @@ export interface TimerViewFeedDto {
   nextBefore: string | null;
 }
 
-export const TIMER_VIEW_FEED_INITIAL_DAYS = 30;
-export const TIMER_VIEW_FEED_LOAD_MORE_ACTIVITY_DAYS = 7;
+/** Activity days (days with at least one entry) per feed page, initial or load more. */
+export const TIMER_VIEW_FEED_PAGE_ACTIVITY_DAYS = 7;
 
 export const bulkAssignSchema = z.object({
   ids: z

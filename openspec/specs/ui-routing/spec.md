@@ -2,9 +2,11 @@
 
 ## Purpose
 Define the application's page shell, layouts, and routing behavior. It activates Nuxt's file-based router with a minimal `app.vue` shell, a public `/login` page on the `auth` layout, and an authenticated home page on the `default` layout (with a logout control). A single private-by-default global middleware protects every route — pages are private unless they declare `public: true` — resolving server-side using the session cookie without browser-only APIs. This guarantees no login flash, safe handling of the `?redirect` target (rejecting open-redirect attempts), and preserved accessible route-change announcements.
+
 ## Requirements
+
 ### Requirement: REQ-059 File-based routing shell
-The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL render only `<NuxtRouteAnnouncer />` and `<NuxtLayout><NuxtPage /></NuxtLayout>`, delegating all page content to files under `app/pages/`.
+The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL render only the UI provider root wrapping `<NuxtLoadingIndicator />`, `<NuxtRouteAnnouncer />`, and `<NuxtLayout><NuxtPage /></NuxtLayout>`, delegating all page content to files under `app/pages/`. The loading indicator SHALL use the theme's primary color token so it follows light and dark themes.
 
 #### Scenario: Router renders the matched page
 - **WHEN** a user navigates to a route that maps to a page under `app/pages/`
@@ -13,6 +15,10 @@ The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL ren
 #### Scenario: Route changes are announced
 - **WHEN** a route change completes
 - **THEN** `<NuxtRouteAnnouncer />` SHALL announce the new route for assistive technologies
+
+#### Scenario: Route change shows progress
+- **WHEN** a client-side route change starts and has not yet finished
+- **THEN** a progress bar SHALL be visible at the top of the viewport and SHALL disappear when the change finishes
 
 ### Requirement: REQ-060 Public login page on the auth layout
 The application SHALL expose a `/login` page that renders the login form within the `auth` layout and is publicly accessible (declares `definePageMeta({ layout: 'auth', public: true })`). The page SHALL preserve the `login-form`, `username`, `password`, `login-button`, and `login-error` test hooks. The auth layout heading SHALL show the application brand mark beside the full application title (`layout.title`). The mark SHALL be decorative relative to the visible title (the title remains the heading text).
@@ -34,7 +40,7 @@ The application SHALL expose a `/login` page that renders the login form within 
 - **THEN** the auth layout heading SHALL show the application brand mark beside the full application title`
 
 ### Requirement: REQ-061 Authenticated home page on the default layout
-The application SHALL expose a `/` page that renders within the `default` layout as the timer view (authenticated home). The page SHALL present a page-level header with title and primary create action for adding a manual time entry (shared header pattern used by other management pages). Initial timer-view data SHALL be available from SSR per time-tracking REQ-150 / REQ-264. Logout reachability for authenticated pages is part of the shell (see `ui-shell` REQ-064 / REQ-069): the sidebar footer account control opens a menu that includes Log out.
+The application SHALL expose a `/` page that renders within the `default` layout as the timer view (authenticated home). The page SHALL present a page-level header with title and primary create action for adding a manual time entry (shared header pattern used by other management pages). Initial timer-view data SHALL be available from SSR per time-tracking REQ-396 / REQ-395. Logout reachability for authenticated pages is part of the shell (see `ui-shell` REQ-064 / REQ-069): the sidebar footer account control opens a menu that includes Log out.
 
 #### Scenario: Authenticated user sees the welcome placeholder
 - **WHEN** an authenticated user navigates to `/`
@@ -77,3 +83,26 @@ Route protection SHALL resolve server-side so that protected markup is never pai
 #### Scenario: Guard runs without browser globals
 - **WHEN** the guard executes on the server
 - **THEN** it SHALL complete without referencing browser-only APIs
+
+### Requirement: REQ-391 Client navigation does not wait for page data
+On client-side navigation, an authenticated page SHALL NOT delay the route change on its data requests. The new page SHALL render immediately and show a loading state (skeleton or equivalent, never an "empty" state) for data still pending, then fill in when the data arrives. The loading state SHALL appear as soon as the page renders, without a delay. On the initial server-rendered request, page data SHALL still be resolved during SSR so first paint contains it. A failed load SHALL show the page's error state, not a stuck loading state.
+
+#### Scenario: Navigation switches before data arrives
+- **WHEN** the user navigates client-side from one authenticated page to another whose data request is still pending
+- **THEN** the destination page SHALL be shown with its loading state before that request completes
+
+#### Scenario: Loading state is not confused with empty data
+- **WHEN** a page's list data is still pending after client navigation
+- **THEN** the page SHALL NOT render its "no items" empty state until the response confirms there are no items
+
+#### Scenario: Server-rendered first paint still contains data
+- **WHEN** an authenticated page is requested directly (full page load with SSR)
+- **THEN** the HTML response SHALL contain the page rendered with its data, not the loading state
+
+#### Scenario: Failed load leaves the loading state
+- **WHEN** a page's data request fails after client navigation
+- **THEN** the page SHALL replace the loading state with its error state
+
+#### Scenario: Report pages do not block navigation
+- **WHEN** the user navigates client-side to `/reports/monthly` or `/reports/client`
+- **THEN** the route change SHALL complete without waiting for the report, preset, or tracker requests

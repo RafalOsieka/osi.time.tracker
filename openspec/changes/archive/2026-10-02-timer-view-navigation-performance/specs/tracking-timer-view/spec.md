@@ -3,7 +3,7 @@
 ### Requirement: REQ-396 Timer view page
 The application SHALL render the timer view as the home page at `/`. The page SHALL display the user's time entries grouped per calendar day using the user's effective timezone (REQ-165; day boundaries via REQ-168) from each entry's `startedAt`, newest day first. Days without entries SHALL NOT render empty sections. Within a day, entries SHALL be grouped by task: each task group SHALL show the task name with its **project** context only when present (no client or tracker secondary label), the group's total duration, and the entry count; expanding a group SHALL list its entries with start–stop times and derived duration. Untitled entries of a day SHALL collect in a "(no task)" group.
 
-The page SHALL load its list from the timer-view feed (REQ-395). The **initial feed page SHALL be fetched during SSR** (authenticated request-forwarding as with other list pages) so the day/group list can render on first paint from the payload. On **client-side navigation** to `/` the page SHALL render immediately without waiting for the feed (REQ-391): while the initial feed is pending and no entries are held, the page SHALL show a day-list loading skeleton under the delay rule of REQ-391 (never the never-tracked empty state), then render the list when the feed arrives. Client regrouping when the effective timezone upgrades after mount (unsaved timezone → browser) is allowed; hard hydration failures MAY be fixed in a follow-up if they appear.
+The page SHALL load its list from the timer-view feed (REQ-395). The **initial feed page SHALL be fetched during SSR** (authenticated request-forwarding as with other list pages) so the day/group list can render on first paint from the payload. On **client-side navigation** to `/` the page SHALL render immediately without waiting for the feed (REQ-391): while the initial feed is pending and no entries are held, the page SHALL show a day-list loading skeleton (never the never-tracked empty state), then render the list when the feed arrives. Client regrouping when the effective timezone upgrades after mount (unsaved timezone → browser) is allowed; hard hydration failures MAY be fixed in a follow-up if they appear.
 
 **Initial content rules** (as delivered by REQ-395, reflected in the UI):
 - No entries at all → **never-tracked** empty state; the CTA SHALL focus the shell timer widget (`AppTimer`) and the page SHALL NOT show "load more".
@@ -35,7 +35,7 @@ Group continue, titling the "(no task)" group, mini task editor, and remote-issu
 - **THEN** the initial feed payload SHALL be resolved during SSR and the day/group list (or never-tracked empty state) SHALL render from that payload on first paint
 
 #### Scenario: Client navigation shows a skeleton, not the empty state
-- **WHEN** the user navigates client-side to `/` and the feed response has not arrived within 150 ms
+- **WHEN** the user navigates client-side to `/` and the feed response has not arrived yet
 - **THEN** the page SHALL already be shown with a day-list loading skeleton and SHALL NOT show the never-tracked empty state, and SHALL replace the skeleton with the day list once the feed arrives
 
 #### Scenario: Old history opens on its newest activity days

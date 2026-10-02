@@ -51,6 +51,8 @@ function firstQueryString(
 
 const monthQuery = computed(() => firstQueryString(route.query.month));
 
+// Lazy: on the client the await resolves at once and the page fills in (REQ-391);
+// on the server it still waits, so SSR and setup logic see the data.
 const {
   data: reportData,
   pending: reportPending,
@@ -62,11 +64,13 @@ const {
     const query = month ? `?month=${encodeURIComponent(month)}` : '';
     return requestFetch<MonthlyReportDto>(`/api/reports/monthly${query}`);
   },
-  { watch: [monthQuery] },
+  { watch: [monthQuery], lazy: true },
 );
 
-const { data: trackersData } = await useAsyncData('trackers', () =>
-  requestFetch<TrackerDto[]>('/api/trackers'),
+const { data: trackersData, status: trackersStatus } = await useAsyncData(
+  'trackers',
+  () => requestFetch<TrackerDto[]>('/api/trackers'),
+  { lazy: true },
 );
 
 watch(
@@ -127,9 +131,10 @@ async function loadRemoteHours(report: MonthlyReportDto, configs: TrackerDto[]):
 }
 
 watch(
-  [reportData, trackersData],
-  ([report, configs]) => {
-    if (!import.meta.client || !report) return;
+  [reportData, trackersData, trackersStatus],
+  ([report, configs, configsStatus]) => {
+    // Wait for the tracker configs too, or every tracker would briefly report a missing secret.
+    if (!import.meta.client || !report || configsStatus === 'pending') return;
     void loadRemoteHours(report, configs ?? []);
   },
   { immediate: true },

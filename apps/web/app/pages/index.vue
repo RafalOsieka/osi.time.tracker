@@ -7,9 +7,13 @@ const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useUserSettings();
 const requestFetch = useRequestFetch();
 
-const { data: feedData, pending: feedPending } = await useAsyncData('timer-view-feed', () =>
-  requestFetch<TimerViewFeedDto>('/api/time-entries/feed'),
+// Lazy: client navigation renders at once with a skeleton (REQ-391); SSR still waits for the feed.
+const { data: feedData, status: feedStatus } = await useAsyncData(
+  'timer-view-feed',
+  () => requestFetch<TimerViewFeedDto>('/api/time-entries/feed'),
+  { lazy: true },
 );
+const feedSettled = computed(() => feedStatus.value === 'success' || feedStatus.value === 'error');
 
 const { data: projectsData, refresh: refreshProjectOptions } = useAsyncData(
   'projects-for-timer-view',
@@ -109,14 +113,25 @@ function trackerForGroup(group: { projectId: string | null }) {
   return getTracker(trackerIdForProject(group.projectId));
 }
 
+/**
+ * Remote project scope per project id (REQ-328). Built once per project list so each
+ * group receives the same object on every render and does not re-render needlessly.
+ */
+const scopeByProjectId = computed(() => {
+  const scopes = new Map<string, { remoteProjectId: string; remoteProjectTitle: string }>();
+  for (const project of projectOptions.value) {
+    if (!project.remoteProjectId || !project.remoteProjectTitle) continue;
+    scopes.set(project.id, {
+      remoteProjectId: project.remoteProjectId,
+      remoteProjectTitle: project.remoteProjectTitle,
+    });
+  }
+  return scopes;
+});
+
 /** The owning project's remote project scope (REQ-328), or null when unset. */
 function scopeForGroup(group: { projectId: string | null }) {
-  const project = projectOptions.value.find((p) => p.id === group.projectId);
-  if (!project?.remoteProjectId || !project.remoteProjectTitle) return null;
-  return {
-    remoteProjectId: project.remoteProjectId,
-    remoteProjectTitle: project.remoteProjectTitle,
-  };
+  return (group.projectId && scopeByProjectId.value.get(group.projectId)) || null;
 }
 
 const now = ref(0);
@@ -141,55 +156,18 @@ const displayEntries = computed<TimeEntryDto[]>(() => {
 });
 
 /**
- * Re-fetch the currently loaded window using only existing feed endpoints:
- * initial page, then load-more (`before`) until we reach the previous depth.
+ * Re-fetch the whole loaded window in one request (REQ-393): `from` is the start of the
+ * oldest loaded day, so the response covers everything shown and keeps pagination in sync.
+ * A failed refresh keeps the held entries.
  */
 async function refreshLoadedRange() {
   if (refreshing.value) return;
   refreshing.value = true;
-  const targetFrom = loadedFrom.value;
   try {
-    let page = await fetchTimerViewFeed();
-    let merged = page.entries;
-    let pageHasMore = page.hasMore;
-    let pageNextBefore = page.nextBefore;
-
-    // Re-walk older pages until we cover the previously expanded lower bound.
-    // `nextBefore` is an ISO day-start; older bounds are lexicographically smaller.
-    const maxPages = 50;
-    let pages = 0;
-    while (
-      targetFrom &&
-      pageHasMore &&
-      pageNextBefore &&
-      pageNextBefore > targetFrom &&
-      pages < maxPages
-    ) {
-      page = await fetchTimerViewFeed(pageNextBefore);
-      merged = mergeById(merged, page.entries);
-      pageHasMore = page.hasMore;
-      pageNextBefore = page.nextBefore;
-      pages += 1;
-    }
-
-    // One more page if we still haven't reached targetFrom but have more history
-    // (nextBefore may jump past targetFrom in a single 7-day step — that's fine;
-    // if nextBefore is still > targetFrom we already looped; if nextBefore <= targetFrom stop).
-    if (targetFrom && pageHasMore && pageNextBefore && pageNextBefore === targetFrom) {
-      // Already at the same cursor depth; no extra page needed.
-    }
-
-    entries.value = merged;
-    hasMore.value = pageHasMore;
-    nextBefore.value = pageNextBefore;
-
-    // Restore / recompute lower bound without shrinking past what we had.
-    const bound = pageNextBefore ?? oldestDayStart(merged, effective.value.timeZone);
-    if (targetFrom) {
-      loadedFrom.value = bound && bound < targetFrom ? bound : targetFrom;
-    } else {
-      loadedFrom.value = bound;
-    }
+    const page = await fetchTimerViewFeed(loadedFrom.value ? { from: loadedFrom.value } : {});
+    applyFeed(page, 'replace');
+  } catch {
+    // Keep showing what we have; the next mutation or navigation refreshes again.
   } finally {
     refreshing.value = false;
   }
@@ -208,19 +186,19 @@ watch(
   },
 );
 
-const days = computed(() =>
-  groupTimeEntriesByDay(displayEntries.value, now.value, effective.value),
-);
+const days = computed(() => groupTimeEntriesByDay(displayEntries.value, effective.value));
 
 const isNeverTracked = computed(
   () =>
-    !feedPending.value &&
+    feedSettled.value &&
     !refreshing.value &&
     entries.value.length === 0 &&
     !running.value &&
     !hasMore.value,
 );
 const hasEntries = computed(() => days.value.length > 0);
+/** Skeleton while the first feed is pending with nothing to show yet (REQ-391). */
+const feedLoading = computed(() => !feedSettled.value && entries.value.length === 0);
 
 function dayHeading(dayKey: string): string {
   return new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
@@ -249,18 +227,46 @@ async function onStop() {
   await stop();
 }
 
+/** Set when a load more fails; stops automatic loading until a manual retry succeeds. */
+const loadMoreFailed = ref(false);
+
 async function loadMore() {
   if (!hasMore.value || !nextBefore.value || loadingMore.value) return;
   loadingMore.value = true;
   try {
-    const page = await $fetch<TimerViewFeedDto>('/api/time-entries/feed', {
-      query: { before: nextBefore.value },
-    });
+    const page = await fetchTimerViewFeed({ before: nextBefore.value });
     applyFeed(page, 'append');
+    loadMoreFailed.value = false;
+  } catch {
+    loadMoreFailed.value = true;
   } finally {
     loadingMore.value = false;
   }
 }
+
+// --- Automatic load more (REQ-392) ---
+// A sentinel next to the "load more" button reports when the list end nears the viewport.
+// Loading repeats while it stays in range, so a short page does not stall the list.
+const AUTO_LOAD_ROOT_MARGIN = '600px 0px';
+const loadMoreSentinel = useTemplateRef<HTMLElement>('loadMoreSentinel');
+const sentinelInRange = ref(false);
+
+watch(loadMoreSentinel, (element, _previous, onCleanup) => {
+  sentinelInRange.value = false;
+  if (!element || !('IntersectionObserver' in globalThis)) return;
+  const observer = new IntersectionObserver(
+    (records) => {
+      sentinelInRange.value = records.some((record) => record.isIntersecting);
+    },
+    { rootMargin: AUTO_LOAD_ROOT_MARGIN },
+  );
+  observer.observe(element);
+  onCleanup(() => observer.disconnect());
+});
+
+watch([sentinelInRange, loadingMore], ([inRange, busy]) => {
+  if (inRange && !busy && !loadMoreFailed.value) void loadMore();
+});
 
 function focusTimerWidget() {
   const root = document.querySelector('[data-testid="timer-title-input"]');
@@ -343,7 +349,11 @@ async function onEntryDeleted() {
             class="min-w-[4.5rem] font-mono text-sm font-medium tabular-nums text-muted"
             :data-testid="`timer-day-total-${day.dayKey}`"
           >
-            {{ t('timerView.dayTotal', { duration: formatDuration(day.totalSeconds) }) }}
+            {{
+              t('timerView.dayTotal', {
+                duration: formatDuration(day.totalSeconds + liveSeconds(day.liveStartedAt, now)),
+              })
+            }}
           </span>
           <NuxtLink
             :to="`/sync/${day.dayKey}`"
@@ -360,7 +370,7 @@ async function onEntryDeleted() {
           :editor-key="`${day.dayKey}:${group.key}`"
           :group="group"
           :is-live="isGroupLive(group)"
-          :now="now"
+          :now="group.liveStartedAt ? now : 0"
           :time-zone="effective.timeZone"
           :active-editor-key="activeEditorKey"
           :project-options="projectOptions"
@@ -375,6 +385,11 @@ async function onEntryDeleted() {
       </div>
 
       <div v-if="hasMore" class="flex justify-center">
+        <span
+          ref="loadMoreSentinel"
+          aria-hidden="true"
+          data-testid="timer-view-load-more-sentinel"
+        />
         <UButton
           :label="t('timerView.loadMore')"
           variant="ghost"
@@ -382,6 +397,23 @@ async function onEntryDeleted() {
           data-testid="timer-view-load-more"
           @click="loadMore"
         />
+      </div>
+      <p class="sr-only" aria-live="polite" data-testid="timer-view-load-more-status">
+        {{ loadingMore ? t('timerView.loadingMore') : '' }}
+      </p>
+    </div>
+
+    <div
+      v-else-if="feedLoading"
+      class="grid gap-6"
+      aria-busy="true"
+      :aria-label="t('timerView.loading')"
+      data-testid="timer-view-loading"
+    >
+      <div v-for="day in 3" :key="day" class="grid gap-2">
+        <USkeleton class="h-6 w-64" />
+        <USkeleton class="h-8 w-full" />
+        <USkeleton class="h-8 w-full" />
       </div>
     </div>
 

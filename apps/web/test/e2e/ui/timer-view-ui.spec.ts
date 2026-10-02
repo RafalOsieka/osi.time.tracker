@@ -125,43 +125,50 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
-  it('load more extends the visible window to include older activity days', async () => {
-    const { jar, token } = await apiLogin('timerviewui@example.com');
-    const recent = await startEntry(jar, token, { title: 'Load More Anchor' });
-    await stopEntry(jar, token, recent.id);
+  it('loads older activity days automatically while scrolling, without the button', async () => {
+    const email = 'timerviewscroll@example.com';
+    await seedUsers(dbUrl, [{ email, displayName: 'timerviewscrolluser' }]);
 
+    // Sixteen activity days, three calendar days apart: more than two feed pages.
+    const dayCount = 16;
     const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
     try {
-      const [user] = await db
-        .select()
-        .from(users)
-        .where(eq(users.email, 'timerviewui@example.com'));
+      const [user] = await db.select().from(users).where(eq(users.email, email));
       if (!user) throw new Error('seeded user not found');
-
-      // Outside the default 30-day feed window.
-      const oldStart = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
-      const oldStop = new Date(oldStart.getTime() + 30 * 60 * 1000);
-      await db.insert(timeEntries).values({
-        userId: user.id,
-        taskId: null,
-        startedAt: oldStart,
-        stoppedAt: oldStop,
-      });
+      await db.insert(timeEntries).values(
+        Array.from({ length: dayCount }, (_, index) => {
+          const startedAt = new Date(Date.now() - (1 + index * 3) * 24 * 60 * 60 * 1000);
+          return {
+            userId: user.id,
+            taskId: null,
+            startedAt,
+            stoppedAt: new Date(startedAt.getTime() + 30 * 60 * 1000),
+          };
+        }),
+      );
     } finally {
       await sql.end({ timeout: 5 });
     }
 
-    const page = await loginAs('timerviewui@example.com');
+    const page = await loginAs(email);
     await page.waitForSelector('[data-testid="timer-view-page"]');
-    await page.waitForFunction(pageIncludesText, 'Load More Anchor');
+    const daySections = () =>
+      page.evaluate(
+        () =>
+          [...document.querySelectorAll('[data-testid^="timer-day-"]')].filter((el) =>
+            /^timer-day-\d{4}-\d{2}-\d{2}$/.test(el.getAttribute('data-testid') ?? ''),
+          ).length,
+      );
 
-    const beforeCount = await page.locator('[data-testid^="timer-day-"]').count();
-    const loadMore = page.locator('[data-testid="timer-view-load-more"]');
-    await loadMore.click();
-    await page.waitForFunction(
-      (prev) => document.querySelectorAll('[data-testid^="timer-day-"]').length > prev,
-      beforeCount,
-    );
+    // Keep scrolling the list end into view; never touch the "load more" button.
+    for (let attempt = 0; attempt < 20 && (await daySections()) < dayCount; attempt += 1) {
+      await page.evaluate(() =>
+        document.querySelector('[data-testid="timer-view-load-more-sentinel"]')?.scrollIntoView(),
+      );
+      await page.waitForTimeout(200);
+    }
+    expect(await daySections()).toBe(dayCount);
+    expect(await page.locator('[data-testid="timer-view-load-more"]').count()).toBe(0);
 
     await page.close();
   });
@@ -660,7 +667,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await laterPatch;
 
     // The PATCH response landing is not the same as the page's own follow-up
-    // refresh (REQ-150's timer-view feed) finishing its re-render; poll.
+    // refresh (REQ-396's timer-view feed) finishing its re-render; poll.
     const groupTotalLocator = page.locator(`[data-testid="timer-group-total-${seeded.taskId}"]`);
     await expect.poll(async () => (await groupTotalLocator.textContent())?.trim()).toBe('00:02:30');
     // The edit added exactly two minutes; the day total (shared with every
@@ -703,7 +710,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.close();
   });
 
-  it('falls back to the newest activity day when nothing is in the last 30 days', async () => {
+  it('opens on the newest activity days when nothing was tracked recently', async () => {
     const email = 'timerviewanchor@example.com';
     await seedUsers(dbUrl, [{ email, displayName: 'timerviewanchoruser' }]);
     const { jar, token } = await apiLogin(email);

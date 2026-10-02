@@ -3,6 +3,7 @@ import {
   startTimeEntrySchema,
   updateTimeEntrySchema,
   listTimeEntriesQuerySchema,
+  timerViewFeedQuerySchema,
   bulkAssignSchema,
   reassignTimeEntriesSchema,
   TIME_ENTRY_TITLE_MAX_LENGTH,
@@ -148,6 +149,28 @@ describe('listTimeEntriesQuerySchema', () => {
   it('rejects a range where from >= to', () => {
     expect(() => listTimeEntriesQuerySchema.parse({ from: to, to: from })).toThrow();
     expect(() => listTimeEntriesQuerySchema.parse({ from, to: from })).toThrow();
+  });
+});
+
+describe('timerViewFeedQuerySchema', () => {
+  const instant = '2024-06-01T00:00:00+02:00';
+
+  it('accepts no cursor, a before cursor, or a from range start', () => {
+    expect(timerViewFeedQuerySchema.parse({})).toEqual({});
+    expect(timerViewFeedQuerySchema.parse({ before: instant })).toEqual({ before: instant });
+    expect(timerViewFeedQuerySchema.parse({ from: instant })).toEqual({ from: instant });
+  });
+
+  it('rejects a malformed from', () => {
+    const result = timerViewFeedQuerySchema.safeParse({ from: '2024-06-01' });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe('error.timeEntryRangeInvalid');
+  });
+
+  it('rejects before and from together', () => {
+    const result = timerViewFeedQuerySchema.safeParse({ before: instant, from: instant });
+    expect(result.success).toBe(false);
+    expect(result.error?.issues[0]?.message).toBe('error.timeEntryFeedCursorConflict');
   });
 });
 

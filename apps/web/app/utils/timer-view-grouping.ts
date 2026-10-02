@@ -12,13 +12,19 @@ export interface TimerViewGroup {
   projectName: string | null;
   remoteIssueRef?: RemoteIssueRefDto;
   entries: TimeEntryDto[];
+  /** Seconds of stopped entries; add `liveSeconds(liveStartedAt, now)` for the running one. */
   totalSeconds: number;
+  /** `startedAt` of the running entry when it belongs to this group, else null. */
+  liveStartedAt: string | null;
 }
 
 export interface TimerViewDay {
   dayKey: string;
   date: Date;
+  /** Seconds of stopped entries; add `liveSeconds(liveStartedAt, now)` for the running one. */
   totalSeconds: number;
+  /** `startedAt` of the running entry when it started on this day, else null. */
+  liveStartedAt: string | null;
   groups: TimerViewGroup[];
 }
 
@@ -36,10 +42,19 @@ export function entryDurationSeconds(entry: TimeEntryDto, now: number = Date.now
   return Math.max(0, Math.floor((end - start) / 1000));
 }
 
-/** Groups a flat list of time entries by local day, then by task within the day. */
+/** Elapsed whole seconds of a running entry started at `liveStartedAt`; 0 when none runs. */
+export function liveSeconds(liveStartedAt: string | null, now: number): number {
+  if (!liveStartedAt) return 0;
+  return Math.max(0, Math.floor((now - new Date(liveStartedAt).getTime()) / 1000));
+}
+
+/**
+ * Groups a flat list of time entries by local day, then by task within the day.
+ * Independent of the clock: a running entry contributes no seconds and is exposed
+ * as `liveStartedAt`, so a ticking timer never regroups the list (REQ-394).
+ */
 export function groupTimeEntriesByDay(
   entries: TimeEntryDto[],
-  now: number = Date.now(),
   settings: DateTimeSettings = {
     timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   },
@@ -54,6 +69,7 @@ export function groupTimeEntriesByDay(
         dayKey,
         date: new Date(`${dayKey}T00:00:00`),
         totalSeconds: 0,
+        liveStartedAt: null,
         groups: [],
       };
       dayMap.set(dayKey, day);
@@ -71,14 +87,20 @@ export function groupTimeEntriesByDay(
         remoteIssueRef: entry.remoteIssueRef,
         entries: [],
         totalSeconds: 0,
+        liveStartedAt: null,
       };
       day.groups.push(group);
     }
 
-    const duration = entryDurationSeconds(entry, now);
     group.entries.push(entry);
-    group.totalSeconds += duration;
-    day.totalSeconds += duration;
+    if (entry.stoppedAt) {
+      const duration = entryDurationSeconds(entry);
+      group.totalSeconds += duration;
+      day.totalSeconds += duration;
+    } else {
+      group.liveStartedAt = entry.startedAt;
+      day.liveStartedAt = entry.startedAt;
+    }
   }
 
   const days = Array.from(dayMap.values());

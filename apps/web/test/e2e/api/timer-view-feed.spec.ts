@@ -34,159 +34,157 @@ describeFeed('timer view feed API', async () => {
     return created;
   }
 
-  async function getFeed(jar: CookieJar, before?: string): Promise<FeedPage> {
-    const path = before
-      ? `/api/time-entries/feed?before=${encodeURIComponent(before)}`
-      : '/api/time-entries/feed';
-    const res = await fetch(url(path), { headers: { cookie: jar.header() } });
+  async function getFeed(jar: CookieJar, query: { before?: string; from?: string } = {}) {
+    const res = await requestFeed(jar, query);
     expect(res.status).toBe(200);
     const page: FeedPage = await res.json();
     return page;
   }
 
+  function requestFeed(jar: CookieJar, query: { before?: string; from?: string }) {
+    const params = new URLSearchParams(query).toString();
+    const path = params ? `/api/time-entries/feed?${params}` : '/api/time-entries/feed';
+    return fetch(url(path), { headers: { cookie: jar.header() } });
+  }
+
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
   /** Stopped entry spanning 30 minutes starting `daysAgo` calendar days before `now`. */
   function entryWindow(daysAgo: number, nowMs = Date.now()) {
-    const startedAt = new Date(nowMs - daysAgo * 24 * 60 * 60 * 1000);
+    const startedAt = new Date(nowMs - daysAgo * DAY_MS);
     const stoppedAt = new Date(startedAt.getTime() + 30 * 60 * 1000);
     return { startedAt: startedAt.toISOString(), stoppedAt: stoppedAt.toISOString() };
   }
 
+  /** UTC day start (the seeded user has no stored timezone) of an ISO instant. */
+  function utcDayStart(iso: string) {
+    return `${iso.slice(0, 10)}T00:00:00Z`;
+  }
+
+  /** One entry per listed day offset, titled `${prefix} ${daysAgo}`. */
+  async function seedDays(jar: CookieJar, csrfToken: string, prefix: string, offsets: number[]) {
+    const now = Date.now();
+    const created: FeedEntry[] = [];
+    for (const daysAgo of offsets) {
+      created.push(
+        await createEntry(jar, csrfToken, {
+          title: `${prefix} ${daysAgo}`,
+          ...entryWindow(daysAgo, now),
+        }),
+      );
+    }
+    return created;
+  }
+
   it('returns empty never-tracked feed', async () => {
     const { jar } = await seedAndLogin(databaseUrl);
-    const res = await fetch(url('/api/time-entries/feed'), { headers: { cookie: jar.header() } });
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ entries: [], hasMore: false, nextBefore: null });
+    expect(await getFeed(jar)).toEqual({ entries: [], hasMore: false, nextBefore: null });
   });
 
-  it('returns last-30-day entries and pages older activity days', async () => {
-    const { jar, token: csrfToken } = await seedAndLogin(databaseUrl);
-    const now = Date.now();
-    await createEntry(jar, csrfToken, {
-      title: 'Recent',
-      startedAt: new Date(now - 2 * 60 * 60 * 1000).toISOString(),
-      stoppedAt: new Date(now - 60 * 60 * 1000).toISOString(),
-    });
-    await createEntry(jar, csrfToken, {
-      title: 'Old A',
-      ...entryWindow(40, now),
-    });
-    await createEntry(jar, csrfToken, {
-      title: 'Old B',
-      ...entryWindow(50, now),
-    });
+  it('rejects unauthenticated and malformed cursor requests', async () => {
+    const { jar } = await seedAndLogin(databaseUrl);
+    expect((await fetch(url('/api/time-entries/feed'))).status).toBe(401);
+    expect((await requestFeed(jar, { before: 'not-an-instant' })).status).toBe(422);
+  });
+
+  it('initial page returns the newest seven activity days', async () => {
+    const { jar, token } = await seedAndLogin(databaseUrl);
+    const created = await seedDays(jar, token, 'Day', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
 
     const first = await getFeed(jar);
-    expect(first.entries.some((e) => e.taskName === 'Recent')).toBe(true);
-    expect(first.entries.some((e) => e.taskName === 'Old A')).toBe(false);
+    expect(first.entries.map((e) => e.taskName)).toEqual([
+      'Day 1',
+      'Day 2',
+      'Day 3',
+      'Day 4',
+      'Day 5',
+      'Day 6',
+      'Day 7',
+    ]);
     expect(first.hasMore).toBe(true);
-    expect(first.nextBefore).toBeTruthy();
+    expect(first.nextBefore).toBe(utcDayStart(created[6]!.startedAt));
 
-    const second = await getFeed(jar, first.nextBefore!);
-    expect(second.entries.length).toBeGreaterThan(0);
-    expect(second.entries.some((e) => e.taskName === 'Old A' || e.taskName === 'Old B')).toBe(true);
-
-    const unauth = await fetch(url('/api/time-entries/feed'));
-    expect(unauth.status).toBe(401);
-
-    const bad = await fetch(url('/api/time-entries/feed?before=not-an-instant'), {
-      headers: { cookie: jar.header() },
-    });
-    expect(bad.status).toBe(422);
+    const second = await getFeed(jar, { before: first.nextBefore! });
+    expect(second.entries.map((e) => e.taskName)).toEqual(['Day 8', 'Day 9', 'Day 10']);
+    expect(second.hasMore).toBe(false);
+    expect(second.nextBefore).toBeNull();
   });
 
-  it('falls back to the newest activity day when the last 30 days are empty', async () => {
-    const { jar, token: csrfToken } = await seedAndLogin(databaseUrl);
-    const now = Date.now();
-    await createEntry(jar, csrfToken, {
-      title: 'Only Old Day',
-      ...entryWindow(45, now),
-    });
+  it('initial page skips calendar gaps when history is old', async () => {
+    const { jar, token } = await seedAndLogin(databaseUrl);
+    await seedDays(jar, token, 'Old', [60, 70, 80]);
 
     const feed = await getFeed(jar);
-    expect(feed.entries).toHaveLength(1);
-    expect(feed.entries[0]?.taskName).toBe('Only Old Day');
+    expect(feed.entries.map((e) => e.taskName)).toEqual(['Old 60', 'Old 70', 'Old 80']);
     expect(feed.hasMore).toBe(false);
     expect(feed.nextBefore).toBeNull();
   });
 
-  it('sets hasMore false after paging through all older activity days', async () => {
-    const { jar, token: csrfToken } = await seedAndLogin(databaseUrl);
-    const now = Date.now();
-    await createEntry(jar, csrfToken, {
-      title: 'Exhaust Recent',
-      ...entryWindow(1, now),
-    });
-    await createEntry(jar, csrfToken, {
-      title: 'Exhaust Old',
-      ...entryWindow(40, now),
-    });
-
-    let page = await getFeed(jar);
-    expect(page.entries.some((e) => e.taskName === 'Exhaust Recent')).toBe(true);
-    expect(page.hasMore).toBe(true);
-
-    const titles = new Set(page.entries.map((e) => e.taskName));
-    let guard = 0;
-    while (page.hasMore && page.nextBefore && guard < 10) {
-      page = await getFeed(jar, page.nextBefore);
-      for (const entry of page.entries) titles.add(entry.taskName);
-      guard += 1;
-    }
-
-    expect(page.hasMore).toBe(false);
-    expect(page.nextBefore).toBeNull();
-    expect(titles.has('Exhaust Recent')).toBe(true);
-    expect(titles.has('Exhaust Old')).toBe(true);
-
-    // A further page with the last cursor (or a bound past all history) is empty.
-    const pastAll = await getFeed(jar, new Date(now - 100 * 24 * 60 * 60 * 1000).toISOString());
-    expect(pastAll.entries).toEqual([]);
-    expect(pastAll.hasMore).toBe(false);
-  });
-
   it('load more returns up to seven activity days and skips empty calendar gaps', async () => {
-    const { jar, token: csrfToken } = await seedAndLogin(databaseUrl);
-    const now = Date.now();
-    // One recent day inside the 30-day window.
-    await createEntry(jar, csrfToken, {
-      title: 'Gap Recent',
-      ...entryWindow(2, now),
-    });
-    // Nine older activity days, each ~10 calendar days apart (gaps must not consume slots).
-    const olderDayOffsets = [40, 50, 60, 70, 80, 90, 100, 110, 120];
-    for (const [index, daysAgo] of olderDayOffsets.entries()) {
-      await createEntry(jar, csrfToken, {
-        title: `Gap Old ${index + 1}`,
-        ...entryWindow(daysAgo, now),
-      });
-    }
+    const { jar, token } = await seedAndLogin(databaseUrl);
+    // Sixteen activity days, ~10 calendar days apart: gaps must not consume slots.
+    const offsets = Array.from({ length: 16 }, (_, index) => 10 + index * 10);
+    await seedDays(jar, token, 'Gap', offsets);
 
     const initial = await getFeed(jar);
-    expect(initial.entries.some((e) => e.taskName === 'Gap Recent')).toBe(true);
-    expect(initial.entries.every((e) => e.taskName === 'Gap Recent')).toBe(true);
-    expect(initial.hasMore).toBe(true);
-
-    const firstMore = await getFeed(jar, initial.nextBefore!);
-    const firstMoreTitles = firstMore.entries.map((e) => e.taskName).filter(Boolean);
-    // Newest-first among older days: Gap Old 1 … Gap Old 7 (days 40–100).
-    expect(firstMoreTitles).toHaveLength(7);
-    expect(firstMoreTitles).toEqual([
-      'Gap Old 1',
-      'Gap Old 2',
-      'Gap Old 3',
-      'Gap Old 4',
-      'Gap Old 5',
-      'Gap Old 6',
-      'Gap Old 7',
-    ]);
+    expect(initial.entries).toHaveLength(7);
+    const firstMore = await getFeed(jar, { before: initial.nextBefore! });
+    expect(firstMore.entries.map((e) => e.taskName)).toEqual(
+      offsets.slice(7, 14).map((daysAgo) => `Gap ${daysAgo}`),
+    );
     expect(firstMore.hasMore).toBe(true);
-    expect(firstMore.nextBefore).toBeTruthy();
 
-    const secondMore = await getFeed(jar, firstMore.nextBefore!);
-    const secondTitles = secondMore.entries.map((e) => e.taskName).filter(Boolean);
-    expect(secondTitles).toEqual(['Gap Old 8', 'Gap Old 9']);
+    const secondMore = await getFeed(jar, { before: firstMore.nextBefore! });
+    expect(secondMore.entries.map((e) => e.taskName)).toEqual(['Gap 150', 'Gap 160']);
     expect(secondMore.hasMore).toBe(false);
     expect(secondMore.nextBefore).toBeNull();
+
+    // A cursor past all history yields an empty page.
+    const pastAll = await getFeed(jar, {
+      before: new Date(Date.now() - 400 * DAY_MS).toISOString(),
+    });
+    expect(pastAll).toEqual({ entries: [], hasMore: false, nextBefore: null });
+  });
+
+  it('range refresh returns the whole loaded window in one response', async () => {
+    const { jar, token } = await seedAndLogin(databaseUrl);
+    const offsets = Array.from({ length: 12 }, (_, index) => index + 1);
+    const created = await seedDays(jar, token, 'Range', offsets);
+
+    // Window loaded down to the 10th activity day.
+    const from = utcDayStart(created[9]!.startedAt);
+    const refreshed = await getFeed(jar, { from });
+    expect(refreshed.entries.map((e) => e.taskName)).toEqual(
+      offsets.slice(0, 10).map((daysAgo) => `Range ${daysAgo}`),
+    );
+    expect(refreshed.hasMore).toBe(true);
+    expect(refreshed.nextBefore).toBe(from);
+  });
+
+  it('range refresh with nothing in range still reports older history', async () => {
+    const { jar, token } = await seedAndLogin(databaseUrl);
+    await seedDays(jar, token, 'Before', [5]);
+
+    const from = utcDayStart(new Date(Date.now() - 2 * DAY_MS).toISOString());
+    const refreshed = await getFeed(jar, { from });
+    expect(refreshed).toEqual({ entries: [], hasMore: true, nextBefore: from });
+  });
+
+  it('rejects before and from together, and a malformed from', async () => {
+    const { jar } = await seedAndLogin(databaseUrl);
+    const instant = new Date().toISOString();
+
+    const both = await requestFeed(jar, { before: instant, from: instant });
+    expect(both.status).toBe(422);
+    expect((await both.json()).data).toMatchObject({
+      messageKey: 'error.timeEntryFeedCursorConflict',
+    });
+
+    const malformed = await requestFeed(jar, { from: '2024-06-01' });
+    expect(malformed.status).toBe(422);
+    expect((await malformed.json()).data).toMatchObject({
+      messageKey: 'error.timeEntryRangeInvalid',
+    });
   });
 
   it("never includes another user's entries", async () => {

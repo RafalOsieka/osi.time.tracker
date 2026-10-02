@@ -27,6 +27,7 @@ useHead({
 
 <template>
   <UApp :locale="uiLocale">
+    <NuxtLoadingIndicator color="var(--ui-primary)" />
     <NuxtRouteAnnouncer />
     <NuxtLayout>
       <NuxtPage />

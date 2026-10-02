@@ -28,9 +28,9 @@ Pages call `useAsyncData(key, fn, { lazy: true })` (or drop `await` where the re
 - **Alternative:** a global `experimental` / router option, or a route-level `<Suspense>` timeout. Rejected: Nuxt has no switch that makes every `await useAsyncData` non-blocking, and suspense fallbacks show the previous page or a generic spinner, not a page-shaped skeleton.
 - **Alternative:** `<NuxtPage keepalive>`. Rejected for this change: it only helps return visits and needs stale-data refresh on activation.
 
-### D1a. Delayed loading state: one shared composable
-A small composable, e.g. `useDelayedPending(pending, 150)`, returns a ref that turns true only after `pending` has stayed true for 150 ms and resets immediately when it settles. Every page uses it for its skeleton or loading state, so fast responses never flash a skeleton (REQ-391). While the delay runs, the page body shows nothing data-dependent: neither the skeleton nor the empty state.
-- **Alternative:** a CSS `animation-delay` fade-in on the skeleton. Rejected: the skeleton still mounts and is announced by `aria-busy`, and "not rendered" cannot be asserted in tests.
+### D1a. Loading state shows immediately
+Each page renders its skeleton or loading state straight from its request status (REQ-391), with no delay.
+- **Alternative (tried and dropped):** show the skeleton only after the request has been pending for a delay (150 ms, then 50 ms) to avoid flashing it on fast responses. In practice the skeleton never appeared and the user saw a blank page instead, which reads worse than a brief skeleton.
 
 ### D7. Spec renumbering instead of MODIFIED
 REQ-264 and REQ-150 are superseded by REQ-395 and REQ-396 (REMOVED + ADDED), because OpenSpec deltas cannot drop individual scenarios from a MODIFIED requirement and the 30-day and fallback scenarios must go. Requirements that only cite the old numbers (`ui-routing` REQ-061, `workspace-settings` REQ-165 / REQ-168, `tracking-project-mentions` REQ-372) are MODIFIED with the new numbers. Code comments citing REQ-150 / REQ-264 are updated alongside.

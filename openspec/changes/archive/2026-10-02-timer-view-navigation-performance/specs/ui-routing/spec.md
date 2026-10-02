@@ -33,15 +33,11 @@ The application SHALL expose a `/` page that renders within the `default` layout
 ## ADDED Requirements
 
 ### Requirement: REQ-391 Client navigation does not wait for page data
-On client-side navigation, an authenticated page SHALL NOT delay the route change on its data requests. The new page SHALL render immediately and show a loading state (skeleton or equivalent, never an "empty" state) for data still pending, then fill in when the data arrives. To avoid a flash on fast responses, the loading state SHALL appear only after the data has been pending for 150 ms; before that the page SHALL show neither the loading state nor an empty state. On the initial server-rendered request, page data SHALL still be resolved during SSR so first paint contains it. A failed load SHALL show the page's error state, not a stuck loading state.
-
-#### Scenario: Fast responses show no loading flash
-- **WHEN** a page's data arrives within 150 ms of a client navigation
-- **THEN** the page SHALL go straight to its data without ever rendering the loading state
+On client-side navigation, an authenticated page SHALL NOT delay the route change on its data requests. The new page SHALL render immediately and show a loading state (skeleton or equivalent, never an "empty" state) for data still pending, then fill in when the data arrives. The loading state SHALL appear as soon as the page renders, without a delay. On the initial server-rendered request, page data SHALL still be resolved during SSR so first paint contains it. A failed load SHALL show the page's error state, not a stuck loading state.
 
 #### Scenario: Navigation switches before data arrives
 - **WHEN** the user navigates client-side from one authenticated page to another whose data request is still pending
-- **THEN** the destination page SHALL be shown before that request completes, with its loading state once the request has been pending for 150 ms
+- **THEN** the destination page SHALL be shown with its loading state before that request completes
 
 #### Scenario: Loading state is not confused with empty data
 - **WHEN** a page's list data is still pending after client navigation
