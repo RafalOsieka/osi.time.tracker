@@ -58,11 +58,15 @@ Each tracker's services SHALL persist their data in dedicated named volumes sepa
 - **THEN** the app dev database volume and the other tracker's volumes keep their data
 
 ### Requirement: REQ-082 Documented usage
-The repository SHALL document how to start and stop the local trackers via the `trackers` profile and that `pnpm trackers:seed` bootstraps the accounts and seeds the dev fixture, replacing the former one-time manual steps (password change, enabling the REST web service, creating a sample project with issues, obtaining the API access key). `AGENTS.md` ("Build and Deployment") SHALL state the profile-based commands, the seed command, and where the dev API keys come from (`OPENPROJECT_DEV_API_KEY`, `REDMINE_DEV_API_KEY` in `.env`, with the header each is sent in); `README.md` (Deployment) SHALL carry the extended setup description.
+The repository SHALL document, in `docs/development.md` only, how to start and stop the local trackers via the `trackers` profile, that `pnpm trackers:seed` bootstraps the accounts and seeds the dev fixture (replacing the former manual setup steps), what the fixture contains, and where the dev API keys come from (`OPENPROJECT_DEV_API_KEY`, `REDMINE_DEV_API_KEY` in `.env`, with the header each is sent in). `README.md` and `AGENTS.md` SHALL NOT carry this setup.
 
 #### Scenario: Docs describe bring-up, teardown, and API keys
-- **WHEN** a developer reads the "Build and Deployment" section of `AGENTS.md` or the Deployment section of `README.md`
-- **THEN** they find the profile-based start/stop commands, the seed command, the two dev key variables, and no remaining manual setup checklist
+- **WHEN** a developer reads `docs/development.md`
+- **THEN** they find the profile-based start/stop commands, the seed command, the fixture description, the two dev key variables with their headers, and no remaining manual setup checklist
+
+#### Scenario: Setup lives in one place
+- **WHEN** a developer reads `README.md` or `AGENTS.md`
+- **THEN** neither repeats the local tracker setup; README links to `docs/development.md`
 
 ### Requirement: REQ-347 One command seeds the running local trackers
 The repository SHALL provide a root script `pnpm trackers:seed` that seeds the local OpenProject and Redmine instances started by `docker compose --profile trackers up -d`. The command SHALL wait (bounded) for both tracker healthchecks, SHALL read the tracker ports and dev API keys from the same `.env` compose reads, and SHALL finish by printing, for each tracker, the base URL and the API key to paste into the OSI tracker form. It SHALL exit non-zero with a message naming the tracker and step when a tracker is not running, does not become healthy in time, or rejects a request. Nothing SHALL be written to the OSI database.

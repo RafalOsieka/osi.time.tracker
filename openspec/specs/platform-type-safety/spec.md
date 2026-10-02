@@ -203,10 +203,10 @@ Dynamic UI state keyed by task id (activity selection, issue ref, selected entry
 
 
 ### Requirement: REQ-243 Coding standards document Vue typing conventions
-`CODING_STANDARDS.md` SHALL document the type-assertion ladder, the UForm vs primitive-ref state split, the task-title menu adapter rule (no double cast), and the parallel named-map convention for task-keyed UI state, consistent with this capability.
+`docs/coding-standards.md` SHALL document the type-assertion ladder, the UForm vs primitive-ref state split, the task-title menu adapter rule (no double cast), and the parallel named-map convention for task-keyed UI state, consistent with this capability.
 
 #### Scenario: Standards mention forbidden double assertion
-- **WHEN** a contributor reads the Vue component conventions in `CODING_STANDARDS.md`
+- **WHEN** a contributor reads the Vue component conventions in `docs/coding-standards.md`
 - **THEN** the document states that `as unknown as` is forbidden in `app/` components and that library gaps belong in a single adapter
 
 #### Scenario: Standards mention form state typing

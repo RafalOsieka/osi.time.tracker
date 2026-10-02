@@ -104,8 +104,8 @@ The repository SHALL have CodeQL analysis enabled (via GitHub default setup) to 
 - **WHEN** CodeQL default setup is enabled and code is pushed
 - **THEN** CodeQL SHALL scan the codebase and report any findings in the Security tab
 
-### Requirement: REQ-023 Merge-blocking rules on main
-Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL require a pull request before merging, require all CI status checks (`lint`, `format`, `type-check`, `unit`, `nuxt`, `build`, `db`, `api`, `ui`, and the PR-title lint) to pass, require the branch to be up to date, require conversation resolution, and allow squash-only merges with linear history. Because rulesets are not repository files, this configuration SHALL be delivered as documented manual GitHub-UI setup instructions. The former single `e2e` check SHALL be replaced by `db`, `api`, and `ui`.
+### Requirement: REQ-406 Merge-blocking rules on main
+Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL require a pull request before merging, require all CI status checks (`lint`, `format`, `type-check`, `unit`, `nuxt`, `build`, `db`, `api`, `ui`, and the PR-title lint) to pass, require the branch to be up to date, require conversation resolution, and allow squash-only merges with linear history. The ruleset SHALL live in the GitHub repository settings; the repository SHALL NOT keep a manual setup guide for it.
 
 #### Scenario: Merge blocked while a required check is red
 - **WHEN** any required status check on a pull request is failing or has not run
@@ -115,9 +115,9 @@ Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL 
 - **WHEN** all required checks pass, the branch is up to date, and conversations are resolved
 - **THEN** the pull request SHALL be mergeable via a squash merge
 
-#### Scenario: Manual setup guide reproduces the configuration
-- **WHEN** the maintainer follows the documented manual GitHub-UI guide
-- **THEN** the guide SHALL list the exact required check names including `db`, `api`, and `ui` (not a single `e2e` job), and note that a check is only selectable after it has run at least once
+#### Scenario: Required checks match the CI jobs
+- **WHEN** the ruleset's required checks are compared with the CI workflow jobs
+- **THEN** they list `db`, `api`, and `ui` (not a single `e2e` job) alongside the other checks
 
 ### Requirement: REQ-275 Build artifact reused by API and UI jobs
 The `build` job SHALL upload the production `.output` directory as a workflow artifact. The `api` and `ui` jobs SHALL download that artifact into `.output`, set skip-build, and MUST NOT run `pnpm build` again. They SHALL still install dependencies so test tooling can boot the prebuilt server.
