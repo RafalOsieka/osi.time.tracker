@@ -7,7 +7,7 @@ import { provisionDatabase } from '../harness/database';
 import { seedUsers } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
-import { apiLogin, type CookieJar } from '../helpers/auth';
+import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
 import type { JsonObject } from '@osi/remote-trackers/contracts';
 
@@ -124,11 +124,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
   it('opens Remote Sync from a Timer-view day, edits a rounded duration, and links an issue inline', async () => {
     const { jar, token } = await apiLogin('remotesyncui@example.com');
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: 'UTC' }),
-    });
+    await patchTimezone(jar, token, 'UTC');
 
     const tracker = await createTracker(jar, token, 'Sync UI Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
@@ -241,11 +237,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
   it('keeps duration on the row and lists entries without selection in details', async () => {
     const { jar, token } = await apiLogin('remotesyncui@example.com');
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: 'UTC' }),
-    });
+    await patchTimezone(jar, token, 'UTC');
 
     const tracker = await createTracker(jar, token, 'Suggestion Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
@@ -336,11 +328,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
   it('navigates between days and keeps bulk selection summaries in sync', async () => {
     const { jar, token } = await apiLogin('remotesyncui@example.com');
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: 'UTC' }),
-    });
+    await patchTimezone(jar, token, 'UTC');
 
     const tracker = await createTracker(jar, token, 'Sync Nav Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
@@ -447,11 +435,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
   it('links an unlinked remote log and deletes the linked entry', async () => {
     const { jar, token } = await apiLogin('remotesyncui@example.com');
-    await fetch(url('/api/user/settings'), {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ timezone: 'UTC' }),
-    });
+    await patchTimezone(jar, token, 'UTC');
     const tracker = await createTracker(jar, token, 'Link Tracker ' + Date.now(), {
       baseUrl: OPENPROJECT_BASE_URL,
       roundingRule: 'none',

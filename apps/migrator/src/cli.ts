@@ -4,8 +4,9 @@ import { fileURLToPath } from 'node:url';
 import { readBootstrapUser, runMigrations } from './index.js';
 
 /**
- * The one-shot migrate step: applies pending migrations, then seeds the bootstrap
- * user when both `BOOTSTRAP_USER_*` variables are set. Returns the process exit code.
+ * The one-shot migrate step: validates the bootstrap user variables, applies pending
+ * migrations, then seeds the bootstrap user when its email and password are set.
+ * Returns the process exit code; an invalid bootstrap variable fails before migrating.
  * Only error messages are printed — never error objects, whose query parameters
  * could include the bootstrap password hash.
  */

@@ -25,12 +25,22 @@ describeDb('tasks schema', () => {
 
       const [userA] = await db
         .insert(users)
-        .values({ email: 'tasks-schema-a@example.com', passwordHash: 'hash' })
+        .values({
+          email: 'tasks-schema-a@example.com',
+          passwordHash: 'hash',
+          displayName: 'Test User',
+          timezone: 'UTC',
+        })
         .returning();
       if (!userA) throw new Error('userA not inserted');
       const [userB] = await db
         .insert(users)
-        .values({ email: 'tasks-schema-b@example.com', passwordHash: 'hash' })
+        .values({
+          email: 'tasks-schema-b@example.com',
+          passwordHash: 'hash',
+          displayName: 'Test User',
+          timezone: 'UTC',
+        })
         .returning();
       if (!userB) throw new Error('userB not inserted');
 

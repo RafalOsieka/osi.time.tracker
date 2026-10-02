@@ -8,7 +8,6 @@ import {
 } from '../../../../shared/types/remote-log-import';
 import { getDb } from '../../../db/index';
 import {
-  users,
   projects,
   trackers,
   timeEntries,
@@ -121,12 +120,7 @@ export default defineEventHandler(async (event): Promise<ImportRemoteLogsResultD
     return result;
   }
 
-  const [userRow] = await db
-    .select({ timezone: users.timezone })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const timezone = userRow?.timezone ?? null;
+  const timezone = user.timezone;
 
   const byDay = new Map<string, PendingLog[]>();
   for (const group of parsed.groups) {

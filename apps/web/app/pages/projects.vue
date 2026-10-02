@@ -6,7 +6,7 @@ usePageTitle(() => t('projects.pageTitle'));
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
-const { effective } = useUserSettings();
+const { effective } = useProfile();
 // Forwards the incoming request cookies during SSR so the list is authenticated.
 const requestFetch = useRequestFetch();
 

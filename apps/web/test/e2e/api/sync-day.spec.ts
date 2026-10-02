@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
-import { CookieJar } from '../helpers/auth';
+import { CookieJar, patchTimezone } from '../helpers/auth';
 import { seedAndLogin } from '../helpers/session';
 import { createProject, createTracker } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
@@ -19,11 +19,7 @@ async function createEntry(jar: CookieJar, token: string, body: JsonObject): Pro
 }
 
 async function setTimezone(jar: CookieJar, token: string, timezone: string): Promise<void> {
-  await fetch(url('/api/user/settings'), {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ timezone }),
-  });
+  await patchTimezone(jar, token, timezone);
 }
 
 async function getDay(jar: CookieJar, date: string): Promise<Response> {

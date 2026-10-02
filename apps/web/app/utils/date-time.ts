@@ -5,10 +5,6 @@ export interface DateTimeSettings {
   timeZone: string;
 }
 
-export const browserDateTimeSettings = (): DateTimeSettings => ({
-  timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-});
-
 export function instantToZoned(iso: string, timeZone: string): Temporal.ZonedDateTime {
   return Temporal.Instant.from(iso).toZonedDateTimeISO(timeZone);
 }

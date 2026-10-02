@@ -2,7 +2,9 @@
 
 ## Purpose
 Define how the application authenticates users and protects server-side resources. Authentication is based on a sealed, server-side session cookie issued via `nuxt-auth-utils`, with email/password login, timing-safe and non-enumerating credential verification, logout, fixed-lifetime sessions, and client-side login-state detection. It also covers protection of private endpoints, CSRF protection, baseline security headers, login rate limiting via `nuxt-security`, and an environment-variable bootstrap user so MVP login is usable before self-registration exists.
+
 ## Requirements
+
 ### Requirement: REQ-006 Session-cookie authentication via nuxt-auth-utils
 The application SHALL authenticate users with a server-side session represented by a sealed cookie issued through `nuxt-auth-utils`. The session cookie MUST be `HttpOnly`, MUST be `Secure` in production, and MUST use `SameSite=Lax`. The cookie sealing password SHALL be provided via the `NUXT_SESSION_PASSWORD` environment variable (32+ characters), and startup SHALL fail fast if it is missing in production.
 
@@ -19,11 +21,11 @@ The application SHALL authenticate users with a server-side session represented 
 - **THEN** the server SHALL treat the request as unauthenticated
 
 ### Requirement: REQ-007 Login and logout endpoints
-The application SHALL expose a login endpoint that establishes a session via `setUserSession` and a logout endpoint that clears it via `clearUserSession`. Logout SHALL invalidate the session immediately so subsequent requests are unauthenticated. Login SHALL accept an **email** and **password** (the prior `username` field is removed); the email SHALL be normalized to lowercase (`email.trim().toLowerCase()`) before lookup. Login SHALL look up the user by normalized email and SHALL verify the supplied password against the stored `passwordHash` using `nuxt-auth-utils` `verifyPassword`. Invalid credentials SHALL return an error and SHALL NOT establish a session. Authentication failure SHALL be timing-safe and non-enumerating: when the email is unknown, the server SHALL verify the password against a dummy hash so that "unknown email" and "wrong password" are indistinguishable in response and timing. On success the session payload SHALL contain `{ id, email, displayName }`, where `id` is the durable per-user scope key and `displayName` MAY be null.
+The application SHALL expose a login endpoint that establishes a session via `setUserSession` and a logout endpoint that clears it via `clearUserSession`. Logout SHALL invalidate the session immediately so subsequent requests are unauthenticated. Login SHALL accept an **email** and **password** (the prior `username` field is removed); the email SHALL be normalized to lowercase (`email.trim().toLowerCase()`) before lookup. Login SHALL look up the user by normalized email and SHALL verify the supplied password against the stored `passwordHash` using `nuxt-auth-utils` `verifyPassword`. Invalid credentials SHALL return an error and SHALL NOT establish a session. Authentication failure SHALL be timing-safe and non-enumerating: when the email is unknown, the server SHALL verify the password against a dummy hash so that "unknown email" and "wrong password" are indistinguishable in response and timing. On success the session payload SHALL contain `{ id, email, displayName }` plus the user's settings (workspace-settings REQ-398), where `id` is the durable per-user scope key and `displayName` is the user's non-empty display name (workspace-settings REQ-397). Session cookies issued before `displayName` and the timezone became required SHALL NOT authenticate, so every session in use carries both fields.
 
 #### Scenario: Valid email and password logs in
 - **WHEN** a client posts an email and password matching a stored user (after lowercase normalization)
-- **THEN** the server SHALL verify the password, set a sealed session cookie with payload `{ id, email, displayName }`, and respond indicating the user is authenticated
+- **THEN** the server SHALL verify the password, set a sealed session cookie with payload `{ id, email, displayName }` plus settings carrying a non-null timezone, and respond indicating the user is authenticated
 
 #### Scenario: Wrong password is rejected
 - **WHEN** a client posts a known email with an incorrect password
@@ -40,6 +42,10 @@ The application SHALL expose a login endpoint that establishes a session via `se
 #### Scenario: Logout clears the session
 - **WHEN** an authenticated client calls the logout endpoint
 - **THEN** the server SHALL clear the session cookie and subsequent requests SHALL be unauthenticated
+
+#### Scenario: Pre-change session is not accepted
+- **WHEN** a request carries only a session cookie issued before this change
+- **THEN** the request SHALL be treated as unauthenticated, so protected pages redirect to `/login` and protected API routes respond with HTTP 401
 
 ### Requirement: REQ-008 Protection of private endpoints
 Endpoints that read or mutate user-scoped data SHALL require an authenticated session. Requests without a valid session SHALL be rejected with an unauthorized (401) response and SHALL NOT perform the requested action.
@@ -94,23 +100,37 @@ The application SHALL protect state-changing requests against CSRF and SHALL app
 - **THEN** requests SHALL be processed normally without rate-limit rejection
 
 ### Requirement: REQ-012 Env-var bootstrap user
-The system SHALL seed an initial user from the `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` environment variables during the dedicated migrate step, so MVP login is usable before self-registration exists. The password SHALL be stored only as a hash in the format the application's login verification accepts, and SHALL NOT be logged. The email SHALL be trimmed and stored normalized to lowercase. Seeding SHALL be idempotent: it SHALL skip silently when either variable is unset or empty, SHALL skip when a user with that email already exists, and SHALL NOT overwrite or reset an existing user's password.
+The system SHALL seed an initial user from environment variables during the dedicated migrate step, so MVP login is usable before self-registration exists. `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` SHALL be required for seeding. `BOOTSTRAP_USER_DISPLAY_NAME` SHALL be optional: it is trimmed, and when it is unset or empty it defaults to the email local part. `BOOTSTRAP_USER_TIMEZONE` SHALL be optional and SHALL default to `UTC`. The password SHALL be stored only as a hash in the format the application's login verification accepts, and SHALL NOT be logged. The email SHALL be trimmed and stored normalized to lowercase.
+
+When seeding is enabled and `BOOTSTRAP_USER_TIMEZONE` is neither `UTC` nor a member of `Intl.supportedValuesOf('timeZone')`, or the display name exceeds the workspace-settings REQ-397 limit, the migrate step SHALL fail with a non-zero exit before applying migrations or seeding, and SHALL name the offending variable. Seeding SHALL be idempotent: it SHALL skip silently when the email or password variable is unset or empty, SHALL skip when a user with that email already exists, and SHALL NOT overwrite an existing user's password, display name, or timezone.
 
 #### Scenario: Fresh database with variables set creates the user
-- **WHEN** the migrate step runs against a database with no matching user and both `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` are set
-- **THEN** the system SHALL insert a user with a lowercased email and a hashed password
+- **WHEN** the migrate step runs against a database with no matching user and `BOOTSTRAP_USER_EMAIL`, `BOOTSTRAP_USER_PASSWORD`, `BOOTSTRAP_USER_DISPLAY_NAME=Jan Kowalski`, and `BOOTSTRAP_USER_TIMEZONE=Europe/Warsaw` are set
+- **THEN** the system SHALL insert a user with a lowercased email, a hashed password, display name `Jan Kowalski`, and timezone `Europe/Warsaw`
+
+#### Scenario: Optional variables default
+- **WHEN** the migrate step seeds `Admin@Example.com` with neither `BOOTSTRAP_USER_DISPLAY_NAME` nor `BOOTSTRAP_USER_TIMEZONE` set
+- **THEN** the seeded user SHALL have display name `admin` and timezone `UTC`
+
+#### Scenario: Invalid timezone fails the migrate step
+- **WHEN** the migrate step runs with seeding enabled and `BOOTSTRAP_USER_TIMEZONE=Mars/Olympus`
+- **THEN** the migrate step SHALL exit non-zero with an error naming `BOOTSTRAP_USER_TIMEZONE`, and SHALL apply no migrations and insert no user
+
+#### Scenario: Too-long display name fails the migrate step
+- **WHEN** the migrate step runs with seeding enabled and a `BOOTSTRAP_USER_DISPLAY_NAME` longer than 100 characters after trimming
+- **THEN** the migrate step SHALL exit non-zero with an error naming `BOOTSTRAP_USER_DISPLAY_NAME`, and SHALL apply no migrations and insert no user
 
 #### Scenario: Seeded user can log in
 - **WHEN** the migrate step has seeded the bootstrap user and that user submits the bootstrap email (in any letter case) and password to the login endpoint
-- **THEN** the login SHALL succeed and establish a session
+- **THEN** the login SHALL succeed and establish a session carrying the seeded display name and timezone
 
 #### Scenario: Existing user is left untouched
 - **WHEN** the migrate step runs and a user with the bootstrap email already exists
-- **THEN** the system SHALL skip seeding and SHALL NOT modify the existing user's password
+- **THEN** the system SHALL skip seeding and SHALL NOT modify the existing user's password, display name, or timezone
 
 #### Scenario: Unset variables skip silently
 - **WHEN** the migrate step runs and `BOOTSTRAP_USER_EMAIL` or `BOOTSTRAP_USER_PASSWORD` is unset
-- **THEN** the system SHALL skip seeding without error
+- **THEN** the system SHALL skip seeding without error, even if `BOOTSTRAP_USER_TIMEZONE` is invalid
 
 #### Scenario: Password never appears in output
 - **WHEN** the migrate step seeds the bootstrap user at any log verbosity

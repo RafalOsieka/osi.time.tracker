@@ -16,7 +16,7 @@ const { t, locale } = useI18n();
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
-const { effective } = useUserSettings();
+const { effective } = useProfile();
 // Forwards the incoming request cookies during SSR so the day aggregate is
 // authenticated the same way as browser navigations (plain $fetch is not).
 const requestFetch = useRequestFetch();

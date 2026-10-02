@@ -11,6 +11,7 @@
   },
   "layout": {
     "title": "OSI Time Tracker",
+    "profile": "Profile",
     "logoutButton": "Log out",
     "extensionStatus": {
       "notRequired": "Not required",
@@ -35,8 +36,7 @@
     "timer": "Timer",
     "trackers": "Trackers",
     "projects": "Projects",
-    "reports": "Reports",
-    "settings": "Settings"
+    "reports": "Reports"
   },
   "locale": {
     "en": "English",
@@ -72,12 +72,16 @@
       "reasonFetchFailed": "Remote hours could not be loaded for a tracker."
     }
   },
-  "settings": {
-    "language": "Language",
-    "theme": "Theme",
+  "profile": {
+    "title": "Profile",
+    "account": "Account",
+    "preferences": "Preferences",
+    "displayName": "Display name",
+    "email": "Email",
     "timezone": "Time zone",
-    "detectedTimezone": "Detected time zone: {timezone}",
-    "saveError": "Settings could not be saved."
+    "language": "Language",
+    "languageHint": "Applies to this browser.",
+    "saveError": "Profile could not be saved."
   },
   "theme": {
     "toggleLabel": "Theme",
@@ -657,8 +661,10 @@
       "credentialsRequired": "Email and password are required.",
       "invalidCredentials": "Invalid credentials."
     },
-    "userSettings": {
-      "invalidTimezone": "Choose a valid time zone."
+    "profile": {
+      "invalidTimezone": "Choose a valid time zone.",
+      "displayNameRequired": "Enter a display name.",
+      "displayNameTooLong": "The display name can have at most {max} characters."
     },
     "unexpected": "An unexpected error occurred."
   }

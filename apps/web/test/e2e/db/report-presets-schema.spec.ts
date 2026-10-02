@@ -18,8 +18,18 @@ describeDb('report presets schema', () => {
       const [user, otherUser] = await db
         .insert(users)
         .values([
-          { email: 'report-presets-a@example.com', passwordHash: 'hash' },
-          { email: 'report-presets-b@example.com', passwordHash: 'hash' },
+          {
+            email: 'report-presets-a@example.com',
+            passwordHash: 'hash',
+            displayName: 'Test User',
+            timezone: 'UTC',
+          },
+          {
+            email: 'report-presets-b@example.com',
+            passwordHash: 'hash',
+            displayName: 'Test User',
+            timezone: 'UTC',
+          },
         ])
         .returning();
       if (!user || !otherUser) throw new Error('users not inserted');

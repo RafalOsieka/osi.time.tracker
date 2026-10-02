@@ -10,7 +10,7 @@ import type { TitleProject, TitleTask } from '../utils/title-mention';
 
 const { t } = useI18n();
 const { running, elapsedSeconds, loading, start, stop, updateTitle, updateStartedAt } = useTimer();
-const { effective } = useUserSettings();
+const { effective } = useProfile();
 
 const title = ref('');
 const editedTitle = ref('');

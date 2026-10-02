@@ -45,7 +45,8 @@ describeShell('authenticated shell navigation', async () => {
     expect(await nav.locator('a[href="/reports"]').count()).toBe(0);
     expect(await nav.locator('a[href="/reports/monthly"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/reports/client"]').isVisible()).toBe(true);
-    expect(await nav.locator('a[href="/settings"]').isVisible()).toBe(true);
+    expect(await nav.locator('a[href="/settings"]').count()).toBe(0);
+    expect(await nav.locator('a[href="/profile"]').count()).toBe(0);
   });
 
   it('navigating to Monthly opens the monthly timesheet', async () => {
@@ -119,5 +120,34 @@ describeShell('authenticated shell navigation', async () => {
       .first()
       .click();
     await page.waitForSelector('[data-testid="login-form"]');
+  });
+
+  it('switches the theme from the account menu with the keyboard and keeps it after reload', async () => {
+    const page = await openAuthed();
+    await page.emulateMedia({ colorScheme: 'light' });
+    await page.waitForSelector('[data-testid="app-user-footer"]');
+
+    await page.focus('[data-testid="app-user-footer-trigger"]');
+    await page.keyboard.press('Enter');
+    const menu = page.getByRole('menu').first();
+    await menu.waitFor();
+    // Profile and Theme come first; language never appears in the account menu.
+    expect(await menu.getByRole('menuitem', { name: 'Profile' }).count()).toBe(1);
+    expect(await menu.getByText(/English|Polish|Language/).count()).toBe(0);
+
+    const theme = menu.getByRole('menuitem', { name: 'Theme' });
+    await theme.focus();
+    await page.keyboard.press('ArrowRight');
+    const dark = page.getByRole('menuitemcheckbox', { name: 'Dark' });
+    await dark.waitFor();
+    await dark.focus();
+    await page.keyboard.press('Enter');
+
+    await expect.poll(() => page.locator('html').getAttribute('class')).toContain('dark');
+    expect(await dark.getAttribute('aria-checked')).toBe('true');
+
+    await page.reload();
+    await page.waitForSelector('[data-testid="app-sidebar"]');
+    expect(await page.locator('html').getAttribute('class')).toContain('dark');
   });
 });

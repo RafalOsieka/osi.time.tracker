@@ -9,12 +9,7 @@ import { getDb } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
-import {
-  feedTimeZone,
-  localDayKey,
-  localDayStartInstant,
-  oldestDayKeyAmong,
-} from '../../utils/timer-view-feed';
+import { localDayKey, localDayStartInstant, oldestDayKeyAmong } from '../../utils/timer-view-feed';
 
 type Row = {
   id: string;
@@ -121,7 +116,7 @@ export default defineEventHandler(async (event): Promise<TimerViewFeedDto> => {
   const { user } = await requireAuth(event);
   const { before, from } = await getZodQuery(event, timerViewFeedQuerySchema);
 
-  const timeZone = feedTimeZone(user.settings?.timezone);
+  const timeZone = user.timezone;
   let rows: Row[] = [];
 
   if (from) {

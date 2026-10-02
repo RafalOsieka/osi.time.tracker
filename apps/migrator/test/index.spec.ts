@@ -13,13 +13,59 @@ describe('MIGRATIONS_FOLDER', () => {
 });
 
 describe('readBootstrapUser', () => {
-  it('trims and lowercases the email and keeps the password as given', () => {
+  it('trims and lowercases the email, keeps the password, and defaults the profile', () => {
     expect(
       readBootstrapUser({
         BOOTSTRAP_USER_EMAIL: '  Admin@Example.COM ',
         BOOTSTRAP_USER_PASSWORD: ' secret ',
       }),
-    ).toEqual({ email: 'admin@example.com', password: ' secret ' });
+    ).toEqual({
+      email: 'admin@example.com',
+      password: ' secret ',
+      displayName: 'admin',
+      timezone: 'UTC',
+    });
+  });
+
+  it('uses the trimmed display name and timezone when given', () => {
+    expect(
+      readBootstrapUser({
+        BOOTSTRAP_USER_EMAIL: 'jan@example.com',
+        BOOTSTRAP_USER_PASSWORD: 'secret',
+        BOOTSTRAP_USER_DISPLAY_NAME: '  Jan Kowalski ',
+        BOOTSTRAP_USER_TIMEZONE: ' Europe/Warsaw ',
+      }),
+    ).toMatchObject({ displayName: 'Jan Kowalski', timezone: 'Europe/Warsaw' });
+  });
+
+  it('falls back to the email local part when the display name is blank', () => {
+    expect(
+      readBootstrapUser({
+        BOOTSTRAP_USER_EMAIL: 'jan@example.com',
+        BOOTSTRAP_USER_PASSWORD: 'secret',
+        BOOTSTRAP_USER_DISPLAY_NAME: '   ',
+      }),
+    ).toMatchObject({ displayName: 'jan' });
+  });
+
+  it.each([
+    { variable: 'BOOTSTRAP_USER_TIMEZONE', env: { BOOTSTRAP_USER_TIMEZONE: 'Mars/Olympus' } },
+    {
+      variable: 'BOOTSTRAP_USER_DISPLAY_NAME',
+      env: { BOOTSTRAP_USER_DISPLAY_NAME: 'x'.repeat(101) },
+    },
+  ])('throws naming $variable when it is invalid', ({ variable, env }) => {
+    expect(() =>
+      readBootstrapUser({
+        BOOTSTRAP_USER_EMAIL: 'jan@example.com',
+        BOOTSTRAP_USER_PASSWORD: 'secret',
+        ...env,
+      }),
+    ).toThrow(variable);
+  });
+
+  it('ignores invalid profile variables when seeding is disabled', () => {
+    expect(readBootstrapUser({ BOOTSTRAP_USER_TIMEZONE: 'Mars/Olympus' })).toBeUndefined();
   });
 
   it.each([

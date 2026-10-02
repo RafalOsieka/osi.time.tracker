@@ -28,7 +28,7 @@ The system SHALL NOT persist a week-start preference. Any prior `weekStart` / `w
 - **THEN** the payload SHALL NOT include a `weekStart` field
 
 ### Requirement: REQ-399 User profile API
-The system SHALL expose `GET /api/user/profile` returning the authenticated user's profile DTO `{ displayName, timezone }`, and `PATCH /api/user/profile` accepting a partial update of `{ displayName?, timezone? }`. The former `/api/user/settings` endpoints SHALL be removed. Both endpoints SHALL require authentication via `requireAuth`. The PATCH SHALL be CSRF-protected and invoked client-side via `$csrfFetch` / `useCsrfFetch`. Request bodies SHALL be validated via a single zod schema in `shared/types`: `timezone` MUST be a member of `Intl.supportedValuesOf('timeZone')`, and `displayName` MUST satisfy REQ-397. Validation failures SHALL be mapped to the `{ messageKey, params }` error contract via `mapZodError`. The schema and DTO SHALL NOT accept or return `weekStart`. On a successful PATCH the server SHALL update the session so the sealed cookie carries the new display name and timezone, and SHALL return the updated profile DTO.
+The system SHALL expose `GET /api/user/profile` returning the authenticated user's profile DTO `{ displayName, timezone }`, and `PATCH /api/user/profile` accepting a partial update of `{ displayName?, timezone? }`. The former `/api/user/settings` endpoints SHALL be removed. Both endpoints SHALL require authentication via `requireAuth`. The PATCH SHALL be CSRF-protected and invoked client-side via `$csrfFetch` / `useCsrfFetch`. Request bodies SHALL be validated via a single zod schema in `shared/types`: `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`), and `displayName` MUST satisfy REQ-397. Validation failures SHALL be mapped to the `{ messageKey, params }` error contract via `mapZodError`. The schema and DTO SHALL NOT accept or return `weekStart`. On a successful PATCH the server SHALL update the session so the sealed cookie carries the new display name and timezone, and SHALL return the updated profile DTO.
 
 #### Scenario: Read profile
 - **WHEN** an authenticated user requests their profile
@@ -42,8 +42,12 @@ The system SHALL expose `GET /api/user/profile` returning the authenticated user
 - **WHEN** an authenticated user PATCHes a valid timezone
 - **THEN** the value SHALL be persisted, the session payload SHALL be refreshed with the new timezone, and the updated DTO SHALL be returned
 
+#### Scenario: UTC is accepted
+- **WHEN** an authenticated user PATCHes `{ timezone: "UTC" }`
+- **THEN** the value SHALL be persisted even though `Intl.supportedValuesOf('timeZone')` does not list it
+
 #### Scenario: Invalid timezone rejected
-- **WHEN** a PATCH contains a timezone not present in `Intl.supportedValuesOf('timeZone')`
+- **WHEN** a PATCH contains a timezone that is neither `UTC` nor present in `Intl.supportedValuesOf('timeZone')`
 - **THEN** the system SHALL reject the request with HTTP 422 and `{ messageKey, params }`, and persist nothing
 
 #### Scenario: Invalid display name rejected
@@ -71,7 +75,7 @@ The `/profile` page SHALL present the authenticated user's profile and preferenc
 
 1. **Display name**: a labelled text field holding the stored display name. Leaving the field (blur) or pressing Enter SHALL save the trimmed value via partial `PATCH /api/user/profile` with `{ displayName }` when it differs from the stored value. Escape SHALL restore the stored value. An empty or whitespace-only value SHALL restore the stored value without a request.
 2. **Email**: the account email, read-only.
-3. **Timezone**: a filterable select populated from `Intl.supportedValuesOf('timeZone')`, pre-selected with the stored timezone. Changing the value SHALL immediately persist via partial `PATCH /api/user/profile` with `{ timezone }`.
+3. **Timezone**: a filterable select populated with `UTC` followed by `Intl.supportedValuesOf('timeZone')`, pre-selected with the stored timezone. Changing the value SHALL immediately persist via partial `PATCH /api/user/profile` with `{ timezone }`.
 
 The page SHALL show, in a **Preferences** section, the language control (core-i18n REQ-401), labelled as applying to this browser. The page SHALL NOT contain a theme control (ui-theming REQ-402) or a week-start control. The page SHALL NOT have a form-level Save button.
 

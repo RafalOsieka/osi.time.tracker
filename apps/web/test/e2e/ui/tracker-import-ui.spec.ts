@@ -7,7 +7,7 @@ import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
-import { apiLogin, type CookieJar } from '../helpers/auth';
+import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { createProject, createTracker } from '../helpers/http';
 import { typeDateField } from '../helpers/date-field';
 import { pageIncludesTextScript } from '../helpers/dom';
@@ -20,11 +20,7 @@ const TRACKER_BASE_URL = 'https://op.import-ui.example.com';
 const TRACKER_SECRET = 'e2e-import-secret';
 
 async function setTimezone(jar: CookieJar, token: string): Promise<void> {
-  await fetch(url('/api/user/settings'), {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({ timezone: 'UTC' }),
-  });
+  await patchTimezone(jar, token, 'UTC');
 }
 
 async function seedBrowserSecret(page: Page, trackerId: string): Promise<void> {

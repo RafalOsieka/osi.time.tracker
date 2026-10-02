@@ -1,4 +1,4 @@
-import { loginSchema } from '../../../shared/types/auth';
+import { loginSchema, type AuthUser } from '../../../shared/types/auth';
 import { findUserByEmail, DUMMY_HASH } from '../../utils/users';
 import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
@@ -29,23 +29,13 @@ export default defineEventHandler(async (event) => {
     });
   }
 
-  await setUserSession(event, {
-    user: {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      settings: { timezone: user.timezone },
-    },
-    loggedInAt: Date.now(),
-  });
-
-  return {
-    loggedIn: true,
-    user: {
-      id: user.id,
-      email: user.email,
-      displayName: user.displayName,
-      settings: { timezone: user.timezone },
-    },
+  const sessionUser: AuthUser = {
+    id: user.id,
+    email: user.email,
+    displayName: user.displayName,
+    timezone: user.timezone,
   };
+  await setUserSession(event, { user: sessionUser, loggedInAt: Date.now() });
+
+  return { loggedIn: true, user: sessionUser };
 });

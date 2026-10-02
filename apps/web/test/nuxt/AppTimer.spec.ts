@@ -63,7 +63,7 @@ mockNuxtImport('useTimer', () => () => ({
   updateStartedAt: updateStartedAtMock,
 }));
 
-mockNuxtImport('useUserSettings', () => () => ({
+mockNuxtImport('useProfile', () => () => ({
   effective: { value: { timeZone: 'UTC' } },
 }));
 

@@ -99,15 +99,18 @@ Conventions that apply to every story:
 
 ---
 
-## 7. User settings (timezone & week start) ✅ Delivered
+## 7. Profile (display name, timezone, language) ✅ Delivered
 
-> **As a user, I want to set my timezone and week-start day, so times and weekly reports display correctly for me.** (WBS 7.1, 7.2)
+> **As a user, I want one profile page for my name and preferences, so times display in my timezone and my name appears correctly in the app and on timesheets.** (WBS 1.5, 7.1, 7.4)
 
 **Acceptance criteria**
 
-- I can pick my timezone; stored times (UTC) are displayed converted to it.
-- I can choose my week-start day (Monday/Sunday).
-- These preferences are persisted on my account and applied across the app.
+- I open my profile from the account menu in the sidebar footer, above Log out.
+- I can edit my display name; it saves when I leave the field and shows in the account menu right away.
+- I can pick my timezone; stored times (UTC) are displayed converted to it. Every account always has a timezone (`UTC` until I change it).
+- I can pick the interface language for this browser.
+- I can switch the theme (light / dark / system) from the account menu.
+- The week-start choice was dropped; weeks are not a settings concern.
 
 ---
 

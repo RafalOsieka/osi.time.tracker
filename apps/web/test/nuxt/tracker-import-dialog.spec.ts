@@ -60,7 +60,7 @@ vi.mock('vue-i18n', async (importOriginal) => {
   };
 });
 
-mockNuxtImport('useUserSettings', () => () => ({
+mockNuxtImport('useProfile', () => () => ({
   effective: computed(() => ({ timeZone: 'UTC' })),
 }));
 

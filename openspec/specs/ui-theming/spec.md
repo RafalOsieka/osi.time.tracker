@@ -46,33 +46,6 @@ The effective theme SHALL be determined before first paint so that the initial s
 - **WHEN** the theme is resolved on the server
 - **THEN** the resolution SHALL NOT access `window` or `localStorage`
 
-### Requirement: REQ-163 Accessible theme control on Settings
-The application SHALL provide an authenticated theme control on the `/settings` page (not in the top-bar utility menu and not required on the `auth` layout). The control SHALL be a **3-way control** exposing the `light`, `dark`, and `system` states directly (the `system` state SHALL be reachable without an additional separate reset affordance). Changing the selection SHALL apply immediately and persist via the existing color-mode cookie mechanism (REQ-161). The control SHALL expose a programmatic accessible name (visible text or `aria-label`), be fully keyboard operable with a visible focus indicator, and communicate the current state by means other than color alone (text, icon, or `aria-pressed`/equivalent), consistent with REQ-001 and REQ-003. All labels SHALL come from the i18n catalogs with `en`/`pl` parity.
-
-#### Scenario: Theme control is on Settings
-- **WHEN** an authenticated user opens `/settings`
-- **THEN** a 3-way theme control SHALL be present on that page
-
-#### Scenario: Theme is not in the utility menu
-- **WHEN** the authenticated utility menu is opened
-- **THEN** theme options SHALL NOT appear there
-
-#### Scenario: Toggle is named and keyboard operable
-- **WHEN** a user reaches the theme control using only the keyboard
-- **THEN** it SHALL be focusable with a visible focus indicator, expose an accessible name, and switch the theme on Enter/Space (or equivalent selection)
-
-#### Scenario: All three states are directly reachable
-- **WHEN** a user operates the theme control
-- **THEN** each of `light`, `dark`, and `system` SHALL be selectable directly from the control
-
-#### Scenario: Manual override persists after change on Settings
-- **WHEN** a user selects light or dark on `/settings` and reloads the page
-- **THEN** the app SHALL render in the selected mode regardless of the OS preference
-
-#### Scenario: Toggle label is internationalized
-- **WHEN** the control renders its accessible name or option labels
-- **THEN** the strings SHALL come from the i18n catalogs with `en` and `pl` in parity
-
 ### Requirement: REQ-164 Tokenized auth surface
 The `auth` layout and the login page SHALL present the login form within a centered Nuxt UI surface (e.g. `UCard` / `UPageCard`) and SHALL express layout and color through Tailwind utilities and `--ui-*` design tokens rather than ad-hoc inline `style` color values. All existing login `data-testid` hooks and the accessibility wiring (associated `<label>`s, `role="alert"` error, `aria-describedby`, `aria-invalid`) SHALL be preserved.
 
@@ -186,3 +159,37 @@ The running variant SHALL apply as soon as running state is known, including fir
 - **WHEN** a timer is running
 - **THEN** the sidebar and login brand mark SHALL remain the unmodified glyph in the `primary` color, with no green element and no added shape
 
+### Requirement: REQ-402 Accessible theme control in the account menu
+The application SHALL provide an authenticated theme control as a **Theme** submenu of the sidebar footer account menu (ui-shell REQ-405). The control SHALL NOT be on the `/profile` page and SHALL NOT be required on the `auth` layout. The submenu SHALL be a **3-way control** exposing `light`, `dark`, and `system` directly as items; `system` SHALL be reachable without a separate reset affordance. Selecting an item SHALL apply the theme immediately and persist it via the existing color-mode cookie mechanism (REQ-161). The current state SHALL be shown by a means other than color alone (a checked indicator with checked state exposed to assistive technology). The submenu SHALL be reachable on the expanded rail, the collapsed rail, and the mobile drawer. It SHALL be fully keyboard operable, and every item SHALL expose an accessible name, consistent with REQ-001 and REQ-003. All labels SHALL come from the i18n catalogs with `en`/`pl` parity.
+
+#### Scenario: Theme control is in the account menu
+- **WHEN** an authenticated user opens the sidebar footer account menu
+- **THEN** a Theme submenu SHALL be present, offering Light, Dark, and System
+
+#### Scenario: Theme is not on the profile page
+- **WHEN** an authenticated user opens `/profile`
+- **THEN** no theme control SHALL be rendered on the page
+
+#### Scenario: Current theme is indicated
+- **WHEN** the active preference is `dark` and the Theme submenu is opened
+- **THEN** the Dark item SHALL be shown and exposed as checked, and Light and System as unchecked
+
+#### Scenario: Submenu is keyboard operable
+- **WHEN** a user opens the account menu and the Theme submenu using only the keyboard
+- **THEN** each item SHALL be focusable with a visible focus indicator, expose an accessible name, and apply its theme on Enter/Space
+
+#### Scenario: All three states are directly reachable
+- **WHEN** a user opens the Theme submenu
+- **THEN** each of `light`, `dark`, and `system` SHALL be selectable directly from it
+
+#### Scenario: Available on the collapsed rail
+- **WHEN** the desktop sidebar is collapsed and the user opens the avatar account menu
+- **THEN** the same Theme submenu SHALL be available
+
+#### Scenario: Manual override persists after change
+- **WHEN** a user selects Light or Dark in the Theme submenu and reloads the page
+- **THEN** the app SHALL render in the selected mode regardless of the OS preference
+
+#### Scenario: Toggle label is internationalized
+- **WHEN** the submenu renders its label and item labels
+- **THEN** the strings SHALL come from the i18n catalogs with `en` and `pl` in parity

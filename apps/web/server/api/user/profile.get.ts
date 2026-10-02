@@ -1,16 +1,17 @@
-import type { UserSettingsDto } from '../../../shared/types/user-settings';
 import { eq } from 'drizzle-orm';
+import type { ProfileDto } from '../../../shared/types/profile';
 import { getDb } from '../../db';
 import { users } from '../../db/schema';
 
-export default defineEventHandler(async (event): Promise<UserSettingsDto> => {
+/** Returns the authenticated user's profile (workspace-settings REQ-399). */
+export default defineEventHandler(async (event): Promise<ProfileDto> => {
   const db = getDb();
   const { user } = await requireAuth(event);
   const [row] = await db
-    .select({ timezone: users.timezone })
+    .select({ displayName: users.displayName, timezone: users.timezone })
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1);
   if (!row) throw createError({ statusCode: 404, statusMessage: 'User not found' });
-  return { timezone: row.timezone };
+  return row;
 });

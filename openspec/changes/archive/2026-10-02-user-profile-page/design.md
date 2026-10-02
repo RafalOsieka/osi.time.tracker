@@ -48,7 +48,7 @@ An email local part is at most 64 characters, so it always meets the 100-charact
 `shared/types/user-settings.ts` becomes `shared/types/profile.ts`:
 
 - `displayNameSchema = z.string().trim().min(1).max(100)`, with error keys `errors.profile.displayNameRequired` and `errors.profile.displayNameTooLong` (`params.max`).
-- `profileSchema = z.strictObject({ displayName, timezone }).partial()`. Its fields are non-nullable, so `null` is rejected (REQ-399).
+- `profileSchema = z.object({ displayName, timezone }).partial()`. Its fields are non-nullable, so `null` is rejected (REQ-399); unknown keys are stripped. Valid timezones are `TIME_ZONES` = `UTC` + `Intl.supportedValuesOf(...)`, because Intl omits `UTC`.
 - `ProfileDto = { displayName: string; timezone: string }`.
 
 The session user flattens to `AuthUser = { id: string; email: string } & ProfileDto`, and `auth.d.ts` declares the same shape. The nested `settings` object goes away. Consumers such as `user.settings?.timezone` become `user.timezone`, and the type checker lists every site. The migrator keeps its own validation because it does not depend on `apps/web`, and the shared limit is defined in one place on each side.

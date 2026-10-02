@@ -23,15 +23,24 @@ export type SeededUser = {
   id: string;
   email: string;
   password: string;
-  displayName: string | null;
+  displayName: string;
+  timezone: string;
+};
+
+type SeedUserInput = {
+  email: string;
+  password?: string;
+  displayName?: string;
+  timezone?: string;
 };
 
 /**
- * Seeds a list of users into the given database.
+ * Seeds a list of users into the given database. Display name defaults to
+ * `Test User` and timezone to `UTC`.
  */
 export async function seedUsers(
   databaseUrl: string,
-  usersList: { email: string; password?: string; displayName?: string }[],
+  usersList: SeedUserInput[],
 ): Promise<SeededUser[]> {
   const hasher = await getHasher();
   const { db, sql } = createDatabaseClient(databaseUrl);
@@ -47,15 +56,22 @@ export async function seedUsers(
         .values({
           email,
           passwordHash,
-          displayName: item.displayName ?? null,
+          displayName: item.displayName ?? 'Test User',
+          timezone: item.timezone ?? 'UTC',
         })
-        .returning({ id: users.id, email: users.email, displayName: users.displayName });
+        .returning({
+          id: users.id,
+          email: users.email,
+          displayName: users.displayName,
+          timezone: users.timezone,
+        });
       if (!row) throw new Error(`failed to seed user ${email}`);
       seeded.push({
         id: row.id,
         email: row.email,
         password,
         displayName: row.displayName,
+        timezone: row.timezone,
       });
     }
   } finally {
@@ -70,12 +86,10 @@ export async function seedUsers(
  */
 export async function seedUser(
   databaseUrl: string,
-  options: { email?: string; password?: string; displayName?: string } = {},
+  options: Partial<SeedUserInput> = {},
 ): Promise<SeededUser> {
   const email = options.email ?? `user-${randomUUID()}@example.com`;
-  const [user] = await seedUsers(databaseUrl, [
-    { email, password: options.password, displayName: options.displayName },
-  ]);
+  const [user] = await seedUsers(databaseUrl, [{ ...options, email }]);
   if (!user) throw new Error('failed to seed user');
   return user;
 }

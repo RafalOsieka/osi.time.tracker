@@ -2,14 +2,7 @@ import { and, eq, gte, isNotNull, lt } from 'drizzle-orm';
 import type { FinalizeRemoteExportResultDto } from '../../../shared/types/remote-export';
 import { linkRemoteEntrySchema } from '../../../shared/types/remote-export';
 import { getDb } from '../../db';
-import {
-  users,
-  tasks,
-  timeEntries,
-  remoteExports,
-  remoteExportEntries,
-  trackers,
-} from '../../db/schema';
+import { tasks, timeEntries, remoteExports, remoteExportEntries, trackers } from '../../db/schema';
 import { computeDayBoundary } from '../../utils/day-boundary';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
 import { isUniqueViolation } from '../../utils/is-unique-violation';
@@ -81,12 +74,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     .limit(1);
   if (existingDay) reject(422, 'error.remoteExportAlreadyFinalized');
 
-  const [userRow] = await db
-    .select({ timezone: users.timezone })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-  const { from, to } = computeDayBoundary(parsed.localDate, userRow?.timezone ?? null);
+  const { from, to } = computeDayBoundary(parsed.localDate, user.timezone);
 
   const entryRows = await db
     .select({

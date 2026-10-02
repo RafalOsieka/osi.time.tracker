@@ -55,13 +55,9 @@ describe('monthly report aggregation', () => {
     expect(days).toEqual([{ date: '2026-08-04', localSeconds: 3600 }]);
   });
 
-  it('resolves an omitted month to the current month in the feed timezone', () => {
+  it('resolves an omitted month to the current month in the user timezone', () => {
     const resolved = resolveReportMonth(undefined, new Date('2026-08-15T12:00:00.000Z'), 'UTC');
     expect(resolved).toEqual({ month: '2026-08', timeZone: 'UTC' });
-  });
-
-  it('uses UTC when no timezone is stored', () => {
-    expect(resolveReportMonth('2026-03', new Date(), null).timeZone).toBe('UTC');
   });
 
   it('computes inclusive calendar days and exclusive instant end', () => {

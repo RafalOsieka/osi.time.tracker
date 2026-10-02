@@ -26,7 +26,7 @@ const route = useRoute();
 const router = useRouter();
 const requestFetch = useRequestFetch();
 const { $csrfFetch } = useNuxtApp();
-const { effective } = useUserSettings();
+const { effective } = useProfile();
 const confirm = useAppConfirm();
 const toast = useAppToast();
 const { exporting, run } = useClientReportExport();
@@ -47,9 +47,7 @@ const month = computed(() =>
 );
 const monthInvalid = computed(() => monthQuery.value !== undefined && month.value === null);
 
-onMounted(async () => {
-  // useUserSettings applies the browser time zone on mount; let it settle first.
-  await nextTick();
+onMounted(() => {
   if (monthQuery.value !== undefined) return;
   void router.replace({
     path: '/reports/client',

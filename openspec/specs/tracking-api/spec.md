@@ -278,7 +278,7 @@ Every listed entry MUST belong to the authenticated user; otherwise the whole re
 ### Requirement: REQ-395 Timer view feed API
 The system SHALL expose an authenticated timer-view feed at `GET /api/time-entries/feed` that returns a page of the caller's time entries together with pagination metadata. The response SHALL be a DTO of the form `{ entries: TimeEntryDto[], hasMore: boolean, nextBefore: string | null }` where each `TimeEntryDto` matches the list shape of REQ-148 (task/project context, optional remote issue ref, ISO timestamps, no client/tracker display name), `hasMore` is true when at least one of the user's entries belongs to a local calendar day strictly older than the oldest day represented in `entries`, and `nextBefore` is an opaque-or-ISO cursor the client MUST pass to load the next page (or `null` when `hasMore` is false).
 
-Day boundaries for the feed SHALL be computed in the **feed timezone**: the authenticated user's stored `timezone` when present, otherwise `UTC` (matching the SSR-safe effective timezone of REQ-165). The feed endpoint SHALL follow `core-api-conventions` for authentication and errors.
+Day boundaries for the feed SHALL be computed in the **feed timezone**: the authenticated user's stored `timezone` (always set, workspace-settings REQ-398). The feed endpoint SHALL follow `core-api-conventions` for authentication and errors.
 
 **Initial page** (neither `before` nor `from`): the server SHALL return all entries belonging to the user's newest **7** distinct local activity days (days with ≥1 entry), newest day first. Empty calendar gaps SHALL NOT consume a slot, so a user whose last activity is old still gets their newest activity days. A user with no entries at all SHALL receive `{ entries: [], hasMore: false, nextBefore: null }`. Entries started in the future relative to "now" SHALL be included like any other entry (the walk starts from the newest entry, not from today).
 
@@ -332,7 +332,7 @@ The existing range list (REQ-148) MAY remain for non-feed callers; the timer vie
 
 #### Scenario: Feed uses stored timezone then UTC
 - **WHEN** the user has a stored timezone `Europe/Warsaw`
-- **THEN** activity-day counts and day boundaries SHALL use that timezone; when timezone is null the feed SHALL use `UTC`
+- **THEN** activity-day counts and day boundaries SHALL use that timezone; for a user migrated without a prior choice the stored value is `UTC`, so the feed SHALL use `UTC`
 
 #### Scenario: Other users never included
 - **WHEN** another user has entries that would fall in the window

@@ -92,6 +92,7 @@ describeDb('database integration', () => {
           email,
           passwordHash: 'somehash',
           displayName: 'John Doe',
+          timezone: 'UTC',
         })
         .returning();
 
@@ -106,6 +107,8 @@ describeDb('database integration', () => {
         db.insert(users).values({
           email,
           passwordHash: 'anotherhash',
+          displayName: 'Other',
+          timezone: 'UTC',
         }),
       ).rejects.toThrow();
 
@@ -115,6 +118,8 @@ describeDb('database integration', () => {
         db.insert(users).values({
           email: 'USER@example.com'.toLowerCase(),
           passwordHash: 'anotherhash',
+          displayName: 'Other',
+          timezone: 'UTC',
         }),
       ).rejects.toThrow();
     } finally {
@@ -127,6 +132,8 @@ describeDb('database integration', () => {
       const bootstrapUser = readBootstrapUser({
         BOOTSTRAP_USER_EMAIL: ' Bootstrap@Example.com ',
         BOOTSTRAP_USER_PASSWORD: 'bootstrappassword',
+        BOOTSTRAP_USER_DISPLAY_NAME: 'Jan Kowalski',
+        BOOTSTRAP_USER_TIMEZONE: 'Europe/Warsaw',
       });
 
       // Run migrations which includes seeding
@@ -145,6 +152,8 @@ describeDb('database integration', () => {
         expect(found[0]!.email).toBe('bootstrap@example.com');
         expect(found[0]!.passwordHash).toBeDefined();
         expect(found[0]!.passwordHash.startsWith('$scrypt$')).toBe(true);
+        expect(found[0]!.displayName).toBe('Jan Kowalski');
+        expect(found[0]!.timezone).toBe('Europe/Warsaw');
       } finally {
         await probeClient.sql.end({ timeout: 5 });
       }
@@ -161,6 +170,8 @@ describeDb('database integration', () => {
         await db.insert(users).values({
           email: 'bootstrap@example.com',
           passwordHash: originalHash,
+          displayName: 'Original Name',
+          timezone: 'Europe/Warsaw',
         });
       } finally {
         await sql.end({ timeout: 5 });
@@ -170,6 +181,8 @@ describeDb('database integration', () => {
       const bootstrapUser = readBootstrapUser({
         BOOTSTRAP_USER_EMAIL: 'bootstrap@example.com',
         BOOTSTRAP_USER_PASSWORD: 'newpassword',
+        BOOTSTRAP_USER_DISPLAY_NAME: 'New Name',
+        BOOTSTRAP_USER_TIMEZONE: 'Asia/Tokyo',
       });
 
       await runMigrations(dbUrl, { bootstrapUser });
@@ -185,6 +198,8 @@ describeDb('database integration', () => {
 
         expect(found.length).toBe(1);
         expect(found[0]!.passwordHash).toBe(originalHash); // untouched!
+        expect(found[0]!.displayName).toBe('Original Name');
+        expect(found[0]!.timezone).toBe('Europe/Warsaw');
       } finally {
         await probeClient.sql.end({ timeout: 5 });
       }

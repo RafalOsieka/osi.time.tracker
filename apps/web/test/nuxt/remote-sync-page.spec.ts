@@ -52,7 +52,7 @@ mockNuxtImport('useAppToast', () => () => ({
   error: toastErrorMock,
   warning: toastWarningMock,
 }));
-mockNuxtImport('useUserSettings', () => () => ({
+mockNuxtImport('useProfile', () => () => ({
   effective: { value: { timeZone: 'UTC' } },
 }));
 

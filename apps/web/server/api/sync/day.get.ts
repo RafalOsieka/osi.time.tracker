@@ -13,7 +13,6 @@ import {
   tasks,
   projects,
   trackers,
-  users,
   remoteExports,
   remoteExportEntries,
 } from '../../db/schema';
@@ -33,13 +32,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
   const { user } = await requireAuth(event);
   const parsedQuery = await getZodQuery(event, remoteSyncDayQuerySchema);
 
-  const [userRow] = await db
-    .select({ timezone: users.timezone })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-
-  const { from, to } = computeDayBoundary(parsedQuery.date, userRow?.timezone ?? null);
+  const { from, to } = computeDayBoundary(parsedQuery.date, user.timezone);
 
   const rows = await db
     .select({

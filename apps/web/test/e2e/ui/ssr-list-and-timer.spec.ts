@@ -59,7 +59,7 @@ describeSsrShell('SSR shell and list pages', async () => {
 
     const page = await openAuthed();
     // Full document load of an authenticated page with a running entry
-    await page.goto(url('/settings'));
+    await page.goto(url('/profile'));
     await page.waitForSelector('[data-testid="app-timer"]');
 
     // Title should be present without waiting solely on a post-mount client fetch.

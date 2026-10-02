@@ -513,7 +513,8 @@ describeTimerViewUI('timer view UI flow', async () => {
       }
     });
     const earlier = new Date(start.getTime() - 60_000);
-    const timeZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+    // Fields render in the user's stored timezone; seeded users default to UTC.
+    const timeZone = 'UTC';
     const local = instantToZoned(earlier.toISOString(), timeZone);
     const hour = String(local.hour).padStart(2, '0');
     const minute = String(local.minute).padStart(2, '0');
@@ -623,9 +624,9 @@ describeTimerViewUI('timer view UI flow', async () => {
       .textContent();
     expect(originalGroupTotal?.trim()).toBe('00:00:30');
 
-    // The field renders in the app's effective (browser-detected) timezone;
-    // resolve it to type the same wall-clock hour/minute the row already shows.
-    const timeZone = await page.evaluate(() => Intl.DateTimeFormat().resolvedOptions().timeZone);
+    // The field renders in the user's stored timezone (seeded default UTC);
+    // type the same wall-clock hour/minute the row already shows.
+    const timeZone = 'UTC';
     const dayKey = localDayKey(startedAt, timeZone);
     // The day total is shared with every other entry this suite seeds onto
     // "today", so the edit's effect is asserted as a delta, not an absolute.

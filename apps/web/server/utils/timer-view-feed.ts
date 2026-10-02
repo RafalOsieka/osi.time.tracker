@@ -1,9 +1,5 @@
 import { Temporal } from 'temporal-polyfill';
 
-export function feedTimeZone(stored: string | null | undefined): string {
-  return stored && stored.length > 0 ? stored : 'UTC';
-}
-
 export function localDayKey(iso: string, timeZone: string): string {
   return Temporal.Instant.from(iso).toZonedDateTimeISO(timeZone).toPlainDate().toString();
 }

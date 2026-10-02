@@ -44,6 +44,8 @@ services:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-osi_time_tracker}
       BOOTSTRAP_USER_EMAIL: ${BOOTSTRAP_USER_EMAIL:-}
       BOOTSTRAP_USER_PASSWORD: ${BOOTSTRAP_USER_PASSWORD:-}
+      BOOTSTRAP_USER_DISPLAY_NAME: ${BOOTSTRAP_USER_DISPLAY_NAME:-}
+      BOOTSTRAP_USER_TIMEZONE: ${BOOTSTRAP_USER_TIMEZONE:-}
     depends_on:
       db:
         condition: service_healthy

@@ -80,21 +80,22 @@ pnpm dev
 
 A single `.env` (copied from `.env.example`) feeds the host tooling and both Compose files. The example is grouped by who reads each variable:
 
-| Variable                                           | Read by                       | Description                                                                                           |
-| -------------------------------------------------- | ----------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL`                                     | `pnpm dev`, `pnpm db:migrate` | PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`.    |
-| `NUXT_SESSION_PASSWORD`                            | `pnpm dev`, prod compose      | 32+ character secret used by `nuxt-auth-utils` to seal session cookies. Required in prod.             |
-| `BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD` | migrator (host and prod)      | Optional; seeds the first user if it does not exist.                                                  |
-| `POSTGRES_USER` / `POSTGRES_DB`                    | dev + prod compose            | Database overrides; defaults match `DATABASE_URL`.                                                    |
-| `POSTGRES_PORT`                                    | dev compose                   | Published dev database port (default `5432`); prod never publishes the database.                      |
-| `POSTGRES_PASSWORD`                                | dev + prod compose            | Defaults to `postgres` in dev; **required** in prod.                                                  |
-| `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PORT`           | dev + prod compose            | pgAdmin overrides.                                                                                    |
-| `PGADMIN_DEFAULT_PASSWORD`                         | dev + prod compose            | Defaults to `admin` in dev; **required** in prod.                                                     |
-| `PORT`                                             | prod compose                  | Published app port (default `3000`).                                                                  |
-| `CONSOLA_LEVEL`                                    | `pnpm dev`, prod compose      | Optional server log verbosity: `0` fatal … `3` info (default) … `5` trace. See Troubleshooting below. |
-| `REDMINE_DEV_API_KEY` / `OPENPROJECT_DEV_API_KEY`  | dev compose + `trackers:seed` | Fixed API keys installed on the **local** trackers; paste them into the OSI tracker form.             |
-| `REDMINE_ADMIN_PASSWORD`                           | dev compose (`trackers`)      | Local Redmine `admin` password (default `admin`), set on every boot.                                  |
-| `OPENPROJECT_*` / `REDMINE_*`                      | dev compose (`trackers`)      | Other local tracker overrides (ports, secrets); never used in prod.                                   |
+| Variable                                                  | Read by                       | Description                                                                                                                 |
+| --------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`                                            | `pnpm dev`, `pnpm db:migrate` | PostgreSQL connection string, e.g. `postgres://postgres:postgres@localhost:5432/osi_time_tracker`.                          |
+| `NUXT_SESSION_PASSWORD`                                   | `pnpm dev`, prod compose      | 32+ character secret used by `nuxt-auth-utils` to seal session cookies. Required in prod.                                   |
+| `BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD`        | migrator (host and prod)      | Optional; seeds the first user if it does not exist.                                                                        |
+| `BOOTSTRAP_USER_DISPLAY_NAME` / `BOOTSTRAP_USER_TIMEZONE` | migrator (host and prod)      | Optional profile of the seeded user; default to the email local part and `UTC`. An invalid timezone fails the migrate step. |
+| `POSTGRES_USER` / `POSTGRES_DB`                           | dev + prod compose            | Database overrides; defaults match `DATABASE_URL`.                                                                          |
+| `POSTGRES_PORT`                                           | dev compose                   | Published dev database port (default `5432`); prod never publishes the database.                                            |
+| `POSTGRES_PASSWORD`                                       | dev + prod compose            | Defaults to `postgres` in dev; **required** in prod.                                                                        |
+| `PGADMIN_DEFAULT_EMAIL` / `PGADMIN_PORT`                  | dev + prod compose            | pgAdmin overrides.                                                                                                          |
+| `PGADMIN_DEFAULT_PASSWORD`                                | dev + prod compose            | Defaults to `admin` in dev; **required** in prod.                                                                           |
+| `PORT`                                                    | prod compose                  | Published app port (default `3000`).                                                                                        |
+| `CONSOLA_LEVEL`                                           | `pnpm dev`, prod compose      | Optional server log verbosity: `0` fatal … `3` info (default) … `5` trace. See Troubleshooting below.                       |
+| `REDMINE_DEV_API_KEY` / `OPENPROJECT_DEV_API_KEY`         | dev compose + `trackers:seed` | Fixed API keys installed on the **local** trackers; paste them into the OSI tracker form.                                   |
+| `REDMINE_ADMIN_PASSWORD`                                  | dev compose (`trackers`)      | Local Redmine `admin` password (default `admin`), set on every boot.                                                        |
+| `OPENPROJECT_*` / `REDMINE_*`                             | dev compose (`trackers`)      | Other local tracker overrides (ports, secrets); never used in prod.                                                         |
 
 > [!IMPORTANT]
 > Both the Drizzle client and the migration tooling fail fast when `DATABASE_URL` is missing, and the production stack refuses to start until its required secrets are set. Never log or commit these secrets.
@@ -175,6 +176,9 @@ The stack refuses to start until the required secrets are set. Migrations run in
 
 > [!NOTE]
 > Upgrading from the former `docker-compose.standalone.yml`: the stack now uses the fixed project name `osi-time-tracker-prod`, so its volumes are `osi-time-tracker-prod_pg-osi-time-tracker-standalone` and `osi-time-tracker-prod_pgadmin-osi-time-tracker-standalone`. Your existing data lives under `<clone-directory>_pg-osi-time-tracker-standalone`; copy it across once (e.g. `docker run --rm -v OLD:/from -v NEW:/to alpine cp -a /from/. /to/`) before the first `up`.
+
+> [!NOTE]
+> Upgrading to the Profile page release: every user now has a required display name and timezone. The migration fills missing values with the email local part and `UTC`, so set your timezone once on the Profile page (account menu in the sidebar footer). Existing sessions end with the upgrade; log in again.
 
 #### Troubleshooting: reading container logs
 

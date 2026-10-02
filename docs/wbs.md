@@ -26,16 +26,16 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## 1. Authentication & Identity
 
-| #   | Feature                                  | Priority | Notes                                                             |
-| --- | ---------------------------------------- | -------- | ----------------------------------------------------------------- |
-| 1.1 | Login / logout                           | 🔴       |                                                                   |
-| 1.2 | Self-registration (email + password)     | 🟡       | Any visitor can create an account; each account is fully isolated |
-| 1.3 | Password reset (email-based flow)        | 🟡       |                                                                   |
-| 1.4 | Account deletion (GDPR right to erasure) | 🟡       | Deletes user account and all associated data                      |
-| 1.5 | User profile management                  | 🟡       | Display name, email, avatar                                       |
-| 1.6 | 2FA (TOTP)                               | 🟡       | Authenticator app (Google Authenticator, Authy, etc.)             |
-| 1.7 | SSO / OAuth2 (Google, GitHub, etc.)      | 🟢       |                                                                   |
-| 1.8 | Admin-managed account provisioning       | ⚫       | All accounts are self-registered; no admin role exists            |
+| #   | Feature                                  | Priority | Notes                                                                                              |
+| --- | ---------------------------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| 1.1 | Login / logout                           | 🔴       |                                                                                                    |
+| 1.2 | Self-registration (email + password)     | 🟡       | Any visitor can create an account; each account is fully isolated                                  |
+| 1.3 | Password reset (email-based flow)        | 🟡       |                                                                                                    |
+| 1.4 | Account deletion (GDPR right to erasure) | 🟡       | Deletes user account and all associated data                                                       |
+| 1.5 | User profile management                  | 🟡       | Display name ✅ delivered on the Profile page (pulled forward); email change and avatar still open |
+| 1.6 | 2FA (TOTP)                               | 🟡       | Authenticator app (Google Authenticator, Authy, etc.)                                              |
+| 1.7 | SSO / OAuth2 (Google, GitHub, etc.)      | 🟢       |                                                                                                    |
+| 1.8 | Admin-managed account provisioning       | ⚫       | All accounts are self-registered; no admin role exists                                             |
 
 ---
 
@@ -146,14 +146,14 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## 7. User Settings & Preferences
 
-| #   | Feature                          | Priority | Notes                                                                                                                                                                                                                                                                           |
-| --- | -------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 7.1 | Timezone selection               | 🔴       | All times stored in UTC; displayed in user's local timezone                                                                                                                                                                                                                     |
-| 7.2 | Week start day (Monday / Sunday) | 🔴       | Affects weekly timesheet and report grouping                                                                                                                                                                                                                                    |
-| 7.3 | Default rounding rule            | 🟡       | Applied globally unless overridden per remote target                                                                                                                                                                                                                            |
-| 7.4 | Language / locale selection      | 🟡       | UI language picker + persisted `locale` user column; cookie-only persistence in place since 8.4                                                                                                                                                                                 |
-| 7.5 | Date and time format preferences | 🟢       |                                                                                                                                                                                                                                                                                 |
-| 7.6 | Theme (light / dark)             | 🟢       | Auth-surface theming foundation landed (cookie-based light/dark/system + tokenized login/auth); authenticated shell rollout complete (`add-authenticated-shell`: top bar, collapsible rail, off-canvas drawer, stacked timer row, utility menu, placeholder pages, i18n, a11y). |
+| #   | Feature                          | Priority | Notes                                                                                                                                                                                                                                                                                                                               |
+| --- | -------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 7.1 | Timezone selection               | 🔴       | All times stored in UTC; displayed in user's local timezone                                                                                                                                                                                                                                                                         |
+| 7.2 | Week start day (Monday / Sunday) | 🔴       | Affects weekly timesheet and report grouping                                                                                                                                                                                                                                                                                        |
+| 7.3 | Default rounding rule            | 🟡       | Applied globally unless overridden per remote target                                                                                                                                                                                                                                                                                |
+| 7.4 | Language / locale selection      | 🟡       | ✅ UI language picker on the Profile page; stays cookie-only (per browser) by product decision, no `locale` user column                                                                                                                                                                                                             |
+| 7.5 | Date and time format preferences | 🟢       |                                                                                                                                                                                                                                                                                                                                     |
+| 7.6 | Theme (light / dark)             | 🟢       | Auth-surface theming foundation landed (cookie-based light/dark/system + tokenized login/auth); authenticated shell rollout complete (`add-authenticated-shell`: top bar, collapsible rail, off-canvas drawer, stacked timer row, utility menu, placeholder pages, i18n, a11y). The theme switch lives in the sidebar account menu. |
 
 ---
 

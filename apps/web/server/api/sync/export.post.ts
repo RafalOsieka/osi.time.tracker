@@ -4,7 +4,7 @@ import {
   type FinalizeRemoteExportResultDto,
 } from '../../../shared/types/remote-export';
 import { getDb } from '../../db/index';
-import { users, tasks, timeEntries, remoteExports, remoteExportEntries } from '../../db/schema';
+import { tasks, timeEntries, remoteExports, remoteExportEntries } from '../../db/schema';
 import { computeDayBoundary } from '../../utils/day-boundary';
 import { getRemoteIssueRefForTask } from '../../utils/remote-issue-refs';
 import { readZodBody } from '../../utils/zod-input';
@@ -114,13 +114,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     return toResult(existing, undefined, true);
   }
 
-  const [userRow] = await db
-    .select({ timezone: users.timezone })
-    .from(users)
-    .where(eq(users.id, user.id))
-    .limit(1);
-
-  const { from, to } = computeDayBoundary(parsed.localDate, userRow?.timezone ?? null);
+  const { from, to } = computeDayBoundary(parsed.localDate, user.timezone);
 
   const entryRows = await db
     .select({

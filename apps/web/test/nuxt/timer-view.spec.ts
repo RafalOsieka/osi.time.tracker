@@ -69,7 +69,7 @@ const { entryFetches, fetchMock, mockState } = vi.hoisted(() => {
   return { entryFetches, fetchMock, mockState };
 });
 
-mockNuxtImport('useUserSettings', () => () => ({
+mockNuxtImport('useProfile', () => () => ({
   settings: computed(() => settingsState.value),
   effective: computed(() => ({
     timeZone: settingsState.value.timezone ?? 'UTC',

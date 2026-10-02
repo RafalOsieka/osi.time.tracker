@@ -8,7 +8,7 @@ export type SeededSession = SeededUser & ApiSession;
  */
 export async function seedAndLogin(
   databaseUrl: string,
-  options: { email?: string; password?: string; displayName?: string } = {},
+  options: Parameters<typeof seedUser>[1] = {},
 ): Promise<SeededSession> {
   const user = await seedUser(databaseUrl, options);
   const session = await apiLogin(user.email, user.password);

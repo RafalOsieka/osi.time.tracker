@@ -2,7 +2,7 @@ import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
 import { seedAndLogin } from '../helpers/session';
 import { createProject, createTracker } from '../helpers/http';
-import type { CookieJar } from '../helpers/auth';
+import { type CookieJar, patchTimezone } from '../helpers/auth';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
@@ -13,15 +13,7 @@ import type { JsonObject } from '@osi/remote-trackers/contracts';
 const describeReportsMonthly = requireDocker();
 
 async function setTimezone(jar: CookieJar, token: string, timezone: string): Promise<void> {
-  await fetch(url('/api/user/settings'), {
-    method: 'PATCH',
-    headers: {
-      'content-type': 'application/json',
-      'csrf-token': token,
-      cookie: jar.header(),
-    },
-    body: JSON.stringify({ timezone }),
-  });
+  await patchTimezone(jar, token, timezone);
 }
 
 async function createStoppedEntry(

@@ -3,21 +3,17 @@ import type { AvatarProps, DropdownMenuItem } from '@nuxt/ui';
 
 const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
 
+type ColorModePreference = 'light' | 'dark' | 'system';
+
 const { t } = useI18n();
 const { logout, user } = useAuth();
+const colorMode = useColorMode();
 
-const displayName = computed(() => user.value?.displayName?.trim() || '');
-const email = computed(() => user.value?.email?.trim() || '');
+/** Primary identity line: the required display name (REQ-405). */
+const primaryLabel = computed(() => user.value?.displayName ?? '');
+const secondaryEmail = computed(() => user.value?.email ?? '');
 
-/** Primary identity line: display name when set, otherwise email. */
-const primaryLabel = computed(() => displayName.value || email.value);
-
-/**
- * Secondary line only when a distinct display name is shown (avoid duplicating email).
- */
-const secondaryEmail = computed(() => (displayName.value && email.value ? email.value : ''));
-
-/** Single initial for avatar fallback (works for names and bare emails). */
+/** Single initial of the display name for the avatar. */
 const avatarInitial = computed(() => {
   const ch = primaryLabel.value.charAt(0);
   return ch ? ch.toUpperCase() : '?';
@@ -41,11 +37,40 @@ async function onLogout() {
   }
 }
 
+const themeOptions = [
+  { value: 'light', icon: 'i-lucide-sun' },
+  { value: 'dark', icon: 'i-lucide-moon' },
+  { value: 'system', icon: 'i-lucide-monitor' },
+] satisfies Array<{ value: ColorModePreference; icon: string }>;
+
 /**
- * Account menu opened from UUser (expanded) or avatar (collapsed).
- * Logout lives here so the footer is a single control, not identity + separate row.
+ * Account menu opened from UUser (expanded) or avatar (collapsed): Profile and the
+ * Theme submenu (ui-theming REQ-402), then Log out in its own group (REQ-405).
+ * Theme items are checkboxes so the active preference is exposed as checked.
  */
 const menuItems = computed<DropdownMenuItem[][]>(() => [
+  [
+    {
+      label: t('layout.profile'),
+      icon: 'i-lucide-user',
+      to: '/profile',
+    },
+    {
+      label: t('theme.toggleLabel'),
+      icon: 'i-lucide-sun-moon',
+      children: themeOptions.map(({ value, icon }) => ({
+        label: t(`theme.${value}`),
+        icon,
+        type: 'checkbox' as const,
+        checked: colorMode.preference === value,
+        onSelect(event: Event) {
+          // Keep the menu open on a radio-like pick instead of toggling the checkbox.
+          event.preventDefault();
+          colorMode.preference = value;
+        },
+      })),
+    },
+  ],
   [
     {
       label: t('layout.logoutButton'),
