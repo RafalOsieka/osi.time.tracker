@@ -44,6 +44,7 @@ describeShell('authenticated shell navigation', async () => {
     expect(await nav.locator('a[href="/tasks"]').count()).toBe(0);
     expect(await nav.locator('a[href="/reports"]').count()).toBe(0);
     expect(await nav.locator('a[href="/reports/monthly"]').isVisible()).toBe(true);
+    expect(await nav.locator('a[href="/reports/client"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/settings"]').isVisible()).toBe(true);
   });
 

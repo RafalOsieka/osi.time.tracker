@@ -72,16 +72,16 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 
 ## 4. Reporting & Timesheets
 
-| #   | Feature                                 | Priority | Notes                                                                    |
-| --- | --------------------------------------- | -------- | ------------------------------------------------------------------------ |
-| 4.1 | Summary report by Project / Tracker     | 🔴       | Total hours grouped by Project (and optional Tracker) for a date range   |
-| 4.2 | Daily timesheet view                    | ⚫       | Absorbed by the Timer view page (2.10) — same screen, no separate report |
-| 4.3 | Weekly timesheet view                   | 🔴       | Hours per day across a week, grouped by Project/Task                     |
-| 4.4 | Date range filter                       | 🔴       | Filter all reports by arbitrary start/end date                           |
-| 4.5 | CSV export of time entries              | 🟡       | Export filtered data for use in spreadsheets or invoicing tools          |
-| 4.6 | PDF export / printable timesheet        | 🟢       |                                                                          |
-| 4.7 | Dashboard with charts                   | 🟢       | Visual breakdown of time by project/tracker over a period                |
-| 4.8 | Billable / non-billable flag on entries | ⚫       | No billing concept in this application                                   |
+| #   | Feature                                 | Priority | Notes                                                                                                                                                                                                                                                 |
+| --- | --------------------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 4.1 | Summary report by Project / Tracker     | 🔴       | Total hours grouped by Project (and optional Tracker) for a date range                                                                                                                                                                                |
+| 4.2 | Daily timesheet view                    | ⚫       | Absorbed by the Timer view page (2.10) — same screen, no separate report                                                                                                                                                                              |
+| 4.3 | Weekly timesheet view                   | 🔴       | Hours per day across a week, grouped by Project/Task                                                                                                                                                                                                  |
+| 4.4 | Date range filter                       | 🔴       | Filter all reports by arbitrary start/end date                                                                                                                                                                                                        |
+| 4.5 | CSV export of time entries              | 🟡       | Export filtered data for use in spreadsheets or invoicing tools                                                                                                                                                                                       |
+| 4.6 | PDF export / printable timesheet        | 🟢       | ✅ Delivered as the Client report (`/reports/client`): a per-client monthly timesheet PDF built in the browser from the logs on the client's trackers (OpenProject + Redmine combined), with saved report presets. Pulled forward by product decision |
+| 4.7 | Dashboard with charts                   | 🟢       | Visual breakdown of time by project/tracker over a period                                                                                                                                                                                             |
+| 4.8 | Billable / non-billable flag on entries | ⚫       | No billing concept in this application                                                                                                                                                                                                                |
 
 ---
 
@@ -121,7 +121,7 @@ Priority legend: 🔴 MVP (must-have) | 🟡 V1.1 (should-have) | 🟢 Backlog (
 | #    | Feature                                                  | Priority | Notes                                                                                                                                                                                                                           |
 | ---- | -------------------------------------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 5.14 | OpenProject adapter (fetch issues + export time entries) | 🔴       | MVP adapter. Shared transport-agnostic core plus direct browser and desktop-extension transports for account resolution, activities, paginated time-log context, and time-entry create; browser remains the export orchestrator |
-| 5.15 | Redmine adapter (fetch issues + export time entries)     | 🔴       | Deferred to the end of MVP. Uses Redmine REST API; reuses the same shared adapter core                                                                                                                                          |
+| 5.15 | Redmine adapter (fetch issues + export time entries)     | 🔴       | Uses the Redmine REST API and the same shared adapter core; resolves issue titles like OpenProject so both trackers feed the Client report (4.6)                                                                                |
 | 5.16 | Additional adapters (Jira, GitLab, etc.)                 | 🟢       | Adapter interface is stable; new systems can be added in future                                                                                                                                                                 |
 | 5.17 | Real-time / background sync with remote systems          | ⚫       | All pushes and fetches are on-demand only                                                                                                                                                                                       |
 

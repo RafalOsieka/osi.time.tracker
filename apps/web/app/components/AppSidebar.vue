@@ -45,6 +45,12 @@ const navItems = computed<NavigationMenuItem[]>(() => [
         icon: 'i-lucide-calendar-days',
         active: route.path.startsWith('/reports/monthly'),
       },
+      {
+        label: t('clientReport.pageTitle'),
+        to: '/reports/client',
+        icon: 'i-lucide-file-text',
+        active: route.path.startsWith('/reports/client'),
+      },
     ],
   },
   {
