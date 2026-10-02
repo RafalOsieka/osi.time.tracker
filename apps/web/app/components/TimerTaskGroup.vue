@@ -16,6 +16,7 @@ const {
 } = defineProps<{
   group: TimerViewGroup;
   isLive: boolean;
+  /** Current time for the running entry's live duration; constant for groups without one. */
   now: number;
   timeZone: string;
   editorKey: string;
@@ -354,7 +355,7 @@ async function unlinkRemoteIssue() {
         class="block min-w-[4.5rem] text-right font-mono text-sm font-medium tabular-nums text-muted"
         :data-testid="`timer-group-total-${group.key}`"
       >
-        {{ formatDuration(group.totalSeconds) }}
+        {{ formatDuration(group.totalSeconds + liveSeconds(group.liveStartedAt, now)) }}
       </span>
     </template>
 
@@ -381,7 +382,7 @@ async function unlinkRemoteIssue() {
           v-for="entry in group.entries"
           :key="entry.id"
           :entry="entry"
-          :now="now"
+          :now="entry.stoppedAt ? 0 : now"
           :time-zone="timeZone"
           @changed="emit('entry-changed')"
           @deleted="emit('entry-deleted')"

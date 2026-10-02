@@ -74,6 +74,10 @@ async function mountAppRoot() {
         NuxtLayout: { template: '<div><slot /></div>' },
         NuxtPage: { template: '<div />' },
         NuxtRouteAnnouncer: { template: '<div />' },
+        NuxtLoadingIndicator: {
+          props: ['color'],
+          template: '<div data-testid="route-loading-indicator" :data-color="color" />',
+        },
       },
     },
   });
@@ -118,6 +122,13 @@ describe('theme UI and SSR head wiring', () => {
       wrapper.find('[data-testid="u-app"]').exists() || wrapper.html().includes('UApp') || true,
     ).toBe(true);
     expect(wrapper.html().length).toBeGreaterThan(0);
+  });
+
+  it('shows a theme-colored route-change progress indicator', async () => {
+    const wrapper = await mountAppRoot();
+    const indicator = wrapper.find('[data-testid="route-loading-indicator"]');
+    expect(indicator.exists()).toBe(true);
+    expect(indicator.attributes('data-color')).toBe('var(--ui-primary)');
   });
 
   it('uses the running favicon when timer state is seeded', async () => {

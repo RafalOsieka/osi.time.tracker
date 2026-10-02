@@ -1,7 +1,6 @@
 import { and, desc, eq, gte, lt } from 'drizzle-orm';
 import {
-  TIMER_VIEW_FEED_INITIAL_DAYS,
-  TIMER_VIEW_FEED_LOAD_MORE_ACTIVITY_DAYS,
+  TIMER_VIEW_FEED_PAGE_ACTIVITY_DAYS,
   timerViewFeedQuerySchema,
   type TimerViewFeedDto,
   type TimeEntryDto,
@@ -11,13 +10,10 @@ import { timeEntries, tasks, projects } from '../../db/schema';
 import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
 import {
-  feedNextBefore,
   feedTimeZone,
-  localDayBounds,
   localDayKey,
   localDayStartInstant,
   oldestDayKeyAmong,
-  rollingWindowBounds,
 } from '../../utils/timer-view-feed';
 
 type Row = {
@@ -45,8 +41,11 @@ async function toDtos(userId: string, rows: Row[]): Promise<TimeEntryDto[]> {
   }));
 }
 
-/** Entries whose `startedAt` falls in `[from, to)` — uses `(userId, startedAt)` index. */
-async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promise<Row[]> {
+/**
+ * Entries whose `startedAt` falls in `[from, to)`, or `[from, ∞)` without `to` —
+ * uses the `(userId, startedAt)` index.
+ */
+async function fetchEntriesInRange(userId: string, from: Date, to?: Date): Promise<Row[]> {
   const db = getDb();
   return db
     .select({
@@ -65,21 +64,10 @@ async function fetchEntriesInRange(userId: string, from: Date, to: Date): Promis
       and(
         eq(timeEntries.userId, userId),
         gte(timeEntries.startedAt, from),
-        lt(timeEntries.startedAt, to),
+        to ? lt(timeEntries.startedAt, to) : undefined,
       ),
     )
     .orderBy(desc(timeEntries.startedAt));
-}
-
-async function fetchNewestStartedAt(userId: string): Promise<Date | null> {
-  const db = getDb();
-  const [row] = await db
-    .select({ startedAt: timeEntries.startedAt })
-    .from(timeEntries)
-    .where(eq(timeEntries.userId, userId))
-    .orderBy(desc(timeEntries.startedAt))
-    .limit(1);
-  return row?.startedAt ?? null;
 }
 
 async function existsStartedAtBefore(userId: string, before: Date): Promise<boolean> {
@@ -93,13 +81,14 @@ async function existsStartedAtBefore(userId: string, before: Date): Promise<bool
 }
 
 /**
- * Walk backward `activityDays` activity days older than `before` using one indexed
+ * Walk backward `activityDays` activity days older than `before` (or from the newest
+ * entry when `before` is omitted) using one indexed
  * `ORDER BY startedAt DESC LIMIT 1` per day (jump to that day's start each step).
  * Returns the exclusive-end-safe lower bound (start of the oldest day found).
  */
-async function findLoadMoreRangeStart(
+async function findPageRangeStart(
   userId: string,
-  before: Date,
+  before: Date | undefined,
   timeZone: string,
   activityDays: number,
 ): Promise<Date | null> {
@@ -111,7 +100,9 @@ async function findLoadMoreRangeStart(
     const [row] = await db
       .select({ startedAt: timeEntries.startedAt })
       .from(timeEntries)
-      .where(and(eq(timeEntries.userId, userId), lt(timeEntries.startedAt, cursor)))
+      .where(
+        and(eq(timeEntries.userId, userId), cursor ? lt(timeEntries.startedAt, cursor) : undefined),
+      )
       .orderBy(desc(timeEntries.startedAt))
       .limit(1);
 
@@ -128,47 +119,39 @@ async function findLoadMoreRangeStart(
 
 export default defineEventHandler(async (event): Promise<TimerViewFeedDto> => {
   const { user } = await requireAuth(event);
-  const parsedQuery = await getZodQuery(event, timerViewFeedQuerySchema);
+  const { before, from } = await getZodQuery(event, timerViewFeedQuerySchema);
 
   const timeZone = feedTimeZone(user.settings?.timezone);
   let rows: Row[] = [];
 
-  if (parsedQuery.before) {
-    const before = new Date(parsedQuery.before);
-    const from = await findLoadMoreRangeStart(
-      user.id,
-      before,
-      timeZone,
-      TIMER_VIEW_FEED_LOAD_MORE_ACTIVITY_DAYS,
-    );
-    if (from) {
-      rows = await fetchEntriesInRange(user.id, from, before);
-    }
+  if (from) {
+    rows = await fetchEntriesInRange(user.id, new Date(from));
   } else {
-    const window = rollingWindowBounds(TIMER_VIEW_FEED_INITIAL_DAYS, new Date(), timeZone);
-    rows = await fetchEntriesInRange(user.id, new Date(window.from), new Date(window.to));
-
-    if (rows.length === 0) {
-      const newest = await fetchNewestStartedAt(user.id);
-      if (newest) {
-        const dayKey = localDayKey(newest.toISOString(), timeZone);
-        const day = localDayBounds(dayKey, timeZone);
-        rows = await fetchEntriesInRange(user.id, new Date(day.from), new Date(day.to));
-      }
+    const upper = before ? new Date(before) : undefined;
+    const pageStart = await findPageRangeStart(
+      user.id,
+      upper,
+      timeZone,
+      TIMER_VIEW_FEED_PAGE_ACTIVITY_DAYS,
+    );
+    if (pageStart) {
+      rows = await fetchEntriesInRange(user.id, pageStart, upper);
     }
   }
 
-  const oldestDayKey = oldestDayKeyAmong(
-    rows.map((row) => row.startedAt.toISOString()),
-    timeZone,
-  );
-  const nextBefore = feedNextBefore(oldestDayKey, timeZone);
-  const hasMore =
-    nextBefore != null ? await existsStartedAtBefore(user.id, new Date(nextBefore)) : false;
+  // Older history is anything before the oldest returned day; an empty range refresh
+  // measures from the requested `from` day instead.
+  const oldestDayKey =
+    oldestDayKeyAmong(
+      rows.map((row) => row.startedAt.toISOString()),
+      timeZone,
+    ) ?? (from ? localDayKey(from, timeZone) : null);
+  const boundary = oldestDayKey ? localDayStartInstant(oldestDayKey, timeZone) : null;
+  const hasMore = boundary ? await existsStartedAtBefore(user.id, new Date(boundary)) : false;
 
   return {
     entries: await toDtos(user.id, rows),
     hasMore,
-    nextBefore: hasMore ? nextBefore : null,
+    nextBefore: hasMore ? boundary : null,
   };
 });

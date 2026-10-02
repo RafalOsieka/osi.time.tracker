@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { ref } from 'vue';
@@ -42,18 +42,26 @@ const settingsState = ref<SettingsState>({
 });
 interface TimerViewMockState {
   feed: Feed;
+  /** Status of the SSR/initial feed request the page awaits lazily. */
+  feedStatus: 'pending' | 'success' | 'error';
+  /** Answers to client feed requests (load more, refresh), consumed in order. */
+  feedResponses: Array<Feed | Error | Promise<Feed>>;
   projects: ProjectDto[];
 }
 const { entryFetches, fetchMock, mockState } = vi.hoisted(() => {
   const mockState: TimerViewMockState = {
     feed: { entries: [], hasMore: false, nextBefore: null },
+    feedStatus: 'success',
+    feedResponses: [],
     projects: [],
   };
   const entryFetches = { count: 0 };
-  const fetchMock = vi.fn((request: string) => {
+  const fetchMock = vi.fn((request: string, _options?: { query?: Record<string, string> }) => {
     if (String(request).includes('/api/time-entries/feed')) {
       entryFetches.count += 1;
-      return Promise.resolve(mockState.feed);
+      const next = mockState.feedResponses.shift() ?? mockState.feed;
+      if (next instanceof Error) return Promise.reject(next);
+      return Promise.resolve(next);
     }
     if (String(request).includes('projects')) return Promise.resolve(mockState.projects);
     return Promise.resolve([]);
@@ -86,7 +94,8 @@ mockNuxtImport('useAsyncData', () => {
           /* keep previous */
         }
       });
-      return { data, pending: ref(false), refresh };
+      const status = ref(mockState.feedStatus);
+      return { data: mockState.feedStatus === 'success' ? data : ref(null), status, refresh };
     }
     const data = ref(mockState.projects);
     const refresh = vi.fn(async () => {
@@ -151,15 +160,22 @@ const TimerTaskGroupStub = {
       <button data-testid="task-changed" @click="$emit('entry-changed')" />
     </div>
   `,
-  props: ['group', 'isLive'],
-  emits: ['continue', 'stop', 'entry-changed'],
+  props: ['group', 'isLive', 'now'],
+  // Same emits as the real component, so listener identity never forces a re-render.
+  emits: ['continue', 'stop', 'entry-changed', 'entry-deleted', 'editing-started'],
   data: () => ({ expanded: false }),
+  updated(this: { group: { key: string } }) {
+    groupUpdates.set(this.group.key, (groupUpdates.get(this.group.key) ?? 0) + 1);
+  },
   computed: {
     total() {
       return '01:00:00';
     },
   },
 };
+
+/** Re-render count of each stubbed task group, keyed by group key. */
+const groupUpdates = vi.hoisted(() => new Map<string, number>());
 
 /** Entry payload the add-entry stub emits for smart-include tests. */
 interface PendingAddedEntry {
@@ -215,12 +231,15 @@ describe('timer view page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockState.feed = { entries: [], hasMore: false, nextBefore: null };
+    mockState.feedStatus = 'success';
+    mockState.feedResponses = [];
     mockState.projects = [];
     settingsState.value = { timezone: 'America/Los_Angeles' };
     entryFetches.count = 0;
     runningState.value = null;
     elapsedSecondsState.value = 0;
     pendingAddedEntry.value = null;
+    groupUpdates.clear();
     fetchRunningMock.mockClear();
     startMock.mockClear();
     stopMock.mockClear();
@@ -511,5 +530,270 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-day-2024-01-05"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
     expect(entryFetches.count).toBe(fetchesBefore);
+  });
+
+  /** Feed query objects of client feed requests (load more / refresh), in order. */
+  function clientFeedQueries() {
+    return fetchMock.mock.calls
+      .filter(([request, options]) => String(request).includes('/api/time-entries/feed') && options)
+      .map(([, options]) => options?.query ?? {});
+  }
+
+  function loadedDayFeed(): Feed {
+    return {
+      entries: [
+        entry({
+          id: 'loaded-1',
+          taskId: 'task-loaded',
+          taskName: 'Loaded Day Task',
+          startedAt: '2024-06-15T17:00:00.000Z',
+          stoppedAt: '2024-06-15T18:00:00.000Z',
+        }),
+      ],
+      hasMore: true,
+      nextBefore: '2024-06-15T07:00:00.000Z',
+    };
+  }
+
+  it('shows the loading skeleton, not the never-tracked state, while the feed is pending', async () => {
+    mockState.feedStatus = 'pending';
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+
+    expect(wrapper.find('[data-testid="timer-view-loading"]').attributes('aria-busy')).toBe('true');
+    expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(false);
+  });
+
+  it('refreshes the whole loaded window with one range request after an edit', async () => {
+    mockState.feed = loadedDayFeed();
+    mockState.feedResponses = [
+      {
+        entries: [
+          entry({
+            id: 'older-1',
+            taskId: 'task-older',
+            taskName: 'Older Task',
+            startedAt: '2024-06-10T17:00:00.000Z',
+            stoppedAt: '2024-06-10T18:00:00.000Z',
+          }),
+        ],
+        hasMore: true,
+        nextBefore: '2024-06-10T07:00:00.000Z',
+      },
+    ];
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+    await wrapper.find('[data-testid="timer-view-load-more"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="timer-group-task-older"]').exists()).toBe(true);
+
+    fetchMock.mockClear();
+    mockState.feedResponses = [
+      {
+        entries: [...loadedDayFeed().entries],
+        hasMore: true,
+        nextBefore: '2024-06-15T07:00:00.000Z',
+      },
+    ];
+    await wrapper.find('[data-testid="task-changed"]').trigger('click');
+    await flushPromises();
+
+    expect(clientFeedQueries()).toEqual([{ from: '2024-06-10T07:00:00.000Z' }]);
+  });
+
+  it('keeps the held entries when the refresh fails', async () => {
+    mockState.feed = loadedDayFeed();
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+
+    mockState.feedResponses = [new Error('offline')];
+    await wrapper.find('[data-testid="task-changed"]').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('[data-testid="timer-group-task-loaded"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
+  });
+
+  it('ticks only the running group and its day total (REQ-394)', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2024-06-15T12:00:00.000Z'));
+      const running = entry({
+        id: 'running-1',
+        taskId: 'task-live',
+        taskName: 'Live Task',
+        startedAt: '2024-06-15T11:00:00.000Z',
+        stoppedAt: null,
+      });
+      runningState.value = running;
+      mockState.feed = {
+        entries: [
+          running,
+          entry({
+            id: 'stopped-1',
+            taskId: 'task-idle',
+            taskName: 'Idle Task',
+            startedAt: '2024-06-15T09:00:00.000Z',
+            stoppedAt: '2024-06-15T10:00:00.000Z',
+          }),
+        ],
+        hasMore: false,
+        nextBefore: null,
+      };
+      const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+      await flushPromises();
+      const dayTotal = () => wrapper.get('[data-testid="timer-day-total-2024-06-15"]').text();
+      const totalBefore = dayTotal();
+      groupUpdates.clear();
+
+      vi.setSystemTime(new Date('2024-06-15T12:00:01.000Z'));
+      elapsedSecondsState.value += 1;
+      await flushPromises();
+
+      expect(groupUpdates.get('task-live')).toBe(1);
+      expect(groupUpdates.get('task-idle')).toBeUndefined();
+      expect(totalBefore).toContain('02:00:00');
+      expect(dayTotal()).toContain('02:00:01');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  describe('automatic load more (REQ-392)', () => {
+    /**
+     * Test double that lets a test report the sentinel entering or leaving range.
+     * NuxtLink prefetching observes links too, so tests find the sentinel's observer
+     * by the element it watches.
+     */
+    class FakeIntersectionObserver {
+      static instances: FakeIntersectionObserver[] = [];
+      readonly targets: Element[] = [];
+      constructor(private readonly callback: (records: { isIntersecting: boolean }[]) => void) {
+        FakeIntersectionObserver.instances.push(this);
+      }
+      observe(target: Element) {
+        this.targets.push(target);
+      }
+      unobserve() {}
+      disconnect() {}
+      report(isIntersecting: boolean) {
+        this.callback([{ isIntersecting }]);
+      }
+    }
+
+    function sentinelObservers() {
+      return FakeIntersectionObserver.instances.filter((observer) =>
+        observer.targets.some(
+          (target) => target.getAttribute('data-testid') === 'timer-view-load-more-sentinel',
+        ),
+      );
+    }
+
+    function sentinel() {
+      const observer = sentinelObservers().at(-1);
+      if (!observer) throw new Error('no sentinel observer');
+      return observer;
+    }
+
+    const olderPage: Feed = {
+      entries: [
+        entry({
+          id: 'older-1',
+          taskId: 'task-older',
+          taskName: 'Older Task',
+          startedAt: '2024-06-10T17:00:00.000Z',
+          stoppedAt: '2024-06-10T18:00:00.000Z',
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
+
+    beforeEach(() => {
+      FakeIntersectionObserver.instances = [];
+      vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+    });
+    afterEach(() => {
+      // Unmount so a previous page's sentinel observer never answers for the next test.
+      mounted.splice(0).forEach((wrapper) => wrapper.unmount());
+      vi.unstubAllGlobals();
+    });
+
+    const mounted: Array<Awaited<ReturnType<typeof mountSuspended>>> = [];
+    async function mountPage() {
+      const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+      mounted.push(wrapper);
+      return wrapper;
+    }
+
+    it('loads older days when the list end comes into range', async () => {
+      mockState.feed = loadedDayFeed();
+      mockState.feedResponses = [olderPage];
+      const wrapper = await mountPage();
+      await flushPromises();
+      fetchMock.mockClear();
+
+      sentinel().report(true);
+      await flushPromises();
+
+      expect(clientFeedQueries()).toEqual([{ before: '2024-06-15T07:00:00.000Z' }]);
+      expect(wrapper.find('[data-testid="timer-group-task-older"]').exists()).toBe(true);
+      expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(false);
+    });
+
+    it('issues no second request while one is in flight', async () => {
+      mockState.feed = loadedDayFeed();
+      let answer: (page: Feed) => void = () => {};
+      mockState.feedResponses = [
+        new Promise<Feed>((resolve) => {
+          answer = resolve;
+        }),
+      ];
+      const wrapper = await mountPage();
+      await flushPromises();
+      fetchMock.mockClear();
+
+      sentinel().report(true);
+      await wrapper.vm.$nextTick();
+      sentinel().report(false);
+      await wrapper.vm.$nextTick();
+      sentinel().report(true);
+      await wrapper.vm.$nextTick();
+      expect(clientFeedQueries()).toHaveLength(1);
+
+      answer(olderPage);
+      await flushPromises();
+      expect(clientFeedQueries()).toHaveLength(1);
+    });
+
+    it('does not observe or request anything once history is exhausted', async () => {
+      mockState.feed = { ...loadedDayFeed(), hasMore: false, nextBefore: null };
+      await mountPage();
+      await flushPromises();
+
+      expect(sentinelObservers()).toHaveLength(0);
+      expect(clientFeedQueries()).toEqual([]);
+    });
+
+    it('stops loading automatically after a failure and leaves the button for a retry', async () => {
+      mockState.feed = loadedDayFeed();
+      mockState.feedResponses = [new Error('offline')];
+      const wrapper = await mountPage();
+      await flushPromises();
+      fetchMock.mockClear();
+
+      sentinel().report(true);
+      await flushPromises();
+      sentinel().report(false);
+      sentinel().report(true);
+      await flushPromises();
+      expect(clientFeedQueries()).toHaveLength(1);
+      expect(wrapper.find('[data-testid="timer-group-task-loaded"]').exists()).toBe(true);
+
+      mockState.feedResponses = [olderPage];
+      await wrapper.find('[data-testid="timer-view-load-more"]').trigger('click');
+      await flushPromises();
+      expect(clientFeedQueries()).toHaveLength(2);
+      expect(wrapper.find('[data-testid="timer-group-task-older"]').exists()).toBe(true);
+    });
   });
 });

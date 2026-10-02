@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { AsyncDataRequestStatus } from '#app';
 import type { FormError } from '@nuxt/ui';
 import type { MessageParams } from '~~/shared/types/message-params';
 import {
@@ -75,12 +76,31 @@ function goMonth(delta: number) {
 
 // --- Presets and form (REQ-385) ---
 
-const { data: presets, refresh: refreshPresets } = await useAsyncData('report-presets', () =>
-  requestFetch<ReportPresetDto[]>('/api/report-presets'),
+// Lazy: on the client the await resolves at once and the form fills in (REQ-391);
+// on the server it still waits, so the first preset is selected before render.
+const {
+  data: presets,
+  status: presetsStatus,
+  refresh: refreshPresets,
+} = await useAsyncData(
+  'report-presets',
+  () => requestFetch<ReportPresetDto[]>('/api/report-presets'),
+  { lazy: true },
 );
-const { data: trackers } = await useAsyncData('trackers', () =>
-  requestFetch<TrackerDto[]>('/api/trackers'),
+const { data: trackers, status: trackersStatus } = await useAsyncData(
+  'trackers',
+  () => requestFetch<TrackerDto[]>('/api/trackers'),
+  { lazy: true },
 );
+
+function isSettled(status: AsyncDataRequestStatus): boolean {
+  return status === 'success' || status === 'error';
+}
+/**
+ * The form waits for the first presets and trackers answer so it never shows an empty
+ * "new preset" first; later refreshes (after save or delete) keep it on screen.
+ */
+const formReady = ref(false);
 
 const uiLocale = computed((): ReportLocale => (locale.value === 'pl' ? 'pl' : 'en'));
 const state = reactive<ReportPresetInput>({
@@ -122,7 +142,17 @@ function selectFirstPreset() {
   if (first) applyPreset(first);
   else startNewPreset();
 }
-selectFirstPreset();
+
+// Show the form and preselect once, when both lists first settle (already during setup on the server).
+watch(
+  [presetsStatus, trackersStatus],
+  ([presetsLoad, trackersLoad]) => {
+    if (formReady.value || !isSettled(presetsLoad) || !isSettled(trackersLoad)) return;
+    formReady.value = true;
+    selectFirstPreset();
+  },
+  { immediate: true },
+);
 
 /** Saved presets, then the "new preset" entry, which edits an unsaved preset. */
 const presetItems = computed(() => [
@@ -272,7 +302,27 @@ async function onExport() {
       {{ t('clientReport.invalidMonth') }}
     </p>
 
-    <UCard>
+    <div
+      v-if="!formReady"
+      class="grid gap-4"
+      aria-busy="true"
+      :aria-label="t('clientReport.loading')"
+      data-testid="client-report-loading"
+    >
+      <USkeleton class="h-8 w-60" />
+      <USkeleton class="h-8 w-full max-w-md" />
+      <USkeleton class="h-24 w-full max-w-md" />
+    </div>
+
+    <UCard v-else>
+      <p
+        v-if="presetsStatus === 'error'"
+        class="mb-4 text-error"
+        role="alert"
+        data-testid="client-report-presets-error"
+      >
+        {{ t('clientReport.presetsLoadFailed') }}
+      </p>
       <div class="mb-4 flex flex-wrap items-end gap-2">
         <UFormField :label="t('clientReport.presetLabel')" name="preset" class="min-w-60">
           <USelect

@@ -4,6 +4,7 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { createI18n } from 'vue-i18n';
 import TimerTaskGroup from '../../app/components/TimerTaskGroup.vue';
 import type { TimerViewGroup } from '../../app/utils/timer-view-grouping';
+import { formatDuration } from '../../app/utils/format-duration';
 import type { ProjectDto } from '../../shared/types/project';
 import type { TrackerDto } from '../../shared/types/tracker';
 
@@ -139,6 +140,7 @@ function group(key = 'task-1') {
     projectName: 'Archived project',
     date: '2024-03-15',
     totalSeconds: 3600,
+    liveStartedAt: null,
     entries: [
       {
         id: 'entry-1',
@@ -461,6 +463,26 @@ describe('TimerTaskGroup', () => {
     expect(wrapper.emitted('stop')).toHaveLength(1);
   });
 
+  it('adds the elapsed time of the running entry to the stored total', async () => {
+    const startedAt = '2024-03-15T11:00:00.000Z';
+    const base = group();
+    const wrapper = await mount({
+      isLive: true,
+      now: new Date(startedAt).getTime() + 90_000,
+      group: {
+        ...base,
+        liveStartedAt: startedAt,
+        entries: [
+          ...base.entries,
+          { ...base.entries[0]!, id: 'entry-live', startedAt, stoppedAt: null },
+        ],
+      },
+    });
+    expect(wrapper.get('[data-testid="timer-group-total-task-1"]').text()).toBe(
+      formatDuration(3600 + 90),
+    );
+  });
+
   it('lets an untitled group edit its title and continue like a named group', async () => {
     csrfFetchMock.mockResolvedValue({});
     const wrapper = await mount({
@@ -471,6 +493,7 @@ describe('TimerTaskGroup', () => {
         projectId: null,
         projectName: null,
         totalSeconds: 3600,
+        liveStartedAt: null,
         entries: [
           {
             id: 'entry-u',

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest';
+import { nextTick } from 'vue';
 import type { Router } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
@@ -14,10 +15,20 @@ interface PageFixtures {
   presets: ReportPresetDto[];
   trackers: TrackerDto[];
   secrets: Record<string, string>;
+  /** The presets request waits for this before answering. */
+  presetsGate: Promise<void>;
+  presetsFail: boolean;
 }
 
 const harness = vi.hoisted(() => ({
-  ...((): PageFixtures => ({ query: {}, presets: [], trackers: [], secrets: {} }))(),
+  ...((): PageFixtures => ({
+    query: {},
+    presets: [],
+    trackers: [],
+    secrets: {},
+    presetsGate: Promise.resolve(),
+    presetsFail: false,
+  }))(),
   csrfFetch: vi.fn(),
   confirm: vi.fn(async () => true),
   toastError: vi.fn(),
@@ -59,18 +70,28 @@ vi.mock('vue-i18n', async (importOriginal) => {
 });
 
 mockNuxtImport('useRoute', () => () => ({ path: '/reports/client', query: harness.query }));
-mockNuxtImport(
-  'useRequestFetch',
-  () => () => async (url: string) =>
-    url === '/api/report-presets' ? harness.presets : harness.trackers,
-);
+mockNuxtImport('useRequestFetch', () => () => async (url: string) => {
+  if (url !== '/api/report-presets') return harness.trackers;
+  await harness.presetsGate;
+  if (harness.presetsFail) throw new Error('presets unavailable');
+  return harness.presets;
+});
+// Lazy like the page: returns at once and settles `status` when the fetcher answers.
 mockNuxtImport('useAsyncData', () => {
-  return async (_key: string, fetcher: () => Promise<ReportPresetDto[] | TrackerDto[]>) => {
-    const data = ref(await fetcher());
+  return (_key: string, fetcher: () => Promise<ReportPresetDto[] | TrackerDto[]>) => {
+    const data = ref<ReportPresetDto[] | TrackerDto[] | null>(null);
+    const status = ref<'pending' | 'success' | 'error'>('pending');
     const refresh = vi.fn(async () => {
-      data.value = await fetcher();
+      status.value = 'pending';
+      try {
+        data.value = await fetcher();
+        status.value = 'success';
+      } catch {
+        status.value = 'error';
+      }
     });
-    return { data, pending: ref(false), error: ref(null), refresh };
+    void refresh();
+    return { data, status, refresh };
   };
 });
 mockNuxtImport('useUserSettings', () => () => ({ effective: ref({ timeZone: 'UTC' }) }));
@@ -176,6 +197,8 @@ beforeEach(() => {
   harness.query = { month: '2026-09' };
   harness.presets = [preset()];
   harness.trackers = [openProject, redmine];
+  harness.presetsGate = Promise.resolve();
+  harness.presetsFail = false;
   harness.secrets = { [openProject.id]: 'op-key', [redmine.id]: 'rm-key' };
   harness.csrfFetch.mockImplementation(async () => harness.presets[0]);
   adapterReturning({ [openProject.id]: [remoteLog()] });
@@ -404,5 +427,44 @@ describe('client report page — export (REQ-386)', () => {
 
     expect(wrapper.text()).toContain('error.reportPresetClientNameDuplicate');
     expect(harness.createAdapter).not.toHaveBeenCalled();
+  });
+});
+
+describe('client report page — loading (REQ-391)', () => {
+  it('shows the skeleton instead of the form while presets load', async () => {
+    harness.presetsGate = new Promise(() => {});
+    const wrapper = await mountSuspended(ClientReportPage);
+    await nextTick();
+
+    expect(wrapper.find('[data-testid="client-report-loading"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="client-report-form"]').exists()).toBe(false);
+  });
+
+  it('preselects the first preset when presets arrive after the page rendered', async () => {
+    let release = () => {};
+    harness.presetsGate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    harness.presets = [
+      preset({ id: '01900000-0000-7000-8000-0000000000b2', clientName: 'Nordwind' }),
+    ];
+    const wrapper = await mountPage();
+    expect(wrapper.find('[data-testid="client-report-form"]').exists()).toBe(false);
+
+    release();
+    await flushPromises();
+    const input = wrapper.get<HTMLInputElement>('input[data-testid="client-report-client-name"]');
+    expect(input.element.value).toBe('Nordwind');
+  });
+
+  it('reports a presets load failure and still offers a new preset', async () => {
+    harness.presetsFail = true;
+    const wrapper = await mountPage();
+
+    expect(wrapper.find('[data-testid="client-report-presets-error"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="client-report-loading"]').exists()).toBe(false);
+    const input = wrapper.get<HTMLInputElement>('input[data-testid="client-report-client-name"]');
+    expect(input.element.value).toBe('');
+    expect(exportLabel(wrapper)).toBe('clientReport.saveAndExportButton');
   });
 });

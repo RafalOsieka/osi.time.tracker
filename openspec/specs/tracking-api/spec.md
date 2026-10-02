@@ -5,7 +5,6 @@ Define the HTTP contract for time entries: starting a live timer or creating a m
 
 ## Requirements
 
-
 ### Requirement: REQ-140 Start a live timer
 The system SHALL allow an authenticated user to start a live timer via `POST /api/time-entries`, creating a `TimeEntry` scoped to the user with `startedAt` set to the current server time and `stoppedAt` `null` (a running entry). The request MAY include an optional `title` (trimmed, length-bounded), an optional `projectId`, and an optional `taskId`; all MAY be omitted or `null`. When a `taskId` is provided, it SHALL identify an existing task owned by the authenticated user (a foreign or unknown `taskId` SHALL resolve to HTTP 404 without confirming existence); the entry SHALL bind directly to that task and its `title`/`projectId` SHALL be ignored for resolution (the server owns identity). When no `taskId` is provided, the title SHALL be resolved to a `taskId` server-side (see REQ-142); an empty or omitted title SHALL create an untitled running entry (`taskId = null`). On success the created `TimeEntry` SHALL be returned as a `TimeEntryDto` with timestamps serialized as strings.
 
@@ -43,7 +42,6 @@ The same endpoint SHALL also support manual entry creation: the request MAY incl
 - **WHEN** the request provides only one of `startedAt`/`stoppedAt`, or `stoppedAt` earlier than `startedAt`, or a `startedAt` in the future
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-
 ### Requirement: REQ-141 At most one running entry per user
 The system SHALL guarantee that an authenticated user has at most one running `TimeEntry` (`stoppedAt IS NULL`) at any time, enforced by a partial unique index on `(userId) WHERE stoppedAt IS NULL`. When a user starts a new timer while another entry is running, the system SHALL first stop the currently running entry (setting its `stoppedAt` to the new entry's `startedAt`) and then create the new running entry, within a single transaction (Toggl stop-on-new-start behavior).
 
@@ -54,7 +52,6 @@ The system SHALL guarantee that an authenticated user has at most one running `T
 #### Scenario: Concurrent starts do not create two running entries
 - **WHEN** an authenticated user issues two start requests concurrently
 - **THEN** the partial unique index SHALL prevent two running entries and the system SHALL end with exactly one running entry
-
 
 ### Requirement: REQ-142 Title binds an entry to a Task
 The system SHALL treat a time entry's title as the name of the `Task` it points to; a `TimeEntry` SHALL carry no title column of its own. When a title is provided, the system SHALL resolve it to a `Task` within one transaction using the matching key `(userId, name, projectId, remoteIssueId)`, where `projectId = NULL` is a distinct scope and `remoteIssueId = NULL` means unlinked. When the caller supplies no remote issue, resolution SHALL consider all tasks matching `(userId, name, projectId)` and SHALL apply the most-recently-used tie-break of REQ-137, creating a new **unlinked** `Task` only when no candidate exists. When the caller supplies an explicit remote issue (REQ-179), resolution SHALL find-or-create against the full four-part key. When an **existing** entry that already has a task is retitled via PATCH without a `taskId` (REQ-143), resolution SHALL likewise use the full four-part key, taking that task's current `remoteIssueId` (null meaning unlinked) rather than the bare-title tie-break. A new entry started or created with a bare title SHALL still use the tie-break. A project-less title that matches an existing project-less task SHALL silently bind to it. An empty, whitespace-only, or omitted title SHALL leave `taskId` `null`.
@@ -82,7 +79,6 @@ The system SHALL treat a time entry's title as the name of the `Task` it points 
 #### Scenario: Retitle of a tasked entry uses the four-part key
 - **WHEN** an existing entry that has a task is patched with a new title and no `taskId`
 - **THEN** resolution SHALL find-or-create `(userId, name, projectId, remoteIssueId)` using the current task's remote issue and SHALL NOT apply the bare-title most-recently-used tie-break
-
 
 ### Requirement: REQ-143 Stop or retitle a running entry
 The system SHALL allow an authenticated user to stop, retitle, and/or edit the timestamps of their own entry via `PATCH /api/time-entries/[id]`, addressed by its `uuidv7` `id` and scoped by `userId`. Setting `stoppedAt` (or requesting a stop) SHALL mark the entry as stopped. The request MAY include `startedAt` (ISO 8601 instant) to move the entry's start. Validation SHALL apply to the entry's effective post-patch state: `stoppedAt` SHALL be greater than or equal to `startedAt` for a stopped entry, and for an entry that remains running, `startedAt` SHALL NOT be in the future (beyond a small clock-skew tolerance). Overlap with the user's other entries SHALL be permitted. The request MAY include an optional `taskId`: when provided, it SHALL identify a task owned by the authenticated user (foreign or unknown resolves to HTTP 404) and the entry SHALL bind directly to that task, taking precedence over `title`/`projectId` resolution. When no `taskId` is provided, a provided `title` (with optional `projectId`) SHALL be re-resolved to a `taskId` using the same matching rules as REQ-142. The presence of the `projectId` field SHALL be significant when the task is re-resolved by title: **omitting** `projectId` SHALL preserve the entry's current project scope (the project of its current task, or project-less when it has none), while an explicit **`null`** SHALL resolve the entry into the project-less scope. The system SHALL NOT treat an absent `projectId` as an implicit `null`, so a title-only edit SHALL NOT re-home the entry into the no-project scope. When the entry currently has a task and no `taskId` is provided, title re-resolution SHALL also preserve that task's current remote issue (including `remoteIssueId` null for an unlinked task): the system SHALL find-or-create against `(userId, effectiveName, effectiveProjectId, currentRemoteIssueId)` and SHALL NOT create a new unlinked task merely because the PATCH body omitted a remote-issue field. The PATCH body SHALL NOT be required to include a remote issue field for this keep. When the entry is untitled (`taskId` null), there is no current remote issue to keep and bare-title resolution (REQ-142) SHALL apply. A foreign or unknown entry id SHALL resolve to HTTP 404 without confirming existence. On success the updated `TimeEntryDto` SHALL be returned.
@@ -163,7 +159,6 @@ The system SHALL allow an authenticated user to stop, retitle, and/or edit the t
 - **WHEN** an authenticated user patches an entry id owned by another user or that does not exist
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
 
-
 ### Requirement: REQ-144 Read the running entry
 The system SHALL expose the authenticated user's current running entry via `GET /api/time-entries/running`, returning the single running `TimeEntryDto` (`stoppedAt` null) or `null` when none is running. The response SHALL be scoped strictly to the authenticated user.
 
@@ -175,14 +170,12 @@ The system SHALL expose the authenticated user's current running entry via `GET 
 - **WHEN** an authenticated user with no running entry requests the running endpoint
 - **THEN** the system SHALL return `null`
 
-
 ### Requirement: REQ-145 Duration derived from timestamps
 The system SHALL always derive a time entry's duration from `stoppedAt − startedAt`; a running entry's elapsed time SHALL be computed against the current time. The system SHALL NOT store a separate duration column.
 
 #### Scenario: Duration is computed, not stored
 - **WHEN** a stopped entry is displayed
 - **THEN** its duration SHALL be computed as `stoppedAt − startedAt` rather than read from a stored duration field
-
 
 ### Requirement: REQ-148 List time entries by instant range
 The system SHALL expose the authenticated user's time entries via `GET /api/time-entries` with required `from` and `to` query parameters (ISO 8601 instants). The response SHALL be a flat array of `TimeEntryDto` (including `taskId`, `taskName`, `projectId`, `projectName`, with parent names resolved via LEFT joins that do NOT filter on the parent's `deletedAt`) for entries whose `startedAt` falls within `[from, to)`, ordered by `startedAt` descending, scoped strictly to the authenticated user. The DTO SHALL NOT include `clientName` or any tracker display name for timer listing. A running entry (`stoppedAt` null) whose `startedAt` is in range SHALL be included. Invalid or missing `from`/`to`, or `from >= to`, SHALL be rejected with `{ messageKey, params }`. The server SHALL perform no timezone or day-boundary logic; callers convert their local day boundaries to instants.
@@ -203,7 +196,6 @@ The system SHALL expose the authenticated user's time entries via `GET /api/time
 - **WHEN** another user has entries within the requested window
 - **THEN** those entries SHALL NOT appear in the response
 
-
 ### Requirement: REQ-149 Bulk-assign untitled entries to a task
 The system SHALL allow an authenticated user to assign a set of their untitled time entries to a task in one atomic operation via `POST /api/time-entries/bulk-assign`, accepting `{ ids, title, projectId? }` where `ids` is a non-empty array of entry uuids, `title` is trimmed, non-empty, and length-bounded, and `projectId` is optional. Within a single transaction the system SHALL resolve the title to a `taskId` exactly once using the REQ-142 matching rules and set that `taskId` on every listed entry. Every listed entry MUST belong to the authenticated user and MUST currently be untitled (`taskId IS NULL`); otherwise the whole request SHALL fail with `{ messageKey, params }` (or HTTP 404 for foreign/unknown ids) and no entry SHALL be modified. On success the updated `TimeEntryDto`s SHALL be returned.
 
@@ -218,55 +210,6 @@ The system SHALL allow an authenticated user to assign a set of their untitled t
 #### Scenario: Empty title rejected
 - **WHEN** the submitted title is empty or whitespace-only, or `ids` is empty
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
-
-
-### Requirement: REQ-264 Timer view feed API
-The system SHALL expose an authenticated timer-view feed at `GET /api/time-entries/feed` that returns a page of the caller's time entries together with pagination metadata. The response SHALL be a DTO of the form `{ entries: TimeEntryDto[], hasMore: boolean, nextBefore: string | null }` where each `TimeEntryDto` matches the list shape of REQ-148 (task/project context, optional remote issue ref, ISO timestamps, no client/tracker display name), `hasMore` is true when at least one of the user's entries belongs to a local calendar day strictly older than the oldest day represented in `entries`, and `nextBefore` is an opaque-or-ISO cursor the client MUST pass to load the next page (or `null` when `hasMore` is false).
-
-Day boundaries for the feed SHALL be computed in the **feed timezone**: the authenticated user's stored `timezone` when present, otherwise `UTC` (matching the SSR-safe effective timezone of REQ-165). The feed endpoint SHALL follow `core-api-conventions` for authentication and errors.
-
-**Initial page** (no `before` query parameter):
-1. If the user has no time entries at all, the response SHALL be `{ entries: [], hasMore: false, nextBefore: null }`.
-2. Otherwise the server SHALL collect every entry of the user whose local day (from `startedAt` in the feed timezone) falls within the inclusive rolling window of the most recent **30** local calendar days ending on "today" in that timezone.
-3. If that 30-day window yields zero entries while older entries exist, the server SHALL instead return **all** entries whose local day equals the local day of the user's newest entry (`max(startedAt)`), i.e. a single newest activity day.
-4. `hasMore` / `nextBefore` SHALL reflect whether any entry exists on a strictly older local day than the oldest day in the returned set.
-
-**Subsequent page** (`before` required): the server SHALL return all entries belonging to the next **7** distinct local activity days (days with ≥1 entry) strictly older than the cursor, ordered newest day first within the page, and SHALL set `hasMore` / `nextBefore` from whether any older activity day remains. A missing, malformed, or foreign cursor SHALL be rejected with `{ messageKey, params }` (or equivalent 422 contract). Empty calendar gaps between activity days SHALL NOT consume a slot in the "7 days" budget.
-
-The existing range list (REQ-148) MAY remain for non-feed callers; the timer view page SHALL use the feed for its initial and load-more loads.
-
-#### Scenario: Initial feed returns last 30 days of work
-- **WHEN** an authenticated user with entries in the last 30 local days requests the feed without `before`
-- **THEN** the system SHALL return those entries, `hasMore` true only if older activity days exist, and a usable `nextBefore` when `hasMore` is true
-
-#### Scenario: Empty 30-day window falls back to newest activity day
-- **WHEN** the user has no entries in the last 30 local days but has at least one older entry
-- **THEN** the initial feed SHALL return all entries from the single local day of the newest entry and SHALL NOT return an empty list
-
-#### Scenario: Never tracked returns empty feed
-- **WHEN** the user has no time entries
-- **THEN** the initial feed SHALL return empty `entries`, `hasMore` false, and `nextBefore` null
-
-#### Scenario: Load more returns seven activity days
-- **WHEN** the client requests the feed with a valid `before` cursor after a page that left older activity days
-- **THEN** the system SHALL return entries for up to seven older distinct local days with entries, skipping empty calendar gaps, and set `hasMore` false when no older activity day remains
-
-#### Scenario: Load more with no older history
-- **WHEN** the client requests the next page but no older activity days exist
-- **THEN** the system SHALL return empty `entries` (or an equivalent no-op page) with `hasMore` false
-
-#### Scenario: Feed uses stored timezone then UTC
-- **WHEN** the user has a stored timezone `Europe/Warsaw`
-- **THEN** day windows and activity-day counts SHALL use that timezone; when timezone is null the feed SHALL use `UTC`
-
-#### Scenario: Other users never included
-- **WHEN** another user has entries that would fall in the window
-- **THEN** those entries SHALL NOT appear in the feed
-
-#### Scenario: Unauthenticated rejected
-- **WHEN** an unauthenticated client requests the feed
-- **THEN** the system SHALL reject the request per shared authentication conventions
-
 
 ### Requirement: REQ-151 Delete a time entry with task garbage collection
 The system SHALL allow an authenticated user to delete their own `TimeEntry` via `DELETE /api/time-entries/[id]`, addressed by its `uuidv7` `id` and scoped by `userId`. Within a single transaction the system SHALL delete the entry and, when the entry's `taskId` was non-null and no other time entry references that task afterwards, SHALL hard-delete the emptied `Task` (garbage collection). A foreign or unknown entry id SHALL resolve to HTTP 404 without confirming existence. On success the system SHALL respond with a success status and no entry data.
@@ -286,7 +229,6 @@ The system SHALL allow an authenticated user to delete their own `TimeEntry` via
 #### Scenario: Foreign or unknown entry id
 - **WHEN** an authenticated user deletes an entry id owned by another user or that does not exist
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
-
 
 ### Requirement: REQ-179 Day-scoped reassignment of time entries to a task
 The system SHALL allow an authenticated user to move a set of their time entries to a target task in one atomic operation via `POST /api/time-entries/reassign`, accepting `{ ids, name?, projectId?, remoteIssueId? }` where `ids` is a non-empty array of entry uuids and `name` is trimmed and length-bounded. This powers the timer view's day-scoped group edits: the client sends exactly the entry ids of one day's task group so that only that day's entries move, while the same task's entries on other days are unaffected.
@@ -333,3 +275,69 @@ Every listed entry MUST belong to the authenticated user; otherwise the whole re
 - **WHEN** any listed id is foreign or unknown
 - **THEN** the system SHALL reject the whole request with HTTP 404 and none of the listed entries SHALL be modified
 
+### Requirement: REQ-395 Timer view feed API
+The system SHALL expose an authenticated timer-view feed at `GET /api/time-entries/feed` that returns a page of the caller's time entries together with pagination metadata. The response SHALL be a DTO of the form `{ entries: TimeEntryDto[], hasMore: boolean, nextBefore: string | null }` where each `TimeEntryDto` matches the list shape of REQ-148 (task/project context, optional remote issue ref, ISO timestamps, no client/tracker display name), `hasMore` is true when at least one of the user's entries belongs to a local calendar day strictly older than the oldest day represented in `entries`, and `nextBefore` is an opaque-or-ISO cursor the client MUST pass to load the next page (or `null` when `hasMore` is false).
+
+Day boundaries for the feed SHALL be computed in the **feed timezone**: the authenticated user's stored `timezone` when present, otherwise `UTC` (matching the SSR-safe effective timezone of REQ-165). The feed endpoint SHALL follow `core-api-conventions` for authentication and errors.
+
+**Initial page** (neither `before` nor `from`): the server SHALL return all entries belonging to the user's newest **7** distinct local activity days (days with ≥1 entry), newest day first. Empty calendar gaps SHALL NOT consume a slot, so a user whose last activity is old still gets their newest activity days. A user with no entries at all SHALL receive `{ entries: [], hasMore: false, nextBefore: null }`. Entries started in the future relative to "now" SHALL be included like any other entry (the walk starts from the newest entry, not from today).
+
+**Subsequent page** (`before` required): the server SHALL return all entries belonging to the next **7** distinct local activity days strictly older than the cursor, ordered newest day first within the page. It SHALL set `hasMore` / `nextBefore` from whether any older activity day remains. Empty calendar gaps between activity days SHALL NOT consume a slot in the "7 days" budget.
+
+**Range refresh** (`from` required): the server SHALL return every entry of the user whose `startedAt` is at or after `from` (no upper bound), newest first. `hasMore` / `nextBefore` SHALL be computed from the oldest local day in the returned set exactly as for paged responses. When no entry starts at or after `from`, `hasMore` SHALL reflect whether any entry starts before `from`, and `nextBefore` SHALL be `from`'s local day start when it does. This mode lets a client re-fetch an already-loaded window in one request.
+
+`before` and `from` SHALL be mutually exclusive; a request carrying both, or carrying a missing-offset, malformed, or otherwise invalid value for either, SHALL be rejected with a `422` `{ messageKey, params }` contract.
+
+The existing range list (REQ-148) MAY remain for non-feed callers; the timer view page SHALL use the feed for its initial, load-more, and refresh loads.
+
+#### Scenario: Initial feed returns newest seven activity days
+- **WHEN** an authenticated user with entries on ten distinct local days requests the feed without `before` or `from`
+- **THEN** the system SHALL return only the entries of the newest seven of those days, `hasMore` true, and a `nextBefore` equal to the local start of the oldest returned day
+
+#### Scenario: Initial feed skips calendar gaps
+- **WHEN** the user's newest entries lie 60 days in the past and nothing was tracked since
+- **THEN** the initial feed SHALL return the newest seven activity days from that older period and SHALL NOT return an empty list
+
+#### Scenario: Initial feed with fewer than seven activity days
+- **WHEN** the user has entries on only three distinct local days
+- **THEN** the initial feed SHALL return all of them with `hasMore` false and `nextBefore` null
+
+#### Scenario: Never tracked returns empty feed
+- **WHEN** the user has no time entries
+- **THEN** the initial feed SHALL return empty `entries`, `hasMore` false, and `nextBefore` null
+
+#### Scenario: Load more returns seven activity days
+- **WHEN** the client requests the feed with a valid `before` cursor after a page that left older activity days
+- **THEN** the system SHALL return entries for up to seven older distinct local days with entries, skipping empty calendar gaps, and set `hasMore` false when no older activity day remains
+
+#### Scenario: Load more with no older history
+- **WHEN** the client requests the next page but no older activity days exist
+- **THEN** the system SHALL return empty `entries` (or an equivalent no-op page) with `hasMore` false
+
+#### Scenario: Range refresh returns the whole loaded window
+- **WHEN** the client requests the feed with `from` set to the local start of a day 20 activity days back
+- **THEN** the system SHALL return every entry started at or after `from` in one response, with `hasMore` / `nextBefore` describing history older than the oldest returned day
+
+#### Scenario: Range refresh with nothing in range
+- **WHEN** the client requests the feed with `from` after the user's newest entry, and older entries exist
+- **THEN** the system SHALL return empty `entries`, `hasMore` true, and `nextBefore` equal to `from`'s local day start
+
+#### Scenario: Both cursors rejected
+- **WHEN** the client sends both `before` and `from`
+- **THEN** the system SHALL reject the request with `422` and a `{ messageKey, params }` body
+
+#### Scenario: Malformed range start rejected
+- **WHEN** the client sends `from` that is not an ISO datetime with offset
+- **THEN** the system SHALL reject the request with `422` and a `{ messageKey, params }` body
+
+#### Scenario: Feed uses stored timezone then UTC
+- **WHEN** the user has a stored timezone `Europe/Warsaw`
+- **THEN** activity-day counts and day boundaries SHALL use that timezone; when timezone is null the feed SHALL use `UTC`
+
+#### Scenario: Other users never included
+- **WHEN** another user has entries that would fall in the window
+- **THEN** those entries SHALL NOT appear in the feed
+
+#### Scenario: Unauthenticated rejected
+- **WHEN** an unauthenticated client requests the feed
+- **THEN** the system SHALL reject the request per shared authentication conventions

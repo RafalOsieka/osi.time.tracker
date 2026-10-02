@@ -22,7 +22,7 @@
   },
   "dependencies": {
     "@internationalized/date": "^3.12.4",
-    "@nuxt/ui": "^4.11.2",
+    "@nuxt/ui": "^4.11.3",
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
     "consola": "3.4.2",
@@ -39,7 +39,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.137",
+    "@iconify-json/lucide": "^1.2.138",
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/schema": "^4.5.2",
     "@nuxt/test-utils": "^4.3.2",
@@ -51,7 +51,7 @@
     "@vue/test-utils": "^2.5.1",
     "c8": "^12.0.0",
     "cross-env": "^10.1.0",
-    "dotenv": "^18.0.4",
+    "dotenv": "^18.0.5",
     "drizzle-kit": "^0.31.11",
     "happy-dom": "^20.14.5",
     "playwright": "^1.63.0",

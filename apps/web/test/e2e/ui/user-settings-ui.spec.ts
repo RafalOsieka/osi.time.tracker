@@ -144,14 +144,9 @@ describeSettingsUI('user settings UI flow', async () => {
       ).toBe(false);
     }
 
-    // ...and re-appears grouped under the day computed for the new timezone.
+    // ...and re-appears grouped under the day computed for the new timezone
+    // (older days load automatically while the list end is in view).
     const shiftedDayKey = dayKeyIn(startedAt, SHIFTED_TIME_ZONE);
-    if ((await page.locator(`[data-testid="timer-day-${shiftedDayKey}"]`).count()) === 0) {
-      const loadMore = page.locator('[data-testid="timer-view-load-more"]');
-      if ((await loadMore.count()) > 0) {
-        await loadMore.click();
-      }
-    }
     await page.waitForSelector(`[data-testid="timer-day-${shiftedDayKey}"]`);
     expect(
       await page.evaluate(dayIncludesTitle, {

@@ -10,7 +10,7 @@ The system SHALL persist an account-level `timezone` setting on the user record 
 
 The system SHALL NOT persist a week-start preference. Any prior `weekStart` / `week_start` column or session field SHALL be removed.
 
-For SSR and the first client hydration paint, when no timezone is saved, the effective display timezone SHALL resolve to a stable server-safe fallback (`UTC`) so server-rendered and first-client-render timezone-formatted strings match. After the client has mounted, when no timezone is saved, the effective timezone SHALL upgrade to the browser-detected timezone and timezone-formatted displays SHALL recompute from that value. When a timezone is saved, both SSR and client SHALL use the saved value with no post-mount upgrade. Server-side consumers that need day boundaries without a browser (including the timer-view feed, REQ-264) SHALL use the stored timezone when present, otherwise `UTC`.
+For SSR and the first client hydration paint, when no timezone is saved, the effective display timezone SHALL resolve to a stable server-safe fallback (`UTC`) so server-rendered and first-client-render timezone-formatted strings match. After the client has mounted, when no timezone is saved, the effective timezone SHALL upgrade to the browser-detected timezone and timezone-formatted displays SHALL recompute from that value. When a timezone is saved, both SSR and client SHALL use the saved value with no post-mount upgrade. Server-side consumers that need day boundaries without a browser (including the timer-view feed, REQ-395) SHALL use the stored timezone when present, otherwise `UTC`.
 
 #### Scenario: Defaults before any save
 - **WHEN** a user who has never saved settings uses the app after client mount
@@ -103,7 +103,7 @@ The page SHALL NOT present a week-start control. The page SHALL NOT require a fo
 ### Requirement: REQ-168 Timezone-aware date-time foundation
 The application SHALL perform all timezone-sensitive date arithmetic (day keys, day/window boundaries, combining a wall-clock date and time into an instant) using the Temporal API via the `temporal-polyfill` package, and all human-readable formatting via `Intl` with an explicit `timeZone` option — replacing browser-local `Date` getter logic in the date utilities. Client display utilities SHALL be pure functions taking the effective `{ timeZone }` as an explicit parameter (no `weekStart`). Wall-clock→instant conversion SHALL use Temporal's `compatible` disambiguation so DST-ambiguous or skipped times resolve deterministically. Interop with date pickers that consume browser-local `Date` objects SHALL be confined to a dedicated adapter pair at the component boundary; no other code SHALL construct dates from browser-local getters. UTC ISO 8601 instants SHALL remain the only on-the-wire representation for create/update payloads, so changing the display timezone is a pure re-render for already-loaded entries.
 
-The timer-view feed (REQ-264) is an intentional exception that performs server-side day-boundary logic in the feed timezone; other list endpoints that accept raw `[from, to)` instants (REQ-148) SHALL continue to perform no timezone logic.
+The timer-view feed (REQ-395) is an intentional exception that performs server-side day-boundary logic in the feed timezone; other list endpoints that accept raw `[from, to)` instants (REQ-148) SHALL continue to perform no timezone logic.
 
 #### Scenario: Day bucketing follows the configured timezone
 - **WHEN** an entry's `startedAt` falls on different calendar days in the configured timezone versus the browser's
