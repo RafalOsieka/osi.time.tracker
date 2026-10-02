@@ -24,7 +24,7 @@ The application SHALL expose a private `/reports/client` page using the shared a
 - **THEN** the guard SHALL redirect to `/login` with that path as the redirect target
 
 ### Requirement: REQ-385 Preset selection and inline preset form
-The page SHALL load the user's report presets (REQ-381) and SHALL preselect the most recently used one. It SHALL offer a preset selector, a "new preset" action, and an inline form with client name, a checkbox list of the user's active trackers, hours format (`H:MM` or decimal), and PDF language (`en` or `pl`). With no presets the form SHALL start empty with the hours format `decimal` and the PDF language equal to the current UI locale. A preset that reports inactive trackers SHALL show a translated warning naming how many trackers were removed. The page SHALL offer deleting the selected preset after a confirmation. Form validation SHALL mirror REQ-380 and SHALL show translated field errors before any request is sent.
+The page SHALL load the user's report presets (REQ-381) and SHALL preselect the most recently used one. It SHALL offer a preset selector whose last option is a translated "new preset" entry that switches the form to an unsaved preset, and an inline form with client name, a checkbox list of the user's active trackers, hours format (`H:MM` or decimal), and PDF language (`en` or `pl`). With no presets the selector SHALL show the "new preset" entry and the form SHALL start empty with the hours format `decimal` and the PDF language equal to the current UI locale. A preset that reports inactive trackers SHALL show a translated warning naming how many trackers were removed. The page SHALL offer deleting the selected preset after a confirmation. Because export saves the preset (REQ-386), the export action SHALL be labelled "save and export" while the form holds a new preset or differs from the selected saved preset, and "export" otherwise. Form validation SHALL mirror REQ-380 and SHALL show translated field errors before any request is sent.
 
 #### Scenario: Last used preset is preselected
 - **WHEN** the user has presets A and B and B was used last
@@ -32,7 +32,15 @@ The page SHALL load the user's report presets (REQ-381) and SHALL preselect the 
 
 #### Scenario: First visit
 - **WHEN** the user has no presets and the UI locale is `en`
-- **THEN** the form SHALL be empty with hours format `decimal` and PDF language `en`
+- **THEN** the selector SHALL show "new preset", the form SHALL be empty with hours format `decimal` and PDF language `en`, and the export action SHALL read "save and export"
+
+#### Scenario: New preset from the selector
+- **WHEN** the user picks "new preset" in the selector
+- **THEN** the form SHALL reset to the first-visit defaults without any request
+
+#### Scenario: Export label follows unsaved changes
+- **WHEN** a saved preset is selected unchanged, and the user then edits its client name
+- **THEN** the export action SHALL read "export" before the edit and "save and export" after it
 
 #### Scenario: Removed tracker warning
 - **WHEN** the selected preset reports one inactive tracker

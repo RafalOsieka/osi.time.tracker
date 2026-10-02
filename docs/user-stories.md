@@ -125,6 +125,20 @@ Conventions that apply to every story:
 
 ---
 
+## 8a. Client report (monthly timesheet PDF per client) ✅ Delivered
+
+> **As a consultant, I want one polished monthly PDF per client built from the time logged on that client's trackers, so I can hand the client a single timesheet even when they are served through several trackers.** (WBS 4.6)
+
+**Acceptance criteria**
+
+- The Client report page (`/reports/client`, under Reports) has a month picker kept in the URL (`month=YYYY-MM`), defaulting to the current month in my timezone; an invalid month shows an error and disables export.
+- I save reusable report presets (client name, one or more of my trackers, hours format `H:MM` or decimal, PDF language `en`/`pl`); the most recently used one is preselected, and I can create, edit, and delete presets on the page. A preset whose tracker was deleted warns me and keeps only active trackers.
+- Export PDF saves the preset first, then fetches my own logs for the month from every preset tracker through its usual browser path (direct or extension). If any tracker has no stored key or fails, I get an error naming that tracker and no file; if nothing was logged, I am told so and no file is produced.
+- The PDF is built only from remote logs (including logs created directly in the tracker), never from local entries: an A4 title page (client, month, contractor, totals, data sources with per-tracker totals when there are several trackers) and a Date | Task | Hours table with clickable issue ids, day totals, a month total, running headers, and "page X of Y" footers. A day is never split across pages unless it is longer than a page.
+- Every printed total equals the sum of the printed rows, in the chosen hours format and the PDF language's number and date formats, independent of the UI language; the file downloads as `<prefix>-<client-slug>-<YYYY-MM>.pdf`.
+
+---
+
 ## 9. Tracker configuration & secure credentials ✅ Delivered
 
 > **As a user, I want to configure each Tracker with a direct-browser capability and rounding rule, with my credentials stored securely, so I can later link issues and push time.** (WBS 5.1–5.4; absorbed into tracker-management)

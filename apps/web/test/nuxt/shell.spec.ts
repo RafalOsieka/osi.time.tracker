@@ -204,6 +204,7 @@ describe('REQ-065: sidebar nav skeleton', () => {
     expect(hrefs).not.toContain('/clients');
     expect(hrefs).not.toContain('/reports');
     expect(hrefs).toContain('/reports/monthly');
+    expect(hrefs).toContain('/reports/client');
     expect(hrefs).toContain('/settings');
   });
 
