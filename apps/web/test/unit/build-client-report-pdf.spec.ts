@@ -14,6 +14,7 @@ import {
   type ClientReportTranslate,
 } from '../../app/utils/client-report/build-client-report-pdf';
 import { createClientReportFormatters } from '../../app/utils/client-report/format';
+import appMark from '../../app/assets/icons/app-mark.svg?raw';
 import type { ReportLocale } from '../../shared/types/report-preset';
 
 const openProject: ClientReportTracker = {
@@ -149,6 +150,16 @@ describe('buildClientReportPdf title page', () => {
     // Values with the unit: each data source total (2+ trackers only) and the month total.
     expect(one.match(/ h"/g)).toHaveLength(1);
     expect(two.match(/ h"/g)).toHaveLength(3);
+  });
+
+  // REQ-368: the PDF mark is derived from the canonical glyph, never a pasted copy that drifts.
+  it('draws the title-page logo from the canonical app mark', () => {
+    const logo = contentText(pdf({ op: [log()] })).match(/"svg":"((?:[^"\\]|\\.)*)"/)?.[1];
+    expect(logo).toBeDefined();
+    const glyphPaths = [...appMark.matchAll(/\sd="([^"]+)"/g)].map((match) => match[1]!);
+    expect(glyphPaths.length).toBeGreaterThan(0);
+    for (const d of glyphPaths) expect(logo).toContain(d);
+    expect(logo).not.toContain('currentColor');
   });
 
   it('falls back to the email when the display name is missing', () => {
