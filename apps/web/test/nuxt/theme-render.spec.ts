@@ -168,8 +168,8 @@ describe('theme UI and SSR head wiring', () => {
   });
 
   // REQ-369: the in-app mark is stateless. Asserting the idle and running renders are
-  // byte-identical catches any state leak, rather than banning one shape the glyph now
-  // legitimately uses (its lattice points are `<circle>` elements).
+  // byte-identical catches any state leak, rather than banning particular shapes such as a
+  // status dot, which would also constrain future redraws of the glyph.
   it('renders AppBrandMark identically whether or not a timer is running', async () => {
     runningState.value = null;
     const idle = await mountSuspended(AppBrandMark);
