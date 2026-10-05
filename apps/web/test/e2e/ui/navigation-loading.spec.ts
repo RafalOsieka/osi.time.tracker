@@ -21,7 +21,7 @@ describeNavigationLoading('client navigation with slow page data', async () => {
   async function openProjects() {
     const page = await createPage('/');
     await fillLogin(page, user.email, user.password);
-    await page.goto(url('/projects'));
+    await page.goto(url('/projects'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="projects-page"]');
     return page;
   }

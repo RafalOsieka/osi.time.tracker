@@ -4,7 +4,7 @@ import { url } from '../helpers/url';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
-import { loginAs as fillLogin } from '../helpers/ui';
+import { loginAs as fillLogin, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
@@ -84,7 +84,7 @@ describeProfileUI('profile UI flow', async () => {
       .toBe('Profile After');
     expect(await name.inputValue()).toBe('Profile After');
 
-    await page.reload();
+    await reloadHydrated(page);
     await page.waitForSelector('[data-testid="page-profile"]');
     expect(await page.locator('[data-testid="profile-display-name"]').inputValue()).toBe(
       'Profile After',
@@ -110,7 +110,7 @@ describeProfileUI('profile UI flow', async () => {
   it('no longer serves /settings', async () => {
     const user = await seedUser(dbUrl);
     const page = await openAuthed(user);
-    const response = await page.goto(url('/settings'));
+    const response = await page.goto(url('/settings'), { waitUntil: 'hydration' });
     expect(response?.status()).toBe(404);
     await page.close();
   });
@@ -160,14 +160,14 @@ describeProfileUI('profile UI flow', async () => {
       .toContain(SHIFTED_TIME_ZONE);
 
     // --- Persistence across reload ---
-    await page.reload();
+    await reloadHydrated(page);
     await page.waitForSelector('[data-testid="page-profile"]');
     await expect
       .poll(() => page.locator('#profile-timezone').textContent())
       .toContain(SHIFTED_TIME_ZONE);
 
     // --- The timer view regroups the same data under the new timezone ---
-    await page.goto(url('/'));
+    await page.goto(url('/'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Profile UI Task');
 

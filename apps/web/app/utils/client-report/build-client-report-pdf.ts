@@ -10,6 +10,7 @@ import { deriveIssueUrl } from '@osi/remote-trackers/contracts';
 import type { MessageParams } from '~~/shared/types/message-params';
 import type { ClientReport, ClientReportDay, ClientReportRow } from './build-client-report';
 import type { ClientReportFormatters } from './format';
+import appMark from '../../assets/icons/app-mark.svg?raw';
 
 /** Translates a catalog key in the report's locale (REQ-390), independent of the UI locale. */
 export type ClientReportTranslate = (key: string, params?: MessageParams) => string;
@@ -52,8 +53,18 @@ const CONTENT_WIDTH = A4_WIDTH - 2 * PAGE_SIDE;
  */
 const TABLE_WIDTHS = [DATE_WIDTH, CONTENT_WIDTH - DATE_WIDTH - HOURS_WIDTH - 2 * LINE, HOURS_WIDTH];
 
-const LOGO_SVG =
-  '<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="8" fill="#06b6d4"/><g transform="translate(4 4)"><g fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round"><path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86"/><path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" transform="rotate(90 12 12)"/><path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" transform="rotate(180 12 12)"/><path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" transform="rotate(270 12 12)"/></g><g fill="#fff"><rect x="7.1" y="7.1" width="2.5" height="2.5" rx="0.8"/><rect x="10.75" y="7.1" width="2.5" height="2.5" rx="0.8"/><rect x="14.4" y="7.1" width="2.5" height="2.5" rx="0.8"/><rect x="10.75" y="10.75" width="2.5" height="2.5" rx="0.8"/><rect x="10.75" y="14.4" width="2.5" height="2.5" rx="0.8"/></g></g></svg>';
+/** Inner markup of the canonical glyph, with its single `currentColor` swapped for `color`. */
+function glyphMarkup(svg: string, color: string): string {
+  const body = /<svg[^>]*>([\s\S]*)<\/svg>/.exec(svg)?.[1];
+  if (body === undefined) throw new Error('app-mark.svg has no <svg> root');
+  return body.replaceAll('currentColor', color);
+}
+
+/**
+ * Title-page logo: the 75% app tile of `public/icon.svg`, built from the canonical glyph at import
+ * time so the PDF never drifts from the app mark (REQ-368, design D3).
+ */
+const LOGO_SVG = `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="8" fill="${ACCENT}"/><g transform="translate(4 4)" fill="${WHITE}">${glyphMarkup(appMark, WHITE)}</g></svg>`;
 
 /**
  * Cell borders and paddings come from each cell (`border`, `borderColor`,

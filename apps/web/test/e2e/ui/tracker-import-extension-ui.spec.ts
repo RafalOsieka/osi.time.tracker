@@ -85,7 +85,7 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
         },
       ],
     });
-    await page.goto(url('/'));
+    await page.goto(url('/'), { waitUntil: 'hydration' });
     await seedBrowserSecret(page, tracker.id);
     await fillLogin(page, user.email, user.password, { height: 900 });
 

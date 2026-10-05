@@ -51,6 +51,8 @@ The api/ui global setup (`harness/global-setup.ts`) decides how to get a server:
 - Wait on and assert against `data-testid` selectors, not markup.
 - Before writing a new spec, copy the shape of a passing sibling of the same kind (login helper, seeding order, waits), e.g. `ui/timer-view-ui.spec.ts`.
 - Trackers are never real: api specs assert server contracts, ui specs stub tracker HTTP with `page.route`.
+- Wait for hydration after every full page load. Pages are server-rendered, so markup is visible before Vue attaches handlers: a click on it is silently lost, and a form submits natively. `createPage('/…')` already waits; pass `{ waitUntil: 'hydration' }` to `page.goto()` and use `reloadHydrated(page)` from `helpers/ui` instead of `page.reload()`. ESLint enforces both in `ui/`; disable the rule on a line only when the test asserts the pre-hydration (SSR) state, and say so.
+- Keep specs independent of the time of day the suite runs at. When a test types clock times, seed the entry at fixed UTC times (e.g. yesterday 10:00) instead of "now".
 
 ## Coverage
 
@@ -91,6 +93,12 @@ Do not weaken or skip the failing test, and do not settle on `NUXT_TEST_DEV=1`; 
 1. Diff the spec against a passing sibling of the same shape (login helper, seeding helpers, `data-testid` waits).
 2. Rebuild cleanly and re-run only that test with `-t "<name>"`.
 3. Only then capture full output to a file, and search it for `Error|Failed Tests|✓|×` instead of reading it end to end.
+
+### A ui spec passes locally but times out in CI after a click
+
+**Cause:** usually a click before hydration. CI's Linux runner hydrates slower than a typical dev machine, so the click lands on inert server-rendered markup and the next `waitForSelector` times out.
+
+**Fix:** make sure the navigation before the click waits for hydration (see Conventions). To reproduce CI locally, run the spec in `mcr.microsoft.com/playwright` (same version as `playwright-core`) and build with `IS_E2E=true`, as the CI `build` job does; without it the production login rate limit is compiled in and specs fail with `429`.
 
 ## Known gaps
 

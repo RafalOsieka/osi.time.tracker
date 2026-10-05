@@ -316,7 +316,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.waitForFunction(pageIncludesText, commentWeb);
 
     // The backfilled day shows as Sent on the Remote Sync review (REQ-344).
-    await page.goto(new URL('/sync/2026-08-03', page.url()).href);
+    await page.goto(new URL('/sync/2026-08-03', page.url()).href, { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     await page.waitForFunction(() =>
       [...document.querySelectorAll('[data-testid^="remote-sync-state-"]')].some(
@@ -373,7 +373,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.click('[data-testid="tracker-import-close"]');
 
     // Before REQ-378 a Redmine import cached the bare issue id as the title.
-    await page.goto(new URL('/sync/2026-08-05', page.url()).href);
+    await page.goto(new URL('/sync/2026-08-05', page.url()).href, { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid^="remote-sync-issue-"]');
     const issueText = await page.textContent('[data-testid^="remote-sync-issue-"]');
     expect(issueText).toContain('Closed rounding bug');

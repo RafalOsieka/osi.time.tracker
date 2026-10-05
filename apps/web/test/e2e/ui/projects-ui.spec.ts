@@ -163,7 +163,7 @@ describeProjectsUI('projects UI flow', async () => {
   it('hard navigation shows project list or empty state without tracker filter', async () => {
     const page = await loginAs('projectsui@example.com');
     // Hard navigation (full document load) of the projects page
-    await page.goto(url('/projects'));
+    await page.goto(url('/projects'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="projects-page"]');
     await page.waitForSelector(
       '[data-testid="projects-empty-state"], [data-testid="projects-table"]',

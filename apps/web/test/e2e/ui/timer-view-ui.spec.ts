@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUsers } from '../helpers/seed';
-import { loginAs as fillLogin } from '../helpers/ui';
+import { loginAs as fillLogin, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import {
@@ -428,7 +428,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.waitForFunction(pageIncludesText, seedTitle);
     await page.waitForFunction(pageIncludesText, 'Suggestion Project');
 
-    await page.reload();
+    await reloadHydrated(page);
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(
       () =>
@@ -538,8 +538,15 @@ describeTimerViewUI('timer view UI flow', async () => {
 
   it('edits an entry inline, retitles it to split into another group, and deletes it', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');
-    const seeded = await startEntry(jar, token, { title: 'Inline Edit Source Task' });
-    await stopEntry(jar, token, seeded.id);
+    // Yesterday 10:00–10:30 UTC, so the 08:15 start typed below stays before the stop
+    // whatever the time of day the suite runs at.
+    const startedAt = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    startedAt.setUTCHours(10, 0, 0, 0);
+    const seeded = await startEntry(jar, token, {
+      title: 'Inline Edit Source Task',
+      startedAt: startedAt.toISOString(),
+      stoppedAt: new Date(startedAt.getTime() + 30 * 60 * 1000).toISOString(),
+    });
 
     const page = await loginAs('timerviewui@example.com');
     await page.waitForSelector('[data-testid="timer-view-page"]');
@@ -561,8 +568,10 @@ describeTimerViewUI('timer view UI flow', async () => {
     await typeTimeField(page, `timer-entry-times-${seeded.id}`, '08:15', 0);
     await page.keyboard.press('Enter');
     await startPatch;
-    const from = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-    const to = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const dayStart = new Date(startedAt);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const from = dayStart.toISOString();
+    const to = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000).toISOString();
     const patchedRows = await (
       await fetch(
         url(`/api/time-entries?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
@@ -570,7 +579,7 @@ describeTimerViewUI('timer view UI flow', async () => {
       )
     ).json();
     const patched = patchedRows.find((r: { id: string }) => r.id === seeded.id);
-    expect(patched.startedAt.slice(0, 10)).toBe(seeded.startedAt.slice(0, 10));
+    expect(patched.startedAt).toBe(`${from.slice(0, 10)}T08:15:00.000Z`);
 
     // Retitle the entry (splits it into a new group on commit).
     const entryTitle = page.locator(`[data-testid="timer-entry-title-${seeded.id}"]`);
@@ -684,7 +693,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     try {
       // A full reload collapses every group, including the one this test
       // expanded earlier — both groups need re-expanding after it.
-      await page.reload();
+      await reloadHydrated(page);
       await page.waitForFunction(pageIncludesText, runningTitle);
       const reexpandedToggle = page.locator(`[data-testid="timer-group-toggle-${seeded.taskId}"]`);
       await reexpandedToggle.locator('button').or(reexpandedToggle).first().click();

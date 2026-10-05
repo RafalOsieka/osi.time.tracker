@@ -5,7 +5,7 @@ import type { Page } from 'playwright-core';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
-import { loginAs as fillLogin } from '../helpers/ui';
+import { loginAs as fillLogin, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
@@ -173,12 +173,14 @@ describeExtensionModeUi('extension execution mode UI', async () => {
       /not available|niedostępne/i.test(document.body.textContent ?? ''),
     );
 
-    await page.goto(url(`/sync/${dayKey}`));
+    await page.goto(url(`/sync/${dayKey}`), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     await page.waitForSelector(`[data-testid="remote-sync-activity-error-${taskId}"]`);
     expect(await page.locator('[data-testid="remote-sync-export-button"]').isDisabled()).toBe(true);
 
-    await page.goto(url(`/reports/monthly?month=${dayKey.slice(0, 7)}`));
+    await page.goto(url(`/reports/monthly?month=${dayKey.slice(0, 7)}`), {
+      waitUntil: 'hydration',
+    });
     await page.waitForSelector('[data-testid="reports-monthly"]');
     await page.waitForSelector('[data-testid="reports-monthly-table-ready"]');
     await page.waitForFunction(() =>
@@ -251,7 +253,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
       });
     });
 
-    await page.goto(url(`/sync/${dayKey}`));
+    await page.goto(url(`/sync/${dayKey}`), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     await page.waitForFunction(pageIncludesText, title);
     await page.waitForSelector(`[data-testid="remote-sync-activity-select-${taskId}"]`);
@@ -289,7 +291,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     expect(markers[0]?.spentOn).toBe(dayKey);
     expect((await readFakeExtensionState(page)).creates).toBe(1);
 
-    await page.reload();
+    await reloadHydrated(page);
     const markersAfterReload = await page.evaluate(
       (key) => window.localStorage.getItem(key),
       PENDING_CREATE_STORAGE_KEY,
@@ -324,7 +326,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     const page = await loginPage(user.email, (p) => installExtension(p));
     await seedBrowserSecret(page, tracker.id);
 
-    await page.goto(url(`/sync/${dayKey}`));
+    await page.goto(url(`/sync/${dayKey}`), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     for (const taskId of taskIds) {
       await page.waitForSelector(`[data-testid="remote-sync-activity-select-${taskId}"]`);
@@ -367,7 +369,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     const page = await loginPage(user.email, (p) => installExtension(p));
     await seedBrowserSecret(page, tracker.id);
 
-    await page.goto(url(`/sync/${dayKey}`));
+    await page.goto(url(`/sync/${dayKey}`), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     for (const taskId of taskIds) {
       await page.waitForSelector(`[data-testid="remote-sync-activity-select-${taskId}"]`);

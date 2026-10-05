@@ -104,6 +104,25 @@ export default withNuxt()
       ],
     },
   })
+  .append({
+    // Server-rendered markup is visible before Vue attaches handlers; acting on it
+    // early is silently lost (or submits forms natively). See docs/e2e-guideline.md.
+    files: ['apps/web/test/e2e/ui/**/*.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.property.name="goto"]:not(:has(Property[key.name="waitUntil"][value.value="hydration"]))',
+          message: "Pass `{ waitUntil: 'hydration' }` to page.goto() in UI e2e tests.",
+        },
+        {
+          selector: 'CallExpression[callee.property.name="reload"]',
+          message: 'Use reloadHydrated(page) from helpers/ui instead of page.reload().',
+        },
+      ],
+    },
+  })
   .override('nuxt/typescript/rules', {
     rules: {
       // Enforce no-explicit-any rule to guarantee boundary types and avoid type erosion.

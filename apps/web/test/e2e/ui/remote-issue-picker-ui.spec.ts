@@ -5,7 +5,7 @@ import type { Locator, Page } from 'playwright-core';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUsers } from '../helpers/seed';
-import { loginAs as fillLogin } from '../helpers/ui';
+import { loginAs as fillLogin, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar } from '../helpers/auth';
 import type { JsonObject } from '@osi/remote-trackers/contracts';
@@ -213,7 +213,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     });
 
     // Locate the newly created task's row via its task id (pre-link).
-    await page.reload();
+    await reloadHydrated(page);
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForSelector(`[data-testid="timer-group-${taskId}"]`);
 

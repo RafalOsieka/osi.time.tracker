@@ -1,30 +1,16 @@
 <!--
   OSI Time Tracker tab icon (timer running). Same drawing as favicon.svg; only the tile fill differs.
   Canvas: 32x32. Rounded square rx=8, fill #16a34a.
-  Glyph: app/assets/icons/app-mark.svg (geometry: openspec/changes/replace-brand-mark
+  Glyph: app/assets/icons/app-mark.svg (geometry: openspec/changes/open-dial-brand-mark
   design.md D1), white, at 88% of the tile. Regenerate from that file when it changes.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="8" fill="#16a34a" />
   <svg x="2" y="2" width="28" height="28" viewBox="0 0 24 24" fill="#fff">
-      <g fill="none" stroke="#fff" stroke-width="1.3" stroke-linecap="round">
-        <path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" />
-        <path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" transform="rotate(90 12 12)" />
-        <path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" transform="rotate(180 12 12)" />
-        <path d="M16.89 3.86A9.5 9.5 0 0 0 7.11 3.86" transform="rotate(270 12 12)" />
-      </g>
-      <rect x="7.1" y="7.1" width="2.5" height="2.5" rx="0.8" />
-      <rect x="10.75" y="7.1" width="2.5" height="2.5" rx="0.8" />
-      <rect x="14.4" y="7.1" width="2.5" height="2.5" rx="0.8" />
-      <rect x="10.75" y="10.75" width="2.5" height="2.5" rx="0.8" />
-      <rect x="10.75" y="14.4" width="2.5" height="2.5" rx="0.8" />
-      <circle cx="8.35" cy="12" r="0.2" />
-      <circle cx="15.65" cy="12" r="0.2" />
-      <circle cx="8.35" cy="15.65" r="0.2" />
-      <circle cx="15.65" cy="15.65" r="0.2" />
-      <circle cx="12" cy="4.7" r="0.2" />
-      <circle cx="12" cy="19.3" r="0.2" />
-      <circle cx="4.7" cy="12" r="0.2" />
-      <circle cx="19.3" cy="12" r="0.2" />
+    <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15.6 21.5H12A9.5 9.5 0 1 1 21.5 12" stroke-width="2" />
+      <path d="M8.5 9.3H15.5" stroke-width="2.6" />
+    </g>
+    <path d="M10.7 9.3H13.3L12.4 16.9H11.6Z" stroke="#fff" stroke-width="0.4" stroke-linejoin="round" />
   </svg>
 </svg>

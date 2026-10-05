@@ -3,7 +3,7 @@ import { createPage } from '@nuxt/test-utils/e2e';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
-import { loginAs } from '../helpers/ui';
+import { loginAs, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
 import { createTracker } from '../helpers/http';
@@ -62,7 +62,9 @@ describeShell('authenticated shell navigation', async () => {
 
   it('authenticated /reports is not found', async () => {
     const page = await openAuthed();
-    const response = await page.goto(new URL('/reports', page.url()).href);
+    const response = await page.goto(new URL('/reports', page.url()).href, {
+      waitUntil: 'hydration',
+    });
     expect(response?.status()).toBe(404);
     expect(await page.locator('[data-testid="reports-hub"]').count()).toBe(0);
     expect(await page.locator('[data-testid="reports-monthly"]').count()).toBe(0);
@@ -146,7 +148,7 @@ describeShell('authenticated shell navigation', async () => {
     await expect.poll(() => page.locator('html').getAttribute('class')).toContain('dark');
     expect(await dark.getAttribute('aria-checked')).toBe('true');
 
-    await page.reload();
+    await reloadHydrated(page);
     await page.waitForSelector('[data-testid="app-sidebar"]');
     expect(await page.locator('html').getAttribute('class')).toContain('dark');
   });

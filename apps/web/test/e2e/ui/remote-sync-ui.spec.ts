@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { createPage } from '@nuxt/test-utils/e2e';
+import { createPage, type NuxtPage } from '@nuxt/test-utils/e2e';
 import { url } from '../helpers/url';
 import type { Page } from 'playwright-core';
 import { requireBrowser } from '../harness/guards';
@@ -116,8 +116,9 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     });
   }
 
-  async function openSyncDay(page: Page, dayKey: string, taskName: string) {
-    await page.goto(url(`/sync/${dayKey}`));
+  async function openSyncDay(page: NuxtPage, dayKey: string, taskName: string) {
+    // Rows are server-rendered; clicking one before hydration is silently ignored.
+    await page.goto(url(`/sync/${dayKey}`), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     await page.waitForFunction(pageIncludesText, taskName);
   }

@@ -4,7 +4,7 @@ import { url } from '../helpers/url';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
-import { loginAs as fillLogin } from '../helpers/ui';
+import { loginAs as fillLogin, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
 import { createProject } from '../helpers/http';
@@ -71,7 +71,7 @@ describeProjectMention('top-bar @project mention journey', async () => {
     expect(reprojected.taskName).toBe('fix login');
 
     // After a reload the running title stays readable next to the chip.
-    await page.reload();
+    await reloadHydrated(page);
     await page.locator('[data-testid="timer-project-chip"]').waitFor({ state: 'visible' });
     expect(await titleInput.inputValue()).toBe('fix login');
     const [inputBox, chipBox] = await Promise.all([
