@@ -80,5 +80,7 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 7. Integration checks (before the PR)
 
-- [ ] 7.1 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit` and `pnpm test:nuxt`, plus `pnpm test:e2e` (db, api and the monthly refactor's UI journey). All pass.
-- [ ] 7.2 Run `pnpm test:coverage` and report the unit-nuxt line coverage before and after in the PR description. Verify the number went up and no previously covered file dropped.
+- [x] 7.1 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit` and `pnpm test:nuxt`, plus `pnpm test:e2e` (db, api and the monthly refactor's UI journey). All pass.
+  - Outcome: all pass; `pnpm test:e2e` 288/289 with one pre-existing time-of-day flake in `timer-view-ui.spec.ts` ("retyping the same minute…": `(minute + 2) % 60` wraps to an earlier time when the seeded stop falls at :58/:59). It passes on rerun and is untouched by this change.
+- [x] 7.2 Run `pnpm test:coverage` and report the unit-nuxt line coverage before and after in the PR description. Verify the number went up and no previously covered file dropped.
+  - Outcome: unit-nuxt lines 72.45% → 76.83% (branches 66.36% → 70.01%, functions 75.78% → 80.12%); no file lost coverage.
