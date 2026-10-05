@@ -66,6 +66,28 @@
     "missingPermissionShort": "Restore access in setup; an approval alone does not grant it.",
     "forWebsite": "For {website}"
   },
+  "activity": {
+    "none": "No activity yet",
+    "operation_searchIssues": "Issue search",
+    "operation_getIssueById": "Issue lookup",
+    "operation_listProjects": "Project list",
+    "operation_getActivityOptions": "Activity types",
+    "operation_getCurrentAccount": "Account check",
+    "operation_fetchTimeLogs": "Time log fetch",
+    "operation_fetchTimeLogsInRange": "Time log fetch",
+    "operation_createTimeEntry": "Time entry export",
+    "operation_deleteTimeEntry": "Time entry deletion",
+    "outcome_ok": "OK",
+    "outcome_adapter": "Tracker error",
+    "outcome_unavailable": "Unavailable",
+    "outcome_incompatible": "Incompatible",
+    "outcome_permission": "No permission",
+    "outcome_unknown-create": "Result unknown",
+    "outcome_malformed": "Invalid data",
+    "outcome_timeout": "Timed out",
+    "outcome_limit": "Limit reached",
+    "label": "Last activity"
+  },
   "error": {
     "extensionUnavailable": "The OSI extension is not available in this browser.",
     "extensionIncompatible": "This website needs a newer OSI extension.",

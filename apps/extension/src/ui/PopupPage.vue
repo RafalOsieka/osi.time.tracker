@@ -6,18 +6,21 @@ import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import ULink from '@nuxt/ui/components/Link.vue';
-import { ApprovalService, type DestinationApproval } from '../approvals/approvals.js';
+import { ApprovalService, destinationKey } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
   createChromeHostPermissions,
 } from '../approvals/chrome-store.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
+import { useTrackerActivity } from '../composables/use-tracker-activity.js';
+import { formatActivity } from '../activity/format-activity.js';
 import BrandMark from './BrandMark.vue';
 import { openWebsite } from './open-website.js';
 import SetupChecklist from './SetupChecklist.vue';
 
-const { t, localeErrorKey } = useExtensionI18n();
+const { t, locale, localeErrorKey } = useExtensionI18n();
+const { activity, now } = useTrackerActivity();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const { websites, destinations, missingOrigins, loaded, errorKey, refresh } =
   useApprovalsEditor(service);
@@ -30,9 +33,6 @@ const badge = computed(() =>
 );
 const setupComplete = computed(() => websites.value.length > 0 && destinations.value.length > 0);
 const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
-
-const destinationKey = (item: DestinationApproval) =>
-  `${item.websiteOrigin}|${item.provider}|${item.origin}${item.basePath}`;
 
 /** Website shown under a tracker row: just the host, the scheme is noise at popup width. */
 const websiteHost = (origin: string) => new URL(origin).host;
@@ -179,6 +179,10 @@ function openOptions(): void {
                   <span class="before:me-1 before:content-['·']">
                     {{ websiteHost(destination.websiteOrigin) }}
                   </span>
+                </span>
+                <span class="text-xs text-muted" data-testid="popup-tracker-activity">
+                  <span class="sr-only">{{ t('activity.label') }}:</span>
+                  {{ formatActivity(activity[destinationKey(destination)], now, locale, t) }}
                 </span>
               </span>
               <UBadge

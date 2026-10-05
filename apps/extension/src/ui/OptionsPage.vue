@@ -13,6 +13,7 @@ import {
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useExtensionTheme } from '../composables/use-extension-theme.js';
+import { useTrackerActivity } from '../composables/use-tracker-activity.js';
 import { reconcileWebsiteContentScripts } from '../content/registration.js';
 import BrandMark from './BrandMark.vue';
 import DestinationApprovals from './DestinationApprovals.vue';
@@ -66,6 +67,7 @@ const {
   retry,
 } = editor;
 const { theme, setTheme } = useExtensionTheme();
+const { activity, now } = useTrackerActivity();
 const themeItems = computed(() => [
   { label: t.value('app.themeLight'), value: 'light' as const, icon: 'i-lucide-sun' },
   { label: t.value('app.themeDark'), value: 'dark' as const, icon: 'i-lucide-moon' },
@@ -197,6 +199,8 @@ onMounted(() => {
       :disabled="disabled"
       :error-key="destinationErrorKey"
       :missing-origins="missingOrigins"
+      :activity="activity"
+      :now="now"
       @update:website="destinationWebsite = $event"
       @update:provider="destinationProvider = $event"
       @update:destination-url="destinationUrl = $event"

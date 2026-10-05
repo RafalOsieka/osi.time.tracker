@@ -66,6 +66,28 @@
     "missingPermissionShort": "Przywróć dostęp w konfiguracji; samo zatwierdzenie nie zapewnia dostępu.",
     "forWebsite": "Dla {website}"
   },
+  "activity": {
+    "none": "Brak aktywności",
+    "operation_searchIssues": "Wyszukiwanie zadań",
+    "operation_getIssueById": "Pobranie zadania",
+    "operation_listProjects": "Lista projektów",
+    "operation_getActivityOptions": "Typy aktywności",
+    "operation_getCurrentAccount": "Sprawdzenie konta",
+    "operation_fetchTimeLogs": "Pobranie wpisów czasu",
+    "operation_fetchTimeLogsInRange": "Pobranie wpisów czasu",
+    "operation_createTimeEntry": "Eksport wpisu czasu",
+    "operation_deleteTimeEntry": "Usunięcie wpisu czasu",
+    "outcome_ok": "OK",
+    "outcome_adapter": "Błąd trackera",
+    "outcome_unavailable": "Niedostępny",
+    "outcome_incompatible": "Niezgodny",
+    "outcome_permission": "Brak uprawnień",
+    "outcome_unknown-create": "Wynik nieznany",
+    "outcome_malformed": "Błędne dane",
+    "outcome_timeout": "Przekroczony czas",
+    "outcome_limit": "Przekroczony limit",
+    "label": "Ostatnia aktywność"
+  },
   "error": {
     "extensionUnavailable": "Wtyczka OSI jest niedostępna w tej przeglądarce.",
     "extensionIncompatible": "Ta witryna wymaga nowszej wersji wtyczki OSI.",

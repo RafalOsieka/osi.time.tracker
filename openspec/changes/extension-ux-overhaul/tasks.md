@@ -25,9 +25,9 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 5. Last tracker activity (REQ-419, REQ-313)
 
-- [ ] 5.1 Backend (extension worker): add an `ActivityStore` on `chrome.storage.session` and record `{ at, operation, outcome }` in `handleOperation` once a destination is authorized. Delete the record when its destination is revoked. Verify with `dispatch.spec.ts` (success, timeout, adapter error, nothing recorded for a request rejected before authorization) and a store unit test.
-- [ ] 5.2 Frontend (extension): show relative time, operation and outcome (or "No activity yet") on tracker rows in the popup and setup page, updating on `storage.onChanged`. Verify with unit tests for the row states.
-- [ ] 5.3 E2E (extension): in `website-bridge.spec.ts`, after an operation through the fixture bridge, assert the popup shows the activity on that tracker. Assert that `chrome.storage.local` contains no activity record.
+- [x] 5.1 Backend (extension worker): add an `ActivityStore` on `chrome.storage.session` and record `{ at, operation, outcome }` in `handleOperation` once a destination is authorized. Delete the record when its destination is revoked. Verify with `dispatch.spec.ts` (success, timeout, adapter error, nothing recorded for a request rejected before authorization) and a store unit test.
+- [x] 5.2 Frontend (extension): show relative time, operation and outcome (or "No activity yet") on tracker rows in the popup and setup page, updating on `storage.onChanged`. Verify with unit tests for the row states.
+- [x] 5.3 E2E (extension): in `website-bridge.spec.ts`, after an operation through the fixture bridge, assert the popup shows the activity on that tracker. Assert that `chrome.storage.local` contains no activity record.
 
 ## 6. Protocol v3 and destination suggestions (REQ-421, REQ-422, REQ-309, REQ-416, REQ-417)
 

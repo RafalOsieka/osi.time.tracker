@@ -22,6 +22,7 @@ import {
   type TrackerSystemType,
   type Transport,
 } from '@osi/remote-trackers/contracts';
+import type { ActivityStore } from '../activity/activity-store.js';
 import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import { CanonicalizationError } from '../security/canonicalize.js';
 import { createProviderAdapter } from '../providers.js';
@@ -210,7 +211,7 @@ export async function handleHandshake(options: {
   };
 }
 
-export async function handleOperation(options: {
+export interface HandleOperationOptions {
   sender: RuntimeSender;
   expectedExtensionId: string;
   value: JsonValue;
@@ -220,7 +221,47 @@ export async function handleOperation(options: {
   signal?: AbortSignal;
   createAdapter?: CreateProviderAdapter;
   operationTimeoutMs?: number;
-}): Promise<OperationResult | SafeWireError> {
+  /** Receives the outcome of every operation that reached an approved destination. */
+  activity?: ActivityStore;
+}
+
+/**
+ * Validates, authorizes and executes one tracker operation. Once a destination is authorized, its
+ * outcome is recorded as that destination's latest activity; requests rejected before
+ * authorization leave no record.
+ */
+export async function handleOperation(
+  options: HandleOperationOptions,
+): Promise<OperationResult | SafeWireError> {
+  const progress: DispatchProgress = { timedOut: false };
+  const result = await dispatchOperation(options, progress);
+  if (progress.authorized && options.activity && 'ok' in result) {
+    // Providers report a network timeout as a generic adapter failure; the extension knows
+    // its own operation deadline fired, so the activity names it.
+    const outcome = result.ok ? 'ok' : progress.timedOut ? 'timeout' : result.error.kind;
+    await options.activity
+      .record(progress.authorized, {
+        at: new Date().toISOString(),
+        operation: result.operation,
+        outcome,
+      })
+      .catch(() => {
+        // Activity is diagnostic only; losing a record must not change the operation result.
+      });
+  }
+  return result;
+}
+
+/** What `dispatchOperation` learned on the way, for recording activity after it settles. */
+interface DispatchProgress {
+  authorized?: DestinationApproval;
+  timedOut: boolean;
+}
+
+async function dispatchOperation(
+  options: HandleOperationOptions,
+  progress: DispatchProgress,
+): Promise<OperationResult | SafeWireError> {
   const parsed = parseOperationRequest(options.value);
   if (!parsed.success) return parsed.error;
   const request = parsed.data;
@@ -255,6 +296,7 @@ export async function handleOperation(options: {
       request.provider,
       request.baseUrl,
     );
+    progress.authorized = approval;
     options.onAuthorized?.(approval);
     unregister = options.approvals.registerInFlight(approval, {
       abort: () => controller.abort(),
@@ -301,6 +343,7 @@ export async function handleOperation(options: {
       messageKey: EXTENSION_ERROR_MESSAGE_KEYS.malformed,
     });
   } finally {
+    progress.timedOut = timeout.aborted;
     unregister();
     const remaining = (inFlightByDocument.get(key) ?? 1) - 1;
     if (remaining <= 0) inFlightByDocument.delete(key);

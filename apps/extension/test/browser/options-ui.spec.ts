@@ -283,7 +283,11 @@ describeChromium('extension options UI', () => {
       .poll(() => page.getByTestId('destination-website-single').textContent())
       .toContain('http://localhost:3001');
     expect(await page.getByTestId('destination-website').count()).toBe(0);
+    await waitUntilIdle(page);
     await page.getByTestId('revoke-website-http://localhost:3001').click();
+    await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3001').count())
+      .toBe(0);
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
   });
 

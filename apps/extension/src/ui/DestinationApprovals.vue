@@ -13,7 +13,13 @@ import ULink from '@nuxt/ui/components/Link.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import type { DestinationApproval, WebsiteApproval } from '../approvals/approvals.js';
+import type { ActivityMap } from '../activity/activity-store.js';
+import { formatActivity } from '../activity/format-activity.js';
+import {
+  destinationKey,
+  type DestinationApproval,
+  type WebsiteApproval,
+} from '../approvals/approvals.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 
 const {
@@ -26,6 +32,8 @@ const {
   disabled,
   errorKey,
   missingOrigins,
+  activity,
+  now,
 } = defineProps<{
   websites: readonly WebsiteApproval[];
   destinations: readonly DestinationApproval[];
@@ -36,6 +44,9 @@ const {
   disabled: boolean;
   errorKey: string | null;
   missingOrigins: readonly string[];
+  /** Latest operation per destination key, shown on each tracker row. */
+  activity: Readonly<ActivityMap>;
+  now: number;
 }>();
 
 const emit = defineEmits<{
@@ -47,7 +58,7 @@ const emit = defineEmits<{
   restore: [approval: DestinationApproval];
 }>();
 
-const { t } = useExtensionI18n();
+const { t, locale } = useExtensionI18n();
 const empty = computed(() => destinations.length === 0);
 /** With one approved website there is nothing to choose: the tracker is approved for it. */
 const singleWebsite = computed(() => {
@@ -62,9 +73,6 @@ const providerItems = computed(() => [
   { label: t.value('approvals.redmine'), value: 'redmine' as const },
 ]);
 const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
-
-const destinationKey = (item: DestinationApproval) =>
-  `${item.websiteOrigin}|${item.provider}|${item.origin}${item.basePath}`;
 
 function destinationLabel(item: DestinationApproval): string {
   return `${t.value('approvals.website')}: ${item.websiteOrigin} — ${t.value(`approvals.${item.provider}`)} ${item.origin}${item.basePath}`;
@@ -187,6 +195,10 @@ function destinationLabel(item: DestinationApproval): string {
           </span>
           <span v-if="missingOrigins.includes(item.websiteOrigin)" class="text-xs text-warning">
             {{ t('approvals.websitePermissionMissing') }}
+          </span>
+          <span class="text-xs text-muted" :data-testid="`activity-${destinationKey(item)}`">
+            <span class="sr-only">{{ t('activity.label') }}:</span>
+            {{ formatActivity(activity[destinationKey(item)], now, locale, t) }}
           </span>
         </span>
         <template v-if="missingOrigins.includes(item.origin)">

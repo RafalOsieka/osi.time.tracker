@@ -36,6 +36,13 @@ function browser() {
       }
     },
   };
+  const sessionItems = new Map<string, ChromeJson>();
+  const session: ChromeStorageArea = {
+    get: async (key) => ({ [key]: sessionItems.get(key) }),
+    set: async (items) => {
+      for (const [key, value] of Object.entries(items)) sessionItems.set(key, value);
+    },
+  };
   const registered = new Set([contentScriptId('https://stale.example.com')]);
   const scripting: ChromeScripting = {
     getRegisteredContentScripts: async () => [...registered].map((id) => ({ id })),
@@ -60,7 +67,7 @@ function browser() {
   };
   vi.stubGlobal('chrome', {
     runtime: { id: 'test-extension', onStartup, onInstalled, onConnect: event<() => void>() },
-    storage: { local, onChanged },
+    storage: { local, session, onChanged },
     permissions,
     scripting,
   });

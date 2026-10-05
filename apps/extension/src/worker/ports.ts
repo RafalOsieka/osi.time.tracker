@@ -1,5 +1,6 @@
 import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
+import type { ActivityStore } from '../activity/activity-store.js';
 import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import { WORKER_PORT_NAME } from '../port-name.js';
 import { handleHandshake, handleOperation, type CreateProviderAdapter } from './dispatch.js';
@@ -22,6 +23,7 @@ export interface WorkerPortOptions {
   fetchImpl?: typeof fetch;
   createAdapter?: CreateProviderAdapter;
   operationTimeoutMs?: number;
+  activity?: ActivityStore;
 }
 
 function cloneJson(value: JsonValue): JsonValue | undefined {
@@ -153,6 +155,7 @@ async function handlePortMessage(
     signal,
     createAdapter: options.createAdapter,
     operationTimeoutMs: options.operationTimeoutMs,
+    activity: options.activity,
   });
   if (signal.aborted) return;
   safePost(port, result);

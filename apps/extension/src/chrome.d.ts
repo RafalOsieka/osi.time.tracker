@@ -111,7 +111,11 @@ declare const chrome: {
     onStartup: { addListener(callback: () => void): void };
     onInstalled: { addListener(callback: () => void): void };
   };
-  storage: { local: ChromeStorageArea; onChanged: ChromeStorageChanges };
+  storage: {
+    local: ChromeStorageArea;
+    session: ChromeStorageArea;
+    onChanged: ChromeStorageChanges;
+  };
   permissions: ChromePermissions;
   scripting: ChromeScripting;
   tabs: ChromeTabs;

@@ -2,16 +2,18 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
-import type {
-  JsonValue,
-  RemoteAccount,
-  RemoteTrackerAdapter,
+import {
+  RemoteAdapterError,
+  type JsonValue,
+  type RemoteAccount,
+  type RemoteTrackerAdapter,
 } from '@osi/remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,
   createMemoryHostPermissions,
 } from '../../src/approvals/approvals.js';
+import { createMemoryActivityStore } from '../../src/activity/activity-store.js';
 import { handleHandshake, handleOperation, resetDispatchState } from '../../src/worker/dispatch.js';
 import { isTrustedDocumentSender, type RuntimeSender } from '../../src/worker/sender.js';
 
@@ -625,5 +627,91 @@ describe('worker dispatch', () => {
     resetDispatchState();
     await expect(first).resolves.toMatchObject({ ok: false });
     expect(createTimeEntry).toHaveBeenCalledOnce();
+  });
+
+  describe('last activity', () => {
+    const redmineKey = `${website}|redmine|${redmine}`;
+
+    it('records the operation and a success outcome for the destination', async () => {
+      const activity = createMemoryActivityStore();
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals: await approved(),
+        activity,
+        createAdapter: () => probeAdapter(),
+        value: operationValue('createTimeEntry', createInput, 'redmine'),
+      });
+      const records = await activity.load();
+      expect(Object.keys(records)).toEqual([redmineKey]);
+      expect(records[redmineKey]).toMatchObject({ operation: 'createTimeEntry', outcome: 'ok' });
+      expect(JSON.stringify(records)).not.toContain(secret);
+    });
+
+    it('replaces the record with the latest failure kind', async () => {
+      const activity = createMemoryActivityStore();
+      const approvals = await approved();
+      const run = (adapter: RemoteTrackerAdapter) =>
+        handleOperation({
+          sender: trustedSender(),
+          expectedExtensionId: extensionId,
+          approvals,
+          activity,
+          createAdapter: () => adapter,
+          value: operationValue('getCurrentAccount', null, 'redmine'),
+        });
+      await run(probeAdapter());
+      await run(
+        probeAdapter({
+          getCurrentAccount: async () => {
+            throw new RemoteAdapterError('error.remoteAuth', 401);
+          },
+        }),
+      );
+      expect((await activity.load())[redmineKey]).toMatchObject({
+        operation: 'getCurrentAccount',
+        outcome: 'adapter',
+      });
+    });
+
+    it('records a timed-out request as a timeout', async () => {
+      const activity = createMemoryActivityStore();
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals: await approved(),
+        activity,
+        operationTimeoutMs: 20,
+        fetchImpl: (_input, init) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+          }),
+        value: operationValue('getCurrentAccount', null, 'redmine'),
+      });
+      expect((await activity.load())[redmineKey]).toMatchObject({ outcome: 'timeout' });
+    });
+
+    it('records nothing for requests rejected before a destination is authorized', async () => {
+      const activity = createMemoryActivityStore();
+      const approvals = await approved();
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals,
+        activity,
+        value: {
+          ...operationValue('getCurrentAccount', null),
+          baseUrl: 'https://other.example.com',
+        },
+      });
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals,
+        activity,
+        value: { ...operationValue('getCurrentAccount', null), input: 'not-null' },
+      });
+      expect(await activity.load()).toEqual({});
+    });
   });
 });

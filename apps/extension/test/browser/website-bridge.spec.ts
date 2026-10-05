@@ -137,6 +137,23 @@ describeChromium('website/content/worker bridge', () => {
     });
     expect(openProject.requests.length).toBeGreaterThan(openProjectHitsBefore);
 
+    // The popup shows the search as the OpenProject tracker's latest activity, kept in session
+    // storage only.
+    const popup = await harness!.context.newPage();
+    await popup.goto(`chrome-extension://${harness!.extensionId}/src/popup/index.html`);
+    await expect
+      .poll(async () =>
+        (await popup.getByTestId('popup-tracker-activity').allTextContents()).join('|'),
+      )
+      .toMatch(/Issue search · OK|Wyszukiwanie zadań · OK/);
+    const storageKeys = await popup.evaluate(async () => ({
+      local: Object.keys(await chrome.storage.local.get(null)),
+      session: Object.keys(await chrome.storage.session.get(null)),
+    }));
+    expect(storageKeys.local).not.toContain('osi.activity');
+    expect(storageKeys.session).toContain('osi.activity');
+    await popup.close();
+
     const lookup = await runOnPage(page, {
       type: 'operation',
       requestId: 'r-id',

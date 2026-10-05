@@ -98,6 +98,11 @@ export function createMemoryHostPermissions(
   };
 }
 
+/** Stable identity of a destination approval: website, provider, tracker origin and base path. */
+export function destinationKey(approval: DestinationApproval): string {
+  return `${approval.websiteOrigin}|${approval.provider}|${approval.origin}${approval.basePath}`;
+}
+
 export function hostMatchPattern(origin: string): string {
   return `${origin}/*`;
 }

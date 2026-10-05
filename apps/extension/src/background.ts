@@ -1,3 +1,4 @@
+import { createChromeActivityStore } from './activity/activity-store.js';
 import { ApprovalService } from './approvals/approvals.js';
 import {
   createChromeApprovalStore,
@@ -7,6 +8,7 @@ import { listenForChromePorts } from './worker/ports.js';
 import { reconcileWebsiteContentScripts } from './content/registration.js';
 
 const approvals = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
+const activity = createChromeActivityStore();
 let reconciliation = Promise.resolve();
 
 function scheduleReconciliation(): void {
@@ -14,6 +16,7 @@ function scheduleReconciliation(): void {
     .then(async () => {
       await approvals.reconcile();
       const state = await approvals.list();
+      await activity.prune(state.destinations);
       const granted = await Promise.all(
         state.websites.map(async (website) =>
           (await approvals.hasHostPermission(website.origin)) ? website.origin : undefined,
@@ -34,6 +37,7 @@ approvals.subscribe(scheduleReconciliation);
 listenForChromePorts({
   extensionId: chrome.runtime.id,
   approvals,
+  activity,
 });
 
 scheduleReconciliation();

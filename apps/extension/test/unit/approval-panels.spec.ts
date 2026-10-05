@@ -3,6 +3,7 @@ import DestinationApprovals from '../../src/ui/DestinationApprovals.vue';
 import WebsiteApprovals from '../../src/ui/WebsiteApprovals.vue';
 import { useExtensionI18n } from '../../src/composables/use-extension-i18n.js';
 import { renderWithUi } from './render-with-ui.js';
+import { destinationKey } from '../../src/approvals/approvals.js';
 
 vi.hoisted(() => {
   const storage = new Map<string, string>();
@@ -43,6 +44,8 @@ it('renders unambiguous tracker identities and permission restoration labels', a
     provider: 'redmine',
     destinationUrl: '',
     httpWarning: false,
+    activity: {},
+    now: 0,
     disabled: false,
     errorKey: null,
     missingOrigins: ['https://tracker.example.com'],
@@ -85,6 +88,8 @@ it('disables tracker submission and explains why when no website exists', async 
     provider: 'openproject',
     destinationUrl: '',
     httpWarning: false,
+    activity: {},
+    now: 0,
     disabled: false,
     errorKey: null,
     missingOrigins: [],
@@ -102,6 +107,8 @@ it('approves trackers for the only website without asking which one', async () =
     provider: 'redmine',
     destinationUrl: '',
     httpWarning: false,
+    activity: {},
+    now: 0,
     disabled: false,
     errorKey: null,
     missingOrigins: [],
@@ -109,4 +116,36 @@ it('approves trackers for the only website without asking which one', async () =
   expect(html).not.toContain('data-testid="destination-website"');
   expect(html).toContain('For https://time.example.com');
   expect(isDisabled(html, 'add-destination')).toBe(false);
+});
+
+it('shows the latest activity on each tracker row, or that there was none', async () => {
+  useExtensionI18n().setLocale('en');
+  const website = { origin: 'https://time.example.com' };
+  const tracker = (basePath: string) => ({
+    websiteOrigin: website.origin,
+    provider: 'redmine' as const,
+    origin: 'https://tracker.example.com',
+    basePath,
+  });
+  const html = await renderWithUi(DestinationApprovals, {
+    websites: [website],
+    destinations: [tracker('/active'), tracker('/idle')],
+    website: website.origin,
+    provider: 'redmine',
+    destinationUrl: '',
+    httpWarning: false,
+    activity: {
+      [destinationKey(tracker('/active'))]: {
+        at: '2026-10-05T10:00:00.000Z',
+        operation: 'createTimeEntry',
+        outcome: 'ok',
+      },
+    },
+    now: Date.parse('2026-10-05T10:02:00.000Z'),
+    disabled: false,
+    errorKey: null,
+    missingOrigins: [],
+  });
+  expect(html).toMatch(/2 minutes ago · Time entry export · OK/);
+  expect(html).toContain('No activity yet');
 });
