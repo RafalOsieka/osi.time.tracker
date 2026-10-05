@@ -85,10 +85,13 @@ pnpm --filter @osi/extension build
 ```
 
 1. Open `chrome://extensions` (or `edge://extensions`), enable **Developer mode**, choose **Load unpacked** and select `apps/extension/dist`.
-2. In the extension's options page, approve the OSI website origin (e.g. `https://time.example.com`) and each tracker base URL. HTTP destinations show a credential-risk warning.
-3. In OSI, turn off **Direct browser connection allowed** on the trackers that should go through the extension.
+2. In the extension's setup page, approve the OSI website origin (e.g. `https://time.example.com`). HTTP destinations show a credential-risk warning.
+3. In OSI, turn off **Direct browser connection allowed** on the trackers that should go through the extension, then refresh the OSI tab.
+4. Approve each tracker. Either enter its base URL on the setup page, or open the extension status in the OSI sidebar and choose **Request approval in extension** next to the tracker: the request appears in the extension (the toolbar icon shows a count), and you approve or dismiss it there.
 
-After rebuilding, click **Reload** on the extension card and refresh the OSI tab. If OSI reports an incompatible extension, rebuild and reload it. Workplace policies that block unpacked extensions or host permissions cannot be bypassed.
+The setup page shows each tracker's latest request (time, operation and outcome) for the current browser session, which helps when a sync fails.
+
+The web app and the extension must come from the same version of the repository: after updating OSI, rebuild the extension, click **Reload** on the extension card and refresh the OSI tab. If OSI reports an incompatible extension, rebuild and reload it. Workplace policies that block unpacked extensions or host permissions cannot be bypassed.
 
 API keys stay in the website's `localStorage` and are passed to the extension only for the current request; the extension never stores them. To stop using the extension, turn **Direct browser connection allowed** back on (if the tracker allows CORS) and remove the extension. Local time entries are unaffected.
 

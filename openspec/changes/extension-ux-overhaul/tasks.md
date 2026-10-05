@@ -40,10 +40,10 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 7. Web: request approval from OSI (REQ-316, REQ-317, REQ-422)
 
-- [ ] 7.1 Web (utility): add `suggestDestination` to `ExtensionDocumentBridge` and a `useExtensionSuggestion()` composable (design D9). Verify with unit tests for queued, alreadyApproved (triggers recheck), rejected (translated error) and v2 incompatibility.
-- [ ] 7.2 Web (frontend): add the request action to unapproved required trackers in `ExtensionStatusFooter.vue` (only when the connection is ready). In `SyncDayRow.vue` and `SyncRowDetail.vue`, add it next to recheck when the error is `extensionDestinationUnapproved`. Update the `en`/`pl` catalogs. Verify with `apps/web/test/nuxt` component tests for each surface and for the hidden state when not ready.
-- [ ] 7.3 E2E (web): add a UI journey with a mocked extension bridge that sends a request from the sidebar popover and asserts the "finish in the extension" message. Assert the action is absent while the extension is unavailable.
-- [ ] 7.4 Docs: in `docs/self-hosting.md`, describe the popup's "approve this website" offer and the request-approval flow, and state that the web app and the extension must be updated together (protocol v3). Verify that the documented steps match the UI.
+- [x] 7.1 Web (utility): add `suggestDestination` to `ExtensionDocumentBridge` and a `useExtensionSuggestion()` composable (design D9). Verify with unit tests for queued, alreadyApproved (triggers recheck), rejected (translated error) and v2 incompatibility.
+- [x] 7.2 Web (frontend): add the request action to unapproved required trackers in `ExtensionStatusFooter.vue` (only when the connection is ready). In `SyncDayRow.vue` and `SyncRowDetail.vue`, add it next to recheck when the error is `extensionDestinationUnapproved`. Update the `en`/`pl` catalogs. Verify with `apps/web/test/nuxt` component tests for each surface and for the hidden state when not ready.
+- [x] 7.3 E2E (web): add a UI journey with a mocked extension bridge that sends a request from the sidebar popover and asserts the "finish in the extension" message. Assert the action is absent while the extension is unavailable.
+- [x] 7.4 Docs: in `docs/self-hosting.md`, describe the popup's "approve this website" offer and the request-approval flow, and state that the web app and the extension must be updated together (protocol v3). Verify that the documented steps match the UI.
 
 ## 8. Approve the current website from the popup (REQ-415)
 

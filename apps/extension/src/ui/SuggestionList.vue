@@ -11,11 +11,16 @@ import { suggestionId, type DestinationSuggestion } from '../suggestions/suggest
  * Trackers that approved websites asked the user to approve. The setup page approves them in
  * place (the click runs the permission prompt); the popup only dismisses or hands over to setup.
  */
-const { suggestions, disabled, mode, highlightId } = defineProps<{
+const {
+  suggestions,
+  disabled,
+  mode,
+  highlightId = null,
+} = defineProps<{
   suggestions: readonly DestinationSuggestion[];
   disabled: boolean;
   mode: 'setup' | 'popup';
-  highlightId?: string;
+  highlightId?: string | null;
 }>();
 
 const emit = defineEmits<{

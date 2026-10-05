@@ -14,7 +14,8 @@ interface StatusPresentation {
 const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
 
 const { t } = useI18n();
-const { snapshot, aggregate } = useExtensionReadiness();
+const { snapshot, aggregate, recheck } = useExtensionReadiness();
+const suggestion = useExtensionSuggestion(recheck);
 const detailsOpen = shallowRef(false);
 const orderedTrackers = computed(() => orderReadinessTrackers(snapshot.value.trackers));
 
@@ -110,6 +111,12 @@ const destinationRows = computed(() =>
     name: tracker.name,
     required: !tracker.directBrowserAccess,
     status: destinationStatus(tracker),
+    destination: { provider: tracker.systemType, baseUrl: tracker.baseUrl },
+    // Approval stays in the extension; OSI can only ask for it once the bridge is up (REQ-316).
+    canRequest:
+      !tracker.directBrowserAccess &&
+      tracker.destinationApproved === false &&
+      snapshot.value.connection === 'ready',
   })),
 );
 
@@ -250,6 +257,12 @@ function openDetails() {
               <div class="grid min-w-0 gap-0.5">
                 <p class="m-0 truncate text-sm">{{ tracker.name }}</p>
                 <p class="m-0 text-sm text-muted">{{ tracker.status.label }}</p>
+                <ExtensionApprovalRequest
+                  v-if="tracker.canRequest"
+                  :state="suggestion.states.value[suggestionKey(tracker.destination)]"
+                  :test-id="`extension-status-request-${tracker.id}`"
+                  @request="suggestion.request(tracker.destination)"
+                />
               </div>
             </li>
           </ul>

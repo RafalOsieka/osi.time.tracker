@@ -29,7 +29,9 @@
       "websiteUnknown": "Unknown",
       "destinationsLabel": "Tracker destinations",
       "destinationApproved": "Approved",
-      "destinationUnapproved": "Not approved"
+      "destinationUnapproved": "Not approved",
+      "requestApproval": "Request approval in extension",
+      "requestSent": "Request sent. Open the extension to approve this tracker."
     }
   },
   "nav": {

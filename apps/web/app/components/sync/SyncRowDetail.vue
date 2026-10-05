@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
+import { EXTENSION_ERROR_MESSAGE_KEYS, type DestinationSelector } from '@osi/extension-protocol';
 import type {
   RemoteSyncDayEntryDto,
   RemoteSyncExportProvenanceDto,
@@ -11,6 +11,7 @@ const {
   entries,
   exportRecords,
   trackerId,
+  trackerDestination = null,
   showRemoteLogs,
   remoteLogs,
   remoteLogsLoading,
@@ -25,6 +26,8 @@ const {
   entries: RemoteSyncDayEntryDto[];
   exportRecords: RemoteSyncExportProvenanceDto[];
   trackerId: string | null;
+  /** Provider and base URL of the row's tracker, for asking the extension to approve it. */
+  trackerDestination?: DestinationSelector | null;
   showRemoteLogs: boolean;
   remoteLogs: RemoteTimeLogDto[];
   remoteLogsLoading: boolean;
@@ -46,6 +49,12 @@ const { t } = useI18n();
 const extensionLogsErrorKey = computed(() =>
   Object.values(EXTENSION_ERROR_MESSAGE_KEYS).find((key) => key === remoteLogsErrorKey),
 );
+const unapprovedDestination = computed(() =>
+  extensionLogsErrorKey.value === EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved
+    ? trackerDestination
+    : null,
+);
+const suggestion = useExtensionSuggestion(() => emit('retryRemoteLogs'));
 
 function commentText(log: RemoteTimeLogDto): string {
   const comment = log.comment?.trim();
@@ -159,6 +168,12 @@ const displayedRemoteLogs = computed(() => {
             "
             :data-testid="`remote-sync-remote-logs-retry-${taskId}`"
             @click="emit('retryRemoteLogs')"
+          />
+          <ExtensionApprovalRequest
+            v-if="unapprovedDestination"
+            :state="suggestion.states.value[suggestionKey(unapprovedDestination)]"
+            :test-id="`remote-sync-remote-logs-request-${taskId}`"
+            @request="suggestion.request(unapprovedDestination)"
           />
         </template>
         <p

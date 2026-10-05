@@ -859,6 +859,9 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
             :entries="row.entries"
             :export-records="row.exports"
             :tracker-id="row.config?.id ?? null"
+            :tracker-destination="
+              row.config ? { provider: row.config.systemType, baseUrl: row.config.baseUrl } : null
+            "
             :show-remote-logs="!!issueRefFor(row) && !!row.config"
             :remote-logs="remoteLogsFor(row).logs"
             :remote-logs-loading="remoteLogsFor(row).loading"
