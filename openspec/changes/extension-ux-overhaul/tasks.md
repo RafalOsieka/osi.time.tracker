@@ -52,4 +52,4 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 9. Integration check
 
-- [ ] 9.1 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:extension` and `pnpm test:e2e`, then walk the full flow manually with the unpacked extension against the local trackers.
+- [x] 9.1 Run `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:extension` and `pnpm test:e2e`, then walk the full flow manually with the unpacked extension against the local trackers.
