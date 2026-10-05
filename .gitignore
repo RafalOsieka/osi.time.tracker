@@ -9,6 +9,7 @@ dist
 # Test coverage
 coverage
 coverage-e2e-api
+coverage-e2e-db
 coverage-v8-e2e
 
 # Node dependencies

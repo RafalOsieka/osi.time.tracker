@@ -26,3 +26,7 @@ flags:
       - apps/web/app/
       - apps/web/server/
       - apps/web/shared/
+  e2e-db:
+    paths:
+      - apps/web/server/
+      - apps/web/shared/

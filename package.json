@@ -18,6 +18,7 @@
     "test:e2e:dev": "vp run build:packages && vp run --filter @osi/time-tracker test:e2e:dev",
     "test:nuxt": "vp run build:packages && vp run --filter @osi/time-tracker test:nuxt",
     "test:coverage": "vp run build:packages && vp run --filter @osi/time-tracker test:coverage",
+    "test:coverage:e2e-db": "vp run build:packages && vp run --filter @osi/time-tracker test:coverage:e2e-db",
     "test:extension": "vp run build:packages && vp run --filter @osi/extension build && vp run --filter @osi/extension test:unit && vp run --filter @osi/extension test:browser",
     "package:check": "vp run build:packages && vp run --log grouped --filter \"./packages/*\" type-check && vp run --log grouped --filter \"./packages/*\" test:unit",
     "db:generate": "vp run --filter @osi/time-tracker db:generate",

@@ -68,9 +68,9 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 5. Backend/CI: measure e2e-db coverage
 
-- [ ] 5.1 Add `test:coverage:e2e-db` to `apps/web/package.json` (`vp test run --coverage --project e2e-db --coverage.reportsDirectory=coverage-e2e-db`), and add `coverage-e2e-db` to `.gitignore` next to `coverage-e2e-api`. Verify that running it locally writes `apps/web/coverage-e2e-db/lcov.info` listing `server/utils/remote-issue-refs.ts` as covered, with no migration SQL/JSON or test files.
-- [ ] 5.2 In `.github/workflows/ci.yml`, make the `db` job run the new script and upload `apps/web/coverage-e2e-db/lcov.info` with flag `e2e-db` (pinned `codecov/codecov-action`, `CODECOV_TOKEN`, `if: success()`). Add the `e2e-db` flag with `apps/web/server/` and `apps/web/shared/` paths to `codecov.yml`. Verify the workflow passes `actionlint`, or a local YAML parse, and the PR's Codecov comment lists three flags.
-- [ ] 5.3 Update the Coverage section of `docs/e2e-guideline.md` (three flags, how e2e-db is measured, UI still excluded and why). Verify the documented command matches the script name.
+- [x] 5.1 Add `test:coverage:e2e-db` to `apps/web/package.json` (`vp test run --coverage --project e2e-db --coverage.reportsDirectory=coverage-e2e-db`), and add `coverage-e2e-db` to `.gitignore` next to `coverage-e2e-api`. Verify that running it locally writes `apps/web/coverage-e2e-db/lcov.info` listing `server/utils/remote-issue-refs.ts` as covered, with no migration SQL/JSON or test files.
+- [x] 5.2 In `.github/workflows/ci.yml`, make the `db` job run the new script and upload `apps/web/coverage-e2e-db/lcov.info` with flag `e2e-db` (pinned `codecov/codecov-action`, `CODECOV_TOKEN`, `if: success()`). Add the `e2e-db` flag with `apps/web/server/` and `apps/web/shared/` paths to `codecov.yml`. Verify the workflow passes `actionlint`, or a local YAML parse, and the PR's Codecov comment lists three flags.
+- [x] 5.3 Update the Coverage section of `docs/e2e-guideline.md` (three flags, how e2e-db is measured, UI still excluded and why). Verify the documented command matches the script name.
 
 ## 6. Backend: fill gaps no flag reaches
 
