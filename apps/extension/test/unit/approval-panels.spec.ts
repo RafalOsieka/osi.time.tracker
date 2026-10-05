@@ -21,7 +21,10 @@ afterAll(() => vi.unstubAllGlobals());
  * `disabled:` variants are in every button's class list, so a plain substring check proves nothing.
  */
 function isDisabled(html: string, testId: string): boolean {
-  const tag = new RegExp(`<button[^>]*data-testid="${testId}"[^>]*>`).exec(html)?.[0];
+  // Plain string matching: test ids contain URLs, whose dots would be wildcards in a pattern.
+  const tag = html
+    .match(/<button[^>]*>/g)
+    ?.find((item) => item.includes(`data-testid="${testId}"`));
   if (tag === undefined) throw new Error(`button ${testId} not rendered`);
   return /\sdisabled[\s>=]/.test(tag);
 }

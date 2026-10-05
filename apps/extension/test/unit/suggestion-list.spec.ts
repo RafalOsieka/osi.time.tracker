@@ -36,7 +36,7 @@ describe('suggestion list', () => {
     expect(html).toContain(`data-testid="approve-suggestion-${suggestionId(plain)}"`);
     expect(html).toContain('requested by time.example.com');
     expect(html.match(/HTTP destinations send tracker credentials/g)).toHaveLength(1);
-    expect(html).toMatch(new RegExp(`class="[^"]*ring-primary[^"]*" data-testid="suggestion-`));
+    expect(html).toMatch(/class="[^"]*ring-primary[^"]*" data-testid="suggestion-/);
   });
 
   it('only dismisses or hands over to setup in the popup', async () => {
