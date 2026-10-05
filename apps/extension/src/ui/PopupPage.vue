@@ -1,23 +1,37 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { ApprovalService } from '../approvals/approvals.js';
+import UAlert from '@nuxt/ui/components/Alert.vue';
+import UAvatar from '@nuxt/ui/components/Avatar.vue';
+import UBadge from '@nuxt/ui/components/Badge.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UIcon from '@nuxt/ui/components/Icon.vue';
+import { ApprovalService, type DestinationApproval } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
   createChromeHostPermissions,
 } from '../approvals/chrome-store.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
+import BrandMark from './BrandMark.vue';
 
 const { t, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const { websites, destinations, missingOrigins, loaded, errorKey, refresh } =
   useApprovalsEditor(service);
-const status = computed(() =>
-  t.value(
-    errorKey.value ??
-      (missingOrigins.value.length ? 'approvals.missingPermission' : 'app.statusReady'),
-  ),
+
+const needsAttention = computed(() => errorKey.value !== null || missingOrigins.value.length > 0);
+const badge = computed(() =>
+  needsAttention.value
+    ? { label: t.value('app.statusAttention'), color: 'warning' as const }
+    : { label: t.value('app.statusOk'), color: 'success' as const },
 );
+const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
+
+const destinationKey = (item: DestinationApproval) =>
+  `${item.websiteOrigin}|${item.provider}|${item.origin}${item.basePath}`;
+
+/** Website shown under a tracker row: just the host, the scheme is noise at popup width. */
+const websiteHost = (origin: string) => new URL(origin).host;
 
 onMounted(() => {
   void refresh();
@@ -29,66 +43,154 @@ function openOptions(): void {
 </script>
 
 <template>
-  <main class="popup">
-    <h1 class="title">{{ t('app.popupTitle') }}</h1>
-    <p class="status" role="status" aria-live="polite">{{ status }}</p>
-    <p v-if="localeErrorKey" role="alert">{{ t(localeErrorKey) }}</p>
-    <template v-if="loaded">
-      <section aria-labelledby="saved-websites-title" data-testid="saved-websites">
-        <h2 id="saved-websites-title" class="list-title">{{ t('approvals.savedWebsites') }}</h2>
-        <ul v-if="websites.length" class="approval-list">
-          <li v-for="website in websites" :key="website.origin">{{ website.origin }}</li>
-        </ul>
-        <p v-else class="empty">{{ t('approvals.noWebsites') }}</p>
-      </section>
-      <section aria-labelledby="saved-trackers-title" data-testid="saved-trackers">
-        <h2 id="saved-trackers-title" class="list-title">{{ t('approvals.savedTrackers') }}</h2>
-        <ul v-if="destinations.length" class="approval-list">
-          <li
-            v-for="destination in destinations"
-            :key="`${destination.websiteOrigin}|${destination.provider}|${destination.origin}${destination.basePath}`"
+  <main class="flex w-90 flex-col bg-default text-sm text-default">
+    <header class="flex items-center gap-2.5 border-b border-default px-4 py-3">
+      <BrandMark :size="28" />
+      <div class="flex min-w-0 grow flex-col">
+        <h1 class="text-sm font-semibold text-highlighted">OSI Time Tracker</h1>
+        <span class="text-xs text-muted">{{ t('app.popupTitle') }}</span>
+      </div>
+      <UBadge
+        v-if="loaded || errorKey"
+        role="status"
+        aria-live="polite"
+        data-testid="popup-status"
+        :color="badge.color"
+        variant="soft"
+        :label="badge.label"
+      />
+    </header>
+
+    <div class="flex flex-col gap-4 p-4">
+      <UAlert
+        v-if="errorKey"
+        role="alert"
+        color="error"
+        variant="subtle"
+        icon="i-lucide-circle-alert"
+        :description="t(errorKey)"
+        :actions="[
+          { label: t('approvals.retry'), color: 'error', variant: 'outline', onClick: refresh },
+        ]"
+      />
+      <UAlert
+        v-else-if="missingOrigins.length"
+        role="alert"
+        data-testid="popup-missing-access"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-triangle-alert"
+        :title="t('approvals.permissionMissing')"
+        :description="t('approvals.missingPermissionShort')"
+      />
+      <p v-else-if="loaded" class="text-muted">{{ t('app.popupReady') }}</p>
+      <UAlert
+        v-if="localeErrorKey"
+        role="alert"
+        color="error"
+        variant="subtle"
+        :description="t(localeErrorKey)"
+      />
+
+      <template v-if="loaded">
+        <section
+          class="flex flex-col gap-2"
+          aria-labelledby="saved-websites-title"
+          data-testid="saved-websites"
+        >
+          <h2 id="saved-websites-title" class="text-xs font-semibold text-muted">
+            {{ t('approvals.savedWebsites') }}
+          </h2>
+          <ul
+            v-if="websites.length"
+            class="divide-y divide-default rounded-md ring ring-default ring-inset"
           >
-            {{ destination.websiteOrigin }} - {{ destination.origin }}{{ destination.basePath }}
-          </li>
-        </ul>
-        <p v-else class="empty">{{ t('approvals.noDestinations') }}</p>
-      </section>
-    </template>
-    <button v-if="errorKey" type="button" @click="refresh()">{{ t('approvals.retry') }}</button>
-    <button class="button" data-testid="open-options" type="button" @click="openOptions">
-      {{ t('app.openOptions') }}
-    </button>
+            <li
+              v-for="website in websites"
+              :key="website.origin"
+              class="flex items-center gap-2 px-3 py-2"
+            >
+              <UIcon name="i-lucide-globe" class="size-4 shrink-0 text-muted" />
+              <span
+                class="min-w-0 grow text-[13px] break-all text-highlighted"
+                data-testid="popup-website"
+              >
+                {{ website.origin }}
+              </span>
+              <UBadge
+                v-if="missingOrigins.includes(website.origin)"
+                color="warning"
+                variant="soft"
+                size="sm"
+                :label="t('approvals.noAccess')"
+              />
+            </li>
+          </ul>
+          <p v-else class="text-muted">{{ t('approvals.noWebsites') }}</p>
+        </section>
+
+        <section
+          class="flex flex-col gap-2"
+          aria-labelledby="saved-trackers-title"
+          data-testid="saved-trackers"
+        >
+          <h2 id="saved-trackers-title" class="text-xs font-semibold text-muted">
+            {{ t('approvals.savedTrackers') }}
+          </h2>
+          <ul
+            v-if="destinations.length"
+            class="divide-y divide-default rounded-md ring ring-default ring-inset"
+          >
+            <li
+              v-for="destination in destinations"
+              :key="destinationKey(destination)"
+              class="flex items-center gap-2.5 px-3 py-2"
+              data-testid="popup-tracker"
+            >
+              <UAvatar
+                :text="providerInitials[destination.provider]"
+                size="sm"
+                class="rounded-md"
+                aria-hidden="true"
+              />
+              <span class="flex min-w-0 grow flex-col">
+                <span
+                  class="text-[13px] break-all text-highlighted"
+                  data-testid="popup-tracker-url"
+                >
+                  {{ destination.origin }}{{ destination.basePath }}
+                </span>
+                <span class="text-xs break-all text-muted" data-testid="popup-tracker-detail">
+                  {{ t(`approvals.${destination.provider}`) }}
+                  <span class="before:me-1 before:content-['·']">
+                    {{ websiteHost(destination.websiteOrigin) }}
+                  </span>
+                </span>
+              </span>
+              <UBadge
+                v-if="missingOrigins.includes(destination.origin)"
+                color="warning"
+                variant="soft"
+                size="sm"
+                :label="t('approvals.noAccess')"
+              />
+            </li>
+          </ul>
+          <p v-else class="text-muted">{{ t('approvals.noDestinations') }}</p>
+        </section>
+      </template>
+    </div>
+
+    <footer class="border-t border-default px-4 py-3">
+      <UButton
+        block
+        color="neutral"
+        variant="outline"
+        icon="i-lucide-settings-2"
+        data-testid="open-options"
+        :label="t('app.openOptions')"
+        @click="openOptions"
+      />
+    </footer>
   </main>
 </template>
-
-<style scoped>
-.popup {
-  min-width: 18rem;
-  padding: 1rem;
-  font-family: system-ui, sans-serif;
-  display: grid;
-  gap: 0.75rem;
-}
-.title {
-  font-size: 1.1rem;
-  margin: 0;
-}
-.status {
-  margin: 0;
-}
-.list-title {
-  font-size: 1rem;
-  margin: 0;
-}
-.approval-list {
-  margin: 0.5rem 0 0;
-  padding-left: 1.25rem;
-  overflow-wrap: anywhere;
-}
-.empty {
-  margin: 0.5rem 0 0;
-}
-.button {
-  font: inherit;
-}
-</style>

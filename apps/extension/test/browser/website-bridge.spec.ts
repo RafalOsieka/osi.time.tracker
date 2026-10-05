@@ -13,6 +13,7 @@ import {
 } from './harness/fake-trackers.js';
 import { startWebsiteFixture, type WebsiteFixture } from './harness/website-fixture.js';
 import { requireChromium } from './harness/skip.js';
+import { chooseOption, optionNames } from './harness/choose-option.js';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
 import { z } from 'zod';
 
@@ -49,7 +50,7 @@ async function approveSite(
     .getByTestId('status')
     .filter({ hasText: /saved|zapisane/i })
     .waitFor();
-  await page.getByTestId('destination-provider').selectOption(provider);
+  await chooseOption(page, 'destination-provider', optionNames[provider]);
   await page.getByTestId('destination-url').fill(destinationUrl);
   await page.getByTestId('add-destination').click();
   await page

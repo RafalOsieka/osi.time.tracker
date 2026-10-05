@@ -1,0 +1,15 @@
+@import 'tailwindcss';
+@import '@nuxt/ui';
+
+/*
+ * Warnings use the darker 600 step on light surfaces so badge and alert text stays readable on
+ * white (design D5). Dark mode keeps Nuxt UI's lighter step; `.dark` is restated because both
+ * selectors match <html> with equal specificity and the later rule wins.
+ */
+:root {
+  --ui-warning: var(--ui-color-warning-600);
+}
+
+.dark {
+  --ui-warning: var(--ui-color-warning-400);
+}

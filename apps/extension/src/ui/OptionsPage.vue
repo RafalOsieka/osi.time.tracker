@@ -1,5 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
+import UAlert from '@nuxt/ui/components/Alert.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UFormField from '@nuxt/ui/components/FormField.vue';
+import UIcon from '@nuxt/ui/components/Icon.vue';
+import USelect from '@nuxt/ui/components/Select.vue';
 import { ApprovalService } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
@@ -7,7 +12,9 @@ import {
 } from '../approvals/chrome-store.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
+import { useExtensionTheme } from '../composables/use-extension-theme.js';
 import { reconcileWebsiteContentScripts } from '../content/registration.js';
+import BrandMark from './BrandMark.vue';
 import DestinationApprovals from './DestinationApprovals.vue';
 import WebsiteApprovals from './WebsiteApprovals.vue';
 
@@ -50,14 +57,19 @@ const {
   retry,
 } = editor;
 const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
+const { theme, setTheme } = useExtensionTheme();
+const themeItems = computed(() => [
+  { label: t.value('app.themeLight'), value: 'light' as const, icon: 'i-lucide-sun' },
+  { label: t.value('app.themeDark'), value: 'dark' as const, icon: 'i-lucide-moon' },
+]);
+const languageItems = computed(() => [
+  { label: t.value('app.languageEn'), value: 'en' as const },
+  { label: t.value('app.languagePl'), value: 'pl' as const },
+]);
+const version = chrome.runtime.getManifest().version;
+const themeIcon = computed(() => (theme.value === 'dark' ? 'i-lucide-moon' : 'i-lucide-sun'));
 const statusText = computed(() => t.value(errorKey.value ?? statusKey.value));
 const disabled = computed(() => busy.value || !loaded.value);
-
-function onLanguageChange(event: Event): void {
-  const target = event.target;
-  if (!(target instanceof HTMLSelectElement)) return;
-  setLocale(target.value === 'pl' ? 'pl' : 'en');
-}
 
 onMounted(() => {
   void refresh();
@@ -65,30 +77,98 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="page">
-    <header class="header">
-      <h1 class="title">{{ t('app.optionsTitle') }}</h1>
-      <label class="language">
-        <span>{{ t('app.language') }}</span>
-        <select data-testid="language" :value="locale" @change="onLanguageChange">
-          <option value="en">{{ t('app.languageEn') }}</option>
-          <option value="pl">{{ t('app.languagePl') }}</option>
-        </select>
-      </label>
+  <main class="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-sm text-default">
+    <header class="flex flex-wrap items-end justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <BrandMark :size="40" />
+        <div class="flex flex-col">
+          <h1 class="text-xl font-semibold text-highlighted">{{ t('app.optionsTitle') }}</h1>
+          <span class="text-[13px] text-muted">
+            OSI Time Tracker
+            <span class="before:me-1 before:content-['·']">{{ `v${version}` }}</span>
+          </span>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <UFormField :label="t('app.language')" name="language" size="sm">
+          <USelect
+            id="language"
+            :model-value="locale"
+            :items="languageItems"
+            value-key="value"
+            icon="i-lucide-languages"
+            size="sm"
+            class="w-36"
+            data-testid="language"
+            @update:model-value="setLocale"
+          />
+        </UFormField>
+        <UFormField :label="t('app.theme')" name="theme" size="sm">
+          <USelect
+            id="theme"
+            :model-value="theme"
+            :items="themeItems"
+            value-key="value"
+            :icon="themeIcon"
+            size="sm"
+            class="w-36"
+            data-testid="theme"
+            @update:model-value="setTheme"
+          />
+        </UFormField>
+      </div>
     </header>
-    <p class="status" data-testid="status" role="status" aria-live="polite">{{ statusText }}</p>
-    <p v-if="localeErrorKey" role="alert">{{ t(localeErrorKey) }}</p>
-    <button
+
+    <UAlert
       v-if="errorKey"
-      data-testid="retry-setup"
-      type="button"
-      :disabled="busy"
-      @click="retry()"
+      role="alert"
+      color="error"
+      variant="subtle"
+      icon="i-lucide-circle-alert"
+      orientation="horizontal"
     >
-      {{ t('approvals.retry') }}
-    </button>
-    <p v-if="missingOrigins.length" role="status">{{ t('approvals.missingPermission') }}</p>
-    <p class="hint">{{ t('app.refreshHint') }}</p>
+      <template #description>
+        <span data-testid="status">{{ statusText }}</span>
+      </template>
+      <template #actions>
+        <UButton
+          data-testid="retry-setup"
+          color="error"
+          variant="outline"
+          size="sm"
+          :disabled="busy"
+          :label="t('approvals.retry')"
+          @click="retry()"
+        />
+      </template>
+    </UAlert>
+    <p
+      v-else
+      class="flex items-center gap-1.5 text-[13px] text-muted"
+      data-testid="status"
+      role="status"
+      aria-live="polite"
+    >
+      <UIcon name="i-lucide-info" class="size-4 shrink-0" />
+      {{ statusText }}
+    </p>
+    <UAlert
+      v-if="localeErrorKey"
+      role="alert"
+      color="error"
+      variant="subtle"
+      :description="t(localeErrorKey)"
+    />
+    <UAlert
+      v-if="missingOrigins.length"
+      role="status"
+      data-testid="missing-access"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-triangle-alert"
+      :title="t('approvals.permissionMissing')"
+      :description="t('approvals.missingPermission')"
+    />
     <WebsiteApprovals
       :websites="websites"
       :origin="websiteOrigin"
@@ -119,32 +199,3 @@ onMounted(() => {
     />
   </main>
 </template>
-
-<style scoped>
-.page {
-  display: grid;
-  gap: 1.25rem;
-  max-width: 40rem;
-  margin: 0 auto;
-  padding: 1rem;
-  font-family: system-ui, sans-serif;
-}
-.header {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: center;
-}
-.title {
-  font-size: 1.25rem;
-  margin: 0;
-}
-.language {
-  display: grid;
-  gap: 0.25rem;
-}
-.status,
-.hint {
-  margin: 0;
-}
-</style>
