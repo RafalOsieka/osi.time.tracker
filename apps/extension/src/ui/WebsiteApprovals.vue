@@ -1,5 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import UBadge from '@nuxt/ui/components/Badge.vue';
+import UButton from '@nuxt/ui/components/Button.vue';
+import UCard from '@nuxt/ui/components/Card.vue';
+import UForm from '@nuxt/ui/components/Form.vue';
+import UIcon from '@nuxt/ui/components/Icon.vue';
+import UInput from '@nuxt/ui/components/Input.vue';
+import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import type { WebsiteApproval } from '../approvals/approvals.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 
@@ -20,108 +27,95 @@ const emit = defineEmits<{
 
 const { t } = useExtensionI18n();
 const empty = computed(() => websites.length === 0);
-
-function onOriginInput(event: Event): void {
-  const target = event.target;
-  if (target instanceof HTMLInputElement) emit('update:origin', target.value);
-}
-
-function onAdd(event: Event): void {
-  event.preventDefault();
-  emit('add');
-}
+const formState = computed(() => ({ origin }));
 </script>
 
 <template>
-  <section class="panel" aria-labelledby="websites-title">
-    <h2 id="websites-title" class="panel-title">{{ t('approvals.websitesTitle') }}</h2>
-    <form class="form" @submit="onAdd">
-      <label class="field">
-        <span class="field-label">{{ t('approvals.websiteOrigin') }}</span>
-        <input
-          class="field-input"
-          data-testid="website-origin"
-          :value="origin"
+  <UCard as="section" aria-labelledby="websites-title" :ui="{ body: 'flex flex-col gap-4' }">
+    <template #header>
+      <h2 id="websites-title" class="text-base font-semibold text-highlighted">
+        {{ t('approvals.websitesTitle') }}
+      </h2>
+      <p id="website-origin-help" class="mt-1 text-[13px] text-muted">
+        {{ t('approvals.websiteHelp') }}
+      </p>
+    </template>
+
+    <UForm :state="formState" class="flex flex-col gap-1" @submit="emit('add')">
+      <div class="flex items-end gap-2">
+        <!-- A plain label: UFormField would replace the input's aria-invalid/aria-describedby. -->
+        <div class="flex grow flex-col gap-1">
+          <label for="website-origin" class="text-sm font-medium text-default">
+            {{ t('approvals.websiteOrigin') }}
+          </label>
+          <UInput
+            id="website-origin"
+            class="w-full"
+            data-testid="website-origin"
+            placeholder="https://time.example.com"
+            autocomplete="off"
+            :model-value="origin"
+            :disabled="disabled"
+            :aria-invalid="!!errorKey"
+            aria-describedby="website-origin-help website-origin-error"
+            @update:model-value="emit('update:origin', String($event))"
+          />
+        </div>
+        <UButton
+          type="submit"
+          icon="i-lucide-plus"
+          data-testid="add-website"
           :disabled="disabled"
-          :aria-invalid="!!errorKey"
-          aria-describedby="website-origin-help website-origin-error"
-          autocomplete="off"
-          @input="onOriginInput"
+          :label="t('approvals.addWebsite')"
         />
-      </label>
-      <p id="website-origin-help" class="empty">{{ t('approvals.websiteHelp') }}</p>
-      <p id="website-origin-error" class="empty" role="alert">
+      </div>
+      <p id="website-origin-error" class="text-[13px] text-error" role="alert">
         <span v-if="errorKey">{{ t(errorKey) }}</span>
       </p>
-      <button class="button" data-testid="add-website" type="submit" :disabled="disabled">
-        {{ t('approvals.addWebsite') }}
-      </button>
-    </form>
-    <p v-if="empty" class="empty">{{ t('approvals.noWebsites') }}</p>
-    <ul v-else class="list">
-      <li v-for="website in websites" :key="website.origin" class="list-item">
-        <span>{{ website.origin }}</span>
-        <span v-if="missingOrigins.includes(website.origin)">
-          {{ t('approvals.permissionMissing') }}
-        </span>
-        <button
-          v-if="missingOrigins.includes(website.origin)"
-          type="button"
-          :disabled="disabled"
-          :aria-label="`${t('approvals.restorePermission')} ${website.origin}`"
-          :data-testid="`restore-website-${website.origin}`"
-          @click="emit('restore', website.origin)"
-        >
-          {{ t('approvals.restorePermission') }}
-        </button>
-        <button
-          class="button-link"
-          type="button"
-          :disabled="disabled"
-          :data-testid="`revoke-website-${website.origin}`"
-          :aria-label="`${t('approvals.revokeWebsite')} ${website.origin}`"
-          @click="emit('revoke', website.origin)"
-        >
-          {{ t('approvals.revokeWebsite') }}
-        </button>
+    </UForm>
+
+    <p v-if="empty" class="text-muted">{{ t('approvals.noWebsites') }}</p>
+    <ul v-else class="divide-y divide-default rounded-md ring ring-default ring-inset">
+      <li
+        v-for="website in websites"
+        :key="website.origin"
+        class="flex items-center gap-2.5 py-2 ps-3 pe-2"
+      >
+        <UIcon name="i-lucide-globe" class="size-4.5 shrink-0 text-muted" />
+        <span class="min-w-0 grow break-all text-highlighted">{{ website.origin }}</span>
+        <template v-if="missingOrigins.includes(website.origin)">
+          <UBadge color="warning" variant="soft" :label="t('approvals.noAccess')" />
+          <UButton
+            color="warning"
+            variant="soft"
+            size="xs"
+            icon="i-lucide-shield-check"
+            :disabled="disabled"
+            :label="t('approvals.restorePermission')"
+            :aria-label="`${t('approvals.restorePermission')} ${website.origin}`"
+            :data-testid="`restore-website-${website.origin}`"
+            @click="emit('restore', website.origin)"
+          />
+        </template>
+        <UTooltip :text="t('approvals.revokeWebsite')">
+          <UButton
+            color="error"
+            variant="ghost"
+            icon="i-lucide-trash-2"
+            :disabled="disabled"
+            :data-testid="`revoke-website-${website.origin}`"
+            :aria-label="`${t('approvals.revokeWebsite')} ${website.origin}`"
+            @click="emit('revoke', website.origin)"
+          />
+        </UTooltip>
       </li>
     </ul>
-  </section>
-</template>
 
-<style scoped>
-.panel {
-  display: grid;
-  gap: 0.75rem;
-}
-.panel-title {
-  font-size: 1rem;
-  margin: 0;
-}
-.form,
-.list {
-  display: grid;
-  gap: 0.5rem;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.field {
-  display: grid;
-  gap: 0.25rem;
-}
-.field-input,
-.button,
-.button-link {
-  font: inherit;
-}
-.list-item {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.75rem;
-  align-items: center;
-}
-.empty {
-  margin: 0;
-}
-</style>
+    <template #footer>
+      <p class="flex items-center gap-2 text-[13px] text-muted">
+        <UIcon name="i-lucide-info" class="size-4 shrink-0" />
+        {{ t('app.refreshHint') }}
+      </p>
+    </template>
+  </UCard>
+</template>

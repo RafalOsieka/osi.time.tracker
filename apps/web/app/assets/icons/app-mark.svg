@@ -8,6 +8,12 @@
     public/favicon-running.svg tab icon, glyph at 88%, green tile fill
   The raster public/favicon.ico is cut from public/favicon.svg.
 
+  Browser extension copies (separate build, so copied rather than imported):
+    apps/extension/src/ui/BrandMark.vue        inline copy of this glyph in currentColor
+    apps/extension/public/icons/icon-*.png     16/32/48/128 rasters of public/favicon.svg, cut with
+      a one-off pnpx sharp-cli@5 run per size (density 1200, resize to n x n). XML comments cannot
+      hold a double hyphen, so the exact command is in the comment of apps/extension/src/manifest.ts.
+
   Grid: centre (12,12). Open dial: one stroke (width 2) from a bar at 6 o'clock, clockwise along
   r=9.5 through 9 and 12 to 3; the 3-6 quadrant stays open. Monogram: T with a 2.6 crossbar and a
   stem tapering from 2.6 to 0.8 like a clock hand pointing at 6.

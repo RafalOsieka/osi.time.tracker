@@ -8,8 +8,14 @@
     "language": "Język",
     "languageEn": "angielski",
     "languagePl": "polski",
+    "theme": "Motyw",
+    "themeLight": "Jasny",
+    "themeDark": "Ciemny",
     "languageStorageFailed": "Nie udało się zapisać lub odczytać preferencji języka. Wybierz język ponownie, aby ponowić próbę.",
-    "refreshHint": "Odśwież otwarte karty OSI po zmianie zatwierdzeń witryn."
+    "refreshHint": "Odśwież otwarte karty OSI po zmianie zatwierdzeń witryn.",
+    "statusOk": "Gotowa",
+    "statusAttention": "Wymaga uwagi",
+    "popupReady": "Wtyczka jest załadowana. Otwórz konfigurację, aby zatwierdzić witrynę i tracker."
   },
   "approvals": {
     "websitesTitle": "Zatwierdzone witryny",
@@ -39,14 +45,16 @@
     "missingPermission": "Niektórym zapisanym zatwierdzeniom brakuje dostępu do witryny w przeglądarce. Przywróć dostęp w odpowiednim wierszu konfiguracji; samo zatwierdzenie nie zapewnia dostępu.",
     "permissionMissing": "Brak dostępu do witryny w przeglądarce",
     "websitePermissionMissing": "Brak dostępu do witryny — przywróć go w sekcji Zatwierdzone witryny.",
-    "restorePermission": "Przywróć dostęp w przeglądarce",
-    "savedWebsites": "Zapisane witryny:",
-    "savedTrackers": "Zapisane trackery:",
+    "restorePermission": "Przywróć dostęp",
+    "savedWebsites": "Zapisane witryny",
+    "savedTrackers": "Zapisane trackery",
     "websiteRequired": "Zatwierdź witrynę przed dodaniem trackera.",
     "websiteHelp": "Podaj wyłącznie origin witryny, np. https://time.example.com lub http://localhost:3000. HTTPS jest wymagany poza adresami pętli zwrotnej.",
     "destinationHelp": "Podaj pełny bazowy adres trackera, z https:// (lub http://) i ścieżką instalacji, np. https://tracker.example.com/redmine. Nie dodawaj danych uwierzytelniających, parametrów zapytania ani fragmentów.",
     "invalidWebsite": "Podaj origin z https:// lub http:// dla localhost/pętli zwrotnej. Usuń ścieżki, dane uwierzytelniające, parametry zapytania i fragmenty.",
-    "invalidDestination": "Podaj poprawny bazowy adres trackera z http:// lub https://. Ścieżki instalacji są dozwolone; dane uwierzytelniające, parametry zapytania, fragmenty i ścieżki nadrzędne nie są."
+    "invalidDestination": "Podaj poprawny bazowy adres trackera z http:// lub https://. Ścieżki instalacji są dozwolone; dane uwierzytelniające, parametry zapytania, fragmenty i ścieżki nadrzędne nie są.",
+    "noAccess": "Brak dostępu",
+    "missingPermissionShort": "Przywróć dostęp w konfiguracji; samo zatwierdzenie nie zapewnia dostępu."
   },
   "error": {
     "extensionUnavailable": "Wtyczka OSI jest niedostępna w tej przeglądarce.",

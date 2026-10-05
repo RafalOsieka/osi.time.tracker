@@ -6,12 +6,36 @@ import {
   launchExtensionContext,
   type ExtensionHarness,
 } from './harness/extension-context.js';
+import { chooseOption, optionNames } from './harness/choose-option.js';
 import { requireChromium } from './harness/skip.js';
 
 const describeChromium = requireChromium();
 
 function optionsUrl(harness: ExtensionHarness): string {
   return `chrome-extension://${harness.extensionId}/src/options/index.html`;
+}
+
+function popupUrl(harness: ExtensionHarness): string {
+  return `chrome-extension://${harness.extensionId}/src/popup/index.html`;
+}
+
+/**
+ * Records whether <html> is dark when parsing ends (readyState 'interactive'), which is after the
+ * classic pre-paint script and before the page's module scripts mount Vue.
+ */
+function isDark(page: Page): Promise<boolean> {
+  return page.evaluate(() => document.documentElement.classList.contains('dark'));
+}
+
+async function recordThemeAtParse(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    document.addEventListener('readystatechange', () => {
+      if (document.readyState !== 'interactive') return;
+      document.documentElement.dataset.darkAtParse = String(
+        document.documentElement.classList.contains('dark'),
+      );
+    });
+  });
 }
 
 async function waitUntilIdle(page: Page): Promise<void> {
@@ -36,10 +60,45 @@ describeChromium('extension options UI', () => {
     await Promise.all(harness!.context.pages().map((page) => page.close()));
   });
 
+  it('loads the popup and setup page without any network request', async () => {
+    const page = await harness!.context.newPage();
+    const remote: string[] = [];
+    page.on('request', (request) => {
+      const url = request.url();
+      if (!url.startsWith('chrome-extension://') && !url.startsWith('data:')) remote.push(url);
+    });
+    for (const url of [optionsUrl(harness!), popupUrl(harness!)]) {
+      await page.goto(url, { waitUntil: 'networkidle' });
+    }
+    expect(remote).toEqual([]);
+  });
+
+  it('defaults to light under a dark OS and applies a chosen dark theme before paint', async () => {
+    const page = await harness!.context.newPage();
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await recordThemeAtParse(page);
+    await page.goto(optionsUrl(harness!));
+    await expect.poll(() => page.getByTestId('theme').isVisible()).toBe(true);
+    expect(await isDark(page)).toBe(false);
+
+    await chooseOption(page, 'theme', optionNames.dark);
+    await expect.poll(() => isDark(page)).toBe(true);
+
+    const popup = await harness!.context.newPage();
+    await recordThemeAtParse(popup);
+    await popup.goto(popupUrl(harness!));
+    expect(await popup.locator('html').getAttribute('data-dark-at-parse')).toBe('true');
+    await page.reload();
+    expect(await page.locator('html').getAttribute('data-dark-at-parse')).toBe('true');
+
+    await chooseOption(page, 'theme', optionNames.light);
+    await expect.poll(() => isDark(popup)).toBe(false);
+  });
+
   it('approves, reloads, localizes, and revokes from the keyboard', async () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
-    await page.getByTestId('language').selectOption('en');
+    await chooseOption(page, 'language', optionNames.en);
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
     await page.getByTestId('website-origin').fill('https://time.example.com/reports');
     await page.getByTestId('add-website').press('Enter');
@@ -58,38 +117,46 @@ describeChromium('extension options UI', () => {
       .poll(() => page.getByTestId('revoke-website-http://localhost:3000').isVisible())
       .toBe(true);
 
-    await page.getByTestId('language').selectOption('pl');
+    await chooseOption(page, 'language', optionNames.pl);
     await expect.poll(() => page.getByTestId('add-website').textContent()).toMatch(/Zatwierdź/i);
     await expect
       .poll(() => page.getByTestId('add-destination').textContent())
       .toMatch(/Zatwierdź tracker/i);
     await page.reload();
-    await expect.poll(() => page.getByTestId('language').inputValue()).toBe('pl');
+    await expect.poll(() => page.getByTestId('language').textContent()).toContain('polski');
     const popup = await harness!.context.newPage();
-    await popup.goto(optionsUrl(harness!).replace('/options/', '/popup/'));
+    await popup.goto(popupUrl(harness!));
     await expect
       .poll(() => popup.getByTestId('open-options').textContent())
       .toMatch(/Otwórz konfigurację/);
 
     await expect
       .poll(() => popup.getByTestId('saved-websites').textContent())
-      .toContain('Zapisane witryny:');
+      .toContain('Zapisane witryny');
     await expect
-      .poll(() => popup.getByTestId('saved-websites').locator('li').allTextContents())
+      .poll(async () =>
+        (await popup.getByTestId('popup-website').allTextContents()).map((text) => text.trim()),
+      )
       .toEqual(['http://localhost:3000']);
+    await expect.poll(() => popup.getByTestId('popup-status').textContent()).toMatch(/Gotowa/);
     await page.getByTestId('destination-url').fill('https://tracker.example.com/team');
     await page.getByTestId('add-destination').press('Enter');
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
     await expect
       .poll(() => popup.getByTestId('saved-trackers').textContent())
-      .toContain('Zapisane trackery:');
+      .toContain('Zapisane trackery');
     await expect
       .poll(async () =>
-        (await popup.getByTestId('saved-trackers').locator('li').allTextContents()).map((text) =>
-          text.trim(),
+        (await popup.getByTestId('popup-tracker-url').allTextContents()).map((text) => text.trim()),
+      )
+      .toEqual(['https://tracker.example.com/team']);
+    await expect
+      .poll(async () =>
+        (await popup.getByTestId('popup-tracker-detail').allTextContents()).map((text) =>
+          text.replace(/\s+/g, ' ').trim(),
         ),
       )
-      .toEqual(['http://localhost:3000 - https://tracker.example.com/team']);
+      .toEqual(['OpenProject localhost:3000']);
     await waitUntilIdle(page);
     await page.locator('[data-testid^="revoke-website-"]').press('Enter');
     await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/cofni/i);
@@ -104,8 +171,8 @@ describeChromium('extension options UI', () => {
     await page.getByTestId('website-origin').fill('http://localhost:3001');
     await page.getByTestId('add-website').press('Enter');
     await expect
-      .poll(() => page.getByTestId('destination-website').inputValue())
-      .toBe('http://localhost:3001');
+      .poll(() => page.getByTestId('destination-website').textContent())
+      .toContain('http://localhost:3001');
     await page.getByTestId('revoke-website-http://localhost:3001').click();
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
   });
@@ -116,7 +183,7 @@ describeChromium('extension options UI', () => {
     const url = optionsUrl(harness!);
     await page.goto(url);
     await other.goto(url);
-    await page.getByTestId('language').selectOption('en');
+    await chooseOption(page, 'language', optionNames.en);
     await expect
       .poll(() => other.getByTestId('add-website').textContent())
       .toMatch(/Approve website/);
@@ -124,8 +191,8 @@ describeChromium('extension options UI', () => {
       await page.getByTestId('website-origin').fill(origin);
       await page.getByTestId('add-website').click();
       await expect.poll(() => other.getByTestId(`revoke-website-${origin}`).isVisible()).toBe(true);
-      await page.getByTestId('destination-website').selectOption(origin);
-      await page.getByTestId('destination-provider').selectOption('redmine');
+      await chooseOption(page, 'destination-website', origin);
+      await chooseOption(page, 'destination-provider', optionNames.redmine);
       await page.getByTestId('destination-url').fill('https://shared.example.com/team');
       await page.getByTestId('add-destination').click();
       const row = other.getByTestId(
@@ -135,6 +202,26 @@ describeChromium('extension options UI', () => {
         .poll(() => row.getAttribute('aria-label'))
         .toBe(`Revoke tracker Website: ${origin} — Redmine https://shared.example.com/team`);
     }
+    const popup = await harness!.context.newPage();
+    await popup.addInitScript(() => {
+      const contains = chrome.permissions.contains.bind(chrome.permissions);
+      chrome.permissions.contains = async (request) =>
+        request.origins.some((origin) => origin.includes('shared.example.com'))
+          ? false
+          : contains(request);
+    });
+    await popup.goto(popupUrl(harness!));
+    await expect
+      .poll(() => popup.getByTestId('popup-status').textContent())
+      .toMatch(/Needs attention/);
+    await expect.poll(() => popup.getByTestId('popup-missing-access').isVisible()).toBe(true);
+    await expect
+      .poll(async () =>
+        (await popup.getByTestId('popup-tracker').allTextContents()).every((text) =>
+          text.includes('No access'),
+        ),
+      )
+      .toBe(true);
     let hostAccessRevoked = true;
     try {
       await other.evaluate(() =>
@@ -157,8 +244,8 @@ describeChromium('extension options UI', () => {
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3100').click();
     await expect
-      .poll(() => page.getByTestId('destination-website').inputValue())
-      .toBe('http://localhost:3101');
+      .poll(() => page.getByTestId('destination-website').textContent())
+      .toContain('http://localhost:3101');
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3101').click();
     await waitUntilIdle(other);
@@ -168,7 +255,7 @@ describeChromium('extension options UI', () => {
   it('shows saved approvals after bridge failure and retries registration explicitly', async () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
-    await page.getByTestId('language').selectOption('en');
+    await chooseOption(page, 'language', optionNames.en);
     // The worker also registers scripts on approval changes, so both contexts
     // must fail or the options page skips register after a successful worker run.
     await harness!.worker.evaluate(() => {

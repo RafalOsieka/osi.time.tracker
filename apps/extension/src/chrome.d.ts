@@ -86,6 +86,7 @@ declare const chrome: {
     id: string;
     connect(connectInfo: { name: string }): ChromeRuntimePort;
     openOptionsPage(): void;
+    getManifest(): { version: string };
     onConnect: { addListener(callback: (port: ChromeRuntimePort) => void): void };
     onStartup: { addListener(callback: () => void): void };
     onInstalled: { addListener(callback: () => void): void };

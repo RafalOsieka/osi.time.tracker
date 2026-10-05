@@ -1,7 +1,9 @@
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ui from '@nuxt/ui/vite';
 import vue from '@vitejs/plugin-vue';
 import { build as viteBuild, defineConfig, type Plugin, lazyPlugins } from 'vite-plus';
+import { nuxtUiOptions } from './nuxt-ui.options.js';
 import { extensionManifest } from './src/manifest.js';
 
 const root = dirname(fileURLToPath(import.meta.url));
@@ -39,7 +41,7 @@ function emitContentScript(): Plugin {
 
 export default defineConfig({
   base: './',
-  plugins: lazyPlugins(() => [vue(), emitManifest(), emitContentScript()]),
+  plugins: lazyPlugins(() => [vue(), ui(nuxtUiOptions), emitManifest(), emitContentScript()]),
   build: {
     outDir: 'dist',
     emptyOutDir: true,

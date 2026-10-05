@@ -1,4 +1,4 @@
-import { createApp } from 'vue';
+import { mountPage } from '../ui/mount-page.js';
 import PopupPage from '../ui/PopupPage.vue';
 
-createApp(PopupPage).mount('#app');
+mountPage(PopupPage);

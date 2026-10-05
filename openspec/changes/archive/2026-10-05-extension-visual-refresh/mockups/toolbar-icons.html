@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Extension icons</title>
+<!-- Static mockup of the extension icon set: the tab-icon tile composition (glyph at 88%, x=2 y=2
+     28x28 on a 32x32 rx=8 #06b6d4 tile) on light and dark Chrome toolbars, and at every declared
+     manifest size. Reference only; the real PNGs are cut once from apps/web/public/favicon.svg and committed. -->
+<style>
+html{background:#e2e8f0}
+body{margin:0;padding:32px 16px;display:flex;justify-content:center;font-family:ui-sans-serif,system-ui,sans-serif;font-size:13px;color:#334155}
+.sheet{width:760px;box-sizing:border-box;padding:24px;display:flex;flex-direction:column;gap:20px;background:#fff;box-shadow:0 2px 16px rgba(15,23,42,.18)}
+.label{font-weight:600;color:#0f172a;margin-bottom:8px}
+.bar{display:flex;align-items:center;gap:14px;padding:8px 14px;border-radius:10px}
+.bar.light{background:#dee1e6}.bar.light .omni{background:#fff}.bar.light .other{background:#9aa0a6}
+.bar.dark{background:#35363a}.bar.dark .omni{background:#202124}.bar.dark .other{background:#80868b}
+.omni{flex-grow:1;height:28px;border-radius:999px}
+.other{width:16px;height:16px;border-radius:4px}
+.sizes{display:flex;align-items:flex-end;gap:24px}
+.size{display:flex;flex-direction:column;align-items:center;gap:6px;color:#64748b}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="tile" viewBox="0 0 32 32">
+    <rect width="32" height="32" rx="8" fill="#06b6d4"/>
+    <svg x="2" y="2" width="28" height="28" viewBox="0 0 24 24" fill="#fff">
+      <g fill="none" stroke="#fff" stroke-linecap="round" stroke-linejoin="round"><path d="M15.6 21.5H12A9.5 9.5 0 1 1 21.5 12" stroke-width="2"/><path d="M8.5 9.3H15.5" stroke-width="2.6"/></g>
+      <path d="M10.7 9.3H13.3L12.4 16.9H11.6Z" stroke="#fff" stroke-width="0.4" stroke-linejoin="round"/>
+    </svg>
+  </symbol>
+</svg>
+<div class="sheet">
+  <div>
+    <div class="label">Pasek Chrome – jasny</div>
+    <div class="bar light"><div class="omni"></div><svg width="16" height="16" role="img" aria-label="OSI Time Tracker"><use href="#tile"/></svg><span class="other"></span><span class="other" style="border-radius:999px"></span></div>
+  </div>
+  <div>
+    <div class="label">Pasek Chrome – ciemny</div>
+    <div class="bar dark"><div class="omni"></div><svg width="16" height="16" role="img" aria-label="OSI Time Tracker"><use href="#tile"/></svg><span class="other"></span><span class="other" style="border-radius:999px"></span></div>
+  </div>
+  <div>
+    <div class="label">Rozmiary z manifestu</div>
+    <div class="sizes">
+      <div class="size"><svg width="16" height="16" aria-hidden="true"><use href="#tile"/></svg>16 px</div>
+      <div class="size"><svg width="32" height="32" aria-hidden="true"><use href="#tile"/></svg>32 px</div>
+      <div class="size"><svg width="48" height="48" aria-hidden="true"><use href="#tile"/></svg>48 px</div>
+      <div class="size"><svg width="128" height="128" aria-hidden="true"><use href="#tile"/></svg>128 px</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

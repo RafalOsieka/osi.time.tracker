@@ -8,25 +8,28 @@
     "build": "vp build",
     "dev": "vp build --watch",
     "lint": "vp lint && eslint .",
-    "type-check": "vue-tsc -p tsconfig.json --noEmit",
+    "type-check": "vp build && vue-tsc -p tsconfig.json --noEmit",
     "test": "vp test run --project unit",
     "test:unit": "vp test run --project unit",
     "test:browser": "vp test run --project browser"
   },
   "dependencies": {
+    "@nuxt/ui": "^4.11.3",
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
     "vue": "^3.5.43",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.138",
     "@vitejs/plugin-vue": "^6.0.9",
     "eslint-plugin-vue": "^10.11.1",
     "playwright": "^1.63.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "catalog:",
-    "vue-tsc": "^3.3.11",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vue-tsc": "^3.3.11"
   },
   "engines": {
     "node": ">=24"

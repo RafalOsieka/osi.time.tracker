@@ -48,7 +48,35 @@ function htmlAssetPaths(htmlPath: string): string[] {
     );
 }
 
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+
+/** Pixel size from a PNG's IHDR chunk; throws when the file is missing or not a PNG. */
+function pngSize(path: string) {
+  const bytes = readFileSync(path);
+  if (!bytes.subarray(0, 8).equals(PNG_SIGNATURE)) throw new Error(`${path} is not a PNG`);
+  return { width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20) };
+}
+
 describe('unpacked extension output', () => {
+  it('ships every declared icon as a PNG of its declared size', () => {
+    const iconSet = z.record(z.string(), z.string());
+    const manifest = z
+      .object({ icons: iconSet, action: z.object({ default_icon: iconSet }) })
+      .parse(JSON.parse(readFileSync(join(distRoot, 'manifest.json'), 'utf8')));
+
+    expect(
+      Object.keys(manifest.icons)
+        .map(Number)
+        .sort((a, b) => a - b),
+    ).toEqual([16, 32, 48, 128]);
+    for (const [size, path] of [
+      ...Object.entries(manifest.icons),
+      ...Object.entries(manifest.action.default_icon),
+    ]) {
+      expect(pngSize(join(distRoot, path))).toEqual({ width: Number(size), height: Number(size) });
+    }
+  });
+
   it('contains every manifest-referenced file and no web-app source', () => {
     expect(existsSync(join(distRoot, 'manifest.json'))).toBe(true);
     const manifest = z

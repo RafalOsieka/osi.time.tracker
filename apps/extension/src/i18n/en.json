@@ -8,8 +8,14 @@
     "language": "Language",
     "languageEn": "English",
     "languagePl": "Polish",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
     "languageStorageFailed": "The language preference could not be saved or loaded. Select the language again to retry.",
-    "refreshHint": "Refresh existing OSI tabs after changing website approvals."
+    "refreshHint": "Refresh existing OSI tabs after changing website approvals.",
+    "statusOk": "Ready",
+    "statusAttention": "Needs attention",
+    "popupReady": "Extension is loaded. Open setup to approve a website and tracker."
   },
   "approvals": {
     "websitesTitle": "Approved websites",
@@ -39,14 +45,16 @@
     "missingPermission": "Some saved approvals lack browser site access. Restore access using the affected row in setup; approvals alone do not enable access.",
     "permissionMissing": "Browser site access missing",
     "websitePermissionMissing": "Website access missing — restore it in Approved websites.",
-    "restorePermission": "Restore browser access",
-    "savedWebsites": "Saved websites:",
-    "savedTrackers": "Saved trackers:",
+    "restorePermission": "Restore access",
+    "savedWebsites": "Saved websites",
+    "savedTrackers": "Saved trackers",
     "websiteRequired": "Approve a website before adding a tracker.",
     "websiteHelp": "Use only the website origin, e.g. https://time.example.com or http://localhost:3000. HTTPS is required except for loopback addresses.",
     "destinationHelp": "Use the full tracker base URL, including https:// (or http://) and any installation path, e.g. https://tracker.example.com/redmine. Do not include credentials, query parameters, or fragments.",
     "invalidWebsite": "Enter an origin with https://, or http:// for localhost/loopback. Remove paths, credentials, query parameters, and fragments.",
-    "invalidDestination": "Enter a valid http:// or https:// tracker base URL. Installation paths are allowed; credentials, query parameters, fragments, and traversal paths are not."
+    "invalidDestination": "Enter a valid http:// or https:// tracker base URL. Installation paths are allowed; credentials, query parameters, fragments, and traversal paths are not.",
+    "noAccess": "No access",
+    "missingPermissionShort": "Restore access in setup; an approval alone does not grant it."
   },
   "error": {
     "extensionUnavailable": "The OSI extension is not available in this browser.",
