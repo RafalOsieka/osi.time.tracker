@@ -4,8 +4,8 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 1. Frontend: extract monthly timesheet logic (refactor, own commit)
 
-- [ ] 1.1 Move `TrackerRemoteState`, `TrackerCell`, `TimesheetRow`, `RemoteHoursSummary` and the `rows` / `remoteHoursSummary` computations from `app/pages/reports/monthly.vue` into `app/utils/monthly-timesheet.ts` as `buildTimesheetRows` and `summarizeRemoteHours`. The page calls them from its `computed`s. Verify `reports-monthly-page.spec.ts` stays green and `pnpm type-check` passes.
-- [ ] 1.2 Extract the `direct` / `remoteOnly` rule from `durationCell` into `cellWarning(row, cell, kind)` in the same module, used by the page. Verify the same suite stays green and `pnpm lint` reports nothing new.
+- [x] 1.1 Move `TrackerRemoteState`, `TrackerCell`, `TimesheetRow`, `RemoteHoursSummary` and the `rows` / `remoteHoursSummary` computations from `app/pages/reports/monthly.vue` into `app/utils/monthly-timesheet.ts` as `buildTimesheetRows` and `summarizeRemoteHours`. The page calls them from its `computed`s. Verify `reports-monthly-page.spec.ts` stays green and `pnpm type-check` passes.
+- [x] 1.2 Extract the `direct` / `remoteOnly` rule from `durationCell` into `cellWarning(row, cell, kind)` in the same module, used by the page. Verify the same suite stays green and `pnpm lint` reports nothing new.
 
 ## 2. Frontend: monthly timesheet tests
 

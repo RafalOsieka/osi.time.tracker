@@ -2,38 +2,22 @@
 import type { TableColumn } from '@nuxt/ui';
 import type { MonthlyReportDto } from '~~/shared/types/report';
 import type { TrackerDto } from '~~/shared/types/tracker';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 import type { AttentionReason } from '~~/shared/utils/monthly-report-attention';
-import { attentionReasons } from '~~/shared/utils/monthly-report-attention';
-import {
-  knownRemoteLogIdsForTracker,
-  splitAppAndDirect,
-} from '~~/shared/utils/monthly-report-split';
 import { addCalendarMonths, monthDateRange } from '~~/shared/utils/report-month';
 import { formatReportDuration } from '~/utils/format-report-duration';
 import { extractCaughtMessageKey } from '~/utils/extract-message-key';
 import { mapRemoteSyncClientError } from '~/composables/use-remote-sync-client';
 import { createRemoteAdapter } from '~/utils/remote/create-remote-adapter';
-
-interface TrackerRemoteState {
-  status: 'loading' | 'ok' | 'error';
-  logs: RemoteTimeLogDto[];
-  errorKey: string | null;
-}
-
-interface TrackerCell {
-  appSeconds: number;
-  directSeconds: number;
-  failed: boolean;
-}
-
-interface TimesheetRow {
-  date: string;
-  isTotal: boolean;
-  localSeconds: number;
-  trackerCells: Record<string, TrackerCell>;
-  warnUnexported: boolean;
-}
+import {
+  buildTimesheetRows,
+  cellWarning,
+  summarizeRemoteHours,
+  type RemoteHoursSummary,
+  type RemoteStateByTracker,
+  type TimesheetCellKind,
+  type TimesheetRow,
+  type TrackerCell,
+} from '~/utils/monthly-timesheet';
 
 const { t, locale } = useI18n();
 usePageTitle(() => t('reports.monthly.pageTitle'));
@@ -88,14 +72,14 @@ const reportErrorKey = computed(() =>
     : null,
 );
 
-const remoteByTracker = ref<Record<string, TrackerRemoteState>>({});
+const remoteByTracker = ref<RemoteStateByTracker>({});
 const remotesReady = ref(false);
 
 async function loadRemoteHours(report: MonthlyReportDto, configs: TrackerDto[]): Promise<void> {
   remotesReady.value = false;
   const range = monthDateRange(report.month);
   const byId = new Map(configs.map((config) => [config.id, config]));
-  const next: Record<string, TrackerRemoteState> = {};
+  const next: RemoteStateByTracker = {};
   await Promise.all(
     report.trackers.map(async (tracker) => {
       const config = byId.get(tracker.id);
@@ -165,84 +149,11 @@ const ATTENTION_I18N = {
   fetchFailed: 'reports.monthly.reasonFetchFailed',
 } as const;
 
-const rows = computed<TimesheetRow[]>(() => {
-  const report = reportData.value;
-  if (!report) return [];
-  const hoursByTracker = new Map<
-    string,
-    Map<string, { appSeconds: number; directSeconds: number }>
-  >();
-  const dates = new Set(report.days.map((day) => day.date));
-  for (const tracker of report.trackers) {
-    const remote = remoteByTracker.value[tracker.id];
-    if (remote?.status === 'ok') {
-      const split = splitAppAndDirect(
-        remote.logs,
-        knownRemoteLogIdsForTracker(report.exports, tracker.id),
-      );
-      hoursByTracker.set(tracker.id, split);
-      for (const date of split.keys()) dates.add(date);
-    }
-  }
-  const localByDate = new Map(report.days.map((day) => [day.date, day.localSeconds]));
-  const sorted = [...dates].sort((left, right) => left.localeCompare(right));
-  const dayRows: TimesheetRow[] = sorted.map((date) => {
-    const trackerCells: Record<string, TrackerCell> = {};
-    const attentionTrackers: {
-      appSeconds: number;
-      directSeconds: number;
-      fetchFailed: boolean;
-    }[] = [];
-    for (const tracker of report.trackers) {
-      const remote = remoteByTracker.value[tracker.id];
-      const failed = remote?.status === 'error';
-      const hours = hoursByTracker.get(tracker.id)?.get(date) ?? {
-        appSeconds: 0,
-        directSeconds: 0,
-      };
-      trackerCells[tracker.id] = { ...hours, failed: !!failed };
-      attentionTrackers.push({
-        appSeconds: hours.appSeconds,
-        directSeconds: hours.directSeconds,
-        fetchFailed: !!failed,
-      });
-    }
-    const localSeconds = localByDate.get(date) ?? 0;
-    const reasons = remotesReady.value
-      ? attentionReasons({ localSeconds, trackers: attentionTrackers })
-      : [];
-    return {
-      date,
-      isTotal: false,
-      localSeconds,
-      trackerCells,
-      warnUnexported: reasons.includes('unexported'),
-    };
-  });
-  if (dayRows.length === 0) return [];
-  const totals: TimesheetRow = {
-    date: 'total',
-    isTotal: true,
-    localSeconds: dayRows.reduce((sum, row) => sum + row.localSeconds, 0),
-    trackerCells: {},
-    warnUnexported: false,
-  };
-  for (const tracker of report.trackers) {
-    const failed = remoteByTracker.value[tracker.id]?.status === 'error';
-    totals.trackerCells[tracker.id] = {
-      appSeconds: dayRows.reduce(
-        (sum, row) => sum + (row.trackerCells[tracker.id]?.appSeconds ?? 0),
-        0,
-      ),
-      directSeconds: dayRows.reduce(
-        (sum, row) => sum + (row.trackerCells[tracker.id]?.directSeconds ?? 0),
-        0,
-      ),
-      failed: !!failed,
-    };
-  }
-  return [...dayRows, totals];
-});
+const rows = computed<TimesheetRow[]>(() =>
+  reportData.value
+    ? buildTimesheetRows(reportData.value, remoteByTracker.value, remotesReady.value)
+    : [],
+);
 
 const showEmpty = computed(
   () =>
@@ -253,32 +164,11 @@ const localTotalSeconds = computed(() =>
   (reportData.value?.days ?? []).reduce((sum, day) => sum + day.localSeconds, 0),
 );
 
-type RemoteHoursSummary =
-  | { kind: 'pending' }
-  | { kind: 'ok'; seconds: number }
-  | { kind: 'partial'; seconds: number }
-  | { kind: 'failed' };
-
-const remoteHoursSummary = computed((): RemoteHoursSummary => {
-  const report = reportData.value;
-  if (!report || !remotesReady.value) return { kind: 'pending' };
-  if (report.trackers.length === 0) return { kind: 'ok', seconds: 0 };
-  let seconds = 0;
-  let okCount = 0;
-  let failedCount = 0;
-  for (const tracker of report.trackers) {
-    const remote = remoteByTracker.value[tracker.id];
-    if (remote?.status === 'ok') {
-      okCount += 1;
-      for (const log of remote.logs) seconds += log.durationSeconds;
-    } else if (remote?.status === 'error') {
-      failedCount += 1;
-    }
-  }
-  if (okCount === 0 && failedCount > 0) return { kind: 'failed' };
-  if (failedCount > 0) return { kind: 'partial', seconds };
-  return { kind: 'ok', seconds };
-});
+const remoteHoursSummary = computed((): RemoteHoursSummary =>
+  reportData.value
+    ? summarizeRemoteHours(reportData.value, remoteByTracker.value, remotesReady.value)
+    : { kind: 'pending' },
+);
 
 const showSummaries = computed(() => !reportErrorKey.value);
 
@@ -340,7 +230,7 @@ function flaggedDuration(input: {
 function durationCell(
   row: TimesheetRow,
   cell: TrackerCell | undefined,
-  kind: 'app' | 'direct' | 'total',
+  kind: TimesheetCellKind,
   trackerId: string,
 ) {
   const testId = `reports-tracker-${trackerId}-${row.date}-${kind}`;
@@ -364,18 +254,7 @@ function durationCell(
       : kind === 'direct'
         ? cell.directSeconds
         : cell.appSeconds + cell.directSeconds;
-  let warning: AttentionReason | null = null;
-  if (!row.isTotal) {
-    if (kind === 'direct' && cell.directSeconds > 0) warning = 'direct';
-    else if (
-      kind === 'app' &&
-      row.localSeconds === 0 &&
-      cell.appSeconds > 0 &&
-      cell.directSeconds === 0
-    ) {
-      warning = 'remoteOnly';
-    }
-  }
+  const warning = cellWarning(row, cell, kind);
   const text = formatReportDuration(seconds);
   if (warning) {
     return h('span', { 'data-testid': testId }, [
