@@ -52,7 +52,7 @@ Extension `main.css` sets `:root { --ui-warning: var(--ui-color-warning-600); }`
 
 ## Risks / Trade-offs
 
-- [`vue-tsc` needs Nuxt UI's generated theme types (`#build/ui/*` under `node_modules/.nuxt-ui`)] → Add the `paths` from the Nuxt UI Vue guide and make the extension `type-check` script build first, so the types exist on a clean checkout and in CI.
+- [`vue-tsc` needs Nuxt UI's generated theme types (`#build/ui/*` under `node_modules/.nuxt-ui`)] → Add the `paths` from the Nuxt UI Vue guide and make the extension `type-check` script build first, so the types exist on a clean checkout and in CI. The extension tsconfig moves from `NodeNext` to `Bundler` resolution, because `NodeNext` reads `#`-prefixed specifiers as package `imports` and ignores `paths`. The extension is Vite-bundled, so `Bundler` is the accurate model anyway. A missing template makes every variant prop silently accept any value, so `src/ui/nuxt-ui-theme-guard.ts` fails the type-check instead.
 - [Unit tests SSR-render panels that now use Nuxt UI components] → The unit Vitest project uses the same `ui()` plugin, and the render helper installs `@nuxt/ui/vue-plugin`. Assertions stay on `data-testid` and accessible names.
 - [The browser spec drives native selects] → Replace `selectOption` with opening the `USelect` trigger (same `data-testid`) and choosing the option by role. No assertion is dropped.
 - [Larger popup bundle] → `componentDetection` trims the CSS. The pages load from disk, and opening the popup is checked by hand against the current build.

@@ -79,7 +79,7 @@ The open dial SHALL be one continuous stroke that leaves exactly one quadrant of
 
 The monogram SHALL be the single letter "T" constructed from strokes and filled polygons rather than set in a font: a crossbar drawn heavier than the dial stroke, and a stem that tapers toward its end like a clock hand pointing at 6 o'clock. Type traced at 16×16 loses its stroke modulation and terminals; a letter constructed from a few heavy strokes has neither problem. The mark SHALL NOT contain a lattice of grid points or other decoration finer than the dial stroke. Readable words, brand abbreviations of more than one character, and a play triangle SHALL NOT appear in the mark.
 
-In application chrome (sidebar brand region and auth-layout heading) the mark SHALL be a background-free glyph that inherits the configured brand `primary` color (REQ-160) so its effective shade adapts between light and dark mode. The in-app mark SHALL express its entire drawing through a single inherited color; it SHALL NOT use a raw hex class and SHALL NOT tint any part of the glyph to convey state.
+In application chrome (sidebar brand region, auth-layout heading, and the browser extension's popup and options headers) the mark SHALL be a background-free glyph that inherits the configured brand `primary` color (REQ-160) so its effective shade adapts between light and dark mode. The in-app mark SHALL express its entire drawing through a single inherited color; it SHALL NOT use a raw hex class and SHALL NOT tint any part of the glyph to convey state.
 
 The document favicon SHALL be a colored rounded-square app icon with a white glyph on a fill matching the brand ramp. Because a tab icon cannot inherit CSS color tokens, that fill MAY be a static color in the favicon asset.
 
@@ -90,11 +90,11 @@ The app-icon assets SHALL be separated by destination:
 
 Both tiles SHALL be generated from the same canonical glyph geometry so the two drawings cannot drift apart.
 
-Every other rendering of the app icon, including the mark printed in generated documents such as the client report PDF title page (tracking-client-report), SHALL be derived from that same canonical glyph at build or render time rather than kept as a separate hand-copied drawing, so a change to the glyph reaches every copy without editing it.
+Every other rendering of the app icon, including the mark printed in generated documents such as the client report PDF title page (tracking-client-report), SHALL be derived from that same canonical glyph at build or render time rather than kept as a separate hand-copied drawing, so a change to the glyph reaches every copy without editing it. The browser extension is the one exception: it is built separately from the application, so it keeps its own copy of the glyph and a raster icon set cut once from the tab-icon tile (see below).
 
 The document head SHALL advertise the app icon as the favicon (SVG plus a raster `.ico` fallback). A third-party framework default favicon SHALL NOT be the tab icon.
 
-This requirement does not add a PWA manifest, service worker, or additional raster sizes (apple-touch, 192/512, maskable). Those remain a later PWA change; the maskable-source SVG app icon SHALL remain the source for those sizes.
+The browser extension SHALL keep a copy of the canonical glyph for its page headers, and a committed raster icon set (16, 32, 48 and 128 px) rasterized from the tab-icon tile. Both are derived assets, in the same way as the favicon tiles. The canonical glyph file SHALL list them among the assets to regenerate, and each extension copy SHALL name the canonical file it was derived from. Apart from that set, this requirement does not add a PWA manifest, service worker, or additional raster sizes (apple-touch, 192/512, maskable). Those remain a later PWA change; the maskable-source SVG app icon SHALL remain the source for those sizes.
 
 #### Scenario: In-chrome mark follows the brand accent
 - **WHEN** the brand mark is rendered in the sidebar or on the login heading in light or dark mode
@@ -139,6 +139,14 @@ This requirement does not add a PWA manifest, service worker, or additional rast
 #### Scenario: Dark mode does not invert the favicon fill
 - **WHEN** the user is in dark mode
 - **THEN** the favicon SHALL remain the rounded-square app icon with a white glyph on the brand fill (the in-chrome glyph still follows `primary`)
+
+#### Scenario: Extension copies are traceable to the glyph
+- **WHEN** the canonical glyph file is inspected
+- **THEN** its list of derived assets SHALL include the extension's glyph copy and its four PNG icons, and each of those copies SHALL reference the canonical file as its source
+
+#### Scenario: A glyph change regenerates the extension copies
+- **WHEN** the canonical glyph geometry changes
+- **THEN** the same change SHALL update the extension's glyph copy and re-cut its four PNG icons from the updated tab-icon tile
 
 ### Requirement: REQ-369 Favicon reflects idle vs running timer
 The document favicon SHALL follow the shared running-timer state (the same `running` entry used by the shell widget, REQ-146 / REQ-258). When there is no running entry (including unauthenticated visits and an authenticated idle timer), the favicon SHALL be the default brand app icon from REQ-368. When a running entry is present, the favicon SHALL be a **static** variant of that same app icon in which the **tile fill changes from the brand cyan to a status green** while the glyph, its geometry, and its white color stay identical. The running variant SHALL NOT add a badge, dot, ring, or any other extra element, SHALL NOT pulse or animate, and SHALL NOT replace the brand glyph with a play control.
