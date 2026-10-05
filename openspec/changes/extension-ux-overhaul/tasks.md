@@ -47,8 +47,8 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 8. Approve the current website from the popup (REQ-415)
 
-- [ ] 8.1 Frontend (extension): add `activeTab` to `manifest.ts`. The popup reads the active tab's origin, offers approval when it is eligible and unapproved, and opens the setup page with `?website=<origin>` pre-filled and the approve button focused. Verify with `unpacked-output.spec.ts` (manifest permission) and unit tests for eligible, approved, browser-page and non-loopback-HTTP tabs.
-- [ ] 8.2 E2E (extension): in `options-ui.spec.ts`, open the setup page with `?website=` and assert the pre-filled, focused form. Approve it, then assert that denying the permission saves nothing.
+- [x] 8.1 Frontend (extension): add `activeTab` to `manifest.ts`. The popup reads the active tab's origin, offers approval when it is eligible and unapproved, and opens the setup page with `?website=<origin>` pre-filled and the approve button focused. Verify with `unpacked-output.spec.ts` (manifest permission) and unit tests for eligible, approved, browser-page and non-loopback-HTTP tabs.
+- [x] 8.2 E2E (extension): in `options-ui.spec.ts`, open the setup page with `?website=` and assert the pre-filled, focused form. Approve it, then assert that denying the permission saves nothing.
 
 ## 9. Integration check
 

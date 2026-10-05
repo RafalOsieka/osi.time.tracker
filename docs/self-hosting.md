@@ -85,7 +85,7 @@ pnpm --filter @osi/extension build
 ```
 
 1. Open `chrome://extensions` (or `edge://extensions`), enable **Developer mode**, choose **Load unpacked** and select `apps/extension/dist`.
-2. In the extension's setup page, approve the OSI website origin (e.g. `https://time.example.com`). HTTP destinations show a credential-risk warning.
+2. Open OSI, click the extension's toolbar icon and choose **Approve in setup** to approve that website (or enter its origin, e.g. `https://time.example.com`, on the setup page). HTTP destinations show a credential-risk warning.
 3. In OSI, turn off **Direct browser connection allowed** on the trackers that should go through the extension, then refresh the OSI tab.
 4. Approve each tracker. Either enter its base URL on the setup page, or open the extension status in the OSI sidebar and choose **Request approval in extension** next to the tracker: the request appears in the extension (the toolbar icon shows a count), and you approve or dismiss it there.
 

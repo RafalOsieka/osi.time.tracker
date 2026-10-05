@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, shallowRef } from 'vue';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UAvatar from '@nuxt/ui/components/Avatar.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
@@ -20,7 +20,7 @@ import BrandMark from './BrandMark.vue';
 import { openWebsite } from './open-website.js';
 import SetupChecklist from './SetupChecklist.vue';
 import SuggestionList from './SuggestionList.vue';
-import { openSetupPage } from './open-setup.js';
+import { currentWebsiteOffer, openSetupPage } from './open-setup.js';
 
 const { t, locale, localeErrorKey } = useExtensionI18n();
 const { activity, now } = useTrackerActivity();
@@ -51,8 +51,39 @@ const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
 /** Website shown under a tracker row: just the host, the scheme is noise at popup width. */
 const websiteHost = (origin: string) => new URL(origin).host;
 
+/** The active tab's address, readable thanks to activeTab once the user opened the popup. */
+const activeTabUrl = shallowRef<string | undefined>();
+const websiteOffer = computed(() =>
+  loaded.value
+    ? currentWebsiteOffer(
+        activeTabUrl.value,
+        websites.value.map((item) => item.origin),
+      )
+    : null,
+);
+
+const websiteOfferActions = computed(() => {
+  const website = websiteOffer.value;
+  if (!website) return [];
+  return [
+    {
+      label: t.value('app.currentWebsiteApprove'),
+      color: 'primary' as const,
+      onClick: () => openSetupPage({ website }),
+    },
+  ];
+});
+
 onMounted(() => {
   void refresh();
+  void chrome.tabs
+    .query({ active: true, currentWindow: true })
+    .then(([tab]) => {
+      activeTabUrl.value = tab?.url;
+    })
+    .catch(() => {
+      // Without the tab's address the popup simply makes no offer.
+    });
 });
 
 function openOptions(): void {
@@ -114,6 +145,16 @@ function openOptions(): void {
         :description="t(localeErrorKey)"
       />
 
+      <UAlert
+        v-if="websiteOffer"
+        data-testid="current-website-offer"
+        color="primary"
+        variant="subtle"
+        icon="i-lucide-globe"
+        :title="t('app.currentWebsiteTitle', { website: websiteOffer })"
+        :description="t('app.currentWebsiteHelp')"
+        :actions="websiteOfferActions"
+      />
       <template v-if="loaded">
         <SuggestionList
           :suggestions="suggestions"

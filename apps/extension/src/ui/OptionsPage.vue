@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, nextTick, onMounted } from 'vue';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
@@ -91,8 +91,13 @@ const themeIcon = computed(() => (theme.value === 'dark' ? 'i-lucide-moon' : 'i-
 const setupComplete = computed(() => websites.value.length > 0 && destinations.value.length > 0);
 const disabled = computed(() => busy.value || !loaded.value);
 
-onMounted(() => {
-  void refresh();
+onMounted(async () => {
+  if (focus.website) websiteOrigin.value = focus.website;
+  await refresh();
+  if (!focus.website) return;
+  // The popup handed this website over: the approve click here runs the permission prompt.
+  await nextTick();
+  document.querySelector<HTMLElement>('[data-testid="add-website"]')?.focus();
 });
 </script>
 

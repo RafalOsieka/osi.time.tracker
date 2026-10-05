@@ -24,7 +24,10 @@
     "checklistInfo": "Note",
     "opensInNewTab": "opens in a new tab",
     "badgeSuggestions": "OSI Time Tracker: trackers waiting for approval: {count}",
-    "badgeAttention": "OSI Time Tracker: setup needs attention"
+    "badgeAttention": "OSI Time Tracker: setup needs attention",
+    "currentWebsiteTitle": "Use the extension on {website}?",
+    "currentWebsiteHelp": "This site is not approved yet. Approve it on the setup page.",
+    "currentWebsiteApprove": "Approve in setup"
   },
   "approvals": {
     "websitesTitle": "Approved websites",

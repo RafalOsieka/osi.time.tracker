@@ -24,7 +24,10 @@
     "checklistInfo": "Uwaga",
     "opensInNewTab": "otwiera się w nowej karcie",
     "badgeSuggestions": "OSI Time Tracker: trackery czekające na zatwierdzenie: {count}",
-    "badgeAttention": "OSI Time Tracker: konfiguracja wymaga uwagi"
+    "badgeAttention": "OSI Time Tracker: konfiguracja wymaga uwagi",
+    "currentWebsiteTitle": "Używać rozszerzenia na {website}?",
+    "currentWebsiteHelp": "Ta witryna nie jest jeszcze zatwierdzona. Zatwierdź ją na stronie konfiguracji.",
+    "currentWebsiteApprove": "Zatwierdź w konfiguracji"
   },
   "approvals": {
     "websitesTitle": "Zatwierdzone witryny",

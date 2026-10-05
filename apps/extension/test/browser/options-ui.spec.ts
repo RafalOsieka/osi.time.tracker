@@ -174,6 +174,47 @@ describeChromium('extension options UI', () => {
     }
   });
 
+  it('opens with the website the popup handed over, ready to approve', async () => {
+    const page = await harness!.context.newPage();
+    await page.goto(
+      `${optionsUrl(harness!)}?website=${encodeURIComponent('http://localhost:3400')}`,
+    );
+    await chooseOption(page, 'language', optionNames.en);
+    await expect
+      .poll(() => page.getByTestId('website-origin').inputValue())
+      .toBe('http://localhost:3400');
+    await page.reload();
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.getAttribute('data-testid')))
+      .toBe('add-website');
+    await page.keyboard.press('Enter');
+    await page.getByTestId('revoke-website-http://localhost:3400').waitFor();
+
+    // A denied permission prompt saves nothing and explains why.
+    const denied = await harness!.context.newPage();
+    await denied.addInitScript(() => {
+      chrome.permissions.request = async () => false;
+    });
+    await denied.goto(
+      `${optionsUrl(harness!)}?website=${encodeURIComponent('http://localhost:3401')}`,
+    );
+    await expect
+      .poll(() => denied.evaluate(() => document.activeElement?.getAttribute('data-testid')))
+      .toBe('add-website');
+    await denied.keyboard.press('Enter');
+    await expect
+      .poll(() => denied.getByTestId('setup-error').textContent())
+      .toMatch(/Permission was denied/);
+    expect(await denied.getByTestId('revoke-website-http://localhost:3401').count()).toBe(0);
+
+    await waitUntilIdle(page);
+    await page.bringToFront();
+    await page.getByTestId('revoke-website-http://localhost:3400').click();
+    await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3400').count())
+      .toBe(0);
+  });
+
   it('shows the load error instead of the checklist when approvals cannot be read', async () => {
     const page = await harness!.context.newPage();
     await page.addInitScript(() => {

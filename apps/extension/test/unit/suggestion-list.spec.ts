@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import SuggestionList from '../../src/ui/SuggestionList.vue';
 import { useExtensionI18n } from '../../src/composables/use-extension-i18n.js';
 import { suggestionId, type DestinationSuggestion } from '../../src/suggestions/suggestions.js';
-import { readSetupFocus } from '../../src/ui/open-setup.js';
+import { currentWebsiteOffer, readSetupFocus } from '../../src/ui/open-setup.js';
 import { renderWithUi } from './render-with-ui.js';
 
 vi.hoisted(() => {
@@ -64,5 +64,29 @@ describe('suggestion list', () => {
   it('reads the focus the popup put in the setup URL', () => {
     expect(readSetupFocus('?suggestion=a%7Cb')).toEqual({ suggestion: 'a|b', website: undefined });
     expect(readSetupFocus('')).toEqual({ website: undefined, suggestion: undefined });
+  });
+});
+
+describe('current website offer', () => {
+  const approved = ['https://time.example.com'];
+
+  it('offers an unapproved HTTPS origin, without its path', () => {
+    expect(currentWebsiteOffer('https://new.example.com/timer?x=1', approved)).toBe(
+      'https://new.example.com',
+    );
+  });
+
+  it('offers loopback HTTP for local development', () => {
+    expect(currentWebsiteOffer('http://localhost:3000/', approved)).toBe('http://localhost:3000');
+  });
+
+  it.each([
+    ['an approved origin', 'https://time.example.com/reports'],
+    ['a browser page', 'chrome://extensions/'],
+    ['a file', 'file:///C:/notes.html'],
+    ['non-loopback HTTP', 'http://time.internal/'],
+    ['no readable address', undefined],
+  ])('makes no offer for %s', (_name, url) => {
+    expect(currentWebsiteOffer(url, approved)).toBeNull();
   });
 });

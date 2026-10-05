@@ -15,7 +15,8 @@ export const extensionManifest = {
   version: '0.1.0',
   description: 'Run OSI Time Tracker remote operations through the desktop browser network.',
   icons,
-  permissions: ['storage', 'scripting'],
+  // activeTab: the popup reads the current tab's address only after the user opens it (REQ-415).
+  permissions: ['storage', 'scripting', 'activeTab'],
   optional_host_permissions: ['http://*/*', 'https://*/*'],
   background: {
     service_worker: 'background.js',
