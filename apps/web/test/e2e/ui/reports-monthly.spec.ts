@@ -109,7 +109,7 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
     const { jar, token } = await apiLogin(user.email, user.password);
     await setTimezone(jar, token);
     const page = await openAuthed(user.email);
-    await page.goto(url('/reports/monthly'));
+    await page.goto(url('/reports/monthly'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="reports-monthly"]');
     await page.waitForFunction(() => /month=\d{4}-\d{2}/.test(window.location.search));
     const now = new Date();
@@ -148,11 +148,11 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
       { ids: [trackerA.id, trackerB.id] },
     );
 
-    await page.goto(url('/reports/monthly?month=2019-01'));
+    await page.goto(url('/reports/monthly?month=2019-01'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="reports-monthly-empty"]');
     expect(await page.locator('[data-testid="reports-monthly-empty"]').isVisible()).toBe(true);
 
-    await page.goto(url('/reports/monthly?month=2026-08'));
+    await page.goto(url('/reports/monthly?month=2026-08'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="reports-monthly-table-ready"]');
     await page.waitForSelector('[data-testid="reports-day-2026-08-03"]');
     expect(await page.locator('[data-testid="reports-day-2026-08-03"]').isVisible()).toBe(true);
@@ -236,7 +236,7 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
       { ids: [trackerA.id, trackerFail.id] },
     );
 
-    await page.goto(url('/reports/monthly?month=2026-08'));
+    await page.goto(url('/reports/monthly?month=2026-08'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="reports-monthly-table-ready"]', { timeout: 15_000 });
     await page.waitForSelector('[data-testid="reports-day-2026-08-12"]');
     expect(

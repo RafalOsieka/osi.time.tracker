@@ -27,7 +27,7 @@ describeSsrShell('SSR shell and list pages', async () => {
 
   it('hard navigation to /trackers shows list or empty state', async () => {
     const page = await openAuthed();
-    await page.goto(url('/trackers'));
+    await page.goto(url('/trackers'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="trackers-page"]');
     await page.waitForSelector(
       '[data-testid="trackers-empty-state"], [data-testid="trackers-table"]',
@@ -36,7 +36,7 @@ describeSsrShell('SSR shell and list pages', async () => {
 
   it('hard navigation to /projects shows list or empty state without tracker filter', async () => {
     const page = await openAuthed();
-    await page.goto(url('/projects'));
+    await page.goto(url('/projects'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="projects-page"]');
     await page.waitForSelector(
       '[data-testid="projects-empty-state"], [data-testid="projects-table"]',
@@ -59,6 +59,7 @@ describeSsrShell('SSR shell and list pages', async () => {
 
     const page = await openAuthed();
     // Full document load of an authenticated page with a running entry
+    // eslint-disable-next-line no-restricted-syntax -- asserts server-rendered state, before hydration
     await page.goto(url('/profile'));
     await page.waitForSelector('[data-testid="app-timer"]');
 

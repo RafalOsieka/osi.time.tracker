@@ -74,6 +74,7 @@ pnpm package:check   # tracker/protocol packages without Nuxt
 - Remote trackers are always mocked (fake HTTP, `page.route`); there is no live tracker suite.
 - Fix bugs test-first: a failing regression test before the fix, kept afterwards.
 - Assert on `data-testid`, keep tests deterministic, and never weaken, skip or delete a test to get green.
+- UI e2e waits for hydration after every full page load: `page.goto(…, { waitUntil: 'hydration' })` and `reloadHydrated(page)`, enforced by ESLint.
 - E2E layout, coverage and known build pitfalls: [`docs/e2e-guideline.md`](./docs/e2e-guideline.md).
 
 ## Code style

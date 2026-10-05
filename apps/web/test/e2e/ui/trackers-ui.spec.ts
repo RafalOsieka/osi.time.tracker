@@ -3,7 +3,7 @@ import { createPage } from '@nuxt/test-utils/e2e';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { seedUser } from '../helpers/seed';
-import { loginAs } from '../helpers/ui';
+import { loginAs, reloadHydrated } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { pageIncludesTextScript } from '../helpers/dom';
 
@@ -168,7 +168,7 @@ describeTrackersUI('trackers UI flow', async () => {
     const user = await seedUser(dbUrl, { displayName: 'trackersmobileuser' });
     const page = await createPage('/');
     await loginAs(page, user.email, user.password, { width: 390, height: 844 });
-    await page.goto(new URL('/trackers', page.url()).href);
+    await page.goto(new URL('/trackers', page.url()).href, { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="trackers-page"]');
 
     const trackerName = 'Mobile Direct Tracker ' + Date.now();
@@ -237,7 +237,7 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.waitForSelector('[data-testid="tracker-dialog"]', { state: 'hidden' });
     await page.waitForFunction((name) => document.body.textContent?.includes(name), trackerName);
 
-    await page.reload();
+    await reloadHydrated(page);
     await page.waitForSelector('[data-testid="trackers-page"]');
     const row = page.locator('tr', { hasText: trackerName });
     await row.locator('[data-testid^="edit-tracker-"]').click();

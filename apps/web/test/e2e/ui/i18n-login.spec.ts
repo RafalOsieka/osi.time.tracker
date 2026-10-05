@@ -3,6 +3,7 @@ import { createPage } from '@nuxt/test-utils/e2e';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
+import { reloadHydrated } from '../helpers/ui';
 
 const describeI18nLogin = requireBrowser();
 
@@ -14,7 +15,7 @@ describeI18nLogin('i18n login page locale rendering', async () => {
     const page = await createPage('/login');
     // Clear any locale cookie so default locale applies
     await page.context().clearCookies();
-    await page.reload();
+    await reloadHydrated(page);
 
     await page.waitForSelector('[data-testid="login-form"]');
     const emailLabel = await page.textContent('label[for="email"]');
@@ -37,7 +38,7 @@ describeI18nLogin('i18n login page locale rendering', async () => {
         sameSite: 'Lax',
       },
     ]);
-    await page.reload();
+    await reloadHydrated(page);
 
     await page.waitForSelector('[data-testid="login-form"]');
     const emailLabel = await page.textContent('label[for="email"]');
