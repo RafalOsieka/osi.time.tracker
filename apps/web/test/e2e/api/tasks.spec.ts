@@ -312,6 +312,36 @@ describeTasks('tasks API integration', async () => {
     expect(patched.projectId).toBe(project.id);
   });
 
+  it('patch with an unknown or foreign projectId → 404 and leaves the task unchanged', async () => {
+    const alice = await seedAndLogin(dbUrl);
+    const bob = await seedAndLogin(dbUrl);
+    const bobTracker = await createTracker(bob.jar, bob.token, 'Bob Client ' + Date.now());
+    const bobProject = await createProject(
+      bob.jar,
+      bob.token,
+      'Bob Project ' + Date.now(),
+      bobTracker.id,
+    );
+    const created = await createTaskViaEntry(alice.jar, alice.token, `Keep Me ${Date.now()}`);
+
+    const unknown = await patchTask(alice.jar, alice.token, created.id, {
+      name: created.name,
+      projectId: UNKNOWN_ID,
+    });
+    expect(unknown.status).toBe(404);
+    expect((await unknown.json())?.data?.messageKey).toBe('error.notFound');
+
+    const foreign = await patchTask(alice.jar, alice.token, created.id, {
+      name: created.name,
+      projectId: bobProject.id,
+    });
+    expect(foreign.status).toBe(404);
+
+    const tasksRes = await fetch(url('/api/tasks'), { headers: { cookie: alice.jar.header() } });
+    const rows: { id: string; projectId: string | null }[] = await tasksRes.json();
+    expect(rows.find((row) => row.id === created.id)?.projectId).toBeNull();
+  });
+
   it('patch on unknown/foreign id → 404', async () => {
     const alice = await seedAndLogin(dbUrl);
     const bob = await seedAndLogin(dbUrl);

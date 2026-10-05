@@ -118,6 +118,19 @@ describeSyncLink('sync remote-entry link and cleanup API', async () => {
     expect(row.exports[0].exportDurationSeconds).toBe(999);
   });
 
+  it('rejects a link for a day without completed entries of the task', async () => {
+    const alice = await seedAndLogin(dbUrl);
+    const seed = await seedLinkedTask(alice.jar, alice.token, `empty-${Date.now()}`);
+
+    const res = await postLink(
+      alice.jar,
+      alice.token,
+      linkBody(seed, { localDate: '2026-04-03', spentOn: '2026-04-03' }),
+    );
+    expect(res.status).toBe(422);
+    expect((await res.json())?.data?.messageKey).toBe('error.remoteExportEntriesInvalid');
+  });
+
   it('rejects duplicate identity, ownership, issue/date mismatch, and existing provenance', async () => {
     const alice = await seedAndLogin(dbUrl);
     const seed = await seedLinkedTask(alice.jar, alice.token, `dup-${Date.now()}`);

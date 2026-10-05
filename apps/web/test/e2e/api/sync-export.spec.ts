@@ -6,6 +6,7 @@ import { createProject, createTracker } from '../helpers/http';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
+import { UNKNOWN_ID } from '../helpers/fixtures';
 import { createDatabaseClient } from '../../../server/db/client';
 import { remoteExportEntries, remoteExports } from '../../../server/db/schema';
 import { eq } from 'drizzle-orm';
@@ -444,6 +445,69 @@ describeSyncExport('sync export finalization API', async () => {
     } finally {
       await sql.end({ timeout: 5 });
     }
+  });
+
+  it('rejects repeated entry ids, an unknown task and entries of another task', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const stamp = Date.now();
+    const seeded = await seedLinkedTask(jar, token, `validate-${stamp}`);
+    const base = {
+      taskId: seeded.entry.taskId,
+      localDate: seeded.date,
+      remoteIssueId: '42',
+      exportDurationSeconds: 1800,
+    };
+
+    const repeated = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          ...base,
+          remoteLogId: `repeated-${stamp}`,
+          entryIds: [seeded.entry.id, seeded.entry.id],
+        },
+        `er1|repeated|${stamp}`,
+      ),
+    );
+    expect(repeated.status).toBe(422);
+    expect((await repeated.json())?.data?.messageKey).toBe('error.remoteExportEntryIdsInvalid');
+
+    const unknownTask = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          ...base,
+          taskId: UNKNOWN_ID,
+          remoteLogId: `unknown-task-${stamp}`,
+          entryIds: [seeded.entry.id],
+        },
+        `er1|unknown-task|${stamp}`,
+      ),
+    );
+    expect(unknownTask.status).toBe(404);
+    expect((await unknownTask.json())?.data?.messageKey).toBe('error.notFound');
+
+    const otherEntry = await createEntry(jar, token, {
+      title: `Other Task ${stamp}`,
+      startedAt: `${seeded.date}T12:00:00.000Z`,
+      stoppedAt: `${seeded.date}T12:30:00.000Z`,
+    });
+    const otherTask = await finalize(
+      jar,
+      token,
+      withKey(
+        {
+          ...base,
+          remoteLogId: `other-task-${stamp}`,
+          entryIds: [seeded.entry.id, otherEntry.id],
+        },
+        `er1|other-task|${stamp}`,
+      ),
+    );
+    expect(otherTask.status).toBe(422);
+    expect((await otherTask.json())?.data?.messageKey).toBe('error.remoteExportEntriesInvalid');
   });
 
   it('requires authentication', async () => {

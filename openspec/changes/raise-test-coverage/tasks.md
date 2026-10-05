@@ -74,8 +74,9 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 6. Backend: fill gaps no flag reaches
 
-- [ ] 6.1 Generate e2e-api lcov locally (`NODE_V8_COVERAGE` plus `report-e2e-coverage.ts`) and e2e-db lcov, merge them with unit-nuxt per file, and list `server/` lines missing in all three. Record the list in the PR description. Verify the list exists and names files and lines.
-- [ ] 6.2 For each real remaining branch (expected candidates: `report-presets.ts`, `tasks.ts`, `time-entries.ts`, `users.ts`), add a case to the matching `test/e2e/db` spec for query logic, or `test/e2e/api` for a route contract, covering the happy path and at least one error or edge case. Verify with `pnpm test:e2e:db` / `pnpm test:e2e:api` and a re-run of the merge showing those lines covered. Skip this task if 6.1 finds nothing.
+- [x] 6.1 Merge the `unit-nuxt` + `e2e-api` line coverage of the current `main` commit (Codecov API; a local Windows run cannot dump Nitro coverage because the server is killed without a clean exit) with the local e2e-db lcov, and list `server/` lines missing in all three. Record the list in the PR description. Verify the list exists and names files and lines.
+  - Outcome: server utilities (`report-presets.ts`, `tasks.ts`, `time-entries.ts`, `users.ts`) were already fully covered by e2e-api, and e2e-db adds no new lines. The 113 remaining lines are in route handlers: deterministic error contracts, plus unreachable `!inserted`/`!updated` 500 guards and unique-violation race fallbacks behind a pre-check.
+- [x] 6.2 For each deterministic remaining route branch, add a case to the matching `test/e2e/api` spec asserting status and `messageKey`: export finalization with repeated entry ids, an unknown task and an entry of another task; task patch with an unknown or foreign project; link for a day without completed entries; project list filtered to local projects. Leave unreachable 500 guards and race-only fallbacks untested. Verify with `pnpm test:e2e:api`; the PR's Codecov report confirms the lines.
 
 ## 7. Integration checks (before the PR)
 
