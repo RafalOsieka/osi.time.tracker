@@ -15,15 +15,22 @@ import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useExtensionTheme } from '../composables/use-extension-theme.js';
 import { useTrackerActivity } from '../composables/use-tracker-activity.js';
 import { reconcileWebsiteContentScripts } from '../content/registration.js';
+import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
 import BrandMark from './BrandMark.vue';
 import DestinationApprovals from './DestinationApprovals.vue';
 import SetupChecklist from './SetupChecklist.vue';
+import SuggestionList from './SuggestionList.vue';
+import { readSetupFocus } from './open-setup.js';
 import WebsiteApprovals from './WebsiteApprovals.vue';
 
 const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const toast = useToast();
+const suggestionService = new SuggestionService(createChromeSuggestionStore(), service);
+/** A website or suggestion the popup handed over for approval (design D1). */
+const focus = readSetupFocus(location.search);
 const editor = useApprovalsEditor(service, {
+  suggestions: suggestionService,
   onOutcome: (messageKey) =>
     toast.add({
       title: t.value(messageKey),
@@ -65,6 +72,9 @@ const {
   restoreWebsite,
   restoreDestination,
   retry,
+  suggestions,
+  approveSuggestion,
+  dismissSuggestion,
 } = editor;
 const { theme, setTheme } = useExtensionTheme();
 const { activity, now } = useTrackerActivity();
@@ -176,6 +186,14 @@ onMounted(() => {
       icon="i-lucide-triangle-alert"
       :title="t('approvals.permissionMissing')"
       :description="t('approvals.missingPermission')"
+    />
+    <SuggestionList
+      :suggestions="suggestions"
+      :disabled="disabled"
+      mode="setup"
+      :highlight-id="focus.suggestion"
+      @approve="approveSuggestion($event)"
+      @dismiss="dismissSuggestion($event)"
     />
     <WebsiteApprovals
       :websites="websites"

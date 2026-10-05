@@ -7,6 +7,11 @@ import {
   hostMatchPattern,
 } from '../../src/approvals/approvals.js';
 import { useApprovalsEditor } from '../../src/composables/use-approvals-editor.js';
+import {
+  SuggestionService,
+  createMemorySuggestionStore,
+  suggestionId,
+} from '../../src/suggestions/suggestions.js';
 
 describe('approvals editor', () => {
   it('refreshes approved non-loopback HTTP trackers', async () => {
@@ -199,5 +204,30 @@ describe('approvals editor', () => {
     expect(editor.websites.value).toHaveLength(0);
     expect(editor.errorKey.value).toBe('approvals.denied');
     expect(outcomes).toEqual([]);
+  });
+
+  it('keeps a suggestion pending when its permission is denied, and dismisses it on request', async () => {
+    const permissions = createMemoryHostPermissions();
+    const service = new ApprovalService(createMemoryApprovalStore(), permissions);
+    await service.approveWebsite('http://localhost:3000');
+    const suggestions = new SuggestionService(createMemorySuggestionStore(), service);
+    await suggestions.suggest('http://localhost:3000', 'redmine', 'https://rm.example.com');
+    const outcomes: string[] = [];
+    const editor = useApprovalsEditor(service, {
+      suggestions,
+      onOutcome: (messageKey) => outcomes.push(messageKey),
+    });
+    await editor.refresh();
+    const id = suggestionId(editor.suggestions.value[0]!);
+
+    permissions.request = async () => false;
+    await editor.approveSuggestion(id);
+    expect(editor.errorKey.value).toBe('approvals.denied');
+    expect(editor.suggestions.value).toHaveLength(1);
+
+    await editor.dismissSuggestion(id);
+    expect(editor.suggestions.value).toEqual([]);
+    expect(editor.destinations.value).toEqual([]);
+    expect(outcomes).toEqual(['approvals.suggestionDismissed']);
   });
 });

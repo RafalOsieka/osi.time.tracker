@@ -31,12 +31,12 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 6. Protocol v3 and destination suggestions (REQ-421, REQ-422, REQ-309, REQ-416, REQ-417)
 
-- [ ] 6.1 Backend (protocol): add the strict `suggest-destination` request and result schemas, parse helpers and `EXTENSION_PROTOCOL_VERSION = 3` in `packages/extension-protocol`. Verify with protocol unit tests (valid input, extra field rejected, version 2 reported as incompatible) and `pnpm package:check`.
-- [ ] 6.2 Backend (extension worker): add `SuggestionService` (design D3) with deduplication, the already-approved check, a bound of 10 without eviction, pruning on website revoke, and approve and dismiss methods. Verify with unit tests for each REQ-417 scenario and for pruning.
-- [ ] 6.3 Backend (extension worker): handle `suggest-destination` in `worker/ports.ts` and `dispatch.ts`. Take the website from the verified sender, reject unapproved senders and invalid destinations, and never contact the tracker. Verify with `dispatch.spec.ts` and `ports.spec.ts` covering every REQ-421 scenario.
-- [ ] 6.4 Frontend (extension): add a pending-suggestions list to the setup page (approve with the HTTP warning, and dismiss) and to the popup (dismiss, plus "Approve in setup" that opens `?suggestion=<id>`, design D1). Verify with unit tests for the list, the highlight from the query, permission denied keeping the item, and dismissal.
-- [ ] 6.5 Frontend (extension): compute the toolbar badge and title in `background.ts` (design D5). Verify with unit tests for the count, the attention mark, a clear state, and updates on suggestion and permission changes.
-- [ ] 6.6 E2E (extension): in `website-bridge.spec.ts`, have the fixture website send a suggestion. Assert that the badge shows "1", that approving it from the setup page then lets an operation succeed, and that an unapproved fixture origin's suggestion is rejected.
+- [x] 6.1 Backend (protocol): add the strict `suggest-destination` request and result schemas, parse helpers and `EXTENSION_PROTOCOL_VERSION = 3` in `packages/extension-protocol`. Verify with protocol unit tests (valid input, extra field rejected, version 2 reported as incompatible) and `pnpm package:check`.
+- [x] 6.2 Backend (extension worker): add `SuggestionService` (design D3) with deduplication, the already-approved check, a bound of 10 without eviction, pruning on website revoke, and approve and dismiss methods. Verify with unit tests for each REQ-417 scenario and for pruning.
+- [x] 6.3 Backend (extension worker): handle `suggest-destination` in `worker/ports.ts` and `dispatch.ts`. Take the website from the verified sender, reject unapproved senders and invalid destinations, and never contact the tracker. Verify with `dispatch.spec.ts` and `ports.spec.ts` covering every REQ-421 scenario.
+- [x] 6.4 Frontend (extension): add a pending-suggestions list to the setup page (approve with the HTTP warning, and dismiss) and to the popup (dismiss, plus "Approve in setup" that opens `?suggestion=<id>`, design D1). Verify with unit tests for the list, the highlight from the query, permission denied keeping the item, and dismissal.
+- [x] 6.5 Frontend (extension): compute the toolbar badge and title in `background.ts` (design D5). Verify with unit tests for the count, the attention mark, a clear state, and updates on suggestion and permission changes.
+- [x] 6.6 E2E (extension): in `website-bridge.spec.ts`, have the fixture website send a suggestion. Assert that the badge shows "1", that approving it from the setup page then lets an operation succeed, and that an unapproved fixture origin's suggestion is rejected.
 
 ## 7. Web: request approval from OSI (REQ-316, REQ-317, REQ-422)
 

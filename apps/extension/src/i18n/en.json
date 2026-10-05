@@ -22,7 +22,9 @@
     "checklistCurrent": "Current step",
     "checklistTodo": "To do",
     "checklistInfo": "Note",
-    "opensInNewTab": "opens in a new tab"
+    "opensInNewTab": "opens in a new tab",
+    "badgeSuggestions": "OSI Time Tracker: trackers waiting for approval: {count}",
+    "badgeAttention": "OSI Time Tracker: setup needs attention"
   },
   "approvals": {
     "websitesTitle": "Approved websites",
@@ -64,7 +66,13 @@
     "invalidDestination": "Enter an http:// or https:// base URL without credentials, query, fragment or \"..\" segments.",
     "noAccess": "No access",
     "missingPermissionShort": "Restore access in setup; an approval alone does not grant it.",
-    "forWebsite": "For {website}"
+    "forWebsite": "For {website}",
+    "suggestionsTitle": "Waiting for your approval",
+    "suggestionFrom": "requested by {website}",
+    "approveSuggestion": "Approve",
+    "dismissSuggestion": "Dismiss",
+    "reviewSuggestion": "Approve in setup",
+    "suggestionDismissed": "Suggestion dismissed."
   },
   "activity": {
     "none": "No activity yet",

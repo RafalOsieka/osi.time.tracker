@@ -11,12 +11,15 @@ import {
   canonicalizeWebsiteOrigin,
   isHttpCredentialRisk,
 } from '../security/canonicalize.js';
+import type { DestinationSuggestion, SuggestionService } from '../suggestions/suggestions.js';
 
 export interface ApprovalsEditorOptions {
   /** Re-registers the website bridge for the approved origins that have browser access. */
   reconcile?: (origins: readonly string[]) => Promise<void>;
   /** Announces a completed change (for example as a toast); failures stay in `errorKey`. */
   onOutcome?: (messageKey: string) => void;
+  /** Pending tracker suggestions to list, approve and dismiss next to the approvals. */
+  suggestions?: SuggestionService;
 }
 
 /**
@@ -36,6 +39,7 @@ export function useApprovalsEditor(service: ApprovalService, options: ApprovalsE
   const missingOrigins = shallowRef<string[]>([]);
   const busy = shallowRef(false);
   const loaded = shallowRef(false);
+  const suggestions = shallowRef<DestinationSuggestion[]>([]);
   let refreshVersion = 0;
 
   watch(
@@ -57,8 +61,12 @@ export function useApprovalsEditor(service: ApprovalService, options: ApprovalsE
     const unsubscribe = service.subscribe(() => {
       void refresh();
     });
+    const unsubscribeSuggestions = options.suggestions?.subscribe((next) => {
+      suggestions.value = next;
+    });
     onScopeDispose(() => {
       unsubscribe();
+      unsubscribeSuggestions?.();
       refreshVersion++;
     });
   }
@@ -74,7 +82,10 @@ export function useApprovalsEditor(service: ApprovalService, options: ApprovalsE
   async function refresh(): Promise<void> {
     const version = ++refreshVersion;
     try {
-      const state = await service.list();
+      const [state, pending] = await Promise.all([
+        service.list(),
+        options.suggestions?.list() ?? Promise.resolve([]),
+      ]);
       const origins = [
         ...new Set([
           ...state.websites.map((item) => item.origin),
@@ -83,6 +94,7 @@ export function useApprovalsEditor(service: ApprovalService, options: ApprovalsE
       ];
       const granted = await Promise.all(origins.map((origin) => service.hasHostPermission(origin)));
       if (version !== refreshVersion) return;
+      suggestions.value = pending;
       websites.value = state.websites;
       destinations.value = state.destinations;
       missingOrigins.value = origins.filter((_, index) => !granted[index]);
@@ -172,6 +184,17 @@ export function useApprovalsEditor(service: ApprovalService, options: ApprovalsE
     }, 'approvals.saved');
   }
 
+  /** Approves a suggested tracker; runs the permission prompt, so call it from a click. */
+  async function approveSuggestion(id: string): Promise<void> {
+    const queue = options.suggestions;
+    if (queue) await runChange(() => queue.approve(id), 'approvals.saved');
+  }
+
+  async function dismissSuggestion(id: string): Promise<void> {
+    const queue = options.suggestions;
+    if (queue) await runChange(() => queue.dismiss(id), 'approvals.suggestionDismissed');
+  }
+
   async function retry(): Promise<void> {
     await runChange(() => service.reconcile(), 'approvals.repaired');
   }
@@ -218,5 +241,8 @@ export function useApprovalsEditor(service: ApprovalService, options: ApprovalsE
     restoreWebsite,
     restoreDestination,
     retry,
+    suggestions: readonly(suggestions),
+    approveSuggestion,
+    dismissSuggestion,
   };
 }

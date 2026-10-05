@@ -13,17 +13,31 @@ import {
 } from '../approvals/chrome-store.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
+import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
 import { useTrackerActivity } from '../composables/use-tracker-activity.js';
 import { formatActivity } from '../activity/format-activity.js';
 import BrandMark from './BrandMark.vue';
 import { openWebsite } from './open-website.js';
 import SetupChecklist from './SetupChecklist.vue';
+import SuggestionList from './SuggestionList.vue';
+import { openSetupPage } from './open-setup.js';
 
 const { t, locale, localeErrorKey } = useExtensionI18n();
 const { activity, now } = useTrackerActivity();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
-const { websites, destinations, missingOrigins, loaded, errorKey, refresh } =
-  useApprovalsEditor(service);
+const {
+  websites,
+  destinations,
+  missingOrigins,
+  loaded,
+  errorKey,
+  refresh,
+  busy,
+  suggestions,
+  dismissSuggestion,
+} = useApprovalsEditor(service, {
+  suggestions: new SuggestionService(createChromeSuggestionStore(), service),
+});
 
 const needsAttention = computed(() => errorKey.value !== null || missingOrigins.value.length > 0);
 const badge = computed(() =>
@@ -101,6 +115,13 @@ function openOptions(): void {
       />
 
       <template v-if="loaded">
+        <SuggestionList
+          :suggestions="suggestions"
+          :disabled="busy"
+          mode="popup"
+          @dismiss="dismissSuggestion($event)"
+          @review="openSetupPage({ suggestion: $event })"
+        />
         <section
           class="flex flex-col gap-2"
           aria-labelledby="saved-websites-title"

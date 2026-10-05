@@ -5,6 +5,7 @@ import {
   ExtensionProtocolError,
   parseHandshakeRequest,
   parseOperationRequest,
+  parseSuggestDestinationRequest,
   parseMatchedOperationResult,
   reconstructProtocolError,
   serializeAdapterError,
@@ -14,6 +15,7 @@ import {
   type OperationRequest,
   type OperationResult,
   type SafeWireError,
+  type SuggestDestinationResult,
 } from '@osi/extension-protocol';
 import {
   RemoteAdapterError,
@@ -25,6 +27,7 @@ import {
 import type { ActivityStore } from '../activity/activity-store.js';
 import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import { CanonicalizationError } from '../security/canonicalize.js';
+import type { SuggestionService } from '../suggestions/suggestions.js';
 import { createProviderAdapter } from '../providers.js';
 import { createGuardedTransport } from '../transport/guarded-transport.js';
 import { documentKey, isTrustedDocumentSender, type RuntimeSender } from './sender.js';
@@ -172,6 +175,53 @@ async function executeOperation(
 async function approvedOrigins(approvals: ApprovalService): Promise<string[]> {
   const listed = await approvals.list();
   return listed.websites.map((item) => item.origin);
+}
+
+/**
+ * Queues a tracker destination suggested by an approved website (REQ-421). The website is the
+ * verified sender origin, never a message field, and nothing here contacts the tracker.
+ */
+export async function handleSuggestion(options: {
+  sender: RuntimeSender;
+  expectedExtensionId: string;
+  value: JsonValue;
+  approvals: ApprovalService;
+  suggestions: SuggestionService;
+}): Promise<SuggestDestinationResult | SafeWireError> {
+  const parsed = parseSuggestDestinationRequest(options.value);
+  if (!parsed.success) return parsed.error;
+  const request = parsed.data;
+  const rejected = (error: SafeWireError): SuggestDestinationResult => ({
+    type: 'suggest-destination-result',
+    requestId: request.requestId,
+    ok: false,
+    error,
+  });
+  const origins = await approvedOrigins(options.approvals);
+  const senderOrigin = options.sender.origin;
+  if (
+    !senderOrigin ||
+    !isTrustedDocumentSender(options.sender, options.expectedExtensionId, origins)
+  ) {
+    return rejected(permissionError);
+  }
+  try {
+    const status = await options.suggestions.suggest(
+      senderOrigin,
+      request.provider,
+      request.baseUrl,
+    );
+    return { type: 'suggest-destination-result', requestId: request.requestId, ok: true, status };
+  } catch (error) {
+    if (error instanceof ExtensionProtocolError) return rejected(serializeProtocolError(error));
+    if (
+      error instanceof CanonicalizationError &&
+      error.messageKey === EXTENSION_ERROR_MESSAGE_KEYS.originUnapproved
+    ) {
+      return rejected(permissionError);
+    }
+    return rejected({ kind: 'malformed', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.malformed });
+  }
 }
 
 export async function handleHandshake(options: {

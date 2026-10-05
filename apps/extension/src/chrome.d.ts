@@ -107,6 +107,7 @@ declare const chrome: {
     connect(connectInfo: { name: string }): ChromeRuntimePort;
     openOptionsPage(): void;
     getManifest(): { version: string };
+    getURL(path: string): string;
     onConnect: { addListener(callback: (port: ChromeRuntimePort) => void): void };
     onStartup: { addListener(callback: () => void): void };
     onInstalled: { addListener(callback: () => void): void };
@@ -119,5 +120,10 @@ declare const chrome: {
   permissions: ChromePermissions;
   scripting: ChromeScripting;
   tabs: ChromeTabs;
+  action: {
+    setBadgeText(details: { text: string }): Promise<void>;
+    setBadgeBackgroundColor(details: { color: string }): Promise<void>;
+    setTitle(details: { title: string }): Promise<void>;
+  };
   windows: ChromeWindows;
 };

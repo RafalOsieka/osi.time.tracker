@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
+import type { ToolbarAction } from '../../src/badge/toolbar-badge.js';
 import { APPROVAL_STORAGE_KEY } from '../../src/approvals/chrome-store.js';
 import { contentScriptId } from '../../src/content/registration.js';
 
@@ -28,9 +29,11 @@ function browser() {
     destinations: [{ websiteOrigin: origin, origin: tracker, provider: 'redmine', basePath: '' }],
   };
   const local: ChromeStorageArea = {
-    get: async () => ({ [APPROVAL_STORAGE_KEY]: saved }),
+    get: async (key) => (key === APPROVAL_STORAGE_KEY ? { [key]: saved } : {}),
     set: async (items) => {
-      saved = items[APPROVAL_STORAGE_KEY]!;
+      const next = items[APPROVAL_STORAGE_KEY];
+      if (next === undefined) return;
+      saved = next;
       for (const listener of onChanged.listeners) {
         listener({ [APPROVAL_STORAGE_KEY]: { newValue: saved } }, 'local');
       }
@@ -65,13 +68,34 @@ function browser() {
       return true;
     },
   };
+  const badge = { text: '', title: '' };
+  const action: ToolbarAction = {
+    setBadgeText: async ({ text }) => {
+      badge.text = text;
+    },
+    setBadgeBackgroundColor: async () => {},
+    setTitle: async ({ title }) => {
+      badge.title = title;
+    },
+  };
   vi.stubGlobal('chrome', {
+    action,
     runtime: { id: 'test-extension', onStartup, onInstalled, onConnect: event<() => void>() },
     storage: { local, session, onChanged },
     permissions,
     scripting,
   });
-  return { origin, tracker, onStartup, onInstalled, permissions, registered, granted, local };
+  return {
+    origin,
+    tracker,
+    onStartup,
+    onInstalled,
+    permissions,
+    registered,
+    granted,
+    local,
+    badge,
+  };
 }
 
 afterEach(() => {
@@ -87,6 +111,7 @@ describe('background approval lifecycle with settings closed', () => {
       expect([...context.registered]).toEqual([contentScriptId(context.origin)]),
     );
     expect([...context.granted]).toEqual([`${context.origin}/*`, `${context.tracker}/*`]);
+    await vi.waitFor(() => expect(context.badge).toEqual({ text: '', title: 'OSI Time Tracker' }));
   });
 
   it.each(['onStartup', 'onInstalled'] as const)(
@@ -120,6 +145,7 @@ describe('background approval lifecycle with settings closed', () => {
           scope === 'website' ? [] : [contentScriptId(context.origin)],
         ),
       );
+      await vi.waitFor(() => expect(context.badge.text).toBe('!'));
       await vi.waitFor(async () =>
         expect(await context.local.get(APPROVAL_STORAGE_KEY)).toEqual({
           [APPROVAL_STORAGE_KEY]: {

@@ -1,4 +1,5 @@
 import { createServer, type Server } from 'node:http';
+import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
 
 export interface WebsiteFixture {
   origin: string;
@@ -13,7 +14,7 @@ const PAGE = `<!doctype html>
     <p data-testid="fixture-ready">ready</p>
     <script>
       const CHANNEL = 'osi-extension-protocol';
-      const PROTOCOL_VERSION = 2;
+      const PROTOCOL_VERSION = ${EXTENSION_PROTOCOL_VERSION};
       window.__osiLast = null;
       window.__osiRun = async function (message) {
         const channel = new MessageChannel();

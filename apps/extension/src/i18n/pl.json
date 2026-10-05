@@ -22,7 +22,9 @@
     "checklistCurrent": "Bieżący krok",
     "checklistTodo": "Do zrobienia",
     "checklistInfo": "Uwaga",
-    "opensInNewTab": "otwiera się w nowej karcie"
+    "opensInNewTab": "otwiera się w nowej karcie",
+    "badgeSuggestions": "OSI Time Tracker: trackery czekające na zatwierdzenie: {count}",
+    "badgeAttention": "OSI Time Tracker: konfiguracja wymaga uwagi"
   },
   "approvals": {
     "websitesTitle": "Zatwierdzone witryny",
@@ -64,7 +66,13 @@
     "invalidDestination": "Podaj bazowy adres z http:// lub https://, bez danych logowania, parametrów, fragmentu i segmentów \"..\".",
     "noAccess": "Brak dostępu",
     "missingPermissionShort": "Przywróć dostęp w konfiguracji; samo zatwierdzenie nie zapewnia dostępu.",
-    "forWebsite": "Dla {website}"
+    "forWebsite": "Dla {website}",
+    "suggestionsTitle": "Czekają na zatwierdzenie",
+    "suggestionFrom": "prośba od {website}",
+    "approveSuggestion": "Zatwierdź",
+    "dismissSuggestion": "Odrzuć",
+    "reviewSuggestion": "Zatwierdź w konfiguracji",
+    "suggestionDismissed": "Prośba odrzucona."
   },
   "activity": {
     "none": "Brak aktywności",
