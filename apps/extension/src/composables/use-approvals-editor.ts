@@ -12,25 +12,24 @@ import {
   isHttpCredentialRisk,
 } from '../security/canonicalize.js';
 
-export interface ContentScriptPort {
-  reconcile: (origins: readonly string[]) => Promise<void>;
+export interface ApprovalsEditorOptions {
+  /** Re-registers the website bridge for the approved origins that have browser access. */
+  reconcile?: (origins: readonly string[]) => Promise<void>;
+  /** Announces a completed change (for example as a toast); failures stay in `errorKey`. */
+  onOutcome?: (messageKey: string) => void;
 }
 
-const noopScripts: ContentScriptPort = {
-  reconcile: async () => {},
-};
-
-export function useApprovalsEditor(
-  service: ApprovalService,
-  scripts: ContentScriptPort = noopScripts,
-) {
+/**
+ * Approval state and actions shared by the popup and the setup page. Successes are reported once
+ * through `onOutcome`; errors that need the user stay in `errorKey` until resolved.
+ */
+export function useApprovalsEditor(service: ApprovalService, options: ApprovalsEditorOptions = {}) {
   const websites = shallowRef<WebsiteApproval[]>([]);
   const destinations = shallowRef<DestinationApproval[]>([]);
   const websiteOrigin = shallowRef('');
   const destinationWebsite = shallowRef('');
   const destinationProvider = shallowRef<TrackerSystemType>('openproject');
   const destinationUrl = shallowRef('');
-  const statusKey = shallowRef('app.statusReady');
   const errorKey = shallowRef<string | null>(null);
   const websiteErrorKey = shallowRef<string | null>(null);
   const destinationErrorKey = shallowRef<string | null>(null);
@@ -84,9 +83,6 @@ export function useApprovalsEditor(
       ];
       const granted = await Promise.all(origins.map((origin) => service.hasHostPermission(origin)));
       if (version !== refreshVersion) return;
-      const changed =
-        JSON.stringify([websites.value, destinations.value]) !==
-        JSON.stringify([state.websites, state.destinations]);
       websites.value = state.websites;
       destinations.value = state.destinations;
       missingOrigins.value = origins.filter((_, index) => !granted[index]);
@@ -95,9 +91,8 @@ export function useApprovalsEditor(
       if (!state.websites.some((item) => item.origin === destinationWebsite.value)) {
         destinationWebsite.value = state.websites[0]?.origin ?? '';
       }
-      if (changed && !busy.value) statusKey.value = 'app.statusReady';
       try {
-        await scripts.reconcile(
+        await options.reconcile?.(
           state.websites
             .filter((item) => !missingOrigins.value.includes(item.origin))
             .map((item) => item.origin),
@@ -118,7 +113,6 @@ export function useApprovalsEditor(
   async function addWebsite(): Promise<void> {
     if (busy.value) return;
     errorKey.value = null;
-    statusKey.value = 'app.statusReady';
     try {
       canonicalizeWebsiteOrigin(websiteOrigin.value);
     } catch {
@@ -138,7 +132,6 @@ export function useApprovalsEditor(
   async function addDestination(): Promise<void> {
     if (busy.value) return;
     errorKey.value = null;
-    statusKey.value = 'app.statusReady';
     try {
       canonicalizeDestination(destinationUrl.value);
     } catch {
@@ -187,10 +180,9 @@ export function useApprovalsEditor(
     if (busy.value) return;
     busy.value = true;
     errorKey.value = null;
-    statusKey.value = 'approvals.working';
     try {
       await action();
-      statusKey.value = successKey;
+      options.onOutcome?.(successKey);
     } catch (error) {
       errorKey.value =
         error instanceof CanonicalizationError
@@ -211,7 +203,6 @@ export function useApprovalsEditor(
     destinationWebsite,
     destinationProvider,
     destinationUrl,
-    statusKey: readonly(statusKey),
     errorKey: readonly(errorKey),
     websiteErrorKey: readonly(websiteErrorKey),
     destinationErrorKey: readonly(destinationErrorKey),

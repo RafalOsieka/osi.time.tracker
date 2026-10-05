@@ -9,9 +9,9 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 2. Onboarding checklist and transient outcomes (REQ-411, REQ-412)
 
-- [ ] 2.1 Frontend (extension): remove the permanent `statusKey` from `useApprovalsEditor`. Emit outcome events instead and show them with `useToast`. Keep `errorKey` alerts. Drop the `app.statusReady` and `app.popupReady` keys. Verify with `approvals-editor.spec.ts` (outcome emitted, error stays persistent) and `i18n-catalog.spec.ts` parity.
-- [ ] 2.2 Frontend (extension): add `SetupChecklist.vue` (website, tracker, informational "turn off direct connection" step) and use it in `OptionsPage.vue` and `PopupPage.vue`. Hide it once both steps are done. Verify with unit tests for each checklist state and for the load-failure path.
-- [ ] 2.3 E2E (extension): in `options-ui.spec.ts`, assert that a fresh install shows the checklist, approving a website advances it, and approving a tracker hides it on both pages. Assert that "Open Options" text never appears.
+- [x] 2.1 Frontend (extension): remove the permanent `statusKey` from `useApprovalsEditor`. Emit outcome events instead and show them with `useToast`. Keep `errorKey` alerts. Drop the `app.statusReady` and `app.popupReady` keys. Verify with `approvals-editor.spec.ts` (outcome emitted, error stays persistent) and `i18n-catalog.spec.ts` parity.
+- [x] 2.2 Frontend (extension): add `SetupChecklist.vue` (website, tracker, informational "turn off direct connection" step) and use it in `OptionsPage.vue` and `PopupPage.vue`. Hide it once both steps are done. Verify with unit tests for each checklist state and for the load-failure path.
+- [x] 2.3 E2E (extension): in `options-ui.spec.ts`, assert that a fresh install shows the checklist, approving a website advances it, and approving a tracker hides it on both pages. Assert that "Open Options" text never appears.
 
 ## 3. Clickable origins (REQ-414)
 

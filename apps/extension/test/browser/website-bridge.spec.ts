@@ -13,6 +13,7 @@ import {
 } from './harness/fake-trackers.js';
 import { startWebsiteFixture, type WebsiteFixture } from './harness/website-fixture.js';
 import { requireChromium } from './harness/skip.js';
+import { toasts, waitUntilIdle } from './harness/setup-page.js';
 import { chooseOption, optionNames } from './harness/choose-option.js';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
 import { z } from 'zod';
@@ -46,17 +47,15 @@ async function approveSite(
   await page.goto(optionsUrl(harness));
   await page.getByTestId('website-origin').fill(websiteOrigin);
   await page.getByTestId('add-website').click();
-  await page
-    .getByTestId('status')
-    .filter({ hasText: /saved|zapisane/i })
-    .waitFor();
+  await page.getByTestId(`revoke-website-${websiteOrigin}`).waitFor();
+  await waitUntilIdle(page);
   await chooseOption(page, 'destination-provider', optionNames[provider]);
   await page.getByTestId('destination-url').fill(destinationUrl);
+  const trackerRows = page.locator('[data-testid^="revoke-destination-"]');
+  const before = await trackerRows.count();
   await page.getByTestId('add-destination').click();
-  await page
-    .getByTestId('status')
-    .filter({ hasText: /saved|zapisane/i })
-    .waitFor();
+  await trackerRows.nth(before).waitFor();
+  await waitUntilIdle(page);
   await page.close();
 }
 
@@ -417,7 +416,7 @@ describeChromium('website/content/worker bridge', () => {
     await options.goto(optionsUrl(harness!));
     await options.locator(`[data-testid="revoke-website-${website.origin}"]`).click();
     await options.getByTestId('revoke-website-confirm-action').click();
-    await expect.poll(() => options.getByTestId('status').textContent()).toMatch(/cofni|revoked/i);
+    await expect.poll(() => toasts(options).textContent()).toMatch(/cofni|revoked/i);
     await options.close();
 
     const afterRevoke = await runOnPage(page, {

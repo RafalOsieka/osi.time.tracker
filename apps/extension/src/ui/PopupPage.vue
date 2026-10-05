@@ -13,6 +13,7 @@ import {
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import BrandMark from './BrandMark.vue';
+import SetupChecklist from './SetupChecklist.vue';
 
 const { t, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
@@ -25,6 +26,7 @@ const badge = computed(() =>
     ? { label: t.value('app.statusAttention'), color: 'warning' as const }
     : { label: t.value('app.statusOk'), color: 'success' as const },
 );
+const setupComplete = computed(() => websites.value.length > 0 && destinations.value.length > 0);
 const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
 
 const destinationKey = (item: DestinationApproval) =>
@@ -83,7 +85,11 @@ function openOptions(): void {
         :title="t('approvals.permissionMissing')"
         :description="t('approvals.missingPermissionShort')"
       />
-      <p v-else-if="loaded" class="text-muted">{{ t('app.popupReady') }}</p>
+      <SetupChecklist
+        v-else-if="loaded && !setupComplete"
+        :website-done="websites.length > 0"
+        :tracker-done="destinations.length > 0"
+      />
       <UAlert
         v-if="localeErrorKey"
         role="alert"

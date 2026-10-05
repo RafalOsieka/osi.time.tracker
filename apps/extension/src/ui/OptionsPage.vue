@@ -3,8 +3,8 @@ import { computed, onMounted } from 'vue';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
-import UIcon from '@nuxt/ui/components/Icon.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
+import { useToast } from '@nuxt/ui/composables/useToast';
 import { ApprovalService } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
@@ -16,10 +16,20 @@ import { useExtensionTheme } from '../composables/use-extension-theme.js';
 import { reconcileWebsiteContentScripts } from '../content/registration.js';
 import BrandMark from './BrandMark.vue';
 import DestinationApprovals from './DestinationApprovals.vue';
+import SetupChecklist from './SetupChecklist.vue';
 import WebsiteApprovals from './WebsiteApprovals.vue';
 
+const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
+const toast = useToast();
 const editor = useApprovalsEditor(service, {
+  onOutcome: (messageKey) =>
+    toast.add({
+      title: t.value(messageKey),
+      color: 'success',
+      icon: 'i-lucide-circle-check',
+      duration: 4000,
+    }),
   // Read inside the shared lock so another setup tab cannot apply an older script list last.
   reconcile: () =>
     navigator.locks.request('osi-extension-script-setup', async () => {
@@ -39,7 +49,6 @@ const {
   destinationWebsite,
   destinationProvider,
   destinationUrl,
-  statusKey,
   errorKey,
   websiteErrorKey,
   destinationErrorKey,
@@ -56,7 +65,6 @@ const {
   restoreDestination,
   retry,
 } = editor;
-const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const { theme, setTheme } = useExtensionTheme();
 const themeItems = computed(() => [
   { label: t.value('app.themeLight'), value: 'light' as const, icon: 'i-lucide-sun' },
@@ -68,7 +76,7 @@ const languageItems = computed(() => [
 ]);
 const version = chrome.runtime.getManifest().version;
 const themeIcon = computed(() => (theme.value === 'dark' ? 'i-lucide-moon' : 'i-lucide-sun'));
-const statusText = computed(() => t.value(errorKey.value ?? statusKey.value));
+const setupComplete = computed(() => websites.value.length > 0 && destinations.value.length > 0);
 const disabled = computed(() => busy.value || !loaded.value);
 
 onMounted(() => {
@@ -77,7 +85,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-sm text-default">
+  <main
+    class="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-sm text-default"
+    :aria-busy="busy"
+  >
     <header class="flex flex-wrap items-end justify-between gap-4">
       <div class="flex items-center gap-3">
         <BrandMark :size="40" />
@@ -128,7 +139,7 @@ onMounted(() => {
       orientation="horizontal"
     >
       <template #description>
-        <span data-testid="status">{{ statusText }}</span>
+        <span data-testid="setup-error">{{ t(errorKey) }}</span>
       </template>
       <template #actions>
         <UButton
@@ -142,16 +153,11 @@ onMounted(() => {
         />
       </template>
     </UAlert>
-    <p
-      v-else
-      class="flex items-center gap-1.5 text-[13px] text-muted"
-      data-testid="status"
-      role="status"
-      aria-live="polite"
-    >
-      <UIcon name="i-lucide-info" class="size-4 shrink-0" />
-      {{ statusText }}
-    </p>
+    <SetupChecklist
+      v-else-if="loaded && !setupComplete"
+      :website-done="websites.length > 0"
+      :tracker-done="destinations.length > 0"
+    />
     <UAlert
       v-if="localeErrorKey"
       role="alert"

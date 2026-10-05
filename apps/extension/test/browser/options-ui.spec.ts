@@ -7,6 +7,7 @@ import {
   type ExtensionHarness,
 } from './harness/extension-context.js';
 import { chooseOption, optionNames } from './harness/choose-option.js';
+import { toasts, waitUntilIdle } from './harness/setup-page.js';
 import { requireChromium } from './harness/skip.js';
 
 const describeChromium = requireChromium();
@@ -44,12 +45,6 @@ async function confirmRevoke(page: Page): Promise<void> {
   await page.bringToFront();
   await page.getByTestId('revoke-website-confirm-action').press('Enter');
   await expect.poll(() => page.getByRole('dialog').count()).toBe(0);
-}
-
-async function waitUntilIdle(page: Page): Promise<void> {
-  await expect
-    .poll(() => page.getByTestId('status').textContent(), { timeout: 15_000 })
-    .not.toMatch(/Updating approvals|Aktualizowanie zatwierdzeń/);
 }
 
 describeChromium('extension options UI', () => {
@@ -103,6 +98,53 @@ describeChromium('extension options UI', () => {
     await expect.poll(() => isDark(popup)).toBe(false);
   });
 
+  it('guides a fresh install with a checklist that disappears once setup is complete', async () => {
+    const page = await harness!.context.newPage();
+    await page.goto(optionsUrl(harness!));
+    await chooseOption(page, 'language', optionNames.en);
+    const popup = await harness!.context.newPage();
+    await popup.goto(popupUrl(harness!));
+    const step = (target: Page, id: string) =>
+      target.getByTestId(`checklist-${id}`).getAttribute('data-state');
+
+    for (const target of [page, popup]) {
+      await expect.poll(() => step(target, 'website')).toBe('current');
+      await expect.poll(() => step(target, 'tracker')).toBe('todo');
+    }
+
+    await page.bringToFront();
+    await page.getByTestId('website-origin').fill('http://localhost:3300');
+    await page.getByTestId('add-website').click();
+    for (const target of [page, popup]) {
+      await expect.poll(() => step(target, 'website')).toBe('done');
+      await expect.poll(() => step(target, 'tracker')).toBe('current');
+    }
+
+    await page.getByTestId('destination-url').fill('https://tracker.example.com/checklist');
+    await page.getByTestId('add-destination').click();
+    for (const target of [page, popup]) {
+      await expect.poll(() => target.getByTestId('setup-checklist').count()).toBe(0);
+      expect(await target.locator('body').textContent()).not.toMatch(/Open Options/);
+    }
+
+    await waitUntilIdle(page);
+    await page.getByTestId('revoke-website-http://localhost:3300').click();
+    await confirmRevoke(page);
+    await expect.poll(() => step(page, 'website')).toBe('current');
+  });
+
+  it('shows the load error instead of the checklist when approvals cannot be read', async () => {
+    const page = await harness!.context.newPage();
+    await page.addInitScript(() => {
+      chrome.storage.local.get = async () => {
+        throw new Error('storage unavailable');
+      };
+    });
+    await page.goto(optionsUrl(harness!));
+    await expect.poll(() => page.getByTestId('retry-setup').isVisible()).toBe(true);
+    expect(await page.getByTestId('setup-checklist').count()).toBe(0);
+  });
+
   it('approves, reloads, localizes, and revokes from the keyboard', async () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
@@ -118,7 +160,7 @@ describeChromium('extension options UI', () => {
       .toMatch(/Remove paths/);
     await page.getByTestId('website-origin').fill('http://localhost:3000');
     await page.getByTestId('add-website').press('Enter');
-    await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/saved/i);
+    await expect.poll(() => toasts(page).textContent()).toMatch(/saved/i);
 
     await page.reload();
     await expect
@@ -184,7 +226,7 @@ describeChromium('extension options UI', () => {
       .toBe(true);
     await revokeLocalhost.press('Enter');
     await confirmRevoke(page);
-    await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/cofni/i);
+    await expect.poll(() => toasts(page).textContent()).toMatch(/cofni/i);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
     await expect
@@ -311,7 +353,7 @@ describeChromium('extension options UI', () => {
       .poll(() => page.getByTestId('revoke-website-http://localhost:3200').isVisible())
       .toBe(true);
     await expect
-      .poll(() => page.getByTestId('status').textContent())
+      .poll(() => page.getByTestId('setup-error').textContent())
       .toMatch(/bridge could not be configured/);
     await harness!.worker.evaluate(() => {
       // SAFETY: restore the native register function stashed for this test.
