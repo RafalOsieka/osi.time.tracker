@@ -8,6 +8,7 @@ import UCard from '@nuxt/ui/components/Card.vue';
 import UForm from '@nuxt/ui/components/Form.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
+import ULink from '@nuxt/ui/components/Link.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
@@ -155,7 +156,15 @@ function destinationLabel(item: DestinationApproval): string {
       >
         <UAvatar :text="providerInitials[item.provider]" class="rounded-md" aria-hidden="true" />
         <span class="flex min-w-0 grow flex-col">
-          <span class="break-all text-highlighted">{{ item.origin }}{{ item.basePath }}</span>
+          <ULink
+            :to="`${item.origin}${item.basePath}`"
+            target="_blank"
+            class="break-all text-highlighted hover:underline focus-visible:underline"
+            :data-testid="`open-destination-${destinationKey(item)}`"
+          >
+            {{ item.origin }}{{ item.basePath }}
+            <span class="sr-only">({{ t('app.opensInNewTab') }})</span>
+          </ULink>
           <span class="text-xs break-all text-muted">
             {{ t(`approvals.${item.provider}`) }}
             <span class="before:me-1 before:content-['·']">

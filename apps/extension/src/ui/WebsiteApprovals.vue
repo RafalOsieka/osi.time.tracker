@@ -6,10 +6,12 @@ import UCard from '@nuxt/ui/components/Card.vue';
 import UForm from '@nuxt/ui/components/Form.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
+import ULink from '@nuxt/ui/components/Link.vue';
 import UModal from '@nuxt/ui/components/Modal.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import type { DestinationApproval, WebsiteApproval } from '../approvals/approvals.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
+import { openWebsite } from './open-website.js';
 
 const { websites, destinations, origin, disabled, errorKey, missingOrigins } = defineProps<{
   websites: readonly WebsiteApproval[];
@@ -110,7 +112,14 @@ function confirmRevoke(): void {
         class="flex items-center gap-2.5 py-2 ps-3 pe-2"
       >
         <UIcon name="i-lucide-globe" class="size-4.5 shrink-0 text-muted" />
-        <span class="min-w-0 grow break-all text-highlighted">{{ website.origin }}</span>
+        <ULink
+          :to="website.origin"
+          class="min-w-0 grow break-all text-highlighted hover:underline focus-visible:underline"
+          :data-testid="`open-website-${website.origin}`"
+          @click.prevent="openWebsite(website.origin)"
+        >
+          {{ website.origin }}
+        </ULink>
         <template v-if="missingOrigins.includes(website.origin)">
           <UBadge color="warning" variant="soft" :label="t('approvals.noAccess')" />
           <UButton

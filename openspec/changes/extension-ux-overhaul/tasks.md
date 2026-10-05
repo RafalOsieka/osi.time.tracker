@@ -15,8 +15,8 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 3. Clickable origins (REQ-414)
 
-- [ ] 3.1 Frontend (extension): add an `openOrigin(url, { reuseTab })` helper (design D6) and use it for website and tracker rows in the popup and setup page, with accessible link names. Verify with unit tests on a fake `chrome.tabs`/`chrome.windows` covering focusing an existing tab, the different-port case, a new tab, and tracker links always opening a new tab.
-- [ ] 3.2 E2E (extension): in `options-ui.spec.ts`, open a fixture website tab, activate its link from the setup page, and assert no new tab was created. Close it, activate the link again, and assert a new tab opened.
+- [x] 3.1 Frontend (extension): add an `openOrigin(url, { reuseTab })` helper (design D6) and use it for website and tracker rows in the popup and setup page, with accessible link names. Verify with unit tests on a fake `chrome.tabs`/`chrome.windows` covering focusing an existing tab, the different-port case, a new tab, and tracker links always opening a new tab.
+- [x] 3.2 E2E (extension): in `options-ui.spec.ts`, open a fixture website tab, activate its link from the setup page, and assert no new tab was created. Close it, activate the link again, and assert a new tab opened.
 
 ## 4. Compact destination form (REQ-420)
 

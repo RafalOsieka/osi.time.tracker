@@ -21,7 +21,8 @@
     "checklistDone": "Done",
     "checklistCurrent": "Current step",
     "checklistTodo": "To do",
-    "checklistInfo": "Note"
+    "checklistInfo": "Note",
+    "opensInNewTab": "opens in a new tab"
   },
   "approvals": {
     "websitesTitle": "Approved websites",

@@ -5,6 +5,7 @@ import UAvatar from '@nuxt/ui/components/Avatar.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
+import ULink from '@nuxt/ui/components/Link.vue';
 import { ApprovalService, type DestinationApproval } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
@@ -13,6 +14,7 @@ import {
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import BrandMark from './BrandMark.vue';
+import { openWebsite } from './open-website.js';
 import SetupChecklist from './SetupChecklist.vue';
 
 const { t, localeErrorKey } = useExtensionI18n();
@@ -117,12 +119,14 @@ function openOptions(): void {
               class="flex items-center gap-2 px-3 py-2"
             >
               <UIcon name="i-lucide-globe" class="size-4 shrink-0 text-muted" />
-              <span
-                class="min-w-0 grow text-[13px] break-all text-highlighted"
+              <ULink
+                :to="website.origin"
+                class="min-w-0 grow text-[13px] break-all text-highlighted hover:underline focus-visible:underline"
                 data-testid="popup-website"
+                @click.prevent="openWebsite(website.origin)"
               >
                 {{ website.origin }}
-              </span>
+              </ULink>
               <UBadge
                 v-if="missingOrigins.includes(website.origin)"
                 color="warning"
@@ -160,12 +164,16 @@ function openOptions(): void {
                 aria-hidden="true"
               />
               <span class="flex min-w-0 grow flex-col">
-                <span
-                  class="text-[13px] break-all text-highlighted"
-                  data-testid="popup-tracker-url"
+                <ULink
+                  :to="`${destination.origin}${destination.basePath}`"
+                  target="_blank"
+                  class="text-[13px] break-all text-highlighted hover:underline focus-visible:underline"
                 >
-                  {{ destination.origin }}{{ destination.basePath }}
-                </span>
+                  <span data-testid="popup-tracker-url">
+                    {{ destination.origin }}{{ destination.basePath }}
+                  </span>
+                  <span class="sr-only">({{ t('app.opensInNewTab') }})</span>
+                </ULink>
                 <span class="text-xs break-all text-muted" data-testid="popup-tracker-detail">
                   {{ t(`approvals.${destination.provider}`) }}
                   <span class="before:me-1 before:content-['·']">

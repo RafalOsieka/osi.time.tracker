@@ -58,6 +58,8 @@ export function startWebsiteFixture(): Promise<WebsiteFixture> {
         url: `${origin}/`,
         close: () =>
           new Promise((closeResolve, closeReject) => {
+            // Tabs still open on the fixture keep idle connections alive and would block close().
+            server.closeAllConnections();
             server.close((error) => {
               if (error) closeReject(error);
               else closeResolve();

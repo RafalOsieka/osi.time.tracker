@@ -8,6 +8,7 @@ import {
 } from './harness/extension-context.js';
 import { chooseOption, optionNames } from './harness/choose-option.js';
 import { toasts, waitUntilIdle } from './harness/setup-page.js';
+import { startWebsiteFixture } from './harness/website-fixture.js';
 import { requireChromium } from './harness/skip.js';
 
 const describeChromium = requireChromium();
@@ -131,6 +132,46 @@ describeChromium('extension options UI', () => {
     await page.getByTestId('revoke-website-http://localhost:3300').click();
     await confirmRevoke(page);
     await expect.poll(() => step(page, 'website')).toBe('current');
+  });
+
+  it('switches to an open website tab and opens trackers in a new tab', async () => {
+    const fixture = await startWebsiteFixture();
+    try {
+      const page = await harness!.context.newPage();
+      await page.goto(optionsUrl(harness!));
+      await page.getByTestId('website-origin').fill(fixture.origin);
+      await page.getByTestId('add-website').click();
+      const websiteLink = page.getByTestId(`open-website-${fixture.origin}`);
+      await websiteLink.waitFor();
+      await waitUntilIdle(page);
+
+      const website = await harness!.context.newPage();
+      await website.goto(`${fixture.url}timer`);
+      await page.bringToFront();
+      const pagesBefore = harness!.context.pages().length;
+      await websiteLink.click();
+      await expect.poll(() => website.evaluate(() => document.visibilityState)).toBe('visible');
+      expect(harness!.context.pages()).toHaveLength(pagesBefore);
+
+      await website.close();
+      const opened = harness!.context.waitForEvent('page');
+      await page.bringToFront();
+      await websiteLink.click();
+      expect(new URL((await opened).url()).origin).toBe(fixture.origin);
+
+      await page.getByTestId('destination-url').fill('https://tracker.example.com/links');
+      await page.getByTestId('add-destination').click();
+      const trackerLink = page.locator('[data-testid^="open-destination-"]');
+      await trackerLink.waitFor();
+      expect(await trackerLink.getAttribute('target')).toBe('_blank');
+      expect(await trackerLink.getAttribute('href')).toBe('https://tracker.example.com/links');
+
+      await waitUntilIdle(page);
+      await page.getByTestId(`revoke-website-${fixture.origin}`).click();
+      await confirmRevoke(page);
+    } finally {
+      await fixture.close();
+    }
   });
 
   it('shows the load error instead of the checklist when approvals cannot be read', async () => {

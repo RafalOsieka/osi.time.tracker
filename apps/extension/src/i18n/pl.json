@@ -21,7 +21,8 @@
     "checklistDone": "Gotowe",
     "checklistCurrent": "Bieżący krok",
     "checklistTodo": "Do zrobienia",
-    "checklistInfo": "Uwaga"
+    "checklistInfo": "Uwaga",
+    "opensInNewTab": "otwiera się w nowej karcie"
   },
   "approvals": {
     "websitesTitle": "Zatwierdzone witryny",

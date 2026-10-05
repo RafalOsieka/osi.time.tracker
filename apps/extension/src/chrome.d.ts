@@ -81,6 +81,26 @@ interface ChromeScripting {
   getRegisteredContentScripts(): Promise<ChromeRegisteredContentScript[]>;
 }
 
+interface ChromeTab {
+  id?: number;
+  windowId: number;
+  url?: string;
+}
+
+interface ChromeTabs {
+  query(queryInfo: {
+    url?: string;
+    active?: boolean;
+    currentWindow?: boolean;
+  }): Promise<ChromeTab[]>;
+  update(tabId: number, properties: { active: boolean }): Promise<ChromeTab | undefined>;
+  create(properties: { url: string }): Promise<ChromeTab>;
+}
+
+interface ChromeWindows {
+  update(windowId: number, properties: { focused: boolean }): Promise<{ id?: number }>;
+}
+
 declare const chrome: {
   runtime: {
     id: string;
@@ -94,4 +114,6 @@ declare const chrome: {
   storage: { local: ChromeStorageArea; onChanged: ChromeStorageChanges };
   permissions: ChromePermissions;
   scripting: ChromeScripting;
+  tabs: ChromeTabs;
+  windows: ChromeWindows;
 };

@@ -43,6 +43,8 @@ it('renders unambiguous tracker identities and permission restoration labels', a
     expect(html).toContain(`aria-label="Restore access ${identity}"`);
   }
   expect(html).toContain('No access');
+  const trackerLink = /<a[^>]*href="https:\/\/tracker\.example\.com\/team"[^>]*>/.exec(html)?.[0];
+  expect(trackerLink).toContain('target="_blank"');
 });
 
 it('renders localized field errors and disabled controls while an action is pending', async () => {
