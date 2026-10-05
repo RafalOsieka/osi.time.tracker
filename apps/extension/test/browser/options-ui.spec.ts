@@ -280,8 +280,9 @@ describeChromium('extension options UI', () => {
     await page.getByTestId('website-origin').fill('http://localhost:3001');
     await page.getByTestId('add-website').press('Enter');
     await expect
-      .poll(() => page.getByTestId('destination-website').textContent())
+      .poll(() => page.getByTestId('destination-website-single').textContent())
       .toContain('http://localhost:3001');
+    expect(await page.getByTestId('destination-website').count()).toBe(0);
     await page.getByTestId('revoke-website-http://localhost:3001').click();
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
   });
@@ -296,11 +297,18 @@ describeChromium('extension options UI', () => {
     await expect
       .poll(() => other.getByTestId('add-website').textContent())
       .toMatch(/Approve website/);
-    for (const origin of ['http://localhost:3100', 'http://localhost:3101']) {
+    for (const [index, origin] of ['http://localhost:3100', 'http://localhost:3101'].entries()) {
       await page.getByTestId('website-origin').fill(origin);
       await page.getByTestId('add-website').click();
       await expect.poll(() => other.getByTestId(`revoke-website-${origin}`).isVisible()).toBe(true);
-      await chooseOption(page, 'destination-website', origin);
+      // The website select only appears once there is a second website to choose from.
+      if (index === 0) {
+        await expect
+          .poll(() => page.getByTestId('destination-website-single').textContent())
+          .toContain(origin);
+      } else {
+        await chooseOption(page, 'destination-website', origin);
+      }
       await chooseOption(page, 'destination-provider', optionNames.redmine);
       await page.getByTestId('destination-url').fill('https://shared.example.com/team');
       await page.getByTestId('add-destination').click();
@@ -354,7 +362,7 @@ describeChromium('extension options UI', () => {
     await other.getByTestId('revoke-website-http://localhost:3100').click();
     await confirmRevoke(other);
     await expect
-      .poll(() => page.getByTestId('destination-website').textContent())
+      .poll(() => page.getByTestId('destination-website-single').textContent())
       .toContain('http://localhost:3101');
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3101').click();

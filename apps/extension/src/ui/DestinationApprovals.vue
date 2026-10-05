@@ -7,6 +7,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
 import UForm from '@nuxt/ui/components/Form.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
+import UIcon from '@nuxt/ui/components/Icon.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
 import ULink from '@nuxt/ui/components/Link.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
@@ -48,6 +49,11 @@ const emit = defineEmits<{
 
 const { t } = useExtensionI18n();
 const empty = computed(() => destinations.length === 0);
+/** With one approved website there is nothing to choose: the tracker is approved for it. */
+const singleWebsite = computed(() => {
+  const [only, ...others] = websites;
+  return only && others.length === 0 ? only.origin : null;
+});
 const canAdd = computed(() => !disabled && websites.some((item) => item.origin === website));
 const formState = computed(() => ({ website, provider, destinationUrl }));
 const websiteItems = computed(() => websites.map((item) => item.origin));
@@ -77,8 +83,16 @@ function destinationLabel(item: DestinationApproval): string {
     </template>
 
     <UForm :state="formState" class="flex flex-col gap-3" @submit="emit('add')">
+      <p
+        v-if="singleWebsite"
+        class="flex items-center gap-1.5 text-[13px] text-muted"
+        data-testid="destination-website-single"
+      >
+        <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
+        {{ t('approvals.forWebsite', { website: singleWebsite }) }}
+      </p>
       <div class="grid grid-cols-2 gap-3">
-        <UFormField :label="t('approvals.website')" name="website">
+        <UFormField v-if="!singleWebsite" :label="t('approvals.website')" name="website">
           <USelect
             id="destination-website"
             class="w-full"

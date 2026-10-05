@@ -20,8 +20,8 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 4. Compact destination form (REQ-420)
 
-- [ ] 4.1 Frontend (extension): `DestinationApprovals.vue` hides the website select when exactly one website is approved and shows "For <origin>". Shorten `approvals.destinationHelp`, `approvals.websiteHelp` and the invalid-input messages in `en` and `pl`. Verify with `approval-panels.spec.ts` (zero, one and two websites).
-- [ ] 4.2 E2E (extension): update the approve flows in `options-ui.spec.ts` for the single-website form, and keep one case with two websites that uses the select.
+- [x] 4.1 Frontend (extension): `DestinationApprovals.vue` hides the website select when exactly one website is approved and shows "For <origin>". Shorten `approvals.destinationHelp`, `approvals.websiteHelp` and the invalid-input messages in `en` and `pl`. Verify with `approval-panels.spec.ts` (zero, one and two websites).
+- [x] 4.2 E2E (extension): update the approve flows in `options-ui.spec.ts` for the single-website form, and keep one case with two websites that uses the select.
 
 ## 5. Last tracker activity (REQ-419, REQ-313)
 

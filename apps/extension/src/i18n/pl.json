@@ -58,12 +58,13 @@
     "savedWebsites": "Zapisane witryny",
     "savedTrackers": "Zapisane trackery",
     "websiteRequired": "Zatwierdź witrynę przed dodaniem trackera.",
-    "websiteHelp": "Podaj wyłącznie origin witryny, np. https://time.example.com lub http://localhost:3000. HTTPS jest wymagany poza adresami pętli zwrotnej.",
-    "destinationHelp": "Podaj pełny bazowy adres trackera, z https:// (lub http://) i ścieżką instalacji, np. https://tracker.example.com/redmine. Nie dodawaj danych uwierzytelniających, parametrów zapytania ani fragmentów.",
-    "invalidWebsite": "Podaj origin z https:// lub http:// dla localhost/pętli zwrotnej. Usuń ścieżki, dane uwierzytelniające, parametry zapytania i fragmenty.",
-    "invalidDestination": "Podaj poprawny bazowy adres trackera z http:// lub https://. Ścieżki instalacji są dozwolone; dane uwierzytelniające, parametry zapytania, fragmenty i ścieżki nadrzędne nie są.",
+    "websiteHelp": "Adres Twojego OSI, np. https://time.example.com. HTTP tylko dla localhost.",
+    "destinationHelp": "Bazowy adres trackera ze ścieżką instalacji, np. https://tracker.example.com/redmine.",
+    "invalidWebsite": "Podaj origin z https:// (http:// tylko dla localhost). Usuń ścieżkę, parametry i dane logowania.",
+    "invalidDestination": "Podaj bazowy adres z http:// lub https://, bez danych logowania, parametrów, fragmentu i segmentów \"..\".",
     "noAccess": "Brak dostępu",
-    "missingPermissionShort": "Przywróć dostęp w konfiguracji; samo zatwierdzenie nie zapewnia dostępu."
+    "missingPermissionShort": "Przywróć dostęp w konfiguracji; samo zatwierdzenie nie zapewnia dostępu.",
+    "forWebsite": "Dla {website}"
   },
   "error": {
     "extensionUnavailable": "Wtyczka OSI jest niedostępna w tej przeglądarce.",
