@@ -1,10 +1,10 @@
-# Spec Delta
+# remote-extension-setup Specification
 
 ## Purpose
 
 Defines the extension-owned setup experience: how a user goes from a fresh install to working approvals, how the popup and setup page guide them, and what the extension shows about its own state and recent tracker activity.
 
-## ADDED Requirements
+## Requirements
 
 ### Requirement: REQ-411 Setup guidance is an onboarding checklist
 
@@ -96,7 +96,7 @@ When the popup opens on a tab whose origin is a valid website origin (REQ-308) a
 
 ### Requirement: REQ-416 Tracker suggestions are queued for review
 
-The extension SHALL keep suggestions received from approved websites (REQ-421 in remote-browser-extension) as pending items until the user handles them. A suggestion is a website, provider and destination, without any secret. Each pending item SHALL show the requesting website, provider and tracker URL, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, including the browser permission prompt and the HTTP warning. Dismissing SHALL remove the item without approving it.
+The extension SHALL keep suggestions received from approved websites (REQ-421 in remote-browser-extension) as pending items until the user handles them. Each pending item SHALL show the requesting website, provider and tracker URL, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, including the browser permission prompt and the HTTP warning. Dismissing SHALL remove the item without approving it.
 
 #### Scenario: Review a suggestion
 - **WHEN** an approved website suggests a Redmine destination
