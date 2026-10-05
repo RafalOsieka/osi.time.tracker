@@ -414,3 +414,73 @@ export async function installExtension(
     },
   );
 }
+
+declare global {
+  interface Window {
+    /** Destination suggestions the fake extension received, in order. */
+    __osiFakeSuggestions?: { provider: string; baseUrl: string }[];
+  }
+}
+
+/** Handshake reply of the suggesting stub; types only, so it survives init-script serialization. */
+interface FakeHandshakeResult {
+  type: 'handshake-result';
+  protocolVersion: number;
+  supportedOperations: string[];
+  destinationApproved?: boolean;
+}
+
+/**
+ * Page-side stub of an extension that has approved this website but no tracker destination yet,
+ * and queues destination suggestions (REQ-421) instead of approving them.
+ */
+export async function installSuggestingExtension(page: Page): Promise<void> {
+  await page.addInitScript(
+    ({ channel, protocolVersion, operations }) => {
+      window.__osiFakeSuggestions = [];
+      window.addEventListener('message', (event) => {
+        if (event.source !== window) return;
+        // SAFETY: the page bridge posts `{ channel, type: 'connect' }` on this channel.
+        const data = event.data as { channel?: string; type?: string };
+        if (data.channel !== channel || data.type !== 'connect') return;
+        const port = event.ports[0];
+        if (!port) return;
+        port.start();
+        port.addEventListener('message', (message) => {
+          // SAFETY: protocol envelopes are JSON objects with these optional fields.
+          const payload = message.data as {
+            type?: string;
+            requestId?: string;
+            provider?: string;
+            baseUrl?: string;
+            destination?: unknown;
+          };
+          if (payload.type === 'handshake') {
+            const result: FakeHandshakeResult = {
+              type: 'handshake-result',
+              protocolVersion,
+              supportedOperations: operations,
+            };
+            // A destination handshake reports the tracker as not approved yet.
+            if (payload.destination) result.destinationApproved = false;
+            port.postMessage(result);
+            return;
+          }
+          if (payload.type === 'suggest-destination' && payload.requestId) {
+            window.__osiFakeSuggestions?.push({
+              provider: payload.provider ?? '',
+              baseUrl: payload.baseUrl ?? '',
+            });
+            port.postMessage({
+              type: 'suggest-destination-result',
+              requestId: payload.requestId,
+              ok: true,
+              status: 'queued',
+            });
+          }
+        });
+      });
+    },
+    { channel: CHANNEL, protocolVersion: PROTOCOL_VERSION, operations: [...SUPPORTED_OPERATIONS] },
+  );
+}

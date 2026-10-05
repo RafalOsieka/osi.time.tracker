@@ -6,6 +6,7 @@ import {
   ExtensionProtocolError,
   parseHandshakeResult,
   parseMatchedOperationResult,
+  parseSuggestDestinationResult,
   reconstructProtocolError,
   requestIdSchema,
   safeWireErrorSchema,
@@ -16,6 +17,8 @@ import {
   type OperationRequest,
   type OperationSuccess,
   type SafeWireError,
+  type SuggestDestinationRequest,
+  type SuggestDestinationStatus,
 } from '@osi/extension-protocol';
 import type {
   JsonValue,
@@ -77,6 +80,12 @@ interface PendingOperation {
   timeoutId: ReturnType<typeof setTimeout>;
 }
 
+interface PendingSuggestion {
+  resolve: (status: SuggestDestinationStatus) => void;
+  reject: (error: BridgeError) => void;
+  timeoutId: ReturnType<typeof setTimeout>;
+}
+
 function cloneJson(value: ExtensionPortPayload): JsonValue | undefined {
   try {
     // SAFETY: JSON.parse of JSON.stringify always yields a JSON value.
@@ -123,6 +132,7 @@ function defaultRequestId(): string {
  */
 export class ExtensionDocumentBridge {
   private readonly pending = new Map<string, PendingOperation>();
+  private readonly pendingSuggestions = new Map<string, PendingSuggestion>();
   private handshakeWaiter:
     | {
         resolve: (value: HandshakeResult) => void;
@@ -210,6 +220,29 @@ export class ExtensionDocumentBridge {
     });
   }
 
+  /**
+   * Asks the extension to queue a tracker destination for the user's approval (REQ-421). Carries
+   * no secret; the extension takes the website from the sender, never from this page.
+   */
+  async suggestDestination(destination: DestinationSelector): Promise<SuggestDestinationStatus> {
+    if (this.closed) throw unavailableError();
+    const requestId = (this.options.nextRequestId ?? defaultRequestId)();
+    const envelope: SuggestDestinationRequest = {
+      type: 'suggest-destination',
+      requestId,
+      provider: destination.provider,
+      baseUrl: destination.baseUrl,
+    };
+    return new Promise((resolve, reject) => {
+      const timeoutId = (this.options.schedule ?? setTimeout)(() => {
+        this.pendingSuggestions.delete(requestId);
+        reject(timeoutError());
+      }, this.options.pageDeadlineMs ?? EXTENSION_RESOURCE_LIMITS.pageDeadlineMs);
+      this.pendingSuggestions.set(requestId, { resolve, reject, timeoutId });
+      this.port.postMessage(envelope);
+    });
+  }
+
   close(): void {
     if (this.closed) return;
     this.closed = true;
@@ -219,6 +252,11 @@ export class ExtensionDocumentBridge {
     if (handshake) {
       (this.options.unschedule ?? clearTimeout)(handshake.timeoutId);
       handshake.reject(unavailableError());
+    }
+    for (const [requestId, suggestion] of this.pendingSuggestions) {
+      (this.options.unschedule ?? clearTimeout)(suggestion.timeoutId);
+      suggestion.reject(unavailableError());
+      this.pendingSuggestions.delete(requestId);
     }
     for (const [requestId, pending] of this.pending) {
       (this.options.unschedule ?? clearTimeout)(pending.timeoutId);
@@ -268,6 +306,16 @@ export class ExtensionDocumentBridge {
         : undefined,
     );
     if (!envelope.success) return;
+    const suggestion = this.pendingSuggestions.get(envelope.data);
+    if (suggestion) {
+      const answer = parseSuggestDestinationResult(value);
+      if (!answer.success) return;
+      this.pendingSuggestions.delete(envelope.data);
+      (this.options.unschedule ?? clearTimeout)(suggestion.timeoutId);
+      if (answer.data.ok) suggestion.resolve(answer.data.status);
+      else suggestion.reject(toProtocolError(answer.data.error));
+      return;
+    }
     const pending = this.pending.get(envelope.data);
     if (!pending) return;
     const parsed = parseMatchedOperationResult(pending.operation, value);

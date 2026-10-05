@@ -6,7 +6,7 @@ export type ExtensionLocale = 'en' | 'pl';
 const catalogs = { en, pl };
 
 function pick(
-  group: typeof en.app | typeof en.approvals | typeof en.error,
+  group: typeof en.app | typeof en.approvals | typeof en.activity | typeof en.error,
   name: string,
 ): string | undefined {
   for (const [entryName, value] of Object.entries(group)) {
@@ -22,6 +22,7 @@ function readMessage(catalog: typeof en, key: string): string | undefined {
   const name = key.slice(separator + 1);
   if (group === 'app') return pick(catalog.app, name);
   if (group === 'approvals') return pick(catalog.approvals, name);
+  if (group === 'activity') return pick(catalog.activity, name);
   if (group === 'error') return pick(catalog.error, name);
   return undefined;
 }
@@ -31,7 +32,16 @@ export function detectLocale(): ExtensionLocale {
   return language.toLowerCase().startsWith('pl') ? 'pl' : 'en';
 }
 
-/** Resolves a catalog key; English is the fallback for missing Polish entries. */
-export function translate(locale: ExtensionLocale, key: string): string {
-  return readMessage(catalogs[locale], key) ?? readMessage(catalogs.en, key) ?? key;
+export type MessageParams = Readonly<Record<string, string | number>>;
+
+/**
+ * Resolves a catalog key and fills `{name}` placeholders from `params`; English is the fallback
+ * for missing Polish entries.
+ */
+export function translate(locale: ExtensionLocale, key: string, params?: MessageParams): string {
+  const message = readMessage(catalogs[locale], key) ?? readMessage(catalogs.en, key) ?? key;
+  if (!params) return message;
+  return message.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+    name in params ? String(params[name]) : placeholder,
+  );
 }

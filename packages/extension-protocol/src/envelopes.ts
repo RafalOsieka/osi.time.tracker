@@ -12,6 +12,12 @@ import {
   type OperationRequest,
   type OperationSuccess,
 } from './operations.js';
+import {
+  suggestDestinationRequestSchema,
+  suggestDestinationResultSchema,
+  type SuggestDestinationRequest,
+  type SuggestDestinationResult,
+} from './suggestions.js';
 import { EXTENSION_PROTOCOL_VERSION } from './version.js';
 
 export type EnvelopeParseSuccess<T> = {
@@ -109,6 +115,28 @@ export function parseHandshakeResult(
   return parseWithSchema(
     value,
     handshakeResultSchema,
+    EXTENSION_RESOURCE_LIMITS.maxResponseEnvelopeBytes,
+  );
+}
+
+/** Validates a credential-free destination suggestion from a website. */
+export function parseSuggestDestinationRequest(
+  value: JsonValue,
+): EnvelopeParseResult<SuggestDestinationRequest> {
+  return parseWithSchema(
+    value,
+    suggestDestinationRequestSchema,
+    EXTENSION_RESOURCE_LIMITS.maxRequestEnvelopeBytes,
+  );
+}
+
+/** Validates the extension's answer to a destination suggestion. */
+export function parseSuggestDestinationResult(
+  value: JsonValue,
+): EnvelopeParseResult<SuggestDestinationResult> {
+  return parseWithSchema(
+    value,
+    suggestDestinationResultSchema,
     EXTENSION_RESOURCE_LIMITS.maxResponseEnvelopeBytes,
   );
 }

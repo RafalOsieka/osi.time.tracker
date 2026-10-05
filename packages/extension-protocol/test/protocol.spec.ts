@@ -10,6 +10,8 @@ import {
   parseHandshakeRequest,
   parseMatchedOperationResult,
   parseOperationRequest,
+  parseSuggestDestinationRequest,
+  parseSuggestDestinationResult,
   protocolMatchesRemoteTrackerAdapter,
   reconstructAdapterError,
   reconstructProtocolError,
@@ -416,5 +418,52 @@ describe('extension protocol', () => {
     }
     expect(reconstructed.kind).toBe('unknown-create');
     expect(reconstructed.messageKey).toBe(EXTENSION_ERROR_MESSAGE_KEYS.unknownCreate);
+  });
+});
+
+describe('destination suggestions', () => {
+  const suggestion = {
+    type: 'suggest-destination',
+    requestId: 'sug-1',
+    provider: 'redmine',
+    baseUrl: 'https://rm.example.com/team',
+  };
+
+  it('accepts a credential-free suggestion', () => {
+    expect(parseSuggestDestinationRequest(suggestion)).toEqual({ success: true, data: suggestion });
+  });
+
+  it.each([
+    ['a forged website', { websiteOrigin: 'https://evil.example.com' }],
+    ['a secret', { secret: 'api-key' }],
+  ])('rejects a suggestion carrying %s', (_name, extra) => {
+    expect(parseSuggestDestinationRequest({ ...suggestion, ...extra })).toEqual({
+      success: false,
+      error: { kind: 'malformed', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.malformed },
+    });
+  });
+
+  it('parses queued and failed answers', () => {
+    const queued = {
+      type: 'suggest-destination-result',
+      requestId: 'sug-1',
+      ok: true,
+      status: 'queued',
+    };
+    expect(parseSuggestDestinationResult(queued)).toEqual({ success: true, data: queued });
+    const rejected = {
+      type: 'suggest-destination-result',
+      requestId: 'sug-1',
+      ok: false,
+      error: { kind: 'limit', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.limit },
+    };
+    expect(parseSuggestDestinationResult(rejected)).toEqual({ success: true, data: rejected });
+  });
+
+  it('reports a v2 handshake as incompatible now that suggestions need v3', () => {
+    expect(parseHandshakeRequest({ type: 'handshake', protocolVersion: 2 })).toEqual({
+      success: false,
+      error: { kind: 'incompatible', messageKey: EXTENSION_ERROR_MESSAGE_KEYS.incompatible },
+    });
   });
 });

@@ -11,32 +11,35 @@ import {
   canonicalizeWebsiteOrigin,
   isHttpCredentialRisk,
 } from '../security/canonicalize.js';
+import type { DestinationSuggestion, SuggestionService } from '../suggestions/suggestions.js';
 
-export interface ContentScriptPort {
-  reconcile: (origins: readonly string[]) => Promise<void>;
+export interface ApprovalsEditorOptions {
+  /** Re-registers the website bridge for the approved origins that have browser access. */
+  reconcile?: (origins: readonly string[]) => Promise<void>;
+  /** Announces a completed change (for example as a toast); failures stay in `errorKey`. */
+  onOutcome?: (messageKey: string) => void;
+  /** Pending tracker suggestions to list, approve and dismiss next to the approvals. */
+  suggestions?: SuggestionService;
 }
 
-const noopScripts: ContentScriptPort = {
-  reconcile: async () => {},
-};
-
-export function useApprovalsEditor(
-  service: ApprovalService,
-  scripts: ContentScriptPort = noopScripts,
-) {
+/**
+ * Approval state and actions shared by the popup and the setup page. Successes are reported once
+ * through `onOutcome`; errors that need the user stay in `errorKey` until resolved.
+ */
+export function useApprovalsEditor(service: ApprovalService, options: ApprovalsEditorOptions = {}) {
   const websites = shallowRef<WebsiteApproval[]>([]);
   const destinations = shallowRef<DestinationApproval[]>([]);
   const websiteOrigin = shallowRef('');
   const destinationWebsite = shallowRef('');
   const destinationProvider = shallowRef<TrackerSystemType>('openproject');
   const destinationUrl = shallowRef('');
-  const statusKey = shallowRef('app.statusReady');
   const errorKey = shallowRef<string | null>(null);
   const websiteErrorKey = shallowRef<string | null>(null);
   const destinationErrorKey = shallowRef<string | null>(null);
   const missingOrigins = shallowRef<string[]>([]);
   const busy = shallowRef(false);
   const loaded = shallowRef(false);
+  const suggestions = shallowRef<DestinationSuggestion[]>([]);
   let refreshVersion = 0;
 
   watch(
@@ -58,8 +61,12 @@ export function useApprovalsEditor(
     const unsubscribe = service.subscribe(() => {
       void refresh();
     });
+    const unsubscribeSuggestions = options.suggestions?.subscribe((next) => {
+      suggestions.value = next;
+    });
     onScopeDispose(() => {
       unsubscribe();
+      unsubscribeSuggestions?.();
       refreshVersion++;
     });
   }
@@ -75,7 +82,10 @@ export function useApprovalsEditor(
   async function refresh(): Promise<void> {
     const version = ++refreshVersion;
     try {
-      const state = await service.list();
+      const [state, pending] = await Promise.all([
+        service.list(),
+        options.suggestions?.list() ?? Promise.resolve([]),
+      ]);
       const origins = [
         ...new Set([
           ...state.websites.map((item) => item.origin),
@@ -84,9 +94,7 @@ export function useApprovalsEditor(
       ];
       const granted = await Promise.all(origins.map((origin) => service.hasHostPermission(origin)));
       if (version !== refreshVersion) return;
-      const changed =
-        JSON.stringify([websites.value, destinations.value]) !==
-        JSON.stringify([state.websites, state.destinations]);
+      suggestions.value = pending;
       websites.value = state.websites;
       destinations.value = state.destinations;
       missingOrigins.value = origins.filter((_, index) => !granted[index]);
@@ -95,9 +103,8 @@ export function useApprovalsEditor(
       if (!state.websites.some((item) => item.origin === destinationWebsite.value)) {
         destinationWebsite.value = state.websites[0]?.origin ?? '';
       }
-      if (changed && !busy.value) statusKey.value = 'app.statusReady';
       try {
-        await scripts.reconcile(
+        await options.reconcile?.(
           state.websites
             .filter((item) => !missingOrigins.value.includes(item.origin))
             .map((item) => item.origin),
@@ -118,7 +125,6 @@ export function useApprovalsEditor(
   async function addWebsite(): Promise<void> {
     if (busy.value) return;
     errorKey.value = null;
-    statusKey.value = 'app.statusReady';
     try {
       canonicalizeWebsiteOrigin(websiteOrigin.value);
     } catch {
@@ -138,7 +144,6 @@ export function useApprovalsEditor(
   async function addDestination(): Promise<void> {
     if (busy.value) return;
     errorKey.value = null;
-    statusKey.value = 'app.statusReady';
     try {
       canonicalizeDestination(destinationUrl.value);
     } catch {
@@ -179,6 +184,17 @@ export function useApprovalsEditor(
     }, 'approvals.saved');
   }
 
+  /** Approves a suggested tracker; runs the permission prompt, so call it from a click. */
+  async function approveSuggestion(id: string): Promise<void> {
+    const queue = options.suggestions;
+    if (queue) await runChange(() => queue.approve(id), 'approvals.saved');
+  }
+
+  async function dismissSuggestion(id: string): Promise<void> {
+    const queue = options.suggestions;
+    if (queue) await runChange(() => queue.dismiss(id), 'approvals.suggestionDismissed');
+  }
+
   async function retry(): Promise<void> {
     await runChange(() => service.reconcile(), 'approvals.repaired');
   }
@@ -187,10 +203,9 @@ export function useApprovalsEditor(
     if (busy.value) return;
     busy.value = true;
     errorKey.value = null;
-    statusKey.value = 'approvals.working';
     try {
       await action();
-      statusKey.value = successKey;
+      options.onOutcome?.(successKey);
     } catch (error) {
       errorKey.value =
         error instanceof CanonicalizationError
@@ -211,7 +226,6 @@ export function useApprovalsEditor(
     destinationWebsite,
     destinationProvider,
     destinationUrl,
-    statusKey: readonly(statusKey),
     errorKey: readonly(errorKey),
     websiteErrorKey: readonly(websiteErrorKey),
     destinationErrorKey: readonly(destinationErrorKey),
@@ -227,5 +241,8 @@ export function useApprovalsEditor(
     restoreWebsite,
     restoreDestination,
     retry,
+    suggestions: readonly(suggestions),
+    approveSuggestion,
+    dismissSuggestion,
   };
 }

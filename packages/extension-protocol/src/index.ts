@@ -106,6 +106,8 @@ export {
   parseHandshakeResult,
   parseMatchedOperationResult,
   parseOperationRequest,
+  parseSuggestDestinationRequest,
+  parseSuggestDestinationResult,
 } from './envelopes.js';
 export type {
   EnvelopeParseFailure,
@@ -114,5 +116,15 @@ export type {
   OperationFailure,
   OperationResult,
 } from './envelopes.js';
+export {
+  suggestDestinationRequestSchema,
+  suggestDestinationResultSchema,
+  suggestDestinationStatusSchema,
+} from './suggestions.js';
+export type {
+  SuggestDestinationRequest,
+  SuggestDestinationResult,
+  SuggestDestinationStatus,
+} from './suggestions.js';
 export { protocolMatchesRemoteTrackerAdapter } from './contract-agreement.js';
 export type { ProtocolMatchesRemoteTrackerAdapter } from './contract-agreement.js';

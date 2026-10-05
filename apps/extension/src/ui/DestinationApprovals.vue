@@ -7,11 +7,19 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
 import UForm from '@nuxt/ui/components/Form.vue';
 import UFormField from '@nuxt/ui/components/FormField.vue';
+import UIcon from '@nuxt/ui/components/Icon.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
+import ULink from '@nuxt/ui/components/Link.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import type { DestinationApproval, WebsiteApproval } from '../approvals/approvals.js';
+import type { ActivityMap } from '../activity/activity-store.js';
+import { formatActivity } from '../activity/format-activity.js';
+import {
+  destinationKey,
+  type DestinationApproval,
+  type WebsiteApproval,
+} from '../approvals/approvals.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 
 const {
@@ -24,6 +32,8 @@ const {
   disabled,
   errorKey,
   missingOrigins,
+  activity,
+  now,
 } = defineProps<{
   websites: readonly WebsiteApproval[];
   destinations: readonly DestinationApproval[];
@@ -34,6 +44,9 @@ const {
   disabled: boolean;
   errorKey: string | null;
   missingOrigins: readonly string[];
+  /** Latest operation per destination key, shown on each tracker row. */
+  activity: Readonly<ActivityMap>;
+  now: number;
 }>();
 
 const emit = defineEmits<{
@@ -45,8 +58,13 @@ const emit = defineEmits<{
   restore: [approval: DestinationApproval];
 }>();
 
-const { t } = useExtensionI18n();
+const { t, locale } = useExtensionI18n();
 const empty = computed(() => destinations.length === 0);
+/** With one approved website there is nothing to choose: the tracker is approved for it. */
+const singleWebsite = computed(() => {
+  const [only, ...others] = websites;
+  return only && others.length === 0 ? only.origin : null;
+});
 const canAdd = computed(() => !disabled && websites.some((item) => item.origin === website));
 const formState = computed(() => ({ website, provider, destinationUrl }));
 const websiteItems = computed(() => websites.map((item) => item.origin));
@@ -55,9 +73,6 @@ const providerItems = computed(() => [
   { label: t.value('approvals.redmine'), value: 'redmine' as const },
 ]);
 const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
-
-const destinationKey = (item: DestinationApproval) =>
-  `${item.websiteOrigin}|${item.provider}|${item.origin}${item.basePath}`;
 
 function destinationLabel(item: DestinationApproval): string {
   return `${t.value('approvals.website')}: ${item.websiteOrigin} — ${t.value(`approvals.${item.provider}`)} ${item.origin}${item.basePath}`;
@@ -76,8 +91,16 @@ function destinationLabel(item: DestinationApproval): string {
     </template>
 
     <UForm :state="formState" class="flex flex-col gap-3" @submit="emit('add')">
+      <p
+        v-if="singleWebsite"
+        class="flex items-center gap-1.5 text-[13px] text-muted"
+        data-testid="destination-website-single"
+      >
+        <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
+        {{ t('approvals.forWebsite', { website: singleWebsite }) }}
+      </p>
       <div class="grid grid-cols-2 gap-3">
-        <UFormField :label="t('approvals.website')" name="website">
+        <UFormField v-if="!singleWebsite" :label="t('approvals.website')" name="website">
           <USelect
             id="destination-website"
             class="w-full"
@@ -155,7 +178,15 @@ function destinationLabel(item: DestinationApproval): string {
       >
         <UAvatar :text="providerInitials[item.provider]" class="rounded-md" aria-hidden="true" />
         <span class="flex min-w-0 grow flex-col">
-          <span class="break-all text-highlighted">{{ item.origin }}{{ item.basePath }}</span>
+          <ULink
+            :to="`${item.origin}${item.basePath}`"
+            target="_blank"
+            class="break-all text-highlighted hover:underline focus-visible:underline"
+            :data-testid="`open-destination-${destinationKey(item)}`"
+          >
+            {{ item.origin }}{{ item.basePath }}
+            <span class="sr-only">({{ t('app.opensInNewTab') }})</span>
+          </ULink>
           <span class="text-xs break-all text-muted">
             {{ t(`approvals.${item.provider}`) }}
             <span class="before:me-1 before:content-['·']">
@@ -164,6 +195,10 @@ function destinationLabel(item: DestinationApproval): string {
           </span>
           <span v-if="missingOrigins.includes(item.websiteOrigin)" class="text-xs text-warning">
             {{ t('approvals.websitePermissionMissing') }}
+          </span>
+          <span class="text-xs text-muted" :data-testid="`activity-${destinationKey(item)}`">
+            <span class="sr-only">{{ t('activity.label') }}:</span>
+            {{ formatActivity(activity[destinationKey(item)], now, locale, t) }}
           </span>
         </span>
         <template v-if="missingOrigins.includes(item.origin)">

@@ -84,6 +84,14 @@ const { t } = useI18n();
 const extensionActivityErrorKey = computed(() =>
   Object.values(EXTENSION_ERROR_MESSAGE_KEYS).find((key) => key === activityErrorKey),
 );
+/** The tracker this row exports to, when the extension has not approved it yet (REQ-317). */
+const unapprovedDestination = computed(() =>
+  extensionActivityErrorKey.value === EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved &&
+  pickerConfig
+    ? { provider: pickerConfig.systemType, baseUrl: pickerConfig.baseUrl }
+    : null,
+);
+const suggestion = useExtensionSuggestion(() => emit('retry-activity'));
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 const durationClusterAria = computed(() =>
@@ -212,6 +220,12 @@ function onEditToSend() {
               "
               :data-testid="`remote-sync-activity-retry-${row.taskId}`"
               @click="emit('retry-activity')"
+            />
+            <ExtensionApprovalRequest
+              v-if="unapprovedDestination"
+              :state="suggestion.states.value[suggestionKey(unapprovedDestination)]"
+              :test-id="`remote-sync-activity-request-${row.taskId}`"
+              @request="suggestion.request(unapprovedDestination)"
             />
           </div>
         </template>

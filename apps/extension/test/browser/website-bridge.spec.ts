@@ -13,7 +13,9 @@ import {
 } from './harness/fake-trackers.js';
 import { startWebsiteFixture, type WebsiteFixture } from './harness/website-fixture.js';
 import { requireChromium } from './harness/skip.js';
+import { toasts, waitUntilIdle } from './harness/setup-page.js';
 import { chooseOption, optionNames } from './harness/choose-option.js';
+import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
 import { z } from 'zod';
 
@@ -46,17 +48,15 @@ async function approveSite(
   await page.goto(optionsUrl(harness));
   await page.getByTestId('website-origin').fill(websiteOrigin);
   await page.getByTestId('add-website').click();
-  await page
-    .getByTestId('status')
-    .filter({ hasText: /saved|zapisane/i })
-    .waitFor();
+  await page.getByTestId(`revoke-website-${websiteOrigin}`).waitFor();
+  await waitUntilIdle(page);
   await chooseOption(page, 'destination-provider', optionNames[provider]);
   await page.getByTestId('destination-url').fill(destinationUrl);
+  const trackerRows = page.locator('[data-testid^="revoke-destination-"]');
+  const before = await trackerRows.count();
   await page.getByTestId('add-destination').click();
-  await page
-    .getByTestId('status')
-    .filter({ hasText: /saved|zapisane/i })
-    .waitFor();
+  await trackerRows.nth(before).waitFor();
+  await waitUntilIdle(page);
   await page.close();
 }
 
@@ -113,7 +113,7 @@ describeChromium('website/content/worker bridge', () => {
     const page = await openFixture(harness!, website.url);
     const handshake = await runOnPage(page, {
       type: 'handshake',
-      protocolVersion: 2,
+      protocolVersion: EXTENSION_PROTOCOL_VERSION,
       destination: { provider: 'openproject', baseUrl: openProject.baseUrl },
     });
     expect(handshake).toMatchObject({
@@ -137,6 +137,23 @@ describeChromium('website/content/worker bridge', () => {
       result: [{ remoteIssueId: '42', title: 'Ship it' }],
     });
     expect(openProject.requests.length).toBeGreaterThan(openProjectHitsBefore);
+
+    // The popup shows the search as the OpenProject tracker's latest activity, kept in session
+    // storage only.
+    const popup = await harness!.context.newPage();
+    await popup.goto(`chrome-extension://${harness!.extensionId}/src/popup/index.html`);
+    await expect
+      .poll(async () =>
+        (await popup.getByTestId('popup-tracker-activity').allTextContents()).join('|'),
+      )
+      .toMatch(/Issue search · OK|Wyszukiwanie zadań · OK/);
+    const storageKeys = await popup.evaluate(async () => ({
+      local: Object.keys(await chrome.storage.local.get(null)),
+      session: Object.keys(await chrome.storage.session.get(null)),
+    }));
+    expect(storageKeys.local).not.toContain('osi.activity');
+    expect(storageKeys.session).toContain('osi.activity');
+    await popup.close();
 
     const lookup = await runOnPage(page, {
       type: 'operation',
@@ -331,7 +348,7 @@ describeChromium('website/content/worker bridge', () => {
         expect(result).toMatchObject({ ok: false, error: { kind: 'unknown-create' } });
         expect(tracker.createdLogIds).toEqual([9001]);
         await page.reload();
-        await runOnPage(page, { type: 'handshake', protocolVersion: 2 });
+        await runOnPage(page, { type: 'handshake', protocolVersion: EXTENSION_PROTOCOL_VERSION });
         expect(tracker.createdLogIds).toEqual([9001]);
         expect(await readExtensionStorage(harness!)).not.toContain(SECRET);
       } finally {
@@ -374,6 +391,71 @@ describeChromium('website/content/worker bridge', () => {
     },
   );
 
+  it('queues a tracker suggested by the website until the user approves it in setup', async () => {
+    const tracker = await startFakeRedmine();
+    const page = await openFixture(harness!, website.url);
+    const badgeText = () => harness!.worker.evaluate(() => chrome.action.getBadgeText({}));
+    const accountCheck = (requestId: string) =>
+      runOnPage(page, {
+        type: 'operation',
+        requestId,
+        provider: 'redmine',
+        baseUrl: tracker.baseUrl,
+        secret: SECRET,
+        operation: 'getCurrentAccount',
+        input: null,
+      });
+    try {
+      expect(await accountCheck('before-approval')).toMatchObject({ ok: false });
+
+      const queued = await runOnPage(page, {
+        type: 'suggest-destination',
+        requestId: 'suggest-1',
+        provider: 'redmine',
+        baseUrl: tracker.baseUrl,
+      });
+      expect(queued).toEqual({
+        type: 'suggest-destination-result',
+        requestId: 'suggest-1',
+        ok: true,
+        status: 'queued',
+      });
+      expect(tracker.requests).toHaveLength(0);
+      await expect.poll(badgeText).toBe('1');
+
+      const options = await harness!.context.newPage();
+      await options.goto(optionsUrl(harness!));
+      const approve = options.locator('[data-testid^="approve-suggestion-"]');
+      await approve.click();
+      await expect.poll(() => approve.count()).toBe(0);
+      await expect.poll(badgeText).toBe('');
+      await options.close();
+
+      expect(await accountCheck('after-approval')).toMatchObject({
+        ok: true,
+        operation: 'getCurrentAccount',
+      });
+
+      // A website that is not approved has no bridge, so its suggestion never reaches the queue.
+      const foreignPage = await openFixture(harness!, foreign.url);
+      try {
+        await runOnPage(foreignPage, {
+          type: 'suggest-destination',
+          requestId: 'suggest-foreign',
+          provider: 'redmine',
+          baseUrl: 'https://foreign-tracker.example.com',
+        });
+      } catch {
+        // The fixture times out without a bridge, which is the expected rejection.
+      }
+      await foreignPage.close();
+      expect(await readExtensionStorage(harness!)).not.toContain('foreign-tracker');
+    } finally {
+      await page.close();
+      await tracker.close();
+    }
+  });
+
   it('rejects unapproved origins, destinations, malformed messages, and URL escapes', async () => {
     const hitsBefore = openProject.requests.length;
     const foreignPage = await openFixture(harness!, foreign.url);
@@ -381,7 +463,7 @@ describeChromium('website/content/worker bridge', () => {
     try {
       foreignHandshake = await runOnPage(foreignPage, {
         type: 'handshake',
-        protocolVersion: 2,
+        protocolVersion: EXTENSION_PROTOCOL_VERSION,
       });
     } catch {
       foreignHandshake = 'timeout';
@@ -392,7 +474,7 @@ describeChromium('website/content/worker bridge', () => {
     const page = await openFixture(harness!, website.url);
     const unapprovedDestination = await runOnPage(page, {
       type: 'handshake',
-      protocolVersion: 2,
+      protocolVersion: EXTENSION_PROTOCOL_VERSION,
       destination: { provider: 'openproject', baseUrl: 'https://evil.example' },
     });
     expect(unapprovedDestination).toMatchObject({ destinationApproved: false });
@@ -416,7 +498,8 @@ describeChromium('website/content/worker bridge', () => {
     const options = await harness!.context.newPage();
     await options.goto(optionsUrl(harness!));
     await options.locator(`[data-testid="revoke-website-${website.origin}"]`).click();
-    await expect.poll(() => options.getByTestId('status').textContent()).toMatch(/cofni|revoked/i);
+    await options.getByTestId('revoke-website-confirm-action').click();
+    await expect.poll(() => toasts(options).textContent()).toMatch(/cofni|revoked/i);
     await options.close();
 
     const afterRevoke = await runOnPage(page, {

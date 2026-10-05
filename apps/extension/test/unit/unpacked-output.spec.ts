@@ -85,10 +85,15 @@ describe('unpacked extension output', () => {
         action: z.object({ default_popup: z.string() }),
         options_ui: z.object({ page: z.string() }),
         content_security_policy: z.object({ extension_pages: z.string() }),
+        permissions: z.array(z.string()),
       })
       .parse(JSON.parse(readFileSync(join(distRoot, 'manifest.json'), 'utf8')));
 
     expect(manifest.background.type).toBe('module');
+    // activeTab grants the popup the current tab's address only after a click, with no install
+    // warning; the broader "tabs" permission is not needed.
+    expect(manifest.permissions).toContain('activeTab');
+    expect(manifest.permissions).not.toContain('tabs');
     expect(manifest.content_security_policy.extension_pages).toContain("script-src 'self'");
 
     for (const relativePath of referencedPaths(manifest)) {

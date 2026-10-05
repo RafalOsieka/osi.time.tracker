@@ -29,7 +29,9 @@
       "websiteUnknown": "Nieznany",
       "destinationsLabel": "Miejsca docelowe trackerów",
       "destinationApproved": "Zatwierdzone",
-      "destinationUnapproved": "Niezatwierdzone"
+      "destinationUnapproved": "Niezatwierdzone",
+      "requestApproval": "Poproś o zatwierdzenie w rozszerzeniu",
+      "requestSent": "Prośba wysłana. Otwórz rozszerzenie, aby zatwierdzić ten tracker."
     }
   },
   "nav": {

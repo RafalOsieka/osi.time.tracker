@@ -1,4 +1,5 @@
 import { createServer, type Server } from 'node:http';
+import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
 
 export interface WebsiteFixture {
   origin: string;
@@ -13,7 +14,7 @@ const PAGE = `<!doctype html>
     <p data-testid="fixture-ready">ready</p>
     <script>
       const CHANNEL = 'osi-extension-protocol';
-      const PROTOCOL_VERSION = 2;
+      const PROTOCOL_VERSION = ${EXTENSION_PROTOCOL_VERSION};
       window.__osiLast = null;
       window.__osiRun = async function (message) {
         const channel = new MessageChannel();
@@ -58,6 +59,8 @@ export function startWebsiteFixture(): Promise<WebsiteFixture> {
         url: `${origin}/`,
         close: () =>
           new Promise((closeResolve, closeReject) => {
+            // Tabs still open on the fixture keep idle connections alive and would block close().
+            server.closeAllConnections();
             server.close((error) => {
               if (error) closeReject(error);
               else closeResolve();

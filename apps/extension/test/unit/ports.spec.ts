@@ -7,6 +7,10 @@ import {
   createMemoryHostPermissions,
 } from '../../src/approvals/approvals.js';
 import { resetDispatchState } from '../../src/worker/dispatch.js';
+import {
+  SuggestionService,
+  createMemorySuggestionStore,
+} from '../../src/suggestions/suggestions.js';
 import { WORKER_PORT_NAME, attachWorkerPort, type WorkerPort } from '../../src/worker/ports.js';
 import type { RuntimeSender } from '../../src/worker/sender.js';
 
@@ -203,5 +207,24 @@ describe('worker runtime ports', () => {
     await vi.waitFor(() => expect(fetchImpl.mock.calls[0]?.[1]?.signal?.aborted).toBe(true));
     expect(port.messages).toHaveLength(0);
     expect(fetchImpl).toHaveBeenCalledOnce();
+  });
+
+  it('routes a destination suggestion to the suggestion queue', async () => {
+    const approvals = await approved();
+    const suggestions = new SuggestionService(createMemorySuggestionStore(), approvals);
+    const port = new FakePort(trustedSender());
+    attachWorkerPort(port, { extensionId, approvals, suggestions });
+    port.emit({
+      type: 'suggest-destination',
+      requestId: 'sug-port',
+      provider: 'redmine',
+      baseUrl: 'https://rm.example.com',
+    });
+    await vi.waitFor(() =>
+      expect(port.messages).toEqual([
+        { type: 'suggest-destination-result', requestId: 'sug-port', ok: true, status: 'queued' },
+      ]),
+    );
+    expect(await suggestions.list()).toHaveLength(1);
   });
 });

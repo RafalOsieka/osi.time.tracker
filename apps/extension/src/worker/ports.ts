@@ -1,8 +1,15 @@
 import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { JsonValue } from '@osi/remote-trackers/contracts';
+import type { ActivityStore } from '../activity/activity-store.js';
 import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
+import type { SuggestionService } from '../suggestions/suggestions.js';
 import { WORKER_PORT_NAME } from '../port-name.js';
-import { handleHandshake, handleOperation, type CreateProviderAdapter } from './dispatch.js';
+import {
+  handleHandshake,
+  handleOperation,
+  handleSuggestion,
+  type CreateProviderAdapter,
+} from './dispatch.js';
 import { isTrustedDocumentSender, type RuntimeSender } from './sender.js';
 
 export { WORKER_PORT_NAME };
@@ -22,6 +29,9 @@ export interface WorkerPortOptions {
   fetchImpl?: typeof fetch;
   createAdapter?: CreateProviderAdapter;
   operationTimeoutMs?: number;
+  activity?: ActivityStore;
+  /** Receives destination suggestions; without it they are rejected as unsupported. */
+  suggestions?: SuggestionService;
 }
 
 function cloneJson(value: JsonValue): JsonValue | undefined {
@@ -143,6 +153,19 @@ async function handlePortMessage(
     safePost(port, result);
     return;
   }
+  if (value instanceof Object && !Array.isArray(value) && value.type === 'suggest-destination') {
+    const result = options.suggestions
+      ? await handleSuggestion({
+          sender,
+          expectedExtensionId: options.extensionId,
+          value,
+          approvals: options.approvals,
+          suggestions: options.suggestions,
+        })
+      : { kind: 'malformed' as const, messageKey: EXTENSION_ERROR_MESSAGE_KEYS.malformed };
+    safePost(port, result);
+    return;
+  }
   const result = await handleOperation({
     sender,
     expectedExtensionId: options.extensionId,
@@ -153,6 +176,7 @@ async function handlePortMessage(
     signal,
     createAdapter: options.createAdapter,
     operationTimeoutMs: options.operationTimeoutMs,
+    activity: options.activity,
   });
   if (signal.aborted) return;
   safePost(port, result);

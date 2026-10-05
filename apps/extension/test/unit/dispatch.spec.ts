@@ -2,17 +2,28 @@ import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
-import type {
-  JsonValue,
-  RemoteAccount,
-  RemoteTrackerAdapter,
+import {
+  RemoteAdapterError,
+  type JsonValue,
+  type RemoteAccount,
+  type RemoteTrackerAdapter,
 } from '@osi/remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,
   createMemoryHostPermissions,
 } from '../../src/approvals/approvals.js';
-import { handleHandshake, handleOperation, resetDispatchState } from '../../src/worker/dispatch.js';
+import { createMemoryActivityStore } from '../../src/activity/activity-store.js';
+import {
+  handleHandshake,
+  handleOperation,
+  handleSuggestion,
+  resetDispatchState,
+} from '../../src/worker/dispatch.js';
+import {
+  SuggestionService,
+  createMemorySuggestionStore,
+} from '../../src/suggestions/suggestions.js';
 import { isTrustedDocumentSender, type RuntimeSender } from '../../src/worker/sender.js';
 
 const website = 'http://localhost:3000';
@@ -625,5 +636,164 @@ describe('worker dispatch', () => {
     resetDispatchState();
     await expect(first).resolves.toMatchObject({ ok: false });
     expect(createTimeEntry).toHaveBeenCalledOnce();
+  });
+
+  describe('last activity', () => {
+    const redmineKey = `${website}|redmine|${redmine}`;
+
+    it('records the operation and a success outcome for the destination', async () => {
+      const activity = createMemoryActivityStore();
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals: await approved(),
+        activity,
+        createAdapter: () => probeAdapter(),
+        value: operationValue('createTimeEntry', createInput, 'redmine'),
+      });
+      const records = await activity.load();
+      expect(Object.keys(records)).toEqual([redmineKey]);
+      expect(records[redmineKey]).toMatchObject({ operation: 'createTimeEntry', outcome: 'ok' });
+      expect(JSON.stringify(records)).not.toContain(secret);
+    });
+
+    it('replaces the record with the latest failure kind', async () => {
+      const activity = createMemoryActivityStore();
+      const approvals = await approved();
+      const run = (adapter: RemoteTrackerAdapter) =>
+        handleOperation({
+          sender: trustedSender(),
+          expectedExtensionId: extensionId,
+          approvals,
+          activity,
+          createAdapter: () => adapter,
+          value: operationValue('getCurrentAccount', null, 'redmine'),
+        });
+      await run(probeAdapter());
+      await run(
+        probeAdapter({
+          getCurrentAccount: async () => {
+            throw new RemoteAdapterError('error.remoteAuth', 401);
+          },
+        }),
+      );
+      expect((await activity.load())[redmineKey]).toMatchObject({
+        operation: 'getCurrentAccount',
+        outcome: 'adapter',
+      });
+    });
+
+    it('records a timed-out request as a timeout', async () => {
+      const activity = createMemoryActivityStore();
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals: await approved(),
+        activity,
+        operationTimeoutMs: 20,
+        fetchImpl: (_input, init) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(init.signal?.reason));
+          }),
+        value: operationValue('getCurrentAccount', null, 'redmine'),
+      });
+      expect((await activity.load())[redmineKey]).toMatchObject({ outcome: 'timeout' });
+    });
+
+    it('records nothing for requests rejected before a destination is authorized', async () => {
+      const activity = createMemoryActivityStore();
+      const approvals = await approved();
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals,
+        activity,
+        value: {
+          ...operationValue('getCurrentAccount', null),
+          baseUrl: 'https://other.example.com',
+        },
+      });
+      await handleOperation({
+        sender: trustedSender(),
+        expectedExtensionId: extensionId,
+        approvals,
+        activity,
+        value: { ...operationValue('getCurrentAccount', null), input: 'not-null' },
+      });
+      expect(await activity.load()).toEqual({});
+    });
+  });
+
+  describe('destination suggestions', () => {
+    const suggestion = (extra: Record<string, JsonValue> = {}) => ({
+      type: 'suggest-destination',
+      requestId: 'sug-1',
+      provider: 'redmine',
+      baseUrl: 'https://new.example.com/redmine',
+      ...extra,
+    });
+
+    async function suggest(value: JsonValue, sender = trustedSender()) {
+      const approvals = await approved();
+      const suggestions = new SuggestionService(createMemorySuggestionStore(), approvals);
+      const result = await handleSuggestion({
+        sender,
+        expectedExtensionId: extensionId,
+        value,
+        approvals,
+        suggestions,
+      });
+      return { result, pending: await suggestions.list() };
+    }
+
+    it('queues a suggestion for the sending website without contacting the tracker', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch');
+      const { result, pending } = await suggest(suggestion());
+      expect(result).toEqual({
+        type: 'suggest-destination-result',
+        requestId: 'sug-1',
+        ok: true,
+        status: 'queued',
+      });
+      expect(pending).toMatchObject([
+        { websiteOrigin: website, origin: 'https://new.example.com' },
+      ]);
+      expect(fetchSpy).not.toHaveBeenCalled();
+      fetchSpy.mockRestore();
+    });
+
+    it('answers alreadyApproved for an approved destination', async () => {
+      const { result, pending } = await suggest(suggestion({ baseUrl: redmine }));
+      expect(result).toMatchObject({ ok: true, status: 'alreadyApproved' });
+      expect(pending).toEqual([]);
+    });
+
+    it('rejects a document whose origin is not approved', async () => {
+      const { result, pending } = await suggest(suggestion(), {
+        ...trustedSender(),
+        origin: 'https://evil.example.com',
+        url: 'https://evil.example.com/',
+      });
+      expect(result).toMatchObject({ ok: false, error: { kind: 'permission' } });
+      expect(pending).toEqual([]);
+    });
+
+    it.each([
+      ['credentials', { baseUrl: 'https://user:pw@new.example.com' }],
+      ['a traversal path', { baseUrl: 'https://new.example.com/a/../b' }],
+      ['an unsupported scheme', { baseUrl: 'ftp://new.example.com' }],
+    ])('rejects a destination with %s as malformed', async (_name, extra) => {
+      const { result, pending } = await suggest(suggestion(extra));
+      expect(result).toMatchObject({ error: { kind: 'malformed' } });
+      expect(pending).toEqual([]);
+    });
+
+    it('rejects a message that names its own website', async () => {
+      const { result, pending } = await suggest(
+        suggestion({ websiteOrigin: 'https://evil.example.com' }),
+      );
+      expect(result).toMatchObject({ kind: 'malformed' });
+      expect(pending).toEqual([]);
+    });
   });
 });
