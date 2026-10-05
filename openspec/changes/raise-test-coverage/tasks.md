@@ -28,14 +28,14 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 3. Frontend: extension readiness tests
 
-- [ ] 3.1 Add `test/nuxt/use-extension-readiness.spec.ts` with a host component, a mocked `useActiveTrackers` and an injected `probe`. Cover:
+- [x] 3.1 Add `test/nuxt/use-extension-readiness.spec.ts` with a host component, a mocked `useActiveTrackers` and an injected `probe`. Cover:
   - only direct-access trackers → `neutral` / `notRequired` with no probe;
   - an extension-required tracker → probe runs and `onProgress` snapshots apply;
   - `destinationApproved` survives a later `null` result;
   - SSR (`isClient: false`) never probes.
 
   Verify with `pnpm test:nuxt`.
-- [ ] 3.2 In the same spec, cover:
+- [x] 3.2 In the same spec, cover:
   - concurrent `recheck()` calls coalesce into one in-flight run plus one queued run;
   - `focus` and a visible `visibilitychange` trigger a recheck, while `hidden` does not;
   - listeners are removed after unmount;
