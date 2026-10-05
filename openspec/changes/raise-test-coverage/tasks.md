@@ -9,7 +9,7 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 2. Frontend: monthly timesheet tests
 
-- [ ] 2.1 Add `test/unit/monthly-timesheet.spec.ts` for `buildTimesheetRows`:
+- [x] 2.1 Add `test/unit/monthly-timesheet.spec.ts` for `buildTimesheetRows`:
   - dates are the union of local and remote days, sorted;
   - a failed tracker marks its cells `failed` while others still count;
   - the totals row sums app/direct per tracker;
@@ -17,10 +17,10 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
   - an empty month returns no rows (no lone totals row).
 
   Verify with `pnpm exec vp test run -t "buildTimesheetRows"` from `apps/web`.
-- [ ] 2.2 Add unit cases for `summarizeRemoteHours`: pending before ready, `ok` with 0 when there are no trackers, `ok` sum, `partial`, `failed`. Add cases for `cellWarning`: direct > 0, remote-only app time, no warning on the totals row. Verify the spec passes.
-- [ ] 2.3 Extend `test/nuxt/reports-monthly-page.spec.ts`:
+- [x] 2.2 Add unit cases for `summarizeRemoteHours`: pending before ready, `ok` with 0 when there are no trackers, `ok` sum, `partial`, `failed`. Add cases for `cellWarning`: direct > 0, remote-only app time, no warning on the totals row. Verify the spec passes.
+- [x] 2.3 Extend `test/nuxt/reports-monthly-page.spec.ts`:
   - a tracker without a secret shows the fetch-failed cell and the `failed` remote summary;
-  - an adapter rejection is mapped through the remote error mapper;
+  - an adapter rejection fails only that tracker while the others stay loaded (the mapped error key is not rendered, so the observable effect is tested);
   - prev/next push the adjacent `month` query;
   - a default month from the response is written to the URL with `replace`.
 
