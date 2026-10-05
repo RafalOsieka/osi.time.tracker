@@ -4,8 +4,8 @@ Each numbered group is one commit, and its tests and `en`/`pl` catalog changes l
 
 ## 1. Revoke confirmation (REQ-413)
 
-- [ ] 1.1 Frontend (extension): `WebsiteApprovals.vue` asks for confirmation in a `UModal` when the website has approved trackers. The modal names the website and the tracker count. Cancel and Escape return focus to the revoke button. A website without trackers is revoked directly. Verify with unit tests in `approval-panels.spec.ts` (confirm, cancel, no-tracker path).
-- [ ] 1.2 E2E (extension): extend `options-ui.spec.ts` to revoke a website with a tracker from the keyboard. Cancel first and assert both approvals remain, then confirm and assert both are gone.
+- [x] 1.1 Frontend (extension): `WebsiteApprovals.vue` asks for confirmation in a `UModal` when the website has approved trackers. The modal names the website and the tracker count. Cancel and Escape return focus to the revoke button. A website without trackers is revoked directly. Verify with unit tests in `approval-panels.spec.ts` (confirm, cancel, no-tracker path).
+- [x] 1.2 E2E (extension): extend `options-ui.spec.ts` to revoke a website with a tracker from the keyboard. Cancel first and assert both approvals remain, then confirm and assert both are gone.
 
 ## 2. Onboarding checklist and transient outcomes (REQ-411, REQ-412)
 

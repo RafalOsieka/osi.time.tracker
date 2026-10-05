@@ -416,6 +416,7 @@ describeChromium('website/content/worker bridge', () => {
     const options = await harness!.context.newPage();
     await options.goto(optionsUrl(harness!));
     await options.locator(`[data-testid="revoke-website-${website.origin}"]`).click();
+    await options.getByTestId('revoke-website-confirm-action').click();
     await expect.poll(() => options.getByTestId('status').textContent()).toMatch(/cofni|revoked/i);
     await options.close();
 

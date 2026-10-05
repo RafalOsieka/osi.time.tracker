@@ -171,6 +171,7 @@ onMounted(() => {
     />
     <WebsiteApprovals
       :websites="websites"
+      :destinations="destinations"
       :origin="websiteOrigin"
       :disabled="disabled"
       :error-key="websiteErrorKey"

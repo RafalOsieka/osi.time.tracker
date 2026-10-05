@@ -31,7 +31,16 @@ export function detectLocale(): ExtensionLocale {
   return language.toLowerCase().startsWith('pl') ? 'pl' : 'en';
 }
 
-/** Resolves a catalog key; English is the fallback for missing Polish entries. */
-export function translate(locale: ExtensionLocale, key: string): string {
-  return readMessage(catalogs[locale], key) ?? readMessage(catalogs.en, key) ?? key;
+export type MessageParams = Readonly<Record<string, string | number>>;
+
+/**
+ * Resolves a catalog key and fills `{name}` placeholders from `params`; English is the fallback
+ * for missing Polish entries.
+ */
+export function translate(locale: ExtensionLocale, key: string, params?: MessageParams): string {
+  const message = readMessage(catalogs[locale], key) ?? readMessage(catalogs.en, key) ?? key;
+  if (!params) return message;
+  return message.replace(/\{(\w+)\}/g, (placeholder, name: string) =>
+    name in params ? String(params[name]) : placeholder,
+  );
 }

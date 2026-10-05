@@ -49,6 +49,7 @@ it('renders localized field errors and disabled controls while an action is pend
   useExtensionI18n().setLocale('pl');
   const html = await renderWithUi(WebsiteApprovals, {
     websites: [{ origin: 'https://time.example.com' }],
+    destinations: [],
     origin: 'https://time.example.com/reports',
     disabled: true,
     errorKey: 'approvals.invalidWebsite',

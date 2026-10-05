@@ -38,6 +38,14 @@ async function recordThemeAtParse(page: Page): Promise<void> {
   });
 }
 
+/** Confirms the revoke dialog shown for a website that still has approved trackers. */
+async function confirmRevoke(page: Page): Promise<void> {
+  // Background tabs pause animations, and the dialog leaves the DOM only after its close animation.
+  await page.bringToFront();
+  await page.getByTestId('revoke-website-confirm-action').press('Enter');
+  await expect.poll(() => page.getByRole('dialog').count()).toBe(0);
+}
+
 async function waitUntilIdle(page: Page): Promise<void> {
   await expect
     .poll(() => page.getByTestId('status').textContent(), { timeout: 15_000 })
@@ -158,8 +166,26 @@ describeChromium('extension options UI', () => {
       )
       .toEqual(['OpenProject localhost:3000']);
     await waitUntilIdle(page);
-    await page.locator('[data-testid^="revoke-website-"]').press('Enter');
+    const revokeLocalhost = page.getByTestId('revoke-website-http://localhost:3000');
+    await page.bringToFront();
+    await revokeLocalhost.press('Enter');
+    await expect
+      .poll(() => page.getByRole('dialog').textContent())
+      .toContain('Liczba trackerów: 1');
+    // Escape belongs to the dialog only once its focus trap has taken focus from the trigger.
+    await expect
+      .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null))
+      .toBe(true);
+    await page.keyboard.press('Escape');
+    await expect.poll(() => page.getByRole('dialog').count()).toBe(0);
+    await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
+    await expect
+      .poll(() => revokeLocalhost.evaluate((element) => element === document.activeElement))
+      .toBe(true);
+    await revokeLocalhost.press('Enter');
+    await confirmRevoke(page);
     await expect.poll(() => page.getByTestId('status').textContent()).toMatch(/cofni/i);
+    await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
     await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
     await expect
       .poll(() => popup.getByTestId('saved-websites').textContent())
@@ -243,11 +269,13 @@ describeChromium('extension options UI', () => {
     }
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3100').click();
+    await confirmRevoke(other);
     await expect
       .poll(() => page.getByTestId('destination-website').textContent())
       .toContain('http://localhost:3101');
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3101').click();
+    await confirmRevoke(other);
     await waitUntilIdle(other);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
   });

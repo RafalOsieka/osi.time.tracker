@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, shallowRef } from 'vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
 import UForm from '@nuxt/ui/components/Form.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import UInput from '@nuxt/ui/components/Input.vue';
+import UModal from '@nuxt/ui/components/Modal.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
-import type { WebsiteApproval } from '../approvals/approvals.js';
+import type { DestinationApproval, WebsiteApproval } from '../approvals/approvals.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 
-const { websites, origin, disabled, errorKey, missingOrigins } = defineProps<{
+const { websites, destinations, origin, disabled, errorKey, missingOrigins } = defineProps<{
   websites: readonly WebsiteApproval[];
+  destinations: readonly DestinationApproval[];
   origin: string;
   disabled: boolean;
   errorKey: string | null;
@@ -28,6 +30,32 @@ const emit = defineEmits<{
 const { t } = useExtensionI18n();
 const empty = computed(() => websites.length === 0);
 const formState = computed(() => ({ origin }));
+
+/**
+ * Website whose revoke waits for confirmation because trackers would be revoked with it. It
+ * outlives `confirmOpen` so the dialog keeps its text while the close animation runs.
+ */
+const pendingRevoke = shallowRef<string | null>(null);
+const pendingTrackerCount = computed(() => trackerCount(pendingRevoke.value));
+const confirmOpen = shallowRef(false);
+
+function trackerCount(website: string | null): number {
+  return destinations.filter((item) => item.websiteOrigin === website).length;
+}
+
+function requestRevoke(website: string): void {
+  if (trackerCount(website) === 0) {
+    emit('revoke', website);
+    return;
+  }
+  pendingRevoke.value = website;
+  confirmOpen.value = true;
+}
+
+function confirmRevoke(): void {
+  confirmOpen.value = false;
+  if (pendingRevoke.value) emit('revoke', pendingRevoke.value);
+}
 </script>
 
 <template>
@@ -105,7 +133,7 @@ const formState = computed(() => ({ origin }));
             :disabled="disabled"
             :data-testid="`revoke-website-${website.origin}`"
             :aria-label="`${t('approvals.revokeWebsite')} ${website.origin}`"
-            @click="emit('revoke', website.origin)"
+            @click="requestRevoke(website.origin)"
           />
         </UTooltip>
       </li>
@@ -118,4 +146,30 @@ const formState = computed(() => ({ origin }));
       </p>
     </template>
   </UCard>
+
+  <UModal
+    v-model:open="confirmOpen"
+    :title="t('approvals.revokeWebsiteConfirmTitle', { website: pendingRevoke ?? '' })"
+    :description="t('approvals.revokeWebsiteConfirmBody', { count: pendingTrackerCount })"
+    :close="false"
+  >
+    <template #footer>
+      <div class="flex w-full justify-end gap-2" data-testid="revoke-website-confirm">
+        <UButton
+          color="neutral"
+          variant="outline"
+          data-testid="revoke-website-cancel"
+          :label="t('approvals.cancel')"
+          @click="confirmOpen = false"
+        />
+        <UButton
+          color="error"
+          icon="i-lucide-trash-2"
+          data-testid="revoke-website-confirm-action"
+          :label="t('approvals.revokeWebsite')"
+          @click="confirmRevoke"
+        />
+      </div>
+    </template>
+  </UModal>
 </template>

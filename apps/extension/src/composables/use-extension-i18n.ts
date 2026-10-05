@@ -1,5 +1,10 @@
 import { computed, getCurrentScope, onScopeDispose, readonly, shallowRef } from 'vue';
-import { detectLocale, translate, type ExtensionLocale } from '../i18n/translate.js';
+import {
+  detectLocale,
+  translate,
+  type ExtensionLocale,
+  type MessageParams,
+} from '../i18n/translate.js';
 
 const LOCALE_KEY = 'osi-extension-locale';
 const localeErrorKey = shallowRef<string | null>(null);
@@ -17,7 +22,7 @@ function readLocale(): ExtensionLocale {
 const locale = shallowRef<ExtensionLocale>(readLocale());
 const t = computed(() => {
   const current = locale.value;
-  return (key: string) => translate(current, key);
+  return (key: string, params?: MessageParams) => translate(current, key, params);
 });
 
 function setLocale(next: ExtensionLocale): void {
