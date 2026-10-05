@@ -45,20 +45,20 @@ All groups ship in one PR (`test: …`), one commit per group; group 7 runs befo
 
 ## 4. Frontend: tracker form, delete flows and login tests
 
-- [ ] 4.1 Extend `test/nuxt/tracker-form-dialog.spec.ts`:
+- [x] 4.1 Extend `test/nuxt/tracker-form-dialog.spec.ts`:
   - create POSTs the payload, stores the secret only when one is entered, calls `putTracker`, emits `saved` and closes;
   - edit PATCHes `/api/trackers/:id`.
 
   Verify with `pnpm test:nuxt`.
-- [ ] 4.2 In the same spec, cover server errors: `error.trackerName*`, `error.trackerBaseUrl*` and `error.trackerSystemType*` keys render under the matching field, and any other key shows an error toast instead. Verify the spec passes.
-- [ ] 4.3 Extend `test/nuxt/trackers.spec.ts` with delete:
+- [x] 4.2 In the same spec, cover server errors: `error.trackerName*`, `error.trackerBaseUrl*` and `error.trackerSystemType*` keys render under the matching field, and any other key shows an error toast instead. Verify the spec passes.
+- [x] 4.3 Extend `test/nuxt/trackers.spec.ts` with delete:
   - confirm → DELETE, `clearSecret` and `dropTracker` for that id, list refetch, success toast;
   - cancel → no request and the secret is kept;
   - failure → error toast and the secret is kept.
 
   Verify with `pnpm test:nuxt`.
-- [ ] 4.4 Extend `test/nuxt/projects.spec.ts` with delete: confirm → DELETE plus refetch, cancel → no request, failure → error toast. Verify the spec passes.
-- [ ] 4.5 Extend `test/nuxt/login-validation.spec.ts`:
+- [x] 4.4 Extend `test/nuxt/projects.spec.ts` with delete: confirm → DELETE plus refetch, cancel → no request, failure → error toast. Verify the spec passes.
+- [x] 4.5 Extend `test/nuxt/login-validation.spec.ts`:
   - success navigates to a same-origin `redirect`;
   - an external `redirect` falls back to the sanitized default;
   - a rejected login shows the translated error with `aria-invalid` and `aria-describedby`;

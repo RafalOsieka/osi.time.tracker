@@ -13,6 +13,9 @@ const toastSuccessMock = vi.hoisted(() => vi.fn());
 const toastErrorMock = vi.hoisted(() => vi.fn());
 const getSecretMock = vi.hoisted(() => vi.fn(() => ''));
 const createRemoteAdapterMock = vi.hoisted(() => vi.fn());
+const clearSecretMock = vi.hoisted(() => vi.fn());
+const dropTrackerMock = vi.hoisted(() => vi.fn());
+const refreshTrackersMock = vi.hoisted(() => vi.fn());
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- remote client factory is not injectable here
 vi.mock('../../app/utils/remote/create-remote-adapter', () => ({
@@ -70,7 +73,7 @@ mockNuxtImport('useAsyncData', () => {
         })
         .catch(() => {});
     }
-    return { data, pending, refresh: vi.fn() };
+    return { data, pending, refresh: refreshTrackersMock };
   };
 });
 
@@ -85,7 +88,11 @@ mockNuxtImport('useProfile', () => () => ({
 mockNuxtImport('useTrackerSecret', () => () => ({
   get: getSecretMock,
   set: vi.fn(),
-  clear: vi.fn(),
+  clear: clearSecretMock,
+}));
+mockNuxtImport('useActiveTrackers', () => () => ({
+  dropTracker: dropTrackerMock,
+  putTracker: vi.fn(),
 }));
 
 // oxlint-disable-next-line anti-slop/no-module-mocking -- Nuxt i18n is not injectable in this nuxt test
@@ -435,5 +442,55 @@ describe('trackers page import action', () => {
       expect.objectContaining({ id: trackerB.id, systemType: 'redmine' }),
       'secret',
     );
+  });
+
+  describe('delete', () => {
+    async function deleteTracker() {
+      const wrapper = await mountSuspended(TrackersPage, { global: { stubs: stubsWithActions } });
+      await flushPromises();
+      await wrapper.find(`[data-testid="delete-tracker-${tracker.id}"]`).trigger('click');
+      await flushPromises();
+      return wrapper;
+    }
+
+    it('deletes after confirmation and drops the browser-held secret', async () => {
+      confirmMock.mockResolvedValue(true);
+      await deleteTracker();
+
+      expect(csrfFetchMock).toHaveBeenCalledWith(`/api/trackers/${tracker.id}`, {
+        method: 'DELETE',
+      });
+      expect(clearSecretMock).toHaveBeenCalledWith(tracker.id);
+      expect(dropTrackerMock).toHaveBeenCalledWith(tracker.id);
+      expect(refreshTrackersMock).toHaveBeenCalled();
+      expect(toastSuccessMock).toHaveBeenCalled();
+    });
+
+    it('does nothing and keeps the secret when the confirmation is declined', async () => {
+      confirmMock.mockResolvedValue(false);
+      await deleteTracker();
+
+      expect(csrfFetchMock).not.toHaveBeenCalledWith(
+        `/api/trackers/${tracker.id}`,
+        expect.anything(),
+      );
+      expect(clearSecretMock).not.toHaveBeenCalled();
+      expect(dropTrackerMock).not.toHaveBeenCalled();
+    });
+
+    it('keeps the secret and shows the error when the server refuses', async () => {
+      confirmMock.mockResolvedValue(true);
+      csrfFetchMock.mockRejectedValue(
+        Object.assign(new Error('not found'), {
+          data: { data: { messageKey: 'error.trackerNotFound' } },
+        }),
+      );
+      await deleteTracker();
+
+      expect(toastErrorMock).toHaveBeenCalledWith('error.trackerNotFound');
+      expect(clearSecretMock).not.toHaveBeenCalled();
+      expect(dropTrackerMock).not.toHaveBeenCalled();
+      expect(toastSuccessMock).not.toHaveBeenCalled();
+    });
   });
 });
