@@ -61,6 +61,15 @@ describeProjects('projects API integration', async () => {
     });
     expect(await foreignFiltered.json()).toEqual([]);
 
+    for (const localFilter of ['local', 'null']) {
+      const localOnly = await fetch(url(`/api/projects?trackerId=${localFilter}`), {
+        headers: { cookie: jar.header() },
+      });
+      expect((await localOnly.json()).map((r: { name: string }) => r.name)).toEqual([
+        'Local Project',
+      ]);
+    }
+
     const deleteRes = await fetch(url(`/api/projects/${rows[0].id}`), {
       method: 'DELETE',
       headers: { 'csrf-token': token, cookie: jar.header() },

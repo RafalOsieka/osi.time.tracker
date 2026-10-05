@@ -1,7 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
+import { defineComponent, h, type PropType, type VNode } from 'vue';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ProjectsPage from '../../app/pages/projects.vue';
+import RowActions from '../../app/components/RowActions.vue';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const fetchMock = vi.hoisted(() => vi.fn());
@@ -445,5 +447,105 @@ describe('projects page', () => {
 
     await wrapper.find('[data-testid="new-project-button"]').trigger('click');
     expect(wrapper.find('label[for="project-tracker"]').exists()).toBe(true);
+  });
+});
+
+describe('projects page delete', () => {
+  // Drives the page's `actions` column cell (a render function of `{ row: { original } }`)
+  // with the real RowActions, so the delete button reaches the page's handler.
+  type ActionsCellRenderer = (context: { row: { original: Project } }) => VNode;
+  const TableWithActionsStub = defineComponent({
+    props: {
+      // SAFETY: Vue's `PropType` cast is the documented way to type a plain-object
+      // prop; the runtime `type: Array` check is unaffected by the cast.
+      data: { type: Array as PropType<Project[]>, default: () => [] },
+      // SAFETY: same `PropType` cast pattern as `data` above.
+      columns: {
+        type: Array as PropType<{ id?: string; cell?: ActionsCellRenderer }[]>,
+        default: () => [],
+      },
+      loading: { type: Boolean, default: false },
+    },
+    setup(props) {
+      return () =>
+        h(
+          'div',
+          props.data.map((row) => {
+            const actions = props.columns.find((column) => column.id === 'actions');
+            return h('div', { key: row.id }, [actions?.cell?.({ row: { original: row } })]);
+          }),
+        );
+    },
+  });
+  const stubs = {
+    ...commonStubs,
+    UTable: TableWithActionsStub,
+    UTooltip: { template: '<span><slot /></span>' },
+    RowActions,
+  };
+  const project: Project = {
+    id: 'project-1',
+    name: 'Alpha',
+    trackerId: null,
+    trackerName: null,
+    remoteProjectId: null,
+    remoteProjectTitle: null,
+    recentTrackedSeconds: 0,
+    createdAt: new Date().toISOString(),
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTrackers = [];
+    mockProjects = [project];
+    projectsListPending = false;
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(String(url).includes('trackers') ? mockTrackers : mockProjects),
+    );
+    csrfFetchMock.mockResolvedValue({});
+  });
+
+  async function deleteProject() {
+    const wrapper = await mountSuspended(ProjectsPage, { global: { stubs } });
+    await flushPromises();
+    await wrapper.find(`[data-testid="delete-project-${project.id}"]`).trigger('click');
+    await flushPromises();
+    return wrapper;
+  }
+
+  it('deletes after confirmation and reloads the list', async () => {
+    confirmMock.mockResolvedValue(true);
+    await deleteProject();
+
+    expect(csrfFetchMock).toHaveBeenCalledWith(`/api/projects/${project.id}`, {
+      method: 'DELETE',
+    });
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects');
+    expect(toastSuccessMock).toHaveBeenCalled();
+  });
+
+  it('sends nothing when the confirmation is declined', async () => {
+    confirmMock.mockResolvedValue(false);
+    await deleteProject();
+
+    expect(csrfFetchMock).not.toHaveBeenCalledWith(
+      `/api/projects/${project.id}`,
+      expect.anything(),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('shows the server error and keeps the list when the delete fails', async () => {
+    confirmMock.mockResolvedValue(true);
+    csrfFetchMock.mockRejectedValue(
+      Object.assign(new Error('not found'), {
+        data: { data: { messageKey: 'error.projectNotFound' } },
+      }),
+    );
+    await deleteProject();
+
+    expect(toastErrorMock).toHaveBeenCalledWith('error.projectNotFound');
+    expect(toastSuccessMock).not.toHaveBeenCalled();
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });

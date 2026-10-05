@@ -64,6 +64,7 @@ pnpm test:e2e        # db + api + ui
 pnpm test:e2e:dev    # api/ui against the Nuxt dev server (faster loop)
 pnpm test:extension  # extension unit + unpacked browser tests (needs Chromium)
 pnpm test:coverage   # Vitest v8 coverage for web unit + nuxt
+pnpm test:coverage:e2e-db  # Vitest v8 coverage for the db e2e project (needs Docker)
 pnpm package:check   # tracker/protocol packages without Nuxt
 ```
 

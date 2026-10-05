@@ -18,6 +18,7 @@
     "test:e2e:dev": "cross-env NUXT_TEST_DEV=1 vp test --project e2e-api --project e2e-ui",
     "test:nuxt": "vp test --project nuxt",
     "test:coverage": "vp test run --coverage --project unit --project nuxt",
+    "test:coverage:e2e-db": "vp test run --coverage --project e2e-db --coverage.reportsDirectory=coverage-e2e-db",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {

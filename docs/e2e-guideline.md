@@ -56,10 +56,13 @@ The api/ui global setup (`harness/global-setup.ts`) decides how to get a server:
 
 ## Coverage
 
-- `pnpm test:coverage` measures only the in-process unit + nuxt projects with `@vitest/coverage-v8`.
+Codecov combines three flags, merged per line: `unit-nuxt`, `e2e-api` and `e2e-db`.
+
+- `pnpm test:coverage` measures the in-process unit + nuxt projects with `@vitest/coverage-v8` (flag `unit-nuxt`). It stays Docker-free.
+- `pnpm test:coverage:e2e-db` runs the db project with the same Vitest coverage config and writes `apps/web/coverage-e2e-db/` (flag `e2e-db`). The db specs call server utilities in the test process, so no conversion step is needed.
 - API e2e runs handlers in a child Nitro process, so Vitest cannot see those hits. In CI, Node writes raw V8 data (`NODE_V8_COVERAGE`) and `harness/report-e2e-coverage.ts` runs `c8 report` to turn it into lcov for the Codecov flag `e2e-api`. `c8` is a converter here, not a test runner.
 - Do not pass the Vitest include/exclude globs to `c8 report`: it filters compiled `.output` chunks before sourcemap remapping, so `--include app/**` or `--exclude .output/**` drops the whole Nitro dump. The converter refuses an lcov without first-party `app/`, `server/` or `shared/` paths.
-- UI e2e (Playwright) coverage is not collected.
+- UI e2e (Playwright) coverage is not collected. Journeys execute a lot of code while asserting little, so their hits would hide what focused tests miss; branches belong in nuxt, unit, db or api specs.
 
 ## Troubleshooting
 
