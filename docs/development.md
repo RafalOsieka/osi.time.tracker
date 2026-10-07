@@ -126,6 +126,7 @@ The merge rules are a spec (`openspec/specs/platform-ci`): every quality gate mu
 - The merge-blocking ruleset on `main` lives in the GitHub repository settings, not in this repository. Its required checks must list `db`, `api` and `ui` separately.
 - Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) covers npm, GitHub Actions and Docker. It skips the Vite+ toolchain (which moves through `vp migrate`, see [`AGENTS.md`](../AGENTS.md#upgrading-dependencies)) and groups `nuxt` with `@nuxt/*`. A PR that bumps the `vite-plus` catalog version without the Docker build image tag, or the reverse, must not be merged.
 - CodeQL runs through GitHub default setup; findings appear in the Security tab.
+- The `specs` job runs `openspec validate --specs --strict` with a pinned OpenSpec (1.14.0 only reports over-long requirements as INFO). It is not yet a required check; adding it to the ruleset changes platform-ci REQ-406 and needs its own OpenSpec change.
 
 ### Coverage
 

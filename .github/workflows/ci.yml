@@ -52,6 +52,22 @@ jobs:
       - name: Run format check
         run: vp run format:check
 
+  specs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          cache: false
+          run-install: false
+
+      # Pinned: 1.14.0 reports over-long requirements only as INFO, so --strict passes there.
+      - name: Validate OpenSpec specs
+        run: vp dlx @fission-ai/openspec@1.14.1 validate --specs --strict
+
   type-check:
     runs-on: ubuntu-latest
     steps:
