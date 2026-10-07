@@ -9,7 +9,7 @@ describe('toAdapterError', () => {
   it('maps 401/403 to the auth-rejected key without leaking status', () => {
     const mapped = toAdapterError(new UpstreamHttpError(401), 'error.remoteIssueSearchFailed');
     expect(mapped).toBeInstanceOf(RemoteAdapterError);
-    expect(mapped.messageKey).toBe('error.remoteServerModeAuthRejected');
+    expect(mapped.messageKey).toBe('error.remoteTrackerAuthRejected');
     expect(mapped.status).toBe(502);
   });
 
@@ -20,7 +20,7 @@ describe('toAdapterError', () => {
 
   it('maps a throw with no HTTP status to connection-failed', () => {
     const mapped = toAdapterError(new Error('ECONNREFUSED'), 'error.other');
-    expect(mapped.messageKey).toBe('error.remoteServerModeConnectionFailed');
+    expect(mapped.messageKey).toBe('error.remoteTrackerConnectionFailed');
   });
 
   it('maps a non-auth HTTP status to the operation key', () => {

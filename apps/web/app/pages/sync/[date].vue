@@ -728,10 +728,6 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           </UBadge>
         </span>
       </UTooltip>
-      <!-- keep legacy day-total hook for existing tests -->
-      <span class="sr-only" data-testid="remote-sync-day-total">
-        {{ t('remoteSync.dayTotal', { duration: formatDuration(dayTotalsSafe.dayTotal) }) }}
-      </span>
       <UTooltip
         :text="t('remoteSync.trackedTooltip')"
         :content="{ side: 'bottom' }"

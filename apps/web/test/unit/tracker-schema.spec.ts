@@ -41,12 +41,6 @@ describe('tracker connection field schemas', () => {
     expect(result.directBrowserAccess).toBe(true);
   });
 
-  it('rejects the obsolete executionMode field', () => {
-    expect(() => createTrackerSchema.parse({ ...valid, executionMode: 'server' })).toThrow(
-      ZodError,
-    );
-  });
-
   it('accepts an explicit false directBrowserAccess', () => {
     const result = createTrackerSchema.parse({ ...valid, directBrowserAccess: false });
     expect(result.directBrowserAccess).toBe(false);
@@ -54,12 +48,6 @@ describe('tracker connection field schemas', () => {
 
   it('rejects a non-boolean directBrowserAccess', () => {
     expect(() => createTrackerSchema.parse({ ...valid, directBrowserAccess: 'true' })).toThrow();
-  });
-
-  it('no longer exposes a transportMode field', () => {
-    const result = createTrackerSchema.parse(valid);
-    expect('transportMode' in result).toBe(false);
-    expect('executionMode' in result).toBe(false);
   });
 
   it('strips a secret field submitted alongside a valid body', () => {

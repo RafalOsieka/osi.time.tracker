@@ -4,7 +4,7 @@
 // into `shared/` are miscomputed by the production build). This is a
 // production-bundler workaround, not a runtime optimization: the plugin
 // performs no work of its own.
-import { applyRoundingRule, roundingSuggestionsFor } from '~~/shared/utils/rounding';
+import { applyRoundingRule } from '~~/shared/utils/rounding';
 import { deriveRemoteSyncRowState } from '~~/shared/utils/remote-sync-row-state';
 import { computeRemoteSyncDayTotals } from '~~/shared/utils/remote-sync-day-totals';
 import { findDuplicateRemoteLog } from '~~/shared/utils/find-duplicate-remote-log';
@@ -24,7 +24,6 @@ import { createTrackerSchema } from '~~/shared/types/tracker';
 
 export default defineNuxtPlugin(() => {
   void applyRoundingRule;
-  void roundingSuggestionsFor;
   void deriveRemoteSyncRowState;
   void computeRemoteSyncDayTotals;
   void findDuplicateRemoteLog;

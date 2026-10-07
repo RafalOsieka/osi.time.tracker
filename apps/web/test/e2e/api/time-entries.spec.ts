@@ -52,6 +52,14 @@ async function listEntries(jar: CookieJar, from: string, to: string): Promise<Re
   );
 }
 
+/** Ids of the user's tasks as listed by `GET /api/tasks`. */
+async function listTaskIds(jar: CookieJar): Promise<string[]> {
+  const res = await fetch(url('/api/tasks?limit=100'), { headers: { cookie: jar.header() } });
+  expect(res.status).toBe(200);
+  const rows: { id: string }[] = await res.json();
+  return rows.map((row) => row.id);
+}
+
 async function bulkAssign(jar: CookieJar, token: string, body: JsonObject): Promise<Response> {
   return fetch(url('/api/time-entries/bulk-assign'), {
     method: 'POST',
@@ -658,6 +666,97 @@ describeTimeEntries('time-entries API integration', async () => {
 
     const delRes = await deleteEntry(jar, token, entry.id);
     expect(delRes.status).toBe(200);
+  });
+
+  // REQ-491: an entry patch that empties its previous task garbage-collects it.
+  it('patch: retitling the only entry of a running timer garbage-collects its previous task', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const running = await (
+      await startEntry(jar, token, { title: 'GC Retitle ' + Date.now() })
+    ).json();
+
+    const res = await patchEntry(jar, token, running.id, { title: 'GC Retitled ' + Date.now() });
+    expect(res.status).toBe(200);
+    const patched = await res.json();
+    expect(patched.taskId).not.toBe(running.taskId);
+
+    const taskIds = await listTaskIds(jar);
+    expect(taskIds).not.toContain(running.taskId);
+    expect(taskIds).toContain(patched.taskId);
+
+    await patchEntry(jar, token, running.id, { stoppedAt: new Date().toISOString() });
+  });
+
+  it('patch: rebinding the only entry via taskId garbage-collects its previous task', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const source = await (
+      await startEntry(jar, token, {
+        title: 'GC Rebind Source ' + Date.now(),
+        startedAt,
+        stoppedAt,
+      })
+    ).json();
+    const target = await (
+      await startEntry(jar, token, {
+        title: 'GC Rebind Target ' + Date.now(),
+        startedAt,
+        stoppedAt,
+      })
+    ).json();
+
+    const res = await patchEntry(jar, token, source.id, { taskId: target.taskId });
+    expect(res.status).toBe(200);
+    expect((await res.json()).taskId).toBe(target.taskId);
+
+    const taskIds = await listTaskIds(jar);
+    expect(taskIds).not.toContain(source.taskId);
+    expect(taskIds).toContain(target.taskId);
+  });
+
+  it('patch: clearing the only entry title garbage-collects its task', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const startedAt = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const stoppedAt = new Date(Date.now() - 3_600_000).toISOString();
+    const entry = await (
+      await startEntry(jar, token, { title: 'GC Clear ' + Date.now(), startedAt, stoppedAt })
+    ).json();
+
+    const res = await patchEntry(jar, token, entry.id, { title: null });
+    expect(res.status).toBe(200);
+    expect((await res.json()).taskId).toBeNull();
+
+    expect(await listTaskIds(jar)).not.toContain(entry.taskId);
+  });
+
+  it('patch: keeps a task that still has entries or that the new title resolves to', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    const title = 'GC Keep ' + Date.now();
+    const first = await (
+      await startEntry(jar, token, {
+        title,
+        startedAt: new Date(Date.now() - 3 * 3_600_000).toISOString(),
+        stoppedAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+      })
+    ).json();
+    const second = await (
+      await startEntry(jar, token, {
+        title,
+        startedAt: new Date(Date.now() - 1_800_000).toISOString(),
+        stoppedAt: new Date(Date.now() - 900_000).toISOString(),
+      })
+    ).json();
+    expect(second.taskId).toBe(first.taskId);
+
+    const moved = await patchEntry(jar, token, first.id, { title: 'GC Keep Other ' + Date.now() });
+    expect(moved.status).toBe(200);
+    expect(await listTaskIds(jar)).toContain(second.taskId);
+
+    const same = await patchEntry(jar, token, second.id, { title });
+    expect(same.status).toBe(200);
+    expect((await same.json()).taskId).toBe(second.taskId);
+    expect(await listTaskIds(jar)).toContain(second.taskId);
   });
 
   it('start bound to an explicit owned taskId binds that task', async () => {

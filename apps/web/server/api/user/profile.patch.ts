@@ -6,7 +6,7 @@ import { readZodBody } from '../../utils/zod-input';
 
 /**
  * Partially updates the authenticated user's display name and/or timezone
- * (workspace-settings REQ-399), then refreshes the session so the sealed
+ * (workspace-settings REQ-493), then refreshes the session so the sealed
  * cookie carries the new profile.
  */
 export default defineEventHandler(async (event): Promise<ProfileDto> => {

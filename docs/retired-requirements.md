@@ -82,3 +82,9 @@ Requirement codes (`REQ-<NNN>`) in `openspec/specs` are never reused. When a req
 | REQ-220 | (removed in #56) nearest-increment rounding              | now REQ-256 (workspace-trackers)                                                                                                 |
 | REQ-221 | (removed in #56) never round a non-zero total to zero    | now REQ-257 (workspace-trackers)                                                                                                 |
 | REQ-222 | (removed in #56) one-tap export-duration alternatives    | removed: Remote Sync offers no rounding alternatives (REQ-363, REQ-489)                                                          |
+| REQ-132 | workspace-tasks: hard-delete lifecycle, merge invariant  | now REQ-491 (workspace-tasks), one garbage-collection rule for every operation                                                   |
+| REQ-245 | workspace-trackers: create a tracker                     | now REQ-492 (workspace-trackers), without the obsolete `executionMode` rejection                                                 |
+| REQ-314 | workspace-trackers: execution modes migrate              | dropped: one-time migration (`0020_direct_browser_access.sql`)                                                                   |
+| REQ-364 | workspace-trackers: server mode migrates to client       | dropped: one-time migration (`0019_migrate_server_execution_mode.sql`)                                                           |
+| REQ-399 | workspace-settings: user profile API                     | now REQ-493 (workspace-settings), without the former settings endpoint guarantee                                                 |
+| REQ-400 | workspace-settings: profile page                         | now REQ-494 (workspace-settings), without the former settings page guarantee                                                     |

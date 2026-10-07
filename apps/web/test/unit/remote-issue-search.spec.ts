@@ -181,7 +181,7 @@ describe('useRemoteIssueSearch', () => {
     const { search, errorKey } = useRemoteIssueSearch(config);
     await search({ mode: 'title', query: 'anything' });
 
-    expect(errorKey.value).toBe('error.remoteServerModeConnectionFailed');
+    expect(errorKey.value).toBe('error.remoteTrackerConnectionFailed');
   });
 
   it('ignores a stale response that resolves after a newer request', async () => {

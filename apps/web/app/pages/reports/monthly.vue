@@ -88,7 +88,7 @@ async function loadRemoteHours(report: MonthlyReportDto, configs: TrackerDto[]):
         next[tracker.id] = {
           status: 'error',
           logs: [],
-          errorKey: 'error.remoteServerModeSecretRequired',
+          errorKey: 'error.remoteTrackerSecretRequired',
         };
         return;
       }

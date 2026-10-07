@@ -517,6 +517,6 @@ describe('RemoteIssuePicker', () => {
     await flushPromises();
 
     expect(fetchMock).toHaveBeenCalled();
-    expect(wrapper.text()).toContain('error.remoteServerModeConnectionFailed');
+    expect(wrapper.text()).toContain('error.remoteTrackerConnectionFailed');
   });
 });

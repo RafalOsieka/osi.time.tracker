@@ -563,7 +563,7 @@ describe('ExtensionExecutionAdapter', () => {
         requestId: message.requestId,
         operation: message.operation,
         ok: false,
-        error: { kind: 'adapter', messageKey: 'error.remoteServerModeAuthRejected', status: 401 },
+        error: { kind: 'adapter', messageKey: 'error.remoteTrackerAuthRejected', status: 401 },
       }),
     });
     const adapter = new ExtensionExecutionAdapter(config, 'bad-secret', {
@@ -572,7 +572,7 @@ describe('ExtensionExecutionAdapter', () => {
     });
     await expect(adapter.searchIssues('login')).rejects.toMatchObject({
       name: 'RemoteAdapterError',
-      messageKey: 'error.remoteServerModeAuthRejected',
+      messageKey: 'error.remoteTrackerAuthRejected',
       status: 401,
     });
     expect(host.portMessages.at(-1)).toEqual({ type: 'osi-extension-disconnect' });

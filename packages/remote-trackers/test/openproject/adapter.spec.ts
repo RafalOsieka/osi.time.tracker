@@ -342,7 +342,7 @@ describe('OpenProjectAdapter', () => {
     const adapter = new OpenProjectAdapter(transport, 'https://op.example.com', 'bad-secret');
 
     await expect(adapter.searchIssues('anything')).rejects.toMatchObject({
-      messageKey: 'error.remoteServerModeAuthRejected',
+      messageKey: 'error.remoteTrackerAuthRejected',
     });
   });
 
@@ -365,7 +365,7 @@ describe('OpenProjectAdapter', () => {
 
     await expect(adapter.getCurrentAccount()).rejects.toBeInstanceOf(RemoteAdapterError);
     await expect(adapter.getCurrentAccount()).rejects.toMatchObject({
-      messageKey: 'error.remoteServerModeConnectionFailed',
+      messageKey: 'error.remoteTrackerConnectionFailed',
     });
   });
 
@@ -403,7 +403,7 @@ describe('OpenProjectAdapter', () => {
 
     await expect(adapter.deleteTimeEntry('99')).resolves.toEqual({
       status: 'rejected',
-      messageKey: 'error.remoteServerModeAuthRejected',
+      messageKey: 'error.remoteTrackerAuthRejected',
     });
   });
 

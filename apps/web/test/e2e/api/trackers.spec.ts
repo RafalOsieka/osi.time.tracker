@@ -136,7 +136,7 @@ describeTrackers('trackers API integration', async () => {
     expect((await invalidUrl.json())?.data?.messageKey).toBe('error.trackerBaseUrlInvalid');
   });
 
-  it('create defaults directBrowserAccess to true and rejects obsolete or invalid values', async () => {
+  it('create defaults directBrowserAccess to true and rejects invalid values', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const { directBrowserAccess: _ignored, ...withoutAccess } = trackerBody('Default Mode Tracker');
 
@@ -160,19 +160,6 @@ describeTrackers('trackers API integration', async () => {
     });
     expect(nearestRes.status).toBe(200);
     expect((await nearestRes.json()).roundingRule).toBe('nearest_30m');
-
-    const serverRes = await fetch(url('/api/trackers'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify(
-        trackerBody('Server Mode Tracker', {
-          executionMode: 'server',
-          baseUrl: 'https://server.example.com',
-        }),
-      ),
-    });
-    expect(serverRes.status).toBe(422);
-    expect((await serverRes.json())?.data?.messageKey).toBe('error.trackerExecutionModeRequired');
 
     const extensionRes = await fetch(url('/api/trackers'), {
       method: 'POST',
@@ -200,14 +187,6 @@ describeTrackers('trackers API integration', async () => {
     });
     expect(patchExtension.status).toBe(200);
     expect((await patchExtension.json()).directBrowserAccess).toBe(false);
-
-    const invalidMode = await fetch(url('/api/trackers'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify(trackerBody('Bad Mode', { executionMode: 'tunneled' })),
-    });
-    expect(invalidMode.status).toBe(422);
-    expect((await invalidMode.json())?.data?.messageKey).toBe('error.trackerExecutionModeRequired');
 
     const nonBoolean = await fetch(url('/api/trackers'), {
       method: 'POST',

@@ -86,7 +86,7 @@ After a schema change in `apps/web/server/db/schema`, run `pnpm db:generate` and
 
 ## Continuous integration
 
-The gates run in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The ruleset that blocks merges on `main` lives in the GitHub repository settings, not in this repository; its required checks list `db`, `api` and `ui` separately, and the `specs` job is not required yet.
+The gates run in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The ruleset that blocks merges on `main` lives in the GitHub repository settings, not in this repository; every CI job, including `db`, `api` and `ui` separately, is a required check. Codecov's own statuses stay informational.
 
 ## Troubleshooting
 

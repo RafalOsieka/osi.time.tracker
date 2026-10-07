@@ -1,6 +1,7 @@
-import { and, eq, ne } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { getDb } from '../../db/index';
-import { timeEntries, tasks } from '../../db/schema';
+import { timeEntries } from '../../db/schema';
+import { deleteTaskIfEmpty } from '../../utils/tasks';
 import type { ApiMessage } from '../../types/api-message';
 
 export default defineEventHandler(async (event) => {
@@ -27,17 +28,7 @@ export default defineEventHandler(async (event) => {
       .delete(timeEntries)
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)));
 
-    if (existing.taskId) {
-      const [otherEntry] = await tx
-        .select({ id: timeEntries.id })
-        .from(timeEntries)
-        .where(and(eq(timeEntries.taskId, existing.taskId), ne(timeEntries.id, id!)))
-        .limit(1);
-
-      if (!otherEntry) {
-        await tx.delete(tasks).where(and(eq(tasks.id, existing.taskId), eq(tasks.userId, user.id)));
-      }
-    }
+    await deleteTaskIfEmpty(tx, user.id, existing.taskId);
   });
 
   return { success: true };

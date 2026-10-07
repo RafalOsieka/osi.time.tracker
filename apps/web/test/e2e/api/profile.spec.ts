@@ -75,12 +75,6 @@ describeProfile('user profile API integration', async () => {
     expect((await res.json()).data.params).toEqual({ max: 100 });
   });
 
-  it('no longer serves the settings endpoint', async () => {
-    const { jar } = await seedAndLogin(databaseUrl);
-    const res = await fetch(url('/api/user/settings'), { headers: { cookie: jar.header() } });
-    expect(res.status).toBe(404);
-  });
-
   it('rejects unauthenticated and CSRF-less requests', async () => {
     expect((await fetch(url('/api/user/profile'))).status).toBe(401);
 
