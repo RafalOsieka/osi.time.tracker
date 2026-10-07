@@ -81,11 +81,19 @@ The repository SHALL offer root commands for development, production build, type
 
 ### Requirement: REQ-370 Unified Vite+ toolchain
 
-The repository SHALL run its build, test, lint and format tooling through Vite+ (`vp`). A single `vite-plus` version SHALL be pinned in the pnpm workspace catalog. The catalog SHALL also pin `vite` (to the Vite+ core distribution), `vitest` and `@vitest/coverage-v8` at the versions that `vite-plus` release supports. Workspace overrides SHALL resolve every `vite` and `vitest` dependency to those catalog entries, so the dependency tree contains exactly one Vite and one Vitest. Root orchestration scripts SHALL drive workspace packages with `vp run`, which runs package scripts in workspace-dependency order. The shared library build (`build:packages`) SHALL be cached, so an unchanged library is not rebuilt. CI jobs and the Docker build stage SHALL execute the workspace-pinned `vite-plus` version, and the Docker build image tag SHALL match the catalog version. Node.js and pnpm versions SHALL be resolved from the root `devEngines`, not pinned separately in CI. `vp check` SHALL NOT substitute for the quality gates: it does not run ESLint or type checking, so the gates remain `pnpm lint`, `pnpm format:check` and `pnpm type-check`.
+The repository SHALL run its build, test, lint and format tooling through Vite+ (`vp`). A single `vite-plus` version SHALL be pinned in the pnpm workspace catalog. The catalog SHALL also pin `vite` (to the Vite+ core distribution), `vitest` and `@vitest/coverage-v8` at the versions that `vite-plus` release supports. Workspace overrides SHALL resolve every `vite` and `vitest` dependency to those catalog entries, so the dependency tree contains exactly one Vite and one Vitest. A `vite-plus` upgrade SHALL be applied with `vp migrate`, which re-pins those catalog entries and overrides together. Root orchestration scripts SHALL drive workspace packages with `vp run`, which runs package scripts in workspace-dependency order. The shared library build (`build:packages`) SHALL be cached, so an unchanged library is not rebuilt. CI jobs and the Docker build stage SHALL execute the workspace-pinned `vite-plus` version, and the Docker build image tag SHALL match the catalog version. Node.js and pnpm versions SHALL be resolved from the root `devEngines`, not pinned separately in CI. `vp check` SHALL NOT substitute for the quality gates: it does not run ESLint or type checking, so the gates remain `pnpm lint`, `pnpm format:check` and `pnpm type-check`.
 
 #### Scenario: Single Vite and Vitest in the tree
 - **WHEN** the lockfile is inspected
 - **THEN** every `vite` and `vitest` dependency, including transitive ones pulled in by Nuxt and test utilities, SHALL resolve to its catalog-pinned version
+
+#### Scenario: Vite+ upgrade moves the whole toolchain
+- **WHEN** `vite-plus` is upgraded to a new release
+- **THEN** the catalog `vite`, `vitest` and `@vitest/coverage-v8` entries SHALL match the versions that release bundles, and `vp toolchain` SHALL report the same Vitest version the catalog pins
+
+#### Scenario: Partial toolchain bump
+- **WHEN** `vitest` or `@vitest/coverage-v8` is bumped on its own, without the `vite-plus` release that bundles that version
+- **THEN** the mismatch SHALL be treated as a defect and the bump SHALL NOT be merged
 
 #### Scenario: Libraries build before consumers
 - **WHEN** a root script that needs the workspace libraries runs from a clean checkout
