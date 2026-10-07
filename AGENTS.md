@@ -52,6 +52,16 @@ pnpm db:migrate      # apply pending migrations
 - `vp check` covers formatting and Oxlint only. It does **not** replace `pnpm lint`, `pnpm format:check` and `pnpm type-check`.
 - `vp why <package>` explains the dependency graph; `vp env doctor` diagnoses runtime and package-manager problems. Docs: `node_modules/vite-plus/docs` or https://viteplus.dev/guide/.
 
+### Upgrading dependencies
+
+`vp outdated -r` lists what is behind. Each group moves through its own path, one commit per group:
+
+- **Vite+** (`vite-plus`, the `vite` alias, `vitest`, `@vitest/coverage-v8`): upgrade the global CLI (`vp upgrade`), then run `vp migrate --no-interactive --no-agent --no-editor --no-hooks`. It re-pins the catalog and overrides together. A release younger than pnpm's minimum release age needs its packages in `minimumReleaseAgeExclude` first. Bump the `ghcr.io/voidzero-dev/vite-plus` tags in `Dockerfile` in the same commit.
+- **Nuxt** (`nuxt`, `@nuxt/schema`): `vp -C apps/web add nuxt@<version>`, `vp -C apps/web add -D @nuxt/schema@<version>`, then `vp dedupe`. That is what `nuxt upgrade --dedupe` does, but `nuxt upgrade` calls `corepack pnpm` and fails against the pnpm that `vp` manages. Run `pnpm dev` and open a page before merging, because CI runs only on Linux.
+- **Everything else:** `vp update -r <names>` within the current major.
+
+Dependabot skips the Vite+ packages and image, and groups `nuxt` and `@nuxt/*` into one PR (`.github/dependabot.yml`).
+
 ## Testing
 
 ```bash
