@@ -26,7 +26,7 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 - **Tracker API secrets never reach the OSI server.** All tracker calls run in the browser, directly or through the extension (`packages/extension-protocol`). Do not add server-side proxying or credential storage.
 - **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers.
 - **Users are isolated.** Every query is scoped to the authenticated user.
-- **Behavior is specified in `openspec/specs`.** Read the relevant spec before changing a feature, and keep spec and code aligned.
+- **Behavior is specified in `openspec/specs`.** Read the relevant spec before changing a feature, and keep spec and code aligned. Specs hold observable behavior only; tooling, build, CI and test-harness details live in `docs/` (`development.md`, `e2e-guideline.md`, `coding-standards.md`), and retired REQ codes in `docs/retired-requirements.md`.
 
 ## Commands
 
