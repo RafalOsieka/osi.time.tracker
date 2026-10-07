@@ -19,7 +19,7 @@
 
 ## 4. Docs and traceability
 
-- [x] 4.1 Add rows to `docs/retired-requirements.md` for REQ-132 → REQ-491, REQ-245 → REQ-492, REQ-399 → REQ-493, REQ-400 → REQ-494, and REQ-314 and REQ-364 as dropped migration requirements. Verify that the `refs` script reports no codes outside the change (the new codes reach the main specs only on archive).
+- [x] 4.1 Add rows to `docs/retired-requirements.md` for REQ-132 → REQ-491, REQ-245 → REQ-492, REQ-249 → REQ-495, REQ-399 → REQ-493, REQ-400 → REQ-494, and REQ-314 and REQ-364 as dropped migration requirements. Verify that the `refs` script reports no codes outside the change (the new codes reach the main specs only on archive).
 - [x] 4.2 In `docs/development.md`, replace the CI sentence saying the `specs` job is not required with one saying every CI job except the informational Codecov statuses is a required check. Verify that `pnpm format:check` passes.
 - [x] 4.3 Verify that `openspec validate task-gc-and-leftover-cleanup --strict` passes.
 

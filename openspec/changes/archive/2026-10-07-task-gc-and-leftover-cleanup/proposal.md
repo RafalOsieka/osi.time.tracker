@@ -26,7 +26,7 @@ OpenSpec cannot drop a scenario through MODIFIED, so a requirement that loses on
 - `workspace-tasks`: REQ-132 → REQ-491, one garbage-collection rule.
 - `tracking-api`: REQ-447 gains scenarios for collecting the previous task.
 - `platform-ci`: REQ-406 lists every required check.
-- `workspace-trackers`: REQ-245 → REQ-492 without the `executionMode` scenario; migration-only REQ-314 and REQ-364 removed.
+- `workspace-trackers`: REQ-245 → REQ-492 and REQ-249 → REQ-495 without the scenarios about the removed server mode; migration-only REQ-314 and REQ-364 removed.
 - `workspace-settings`: REQ-399 → REQ-493 and REQ-400 → REQ-494 without the former-settings guarantees.
 - `core-i18n`: REQ-401 points to REQ-494.
 

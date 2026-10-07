@@ -5,20 +5,24 @@ How tasks exist: created and matched only from time-entry titles, unique per use
 
 ## Requirements
 
-### Requirement: REQ-132 Task hard-delete lifecycle and merge invariant
-Tasks SHALL have no soft-delete state (no `deletedAt` column) and SHALL only ever be hard-deleted. There SHALL be no task-delete or task-create endpoint: tasks are created only from time-entry titles (REQ-137) and hard-deleted when a merge (REQ-442) empties them. A database upgraded from a version with soft-deleted tasks SHALL have those rows removed, their entries untitled (`taskId` `null`), and no `deletedAt` column left.
-
-#### Scenario: No standalone create or delete endpoints
-- **WHEN** a client calls `POST /api/tasks` or `DELETE /api/tasks/[id]`
-- **THEN** the system SHALL respond with HTTP 404 or 405 (route absent)
+### Requirement: REQ-491 Task lifecycle and garbage collection
+Tasks SHALL have no soft-delete state and SHALL only ever be hard-deleted. Tasks SHALL be created only from time-entry titles (REQ-137) and deleted only by garbage collection: whenever an operation leaves a task with no entries (deleting an entry, retitling or rebinding it, a day-scoped reassignment, or a merge), the task SHALL be hard-deleted in the same transaction.
 
 #### Scenario: Merge hard-deletes the emptied task
 - **WHEN** an edit merges a task into a survivor, leaving it with no entries
 - **THEN** the emptied task row SHALL be hard-deleted in the same transaction
 
-#### Scenario: Migration cleans up soft-deleted tasks
-- **WHEN** the migration runs against a database containing soft-deleted task rows
-- **THEN** those rows SHALL be removed, their entries SHALL become untitled (`taskId` `null`), and the `deletedAt` column SHALL be dropped
+#### Scenario: Retitling the last entry deletes the old task
+- **WHEN** the only entry of a task, running or stopped, is retitled so that it resolves to a different task
+- **THEN** the previous task SHALL be hard-deleted in the same transaction and SHALL be absent from the task list
+
+#### Scenario: Rebinding the last entry deletes the old task
+- **WHEN** the only entry of a task is patched with a `taskId` of a different task
+- **THEN** the previous task SHALL be hard-deleted in the same transaction
+
+#### Scenario: A task that still has entries is kept
+- **WHEN** one of several entries of a task is retitled or rebound, or an entry is retitled to a title that resolves to its current task
+- **THEN** that task SHALL remain with its other entries
 
 ### Requirement: REQ-133 List own tasks
 `GET /api/tasks` SHALL return only the user's own tasks, each with its `id`, ranked **most recently used first**: by the latest `startedAt` among their entries, tasks without entries after all others, ties by `name` ascending. An optional `limit` SHALL cap the result after ranking, so the returned tasks are the highest-ranked matches; it defaults to `20`, and a value that is not a positive integer or exceeds `100` SHALL be rejected with HTTP 422 and `{ messageKey, params }`.

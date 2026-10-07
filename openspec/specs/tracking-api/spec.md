@@ -135,6 +135,14 @@ A PATCH MAY carry a `taskId`: it SHALL be one of the user's tasks (foreign or un
 - **WHEN** an authenticated user patches an untitled entry (`taskId` null) with a title and no `taskId`
 - **THEN** the system SHALL resolve the title with no current remote issue to keep (REQ-142) and SHALL NOT invent a remote issue
 
+#### Scenario: Moving the last entry away collects its previous task
+- **WHEN** an authenticated user retitles or rebinds an entry that is the only entry of its task, so that it lands on a different task
+- **THEN** the previous task SHALL be hard-deleted in the same transaction (REQ-491)
+
+#### Scenario: Clearing the last entry's title collects its task
+- **WHEN** an authenticated user patches the only entry of a task with `title` `null`
+- **THEN** the entry SHALL become untitled and the previous task SHALL be hard-deleted in the same transaction (REQ-491)
+
 ### Requirement: REQ-448 An omitted projectId keeps the project scope
 When a PATCH re-resolves the title, **omitting** `projectId` SHALL keep the entry's current project scope (its task's project, or none), and an explicit **`null`** SHALL move it to the project-less scope. An absent `projectId` SHALL NOT be read as `null`, so a title-only edit never moves the entry out of its project.
 

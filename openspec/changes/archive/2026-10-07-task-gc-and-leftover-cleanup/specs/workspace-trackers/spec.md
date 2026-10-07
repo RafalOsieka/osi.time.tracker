@@ -4,6 +4,10 @@
 **Reason**: Its scenario rejecting an `executionMode` field only guarded against clients from before execution modes were removed.
 **Migration**: Replaced by REQ-492 with the same create behavior. A request carrying `executionMode` is treated like any other unknown field.
 
+### Requirement: REQ-249 Client-side credentials are never persisted server-side
+**Reason**: Its scenario rejecting a request for the removed server execution only guarded against clients from before that mode was removed.
+**Migration**: Replaced by REQ-495 with the same credential guarantees.
+
 ### Requirement: REQ-314 Existing tracker execution modes migrate without relationship changes
 **Reason**: Describes a one-time database migration, not behavior of the running application.
 **Migration**: The migration and its historical test stay; the code is listed in the retired requirements.
@@ -69,3 +73,14 @@
 - **WHEN** a keyboard user focuses the help control beside the checkbox
 - **THEN** the localized explanation SHALL become available without changing the field value
 
+
+### Requirement: REQ-495 Client-side credentials are never persisted server-side
+The API secret SHALL be entered and kept only in the user's browser, keyed by tracker id and available after reload, and SHALL never be stored on or sent to the OSI server. With direct browser access it SHALL go only to the tracker's origin; when the extension is required it SHALL pass transiently through the approved extension to the approved destination, which SHALL NOT persist it.
+
+#### Scenario: Browser retains the secret across sessions
+- **WHEN** a user enters an API secret for a tracker
+- **THEN** it SHALL remain browser-held and SHALL NOT be persisted on the OSI server
+
+#### Scenario: Changing direct browser access keeps the secret in the browser
+- **WHEN** a user changes `directBrowserAccess`
+- **THEN** the existing browser-held secret SHALL remain the credential source and SHALL NOT migrate to extension or server storage

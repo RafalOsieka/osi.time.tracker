@@ -7,7 +7,7 @@ Keep `main` verified: a change lands only after every quality gate passes, its p
 ## Requirements
 
 ### Requirement: REQ-406 Merge-blocking rules on main
-Unverified pull requests MUST be un-mergeable. A change SHALL reach `main` only through a pull request whose required checks all pass: lint, format check, type check, unit tests, component tests, the production build, the database, API and UI end-to-end suites, and the pull-request title check. The branch SHALL be up to date with `main` and its review conversations resolved before merging, and merges SHALL be squash-only with linear history.
+Unverified pull requests MUST be un-mergeable. A change SHALL reach `main` only through a pull request whose required checks all pass: every quality gate and the pull-request title check. The branch SHALL be up to date with `main` and its review conversations resolved before merging, and merges SHALL be squash-only with linear history.
 
 #### Scenario: Merge blocked while a required check is red
 - **WHEN** any required status check on a pull request is failing or has not run
@@ -19,7 +19,11 @@ Unverified pull requests MUST be un-mergeable. A change SHALL reach `main` only 
 
 #### Scenario: Required checks match the CI jobs
 - **WHEN** the required checks are compared with the quality gates
-- **THEN** the database, API and UI end-to-end suites SHALL each be a separate required check alongside the other gates
+- **THEN** lint, format check, spec validation, type check, the standalone package checks, unit tests, the browser-extension checks, component tests, the coverage run, the production build, and the database, API and UI end-to-end suites as separate checks SHALL each be required
+
+#### Scenario: Coverage figures never block a merge
+- **WHEN** the coverage run passes but reported coverage drops
+- **THEN** the pull request SHALL remain mergeable, because only a failing test fails the coverage check
 
 ### Requirement: REQ-019 Conventional-Commit PR-title lint
 The pull-request title SHALL follow the Conventional Commits specification, because squash-only merges make the title the commit that lands on `main`. A non-conforming title SHALL fail its check and block merging.

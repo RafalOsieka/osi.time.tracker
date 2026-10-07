@@ -29,7 +29,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** a user lists or reads a tracker
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
-### Requirement: REQ-245 Create a tracker
+### Requirement: REQ-492 Create a tracker
 `POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with accessible help (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
 
 #### Scenario: Direct browser access defaults to true
@@ -71,10 +71,6 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 #### Scenario: Extension selection round-trips without installation
 - **WHEN** a user creates or edits a tracker with `directBrowserAccess: false` on a device without the extension
 - **THEN** the setting SHALL persist while future remote operations require extension setup
-
-#### Scenario: Removed server mode is rejected
-- **WHEN** a stale create or update request submits an `executionMode` field with value `server`
-- **THEN** the server SHALL reject the obsolete field with a translated validation error and persist nothing
 
 #### Scenario: Non-boolean direct browser access rejected
 - **WHEN** a request submits a non-boolean `directBrowserAccess` value
@@ -130,7 +126,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** the user creates a new active tracker after the prior tracker was removed
 - **THEN** the system SHALL NOT automatically rebind old Task references to the new tracker
 
-### Requirement: REQ-249 Client-side credentials are never persisted server-side
+### Requirement: REQ-495 Client-side credentials are never persisted server-side
 The API secret SHALL be entered and kept only in the user's browser, keyed by tracker id and available after reload, and SHALL never be stored on or sent to the OSI server. With direct browser access it SHALL go only to the tracker's origin; when the extension is required it SHALL pass transiently through the approved extension to the approved destination, which SHALL NOT persist it.
 
 #### Scenario: Browser retains the secret across sessions
@@ -140,21 +136,6 @@ The API secret SHALL be entered and kept only in the user's browser, keyed by tr
 #### Scenario: Changing direct browser access keeps the secret in the browser
 - **WHEN** a user changes `directBrowserAccess`
 - **THEN** the existing browser-held secret SHALL remain the credential source and SHALL NOT migrate to extension or server storage
-
-#### Scenario: No OSI endpoint receives the secret
-- **WHEN** a caller still sends a request for the removed server execution with a secret
-- **THEN** validation SHALL reject the request and no OSI endpoint SHALL receive or forward the secret
-
-### Requirement: REQ-314 Existing tracker execution modes migrate without relationship changes
-A database upgraded from a version that stored an execution mode SHALL hold `directBrowserAccess` instead: `true` where it was `client`, `false` where it was `extension`, with the old field gone. Tracker identity, ownership, connection settings, timestamps and all related records SHALL be unchanged.
-
-#### Scenario: Existing client tracker is upgraded
-- **WHEN** the migration encounters a tracker with `executionMode: client`
-- **THEN** it SHALL set `directBrowserAccess` to `true` and preserve all other data
-
-#### Scenario: Existing extension tracker is upgraded
-- **WHEN** the migration encounters a tracker with `executionMode: extension`
-- **THEN** it SHALL set `directBrowserAccess` to `false` and preserve all other data
 
 ### Requirement: REQ-251 Accessible, tokenized Trackers UI
 The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity. One create/edit form SHALL hold the name, every connection field and the browser-only secret input.
@@ -207,18 +188,6 @@ For any increment-based rounding rule, a total greater than `0` SHALL never roun
 #### Scenario: Passthrough rule is unaffected
 - **WHEN** a total of 4 minutes is rounded under `none`
 - **THEN** the result SHALL be 4 minutes
-
-### Requirement: REQ-364 Persisted server execution modes migrate to client
-
-A database upgraded from a version that allowed a `server` execution mode SHALL have every such tracker set to `client` (later direct browser access, REQ-314), with identity, ownership, system type, base URL, rounding rule, timestamps, project associations and remote issue references unchanged.
-
-#### Scenario: Existing server tracker is upgraded
-- **WHEN** the migration encounters a tracker with `executionMode: server`
-- **THEN** it SHALL change only the execution mode to `client`
-
-#### Scenario: Existing supported modes are unchanged
-- **WHEN** the migration encounters a tracker with `executionMode: client` or `executionMode: extension`
-- **THEN** it SHALL leave that tracker unchanged
 
 ### Requirement: REQ-345 Trackers page exposes the import-history action
 Each tracker row SHALL offer an "Import history" action beside edit and delete — a labelled, keyboard-operable control with a tooltip — opening the import dialog (REQ-340) for that tracker, for every supported `systemType`, with or without direct browser access. Without a stored browser secret it SHALL be disabled, its accessible name and tooltip a translated hint to enter the secret in the tracker form first. Strings SHALL have `en`/`pl` parity.

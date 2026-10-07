@@ -43,8 +43,8 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 - **WHEN** settings are read from the database, session, or profile API
 - **THEN** the payload SHALL NOT include a `weekStart` field
 
-### Requirement: REQ-399 User profile API
-`GET /api/user/profile` SHALL return `{ displayName, timezone }`; `PATCH /api/user/profile` SHALL accept a partial `{ displayName?, timezone? }`. `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`); `displayName` MUST satisfy REQ-397. Neither SHALL accept or return `weekStart`. A successful PATCH SHALL refresh the session with the new values and return the updated profile. No `/api/user/settings` endpoint SHALL exist.
+### Requirement: REQ-493 User profile API
+`GET /api/user/profile` SHALL return `{ displayName, timezone }`; `PATCH /api/user/profile` SHALL accept a partial `{ displayName?, timezone? }`. `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`); `displayName` MUST satisfy REQ-397. Neither SHALL accept or return `weekStart`. A successful PATCH SHALL refresh the session with the new values and return the updated profile.
 
 #### Scenario: Read profile
 - **WHEN** an authenticated user requests their profile
@@ -78,16 +78,12 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 - **WHEN** a PATCH body includes `weekStart`
 - **THEN** the system SHALL NOT persist a week-start preference (reject unknown keys or strip them per project validation conventions) and SHALL NOT return `weekStart` on success
 
-#### Scenario: Former settings endpoint is gone
-- **WHEN** a client calls `GET /api/user/settings`
-- **THEN** the server SHALL respond with HTTP 404
-
 #### Scenario: Unauthenticated or CSRF-less request rejected
 - **WHEN** the profile endpoints are called without a valid session, or the PATCH lacks a valid CSRF token
 - **THEN** the system SHALL respond with HTTP 401 (or reject the request for a missing CSRF token) without touching the stored profile
 
-### Requirement: REQ-400 Profile page
-`/profile`, opened from the account menu (REQ-405), SHALL show an **Account** section — a labelled display-name field, the email read-only, and a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')` — and a **Preferences** section with the browser's language control (REQ-401). It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (REQ-403), with `en`/`pl` parity. No `/settings` page or redirect SHALL exist.
+### Requirement: REQ-494 Profile page
+`/profile`, opened from the account menu (REQ-405), SHALL show an **Account** section — a labelled display-name field, the email read-only, and a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')` — and a **Preferences** section with the browser's language control (REQ-401). It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (REQ-403), with `en`/`pl` parity.
 
 #### Scenario: Profile shows stored values
 - **WHEN** an authenticated user opens `/profile`
@@ -96,10 +92,6 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 #### Scenario: Timezone list is filterable
 - **WHEN** the user types into the timezone select's filter
 - **THEN** the option list SHALL narrow to matching IANA identifiers
-
-#### Scenario: Former settings route is gone
-- **WHEN** an authenticated user opens `/settings`
-- **THEN** the application SHALL render its not-found page
 
 #### Scenario: No theme, week-start, or Save control
 - **WHEN** an authenticated user views `/profile`

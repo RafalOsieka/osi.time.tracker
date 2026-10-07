@@ -99,7 +99,7 @@ The document title's page segment and brand SHALL be sourced from the `en`/`pl` 
 - **THEN** both `en` and `pl` catalogs SHALL define it
 
 ### Requirement: REQ-401 Authenticated locale picker on Profile
-The `/profile` page (workspace-settings REQ-400) SHALL offer a language control listing `en` and `pl` and stating that the choice applies to this browser. Changing it SHALL switch the active locale immediately (REQ-075) and write the locale cookie (REQ-074); the locale SHALL NOT be stored on the user record. The control SHALL NOT appear in the account menu or the shell chrome. It SHALL be labelled, keyboard operable, and translated with `en`/`pl` parity.
+The `/profile` page (workspace-settings REQ-494) SHALL offer a language control listing `en` and `pl` and stating that the choice applies to this browser. Changing it SHALL switch the active locale immediately (REQ-075) and write the locale cookie (REQ-074); the locale SHALL NOT be stored on the user record. The control SHALL NOT appear in the account menu or the shell chrome. It SHALL be labelled, keyboard operable, and translated with `en`/`pl` parity.
 
 #### Scenario: Locale control is on Profile
 - **WHEN** an authenticated user opens `/profile`

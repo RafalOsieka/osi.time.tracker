@@ -27,7 +27,7 @@ The remaining items in proposal.md are deletions and renames with no shared desi
 
 **Unknown `executionMode` is stripped, not rejected.** Removing the `z.never()` guard makes the tracker schema treat it like any other unknown key, which the object schema already strips. No new message key is needed, and `error.trackerExecutionModeRequired` is deleted from both catalogs.
 
-**Retired codes get rows in `docs/retired-requirements.md`.** REQ-132 → REQ-491, REQ-245 → REQ-492, REQ-399 → REQ-493, REQ-400 → REQ-494, and REQ-314 and REQ-364 as dropped migration requirements. The `REQ-399` comments in the profile handlers and shared type move to REQ-493.
+**Retired codes get rows in `docs/retired-requirements.md`.** REQ-132 → REQ-491, REQ-245 → REQ-492, REQ-249 → REQ-495, REQ-399 → REQ-493, REQ-400 → REQ-494, and REQ-314 and REQ-364 as dropped migration requirements. The `REQ-399` comments in the profile handlers and shared type move to REQ-493.
 
 ## Risks / Trade-offs
 
