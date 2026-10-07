@@ -12,10 +12,10 @@ allowBuilds:
 update:
   githubActions: true
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@1.0.0
-  vitest: 5.0.2
-  vite-plus: 1.0.0
-  '@vitest/coverage-v8': 5.0.2
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vitest: 5.0.3
+  vite-plus: 1.1.0
+  '@vitest/coverage-v8': 5.0.3
 overrides:
   vite@*: 'catalog:'
   vitest@*: 'catalog:'
@@ -27,13 +27,13 @@ peerDependencyRules:
     vite: '*'
     vitest: '*'
 minimumReleaseAgeExclude:
-  - '@voidzero-dev/vite-plus-core@1.0.0'
-  - '@voidzero-dev/vite-plus-darwin-arm64@1.0.0'
-  - '@voidzero-dev/vite-plus-darwin-x64@1.0.0'
-  - '@voidzero-dev/vite-plus-linux-arm64-gnu@1.0.0'
-  - '@voidzero-dev/vite-plus-linux-arm64-musl@1.0.0'
-  - '@voidzero-dev/vite-plus-linux-x64-gnu@1.0.0'
-  - '@voidzero-dev/vite-plus-linux-x64-musl@1.0.0'
-  - '@voidzero-dev/vite-plus-win32-arm64-msvc@1.0.0'
-  - '@voidzero-dev/vite-plus-win32-x64-msvc@1.0.0'
-  - vite-plus@1.0.0
+  - '@voidzero-dev/vite-plus-core@1.1.0'
+  - '@voidzero-dev/vite-plus-darwin-arm64@1.1.0'
+  - '@voidzero-dev/vite-plus-darwin-x64@1.1.0'
+  - '@voidzero-dev/vite-plus-linux-arm64-gnu@1.1.0'
+  - '@voidzero-dev/vite-plus-linux-arm64-musl@1.1.0'
+  - '@voidzero-dev/vite-plus-linux-x64-gnu@1.1.0'
+  - '@voidzero-dev/vite-plus-linux-x64-musl@1.1.0'
+  - '@voidzero-dev/vite-plus-win32-arm64-msvc@1.1.0'
+  - '@voidzero-dev/vite-plus-win32-x64-msvc@1.1.0'
+  - vite-plus@1.1.0

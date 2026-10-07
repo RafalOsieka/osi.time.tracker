@@ -4,11 +4,11 @@ All groups ship in one PR (`chore(deps): …`), one commit per group, on a branc
 
 ## 1. Vite+ 1.1.0 (toolchain, own commit)
 
-- [ ] 1.1 Check that the image exists with `docker pull ghcr.io/voidzero-dev/vite-plus:1.1.0`. If it doesn't, stop the group: REQ-370 forbids splitting the tag from the catalog.
-- [ ] 1.2 In `pnpm-workspace.yaml`, replace the ten `@1.0.0` `minimumReleaseAgeExclude` entries with the matching `@1.1.0` entries (`vite-plus`, `@voidzero-dev/vite-plus-core`, the eight platform binaries). Verify that `vp info vite-plus@1.1.0 version` resolves.
-- [ ] 1.3 Run `vp update vite-plus`, then `./node_modules/.bin/vp migrate`. Verify that the catalog pins `vite-plus: 1.1.0`, `vite: npm:@voidzero-dev/vite-plus-core@1.1.0`, `vitest: 5.0.3` and `@vitest/coverage-v8: 5.0.3`, that the overrides are unchanged in shape, and that `vp toolchain vitest` reports 5.0.3.
-- [ ] 1.4 Bump both `ghcr.io/voidzero-dev/vite-plus` tags in `Dockerfile` (`:10`, `:42`) to `1.1.0`. Verify with `docker build .`, which must succeed.
-- [ ] 1.5 Verify that `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit` and `pnpm test:nuxt` pass, and that `vp why vitest` lists one version.
+- [x] 1.1 Check that the image exists with `docker pull ghcr.io/voidzero-dev/vite-plus:1.1.0`. If it doesn't, stop the group: REQ-370 forbids splitting the tag from the catalog.
+- [x] 1.2 In `pnpm-workspace.yaml`, replace the ten `@1.0.0` `minimumReleaseAgeExclude` entries with the matching `@1.1.0` entries (`vite-plus`, `@voidzero-dev/vite-plus-core`, the eight platform binaries). Verify that `vp info vite-plus@1.1.0 version` resolves.
+- [x] 1.3 Run `vp update vite-plus`, then `./node_modules/.bin/vp migrate`. Verify that the catalog pins `vite-plus: 1.1.0`, `vite: npm:@voidzero-dev/vite-plus-core@1.1.0`, `vitest: 5.0.3` and `@vitest/coverage-v8: 5.0.3`, that the overrides are unchanged in shape, and that `vp toolchain vitest` reports 5.0.3.
+- [x] 1.4 Bump both `ghcr.io/voidzero-dev/vite-plus` tags in `Dockerfile` (`:10`, `:42`) to `1.1.0`. Verify with `docker build .`, which must succeed.
+- [x] 1.5 Verify that `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit` and `pnpm test:nuxt` pass, and that `vp why vitest` lists one version.
 
 ## 2. Nuxt 4.6 (framework, own commit)
 

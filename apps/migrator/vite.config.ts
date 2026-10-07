@@ -8,6 +8,10 @@ export default defineConfig({
     entry: ['src/cli.ts'],
     platform: 'node',
     deps: {
+      // tsdown <0.23 compatibility: resolve external dependency subpaths.
+      // Remove to preserve subpath imports as written (the new default).
+      // https://tsdown.dev/options/dependencies#deps-resolvedepsubpath
+      resolveDepSubpath: true,
       // Patterns, not names: subpath imports such as `drizzle-orm/postgres-js`
       // must be inlined too.
       alwaysBundle: [/^drizzle-orm(\/|$)/, /^postgres$/, /^@adonisjs\/hash(\/|$)/],
