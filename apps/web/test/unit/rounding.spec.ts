@@ -42,7 +42,7 @@ describe('applyRoundingRule', () => {
     expect(applyRoundingRule(30, 'up_15m')).toBe(m(15));
   });
 
-  // REQ-220 nearest family
+  // REQ-256 nearest family
   it('nearest_15m rounds down below the midpoint (1:03 → 1:00)', () => {
     expect(applyRoundingRule(hms(1, 3), 'nearest_15m')).toBe(hms(1, 0));
   });
@@ -72,7 +72,7 @@ describe('applyRoundingRule', () => {
     expect(applyRoundingRule(hms(1, 40), 'nearest_1h')).toBe(hms(2, 0));
   });
 
-  // REQ-221 never-round-to-zero
+  // REQ-257 never-round-to-zero
   it('lifts a short non-zero total to one increment under nearest_15m (0:04 → 0:15)', () => {
     expect(applyRoundingRule(m(4), 'nearest_15m')).toBe(m(15));
   });

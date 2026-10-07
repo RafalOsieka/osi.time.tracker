@@ -152,7 +152,7 @@ The running favicon SHALL apply as soon as running state is known, including fir
 - **THEN** the initial document favicon SHALL be the running (green-tile) variant rather than flashing the idle icon until a client-only fetch
 
 ### Requirement: REQ-402 Accessible theme control in the account menu
-The theme control SHALL be a **Theme** submenu of the account menu (ui-shell REQ-405), reachable on the expanded rail, the collapsed rail and the mobile drawer, and not on `/profile` or the `auth` layout. It SHALL offer `light`, `dark` and `system` directly, apply the choice immediately and persist it (REQ-161). The current choice SHALL be a checked item exposed to assistive technology, not color alone. Items SHALL be keyboard operable, named, and translated with `en`/`pl` parity.
+The theme control SHALL be a **Theme** submenu of the account menu (REQ-405), reachable on the expanded and collapsed rail and the mobile drawer; it SHALL NOT be on `/profile` and is not required on the `auth` layout. It SHALL offer `light`, `dark` and `system` directly, apply the choice immediately and persist it (REQ-161). The current choice SHALL be a checked item exposed to assistive tech, not color alone. Items SHALL be keyboard operable, named, and translated with `en`/`pl` parity.
 
 #### Scenario: Theme control is in the account menu
 - **WHEN** an authenticated user opens the sidebar footer account menu

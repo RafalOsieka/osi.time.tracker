@@ -79,3 +79,6 @@ Requirement codes (`REQ-<NNN>`) in `openspec/specs` are never reused. When a req
 | REQ-259 | workspace-trackers: Trackers list on initial SSR render  | merged into REQ-391 (ui-routing)                                                                                                 |
 | REQ-260 | workspace-projects: Projects list on initial SSR render  | merged into REQ-391 (ui-routing)                                                                                                 |
 | REQ-174 | ui-shared-components: Nuxt UI components in dialog forms | [`coding-standards.md`](./coding-standards.md#4-vue-component-conventions); error announcement in REQ-002 (ui-accessibility)     |
+| REQ-220 | (removed in #56) nearest-increment rounding              | now REQ-256 (workspace-trackers)                                                                                                 |
+| REQ-221 | (removed in #56) never round a non-zero total to zero    | now REQ-257 (workspace-trackers)                                                                                                 |
+| REQ-222 | (removed in #56) one-tap export-duration alternatives    | removed: Remote Sync offers no rounding alternatives (REQ-363, REQ-489)                                                          |

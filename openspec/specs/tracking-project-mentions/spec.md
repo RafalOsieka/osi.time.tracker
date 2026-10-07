@@ -6,7 +6,7 @@ Lets the user target a project while typing a time-entry title, by writing `@` f
 ## Requirements
 
 ### Requirement: REQ-372 Mention trigger switches the title overlay into project mode
-In the top-bar and add-entry title inputs, an `@` at the start or after whitespace plus the text to the caret (spaces allowed) SHALL be a **mention**; an `@` inside a word (`jan@firma.pl`) SHALL NOT. While it matches a project (REQ-373), the title overlay itself SHALL enter **project mode**: under "Projects", at most 5 projects with their tracker names, the first highlighted, instead of tasks and the create option. Escape keeps the text; Enter picks and SHALL NOT start the timer.
+In the top-bar and add-entry title, an `@` at the start or after whitespace plus text to the caret (spaces allowed) SHALL be a **mention**; an `@` inside a word (`jan@firma.pl`) SHALL NOT. While it matches a project (REQ-373), the title overlay itself (no second popup or caret tooltip) SHALL enter **project mode**: under "Projects", up to 5 projects with tracker names, the first highlighted, instead of tasks and the create option. Escape keeps the text; Enter picks and SHALL NOT start the timer.
 
 #### Scenario: @ at the start opens project mode
 - **WHEN** the user types `@hel` into an empty title input and owns a project named "Helios"

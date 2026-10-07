@@ -35,7 +35,7 @@ export function applyRoundingRule(totalSeconds: number, rule: TrackerRoundingRul
     ? Math.round(totalSeconds / increment) * increment
     : Math.ceil(totalSeconds / increment) * increment;
 
-  // Never drop a non-zero total to zero (REQ-221).
+  // Never drop a non-zero total to zero (REQ-257).
   if (rounded === 0 && totalSeconds > 0) {
     return increment;
   }

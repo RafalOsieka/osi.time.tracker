@@ -56,7 +56,7 @@ Because export saves the preset first (REQ-386), the export action SHALL read "s
 - **THEN** the export action SHALL show translated field errors and SHALL NOT call any API or tracker
 
 ### Requirement: REQ-386 Export assembles the report only from remote time logs
-Export SHALL save the form (REQ-382), then fetch each preset tracker's own-account logs for the month with the browser secret, directly or via the extension. The report SHALL use only those logs, tracker name, type and URL, and the user's name and email — never OSI entries, tasks or provenance. A running export SHALL NOT restart.
+Export SHALL save the form (REQ-382), then fetch each preset tracker's own-account logs for the month with the browser secret, directly or via the extension. The report SHALL use only those logs, tracker name, type and URL, and the user's name and email — never OSI entries, tasks or provenance. While exporting, the action SHALL show a busy state and SHALL NOT start a second export.
 
 #### Scenario: Two trackers are combined
 - **WHEN** the preset has an OpenProject and a Redmine tracker with logs in the month
