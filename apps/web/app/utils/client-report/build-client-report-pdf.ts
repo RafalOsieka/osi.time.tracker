@@ -422,7 +422,7 @@ function timesheet(report: ClientReport, t: ClientReportTranslate, f: ClientRepo
 /**
  * Lays out the client report as a pdfmake document (design D2): a title page
  * (REQ-388), then the timesheet table with running header and footer on every
- * table page (REQ-389). All strings come from `t` in the report locale.
+ * table page (REQ-389, REQ-474). All strings come from `t` in the report locale.
  */
 export function buildClientReportPdf(
   report: ClientReport,

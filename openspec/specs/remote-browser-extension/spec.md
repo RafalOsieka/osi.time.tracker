@@ -20,7 +20,7 @@ The extension SHALL support unpacked installation in desktop Chrome and Edge and
 
 ### Requirement: REQ-308 Explicit website and destination approvals
 
-The extension SHALL require user approval in extension-owned UI for an exact OSI website origin and each tracker destination assigned to that origin. Destinations SHALL include provider, origin, and normalized base path. Browser host permission alone SHALL NOT authorize an operation. Approvals SHALL be reviewable and revocable, and missing or denied permission SHALL prevent network execution. Non-loopback OSI websites SHALL require HTTPS; local development SHALL allow explicitly approved HTTP loopback origins.
+The extension SHALL require approval in its own UI for an exact OSI website origin and for each tracker destination (provider, origin, normalized base path) under it; browser host permission alone SHALL NOT authorize anything. Approvals SHALL be reviewable and revocable, and missing or denied permission SHALL block network execution. Non-loopback websites SHALL require HTTPS; explicitly approved HTTP loopback origins are allowed for development.
 
 #### Scenario: Approval is scoped to the requesting website
 - **WHEN** a destination is approved for one OSI origin and a different website requests access
@@ -36,7 +36,7 @@ The extension SHALL require user approval in extension-owned UI for an exact OSI
 
 ### Requirement: REQ-309 Validated versioned operation bridge
 
-The website-extension boundary SHALL expose only the nine neutral tracker operations, a credential-free compatibility/availability handshake, and the credential-free destination suggestion (REQ-421). Requests and responses SHALL be schema-validated, correlated to a requesting document and request identifier, and bounded in size and lifetime. The extension SHALL independently verify the actual sending extension context, website origin, and top-level frame; it SHALL NOT trust a page-supplied origin. Unsupported versions, operations, malformed inputs, or unsolicited responses SHALL NOT result in remote execution or a false success.
+The website–extension boundary SHALL expose only the nine neutral operations and the credential-free handshake and suggestion (REQ-421). Messages SHALL be validated, tied to the sending document and a request id, and bounded in size and lifetime. The extension SHALL verify the real sender context, website origin and top-level frame, never a page-supplied origin. Unsupported versions or operations, malformed input or unsolicited replies SHALL NOT cause remote execution or false success.
 
 #### Scenario: Compatible operation
 - **WHEN** an approved document and extension agree on the protocol version and required capability
@@ -59,7 +59,7 @@ The website-extension boundary SHALL expose only the nine neutral tracker operat
 - **THEN** the message SHALL contain no tracker secret, and the extension SHALL reject a message that carries any field beyond its schema
 
 ### Requirement: REQ-330 Bridge carries the catalog operation and scoped search inputs
-The operation bridge SHALL add the remote project catalog operation and SHALL widen the title-search and exact-lookup inputs to an object carrying the query (or issue id) and an optional scope `{ remoteProjectId }`. The exact-lookup result SHALL be the nullable lookup object `{ result, inScope }`. The handshake SHALL advertise the catalog operation in `supportedOperations` when the installed extension implements it. The website SHALL NOT offer the remote project select for an extension-only tracker unless the handshake advertises the catalog operation, and SHALL treat scoped search on an extension that rejects the widened input as the existing incompatibility state rather than falling back to an unscoped search. The scope SHALL NOT alter which destination the request is approved for: it is a query parameter on the already-approved tracker origin.
+The bridge SHALL carry the catalog operation, advertised in the handshake's `supportedOperations`. Title search and exact lookup SHALL take `{ query or issueId, scope? }` with scope `{ remoteProjectId }`; lookup returns the nullable `{ result, inScope }`. Without it the website SHALL NOT offer the remote project select for an extension tracker; an extension rejecting a scoped input SHALL be the incompatibility state, never an unscoped retry. A scope SHALL NOT change the approved destination.
 
 #### Scenario: Catalog through the extension
 - **WHEN** an approved document requests the catalog operation from an extension that advertises it
@@ -83,7 +83,7 @@ The operation bridge SHALL add the remote project catalog operation and SHALL wi
 
 ### Requirement: REQ-310 Tracker network confinement
 
-Every outbound extension tracker request SHALL be derived by the bundled provider implementation and confined to the approved destination, including paths obtained from tracker responses. The extension SHALL reject arbitrary URL/method/header instructions, URL credentials, unsupported schemes, and traversal outside the approved base path. Redirects SHALL NOT be followed. It SHALL send only provider-supplied authentication, omit ambient cookies, and never attach OSI session credentials. Network duration, response size, and operation concurrency SHALL be bounded.
+Every extension tracker request SHALL be built by the bundled provider code and confined to the approved destination, including paths taken from tracker responses. Arbitrary URL, method or header instructions, URL credentials, unsupported schemes and traversal outside the base path SHALL be rejected, and redirects not followed. Only provider-supplied auth SHALL be sent: no ambient cookies, never OSI session credentials. Duration, response size and concurrency SHALL be bounded.
 
 #### Scenario: Response-derived URL escapes the destination
 - **WHEN** a tracker response supplies a pagination or metadata URL outside the approved origin or base path
@@ -99,7 +99,7 @@ Every outbound extension tracker request SHALL be derived by the bundled provide
 
 ### Requirement: REQ-311 Availability is device-local and never a fallback
 
-The web app SHALL derive transport from the tracker's persisted capability: `directBrowserAccess: true` SHALL use direct client execution, and `directBrowserAccess: false` SHALL require extension execution. It SHALL NOT retry through another transport automatically, execute extension-required actions on the OSI server, or rewrite tracker configuration based on device-local extension availability. Missing extension support SHALL leave ordinary local time tracking usable. Contextual operation failures SHALL remain visible at the operation surface even though proactive setup checks are centralized.
+The web app SHALL pick the transport from the tracker's `directBrowserAccess`: `true` means direct execution, `false` requires the extension. It SHALL NOT fall back to another transport, run extension-required actions on the OSI server, or rewrite tracker settings because of this device's extension state. Without the extension, local time tracking SHALL keep working. Operation failures SHALL show where the operation runs, though setup checks are centralized.
 
 #### Scenario: Direct browser access is allowed
 - **WHEN** a remote operation uses a tracker with `directBrowserAccess: true`
@@ -119,7 +119,7 @@ The web app SHALL derive transport from the tracker's persisted capability: `dir
 
 ### Requirement: REQ-312 Ambiguous creates are never automatically replayed
 
-If delivery of a time-entry creation result is lost after dispatch, the system SHALL treat the remote outcome as unknown, not as proof that nothing was created. It SHALL NOT automatically resend a creation because of timeout, disconnection, document closure, or worker restart. The user SHALL receive an uncertainty warning before an explicit retry that could duplicate a remote log. A known successful remote log ID SHALL continue through existing local finalization/replay behavior without recreating the remote log.
+If a creation's result is lost after dispatch, the outcome SHALL be unknown, not proof that nothing was created, and the creation SHALL NOT be resent automatically after a timeout, disconnection, closed document or worker restart. The user SHALL be warned before an explicit retry that could duplicate a remote log. A known remote log id SHALL go through local finalization or replay without recreating the remote log.
 
 #### Scenario: Tracker creates but response is lost
 - **WHEN** a tracker accepts a time entry but the extension connection closes before delivering the result
@@ -151,7 +151,7 @@ Extension-owned setup/approval/revocation UI and web integration feedback SHALL 
 
 ### Requirement: REQ-315 Sidebar communicates extension readiness
 
-The authenticated sidebar SHALL contain a compact extension-status row immediately below the user menu and outside navigation. Its indicator SHALL aggregate active trackers and device-local extension status using this precedence: neutral when no active tracker requires the extension; red when an extension is required but unavailable, incompatible, or the current OSI website is not approved; orange when the extension and website are valid but at least one extension-required tracker destination is not approved; green when every required part is valid. Direct-capable trackers SHALL NOT downgrade the aggregate state.
+The sidebar SHALL show a compact extension-status row right below the user menu, outside navigation, aggregating active trackers and this device's extension: neutral when no active tracker needs the extension; red when it is needed but unavailable or incompatible, or this website is not approved; orange when those are fine but an extension-required destination is not approved; green when all is valid. Direct-capable trackers SHALL NOT lower the state.
 
 #### Scenario: Extension is not required
 - **WHEN** no active tracker has `directBrowserAccess: false`
@@ -171,7 +171,7 @@ The authenticated sidebar SHALL contain a compact extension-status row immediate
 
 ### Requirement: REQ-316 Extension status details are accessible and informative
 
-The sidebar status row SHALL open a localized informational popover by hover, keyboard focus, click, or tap. The popover SHALL distinguish extension connection and compatibility, current website approval, and each configured tracker's destination approval. Extension-required trackers SHALL appear first; direct-capable trackers MAY appear as optional destinations but SHALL be identified as not required. Approval SHALL remain owned by extension UI. When the connection is ready, an extension-required tracker that is not approved SHALL offer an action that sends a destination suggestion (REQ-421), and the popover SHALL report its result. The collapsed sidebar SHALL retain an understandable icon and status indicator.
+The status row SHALL open a localized popover on hover, focus, click or tap, separating the extension connection and compatibility, this website's approval, and each tracker's destination approval, extension-required trackers first and direct-capable ones marked not required. Approving stays in the extension's UI; with a ready connection an unapproved required tracker SHALL offer to send a suggestion (REQ-421) and report the result. The collapsed sidebar SHALL keep a clear icon and status.
 
 #### Scenario: Inspect status with keyboard
 - **WHEN** a keyboard user focuses or activates the status row
@@ -219,7 +219,7 @@ The sidebar SHALL be the single proactive extension setup and destination-approv
 
 ### Requirement: REQ-331 Page-side extension operations are queued to the in-flight bound
 
-The web app SHALL bound its own concurrent extension operations per document to the protocol's in-flight limit and SHALL queue further operations until a slot frees, in request order, instead of dispatching them and receiving a limit error. The queue SHALL be shared by every extension call site in the document. A queued operation SHALL be released when the operation ahead of it settles (success, failure, or timeout). Queueing SHALL NOT change the operation's result, error classification, or the unknown-create handling of a creation whose reply is lost. The page SHALL NOT raise the extension's own limit; a limit error returned by the extension SHALL still be surfaced as today when it occurs.
+Each document SHALL cap its concurrent extension operations at the protocol's in-flight limit, queueing the rest in request order across all its call sites instead of drawing a limit error; a slot frees when the one ahead settles (success, failure or timeout). Queueing SHALL NOT change results, error classification or unknown-create handling. The page SHALL NOT raise the extension's own limit, and a limit error the extension does return SHALL still be shown.
 
 #### Scenario: Burst larger than the limit completes without a limit error
 - **WHEN** a page issues more concurrent extension operations than the in-flight limit (for example a Remote Sync day with six linked tasks on one extension tracker)
@@ -237,16 +237,12 @@ The web app SHALL bound its own concurrent extension operations per document to 
 - **WHEN** two OSI documents each issue operations
 - **THEN** each SHALL be bounded independently and neither SHALL wait on the other's queue
 
-### Requirement: REQ-379 Bridge protocol version for resolved issue titles
-The operation bridge SHALL carry the time-log DTO with the required, nullable remote issue title (REQ-341) under a new protocol version. The website and the extension SHALL both require that version, so pairing a website with an extension built before the change SHALL fail the handshake's version check and the website SHALL show the existing incompatibility/update state (REQ-309) rather than failing a time-log result validation mid-operation. Title resolution (REQ-378) SHALL run inside the extension as part of the same time-log operation; the bridge SHALL NOT gain a separate issue-lookup operation, and lookups SHALL obey the same tracker network confinement (REQ-310) as the log fetch.
+### Requirement: REQ-379 Issue titles are resolved inside the extension
+The bridge SHALL carry time logs with the required, nullable issue title (REQ-341), under the protocol version of REQ-422. Title resolution (REQ-378) SHALL run inside the extension as part of the time-log operation itself: the bridge SHALL have no separate issue-lookup operation, and lookups SHALL obey the same network confinement (REQ-310) as the log fetch.
 
-#### Scenario: Matching versions
-- **WHEN** the website and extension share the new protocol version and the page requests a date-range fetch
+#### Scenario: Range fetch through the extension carries issue titles
+- **WHEN** the website and extension share the current protocol version and the page requests a date-range fetch
 - **THEN** the extension SHALL return logs with resolved or `null` issue titles
-
-#### Scenario: Outdated extension
-- **WHEN** the installed extension implements the previous protocol version
-- **THEN** the website SHALL show the incompatibility/update state and SHALL NOT send the time-log operation or the tracker secret
 
 #### Scenario: No separate lookup operation
 - **WHEN** a page asks the extension for an issue-lookup-by-ids operation
@@ -320,9 +316,6 @@ The extension manifest SHALL declare the app icon for the toolbar action and the
 - **WHEN** the extension build finishes
 - **THEN** the build output SHALL contain a PNG for each size declared in the manifest, at its declared pixel dimensions
 
-#### Scenario: A missing icon fails the build check
-- **WHEN** a manifest icon path does not exist in the build output, or its PNG has other pixel dimensions than declared
-- **THEN** the extension's build-output check SHALL fail
 
 ### Requirement: REQ-421 Approved websites can suggest a tracker destination
 
@@ -348,9 +341,9 @@ The bridge SHALL accept a credential-free suggestion message from an approved we
 - **WHEN** the message includes a website origin different from the sender's
 - **THEN** the extension SHALL reject the message as malformed
 
-### Requirement: REQ-422 Bridge protocol version for destination suggestions
+### Requirement: REQ-422 Bridge protocol version
 
-The suggestion message SHALL ship under protocol version 3. The website and the extension SHALL both require that version. Pairing a website with an extension built for version 2, or the reverse, SHALL fail the handshake and SHALL show the existing incompatibility/update state (REQ-309), instead of failing on the first suggestion.
+The website and the extension SHALL both require the same bridge protocol version, currently 3, which carries nullable issue titles (REQ-379) and destination suggestions (REQ-421). A mismatch in either direction SHALL fail the handshake and show the incompatibility/update state (REQ-309), so the website sends no operation, suggestion or secret instead of failing mid-operation.
 
 #### Scenario: Matching versions
 - **WHEN** the website and the extension both implement version 3

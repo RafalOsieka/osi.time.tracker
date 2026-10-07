@@ -91,6 +91,8 @@ Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → 
 
 Isolated fake trackers for extension tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at real trackers from CI.
 
+The extension's build-output check fails when a manifest icon path is missing from the build output or its PNG does not have the declared pixel size (remote-browser-extension REQ-410).
+
 ## Database and migrations
 
 Drizzle (`drizzle-orm` with the `postgres` driver) is the only data-access layer; server code reaches it through `getDb()` (see [`coding-standards.md`](./coding-standards.md#5-server--api-conventions)). The schema lives in `apps/web/server/db/schema`. After a schema change, `pnpm db:generate` runs `drizzle-kit` and writes a new SQL migration to `apps/migrator/migrations`; commit it. `pnpm db:migrate` applies pending migrations with the `drizzle-orm` migrator and seeds the bootstrap user. Applied migrations are never edited. Column names are camelCase and primary keys are `uuid DEFAULT uuidv7()`. Task uniqueness (workspace-tasks REQ-136) uses two `NULLS NOT DISTINCT` unique indexes, on `(userId, projectId, name, remoteIssueId)` and on `(userId, name, remoteIssueId) WHERE projectId IS NULL`, so at most one unlinked task exists per name and project scope. The single running entry per user (tracking-api REQ-141) is a partial unique index on `(userId) WHERE stoppedAt IS NULL`.

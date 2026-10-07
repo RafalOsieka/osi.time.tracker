@@ -70,7 +70,7 @@ export const remoteTimeLogSchema = z.object({
   // them when present.
   remoteProjectId: z.string().optional(),
   remoteProjectTitle: z.string().optional(),
-  // REQ-341/REQ-378: required for every provider; `null` only when the
+  // REQ-341/REQ-476: required for every provider; `null` only when the
   // tracker does not disclose the issue to the account.
   remoteIssueTitle: z.string().nullable(),
 });

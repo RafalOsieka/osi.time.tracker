@@ -173,7 +173,7 @@ function onPresetSelected(id: string | null | undefined) {
   exportMessage.value = null;
 }
 
-/** Export saves the form first (REQ-386), so the label says so while there is something to save. */
+/** Export saves the form first (REQ-473), so the label says so while there is something to save. */
 const hasUnsavedChanges = computed(() => {
   const preset = selectedPreset.value;
   if (!preset) return true;

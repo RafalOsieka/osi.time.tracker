@@ -35,7 +35,7 @@ export interface RemoteTimeLogDto {
   /**
    * Remote issue display title for every provider: taken from the time-log
    * payload when present, otherwise resolved by the adapter through a
-   * batched issue lookup (REQ-341/REQ-378). `null` only when the tracker
+   * batched issue lookup (REQ-341/REQ-378). `null` (REQ-476) only when the tracker
    * does not disclose the issue to this account (deleted or not visible) —
    * never because of the provider type.
    */

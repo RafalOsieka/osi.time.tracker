@@ -105,7 +105,7 @@ function buildMappingRows(bucketsByMonth: RemoteProjectBucket[][]): MappingRow[]
  */
 /**
  * Builds one import request body from routed groups. A `null` issue title
- * (the tracker does not disclose the issue, REQ-341) is omitted, so the
+ * (the tracker does not disclose the issue, REQ-476) is omitted, so the
  * server keeps its id fallback; a resolved title is forwarded and cached.
  */
 function importBody(dryRun: boolean, groups: RouteLogsByScopeGroup[]): ImportRemoteLogsDto {

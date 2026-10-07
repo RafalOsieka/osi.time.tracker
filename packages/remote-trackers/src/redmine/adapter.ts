@@ -201,7 +201,7 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
   /**
    * Time-entry payloads never carry the issue subject (REQ-343), so every
    * log's title comes from one lookup over the distinct issue ids; ids the
-   * tracker does not return become `null` (REQ-341/REQ-378).
+   * tracker does not return become `null` (REQ-476/REQ-378).
    */
   private async withIssueTitles(logs: RedmineTimeLogEntry[]): Promise<RemoteTimeLogDto[]> {
     const titles = await this.getIssuesByIds([...new Set(logs.map((log) => log.remoteIssueId))]);
