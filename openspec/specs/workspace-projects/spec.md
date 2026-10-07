@@ -206,21 +206,6 @@ The project create/edit form SHALL validate input client-side using the shared `
 - **WHEN** the submitted values pass client-side validation but the server rejects the name as a duplicate for that tracker scope
 - **THEN** the `error.projectNameDuplicate` message SHALL render inline under the name field
 
-### Requirement: REQ-260 Projects page list available on initial SSR render
-The Projects management page (`/projects`) SHALL resolve the authenticated user's full project list during server-side rendering of a full document load so the initial HTML/payload already contains the list data (or an empty list for the empty state). The SSR list fetch SHALL authenticate using the incoming session cookie and SHALL NOT depend on client-only `onMounted` bootstrap for the primary table.
-
-#### Scenario: Hard reload shows project rows without client-only bootstrap
-- **WHEN** an authenticated user with at least one project performs a full document load of `/projects`
-- **THEN** the initial render payload SHALL already include those projects so the table can render rows without depending solely on an `onMounted` client fetch
-
-#### Scenario: Hard reload empty state
-- **WHEN** an authenticated user with no projects performs a full document load of `/projects`
-- **THEN** the page SHALL be able to render the empty state from the SSR-resolved empty list
-
-#### Scenario: SSR list uses the session cookie
-- **WHEN** the Projects page resolves the list during SSR
-- **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request
-
 ### Requirement: REQ-261 Project form loads tracker options on dialog open
 The Projects create/edit dialog SHALL load active tracker options for the Tracker select only when the dialog is opened, not as part of the page's initial SSR list bootstrap. While tracker options are loading, the Tracker select SHALL expose a loading indicator (and MAY be disabled until options resolve). Edit flows SHALL continue to seed a soft-deleted or otherwise missing tracker via the project's `trackerId`/`trackerName` when that tracker is absent from the active list (REQ-086). Create flows SHALL default to no tracker selected (local) when the dialog opens.
 

@@ -68,6 +68,9 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Hover/focus hints use Nuxt UI `UTooltip`, not the HTML `title` attribute (leave modal/page/confirm `title` props alone). Icon-only or status-only controls pair `aria-label` with a matching tooltip; do not add a tooltip that only repeats an already-visible label. Disabled explanations wrap a `tabindex="0"` host so the tooltip still opens. Truncated overflow uses `OverflowTooltip`.
 - Prefer Tailwind utility classes and Nuxt UI `--ui-*` design tokens for layout/color. Icons use the Lucide set (`i-lucide-*`). Keep residual `<style scoped>` only when utilities are insufficient.
 - Forms use `UForm` with a shared zod `:schema` and labelled `UFormField`s. Confirmations use `useAppConfirm()` (`useOverlay` + `ConfirmModal`), not per-page dialog instances.
+- Overlay dialogs that collect input (`UModal` / `UPopover` bodies) use `UForm` too, never a native `<form @submit.prevent>`; selectable result and suggestion items inside them are `UButton`s (e.g. `variant="ghost"`), keeping their `data-testid`, `id`, `<label for>`, `aria-*` and `role="alert"` wiring.
+- Inline text edits use the shared `UInput` pattern: `variant="none"` while displayed, `variant="ghost"` while editing. Do not imitate editable text with a `<button>`/`UButton` plus `<style scoped>` resets, and do not size the control in `ch` from the text length. Inline project/activity pickers are a `UButton` opening a non-modal `UPopover` listbox, not a `USelect` (its dismiss overlay swallows the first click).
+- Wall-clock times use `TimeField`, durations `DurationInput`, dates `UInputDate` (range variant for ranges) and `UCalendar` for jump-to-date pickers. The compact expandable row (`CompactExpandableRow`) is shared by the timer view and Remote Sync.
 
 ### Reactive state
 

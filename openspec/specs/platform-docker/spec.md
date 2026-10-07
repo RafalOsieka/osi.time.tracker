@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Defines requirements for containerising the OSI Time Tracker application for production use with Docker, including the multi-stage image build, runtime configuration, the self-contained production compose stack, the committed environment example, and pre-startup database migration.
+Defines how OSI Time Tracker is shipped for self-hosting with Docker: the application and migrator images, their runtime configuration, the self-contained production compose stack, the committed environment example, and migrations applied before the app serves traffic.
 
 ## Requirements
 
 ### Requirement: REQ-043 Multi-stage production image build
-The system SHALL provide a `Dockerfile` that builds the application in stages: a build stage that installs the web application's dependencies with the project toolchain and runs the Nuxt production build, and a final runtime stage that contains only the artifacts required to run the application in production. The same `Dockerfile` SHALL also produce the dedicated migrator image (REQ-048) as a separately addressable target, while building the application runtime image by default.
+The system SHALL provide a `Dockerfile` that builds the application in stages: a build stage that installs the web application's dependencies with the project toolchain and runs the Nuxt production build, and a final runtime stage that contains only the artifacts required to run the application in production. The same `Dockerfile` SHALL also produce the dedicated migrator image (REQ-426) as a separately addressable target, while building the application runtime image by default.
 
 #### Scenario: Successful image build
 - **WHEN** `docker build` is run against the repository root without selecting a target
@@ -22,15 +22,11 @@ The system SHALL provide a `Dockerfile` that builds the application in stages: a
 - **THEN** it produces the migrator image without running the Nuxt production build
 
 ### Requirement: REQ-044 Slim final runtime layer
-The final image stage SHALL include only the production runtime artifacts — the generated Nitro server output (`.output/`) and the Node 24 runtime — and MUST NOT include development dependencies, source build caches, test files, or the local build context excluded via `.dockerignore`.
+The final image stage SHALL include only the production runtime artifacts — the generated Nitro server output and the Node runtime — and MUST NOT include development dependencies, source build caches, test files, or other build-only context.
 
 #### Scenario: Final image excludes build-only artifacts
 - **WHEN** the final image is inspected
 - **THEN** it contains the `.output/` server bundle and does not contain `node_modules` dev dependencies, `test/`, or source-only tooling needed solely for building
-
-#### Scenario: Build context is minimized
-- **WHEN** the image is built
-- **THEN** a `.dockerignore` SHALL exclude `node_modules`, `.output`, `.nuxt`, `.git`, and other non-essential paths from the build context
 
 ### Requirement: REQ-045 Container runtime configuration
 The application container SHALL be configured entirely through environment variables and MUST require `DATABASE_URL` and `NUXT_SESSION_PASSWORD` at runtime, without baking secrets into the image. The image SHALL fix both `NODE_ENV=production` and the container listening port (`3000`). The container SHALL run as a non-root user.
@@ -44,9 +40,7 @@ The application container SHALL be configured entirely through environment varia
 - **THEN** the application SHALL fail fast with a clear error rather than starting in a broken state
 
 ### Requirement: REQ-048 Database migrations before serving traffic
-Pending database migrations SHALL be applied before the production application begins serving traffic, via a dedicated one-shot `migrate` compose service.
-
-The `migrate` service is a short-lived container (not a long-running service) that runs the migrator exactly once and then exits. It SHALL run the dedicated migrator image (REQ-043), which contains only the Node runtime, the bundled migration runner and the committed SQL migrations. That image MUST NOT contain a package manager, the build toolchain, development dependencies, or web application sources. The service connects to the same database over the shared network, applies any pending SQL migrations, and runs the bootstrap-user seeding (core-authentication REQ-012). The `app` service declares `depends_on` the `migrate` service with `condition: service_completed_successfully`, so the app container is only started after the `migrate` container has exited with a zero (success) status code.
+Pending database migrations SHALL be applied before the production application serves traffic, by a one-shot `migrate` compose service. It SHALL run the migrator image (REQ-426) exactly once against the stack's database, apply pending migrations, run the bootstrap-user seeding (core-authentication REQ-012), and exit. The `app` service SHALL start only after `migrate` exits with status 0 (`depends_on` with `condition: service_completed_successfully`).
 
 #### Scenario: Migrations applied on startup
 - **WHEN** the production stack starts with pending migrations
@@ -55,6 +49,9 @@ The `migrate` service is a short-lived container (not a long-running service) th
 #### Scenario: Startup blocked on migration failure
 - **WHEN** the one-shot `migrate` service exits with a non-zero status
 - **THEN** the `app` service SHALL NOT start (its `service_completed_successfully` condition is unmet) and the failure is surfaced in container logs
+
+### Requirement: REQ-426 Dedicated migrator image
+The migrator image SHALL contain only the Node runtime, the bundled migration runner and the committed SQL migrations. It MUST NOT contain a package manager, the build toolchain, development dependencies, or web application sources. Without `DATABASE_URL` it SHALL exit non-zero naming the variable, before attempting a connection.
 
 #### Scenario: Missing database configuration
 - **WHEN** the migrator image is started without `DATABASE_URL`
@@ -65,7 +62,7 @@ The `migrate` service is a short-lived container (not a long-running service) th
 - **THEN** it contains the Node runtime, the bundled runner and the SQL migrations, and does not contain a package manager, `node_modules`, the build toolchain, or web application sources
 
 ### Requirement: REQ-049 Standalone daily-use compose stack
-The system SHALL provide a dedicated, self-contained Docker Compose file (`docker-compose.prod.yml`, distinct from the dev `docker-compose.yml`) that runs the complete productive stack — a `db` service (PostgreSQL 18), a one-shot `migrate` service, the `app` service built from the existing `Dockerfile`, and a `pgadmin` service — without depending on any other compose file or pre-existing external network. The database port SHALL NOT be published to the host; only the app and pgadmin ports are. The stack SHALL NOT include local remote-tracker instances; the app connects to real OpenProject/Redmine instances configured in-app.
+The system SHALL provide a self-contained `docker-compose.prod.yml`, separate from the dev `docker-compose.yml`, running a `db` service (PostgreSQL 18), the one-shot `migrate` service, the `app` service built from the `Dockerfile`, and `pgadmin`, without depending on another compose file or a pre-existing external network. Only the app and pgadmin ports SHALL be published, never the database port. The stack SHALL NOT include local tracker instances.
 
 #### Scenario: Single command brings up the full stack
 - **WHEN** `docker compose -f docker-compose.prod.yml up -d` is run on a machine with only the repository cloned (given required env vars)
@@ -99,7 +96,7 @@ The production stack SHALL persist database and pgadmin state across container, 
 - **THEN** only then are the production volumes deleted; the dev volumes are never affected
 
 ### Requirement: REQ-051 Standalone startup ordering and configuration
-Within the production stack, the `migrate` service SHALL wait for the `db` service to be healthy (via the PostgreSQL healthcheck) before applying migrations, and the `app` service SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD`, and `PGADMIN_DEFAULT_PASSWORD` from the environment (no insecure defaults) while providing overridable defaults for the database user, database name, pgadmin e-mail, and the published app and pgadmin ports.
+In the production stack, `migrate` SHALL wait for the `db` healthcheck before applying migrations, and `app` SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD` and `PGADMIN_DEFAULT_PASSWORD` (no insecure defaults) and SHALL provide overridable defaults for the database user and name, the pgadmin e-mail, and the published ports.
 
 #### Scenario: Ordered cold start
 - **WHEN** the production stack starts from scratch
@@ -114,7 +111,7 @@ Within the production stack, the `migrate` service SHALL wait for the `db` servi
 - **THEN** the stack uses the overridden values without editing the compose file
 
 ### Requirement: REQ-346 Single environment example grouped by audience
-The repository SHALL provide one committed `.env.example`, grouped into sections for host development, dev compose overrides, and the production compose stack, with every variable documented next to the stack that reads it. It SHALL contain working development defaults so `pnpm dev` runs after copying it to `.env` unchanged, with `DATABASE_URL` pointing at `localhost` (the published dev database port). Production-only secrets (`POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_PASSWORD`) SHALL be present only as commented-out entries with generation hints, and the development `NUXT_SESSION_PASSWORD` SHALL be marked as not for production use.
+The repository SHALL commit one `.env.example`, grouped into host development, dev compose overrides and the production stack, with every variable documented where it is read. Copied unchanged to `.env`, it SHALL run `pnpm dev` against the dev database on `localhost`. Production-only secrets (`POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_PASSWORD`) SHALL appear only commented out with generation hints, and the development `NUXT_SESSION_PASSWORD` SHALL be marked as not for production.
 
 #### Scenario: Dev example works unchanged
 - **WHEN** a developer copies `.env.example` to `.env`, starts the dev compose stack, and runs `pnpm db:migrate` then `pnpm dev`
@@ -138,7 +135,3 @@ The production compose stack SHALL pass an optional `CONSOLA_LEVEL` environment 
 #### Scenario: Raising verbosity without a rebuild
 - **WHEN** a self-hoster sets `CONSOLA_LEVEL` to the `debug` level in `.env` and restarts only the `app` service
 - **THEN** the container logs include debug output (including database statements) without the image being rebuilt
-
-## Out of Scope
-
-- A container `HEALTHCHECK` is intentionally deferred to a future change and is NOT part of this proposal.

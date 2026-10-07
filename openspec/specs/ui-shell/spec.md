@@ -1,27 +1,27 @@
 # ui-shell Specification
 
 ## Purpose
-Define the global authenticated application shell rendered by the `default` layout — a top bar and a left sidebar wrapping the page outlet — together with its responsive behavior, navigation skeleton, accessibility guarantees, tokenized styling, SSR resolution of the running entry, and the document title. The shell exposes named regions for brand, primary navigation, a reserved running-timer region in the top bar (whose live timer widget is specified in `tracking-timer-widget`), and the page content. It adapts across a desktop collapsible rail with persisted SSR-safe state and an off-canvas drawer below the `lg` breakpoint, while meeting WCAG 2.1 AA for its navigation chrome and deriving all styling from Tailwind utilities and Nuxt UI `--ui-*` design tokens.
+Define the authenticated application shell: a top bar and a left sidebar around the page, the navigation and account menu they offer, how they adapt between a collapsible desktop rail and a mobile drawer, their accessibility, and the running entry and document title they resolve on first paint. The live timer widget in the top bar is specified in `tracking-timer-widget`.
 
 ## Requirements
 
 ### Requirement: REQ-064 Authenticated shell regions and slots
-The `default` layout SHALL render a global authenticated shell built on the Nuxt UI dashboard suite (`UDashboardGroup` + `UDashboardSidebar` + `UDashboardNavbar`), composed of two regions — a **top bar** (navbar inside the panel) and a **full-height left sidebar** — wrapping the page outlet. The shell SHALL expose named slots/regions for: brand, primary navigation, a sidebar footer **account control** (identity + account menu), a reserved running-timer region in the top bar, and the page content (`<NuxtPage />`). The shell SHALL NOT render a top-bar utility menu. Logout from REQ-061 SHALL remain reachable from the sidebar footer account control on every authenticated route (open the account control, then activate Log out). The locale control SHALL NOT appear in the shell chrome; it lives on the `/profile` page (core-i18n REQ-401). The theme control SHALL live only in the sidebar footer account menu (ui-theming REQ-402) and SHALL NOT appear elsewhere in the sidebar or top bar.
+The `default` layout SHALL render an authenticated shell of a **top bar** and a **full-height left sidebar** around the page content, with regions for the brand, primary navigation, a sidebar footer **account control**, a running-timer region in the top bar, and the page. The shell SHALL NOT render a top-bar utility menu; Log out SHALL be reachable on every authenticated route from the account control. The account menu contents, and the absence of a locale control, are in REQ-405.
 
 #### Scenario: Shell renders on an authenticated route
 - **WHEN** an authenticated user navigates to any page using the `default` layout
-- **THEN** the top bar, the full-height sidebar, and the page content region SHALL all render, with the page content shown via `<NuxtPage />`
+- **THEN** the top bar, the full-height sidebar, and the page content region SHALL all render
 
 #### Scenario: Logout remains reachable
 - **WHEN** the shell is rendered
 - **THEN** the sidebar footer SHALL expose an account control that can open a menu containing Log out, and activating Log out SHALL clear the session and navigate to `/login`
 
-#### Scenario: Utility menu excludes locale and theme
+#### Scenario: Shell chrome has no locale control
 - **WHEN** the authenticated shell is rendered
 - **THEN** it SHALL NOT offer a locale control anywhere in the sidebar or top bar, and SHALL offer theme selection only inside the sidebar footer account menu (there is no top-bar utility menu)
 
 ### Requirement: REQ-066 Desktop collapsible rail with persisted state
-On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a static full-height rail that the user can toggle between a full (labelled) state and an icon-only (collapsed) state, using `UDashboardSidebar`'s built-in `collapsible` behavior. The desktop collapse/expand control SHALL be available in the top bar (navbar) left region. The chosen state SHALL be persisted and restored on subsequent loads without a visual flash (SSR-safe, cookie-backed). When expanded, the brand region SHALL show the application brand mark beside the full application title (`layout.title`). When collapsed, the brand region SHALL show the same brand mark centered in the header and SHALL NOT show the full title or a short letter-only substitute. The collapsed mark SHALL expose the full application title as its accessible name.
+At or above the `lg` breakpoint the sidebar SHALL be a full-height rail that the user toggles between labelled and icon-only states with a control in the top bar's left region. The state SHALL persist in a cookie and be restored on first paint without a flash. Expanded, the brand region SHALL show the brand mark beside the full title (`layout.title`). Collapsed, it SHALL show only the brand mark, centered, never the title or a letter substitute, with the full title as its accessible name.
 
 #### Scenario: User collapses the rail
 - **WHEN** a desktop user activates the top-bar collapse control while the rail is full
@@ -44,7 +44,7 @@ On desktop viewports (≥ the `lg` breakpoint) the sidebar SHALL render as a sta
 - **THEN** the brand mark SHALL expose the full application title as its accessible name
 
 ### Requirement: REQ-067 Off-canvas drawer below the lg breakpoint
-On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented as an off-canvas drawer (the `UDashboardSidebar` mobile slideover) opened by the top-bar menu toggle control (mobile-only), with a scrim, focus trapping while open, and dismissal via `Escape` or scrim activation. The reserved timer region SHALL remain present in the top bar at this tier. The mobile menu toggle SHALL appear in the top bar on viewports below `lg` and SHALL NOT appear on desktop. The desktop rail collapse control SHALL NOT appear below `lg`.
+Below the `lg` breakpoint the sidebar SHALL be hidden and open as an off-canvas drawer from a menu toggle in the top bar, with a scrim, focus trapped while open, and dismissal via `Escape` or the scrim. The timer region SHALL stay in the top bar. The menu toggle SHALL appear only below `lg`, and the desktop rail control only at `lg` and above.
 
 #### Scenario: Drawer opens and traps focus
 - **WHEN** a user below the `lg` breakpoint activates the menu toggle
@@ -56,16 +56,16 @@ On viewports below the `lg` breakpoint the sidebar SHALL be hidden and presented
 
 #### Scenario: Mobile drawer shows expanded footer identity
 - **WHEN** the mobile drawer is open
-- **THEN** the sidebar footer SHALL show the expanded account control presentation (`UUser` identity row as the menu trigger), not the desktop collapsed avatar-only trigger
+- **THEN** the sidebar footer SHALL show the expanded account control presentation (identity row as the menu trigger), not the desktop collapsed avatar-only trigger
 
-### Requirement: REQ-068 Top bar hosts centered timer and right-side utility menu
-The top bar (`UDashboardNavbar`) SHALL host the reserved timer region at every viewport width (a single instance — no separate stacked row beneath the bar). The timer region SHALL use the remaining width of the top bar after the left control cluster, left-aligned (not centered in a capped max-width column). The top bar's right region SHALL NOT host a utility menu or user/logout control. The left region SHALL host the mobile sidebar open control below `lg` and the desktop rail collapse control at `lg` and above.
+### Requirement: REQ-068 Top bar hosts the timer region and sidebar toggles
+The top bar SHALL host a single timer region at every viewport width, never a separate row beneath it. The timer region SHALL fill the width left after the left control cluster, left-aligned rather than in a centered capped-width column. The left region SHALL hold the mobile sidebar open control below `lg` and the desktop rail control at `lg` and above. The right region SHALL NOT host a utility menu or logout control.
 
-#### Scenario: Timer stays centered in the top bar
+#### Scenario: Timer fills the rest of the top bar
 - **WHEN** the shell is rendered at any viewport width
 - **THEN** the reserved timer region SHALL render left-aligned within the remaining top-bar width (after the left control cluster) rather than in a centered capped-width column or a row beneath the bar
 
-#### Scenario: Utility menu is on the top bar right
+#### Scenario: No utility menu on the top bar
 - **WHEN** the shell is rendered
 - **THEN** the top bar's right region SHALL NOT render a utility menu or logout control
 
@@ -76,7 +76,7 @@ The top bar (`UDashboardNavbar`) SHALL host the reserved timer region at every v
 - **THEN** the top bar left SHALL expose the desktop rail collapse control and SHALL NOT expose the mobile sidebar open control
 
 ### Requirement: REQ-071 Accessible shell navigation
-The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be a `<nav>` landmark with an accessible name (`aria-label`), and its links SHALL be rendered natively by `UNavigationMenu` from the `navItems` definition (icon + label) rather than through a custom per-item slot. Each navigation link SHALL be addressable by its destination `href` (e.g. `a[href="/trackers"]`) for test and automation hooks, including `a[href="/reports/monthly"]` for Monthly timesheet. The link matching the current route SHALL expose `aria-current="page"`; when the route is `/reports/monthly` that SHALL be the Monthly child, not the Reports group. The menu toggle SHALL expose `aria-expanded` reflecting the sidebar/drawer open state. When the desktop rail is icon-only, each primary navigation item SHALL expose a text tooltip with that item's navigation label, and the Reports group SHALL expose its children (Monthly timesheet) through a popover so the child remains operable. The shell SHALL be fully operable by keyboard.
+The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The sidebar SHALL be a named `<nav>` landmark whose items render as plain icon-plus-label links addressable by their `href`. The current route's link SHALL expose `aria-current="page"`; on `/reports/monthly` that is the Monthly child, not the Reports group. The menu toggle SHALL expose `aria-expanded`. On the icon-only rail each item SHALL show its label as a tooltip, and Reports SHALL expose its children in a popover.
 
 #### Scenario: Current route is indicated
 - **WHEN** the user is on a route represented in the sidebar
@@ -92,7 +92,7 @@ The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be
 
 #### Scenario: Links are rendered natively and addressable by href
 - **WHEN** the sidebar navigation is rendered
-- **THEN** each destination SHALL render as a single native `UNavigationMenu` link (icon + label) with no custom per-item slot, and SHALL be selectable by its `href` (e.g. `[data-testid="app-sidebar"] a[href="/"]` for Timer, `a[href="/trackers"]` for Trackers, and `a[href="/reports/monthly"]` for Monthly timesheet)
+- **THEN** each destination SHALL render as a single link (icon + label) and SHALL be selectable by its `href` (e.g. `[data-testid="app-sidebar"] a[href="/"]` for Timer, `a[href="/trackers"]` for Trackers, and `a[href="/reports/monthly"]` for Monthly timesheet)
 
 #### Scenario: Collapsed rail shows nav tooltips
 - **WHEN** the desktop sidebar is collapsed to icon-only and the user focuses or hovers a primary navigation icon
@@ -102,17 +102,8 @@ The shell SHALL meet WCAG 2.1 AA for its navigation chrome. The sidebar SHALL be
 - **WHEN** the desktop sidebar is collapsed to icon-only
 - **THEN** the user SHALL be able to activate Monthly timesheet from the Reports item's popover and navigate to `/reports/monthly`
 
-### Requirement: REQ-072 Tokenized shell styling
-The shell SHALL be styled using Tailwind utilities and Nuxt UI `--ui-*` design tokens, with no ad-hoc inline `style` attributes in `default.vue`. Brand accent usage SHALL rely on the configured `primary` color (per REQ-160) rather than inline colors or raw hex values.
-
-#### Scenario: No inline ad-hoc styling in the shell
-- **WHEN** the shell is implemented
-- **THEN** its layout and color SHALL derive from Tailwind utilities and Nuxt UI design tokens and not from ad-hoc inline `style` attributes
-
 ### Requirement: REQ-258 Running entry resolved during authenticated shell SSR
-The authenticated `default` layout SHALL resolve the current user's running time entry (`GET /api/time-entries/running`) during server-side rendering of any authenticated route and SHALL seed the shared running-timer state used by the live timer widget before first paint. The SSR fetch SHALL authenticate using the incoming session cookie (cookie-forwarding request fetch), matching other authenticated SSR data loads. When no running entry exists, the shell SHALL seed idle state (`null`) rather than leaving the widget in an unknown pre-fetch idle that could accept start actions incorrectly after hydrate without a resolved server result.
-
-Client-side navigations within an already-hydrated session MAY reuse the shared running-timer state and SHALL NOT require a full page reload to keep the widget correct after start/stop mutations already reflected in that state. After a full document load, the running entry SHALL be present in the initial render payload when the SSR request succeeded.
+During SSR of any authenticated route, the `default` layout SHALL fetch the user's running entry (`GET /api/time-entries/running`) with the request's session cookie and seed the shared running-timer state before first paint, seeding idle (`null`) when there is none, so the widget never accepts start actions against an unresolved state. Client navigations MAY reuse that state and SHALL NOT need a reload to stay correct after start/stop.
 
 #### Scenario: Hard reload shows running title without waiting for client mount
 - **WHEN** an authenticated user with a running entry performs a full document load of any private route that uses the `default` layout
@@ -127,8 +118,7 @@ Client-side navigations within an already-hydrated session MAY reuse the shared 
 - **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request so the endpoint authorizes the same user as a browser navigation
 
 ### Requirement: REQ-301 Document title is page plus brand
-
-Every rendered app route SHALL set the HTML document title to `{page} | {brand}` where `{brand}` is the translated `layout.title` string and `{page}` is the translated label for the current destination (the same wording as the page heading or sidebar item when one exists). The title SHALL be present on first SSR paint so the tab is never the request hostname. Client navigation and locale changes SHALL update the title without a full reload. The title SHALL NOT include running-timer elapsed time or task names.
+Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` is the translated `layout.title` and `{page}` the translated label of the destination (the heading or sidebar wording when one exists). The title SHALL be present on the first SSR paint, never the request hostname, and SHALL update on client navigation and locale change without a reload. It SHALL NOT include running-timer time or task names.
 
 #### Scenario: Timer home tab is not the hostname
 
@@ -166,7 +156,7 @@ Every rendered app route SHALL set the HTML document title to `{page} | {brand}`
 - **THEN** the document title SHALL still include `layout.title` and SHALL NOT fall back to the request hostname
 
 ### Requirement: REQ-404 Sidebar navigation skeleton with placeholder routes
-The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Projects, Reports. Timer, Trackers, and Projects SHALL be navigation links: Timer to `/` (timer view); Trackers to `/trackers`. There SHALL be no Settings or Profile navigation entry; the profile page is reached from the account menu (REQ-405). Reports SHALL be a nested group, not a navigation link: it SHALL have no destination href, SHALL NOT navigate when activated, and SHALL keep its nested children visible whenever the sidebar is showing labels (expanded desktop rail or open mobile drawer). The group SHALL include a Monthly timesheet child that routes to `/reports/monthly` (reports REQ-289) and a Client report child that routes to `/reports/client` (REQ-384). There SHALL be no Clients navigation entry, no Tasks navigation entry, no Dashboard entry, and no navigation link to `/reports`. Destinations that do not yet have a real feature page SHALL route to a placeholder page rather than a broken route. All navigation labels SHALL come from the i18n catalogs with `en`/`pl` parity.
+The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, REQ-289) and Client report (`/reports/client`, REQ-384) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks, Dashboard or `/reports` entry (Profile is in REQ-405). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
 
 #### Scenario: All skeleton destinations are listed
 - **WHEN** the sidebar is rendered
@@ -184,7 +174,7 @@ The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Proje
 - **WHEN** the sidebar navigation is rendered at any viewport size
 - **THEN** it SHALL NOT contain a link to `/settings` or `/profile`
 
-#### Scenario: Reports link opens the reports hub
+#### Scenario: Reports has no hub page
 - **WHEN** the user looks for Reports in the sidebar
 - **THEN** the application SHALL NOT navigate to a `/reports` hub; Monthly timesheet and Client report SHALL be nested children that open `/reports/monthly` and `/reports/client`
 
@@ -209,17 +199,9 @@ The sidebar SHALL present the v1 destination skeleton — Timer, Trackers, Proje
 - **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
 
 ### Requirement: REQ-405 Account menu
-The sidebar footer SHALL present a single **account control** for the authenticated user on every authenticated route (replacing the former top-bar utility menu). The primary identity text SHALL be the user's `displayName` (always non-empty, workspace-settings REQ-397), and the email SHALL appear as a secondary description line. The locale control SHALL NOT appear in the footer or top bar.
+The sidebar footer SHALL present one account control on every authenticated route, identified by the user's `displayName` (REQ-397) with the email as a secondary line; a name saved on `/profile` SHALL appear without a reload. Its menu SHALL contain, in order: **Profile** (to `/profile`), the **Theme** submenu (REQ-402), then **Log out** in a separate group, which clears the session and goes to `/login`. No locale control SHALL appear in the footer or top bar. Labels SHALL have `en`/`pl` parity.
 
-The account control SHALL open a dropdown menu with, in order: a **Profile** item (user icon) that navigates to `/profile`; a **Theme** submenu (ui-theming REQ-402); then, in a separate group, **Log out** (logout icon). Activating Log out SHALL clear the session and navigate to `/login`. A display name saved on `/profile` SHALL be reflected in the account control without a reload.
-
-On the **expanded** desktop rail and in the **mobile drawer**, the account control trigger SHALL be a user identity presentation (avatar initial plus display name and secondary email), implemented with Nuxt UI `UUser` (or equivalent) as a button.
-
-On the **desktop icon-only (collapsed)** rail, the account control trigger SHALL be an **avatar** (initial of the display name) control with the display name as its accessible name, opening the **same** account menu. It SHALL NOT require a separate always-visible logout row; identity text MAY be omitted from the collapsed trigger itself.
-
-All footer and menu labels SHALL come from the i18n catalogs with `en`/`pl` parity.
-
-#### Scenario: Utility menu is a single top-bar entry
+#### Scenario: Logout is in the account menu
 - **WHEN** the shell is rendered at any viewport size
 - **THEN** logout SHALL be reachable from the sidebar footer account menu (not from a top-bar utility menu)
 
@@ -231,14 +213,17 @@ All footer and menu labels SHALL come from the i18n catalogs with `en`/`pl` pari
 - **WHEN** the user activates Profile in the account menu
 - **THEN** the application SHALL navigate to `/profile` and render the profile page
 
-#### Scenario: Expanded footer shows name and email
-- **WHEN** the sidebar is expanded (or the mobile drawer is open)
-- **THEN** the account control trigger SHALL show the display name as the primary line, the email as a secondary line, and an avatar initial, and opening the control SHALL expose Profile, Theme, and Log out
-
 #### Scenario: Footer updates after a display name change
 - **WHEN** the user saves a new display name on `/profile`
 - **THEN** the account control SHALL show the new display name and its initial without a page reload
 
-#### Scenario: Collapsed footer is logout icon only
+### Requirement: REQ-428 Account control trigger per sidebar state
+On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, and the email as a secondary line. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
+
+#### Scenario: Expanded footer shows name and email
+- **WHEN** the sidebar is expanded (or the mobile drawer is open)
+- **THEN** the account control trigger SHALL show the display name as the primary line, the email as a secondary line, and an avatar initial, and opening the control SHALL expose Profile, Theme, and Log out
+
+#### Scenario: Collapsed footer is an avatar
 - **WHEN** the desktop sidebar is collapsed to icon-only
 - **THEN** the footer account control trigger SHALL be an avatar (initial) that opens the account menu containing Profile, Theme, and Log out, and SHALL NOT show a separate full-width labelled logout row outside the menu

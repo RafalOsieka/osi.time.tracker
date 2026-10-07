@@ -85,7 +85,7 @@ async function commitTitle() {
 /**
  * Sends only the bound(s) that actually changed from the entry's stored
  * instants; `TimeField` already reports an unchanged commit by not firing at
- * all, so reaching here means at least one side moved (REQ-361, REQ-396).
+ * all, so reaching here means at least one side moved (REQ-431, REQ-396).
  */
 type TimeEntryTimesPatch = Partial<Pick<TimeEntryDto, 'startedAt' | 'stoppedAt'>>;
 

@@ -184,7 +184,7 @@ function onUpdate(value: TimeValue | TimeFieldRange | null | undefined) {
   emit('update:modelValue', next);
 }
 
-/** Snaps a same-minute inverted range to a zero-length range, per REQ-361. */
+/** Snaps a same-minute inverted range to a zero-length range, per REQ-432. */
 function clampInversion(value: TimeFieldRange): TimeFieldRange {
   const { start, end } = value;
   if (!start || !end) return value;
