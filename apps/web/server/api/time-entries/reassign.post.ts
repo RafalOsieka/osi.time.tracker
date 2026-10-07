@@ -117,7 +117,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       effectiveCachedRemoteProjectTitle = null;
     } else {
       // Value: target the task carrying that remote issue. Derive tracker
-      // provenance server-side from the target project's active tracker (REQ-179).
+      // provenance server-side from the target project's active tracker (REQ-451).
       // Cached title comes from the client search result; tracker id is never
       // client-trusted.
       if (effectiveProjectId === null) {

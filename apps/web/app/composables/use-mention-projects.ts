@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import type { ProjectDto } from '../../shared/types/project';
 
 /**
- * Project list backing `@project` mentions (REQ-372). Loaded on demand (input
+ * Project list backing `@project` mentions (REQ-470). Loaded on demand (input
  * focus / dialog open) and matched client-side. A failed load keeps the last
  * successful list without surfacing an error, so a failure only means `@`
  * stays literal text.

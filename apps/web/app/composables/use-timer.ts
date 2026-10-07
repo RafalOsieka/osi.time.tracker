@@ -107,7 +107,7 @@ export function useTimer() {
    * Retitle / re-project the running entry. A `taskId` binds to that task
    * (its project comes with it). Otherwise `projectId` is sent explicitly:
    * `null` makes the entry project-less, `undefined` keeps the current
-   * project (REQ-143).
+   * project (REQ-448).
    */
   async function updateTitle(
     title: string | null,

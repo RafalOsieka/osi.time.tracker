@@ -687,7 +687,7 @@ describeTimerViewUI('timer view UI flow', async () => {
       .toBe(originalDaySeconds + 120);
 
     // A running entry's single-field-plus-"now" slot must be the same width
-    // as a stopped entry's range field (REQ-265, REQ-361).
+    // as a stopped entry's range field (REQ-459, REQ-361).
     const runningTitle = 'Seconds Precision Running Task ' + Date.now();
     const running = await startEntry(jar, token, { title: runningTitle });
     try {
@@ -857,7 +857,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 10000 });
     const optionTexts = await page.locator('[role="option"]').allInnerTexts();
 
-    // First option is always the synthetic create-new-task row (REQ-180);
+    // First option is always the synthetic create-new-task row (REQ-467);
     // the real suggestions follow it, capped at 20 and ranked
     // most-recently-used first (REQ-133).
     expect(optionTexts[0]).toMatch(/new task/i);
