@@ -1,6 +1,6 @@
 # E2E guideline
 
-How the end-to-end suites under `apps/web/test/e2e` are organized and run, the rules the harness keeps, and how to resolve the problems that keep coming back.
+How the end-to-end suites under `apps/web/test/e2e` are organized and run, and how to resolve the problems that keep coming back.
 
 ## Suites
 
@@ -53,6 +53,7 @@ The api/ui global setup (`harness/global-setup.ts`) decides how to get a server:
 - Trackers are never real: api specs assert server contracts, ui specs stub tracker HTTP with `page.route`.
 - Wait for hydration after every full page load. Pages are server-rendered, so markup is visible before Vue attaches handlers: a click on it is silently lost, and a form submits natively. `createPage('/…')` already waits; pass `{ waitUntil: 'hydration' }` to `page.goto()` and use `reloadHydrated(page)` from `helpers/ui` instead of `page.reload()`. ESLint enforces both in `ui/`; disable the rule on a line only when the test asserts the pre-hydration (SSR) state, and say so.
 - Keep specs independent of the time of day the suite runs at. When a test types clock times, seed the entry at fixed UTC times (e.g. yesterday 10:00) instead of "now".
+- A historical spec for migration `NNNN` applies only the files whose numeric prefix is lower than `NNNN` (never an exclude-by-name list), seeds the old shape, then applies that one migration. Purely additive migrations need no historical spec.
 
 ## Coverage
 
@@ -63,19 +64,6 @@ Codecov combines three flags, merged per line: `unit-nuxt`, `e2e-api` and `e2e-d
 - API e2e runs handlers in a child Nitro process, so Vitest cannot see those hits. In CI, Node writes raw V8 data (`NODE_V8_COVERAGE`) and `harness/report-e2e-coverage.ts` runs `c8 report` to turn it into lcov for the Codecov flag `e2e-api`. `c8` is a converter here, not a test runner.
 - Do not pass the Vitest include/exclude globs to `c8 report`: it filters compiled `.output` chunks before sourcemap remapping, so `--include app/**` or `--exclude .output/**` drops the whole Nitro dump. The converter refuses an lcov without first-party `app/`, `server/` or `shared/` paths.
 - UI e2e (Playwright) coverage is not collected. Journeys execute a lot of code while asserting little, so their hits would hide what focused tests miss; branches belong in nuxt, unit, db or api specs.
-
-## Harness rules
-
-Keep these when changing `harness/` or adding specs:
-
-- **Layout.** A spec that boots Nuxt lives in `api/` (HTTP) or `ui/` (Playwright); a spec that does not lives in `db/`. A Playwright spec in `api/` or a `fetch` spec in `db/` is a layout defect. Each project discovers its directory recursively.
-- **Isolation.** Each spec file clones its own database from the template with `CREATE DATABASE … TEMPLATE`; close the migration pool before cloning or the clone fails on active connections. In `api/` and `ui/`, every test that mutates data seeds its own user through the helpers (helpers never reuse a user across tests), so leftovers and the single running timer cannot leak between tests.
-- **Server per file.** `api`/`ui` boot one Nuxt server per file and pass the file’s `DATABASE_URL` and `NUXT_SESSION_PASSWORD` through `setup({ env })`, overriding the baked `runtimeConfig`. The `db` project never boots Nuxt or builds.
-- **Parallelism.** Files run in parallel; the number of concurrent Nuxt servers is capped (`min(4, cpus/2)`). Tests inside an `api` file may run concurrently up to a cap, except specs that assert login rate limiting or mutate process-wide environment. `ui` files run their tests one at a time.
-- **Guards.** Use `requireDocker()` / `requireBrowser()`; seed users through the shared helpers instead of inline hash-and-insert blocks.
-- **Connection host.** Database URLs use `127.0.0.1`, not `host.docker.internal`.
-- **Teardown.** Global teardown removes the `osi-time-tracker-e2e-pg` container and leaves no Nuxt/Node processes behind; a reused container is cleaned of leftover `osi_time_tracker_*` databases first.
-- **Migrator and historical specs.** They provision an empty database from `template0` per test (`provisionEmptyDatabase()`); current-schema specs may clone the template. A historical capsule for migration `NNNN` applies only files whose numeric prefix is lower than `NNNN` (never an exclude-by-name), seeds the old shape, then applies that one migration. Purely additive migrations need no capsule.
 
 ## Troubleshooting
 

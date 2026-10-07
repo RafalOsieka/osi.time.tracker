@@ -13,7 +13,6 @@ This document defines the coding style and conventions used across the web appli
   // oxlint-disable-next-line typescript/no-explicit-any -- reason goes here.
   ```
 - Prefer named domain types over `unknown`. `catch (err)` is already `unknown` under TypeScript `strict` — omit `: unknown`. Narrow with `instanceof` on real classes (`FetchError`, `RemoteAdapterError`, `UpstreamHttpError`, `Error`), schema parse, or missing-field checks on named payloads. Do **not** add `isStringValue` / `isJsonObject` wrappers around `typeof` or `instanceof Object`. API error `params` use `MessageParams` (`string | number | boolean`), not `Record<string, unknown>`.
-- Do not narrow with `typeof` in app, server or shared code (`anti-slop/no-runtime-typeof`); use `instanceof`, `'key' in` on a named type, a schema parse, or a named `isX` / `hasX` type predicate.
 - Do not edit `tools/oxlint/anti-slop/` unless the developer explicitly asks. Remaining `as` assertions need `// SAFETY:` immediately above.
 
 ## 2. Naming Conventions
@@ -45,14 +44,6 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - **Encoding:** UTF-8; end every file with a single trailing newline.
 - Let Oxfmt own whitespace — run the format and lint commands before committing rather than hand-aligning code.
 
-### Lint and format tooling
-
-- `pnpm lint` runs Oxlint (`vp lint`) first, then ESLint, and fails if either reports an error. Oxlint covers JS/TS and Vue `<script>` blocks; ESLint stays only for rules that parse Vue templates: accessibility (`eslint-plugin-vuejs-accessibility`), raw template text (`@intlify/eslint-plugin-vue-i18n` `no-raw-text`), `vue/*` template rules and leftover `nuxt/*` rules. Those two template plugins are not loaded as Oxlint JS plugins.
-- ESLint disables rules Oxlint already enforces (`eslint-plugin-oxlint`), so a violation is reported once; `eslint-config-prettier` stays the last ESLint config entry.
-- Oxlint and Oxfmt are configured only in the `lint` and `fmt` blocks of the root `vite.config.ts`. A `.oxlintrc.json` or `.oxfmtrc.json` is a defect. Type-aware Oxlint (`--type-aware`, `oxlint-tsgolint`) stays off, and nursery rules are not bulk-enabled.
-- Every generic `anti-slop/*` rule is `error`; the Effect-specific ones are off; Vue templates are not anti-slop-checked. Each remaining `vi.mock` carries a next-line `anti-slop/no-module-mocking` disable with a reason (no blanket `test/` allowlist). `vite-plus/prefer-vite-plus-imports` is `error`, so Vite and Vitest APIs are imported from `vite-plus` entry points.
-- `pnpm format` / `format:check` run Oxfmt (`vp fmt`), never Prettier, over code, Vue SFCs including templates, JSON, CSS, YAML and Markdown. `.gitattributes` forces LF at checkout, so the check passes on Windows with `core.autocrlf=true`.
-
 ### Imports
 
 - Group imports logically; place value imports and `import type { ... }` type-only imports separately, using `import type` for anything used only as a type.
@@ -66,12 +57,9 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - Keep all user-facing text in the i18n catalogs and render it via `t(...)`; never hard-code display strings in templates or scripts.
 - Provide accessibility affordances: `aria-label`, `role`, and `aria-live` where appropriate, and use stable `data-testid` hooks for testable elements.
 - Hover/focus hints use Nuxt UI `UTooltip`, not the HTML `title` attribute (leave modal/page/confirm `title` props alone). Icon-only or status-only controls pair `aria-label` with a matching tooltip; do not add a tooltip that only repeats an already-visible label. Disabled explanations wrap a `tabindex="0"` host so the tooltip still opens. Truncated overflow uses `OverflowTooltip`.
-- Fonts come from the Nuxt UI/Tailwind default stack. `@nuxt/fonts` is only auto-registered by `@nuxt/ui`; do not list it in `modules` or add it as a direct dependency.
 - Prefer Tailwind utility classes and Nuxt UI `--ui-*` design tokens for layout/color. Icons use the Lucide set (`i-lucide-*`). Keep residual `<style scoped>` only when utilities are insufficient.
-- Forms use `UForm` with a shared zod `:schema` and labelled `UFormField`s. Confirmations use `useAppConfirm()` (`useOverlay` + `ConfirmModal`), not per-page dialog instances.
-- Overlay dialogs that collect input (`UModal` / `UPopover` bodies) use `UForm` too, never a native `<form @submit.prevent>`; selectable result and suggestion items inside them are `UButton`s (e.g. `variant="ghost"`), keeping their `data-testid`, `id`, `<label for>`, `aria-*` and `role="alert"` wiring.
-- Inline text edits use the shared `UInput` pattern: `variant="none"` while displayed, `variant="ghost"` while editing. Do not imitate editable text with a `<button>`/`UButton` plus `<style scoped>` resets, and do not size the control in `ch` from the text length. Inline project/activity pickers are a `UButton` opening a non-modal `UPopover` listbox, not a `USelect` (its dismiss overlay swallows the first click).
-- Wall-clock times use `TimeField`, durations `DurationInput`, dates `UInputDate` (range variant for ranges) and `UCalendar` for jump-to-date pickers. The compact expandable row (`CompactExpandableRow`) is shared by the timer view and Remote Sync.
+- Forms use `UForm` with a shared zod `:schema` and labelled `UFormField`s, including `UModal` / `UPopover` bodies (never a native `<form @submit.prevent>`). Confirmations use `useAppConfirm()` (`useOverlay` + `ConfirmModal`), not per-page dialog instances.
+- Inline text edits use `UInput` with `variant="none"` while displayed and `variant="ghost"` while editing, not a `UButton` styled as text. Inline pickers are a `UButton` opening a non-modal `UPopover` listbox, not a `USelect` (its dismiss overlay swallows the first click).
 
 ### Reactive state
 
@@ -96,7 +84,6 @@ Rules:
 
 - **`as unknown as` is forbidden** in `app/` components, pages, layouts, composables, and client utilities. Isolate unavoidable library friction in one adapter util that returns the real prop or DOM type — never cast in templates.
 - Do not cast form fields or submit payloads (`projectId as string`) when container annotation or schema-typed `FormSubmitEvent` removes the need.
-- Tests do not chain assertions either: use a typed fake, `satisfies`, or a single `as` with `// SAFETY:`.
 - Do not use `as Record<string, unknown>` for “I don’t know the prop type”; prefer the component’s prop type or a narrow adapter.
 - Freeform task-title autocomplete (`UInputMenu` autocomplete mode) uses the shared builder in `app/utils/task-title-menu.ts`: object items with string model via `value-key` / `label-key` and `onSelect` closures over real `TaskDto` identity — never double-cast task DTOs to/from strings.
 
@@ -126,7 +113,6 @@ Rules:
 - Every human-readable date/time format call (`Intl.DateTimeFormat`, `Date#toLocaleDateString`/`toLocaleTimeString`, and any wrapper such as `formatDate`) MUST pass an explicit `timeZone` option derived from the effective setting. Omitting `timeZone` silently falls back to the runtime's local timezone and will render the wrong day/time for users whose saved timezone differs.
 - Utilities that accept a `timeZone` parameter (e.g. `app/utils/date-time.ts`, `app/utils/timer-view-grouping.ts`) may default it to the browser-detected timezone for convenience, but every call site with access to a signed-in user's settings MUST pass the effective timezone explicitly rather than relying on the default.
 - UTC ISO 8601 instants remain the only on-the-wire representation; the server performs no timezone-aware rendering, only timezone-aware bucketing/boundary math when explicitly given the user's timezone (see `server/utils/day-boundary.ts`).
-- Date and window helpers are pure functions that take the effective `{ timeZone }` explicitly. They take no `weekStart` argument; there is no week-start setting (workspace-settings REQ-398). Wall-clock → instant conversion uses Temporal's `compatible` disambiguation.
 - Interop with picker values is confined to dedicated adapters: `instantToZonedDateTime` / `zonedDateTimeToInstant` in `app/utils/date-time.ts` for the segmented time field, and `combineLocalDateAndTime` in `app/utils/timer-view-grouping.ts` for browser-local `Date` values; no other code should construct dates from browser-local getters.
 
 ## 8. Comments & Documentation
@@ -149,7 +135,7 @@ Rules:
 - Fix bugs test-first: before changing the code, write a regression test that reproduces the defect and confirm it **fails**; after the fix, confirm it **passes**. Never weaken, skip, or delete that test to force a green run; leave it in place as a permanent regression guard. Trivial defects (typos, obvious single-line errors) may rely on a documented manual check instead.
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
-- A composable extracted from a page gets its own tests at its boundary: loading lifecycle (idle → loading → loaded/error), retry and derived selectors, without rendering the page. Those tests call the real composable; mock its collaborators (HTTP, adapters, other composables), never the module under test. The same applies to the browser-side remote client (account cache, in-flight request coalescing, log cache and invalidation, create, mapping adapter failures to translation keys).
+- A composable extracted from a page gets its own tests at its boundary (loading lifecycle, retry, derived selectors) without rendering the page; mock its collaborators, never the composable itself.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
 - Anti-slop plugin tests live in `tools/oxlint/anti-slop/test/` (`*.test.ts`, Oxlint `RuleTester`). Do not edit plugin rules, shared helpers, or the plugin entry unless asked.
 

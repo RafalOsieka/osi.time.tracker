@@ -58,17 +58,6 @@ One consultant, two clients:
 
 Every leaf and sibling project has 6–8 issues (older ones closed, two never logged). The `admin` account has three months of weekday time logs: Monday and Tuesday on Nordwind, Wednesday and Thursday on Helios, Friday on both, with one holiday week. Runs in the same calendar week produce identical logs; in a new week the window slides.
 
-### Seed guarantees
-
-The seed is tested in `apps/dev-seed`; keep these properties when changing it:
-
-- **Isolated.** The trackers start only with `--profile trackers`, each on its own named volumes, separate from the dev database and the production stack. The seed never writes to the OSI database.
-- **Fails loudly.** It waits a bounded time for both healthchecks and exits non-zero naming the tracker and step when one is down, unhealthy or rejects a request. A failure on one tracker does not stop the other from being seeded; a failed bootstrap skips that tracker's content.
-- **Idempotent.** Existing state is read first and only missing items are created, keyed by project identifier, `(project, subject)` and `(issue, spent-on, comment)`. Matches are skipped, never updated, so hand-made projects, issues, logs and status changes survive. A run on a later date adds only the newly covered days.
-- **Scoped reset.** `--reset` deletes only `admin` time logs that match a fixture key, never projects, issues or other logs. `--dry-run` prints creations, skips and deletions and writes nothing.
-- **Keys follow `.env`.** The OpenProject token is created once and skipped while the key authenticates; changing `OPENPROJECT_DEV_API_KEY` replaces it. Redmine sets its key, password and REST API on every boot.
-- **Deterministic.** Logs cover every weekday from 91 days to 1 day before the run, 3–4 per day totalling 6–8 h (5–6 h on Fridays), each with an activity, issue and comment. Every week has, per tracker, a comment repeated across days on one issue, two comments on one issue, one blank comment and one log in the internal project. The same calendar week always yields identical logs.
-
 ### Trying import
 
 In OSI, add both trackers with the keys above, create a Project scoped to `fleet-platform` (Redmine) and one scoped to `solar-portal` (OpenProject), then use **Import history** for the last three months. Every routing rule shows up:
@@ -91,50 +80,13 @@ Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → 
 
 Isolated fake trackers for extension tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at real trackers from CI.
 
-The extension's build-output check fails when a manifest icon path is missing from the build output or its PNG does not have the declared pixel size (remote-browser-extension REQ-410).
-
 ## Database and migrations
 
-Drizzle (`drizzle-orm` with the `postgres` driver) is the only data-access layer; server code reaches it through `getDb()` (see [`coding-standards.md`](./coding-standards.md#5-server--api-conventions)). The schema lives in `apps/web/server/db/schema`. After a schema change, `pnpm db:generate` runs `drizzle-kit` and writes a new SQL migration to `apps/migrator/migrations`; commit it. `pnpm db:migrate` applies pending migrations with the `drizzle-orm` migrator and seeds the bootstrap user. Applied migrations are never edited. Column names are camelCase and primary keys are `uuid DEFAULT uuidv7()`. Task uniqueness (workspace-tasks REQ-136) uses two `NULLS NOT DISTINCT` unique indexes, on `(userId, projectId, name, remoteIssueId)` and on `(userId, name, remoteIssueId) WHERE projectId IS NULL`, so at most one unlinked task exists per name and project scope. The single running entry per user (tracking-api REQ-141) is a partial unique index on `(userId) WHERE stoppedAt IS NULL`.
-
-## Docker images
-
-The production images are a spec (`openspec/specs/platform-docker`). Build details: the runtime stage is based on the Node 24 image, and [`.dockerignore`](../.dockerignore) keeps `node_modules`, `.output`, `.nuxt`, `.git` and other non-essential paths out of the build context.
-
-## Brand assets
-
-The mark and favicon rules are a spec (`openspec/specs/ui-theming`, REQ-368, REQ-436 to REQ-438). The files follow one rule: [`apps/web/app/assets/icons/app-mark.svg`](../apps/web/app/assets/icons/app-mark.svg) is the only hand-drawn glyph, and every other copy is derived from it. Its header comment lists them: the maskable source `public/icon.svg`, the tab icons `public/favicon.svg` and `favicon-running.svg` (same geometry, only the scale and fill differ), `favicon.ico`, the extension's inline glyph and its 16/32/48/128 px PNGs. Each derived copy names the canonical file as its source. When the glyph changes, regenerate all of them in the same change. The client report PDF draws the mark from the canonical glyph at render time instead of keeping a pasted copy.
-
-## Toolchain
-
-Commands and the upgrade procedure are in [`AGENTS.md`](../AGENTS.md#vite-vp). The rules behind them:
-
-- One toolchain: build, test, lint and format run through Vite+ (`vp`). [`pnpm-workspace.yaml`](../pnpm-workspace.yaml) pins one `vite-plus` version in the catalog together with the `vite`, `vitest` and `@vitest/coverage-v8` versions that release supports, and its overrides resolve every `vite` and `vitest` in the tree (including transitive ones) to those entries. Bump them only together through `vp migrate`; a lone `vitest` or coverage bump is a defect.
-- The CI setup action and the Docker build image run the same `vite-plus` version as the catalog; Node.js and pnpm come from `devEngines` in the root `package.json`.
-- Root scripts build the workspace libraries first (`build:packages`, cached, in dependency order) and fail when a library build or type check fails, instead of running against stale output.
-- `packages/remote-trackers` is consumed only through its public exports. It builds, type-checks and runs its provider tests without the web app or generated Nuxt types (`pnpm package:check`), and needs no Node-only globals in the browser; a deep import of an unexported module must fail.
+After a schema change in `apps/web/server/db/schema`, run `pnpm db:generate` and commit the new migration from `apps/migrator/migrations`. Applied migrations are never edited.
 
 ## Continuous integration
 
-The merge rules are a spec (`openspec/specs/platform-ci`): every quality gate must pass, the PR title follows Conventional Commits, merges are squash-only. How the gates run lives in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and [`pr-title.yml`](../.github/workflows/pr-title.yml); read those for job names, actions and versions.
-
-- Pull requests to `main` and pushes to `main` run the workflow. A newer run on the same ref cancels the older one.
-- Cheap checks (lint, format, type check, package, unit, extension, nuxt, build) run as parallel jobs, each its own status check.
-- The `db`, `api` and `ui` e2e jobs start only after the cheap checks pass, so a red lint never boots Docker or Playwright. `db` does not wait for `build`; `api` and `ui` reuse the `build` job's `.output` artifact instead of building again, and fail (not skip) when it is missing. Missing Docker or Chromium fails these jobs in CI.
-- Every job installs with a frozen lockfile; Node.js and pnpm come from `devEngines` in the root `package.json`.
-- The workflow token is read-only by default, third-party actions are pinned, and secrets (`NUXT_SESSION_PASSWORD`, `CODECOV_TOKEN`) are never logged.
-- The merge-blocking ruleset on `main` lives in the GitHub repository settings, not in this repository. Its required checks must list `db`, `api` and `ui` separately.
-- Dependabot ([`.github/dependabot.yml`](../.github/dependabot.yml)) covers npm, GitHub Actions and Docker. It skips the Vite+ toolchain (which moves through `vp migrate`, see [`AGENTS.md`](../AGENTS.md#upgrading-dependencies)) and groups `nuxt` with `@nuxt/*`. A PR that bumps the `vite-plus` catalog version without the Docker build image tag, or the reverse, must not be merged.
-- CodeQL runs through GitHub default setup; findings appear in the Security tab.
-- The `specs` job runs `openspec validate --specs --strict` with a pinned OpenSpec (1.14.0 only reports over-long requirements as INFO). It is not yet a required check; adding it to the ruleset changes platform-ci REQ-406 and needs its own OpenSpec change.
-
-### Coverage
-
-Coverage is informational only: it never fails a check and is not a required gate ([`codecov.yml`](../codecov.yml) sets every status to `informational`). The `coverage`, `api` and `db` jobs upload the flags `unit-nuxt`, `e2e-api` and `e2e-db`, which Codecov combines for the PR comment and the README badge; a missing flag carries forward from the base commit. How each flag is measured is in [`e2e-guideline.md`](./e2e-guideline.md#coverage).
-
-- Sources are first-party `app/`, `server/` and `shared/` only. Migration SQL/JSON, other `*.sql`/`*.json` and the never-executed bundler-warmup plugin are excluded (`apps/web/vitest.config.ts`).
-- A failing test still fails its job, independent of coverage; a failed db test uploads no report.
-- Reports go to git-ignored `coverage*/` directories. A public-repo upload may be tokenless; `CODECOV_TOKEN` is used when set and never logged.
+The gates run in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The ruleset that blocks merges on `main` lives in the GitHub repository settings, not in this repository; its required checks list `db`, `api` and `ui` separately, and the `specs` job is not required yet.
 
 ## Troubleshooting
 
