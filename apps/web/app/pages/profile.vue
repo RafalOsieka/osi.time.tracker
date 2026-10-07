@@ -50,7 +50,7 @@ async function persist(update: UpdateProfileDto, revert: () => void) {
   }
 }
 
-/** Blur/Enter commit (REQ-400): blank or unchanged values revert without a request. */
+/** Blur/Enter commit (REQ-445): blank or unchanged values revert without a request. */
 function commitDisplayName() {
   const next = displayNameDraft.value.trim();
   if (!next || next === storedDisplayName.value) {

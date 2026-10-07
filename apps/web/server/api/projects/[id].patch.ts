@@ -38,7 +38,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const nextRemoteProjectTitle = trackerChanged ? null : (parsedBody.remoteProjectTitle ?? null);
 
   // A local project (no tracker, and not being reassigned to one this request)
-  // cannot carry a remote project scope (REQ-325). A tracker change/detach is
+  // cannot carry a remote project scope (REQ-439). A tracker change/detach is
   // handled above by force-nulling instead of rejecting (REQ-326).
   if (!trackerChanged && !nextTrackerId && parsedBody.remoteProjectId) {
     throw createError({

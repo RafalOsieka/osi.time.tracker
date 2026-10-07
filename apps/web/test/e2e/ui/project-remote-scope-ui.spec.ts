@@ -168,7 +168,7 @@ describeProjectRemoteScopeUi('project remote scope UI flow', async () => {
     // (including listProjects, fabricated client-side rather than via a real
     // tracker request, so no route mock is needed here), so the select should
     // become enabled. A browser-held secret is still required in extension
-    // mode (REQ-203/REQ-327): the extension only routes the request, it does
+    // mode (REQ-203/REQ-440): the extension only routes the request, it does
     // not supply the credential.
     const supportedPage = await loginWithExtension(installLostCreateExtension);
     await seedBrowserSecret(supportedPage, tracker.id);
