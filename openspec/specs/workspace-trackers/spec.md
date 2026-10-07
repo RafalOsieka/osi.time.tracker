@@ -130,21 +130,6 @@ The system SHALL soft-delete a tracker via `DELETE /api/trackers/[id]` by settin
 - **WHEN** the user creates a new active tracker after the prior tracker was removed
 - **THEN** the system SHALL NOT automatically rebind old Task references to the new tracker
 
-### Requirement: REQ-248 Tracker isolation and auth
-Every tracker read and write SHALL be scoped by the authenticated user's id. A tracker id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence. Mutating requests SHALL be guarded by authentication and CSRF.
-
-#### Scenario: Foreign tracker id on read or write
-- **WHEN** an authenticated user references a tracker id owned by another user
-- **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal that the resource exists
-
-#### Scenario: Unknown tracker id
-- **WHEN** an authenticated user references a tracker id that does not exist
-- **THEN** the system SHALL respond with HTTP 404
-
-#### Scenario: Unauthenticated request is rejected
-- **WHEN** an unauthenticated request targets a tracker endpoint
-- **THEN** the system SHALL reject it via `requireAuth`
-
 ### Requirement: REQ-249 Client-side credentials are never persisted server-side
 The API secret SHALL be entered and kept only in the user's browser and SHALL never be stored on the OSI server. When direct browser access is allowed the secret SHALL be sent only to the configured tracker origin. When the extension is required the secret SHALL pass transiently through the approved extension to the approved tracker destination and SHALL NOT be persisted by the extension or transmitted to OSI APIs. The secret SHALL be stored in the browser keyed by tracker id and SHALL remain available after reload.
 

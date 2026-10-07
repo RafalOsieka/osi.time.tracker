@@ -173,7 +173,7 @@ describeAuth('authentication integration', async () => {
     const sealed = jar.get('osi-session');
     expect(sealed).toBeDefined();
 
-    // Same sealed value under the old `nuxt-session` name (core-authentication REQ-007).
+    // Same sealed value under the old `nuxt-session` name (core-authentication REQ-424).
     const stale = await fetch(url('/api/protected'), {
       headers: { cookie: `nuxt-session=${sealed}` },
     });

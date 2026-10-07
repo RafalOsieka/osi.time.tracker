@@ -10,7 +10,7 @@ const VALID_UUID_V7 = '01900000-0000-7000-8000-000000000000';
 /** Invalid version nibble (not nil/max sentinel) — rejected by z.uuid(). */
 const MALFORMED_UUID = '00000000-0000-0000-0000-000000000001';
 
-describe('shared types zod v4 identifier schemas (REQ-234)', () => {
+describe('shared types zod v4 identifier schemas (REQ-172)', () => {
   it('rejects a non-RFC UUID on identifier fields', () => {
     const project = createProjectSchema.safeParse({ name: 'Acme', trackerId: MALFORMED_UUID });
     expect(project.success).toBe(false);

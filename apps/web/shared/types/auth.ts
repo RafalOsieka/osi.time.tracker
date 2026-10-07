@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { ProfileDto } from './profile';
 
-/** The session user (core-authentication REQ-007): identity plus the required profile. */
+/** The session user (core-authentication REQ-424): identity plus the required profile. */
 export type AuthUser = { id: string; email: string } & ProfileDto;
 
 export const loginSchema = z.object({

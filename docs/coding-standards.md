@@ -13,6 +13,7 @@ This document defines the coding style and conventions used across the web appli
   // oxlint-disable-next-line typescript/no-explicit-any -- reason goes here.
   ```
 - Prefer named domain types over `unknown`. `catch (err)` is already `unknown` under TypeScript `strict` — omit `: unknown`. Narrow with `instanceof` on real classes (`FetchError`, `RemoteAdapterError`, `UpstreamHttpError`, `Error`), schema parse, or missing-field checks on named payloads. Do **not** add `isStringValue` / `isJsonObject` wrappers around `typeof` or `instanceof Object`. API error `params` use `MessageParams` (`string | number | boolean`), not `Record<string, unknown>`.
+- Do not narrow with `typeof` in app, server or shared code (`anti-slop/no-runtime-typeof`); use `instanceof`, `'key' in` on a named type, a schema parse, or a named `isX` / `hasX` type predicate.
 - Do not edit `tools/oxlint/anti-slop/` unless the developer explicitly asks. Remaining `as` assertions need `// SAFETY:` immediately above.
 
 ## 2. Naming Conventions
@@ -43,6 +44,14 @@ Use descriptive names; avoid abbreviations unless they are widely understood.
 - **Line length:** keep lines reasonably short (~100 characters); wrap long argument lists and object literals across multiple lines.
 - **Encoding:** UTF-8; end every file with a single trailing newline.
 - Let Oxfmt own whitespace — run the format and lint commands before committing rather than hand-aligning code.
+
+### Lint and format tooling
+
+- `pnpm lint` runs Oxlint (`vp lint`) first, then ESLint, and fails if either reports an error. Oxlint covers JS/TS and Vue `<script>` blocks; ESLint stays only for rules that parse Vue templates: accessibility (`eslint-plugin-vuejs-accessibility`), raw template text (`@intlify/eslint-plugin-vue-i18n` `no-raw-text`), `vue/*` template rules and leftover `nuxt/*` rules. Those two template plugins are not loaded as Oxlint JS plugins.
+- ESLint disables rules Oxlint already enforces (`eslint-plugin-oxlint`), so a violation is reported once; `eslint-config-prettier` stays the last ESLint config entry.
+- Oxlint and Oxfmt are configured only in the `lint` and `fmt` blocks of the root `vite.config.ts`. A `.oxlintrc.json` or `.oxfmtrc.json` is a defect. Type-aware Oxlint (`--type-aware`, `oxlint-tsgolint`) stays off, and nursery rules are not bulk-enabled.
+- Every generic `anti-slop/*` rule is `error`; the Effect-specific ones are off; Vue templates are not anti-slop-checked. Each remaining `vi.mock` carries a next-line `anti-slop/no-module-mocking` disable with a reason (no blanket `test/` allowlist). `vite-plus/prefer-vite-plus-imports` is `error`, so Vite and Vitest APIs are imported from `vite-plus` entry points.
+- `pnpm format` / `format:check` run Oxfmt (`vp fmt`), never Prettier, over code, Vue SFCs including templates, JSON, CSS, YAML and Markdown. `.gitattributes` forces LF at checkout, so the check passes on Windows with `core.autocrlf=true`.
 
 ### Imports
 
@@ -83,6 +92,7 @@ Rules:
 
 - **`as unknown as` is forbidden** in `app/` components, pages, layouts, composables, and client utilities. Isolate unavoidable library friction in one adapter util that returns the real prop or DOM type — never cast in templates.
 - Do not cast form fields or submit payloads (`projectId as string`) when container annotation or schema-typed `FormSubmitEvent` removes the need.
+- Tests do not chain assertions either: use a typed fake, `satisfies`, or a single `as` with `// SAFETY:`.
 - Do not use `as Record<string, unknown>` for “I don’t know the prop type”; prefer the component’s prop type or a narrow adapter.
 - Freeform task-title autocomplete (`UInputMenu` autocomplete mode) uses the shared builder in `app/utils/task-title-menu.ts`: object items with string model via `value-key` / `label-key` and `onSelect` closures over real `TaskDto` identity — never double-cast task DTOs to/from strings.
 
@@ -134,6 +144,7 @@ Rules:
 - Fix bugs test-first: before changing the code, write a regression test that reproduces the defect and confirm it **fails**; after the fix, confirm it **passes**. Never weaken, skip, or delete that test to force a green run; leave it in place as a permanent regression guard. Trivial defects (typos, obvious single-line errors) may rely on a documented manual check instead.
 - Name test files with the `*.spec.ts` convention under the matching test project directory.
 - Prefer deterministic tests; seed any randomness.
+- A composable extracted from a page gets its own tests at its boundary: loading lifecycle (idle → loading → loaded/error), retry and derived selectors, without rendering the page. Those tests call the real composable; mock its collaborators (HTTP, adapters, other composables), never the module under test. The same applies to the browser-side remote client (account cache, in-flight request coalescing, log cache and invalidation, create, mapping adapter failures to translation keys).
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
 - Anti-slop plugin tests live in `tools/oxlint/anti-slop/test/` (`*.test.ts`, Oxlint `RuleTester`). Do not edit plugin rules, shared helpers, or the plugin entry unless asked.
 

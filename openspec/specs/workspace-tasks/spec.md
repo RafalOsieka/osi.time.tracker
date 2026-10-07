@@ -234,13 +234,3 @@ Task hard-deletion (garbage collection, REQ-132) SHALL remove the reference with
 - **WHEN** a task with an export record is garbage-collected because its last entry moved away
 - **THEN** the export record SHALL remain readable and the deletion SHALL NOT fail on the foreign key
 
-### Requirement: REQ-138 Strict cross-user isolation
-Every read and write SHALL be scoped by the authenticated user's id. A task id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence.
-
-#### Scenario: Foreign task id on read or write
-- **WHEN** an authenticated user references a task id owned by another user
-- **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal that the resource exists
-
-#### Scenario: Unknown task id
-- **WHEN** an authenticated user references a task id that does not exist
-- **THEN** the system SHALL respond with HTTP 404

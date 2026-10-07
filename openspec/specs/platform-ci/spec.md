@@ -2,122 +2,12 @@
 
 ## Purpose
 
-Define the GitHub Actions continuous-integration pipeline: the pull-request and
-push triggers, the parallel verify jobs, the gated end-to-end job, concurrency
-cancellation, PR-title linting, least-privilege security posture, automated
-dependency updates, and the merge-blocking ruleset that keeps `main` verified.
+Keep `main` verified: a change lands only after every quality gate passes, its pull-request title becomes a meaningful commit, and every bug fix leaves a regression test behind. How the gates are wired in CI is described in `docs/development.md`.
 
 ## Requirements
 
-### Requirement: REQ-014 Pull-request and push CI triggers
-The system SHALL provide a GitHub Actions workflow that runs on pull requests targeting `main` and on pushes to `main`, executing on the free GitHub-hosted `ubuntu-latest` runner.
-
-#### Scenario: Workflow runs on a pull request to main
-- **WHEN** a pull request targeting `main` is opened, synchronized, or reopened
-- **THEN** the CI workflow SHALL start on a GitHub-hosted `ubuntu-latest` runner
-
-#### Scenario: Workflow runs on push to main
-- **WHEN** a commit is pushed to `main`
-- **THEN** the CI workflow SHALL run the same verify jobs
-
-### Requirement: REQ-015 Parallel verify jobs
-The workflow SHALL run the verify checks as separate parallel jobs — `lint` (`pnpm lint`), `format` (`pnpm format:check`), `type-check` (`pnpm type-check`), `unit` (`pnpm test:unit`), `nuxt` (`pnpm test:nuxt`), and `build` (`pnpm build`) — so each appears as an independent status check.
-
-#### Scenario: All verify jobs pass
-- **WHEN** the code is lint-clean, formatted, type-correct, passes unit and nuxt tests, and builds
-- **THEN** every parallel job SHALL report a green check
-
-#### Scenario: A verify job fails
-- **WHEN** any one of the verify jobs (e.g. `lint`) fails
-- **THEN** that job's status check SHALL be marked red while the other parallel jobs continue to run and report independently
-
-### Requirement: REQ-016 Lockfile-integrity install with caching
-Each job SHALL set up the toolchain with the pinned Vite+ setup action, and SHALL install dependencies from the repository root with `vp install --frozen-lockfile`. Node.js and pnpm SHALL be resolved from the root `devEngines`, not pinned separately in the workflow. The setup step SHALL enable dependency caching keyed on the lockfile. Jobs that need only a subset of the workspace MAY install with a workspace filter and `--ignore-scripts`, provided the install remains frozen.
-
-#### Scenario: Install succeeds with an in-sync lockfile
-- **WHEN** `pnpm-lock.yaml` is in sync with `package.json`
-- **THEN** `vp install --frozen-lockfile` SHALL succeed, restoring cached dependencies when available
-
-#### Scenario: Out-of-sync lockfile fails fast
-- **WHEN** `pnpm-lock.yaml` is out of sync with `package.json`
-- **THEN** `vp install --frozen-lockfile` SHALL fail and the job SHALL report red
-
-#### Scenario: Runtime follows devEngines
-- **WHEN** the root `devEngines` Node.js or pnpm range changes
-- **THEN** CI jobs SHALL run on a version in the new range without a separate workflow edit
-
-### Requirement: REQ-017 Gated end-to-end job
-The workflow SHALL provide three Dockerized jobs after cheap verify work: `db` (`pnpm test:e2e:db`, needs cheap jobs except it MUST NOT need `build`), `api` (`pnpm test:e2e:api`, needs cheap jobs including `build`), and `ui` (`pnpm test:e2e:ui`, needs cheap jobs including `build`). `api` and `ui` MAY run in parallel with each other. Each SHALL receive `NUXT_SESSION_PASSWORD` from repository secrets when a server is booted and SHALL self-provision `postgres:18-alpine` via the harness. Missing Docker in these jobs SHALL fail the job (e2e-test-harness CI skip policy).
-
-#### Scenario: e2e runs only after cheap jobs pass
-- **WHEN** all of `lint`, `format`, `type-check`, `unit`, `nuxt`, and `build` succeed
-- **THEN** the `api` and `ui` jobs SHALL start, restore `.output`, provision Postgres via Docker, and run their respective scripts
-
-#### Scenario: e2e skipped when a cheap job fails
-- **WHEN** any required upstream job fails
-- **THEN** the dependent `db` / `api` / `ui` job SHALL NOT run, avoiding the cost of spinning up Docker (and Playwright for `ui`)
-
-#### Scenario: Db runs without the production artifact
-- **WHEN** cheap jobs other than `build` succeed
-- **THEN** the `db` job SHALL start, provision Postgres via Docker, and run `pnpm test:e2e:db` without downloading `.output`
-
-### Requirement: REQ-018 Concurrency cancellation of superseded runs
-The workflow SHALL define a `concurrency` group keyed on the ref with `cancel-in-progress: true` so a newer run on the same ref cancels an in-progress older run.
-
-#### Scenario: New push cancels the previous run
-- **WHEN** a new commit is pushed to a pull-request branch while a CI run for an earlier commit on the same ref is still in progress
-- **THEN** the in-progress run SHALL be cancelled and only the newest run continues
-
-### Requirement: REQ-019 Conventional-Commit PR-title lint
-The system SHALL provide a workflow that lints the pull-request title against the Conventional Commits specification, since squash-only merges make the PR title the commit that lands on `main`.
-
-#### Scenario: Valid Conventional-Commit title passes
-- **WHEN** a pull-request title such as `feat: add timer pause` is set
-- **THEN** the PR-title-lint check SHALL pass
-
-#### Scenario: Non-conforming title fails
-- **WHEN** a pull-request title does not follow Conventional Commits (e.g. `updated stuff`)
-- **THEN** the PR-title-lint check SHALL fail with a clear message and block merge via the ruleset
-
-### Requirement: REQ-020 Least-privilege and pinned actions
-The workflow SHALL declare a least-privilege `permissions:` block (default `contents: read`) and SHALL pin third-party marketplace actions to fixed versions; secrets such as `NUXT_SESSION_PASSWORD` MUST NOT be logged.
-
-#### Scenario: Default token permissions are restricted
-- **WHEN** the workflow runs
-- **THEN** the `GITHUB_TOKEN` SHALL be granted only the minimum permissions required (read-only by default)
-
-### Requirement: REQ-021 Automated dependency and action updates
-The system SHALL provide a Dependabot configuration covering the `npm`, `github-actions` and `docker` ecosystems, so dependencies, pinned actions and Dockerfile base images are kept current automatically. Dependabot SHALL NOT propose updates to the Vite+-managed toolchain (`vite-plus`, `vite`, `vitest`, `@vitest/*`, `@voidzero-dev/*` and the Vite+ Docker build image), which move together through the Vite+ upgrade path (platform-toolchain REQ-370). Dependabot SHALL group `nuxt` and `@nuxt/*` updates into a single pull request.
-
-#### Scenario: Dependabot opens update PRs
-- **WHEN** a tracked npm dependency, pinned GitHub Action, or Dockerfile base image has a newer version
-- **THEN** Dependabot SHALL open a pull request that is itself verified by the CI workflow
-
-#### Scenario: Vite+-managed packages are left to the Vite+ upgrade
-- **WHEN** a newer `vite-plus`, `vitest`, `@vitest/*` or `@voidzero-dev/*` package, or a newer Vite+ Docker build image, is published
-- **THEN** Dependabot SHALL NOT open a pull request for it
-
-#### Scenario: Vite+ bumps are split across ecosystems
-- **WHEN** a pull request changes the `vite-plus` catalog version but not the Vite+ Docker build image tag, or the tag but not the catalog
-- **THEN** that pull request SHALL NOT be merged while the versions disagree (platform-toolchain REQ-370)
-
-#### Scenario: Non-Vite+ Docker base images stay tracked
-- **WHEN** a newer `node` base image used by the Dockerfile is published
-- **THEN** Dependabot SHALL still open a pull request for it
-
-#### Scenario: Nuxt packages update together
-- **WHEN** `nuxt` and one or more `@nuxt/*` packages have newer versions in the same Dependabot run
-- **THEN** Dependabot SHALL open one grouped pull request for them rather than one pull request per package
-
-### Requirement: REQ-022 Security scanning via CodeQL
-The repository SHALL have CodeQL analysis enabled (via GitHub default setup) to provide free static security scanning of the JavaScript/TypeScript codebase.
-
-#### Scenario: CodeQL analyzes the codebase
-- **WHEN** CodeQL default setup is enabled and code is pushed
-- **THEN** CodeQL SHALL scan the codebase and report any findings in the Security tab
-
 ### Requirement: REQ-406 Merge-blocking rules on main
-Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL require a pull request before merging, require all CI status checks (`lint`, `format`, `type-check`, `unit`, `nuxt`, `build`, `db`, `api`, `ui`, and the PR-title lint) to pass, require the branch to be up to date, require conversation resolution, and allow squash-only merges with linear history. The ruleset SHALL live in the GitHub repository settings; the repository SHALL NOT keep a manual setup guide for it.
+Unverified pull requests MUST be un-mergeable. A change SHALL reach `main` only through a pull request whose required checks all pass: lint, format check, type check, unit tests, component tests, the production build, the database, API and UI end-to-end suites, and the pull-request title check. The branch SHALL be up to date with `main` and its review conversations resolved before merging, and merges SHALL be squash-only with linear history.
 
 #### Scenario: Merge blocked while a required check is red
 - **WHEN** any required status check on a pull request is failing or has not run
@@ -128,27 +18,23 @@ Unverified pull requests MUST be un-mergeable: a branch ruleset on `main` SHALL 
 - **THEN** the pull request SHALL be mergeable via a squash merge
 
 #### Scenario: Required checks match the CI jobs
-- **WHEN** the ruleset's required checks are compared with the CI workflow jobs
-- **THEN** they list `db`, `api`, and `ui` (not a single `e2e` job) alongside the other checks
+- **WHEN** the required checks are compared with the quality gates
+- **THEN** the database, API and UI end-to-end suites SHALL each be a separate required check alongside the other gates
 
-### Requirement: REQ-275 Build artifact reused by API and UI jobs
-The `build` job SHALL upload the production `.output` directory as a workflow artifact. The `api` and `ui` jobs SHALL download that artifact into `.output`, set skip-build, and MUST NOT run `pnpm build` again. They SHALL still install dependencies so test tooling can boot the prebuilt server.
+### Requirement: REQ-019 Conventional-Commit PR-title lint
+The pull-request title SHALL follow the Conventional Commits specification, because squash-only merges make the title the commit that lands on `main`. A non-conforming title SHALL fail its check and block merging.
 
-#### Scenario: Api and ui consume the build artifact
-- **WHEN** `build` succeeds and `api` / `ui` start
-- **THEN** each SHALL restore `.output` from the artifact and run its test project with skip-build enabled
+#### Scenario: Valid Conventional-Commit title passes
+- **WHEN** a pull-request title such as `feat: add timer pause` is set
+- **THEN** the PR-title-lint check SHALL pass
 
-#### Scenario: Artifact missing fails the consumer
-- **WHEN** `api` or `ui` cannot restore `.output`
-- **THEN** that job SHALL fail (the suite SHALL NOT skip and SHALL NOT rebuild)
+#### Scenario: Non-conforming title fails
+- **WHEN** a pull-request title does not follow Conventional Commits (e.g. `updated stuff`)
+- **THEN** the PR-title-lint check SHALL fail with a clear message and block merge via the ruleset
 
-### Requirement: REQ-276 UI job installs a usable Chromium
-The `ui` job SHALL install Playwright Chromium and required OS dependencies before running UI specs, and the package manager SHALL be allowed to run Playwright's install/build scripts. After that step a Chromium binary MUST be present so `requireBrowser()` does not skip.
+### Requirement: REQ-037 Bug fixes are test-first
+Every bug fix SHALL be preceded by an automated regression test that reproduces the defect, confirmed **failing** against the unfixed code and **passing** after the fix. The test SHALL NOT be weakened, skipped, or deleted to force a green run, and SHALL stay in the suite as a permanent regression guard. Trivial defects (e.g. typos, obvious single-line logic errors) MAY rely on a documented manual check instead.
 
-#### Scenario: Chromium is present before ui tests
-- **WHEN** the `ui` job reaches `pnpm test:e2e:ui`
-- **THEN** a Chromium executable SHALL exist on the runner and the ui suite SHALL run (not skip)
-
-#### Scenario: Install failure is red
-- **WHEN** Playwright Chromium installation fails
-- **THEN** the `ui` job SHALL fail
+#### Scenario: Failing repro precedes the fix
+- **WHEN** a bug is fixed in application code
+- **THEN** a regression test that fails against the pre-fix code and passes against the post-fix code SHALL be added in the same change, and it SHALL NOT be weakened or skipped

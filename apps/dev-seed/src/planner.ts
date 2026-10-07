@@ -49,7 +49,7 @@ export interface PlanOptions {
   reset: boolean;
 }
 
-/** Idempotency key of a log: issue + day + normalized comment (REQ-352). */
+/** Idempotency key of a log: issue + day + normalized comment (docs/development.md, "Seed guarantees"). */
 export function logKey(
   projectIdentifier: string,
   issueSubject: string,

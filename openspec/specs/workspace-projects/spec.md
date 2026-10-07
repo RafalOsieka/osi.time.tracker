@@ -176,17 +176,6 @@ When a `PATCH` changes a project's `trackerId` to a different tracker or to null
 - **WHEN** an authenticated user keeps `trackerId` unchanged and sends both scope fields null
 - **THEN** the system SHALL clear the stored scope
 
-### Requirement: REQ-089 Strict cross-user isolation
-Every read and write SHALL be scoped by the authenticated user's id. A project id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence.
-
-#### Scenario: Foreign project id on read or write
-- **WHEN** an authenticated user references a project id owned by another user
-- **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal that the resource exists
-
-#### Scenario: Unknown project id
-- **WHEN** an authenticated user references a project id that does not exist
-- **THEN** the system SHALL respond with HTTP 404
-
 ### Requirement: REQ-091 Accessible, tokenized Projects UI
 The Projects page SHALL meet WCAG 2.1 AA: form fields including the optional Tracker select SHALL be labelled, the create/edit modal and confirm modal SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from Tailwind utilities and Nuxt UI `--ui-*` design tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
 

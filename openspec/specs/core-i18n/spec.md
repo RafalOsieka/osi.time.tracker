@@ -1,12 +1,12 @@
 # core-i18n Specification
 
 ## Purpose
-Define the project-wide internationalization standard: how the application provides multi-locale UI through `@nuxtjs/i18n`, how the active locale is resolved and persisted, how document and Nuxt UI locales stay in sync, the key-based server message contract, and the lint gate that forbids hardcoded UI strings. This standard applies to all current and future UI under `app/` and message-bearing server responses.
+Define how the application speaks English and Polish: which locales exist, how the active locale is resolved and remembered per browser, how the document and component locales follow it, how server messages travel as translation keys, and how hardcoded UI text is kept out.
 
 ## Requirements
 
-### Requirement: REQ-073 Internationalization infrastructure via @nuxtjs/i18n
-The application SHALL provide internationalization through `@nuxtjs/i18n` (vue-i18n) configured with the no-prefix routing strategy, so locale changes never alter URLs. The system SHALL support the locales `en` (default) and `pl`, each backed by a lazy-loaded JSON message catalog under `i18n/locales/`. The default and fallback locale SHALL be `en`, and any missing key in a non-default locale SHALL fall back to the `en` value.
+### Requirement: REQ-073 Internationalization infrastructure
+The application SHALL provide internationalization without locale prefixes in routes, so locale changes never alter URLs. The system SHALL support the locales `en` (default) and `pl`, each backed by its own message catalog. The default and fallback locale SHALL be `en`, and any missing key in a non-default locale SHALL fall back to the `en` value.
 
 #### Scenario: Default locale is English
 - **WHEN** the application loads with no locale cookie and no usable `Accept-Language` header
@@ -25,7 +25,7 @@ The application SHALL provide internationalization through `@nuxtjs/i18n` (vue-i
 - **THEN** the current route path SHALL remain unchanged (no locale prefix)
 
 ### Requirement: REQ-074 Locale resolution and cookie persistence
-The application SHALL resolve the active locale using the precedence chain **locale cookie → `Accept-Language` request header → default `en`**. The chosen locale SHALL be persisted in a non-sealed cookie that is `SameSite=Lax`, `Secure` in production, and readable by the client (not `HttpOnly`). The system SHALL NOT persist locale on the user record in this change.
+The application SHALL resolve the active locale using the precedence chain **locale cookie → `Accept-Language` request header → default `en`**. The chosen locale SHALL be persisted in a non-sealed cookie that is `SameSite=Lax`, `Secure` in production, and readable by the client (not `HttpOnly`). The system SHALL NOT persist the locale on the user record.
 
 #### Scenario: Cookie takes precedence over header
 - **WHEN** a request carries a locale cookie set to `pl` and an `Accept-Language` header preferring `en`
@@ -44,7 +44,7 @@ The application SHALL resolve the active locale using the precedence chain **loc
 - **THEN** the locale cookie SHALL be written with `SameSite=Lax` and `Secure` in production so the choice survives subsequent requests
 
 ### Requirement: REQ-075 Document language and Nuxt UI locale synchronization
-The application SHALL set the document root `lang` attribute to the active locale, and SHALL keep Nuxt UI's component locale in sync with the active application locale so component-provided labels reflect the same language. Nuxt UI ships `en` and `pl` locale messages; the active locale SHALL be bound from `@nuxtjs/i18n` (e.g. via `UApp`'s `locale` prop / `app.config.ts`) so no separate PrimeVue locale-sync plugin is required.
+The application SHALL set the document root `lang` attribute to the active locale, and SHALL keep the UI component library's locale in sync with the active application locale so component-provided labels reflect the same language.
 
 #### Scenario: html lang reflects active locale
 - **WHEN** the active locale is `pl`
@@ -55,11 +55,11 @@ The application SHALL set the document root `lang` attribute to the active local
 - **THEN** Nuxt UI's locale configuration SHALL be updated to the same locale so its built-in component labels render in that language
 
 ### Requirement: REQ-076 Key-based server message contract
-Server API responses that convey user-facing messages (including errors from `server/api/auth/*`) SHALL carry a stable translation key in a `messageKey` field and MAY include a `params` object of interpolation values. The server SHALL NOT return rendered, locale-specific user-facing text for these messages, and the client SHALL translate the `messageKey` (with any `params`) using the active locale. Server-referenced keys SHALL reside under the reserved `errors.*` namespace.
+Server API responses that convey user-facing messages (including authentication errors) SHALL carry a stable translation key from the message catalogs in a `messageKey` field and MAY include a `params` object of interpolation values. The server SHALL NOT return rendered, locale-specific user-facing text for these messages, and the client SHALL translate the `messageKey` (with any `params`) using the active locale.
 
 #### Scenario: Auth failure returns a key, not English text
 - **WHEN** a login attempt fails
-- **THEN** the response SHALL include a `messageKey` under the `errors.*` namespace and SHALL NOT include rendered English message text
+- **THEN** the response SHALL include a catalog `messageKey` and SHALL NOT include rendered English message text
 
 #### Scenario: Client renders the localized message
 - **WHEN** the client receives a response containing a `messageKey` and optional `params`
@@ -70,7 +70,7 @@ Server API responses that convey user-facing messages (including errors from `se
 - **THEN** the client SHALL render the English text for `en` and the Polish text for `pl`
 
 ### Requirement: REQ-077 No hardcoded UI strings enforced by lint gate
-All user-facing UI strings SHALL be sourced from i18n message catalogs rather than hardcoded in templates. The build SHALL enforce this via `@intlify/eslint-plugin-vue-i18n`, wired into the `withNuxt().append(...)` chain **before** `eslint-config-prettier`, so that `pnpm lint` fails when raw literal text appears in component templates.
+All user-facing UI strings SHALL be sourced from the i18n message catalogs rather than hardcoded in templates. An automated check SHALL reject raw literal text in component templates and SHALL block merging.
 
 #### Scenario: Existing strings are externalized
 - **WHEN** the login page and default layout are rendered
@@ -78,11 +78,11 @@ All user-facing UI strings SHALL be sourced from i18n message catalogs rather th
 
 #### Scenario: Raw template text fails lint
 - **WHEN** a component template contains a raw literal user-facing string
-- **THEN** `pnpm lint` SHALL report a violation and exit non-zero
+- **THEN** the automated check SHALL report a violation and fail
 
 #### Scenario: Clean templates pass lint
 - **WHEN** all user-facing strings use translation calls
-- **THEN** the i18n lint rule SHALL report no violations
+- **THEN** the automated check SHALL report no violations
 
 ### Requirement: REQ-302 Document title strings come from catalogs
 
@@ -99,7 +99,7 @@ The document title's page segment and brand SHALL be sourced from the `en`/`pl` 
 - **THEN** both `en` and `pl` catalogs SHALL define it
 
 ### Requirement: REQ-401 Authenticated locale picker on Profile
-The application SHALL provide an authenticated language control on the `/profile` page (workspace-settings REQ-400). It SHALL list the supported UI locales (`en` and `pl`) and SHALL indicate that the choice applies to this browser. Changing the selection SHALL call the i18n locale switch so the active locale updates immediately, document `lang` and the Nuxt UI locale stay in sync (REQ-075), and the locale cookie is written per REQ-074. The control SHALL NOT appear in the account menu or the shell chrome. The control SHALL be labelled, keyboard operable, and use catalog strings with `en`/`pl` parity for its label, hint, and option labels (`locale.en`, `locale.pl` or equivalent). The locale SHALL remain cookie-backed only. The system SHALL NOT persist the locale on the user record.
+The `/profile` page (workspace-settings REQ-400) SHALL offer a language control listing `en` and `pl` and stating that the choice applies to this browser. Changing it SHALL switch the active locale immediately (REQ-075) and write the locale cookie (REQ-074); the locale SHALL NOT be stored on the user record. The control SHALL NOT appear in the account menu or the shell chrome. It SHALL be labelled, keyboard operable, and translated with `en`/`pl` parity.
 
 #### Scenario: Locale control is on Profile
 - **WHEN** an authenticated user opens `/profile`
