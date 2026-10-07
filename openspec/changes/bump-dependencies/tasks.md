@@ -17,8 +17,8 @@ All groups ship in one PR (`chore(deps): …`), one commit per group, on a branc
 
 ## 3. Dependabot and upgrade docs (own commit)
 
-- [ ] 3.1 In `.github/dependabot.yml`, add `ignore` for `vite-plus`, `vite`, `vitest`, `@vitest/*` and `@voidzero-dev/*` (npm) and for `ghcr.io/voidzero-dev/vite-plus` (docker), plus an npm `groups` entry for `nuxt` and `@nuxt/*` (platform-ci REQ-021). Verify that the file parses as YAML with the expected keys and that the `node` base image is not ignored.
-- [ ] 3.2 Add an "Upgrading dependencies" subsection under Commands in `AGENTS.md`. Cover:
+- [x] 3.1 In `.github/dependabot.yml`, add `ignore` for `vite-plus`, `vite`, `vitest`, `@vitest/*` and `@voidzero-dev/*` (npm) and for `ghcr.io/voidzero-dev/vite-plus` (docker), plus an npm `groups` entry for `nuxt` and `@nuxt/*` (platform-ci REQ-021). Verify that the file parses as YAML with the expected keys and that the `node` base image is not ignored.
+- [x] 3.2 Add an "Upgrading dependencies" subsection under Commands in `AGENTS.md`. Cover:
   - Vite+: `minimumReleaseAgeExclude` for fresh releases, then `vp migrate` with the global `vp` at the target version, with the Dockerfile tag in the same commit.
   - Nuxt: `vp -C apps/web add nuxt@<v>`, `vp -C apps/web add -D @nuxt/schema@<v>`, `vp dedupe`. Explain why not `nuxt upgrade`, and run `pnpm dev` locally before merging.
   - Everything else: `vp update -r <names>`.

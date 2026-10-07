@@ -4,6 +4,19 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    # Vite+ pins vite, vitest and coverage together; upgrade them with `vp migrate`
+    # (see AGENTS.md "Upgrading dependencies"), never one package at a time.
+    ignore:
+      - dependency-name: 'vite-plus'
+      - dependency-name: 'vite'
+      - dependency-name: 'vitest'
+      - dependency-name: '@vitest/*'
+      - dependency-name: '@voidzero-dev/*'
+    groups:
+      nuxt:
+        patterns:
+          - 'nuxt'
+          - '@nuxt/*'
 
   - package-ecosystem: 'github-actions'
     directory: '/'
@@ -14,3 +27,6 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    # The Vite+ build image tag must match the vite-plus catalog version (moves with `vp migrate`).
+    ignore:
+      - dependency-name: 'ghcr.io/voidzero-dev/vite-plus'
