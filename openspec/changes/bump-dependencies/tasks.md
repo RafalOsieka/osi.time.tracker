@@ -12,8 +12,8 @@ All groups ship in one PR (`chore(deps): …`), one commit per group, on a branc
 
 ## 2. Remaining dependencies (own commit)
 
-- [ ] 2.1 Run `vp update -r` for `eslint`, `eslint-plugin-oxlint`, `@typescript-eslint/parser`, `vue-tsc`, `@nuxt/test-utils`, `@types/node` and `@iconify-json/lucide`, plus the `JetBrains/junie-github-action` SHA pin. Leave `typescript` (6), `@adonisjs/hash` (9), `nuxt` and `@nuxt/schema` (4.5.2) alone. Verify that `vp outdated -r` lists only those four, and that the Junie action comment reads `v1.7.17`.
-- [ ] 2.2 Verify that `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit` and `pnpm test:nuxt` pass, and that `pnpm dev` serves `/login` with 200.
+- [x] 2.1 Run `vp update -r` for `eslint`, `eslint-plugin-oxlint`, `@typescript-eslint/parser`, `vue-tsc`, `@nuxt/test-utils`, `@types/node` and `@iconify-json/lucide`, plus the `JetBrains/junie-github-action` SHA pin. Leave `typescript` (6), `@adonisjs/hash` (9), `nuxt` and `@nuxt/schema` (4.5.2) alone. Verify that `vp outdated -r` lists only those four, and that the Junie action comment reads `v1.7.17`.
+- [x] 2.2 Verify that `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit` and `pnpm test:nuxt` pass, and that `pnpm dev` serves `/login` with 200.
 
 ## 3. Dependabot and upgrade docs (own commit)
 

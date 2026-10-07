@@ -21,7 +21,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.138",
+    "@iconify-json/lucide": "^1.2.140",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/test-utils": "^2.5.1",
     "eslint-plugin-vue": "^10.11.1",
@@ -31,7 +31,7 @@
     "typescript": "^6.0.3",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "vue-tsc": "^3.3.11"
+    "vue-tsc": "^3.3.12"
   },
   "engines": {
     "node": ">=24"

@@ -40,13 +40,13 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.138",
+    "@iconify-json/lucide": "^1.2.140",
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/schema": "^4.5.2",
-    "@nuxt/test-utils": "^4.3.2",
+    "@nuxt/test-utils": "^4.3.3",
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/migrator": "workspace:*",
-    "@types/node": "^26.6.3",
+    "@types/node": "^26.6.4",
     "@types/pdfmake": "^0.3.3",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "^2.5.1",
@@ -62,7 +62,7 @@
     "vite-doctor": "^0.0.12",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
-    "vue-tsc": "^3.3.11"
+    "vue-tsc": "^3.3.12"
   },
   "engines": {
     "node": ">=24"
