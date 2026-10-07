@@ -99,6 +99,10 @@ Drizzle (`drizzle-orm` with the `postgres` driver) is the only data-access layer
 
 The production images are a spec (`openspec/specs/platform-docker`). Build details: the runtime stage is based on the Node 24 image, and [`.dockerignore`](../.dockerignore) keeps `node_modules`, `.output`, `.nuxt`, `.git` and other non-essential paths out of the build context.
 
+## Brand assets
+
+The mark and favicon rules are a spec (`openspec/specs/ui-theming`, REQ-368, REQ-436 to REQ-438). The files follow one rule: [`apps/web/app/assets/icons/app-mark.svg`](../apps/web/app/assets/icons/app-mark.svg) is the only hand-drawn glyph, and every other copy is derived from it. Its header comment lists them: the maskable source `public/icon.svg`, the tab icons `public/favicon.svg` and `favicon-running.svg` (same geometry, only the scale and fill differ), `favicon.ico`, the extension's inline glyph and its 16/32/48/128 px PNGs. Each derived copy names the canonical file as its source. When the glyph changes, regenerate all of them in the same change. The client report PDF draws the mark from the canonical glyph at render time instead of keeping a pasted copy.
+
 ## Toolchain
 
 Commands and the upgrade procedure are in [`AGENTS.md`](../AGENTS.md#vite-vp). The rules behind them:
