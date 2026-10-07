@@ -9,7 +9,7 @@ import { formatDuration } from '~/utils/format-duration';
 import { normalizeDurationInput } from '~/utils/normalize-duration-input';
 
 /**
- * Rounded-duration overrides + raw input text with commit/revert semantics (REQ-113).
+ * Rounded-duration overrides + raw input text with commit/revert semantics (REQ-487).
  */
 export function useRoundedDurations() {
   const overrides = ref<Record<string, number>>({});

@@ -43,7 +43,7 @@ export interface ImportProjectPreview {
 
 /** One remote project encountered during the scan, with its editable target selection (REQ-358). */
 export interface MappingRow {
-  /** `null` for logs carrying no remote project id at all (REQ-334). */
+  /** `null` for logs carrying no remote project id at all (REQ-478). */
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   /** Total logs for this remote project across the whole scanned range. */

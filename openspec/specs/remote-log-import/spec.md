@@ -7,7 +7,7 @@ Define how a user backfills local history from a tracker: fetching the current a
 ## Requirements
 
 ### Requirement: REQ-334 Tracker-level import routes logs by Project scope
-The system SHALL let an authenticated user import the current account's remote time logs from one active tracker for an inclusive local-date range. The browser SHALL fetch the tracker's remote project catalog (REQ-318) and the range logs (REQ-296) using the browser-held secret under the tracker's execution path; the secret SHALL NOT be sent to an OSI API. Each fetched log SHALL be assigned a default target Project equal to the user's non-deleted Project bound to that tracker whose remote project scope (REQ-325) equals the log's remote project id or the nearest ancestor of it in the catalog, walking parent links from the log's project upward; the first match SHALL win, so a scope on a descendant project takes precedence over a scope on its ancestor. A log whose walk reaches the root without a match, whose remote project id is absent from the catalog, or that carries no remote project id SHALL be classified as unmatched and given no default target. A Project without a scope SHALL never be a default target. This default assignment is only the mapping phase's starting selection (REQ-358): the user MAY override it, including for an unmatched remote project, before anything is imported. Unmatched logs SHALL be reported with their remote project title and count and SHALL NOT be imported unless the user assigns them a target Project.
+A user SHALL be able to import their own remote logs from one active tracker for an inclusive local-date range. The browser SHALL fetch the catalog (REQ-318) and range logs (REQ-296) with the browser-held secret, never sending it to OSI. A log's default target SHALL be the user's non-deleted Project on that tracker scoped (REQ-325) to the log's remote project or its nearest scoped ancestor, so a descendant's scope wins. It is only the mapping phase's starting choice (REQ-358).
 
 #### Scenario: Log in a scoped descendant project
 - **WHEN** a Project is scoped to remote project `R12` and a fetched log belongs to `R14`, a child of `R12`
@@ -16,6 +16,13 @@ The system SHALL let an authenticated user import the current account's remote t
 #### Scenario: Nested scopes resolve to the most specific Project
 - **WHEN** one Project is scoped to `R12` and another to its child `R13`, and a log belongs to `R13`
 - **THEN** the log's default target SHALL be the Project scoped to `R13`
+
+#### Scenario: Catalog or range fetch fails
+- **WHEN** the catalog or a month's range fetch raises the shared translated error
+- **THEN** the import SHALL stop at that month, show the translated error, and SHALL NOT persist a partial month
+
+### Requirement: REQ-478 Unmatched logs
+A log SHALL be unmatched, with no default target, when its walk reaches the root without a scope, its remote project id is not in the catalog, or it has no remote project id. A Project without a scope SHALL never be a default target. Unmatched logs SHALL be reported with their remote project title and count and SHALL NOT be imported unless the user assigns them a target in the mapping phase.
 
 #### Scenario: Log outside every scope is unmatched
 - **WHEN** a fetched log belongs to a remote project none of whose ancestors is a Project scope
@@ -29,12 +36,8 @@ The system SHALL let an authenticated user import the current account's remote t
 - **WHEN** a fetched log carries no remote project id (for example from an older extension build)
 - **THEN** it SHALL be reported as unmatched, grouped with any other such logs, and the import SHALL surface a translated hint that default project routing is unavailable for them
 
-#### Scenario: Catalog or range fetch fails
-- **WHEN** the catalog or a month's range fetch raises the shared translated error
-- **THEN** the import SHALL stop at that month, show the translated error, and SHALL NOT persist a partial month
-
 ### Requirement: REQ-335 An imported log becomes a task, a stopped entry, and provenance
-For every routed log the system SHALL, within one transaction per request, resolve or create a linked Task in the routed Project keyed by `(user, Project, task name, remote issue id)` with the tracker as provenance, the provider-supplied issue title as cached issue title when present (otherwise the remote issue id), and the log's remote project title as cached remote project title when present; create one stopped time entry bound to that Task on the log's `spentOn` local day; and persist export provenance for the tracker, Task, local date, remote issue id, remote log id, the log's duration as the exact export duration, and the log's activity id as the activity required-field value when present, together with the covered-entry association for the new entry. The import SHALL NOT create, update, or delete anything on the tracker.
+For each log, in one transaction per request, the system SHALL find or create a linked Task in its Project keyed by `(user, Project, task name, remote issue id)`, tracker as provenance, caching issue title (else id) and remote project title if present; create a stopped entry on the log's `spentOn` day; and record export provenance (tracker, Task, date, issue and log ids, exact duration, activity as required field when present) with its covered-entry link. Nothing SHALL be written to the tracker.
 
 #### Scenario: New task and entry are created
 - **WHEN** a routed log references an issue and comment for which no Task exists in the routed Project
@@ -68,7 +71,7 @@ The task name for an imported log SHALL be the log's comment, trimmed. When the 
 - **THEN** the Task SHALL be named `empty` and no remote issue lookup SHALL be performed
 
 ### Requirement: REQ-337 Imported entries are placed after the day's last entry without overlap
-For each `(user, local date)` in a request, the system SHALL compute the day's `[dayStart, dayEnd)` instants in the user's stored timezone (UTC when unset) and SHALL place that day's routed logs, ordered by numeric remote log id ascending, back to back starting from a cursor equal to the later of `dayStart + 08:00` and the latest `stoppedAt` among the user's stopped entries whose `startedAt` falls in that day. When placing the logs from that cursor would start the last one (by remote log id) on or after `dayEnd`, the cursor SHALL instead start at the later of `dayStart` and that latest `stoppedAt` — so a single entry, however long, keeps the `08:00` anchor and simply ends after midnight, while only a later entry that would otherwise start on the next local day forces the whole day back to `dayStart`. Each entry's `startedAt` SHALL be the cursor and its `stoppedAt` the cursor plus the log's duration; the cursor SHALL then advance. Running entries SHALL be ignored. Every placed `startedAt` SHALL fall inside `[dayStart, dayEnd)` whenever the day's total stopped and imported duration is at most 24 hours.
+For each `(user, local date)`, with day bounds `[dayStart, dayEnd)` in the user's timezone, the system SHALL place that day's logs back to back in ascending numeric remote-log-id order, from a cursor at the later of `dayStart + 08:00` and the latest `stoppedAt` among the user's stopped entries starting that day (running entries ignored). Each entry starts at the cursor and lasts the log's duration, and the cursor advances.
 
 #### Scenario: Empty day starts at 08:00
 - **WHEN** a day has no local entries and three logs of 2 h, 1.5 h and 0.5 h are imported
@@ -86,13 +89,16 @@ For each `(user, local date)` in a request, the system SHALL compute the day's `
 - **WHEN** a day's imported logs total 17 h and the day is otherwise empty
 - **THEN** every entry SHALL start on that local day, the last one ending after midnight
 
-#### Scenario: Anchor drops to midnight when needed
-- **WHEN** a day is otherwise empty and two imported logs of 19 h and 1 h are placed by remote log id in that order, so the second would start on the following local day under the `08:00` anchor
-- **THEN** placement SHALL start at `dayStart` instead, so both entries start on the requested local day
-
 #### Scenario: DST day
 - **WHEN** the local day is 23 hours long because of a DST transition
 - **THEN** `dayEnd` SHALL be the next local midnight and placement SHALL respect it
+
+### Requirement: REQ-479 Placement falls back to the day start
+When placing a day's logs from the cursor would start the last one (by remote log id) on or after `dayEnd`, the cursor SHALL instead start at the later of `dayStart` and the latest stopped entry's `stoppedAt`. A single long entry keeps the 08:00 start and simply ends after midnight. Every placed `startedAt` SHALL fall in `[dayStart, dayEnd)` whenever the day's stopped and imported time totals at most 24 hours.
+
+#### Scenario: Anchor drops to midnight when needed
+- **WHEN** a day is otherwise empty and two imported logs of 19 h and 1 h are placed by remote log id in that order, so the second would start on the following local day under the `08:00` anchor
+- **THEN** placement SHALL start at `dayStart` instead, so both entries start on the requested local day
 
 ### Requirement: REQ-338 Import is idempotent by tracker-scoped remote-log identity
 Before persisting, the system SHALL skip every submitted log whose `(user, tracker, remote log id)` already has export provenance (REQ-304), and SHALL report skipped counts separately from imported counts. Re-running an import over the same range SHALL create nothing new for previously imported or exported logs. A log previously unmatched SHALL be imported on a later run once a Project scope covers it. A scope change after import SHALL NOT move or re-import existing entries.
@@ -114,15 +120,7 @@ Before persisting, the system SHALL skip every submitted log whose `(user, track
 - **THEN** the already-imported entries SHALL stay in their Project and SHALL be reported as skipped
 
 ### Requirement: REQ-339 Import endpoint validation and dry run
-The system SHALL expose `POST /api/trackers/[id]/import` following `core-api-conventions`. The body SHALL be validated by a shared boundary schema: `dryRun` boolean; a non-empty `groups` array of `{ projectId, logs }` where each log has `remoteLogId`, `remoteIssueId`, `spentOn` (ISO date), `durationSeconds` (positive integer), nullable `activityId`, nullable `comment`, and optional `remoteIssueTitle` / `remoteProjectTitle`; at most 500 logs per request; remote log ids unique within the request. The tracker SHALL be resolved from the route for the authenticated user (unknown, foreign, or soft-deleted → HTTP 404). Every `projectId` SHALL identify the user's non-deleted Project bound to that tracker; otherwise the request SHALL be rejected with a `422` `{ messageKey, params }` and nothing persisted. When `dryRun` is true the endpoint SHALL perform validation and the existing-identity check and SHALL return per-Project `wouldImport` and `skippedExisting` counts without persisting. When false it SHALL persist per REQ-335/337/338 and return per-Project `imported` and `skippedExisting` counts plus totals.
-
-#### Scenario: Dry run reports counts only
-- **WHEN** a valid request with `dryRun: true` includes two new logs and one already-linked log
-- **THEN** the response SHALL report `wouldImport` 2 and `skippedExisting` 1 and no row SHALL be written
-
-#### Scenario: Write run persists and counts
-- **WHEN** the same request is sent with `dryRun: false`
-- **THEN** two logs SHALL be persisted, the response SHALL report `imported` 2 and `skippedExisting` 1
+`POST /api/trackers/[id]/import` SHALL validate: `dryRun`; non-empty `groups` of `{ projectId, logs }`, each log with `remoteLogId`, `remoteIssueId`, `spentOn` (ISO date), positive integer `durationSeconds`, nullable `activityId` and `comment`, optional `remoteIssueTitle`/`remoteProjectTitle`; at most 500 logs with unique ids. An unknown, foreign or deleted tracker SHALL give 404; a `projectId` not the user's live Project on it, `422` `{ messageKey, params }`, persisting nothing.
 
 #### Scenario: Project not bound to the tracker
 - **WHEN** a group's `projectId` belongs to the user but is bound to a different tracker, is local, or is soft-deleted
@@ -140,8 +138,19 @@ The system SHALL expose `POST /api/trackers/[id]/import` following `core-api-con
 - **WHEN** the request lacks a valid session or CSRF token
 - **THEN** it SHALL be rejected per shared conventions and persist nothing
 
+### Requirement: REQ-480 Dry run and write responses
+With `dryRun: true` the endpoint SHALL validate and check existing identities, returning per-Project `wouldImport` and `skippedExisting` counts without persisting. With `dryRun: false` it SHALL persist per REQ-335, REQ-337 and REQ-338 and return per-Project `imported` and `skippedExisting` counts plus totals.
+
+#### Scenario: Dry run reports counts only
+- **WHEN** a valid request with `dryRun: true` includes two new logs and one already-linked log
+- **THEN** the response SHALL report `wouldImport` 2 and `skippedExisting` 1 and no row SHALL be written
+
+#### Scenario: Write run persists and counts
+- **WHEN** the same request is sent with `dryRun: false`
+- **THEN** two logs SHALL be persisted, the response SHALL report `imported` 2 and `skippedExisting` 1
+
 ### Requirement: REQ-340 Import dialog on the Trackers page
-The Trackers page SHALL offer an "Import history" action per tracker that opens a dialog with these phases: a range phase with one labelled inclusive date-range field (the shared segmented date-range field with calendar affordance, REQ-359 in ui-shared-components) defaulting to five years before today through today, rejecting an inverted or incomplete range inline, and a list of the tracker's non-deleted Projects with their remote project scope, marking unscoped Projects as not receiving a default target (this list SHALL NOT call the tracker); a scanning phase that walks the range month by month, fetching logs and computing each log's default target Project by scope (REQ-334), with an accessible progress indicator and a cancel action, and SHALL NOT call the dry-run endpoint; a mapping phase (REQ-358) listing one row per remote project encountered across the whole range with its raw log count and an editable target-Project control, defaulting to the scope-based suggestion or to "do not import" when there is none; a preview phase, generated from the mapping phase's current selections, listing each target Project the user assigned with the count to import and the count already linked, plus totals, and excluding every remote project left unassigned; an importing phase with per-month progress and no cancel action, because each month commits atomically and a re-run resumes by skipping; and a done phase with totals, a reminder of unassigned counts, and a note that entry times are synthetic while durations are exact. Every log assigned a target Project in the mapping phase SHALL be sent for import; the endpoint's existing-identity skip (REQ-338) makes resubmitting an already-linked log a no-op, and this is also how the done phase's already-linked count is produced without the client tracking it separately. The preview phase's "back" action SHALL return to the mapping phase without discarding the scan; the mapping phase's "back" action SHALL return to the range phase and discard the scan. Advancing from the mapping phase to the preview phase SHALL (re-)run the dry run against the current selections. A month that fails during scanning or importing SHALL stop the run, show the translated error, state the months already committed, and offer a retry that re-runs the same range. The action SHALL be disabled with a translated hint when no secret is stored in the browser for the tracker. The dialog SHALL meet WCAG 2.1 AA (labelled fields, keyboard operable, progress and results announced) and all strings SHALL exist in `en` and `pl` in parity.
+Each tracker's "Import history" action SHALL open a dialog moving through range, scanning, mapping (REQ-358), preview, importing and done phases. The range phase SHALL show one labelled inclusive date-range field (REQ-359) defaulting to five years ago through today, rejecting an inverted or incomplete range inline, and list the tracker's non-deleted Projects with their remote scope, marking unscoped ones as getting no default target, without calling the tracker.
 
 #### Scenario: Unscoped project flagged before scanning
 - **WHEN** the range phase opens for a tracker with a bound Project that has no scope
@@ -151,17 +160,31 @@ The Trackers page SHALL offer an "Import history" action per tracker that opens 
 - **WHEN** the range phase opens
 - **THEN** the date-range field SHALL show a start of five years before today and an end of today, both ends complete, under a single translated label
 
+#### Scenario: Inverted range
+- **WHEN** the range field's start is after its end
+- **THEN** an inline error SHALL be shown and no fetch SHALL start
+
+#### Scenario: Incomplete range
+- **WHEN** either end of the range field is incomplete (a cleared segment)
+- **THEN** the translated "range required" inline error SHALL be shown and no fetch SHALL start
+
+#### Scenario: Range picked from the calendar
+- **WHEN** the user opens the range field's calendar and picks a start day and then an end day
+- **THEN** both ends of the field SHALL update, the calendar SHALL close after the end day, and submitting SHALL scan exactly that inclusive range
+
+### Requirement: REQ-481 Scanning phase
+Scanning SHALL walk the range month by month, fetching logs and computing each log's default target by scope (REQ-334), with an accessible progress indicator and a cancel action that returns to the range phase. It SHALL NOT call the dry-run endpoint; the dry run runs only on moving from mapping to preview.
+
 #### Scenario: Cancel only while scanning
 - **WHEN** the dialog is scanning
 - **THEN** a cancel action SHALL abort the scan and return to the range phase; while importing, no cancel action SHALL be offered
 
-#### Scenario: Retry resumes after a failed month
-- **WHEN** a month fails during import and the user activates retry
-- **THEN** the dialog SHALL re-run the same range, report the previously committed months as skipped, and continue from the failed month
-
 #### Scenario: Preview before writing
 - **WHEN** the user submits a range
 - **THEN** the dialog SHALL scan month by month without a dry run, show the mapping phase for the user to confirm or adjust each remote project's target, and only then run the dry run and show the per-Project preview before any write
+
+### Requirement: REQ-482 Preview, importing and done phases
+Each entry to preview SHALL run the dry run on the current mapping; the preview lists each assigned Project with counts to import and already linked, plus totals, leaving out unassigned ones. All assigned logs SHALL be sent; the skip (REQ-338) yields the linked count. Importing SHALL go month by month, with progress, no cancel, each month atomic. Done SHALL show totals, unassigned counts, and that times are synthetic but durations exact. Preview's back keeps the scan; mapping's back drops it.
 
 #### Scenario: Unmatched projects are visible
 - **WHEN** the scan finds logs in a remote project without a scope-matched Project
@@ -179,28 +202,23 @@ The Trackers page SHALL offer an "Import history" action per tracker that opens 
 - **WHEN** the user confirms the preview
 - **THEN** the dialog SHALL import month by month with progress and finish with totals of imported, skipped, and unassigned logs
 
+### Requirement: REQ-483 Import failures, secret and accessibility
+A month that fails while scanning or importing SHALL stop the run, show the translated error and the months already committed, and offer a retry of the same range, which skips what was committed. Without a browser-held secret the action SHALL be disabled with a translated hint. The dialog SHALL meet WCAG 2.1 AA (labelled fields, keyboard operable, progress and results announced), with all strings in `en` and `pl` parity.
+
+#### Scenario: Retry resumes after a failed month
+- **WHEN** a month fails during import and the user activates retry
+- **THEN** the dialog SHALL re-run the same range, report the previously committed months as skipped, and continue from the failed month
+
 #### Scenario: No secret in the browser
 - **WHEN** the tracker has no stored secret
 - **THEN** the action SHALL be disabled and its hint SHALL point to entering the secret in the tracker form
-
-#### Scenario: Inverted range
-- **WHEN** the range field's start is after its end
-- **THEN** an inline error SHALL be shown and no fetch SHALL start
-
-#### Scenario: Incomplete range
-- **WHEN** either end of the range field is incomplete (a cleared segment)
-- **THEN** the translated "range required" inline error SHALL be shown and no fetch SHALL start
-
-#### Scenario: Range picked from the calendar
-- **WHEN** the user opens the range field's calendar and picks a start day and then an end day
-- **THEN** both ends of the field SHALL update, the calendar SHALL close after the end day, and submitting SHALL scan exactly that inclusive range
 
 #### Scenario: Keyboard and announcements
 - **WHEN** a keyboard user operates the dialog
 - **THEN** every phase, including mapping, SHALL be reachable, the range field's segments and calendar SHALL be operable from the keyboard, and progress and results SHALL be announced via a live region
 
 ### Requirement: REQ-358 Mapping phase lets the user override the routed target Project
-Before any dry run or write, the import dialog SHALL let the user assign or change the target Project for each remote project encountered during the scan, independent of the scope-based default (REQ-334). The mapping phase SHALL present one row per remote project id encountered across the scanned range, with logs carrying no remote project id grouped into a single row; each row SHALL show the remote project's title (or a translated fallback) and its total log count across the range, alongside a control listing every non-deleted Project bound to the tracker plus an explicit "do not import" choice. Each row SHALL default to its scope-based suggestion (REQ-334) when one exists and to "do not import" otherwise. Multiple rows MAY be assigned to the same target Project. Changing a row's target SHALL NOT trigger a network request. The user's selections at the moment the mapping phase is left, not the scope-based defaults, SHALL determine which logs are grouped into which Project for the preview's dry run and for the import write.
+Before any dry run or write, the mapping phase SHALL show a row per remote project in the range (logs without one share a row) with its title (or a translated fallback), log count, and a target control of the tracker's non-deleted Projects plus "do not import", defaulting to the scope match (REQ-334) or "do not import". Rows MAY share a target; a change SHALL make no request. The selections when leaving the phase, not the defaults, SHALL decide the grouping for the dry run and the write.
 
 #### Scenario: Default selection matches scope routing
 - **WHEN** the mapping phase opens and a remote project has a scope-matched Project

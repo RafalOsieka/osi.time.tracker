@@ -23,7 +23,7 @@ verify ownership of the tracker, task, day, and remote issue.
 
 ### Requirement: REQ-365 Unlinked remote entry can be linked to a local task day
 
-For a linked task, the Remote Sync details SHALL label fetched current-account entries Linked or Unlinked. An Unlinked entry SHALL be linkable when its tracker, issue and local date match the task and the task has no finalized export that day. The confirmation SHALL show the remote duration and comment, the task title, and the completed local entries it will cover. Linking SHALL create provenance from the remote entry's date, duration, issue, activity or required fields and id, without changing the tracker.
+For a linked task, the Remote Sync details SHALL label fetched current-account entries Linked or Unlinked. An Unlinked entry SHALL be linkable when its tracker, issue and local date match the task and the task has no finalized export that day. The confirmation SHALL show the remote duration and comment, the task title, and the completed local entries it will cover. Linking SHALL record provenance from the entry's date, duration, issue, activity or required fields and id, with no tracker write.
 
 #### Scenario: Eligible entry is linked
 - **WHEN** the user confirms linking a matching Unlinked entry
