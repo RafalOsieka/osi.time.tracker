@@ -25,7 +25,7 @@ import { trackers } from './trackers';
  * to the same logical export (REQ-233).
  *
  * `taskId` is nullable with ON DELETE SET NULL so export provenance survives
- * task garbage collection (REQ-237) instead of cascading away or blocking GC.
+ * task garbage collection (REQ-443) instead of cascading away or blocking GC.
  */
 export const remoteExports = pgTable(
   'remote_exports',

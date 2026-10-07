@@ -1153,7 +1153,7 @@ describe('RemoteSync page', () => {
     );
     expect(toastSuccessMock).toHaveBeenCalled();
     expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(false);
-    // Post-finalize refresh (REQ-118) refetches that tracker's day logs and
+    // Post-finalize refresh (REQ-485) refetches that tracker's day logs and
     // nothing else: the mocked client exposes no account-resolution call to
     // make in the first place.
     expect(fetchTimeLogsMock.mock.calls.length).toBeGreaterThanOrEqual(2);

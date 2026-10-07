@@ -368,11 +368,11 @@ describe('extension protocol', () => {
   });
 
   it('round-trips provider message keys and optional status', () => {
-    const original = new RemoteAdapterError('error.remoteServerModeAuthRejected', 502);
+    const original = new RemoteAdapterError('error.remoteTrackerAuthRejected', 502);
     const wire = serializeAdapterError(original);
     expect(wire).toEqual({
       kind: 'adapter',
-      messageKey: 'error.remoteServerModeAuthRejected',
+      messageKey: 'error.remoteTrackerAuthRejected',
       status: 502,
     });
     const reconstructed = reconstructAdapterError(wire);
@@ -383,9 +383,9 @@ describe('extension protocol', () => {
   });
 
   it('round-trips connection failures without a status', () => {
-    const original = new RemoteAdapterError('error.remoteServerModeConnectionFailed');
+    const original = new RemoteAdapterError('error.remoteTrackerConnectionFailed');
     const reconstructed = reconstructAdapterError(serializeAdapterError(original));
-    expect(reconstructed.messageKey).toBe('error.remoteServerModeConnectionFailed');
+    expect(reconstructed.messageKey).toBe('error.remoteTrackerConnectionFailed');
     expect(reconstructed.status).toBeUndefined();
   });
 

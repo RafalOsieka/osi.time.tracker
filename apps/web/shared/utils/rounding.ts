@@ -35,50 +35,10 @@ export function applyRoundingRule(totalSeconds: number, rule: TrackerRoundingRul
     ? Math.round(totalSeconds / increment) * increment
     : Math.ceil(totalSeconds / increment) * increment;
 
-  // Never drop a non-zero total to zero (REQ-221).
+  // Never drop a non-zero total to zero (REQ-257).
   if (rounded === 0 && totalSeconds > 0) {
     return increment;
   }
 
   return rounded;
-}
-
-export type RoundingSuggestionKind = 'exact' | 'floor' | 'ceil';
-
-export interface RoundingSuggestion {
-  kind: RoundingSuggestionKind;
-  seconds: number;
-}
-
-/**
- * One-tap export-duration alternatives for a manageable row (REQ-222).
- * Returns de-duplicated suggestions in `exact` → `floor` → `ceil` order.
- * For `none` only the exact selected total is offered.
- */
-export function roundingSuggestionsFor(
-  selectedSeconds: number,
-  rule: TrackerRoundingRule,
-): RoundingSuggestion[] {
-  const exact = Math.max(0, selectedSeconds);
-
-  if (rule === 'none') {
-    return [{ kind: 'exact', seconds: exact }];
-  }
-
-  const increment = ROUNDING_INCREMENT_SECONDS[rule];
-  const floor = Math.floor(exact / increment) * increment;
-  const ceil = Math.ceil(exact / increment) * increment;
-
-  const candidates: RoundingSuggestion[] = [
-    { kind: 'exact', seconds: exact },
-    { kind: 'floor', seconds: floor },
-    { kind: 'ceil', seconds: ceil },
-  ];
-
-  const seen = new Set<number>();
-  return candidates.filter((candidate) => {
-    if (seen.has(candidate.seconds)) return false;
-    seen.add(candidate.seconds);
-    return true;
-  });
 }

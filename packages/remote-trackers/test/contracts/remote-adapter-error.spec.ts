@@ -11,8 +11,8 @@ describe('RemoteAdapterError', () => {
   });
 
   it('carries an optional upstream status', () => {
-    const err = new RemoteAdapterError('error.remoteServerModeAuthRejected', 401);
-    expect(err.messageKey).toBe('error.remoteServerModeAuthRejected');
+    const err = new RemoteAdapterError('error.remoteTrackerAuthRejected', 401);
+    expect(err.messageKey).toBe('error.remoteTrackerAuthRejected');
     expect(err.status).toBe(401);
   });
 });

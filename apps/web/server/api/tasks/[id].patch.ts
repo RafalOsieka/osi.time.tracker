@@ -14,7 +14,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
   const parsedBody = await readZodBody(event, updateTaskSchema);
 
   // Verify ownership (404 for foreign/unknown id). Capture the unchanged
-  // remoteIssueId so collision scope includes it (REQ-134).
+  // remoteIssueId so collision scope includes it (REQ-442).
   const [existing] = await db
     .select({
       id: tasks.id,
@@ -72,7 +72,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
     // Detect a collision with another task already occupying the target
     // (userId, projectId, name, remoteIssueId) scope so the rename/move can
     // be merged instead of failing on the unique constraint. Differing
-    // remote issues no longer collide (REQ-134).
+    // remote issues do not collide (REQ-442).
     const [colliding] = await tx
       .select({ id: tasks.id })
       .from(tasks)

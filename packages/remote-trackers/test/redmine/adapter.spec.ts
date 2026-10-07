@@ -313,7 +313,7 @@ describe('RedmineAdapter', () => {
 
     await expect(
       adapter.fetchTimeLogsInRange({ from: '2026-09-01', to: '2026-09-30' }),
-    ).rejects.toMatchObject({ messageKey: 'error.remoteServerModeConnectionFailed' });
+    ).rejects.toMatchObject({ messageKey: 'error.remoteTrackerConnectionFailed' });
   });
 
   it('resolves a 404 exact-id lookup to null rather than throwing', async () => {
@@ -456,7 +456,7 @@ describe('RedmineAdapter', () => {
     const adapter = new RedmineAdapter(transport, 'https://rm.example.com', 'bad-secret');
 
     await expect(adapter.searchIssues('anything')).rejects.toMatchObject({
-      messageKey: 'error.remoteServerModeAuthRejected',
+      messageKey: 'error.remoteTrackerAuthRejected',
     });
   });
 
@@ -479,7 +479,7 @@ describe('RedmineAdapter', () => {
 
     await expect(adapter.getCurrentAccount()).rejects.toBeInstanceOf(RemoteAdapterError);
     await expect(adapter.getCurrentAccount()).rejects.toMatchObject({
-      messageKey: 'error.remoteServerModeConnectionFailed',
+      messageKey: 'error.remoteTrackerConnectionFailed',
     });
   });
 
@@ -520,7 +520,7 @@ describe('RedmineAdapter', () => {
 
     await expect(adapter.deleteTimeEntry('99')).resolves.toEqual({
       status: 'rejected',
-      messageKey: 'error.remoteServerModeAuthRejected',
+      messageKey: 'error.remoteTrackerAuthRejected',
     });
   });
 

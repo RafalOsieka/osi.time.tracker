@@ -2,15 +2,11 @@
 
 ## Purpose
 
-Define the OpenProject implementation of the neutral remote-tracker adapter:
-work-package title search and exact ID lookup, project-scoped activity options,
-current-account resolution, bounded same-day time-log fetch, and time-entry
-creation — speaking only adapter-neutral DTOs, authenticating via the
-OpenProject API-key Basic auth header, and mapping upstream failures to the
-shared translated error contract.
+How OpenProject implements the neutral adapter contract (`remote-adapter-contract`): its endpoints and pagination, scoped search, project and issue-title mapping from time-entry links, Basic-auth API key, project-scoped activities, and duration conversion.
+
 ## Requirements
 ### Requirement: REQ-210 OpenProject adapter implements the neutral remote-tracker contract
-For an active OpenProject tracker, the adapter SHALL implement all nine neutral operations under `client` and `extension`, expose only adapter-neutral DTOs, map project display titles when usable, map upstream failures to the shared translated contract, and resolve exact-lookup 404 responses as not found. Provider behavior SHALL remain equivalent across the two modes.
+For an active OpenProject tracker the adapter SHALL implement every contract operation (REQ-200) with neutral DTOs only, behaving the same directly and through the extension (REQ-201).
 
 #### Scenario: Title search returns matching OpenProject work packages
 - **WHEN** the user submits a valid title search under a supported execution mode
@@ -79,7 +75,7 @@ The OpenProject adapter SHALL implement the contract's date-range time-log opera
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with `error.remoteTimeLogsFetchFailed` (or the shared logs-fetch key) and SHALL NOT return a silent empty list
 
 ### Requirement: REQ-342 OpenProject time logs map project and issue title from HAL links
-When mapping an OpenProject time entry to the neutral time-log DTO (REQ-341), the adapter SHALL derive the remote project id from the last path segment of `_links.project.href` and the remote project title from `_links.project.title`, and SHALL derive the remote issue title from `_links.entity.title` (falling back to `_links.workPackage.title` on older payloads). Each project field SHALL be omitted when its source is missing or empty. OpenProject time-entry links carry the work package's title even when the work package itself is no longer visible to the account, so the time-entry payload is the only title source: when neither link carries a usable issue title, the remote issue title SHALL be `null` (the tracker does not disclose it) and the adapter SHALL NOT issue a work-package request to resolve it. OpenProject's work-package `id` filter rejects the whole request when any listed id is missing or not visible, so it is not a usable batched lookup. The mapping SHALL apply to both the same-day and the date-range fetch and SHALL add no request beyond the time-entry pages.
+For each time entry (REQ-341) the adapter SHALL take the project id from the last path segment of `_links.project.href` and its title from `_links.project.title` (each omitted when empty), and the issue title from `_links.entity.title`, else `_links.workPackage.title`. The entry SHALL be the only title source: with no usable link title the title SHALL be `null` and no work-package request made. Same-day and range fetches alike SHALL add no request beyond the time-entry pages.
 
 #### Scenario: Full HAL links present
 - **WHEN** a time entry carries `_links.project.href` `/api/v3/projects/12` with title `Nordwind` and `_links.entity.title` `Fix rounding`
@@ -103,15 +99,11 @@ When mapping an OpenProject time entry to the neutral time-log DTO (REQ-341), th
 
 ### Requirement: REQ-211 OpenProject authentication uses the Basic auth header
 
-The OpenProject client SHALL authenticate every upstream request with the user's OpenProject API key encoded as an HTTP Basic authentication header (the fixed username `apikey` and the API key as password), sent in the `Authorization` request header. The auth header SHALL be constructed by the OpenProject client in exactly one place; transports SHALL remain credential-scheme-agnostic and SHALL only attach headers provided with the request (REQ-202). Existing credential-hygiene rules apply unchanged (REQ-203): the secret SHALL NOT be persisted, logged, serialized, or returned by the OSI server, and under `client` execution mode it SHALL be sent only to the configured OpenProject origin.
+The OpenProject client SHALL authenticate every upstream request with the user's API key as an HTTP Basic `Authorization` header (username `apikey`, the key as password), built in exactly one place in the client (REQ-202). The credential rules of REQ-203 apply.
 
 #### Scenario: Requests carry the OpenProject Basic auth header
 - **WHEN** the adapter executes any OpenProject operation with a provided secret
 - **THEN** the upstream request SHALL include the `Authorization: Basic` header derived from the API key and no other provider's credential header
-
-#### Scenario: Transports contain no provider auth logic
-- **WHEN** either transport executes a remote request
-- **THEN** it SHALL attach only the headers supplied by the provider client and SHALL NOT construct provider-specific credentials itself
 
 ### Requirement: REQ-212 Project-scoped activity options
 

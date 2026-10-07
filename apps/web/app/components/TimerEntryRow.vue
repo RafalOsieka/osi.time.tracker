@@ -85,7 +85,7 @@ async function commitTitle() {
 /**
  * Sends only the bound(s) that actually changed from the entry's stored
  * instants; `TimeField` already reports an unchanged commit by not firing at
- * all, so reaching here means at least one side moved (REQ-361, REQ-396).
+ * all, so reaching here means at least one side moved (REQ-431, REQ-456).
  */
 type TimeEntryTimesPatch = Partial<Pick<TimeEntryDto, 'startedAt' | 'stoppedAt'>>;
 
@@ -165,7 +165,7 @@ async function onDelete() {
       One fixed-width slot for either a stopped entry's start–stop range field
       or a running entry's single start field plus the "now" label, so the
       slot (and the duration column after it) never shifts between rows
-      (REQ-265, REQ-361).
+      (REQ-459, REQ-361).
     -->
     <span class="inline-flex w-[11.5rem] shrink-0 items-center gap-1.5">
       <TimeField

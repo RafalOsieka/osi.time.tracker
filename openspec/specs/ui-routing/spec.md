@@ -1,27 +1,27 @@
 # ui-routing Specification
 
 ## Purpose
-Define the application's page shell, layouts, and routing behavior. It activates Nuxt's file-based router with a minimal `app.vue` shell, a public `/login` page on the `auth` layout, and an authenticated home page on the `default` layout (with a logout control). A single private-by-default global middleware protects every route — pages are private unless they declare `public: true` — resolving server-side using the session cookie without browser-only APIs. This guarantees no login flash, safe handling of the `?redirect` target (rejecting open-redirect attempts), and preserved accessible route-change announcements.
+Which pages exist and who may see them: a public login page, private-by-default routes guarded during server rendering, safe redirects after login, and navigation that never waits for page data.
 
 ## Requirements
 
 ### Requirement: REQ-059 File-based routing shell
-The application SHALL activate Nuxt's file-based router. `app/app.vue` SHALL render only the UI provider root wrapping `<NuxtLoadingIndicator />`, `<NuxtRouteAnnouncer />`, and `<NuxtLayout><NuxtPage /></NuxtLayout>`, delegating all page content to files under `app/pages/`. The loading indicator SHALL use the theme's primary color token so it follows light and dark themes.
+The application SHALL use file-based routing, rendering each page inside its layout. Every completed route change SHALL be announced to assistive technologies, and a progress bar in the theme's primary color SHALL show at the top of the viewport while a client-side route change is in progress.
 
 #### Scenario: Router renders the matched page
 - **WHEN** a user navigates to a route that maps to a page under `app/pages/`
-- **THEN** the application SHALL render that page inside its resolved layout via `<NuxtPage />`
+- **THEN** the application SHALL render that page inside its resolved layout
 
 #### Scenario: Route changes are announced
 - **WHEN** a route change completes
-- **THEN** `<NuxtRouteAnnouncer />` SHALL announce the new route for assistive technologies
+- **THEN** the new route SHALL be announced for assistive technologies
 
 #### Scenario: Route change shows progress
 - **WHEN** a client-side route change starts and has not yet finished
 - **THEN** a progress bar SHALL be visible at the top of the viewport and SHALL disappear when the change finishes
 
 ### Requirement: REQ-060 Public login page on the auth layout
-The application SHALL expose a `/login` page that renders the login form within the `auth` layout and is publicly accessible (declares `definePageMeta({ layout: 'auth', public: true })`). The page SHALL preserve the `login-form`, `username`, `password`, `login-button`, and `login-error` test hooks. The auth layout heading SHALL show the application brand mark beside the full application title (`layout.title`). The mark SHALL be decorative relative to the visible title (the title remains the heading text).
+The application SHALL expose a public `/login` page that renders the login form on the `auth` layout, with the `login-form`, `email`, `password`, `login-button` and `login-error` test hooks. The auth layout heading SHALL show the application brand mark beside the full application title (`layout.title`); the mark is decorative and the title remains the heading text.
 
 #### Scenario: Unauthenticated visitor can view login
 - **WHEN** an unauthenticated visitor navigates to `/login`
@@ -37,22 +37,18 @@ The application SHALL expose a `/login` page that renders the login form within 
 
 #### Scenario: Login heading shows mark and title
 - **WHEN** the login page is rendered
-- **THEN** the auth layout heading SHALL show the application brand mark beside the full application title`
+- **THEN** the auth layout heading SHALL show the application brand mark beside the full application title
 
 ### Requirement: REQ-061 Authenticated home page on the default layout
-The application SHALL expose a `/` page that renders within the `default` layout as the timer view (authenticated home). The page SHALL present a page-level header with title and primary create action for adding a manual time entry (shared header pattern used by other management pages). Initial timer-view data SHALL be available from SSR per time-tracking REQ-396 / REQ-395. Logout reachability for authenticated pages is part of the shell (see `ui-shell` REQ-064 / REQ-405): the sidebar footer account control opens a menu that includes Log out.
+The application SHALL expose a `/` page that renders the timer view (the authenticated home) within the `default` layout. The page SHALL present a page-level header with a title and a primary action for adding a manual time entry. Initial timer-view data SHALL be available from SSR (tracking-timer-view REQ-396, tracking-api REQ-395). Logout is reachable from the shell's account menu (ui-shell REQ-064, REQ-405).
 
-#### Scenario: Authenticated user sees the welcome placeholder
+#### Scenario: Authenticated user sees the timer view
 - **WHEN** an authenticated user navigates to `/`
 - **THEN** the home page SHALL render the timer view (authenticated home) inside the `default` layout
 
 #### Scenario: Page header offers add entry
 - **WHEN** an authenticated user views `/`
 - **THEN** the page header SHALL expose a primary control to open the manual add-entry dialog
-
-#### Scenario: Logout is available on every authenticated page
-- **WHEN** the `default` layout is rendered
-- **THEN** the sidebar footer SHALL expose an account control from which the user can open a menu and activate Log out, clearing the session and navigating to `/login`
 
 ### Requirement: REQ-062 Private-by-default navigation guard
 A single global middleware SHALL protect every route. A page is private unless it declares `public: true`. The guard SHALL run during SSR using the session cookie and SHALL NOT use browser-only APIs.
@@ -85,7 +81,7 @@ Route protection SHALL resolve server-side so that protected markup is never pai
 - **THEN** it SHALL complete without referencing browser-only APIs
 
 ### Requirement: REQ-391 Client navigation does not wait for page data
-On client-side navigation, an authenticated page SHALL NOT delay the route change on its data requests. The new page SHALL render immediately and show a loading state (skeleton or equivalent, never an "empty" state) for data still pending, then fill in when the data arrives. The loading state SHALL appear as soon as the page renders, without a delay. On the initial server-rendered request, page data SHALL still be resolved during SSR so first paint contains it. A failed load SHALL show the page's error state, not a stuck loading state.
+On client-side navigation, an authenticated page SHALL render immediately and show a loading state (never its "empty" state) for data still pending, without delay, then fill in when the data arrives. On a full page load, page data SHALL be resolved during SSR using the request's session cookie, so the first paint contains it, including an empty state. A failed load SHALL show the page's error state, not a stuck loading state.
 
 #### Scenario: Navigation switches before data arrives
 - **WHEN** the user navigates client-side from one authenticated page to another whose data request is still pending
@@ -96,8 +92,16 @@ On client-side navigation, an authenticated page SHALL NOT delay the route chang
 - **THEN** the page SHALL NOT render its "no items" empty state until the response confirms there are no items
 
 #### Scenario: Server-rendered first paint still contains data
-- **WHEN** an authenticated page is requested directly (full page load with SSR)
-- **THEN** the HTML response SHALL contain the page rendered with its data, not the loading state
+- **WHEN** an authenticated page such as `/trackers` or `/projects` is requested directly (full page load with SSR)
+- **THEN** the HTML response SHALL contain the page rendered with its data, not the loading state, without depending on a client fetch after mount
+
+#### Scenario: Hard reload empty state
+- **WHEN** an authenticated user with no items performs a full document load of a list page
+- **THEN** the page SHALL render its empty state from the SSR-resolved empty list without a mandatory client fetch
+
+#### Scenario: SSR list uses the session cookie
+- **WHEN** a page resolves its data during SSR
+- **THEN** the request SHALL carry the session cookie of the incoming HTTP request
 
 #### Scenario: Failed load leaves the loading state
 - **WHEN** a page's data request fails after client navigation

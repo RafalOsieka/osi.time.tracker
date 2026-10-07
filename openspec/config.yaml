@@ -1,23 +1,35 @@
 schema: spec-driven
 
 context: |
-  Tech stack: TypeScript, Node.js (^24.21.0, from devEngines), Nuxt.js 4, Vue 3
+  Tech stack: TypeScript, Node.js (version from devEngines), Nuxt.js 4, Vue 3
   Database: PostgreSQL with Drizzle
   Package manager: pnpm, driven through Vite+ (`vp`)
+  Tooling, build, CI and test-harness details live in docs/ (development.md,
+  e2e-guideline.md, coding-standards.md), never in specs.
 
 rules:
   specs:
-    - "For every requirement, include a globally-unique traceability code in the title: `### Requirement: REQ-<NNN> Title`"
+    - "For every requirement, include a globally-unique traceability code in the title: `### Requirement: REQ-<NNN> Title`. Never change or reuse a code: a split keeps the original code on the main behavior and gives each new requirement the next free code; retired codes are listed in docs/retired-requirements.md"
     - Include error and edge-case scenarios, not just the happy path
     - Scope requirements to what the proposal declares; do not specify behavior the proposal leaves out
-    - "Spec ids are `<family>-<topic>` (kebab-case, flat directories — the CLI does not read nested spec folders). Families in use: `platform-` (build, test, ship tooling), `core-` (runtime cross-cutting foundations), `ui-` (app-wide UI foundation and shell), `workspace-` (local domain entities), `tracking-` (time entries, timer, reports), `remote-` (anything that talks to a tracker). Reuse an existing family whenever one fits; invent a new one only when no existing family is a reasonable home, and add it to this list."
+    - "Spec ids are `<family>-<topic>` (kebab-case, flat directories by convention). Families in use: `platform-` (process guarantees others rely on, such as merge gates, written tool-agnostic, and the self-hosting delivery contract), `core-` (runtime cross-cutting foundations), `ui-` (app-wide UI foundation and shell), `workspace-` (local domain entities), `tracking-` (time entries, timer, reports), `remote-` (anything that talks to a tracker). Reuse an existing family whenever one fits; invent a new one only when no existing family is a reasonable home, and add it to this list."
     - "Keep one surface or one contract per spec; when a spec outgrows that, split it along the family prefix rather than growing it."
+    - "Specs describe observable behavior only. If the implementation could change without anyone outside the code noticing, it does not belong in a spec. No library or framework names and versions, file paths, component, function or class names, CI job layout, or build and tooling commands in requirements or scenarios; those belong in docs/. Exceptions: a version that is an external contract (supported runtime, public API or protocol version, data format) and process guarantees written tool-agnostic."
+    - "No scenarios like 'type-check / lint / build / tests pass' or 'works under <library> vN'; such checks are task verification and belong in tasks.md."
+    - "Write the target state, not the change: no 'after the upgrade', 'no longer', 'new', 'as before', 'as today', 'unchanged', 'SHALL be removed'."
+    - "MODIFIED replaces the whole requirement and must keep every scenario of the current one; validate rejects a block that omits any. To drop a scenario, put the requirement under REMOVED (Reason, and Migration naming the replacement) and ADD it again under the next free code without that scenario. Retire the old code in docs/retired-requirements.md and move its references in code and in other specs (MODIFIED there) to the new code. A pure rename uses RENAMED and keeps the code."
+    - "Keep each requirement description at or under 500 characters, one behavior per requirement. Under MODIFIED, do not grow a description; add new behavior as a separate ADDED requirement with its own scenarios."
+    - "Requirement and scenario names describe current behavior; when a change makes a name wrong, rename it (RENAMED for requirements)."
+    - "Do not restate cross-cutting rules (authentication, CSRF, the error contract, per-user isolation, validation) in domain specs; reference `core-api-conventions`."
+    - "Do not add `## Purpose` to a delta for an existing capability. A new capability's Purpose is 1–2 sentences on why it exists."
   proposal:
     - Check ROADMAP.md and the existing specs before writing; do not re-specify behavior an existing spec already covers
     - Include a "Non-goals" section to prevent scope creep
     - Keep under 400 words
+    - "If the change does not alter externally observable behavior (dependency or framework upgrades, refactors, tooling, CI, docs), list no capabilities and set `skip_specs: true` in the change's .openspec.yaml; do not invent requirements to satisfy validation."
   design:
     - Document trade-offs explicitly (at least one alternative considered)
+    - Record library and framework choices, versions and upgrade notes here, not in specs.
   tasks:
     - Separate frontend and backend tasks explicitly.
     - Keep each task completable in a single coding session (~2h max).
@@ -25,3 +37,9 @@ rules:
     - Every API endpoint task MUST have an integration test task covering happy path and at least one error scenario
     - Frontend tasks covering forms or user flows MUST have a corresponding E2E test task
     - Frontend tasks covering utilities or non-UI logic MUST have a corresponding unit test task
+    - When tooling, build or CI changes, include a task to update docs/development.md.
+
+operations:
+  archive:
+    guidance:
+      - "When merging deltas into main specs, rewrite transitional wording into current-state wording without weakening any constraint, and do not copy version or tooling details into main specs."

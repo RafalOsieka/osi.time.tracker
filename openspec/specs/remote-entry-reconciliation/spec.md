@@ -23,12 +23,7 @@ verify ownership of the tracker, task, day, and remote issue.
 
 ### Requirement: REQ-365 Unlinked remote entry can be linked to a local task day
 
-For a task linked to a remote issue, the Remote Sync details SHALL label fetched current-account entries
-as Linked or Unlinked. The user SHALL be able to link an Unlinked entry when its tracker, remote issue,
-and local date match the task and the task has no finalized export for that day. Confirmation SHALL show
-the remote duration and comment, local task title, and completed local entries that will be covered.
-Linking SHALL create provenance from the remote entry's actual date, duration, issue, activity or required
-fields, and ID without mutating the tracker.
+For a linked task, the Remote Sync details SHALL label fetched current-account entries Linked or Unlinked. An Unlinked entry SHALL be linkable when its tracker, issue and local date match the task and the task has no finalized export that day. The confirmation SHALL show the remote duration and comment, the task title, and the completed local entries it will cover. Linking SHALL record provenance from the entry's date, duration, issue, activity or required fields and id, with no tracker write.
 
 #### Scenario: Eligible entry is linked
 - **WHEN** the user confirms linking a matching Unlinked entry
@@ -63,7 +58,7 @@ and permit local cleanup. Any ambiguous remote result SHALL retain provenance.
 - **THEN** local provenance SHALL remain and the user SHALL receive a translated error
 
 ### Requirement: REQ-344 Import-created provenance is reconciled like exported provenance
-Provenance created by the remote-log import (REQ-335) SHALL be indistinguishable from export- or link-created provenance for every reconciliation and reporting rule: it SHALL occupy the same tracker-scoped identity (REQ-304), SHALL label the matching fetched remote entry as Linked in the Remote Sync review (REQ-365), SHALL be deletable with its remote entry through the same confirmed-deletion flow (REQ-366), and SHALL classify the remote log's hours as App in the monthly report (REQ-292). Because deletion removes the tracker entry first, a deleted imported log SHALL NOT reappear on a later import run.
+Provenance from the remote-log import (REQ-335) SHALL behave exactly like export- or link-created provenance: the same tracker-scoped identity (REQ-304), the matching remote entry labelled Linked in Remote Sync (REQ-365), deletable with its remote entry through the confirmed-deletion flow (REQ-366), and its hours counted as App in the monthly report (REQ-292). Since deletion removes the tracker entry first, a deleted imported log SHALL NOT come back on a later import.
 
 #### Scenario: Imported entry shows as Linked
 - **WHEN** the user opens Remote Sync for a day that was backfilled by import

@@ -2,13 +2,8 @@
 
 ## Purpose
 
-Define the single provider-neutral remote-tracker adapter contract that every
-tracker provider implements: the six-operation set over adapter-neutral DTOs,
-`client`/`server` execution-mode equivalence, transport neutrality with
-single-point per-provider auth construction, credential hygiene, 404→not-found
-resolution, per-`systemType` issue-URL derivation, and the shared translated
-`{ messageKey, params }` error contract — so callers depend only on the contract
-and never branch on `systemType`.
+One provider-neutral contract that every tracker adapter (OpenProject, Redmine) implements, giving the same results whether called directly from the browser or through the extension, so callers never branch on provider type and tracker secrets never reach OSI.
+
 ## Requirements
 ### Requirement: REQ-200 Neutral remote-tracker adapter operation set
 
@@ -26,7 +21,7 @@ deletion. Operations SHALL use adapter-neutral DTOs and callers SHALL NOT branch
 - **THEN** it SHALL use the neutral contract without provider-specific branching
 
 ### Requirement: REQ-318 Remote project catalog listing
-The contract SHALL expose one operation that lists the remote projects visible to the configured credential as adapter-neutral entries: a remote project id (opaque text), a display title, and an optional parent remote project id. The operation SHALL follow the provider's pagination until the upstream total is reached or a fixed maximum page count, and SHALL NOT return provider-specific project objects, hrefs, or identifiers other than the neutral fields. Under `client` the secret SHALL travel only to the tracker origin; under `extension` it SHALL be used transiently for the approved tracker request only. Upstream failures SHALL map to a translated `{ messageKey, params }` error and SHALL NOT yield a silent empty list.
+One operation SHALL list the credential's visible remote projects as neutral entries only: an opaque remote project id, a display title, and an optional parent id. It SHALL follow pagination until the upstream total or a fixed maximum page count. Directly from the browser the secret SHALL go only to the tracker origin; through the extension, only to the approved request. An upstream failure SHALL raise the translated `{ messageKey, params }` error, never return an empty list.
 
 #### Scenario: Catalog spans several pages
 - **WHEN** the tracker reports more projects than one page holds
@@ -45,22 +40,22 @@ The contract SHALL expose one operation that lists the remote projects visible t
 - **THEN** the adapter SHALL raise the shared translated error rather than returning an empty catalog
 
 ### Requirement: REQ-319 Optional remote project scope on search and lookup
-Issue title search and exact issue-ID lookup SHALL accept an optional scope consisting of one remote project id. When a scope is supplied, a title search SHALL return only issues belonging to that remote project or to any of its descendant projects, regardless of provider defaults or instance settings, so the scope has the same meaning on every provider. When no scope is supplied, both operations SHALL behave as today (tracker-wide). The neutral search result shape SHALL remain `{ remoteIssueId, title, remoteProjectTitle? }` and SHALL NOT gain a remote project id (REQ-266 unchanged).
+Issue title search and exact issue-ID lookup SHALL accept an optional scope of one remote project id. A scoped title search SHALL return only issues of that project or any of its descendants, whatever the provider's defaults or instance settings, so the scope means the same everywhere. Without a scope both SHALL search the whole tracker. The search result shape SHALL stay `{ remoteIssueId, title, remoteProjectTitle? }`, with no remote project id (REQ-266).
 
 #### Scenario: Scoped title search returns the subtree
 - **WHEN** a title search carries a scope whose remote project has descendant projects
 - **THEN** the results SHALL include matching issues from the root and every descendant and SHALL exclude issues from other projects
 
-#### Scenario: Unscoped search is unchanged
+#### Scenario: Unscoped search covers the whole tracker
 - **WHEN** a title search carries no scope
-- **THEN** the adapter SHALL search the whole tracker exactly as before
+- **THEN** the adapter SHALL search the whole tracker
 
 #### Scenario: Scoped search against a missing remote project
 - **WHEN** the scoped remote project no longer exists or is not visible to the credential
 - **THEN** the adapter SHALL raise the shared translated search error and SHALL NOT silently return tracker-wide results
 
 ### Requirement: REQ-320 Exact lookup reports scope membership
-Exact issue-ID lookup SHALL return either not-found or a lookup object `{ result, inScope }` where `result` is the neutral search result and `inScope` is a boolean. When a scope is supplied and the issue exists, the adapter SHALL determine `inScope` by asking the tracker whether the issue belongs to the scoped subtree; an existing issue outside the subtree SHALL still be returned with `inScope: false`. When no scope is supplied, `inScope` SHALL be `true`. Upstream 404 SHALL resolve to not-found (REQ-204) in both the scoped and unscoped step; other failures SHALL be surfaced as errors.
+Exact issue-ID lookup SHALL return not-found or `{ result, inScope }` with the neutral result. With a scope, `inScope` SHALL come from asking the tracker whether the issue is in the scoped subtree, and an existing issue outside it SHALL still be returned with `inScope: false`; without a scope `inScope` is `true`. An upstream 404 at either step SHALL resolve to not-found (REQ-204); other failures SHALL be errors.
 
 #### Scenario: Issue inside the subtree
 - **WHEN** an exact lookup with a scope targets an issue in a descendant of the scoped project
@@ -93,16 +88,12 @@ The contract SHALL expose one bounded date-range operation for the current accou
 - **WHEN** an upstream total exceeds the fixed page bound
 - **THEN** the adapter SHALL stop at that bound
 
-#### Scenario: Same-day fetch is unchanged
+#### Scenario: Same-day fetch stays a separate operation
 - **WHEN** Remote Sync requests issue-filtered same-day logs
 - **THEN** it SHALL continue using the same-day operation
 
-#### Scenario: Server-mode proxy does not keep the secret
-- **WHEN** a stale caller attempts a server-mode range fetch
-- **THEN** boundary validation SHALL reject the unsupported mode before any secret reaches OSI
-
 ### Requirement: REQ-341 Time logs carry optional remote project and issue title
-The neutral time-log DTO returned by the same-day and date-range fetches SHALL carry, in addition to the existing fields, an optional remote project id (opaque text), an optional remote project title, and a **required, nullable** remote issue title. A provider adapter SHALL fill the remote project fields only from data already present in the time-log payload it fetched and SHALL omit each when the payload does not supply a usable value. The remote issue title SHALL be the issue's display title for every provider: taken from the time-log payload when the provider's payload carries issue titles, otherwise resolved per REQ-378. It SHALL be `null` only when the tracker does not disclose the issue to the configured account (deleted, or not visible to it), never because of which provider produced the log. An optional or nullable DTO field SHALL be empty only for a reason in the remote data, never because of the provider type. Callers SHALL NOT branch on provider type to obtain any of these fields. The extension transport SHALL pass the fields through unchanged.
+Same-day and date-range time logs SHALL carry an optional remote project id (opaque) and title, and a **required, nullable** remote issue title (REQ-476). Adapters SHALL fill the project fields only from the fetched payload, omitting unusable ones. The issue title SHALL be the issue's display title, from the payload when it carries titles, otherwise resolved per REQ-378. Callers SHALL NOT branch on provider type to get these fields, and the extension SHALL pass them through unchanged.
 
 #### Scenario: Provider supplies the project on the log
 - **WHEN** a range fetch returns a log whose payload names its project
@@ -116,10 +107,6 @@ The neutral time-log DTO returned by the same-day and date-range fetches SHALL c
 - **WHEN** the provider's time-log payload does not carry issue titles and the issue is visible to the account
 - **THEN** the neutral log SHALL still carry the issue's display title
 
-#### Scenario: Issue not disclosed to the account
-- **WHEN** a log references an issue that the tracker does not return to the configured account
-- **THEN** the neutral log SHALL carry a `null` remote issue title and SHALL otherwise be returned unchanged
-
 #### Scenario: Provider omits a field
 - **WHEN** a log payload has no usable project
 - **THEN** the project fields SHALL be absent and the log SHALL otherwise be returned unchanged
@@ -132,8 +119,15 @@ The neutral time-log DTO returned by the same-day and date-range fetches SHALL c
 - **WHEN** a range fetch runs through the approved extension
 - **THEN** the fields present in the adapter result, including a `null` issue title, SHALL reach the page unchanged
 
+### Requirement: REQ-476 An issue title is null only when the tracker hides the issue
+A time log's remote issue title SHALL be `null` only when the tracker does not disclose the issue to the configured account (deleted, or not visible), never because of which provider produced the log. Generally, an optional or nullable field of a neutral DTO SHALL be empty only for a reason in the remote data, never because of the provider type.
+
+#### Scenario: Issue not disclosed to the account
+- **WHEN** a log references an issue that the tracker does not return to the configured account
+- **THEN** the neutral log SHALL carry a `null` remote issue title and SHALL otherwise be returned unchanged
+
 ### Requirement: REQ-266 Search and lookup results include optional remote project title
-Issue title search and exact issue-ID lookup SHALL return the same adapter-neutral result shape: remote issue ID, issue title, and an optional remote project title. The remote project title SHALL be the tracker's project display name when the provider payload supplies a usable string, and SHALL be omitted when it does not. The result SHALL NOT include a remote project id, href, or any other remote-project identifier. Provider adapters SHALL map only the provider's project display name into that field and SHALL NOT leak provider-specific project objects across the contract boundary.
+Title search and exact lookup SHALL return the same neutral result: issue id, issue title and an optional remote project title, set to the tracker's project display name when the payload has a usable one and omitted otherwise. The result SHALL NOT include a remote project id, href or other project identifier; adapters SHALL map only the display name and SHALL NOT leak provider project objects.
 
 #### Scenario: Result includes a remote project title
 - **WHEN** title search or exact-ID lookup receives a provider payload that includes a usable project display name
@@ -149,18 +143,14 @@ Issue title search and exact issue-ID lookup SHALL return the same adapter-neutr
 
 ### Requirement: REQ-201 Execution-mode equivalence is a contract invariant
 
-The contract SHALL behave equivalently under authorized client and extension execution for all eight
-operations, except for extension-specific setup failures. Client mode SHALL call the tracker directly;
+The contract SHALL behave equivalently under authorized client and extension execution for every
+operation, except for extension-specific setup failures. Client mode SHALL call the tracker directly;
 extension mode SHALL delegate to the same provider implementation in the approved extension. Tracker
 requests and credentials SHALL NOT pass through the OSI server.
 
 #### Scenario: Same operation yields identical results across modes
 - **WHEN** equivalent upstream responses occur in client and extension modes
 - **THEN** results and upstream error classifications SHALL be equivalent
-
-#### Scenario: Server mode delegates to the same adapter
-- **WHEN** a stale configuration still contains server mode
-- **THEN** migration SHALL convert it to client mode rather than invoking a server adapter
 
 #### Scenario: Extension mode delegates all operations
 - **WHEN** a time-entry deletion runs in extension mode
@@ -211,10 +201,6 @@ For every operation the secret SHALL NOT be persisted, logged, serialized, retur
 - **WHEN** an extension operation succeeds or fails
 - **THEN** its secret SHALL NOT be retained, returned, logged, or sent to OSI APIs
 
-#### Scenario: Server-mode secret is used once and never retained
-- **WHEN** a stale caller submits `server` with a secret
-- **THEN** validation SHALL reject the mode and SHALL NOT transmit the secret to an OSI remote-operation endpoint
-
 ### Requirement: REQ-204 Not-found resolves to an empty result, not an error
 
 An exact issue-ID lookup that the tracker answers with an upstream 404 SHALL resolve to an empty (not-found) result rather than an error, uniformly across all providers. Other upstream failures SHALL be surfaced as errors per the shared error contract and SHALL NOT be conflated with not-found.
@@ -259,24 +245,18 @@ The contract SHALL map rejected credentials, connection failures or timeouts, an
 - **THEN** the caller SHALL receive a distinct extension-specific message
 
 ### Requirement: REQ-287 Upstream payloads are parsed with zod
-Every remote transport `execute` SHALL accept a zod schema for the expected
-payload type `T` and SHALL parse the upstream JSON with that schema
-(`schema.safeParse`). A parse failure SHALL yield `payload: null` (or the
-transport's documented empty result), not an untyped object. Provider adapters
-SHALL supply the schema at each call; callers SHALL NOT treat raw upstream JSON
-as `T`.
+Every upstream response SHALL be checked against the shape its operation expects, supplied by the provider adapter at each call. A response that does not match SHALL yield an empty payload (or the operation's documented empty result), never unchecked data treated as the expected type.
 
 #### Scenario: Transport parse success yields typed payload
-- **WHEN** an upstream response body matches the schema passed to `execute`
+- **WHEN** an upstream response body matches the expected shape
 - **THEN** the transport SHALL return that parsed value as `payload`
 
 #### Scenario: Transport parse failure does not leak raw JSON as T
-- **WHEN** an upstream response body fails the schema passed to `execute`
-- **THEN** the transport SHALL return `payload: null` (or the operation's empty result) and SHALL NOT cast the raw JSON to `T`
+- **WHEN** an upstream response body does not match the expected shape
+- **THEN** the transport SHALL return `payload: null` (or the operation's empty result) and SHALL NOT treat the raw JSON as the expected type
 
 ### Requirement: REQ-332 Activity options resolve to a provider-defined scope
-
-The contract SHALL let a caller derive, without a remote request, the activity scope that a given remote issue belongs to for a given provider, so that callers fetch activity options once per scope and reuse the result across issues sharing it. Each provider SHALL own its scope rule: a provider whose activities are tracker-wide SHALL resolve every issue to the same scope; a provider whose activities depend on the work package SHALL resolve each issue to its own scope. Callers SHALL NOT branch on provider type to compute the scope. Two issues resolving to the same scope SHALL receive identical activity options from one fetch.
+A caller SHALL be able to derive, without a remote request, the activity scope of an issue for a provider, and fetch options once per scope. Each provider SHALL own its rule: tracker-wide activities map every issue to one scope; work-package-dependent activities give each issue its own. Callers SHALL NOT branch on provider type, and issues in one scope SHALL get identical options from a single fetch.
 
 #### Scenario: Tracker-wide activities share one scope
 - **WHEN** several issues on a tracker whose activities are a global enumeration (Redmine) are asked for their activity scope
@@ -311,7 +291,7 @@ Same-day and date-range time-log fetches SHALL return only the configured creden
 - **THEN** the adapter SHALL filter by that id rather than the current-user sentinel
 
 ### Requirement: REQ-378 Missing issue titles are resolved by a bounded batched lookup
-When a provider's time-log payload does not carry issue titles (Redmine, REQ-343), a same-day or date-range fetch SHALL resolve the titles of the logs' distinct remote issue ids before returning, using batched issue lookups of at most 100 ids each. A provider whose payload carries issue titles (OpenProject, REQ-342) SHALL make no lookup, and a log whose payload has no title there SHALL carry `null`. A fetch SHALL make no additional request when no log needs a title, and at most ⌈distinct issues needing a title / 100⌉ additional requests otherwise. Issues in any status, including closed ones, SHALL be resolvable. An issue absent from the lookup response SHALL yield a `null` title (REQ-341). A failed lookup request (rejected credentials, connection failure, timeout, or an unparseable payload) SHALL fail the whole fetch with the same translated time-log fetch error as a failed log page, and SHALL NOT be reported as `null` titles. Lookups SHALL use the same credential, execution path, and origin confinement as the log fetch itself.
+When a provider's logs lack issue titles (Redmine, REQ-343), a fetch SHALL resolve its distinct issue ids before returning in lookups of at most 100 ids: none when nothing is missing, at most ⌈missing / 100⌉ otherwise. Issues of any status, closed included, SHALL resolve; an id absent from the answer gets a `null` title (REQ-476). A provider whose logs carry titles (OpenProject, REQ-342) SHALL make no lookup. Lookups SHALL use the log fetch's credential, path and origin.
 
 #### Scenario: Title-carrying provider needs no lookup
 - **WHEN** an OpenProject fetch returns logs, including one whose link carries no title
@@ -325,10 +305,13 @@ When a provider's time-log payload does not carry issue titles (Redmine, REQ-343
 - **WHEN** a Redmine log references an issue that has since been closed
 - **THEN** the neutral log SHALL carry that issue's title
 
-#### Scenario: Lookup failure fails the fetch
-- **WHEN** the Redmine log pages succeed but a title lookup request fails
-- **THEN** the fetch SHALL fail with the translated time-log fetch error and SHALL NOT return logs with `null` titles
-
 #### Scenario: Lookup stays on the tracker origin
 - **WHEN** a lookup runs under client or extension execution
 - **THEN** it SHALL target only the configured tracker origin and the secret SHALL NOT appear in OSI API traffic
+
+### Requirement: REQ-477 A failed title lookup fails the fetch
+A failed title lookup (rejected credentials, connection failure, timeout or an unparseable payload) SHALL fail the whole fetch with the same translated time-log fetch error as a failed log page, and SHALL NOT be reported as `null` titles.
+
+#### Scenario: Lookup failure fails the fetch
+- **WHEN** the Redmine log pages succeed but a title lookup request fails
+- **THEN** the fetch SHALL fail with the translated time-log fetch error and SHALL NOT return logs with `null` titles

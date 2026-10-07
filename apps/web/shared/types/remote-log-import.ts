@@ -71,7 +71,7 @@ export const importRemoteLogsSchema = z
 
 export type ImportRemoteLogsDto = z.infer<typeof importRemoteLogsSchema>;
 
-/** Per-Project counts in an import response (REQ-339). */
+/** Per-Project counts in an import response (REQ-480). */
 export interface ImportRemoteLogsProjectResultDto {
   projectId: string;
   /** Logs persisted this request. Always 0 on a dry run. */

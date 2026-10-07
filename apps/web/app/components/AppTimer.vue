@@ -54,7 +54,7 @@ watch(
   { immediate: true },
 );
 
-// The chip follows the running entry's project and resets when the timer stops (REQ-376).
+// The chip follows the running entry's project and resets when the timer stops (REQ-471).
 watch(
   () => running.value,
   (entry) => {
@@ -74,7 +74,7 @@ watch(isRunning, (running) => {
 });
 
 function onPickProject(project: TitleProject, strippedText: string) {
-  // Untitled entries cannot carry a project: keep the chip locally (REQ-376).
+  // Untitled entries cannot carry a project: keep the chip locally (REQ-471).
   if (isRunning.value && strippedText.trim()) {
     void updateTitle(strippedText, null, project.id);
   }
@@ -123,7 +123,7 @@ async function onToggle() {
   }
 }
 
-/** Commits the running entry's title with the chip's project, sent explicitly (REQ-376). */
+/** Commits the running entry's title with the chip's project, sent explicitly (REQ-471). */
 async function commitRunningTitle() {
   const commit = titleInput.value?.resolveCommit();
   if (!commit) return;

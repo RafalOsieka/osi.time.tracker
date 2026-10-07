@@ -1,6 +1,6 @@
 # E2E guideline
 
-How the end-to-end suites under `apps/web/test/e2e` are organized and run, and how to resolve the problems that keep coming back. The harness contract itself is specified in `openspec/specs/platform-e2e-harness`.
+How the end-to-end suites under `apps/web/test/e2e` are organized and run, and how to resolve the problems that keep coming back.
 
 ## Suites
 
@@ -53,6 +53,7 @@ The api/ui global setup (`harness/global-setup.ts`) decides how to get a server:
 - Trackers are never real: api specs assert server contracts, ui specs stub tracker HTTP with `page.route`.
 - Wait for hydration after every full page load. Pages are server-rendered, so markup is visible before Vue attaches handlers: a click on it is silently lost, and a form submits natively. `createPage('/…')` already waits; pass `{ waitUntil: 'hydration' }` to `page.goto()` and use `reloadHydrated(page)` from `helpers/ui` instead of `page.reload()`. ESLint enforces both in `ui/`; disable the rule on a line only when the test asserts the pre-hydration (SSR) state, and say so.
 - Keep specs independent of the time of day the suite runs at. When a test types clock times, seed the entry at fixed UTC times (e.g. yesterday 10:00) instead of "now".
+- A historical spec for migration `NNNN` applies only the files whose numeric prefix is lower than `NNNN` (never an exclude-by-name list), seeds the old shape, then applies that one migration. Purely additive migrations need no historical spec.
 
 ## Coverage
 

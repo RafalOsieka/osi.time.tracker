@@ -155,3 +155,26 @@ export async function resolveTaskId(
 
   return created!.id;
 }
+
+/**
+ * Task garbage collection (REQ-491): hard-deletes the user's task when no
+ * entry references it any more. Call it inside the transaction that moved or
+ * deleted entries, after they moved. A `null` task id is a no-op.
+ */
+export async function deleteTaskIfEmpty(
+  tx: DrizzleTx,
+  userId: string,
+  taskId: string | null,
+): Promise<void> {
+  if (!taskId) return;
+
+  const [remaining] = await tx
+    .select({ id: timeEntries.id })
+    .from(timeEntries)
+    .where(eq(timeEntries.taskId, taskId))
+    .limit(1);
+
+  if (!remaining) {
+    await tx.delete(tasks).where(and(eq(tasks.id, taskId), eq(tasks.userId, userId)));
+  }
+}

@@ -15,7 +15,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const trackerId = parsedBody.trackerId ?? null;
   let trackerName: string | null = null;
 
-  // A local project (no tracker) cannot carry a remote project scope (REQ-325).
+  // A local project (no tracker) cannot carry a remote project scope (REQ-439).
   if (!trackerId && parsedBody.remoteProjectId) {
     throw createError({
       statusCode: 422,

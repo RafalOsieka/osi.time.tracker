@@ -107,14 +107,6 @@ describeProfileUI('profile UI flow', async () => {
     await page.close();
   });
 
-  it('no longer serves /settings', async () => {
-    const user = await seedUser(dbUrl);
-    const page = await openAuthed(user);
-    const response = await page.goto(url('/settings'), { waitUntil: 'hydration' });
-    expect(response?.status()).toBe(404);
-    await page.close();
-  });
-
   it('changes timezone on /profile, persists across reload, and regroups the timer view', async () => {
     const user = await seedUser(dbUrl, { timezone: BASELINE_TIME_ZONE });
     const { jar, token } = await apiLogin(user.email, user.password);

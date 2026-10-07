@@ -3,7 +3,7 @@ import { reassignTimeEntriesSchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';
 import { timeEntries, tasks, projects } from '../../db/schema';
-import { resolveTaskId } from '../../utils/tasks';
+import { deleteTaskIfEmpty, resolveTaskId } from '../../utils/tasks';
 import { resolveActiveTrackerForProject } from '../../utils/remote-issue-refs';
 import { toTimeEntryDto } from '../../utils/time-entries';
 import { readZodBody } from '../../utils/zod-input';
@@ -117,7 +117,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       effectiveCachedRemoteProjectTitle = null;
     } else {
       // Value: target the task carrying that remote issue. Derive tracker
-      // provenance server-side from the target project's active tracker (REQ-179).
+      // provenance server-side from the target project's active tracker (REQ-451).
       // Cached title comes from the client search result; tracker id is never
       // client-trusted.
       if (effectiveProjectId === null) {
@@ -161,17 +161,10 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       .where(and(inArray(timeEntries.id, parsedBody.ids), eq(timeEntries.userId, user.id)))
       .returning();
 
-    // Garbage-collect any emptied source tasks (excluding the target).
-    for (const emptiedTaskId of sourceTaskIds) {
-      if (emptiedTaskId === targetTaskId) continue;
-      const [remaining] = await tx
-        .select({ id: timeEntries.id })
-        .from(timeEntries)
-        .where(eq(timeEntries.taskId, emptiedTaskId))
-        .limit(1);
-      if (!remaining) {
-        await tx.delete(tasks).where(and(eq(tasks.id, emptiedTaskId), eq(tasks.userId, user.id)));
-      }
+    // Garbage-collect any emptied source tasks (REQ-491), excluding the target.
+    for (const sourceTaskId of sourceTaskIds) {
+      if (sourceTaskId === targetTaskId) continue;
+      await deleteTaskIfEmpty(tx, user.id, sourceTaskId);
     }
 
     return updated;

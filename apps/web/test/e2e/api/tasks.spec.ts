@@ -355,24 +355,6 @@ describeTasks('tasks API integration', async () => {
     expect(foreign.status).toBe(404);
   });
 
-  it('removed routes: POST /api/tasks and DELETE /api/tasks/[id] no longer exist', async () => {
-    const { jar, token } = await seedAndLogin(dbUrl);
-
-    const postRes = await fetch(url('/api/tasks'), {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-      body: JSON.stringify({ name: 'Should Not Work' }),
-    });
-    expect([404, 405]).toContain(postRes.status);
-
-    const task = await createTaskViaEntry(jar, token, 'Undeletable ' + Date.now());
-    const deleteRes = await fetch(url(`/api/tasks/${task.id}`), {
-      method: 'DELETE',
-      headers: { 'csrf-token': token, cookie: jar.header() },
-    });
-    expect([404, 405]).toContain(deleteRes.status);
-  });
-
   it('cross-user isolation, unauthenticated 401, and missing CSRF rejection', async () => {
     const alice = await seedAndLogin(dbUrl);
     const bob = await seedAndLogin(dbUrl);

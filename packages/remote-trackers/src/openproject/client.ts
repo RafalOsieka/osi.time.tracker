@@ -48,7 +48,9 @@ export interface OpenProjectTimeLogEntry {
   /**
    * From the entity/work-package link title, which OpenProject sets even for
    * work packages the account can no longer see; `null` when the link has
-   * none (REQ-342). Never looked up separately.
+   * none (REQ-342). Never looked up separately: the work-package `id` filter
+   * rejects the whole request when any listed id is missing or hidden, so it
+   * cannot serve as a batched title lookup.
    */
   remoteIssueTitle: string | null;
 }

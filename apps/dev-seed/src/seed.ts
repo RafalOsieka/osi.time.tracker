@@ -33,7 +33,7 @@ export interface SeedOutcome {
 const READ_BACK_DAYS = RANGE_DAYS + 35;
 
 /**
- * The seed flow (REQ-347): wait for healthchecks, then per tracker bootstrap,
+ * The seed flow (docs/development.md, "Seed guarantees"): wait for healthchecks, then per tracker bootstrap,
  * read state, plan and (unless dry-run) execute. Trackers are isolated: a
  * failure on one is reported and the other still runs; the exit code is 1
  * when anything failed. Ends with the base URLs and keys to paste into OSI.

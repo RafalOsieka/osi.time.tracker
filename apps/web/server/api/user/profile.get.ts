@@ -3,7 +3,7 @@ import type { ProfileDto } from '../../../shared/types/profile';
 import { getDb } from '../../db';
 import { users } from '../../db/schema';
 
-/** Returns the authenticated user's profile (workspace-settings REQ-399). */
+/** Returns the authenticated user's profile (workspace-settings REQ-493). */
 export default defineEventHandler(async (event): Promise<ProfileDto> => {
   const db = getDb();
   const { user } = await requireAuth(event);

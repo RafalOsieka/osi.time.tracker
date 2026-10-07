@@ -80,6 +80,14 @@ Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → 
 
 Isolated fake trackers for extension tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at real trackers from CI.
 
+## Database and migrations
+
+After a schema change in `apps/web/server/db/schema`, run `pnpm db:generate` and commit the new migration from `apps/migrator/migrations`. Applied migrations are never edited.
+
+## Continuous integration
+
+The gates run in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The ruleset that blocks merges on `main` lives in the GitHub repository settings, not in this repository; every CI job, including `db`, `api` and `ui` separately, is a required check. Codecov's own statuses stay informational.
+
 ## Troubleshooting
 
 - Set `CONSOLA_LEVEL=4` in `.env` to log every SQL statement from the dev server.

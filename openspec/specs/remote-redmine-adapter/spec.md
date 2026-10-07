@@ -2,14 +2,11 @@
 
 ## Purpose
 
-Define the Redmine implementation of the neutral remote-tracker adapter: issue
-title search and exact ID lookup, global activity options, current-account
-resolution, bounded same-day time-log fetch, and time-entry creation — speaking
-only adapter-neutral DTOs, authenticating via the Redmine API key header, and
-mapping upstream failures to the shared translated error contract.
+How Redmine implements the neutral adapter contract (`remote-adapter-contract`): its endpoints and offset/limit pagination, subtree-scoped search, project mapping and batched issue-title lookup, API-key header, global activities, and decimal-hour conversion.
+
 ## Requirements
 ### Requirement: REQ-093 Redmine adapter implements the neutral remote-tracker contract
-For an active Redmine tracker, the adapter SHALL implement all nine neutral operations under `client` and `extension`, expose only adapter-neutral DTOs, map project display titles when usable, map upstream failures to the shared translated contract, and resolve exact-lookup 404 responses as not found. Provider behavior SHALL remain equivalent across the two modes.
+For an active Redmine tracker the adapter SHALL implement every contract operation (REQ-200) with neutral DTOs only, behaving the same directly and through the extension (REQ-201).
 
 #### Scenario: Title search returns matching Redmine issues
 - **WHEN** the user submits a valid title search under a supported execution mode
@@ -78,7 +75,7 @@ The Redmine adapter SHALL implement the contract's date-range time-log operation
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with the shared time-logs-fetch translation key and SHALL NOT return a silent empty list
 
 ### Requirement: REQ-343 Redmine time logs map the project from the payload
-When mapping a Redmine time entry to the neutral time-log DTO (REQ-341), the adapter SHALL derive the remote project id from `project.id` and the remote project title from `project.name`, omitting each when missing. Redmine time-entry payloads do not carry the issue subject, so the adapter SHALL resolve the remote issue title per REQ-378 through the issues endpoint filtered by the distinct issue ids with every issue status included, using each issue's `subject`. An id the issues endpoint does not return SHALL yield a `null` title. The mapping SHALL apply to both the same-day and the date-range fetch. Time entries without an issue SHALL continue to be dropped and SHALL NOT trigger a lookup.
+For each time entry (REQ-341) the adapter SHALL take the project id from `project.id` and its title from `project.name`, each omitted when missing. Time entries carry no issue subject, so the issue title SHALL come from the issues endpoint filtered by the distinct issue ids with every status included (REQ-378), using `subject`; an id it does not return yields `null`. This applies to same-day and range fetches. Time entries without an issue are dropped and SHALL NOT trigger a lookup.
 
 #### Scenario: Project present
 - **WHEN** a time entry carries `project: { id: 7, name: "Internal" }` and `issue: { id: 42 }`, and issue 42 has subject `Fix rounding`
@@ -102,15 +99,11 @@ When mapping a Redmine time entry to the neutral time-log DTO (REQ-341), the ada
 
 ### Requirement: REQ-094 Redmine authentication uses the API access key header
 
-The Redmine client SHALL authenticate every upstream request with the user's Redmine API access key sent in the `X-Redmine-API-Key` request header. The auth header SHALL be constructed by the Redmine client in exactly one place; transports SHALL remain credential-scheme-agnostic and SHALL only attach headers provided with the request, per the contract's transport-neutrality rule (`remote-adapter-contract` REQ-202). Existing credential-hygiene rules apply unchanged (`remote-adapter-contract` REQ-203): the secret SHALL NOT be persisted, logged, serialized, or returned by the OSI server, and under `client` execution mode it SHALL be sent only to the configured Redmine origin.
+The Redmine client SHALL authenticate every upstream request with the user's API access key in the `X-Redmine-API-Key` header, built in exactly one place in the client (REQ-202). The credential rules of REQ-203 apply.
 
 #### Scenario: Requests carry the Redmine API key header
 - **WHEN** the adapter executes any Redmine operation with a provided secret
 - **THEN** the upstream request SHALL include the `X-Redmine-API-Key` header and SHALL NOT include any other provider's credential header
-
-#### Scenario: Transports contain no provider auth logic
-- **WHEN** either transport executes a remote request
-- **THEN** it SHALL attach only the headers supplied by the provider client and SHALL NOT construct provider-specific credentials itself
 
 ### Requirement: REQ-095 Global activity options independent of the issue
 

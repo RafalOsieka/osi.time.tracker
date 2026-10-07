@@ -285,7 +285,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
 
     // The Sales remote project has no scoped Project, so its mapping row is
-    // visible but starts unassigned (REQ-334/REQ-358) — left untouched here.
+    // visible but starts unassigned (REQ-478/REQ-358) — left untouched here.
     await page.waitForSelector('[data-testid="tracker-import-mapping"]');
     const mappingText = await page.textContent('[data-testid="tracker-import-mapping"]');
     expect(mappingText).toContain('Sales');
@@ -294,7 +294,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
 
     // Only the web + mobile logs are matched (2); the unassigned Sales log
     // is excluded from the preview and its own total, never counted toward
-    // the importable total (REQ-334/REQ-358).
+    // the importable total (REQ-478/REQ-358).
     const totalsText = await page.textContent('[data-testid="tracker-import-preview-totals"]');
     expect(totalsText).toContain('2');
     await page.waitForSelector('[data-testid="tracker-import-unmatched-hint"]');

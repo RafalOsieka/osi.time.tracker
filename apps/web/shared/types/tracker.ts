@@ -3,8 +3,7 @@ import { trackerSystemTypeSchema, type TrackerSystemType } from '@osi/remote-tra
 
 /**
  * Whether the tracker origin allows direct browser requests. `true` (default)
- * uses the client adapter; `false` requires the desktop extension. The
- * obsolete `executionMode` field is rejected so stale clients fail closed.
+ * uses the client adapter; `false` requires the desktop extension.
  */
 export const trackerDirectBrowserAccessSchema = z.boolean({
   error: 'error.trackerDirectBrowserAccessInvalid',
@@ -55,11 +54,7 @@ export const trackerWriteFieldsSchema = z.object({
   roundingRule: trackerRoundingRuleSchema,
 });
 
-export const createTrackerSchema = trackerWriteFieldsSchema
-  .extend({
-    executionMode: z.never({ error: 'error.trackerExecutionModeRequired' }).optional(),
-  })
-  .transform(({ executionMode: _obsolete, ...rest }) => rest);
+export const createTrackerSchema = trackerWriteFieldsSchema;
 
 export type CreateTrackerDto = z.infer<typeof createTrackerSchema>;
 

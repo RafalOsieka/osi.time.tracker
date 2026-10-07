@@ -1,14 +1,12 @@
 # workspace-projects Specification
 
 ## Purpose
-Define how authenticated users manage their own projects (the middle of the `Client → Project → Task` hierarchy): listing, creating, editing, and soft-deleting projects, each belonging to exactly one client owned by the same user, with an accessible, tokenized Projects UI. All project endpoints follow the shared `core-api-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, and boundary validation).
+How users manage their projects: list, create, edit and soft-delete them, each project optionally bound to one of their trackers and, within it, to a remote project scope. All project endpoints follow `core-api-conventions`.
 
 ## Requirements
 
 ### Requirement: REQ-084 List own projects
-The system SHALL show the authenticated user only their own non-deleted projects, ordered by name, via `GET /api/projects`. The list SHALL exclude any project whose `deletedAt` is set and any project belonging to another user. The endpoint SHALL accept an optional `trackerId` query parameter that further restricts results to that tracker, always additionally scoped by `userId`. A dedicated filter value or query convention SHALL allow listing only local projects (`trackerId` is null). Each returned project SHALL include optional tracker context: `trackerId` (nullable) and `trackerName` (nullable) resolved via a join that does NOT filter on the tracker's `deletedAt`, so the name is present even when the tracker has been soft-deleted. Local projects SHALL return `trackerId` null and `trackerName` null.
-
-The Projects management page (`/projects`) SHALL load and display the full unfiltered project list for the authenticated user (no page-level tracker filter control). The page MAY call `GET /api/projects` without a `trackerId` query parameter. The optional API filter remains available for non-page callers; the MVP Projects UI SHALL NOT expose tracker filtering.
+`GET /api/projects` SHALL return the user's own non-deleted projects ordered by name. An optional `trackerId` filter SHALL narrow it to one tracker, and a dedicated filter value to local projects (no tracker). Each project SHALL carry nullable `trackerId` and `trackerName`; the name SHALL be present even when the tracker is soft-deleted, and both SHALL be null for local projects. The `/projects` page SHALL show the full unfiltered list and SHALL NOT offer a tracker filter.
 
 #### Scenario: Response includes optional tracker name
 - **WHEN** an authenticated user lists their projects
@@ -43,7 +41,7 @@ The Projects management page (`/projects`) SHALL load and display the full unfil
 - **THEN** the page SHALL NOT render a tracker filter control for narrowing the project table
 
 ### Requirement: REQ-085 Create a project
-The system SHALL allow an authenticated user to create a project with a `name` and an optional `trackerId` via `POST /api/projects`. The `name` SHALL be trimmed, non-empty, and length-bounded. Among non-deleted projects of the same user, names SHALL be unique per tracker when `trackerId` is set, and unique among local projects (`trackerId` null) when local. When provided, `trackerId` SHALL reference a non-deleted tracker owned by the user; omitting `trackerId` or sending `null` SHALL create a local project. On success the created project SHALL be returned and a success Toast SHALL be shown.
+The system SHALL let a user create a project via `POST /api/projects` with a `name` and an optional `trackerId`. The name SHALL be trimmed, non-empty and length-bounded, and unique among the user's non-deleted projects per tracker, or among local projects when `trackerId` is null or omitted. A given `trackerId` SHALL reference a non-deleted tracker the user owns. On success the project SHALL be returned and a success Toast shown.
 
 #### Scenario: Successful creation under a tracker
 - **WHEN** an authenticated user submits a valid, unique name and a `trackerId` for a tracker they own
@@ -74,7 +72,7 @@ The system SHALL allow an authenticated user to create a project with a `name` a
 - **THEN** the system SHALL allow creation
 
 ### Requirement: REQ-086 Edit a project
-The system SHALL allow an authenticated user to update the `name` and optional `trackerId` of their own project via `PATCH /api/projects/[id]`, applying the same validation as creation. Editing SHALL be scoped by `userId`. Tracker ownership and non-deleted validation SHALL only be enforced when the `trackerId` is changed to a different non-null tracker; when the `trackerId` is unchanged from the project's current tracker, the system SHALL NOT validate that tracker's soft-delete status, so the project's `name` can still be edited after its tracker has been soft-deleted. Setting `trackerId` to `null` SHALL detach the project from its tracker (local project) and SHALL be allowed even when tasks under the project hold historical remote issue references; new linking and push SHALL remain blocked while the project has no active tracker. Detach and attach changes that affect remote eligibility SHALL require user confirmation in the UI before the request is sent.
+The system SHALL let a user update the `name` and optional `trackerId` of their own project via `PATCH /api/projects/[id]`, with the same validation as creation and the tracker rules of REQ-088. Setting `trackerId` to `null` SHALL detach the project (local), even when its tasks hold historical remote issue references; new linking and export stay blocked until an active tracker is assigned. Detaching or attaching in a way that changes remote eligibility SHALL require confirmation in the UI first.
 
 #### Scenario: Successful edit
 - **WHEN** an authenticated user submits a valid new name and an owned `trackerId` (or null) for their own project
@@ -107,8 +105,8 @@ The system SHALL soft-delete a project via `DELETE /api/projects/[id]` by settin
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
 
-### Requirement: REQ-088 Client relationship and ownership
-Every project MAY optionally belong to at most one tracker owned by the same user, or to no tracker (local). On create, and on update when the `trackerId` is changed to a different non-null tracker, the system SHALL validate that the target `trackerId` references a non-deleted tracker owned by the authenticated user; a foreign or unknown `trackerId` SHALL resolve to HTTP 404 without confirming the tracker's existence. When an update leaves the `trackerId` unchanged, the system SHALL NOT re-validate the existing tracker's ownership or soft-delete status, allowing edits to a project whose tracker was later soft-deleted. Clearing `trackerId` to null SHALL not require a tracker to exist.
+### Requirement: REQ-088 Tracker relationship and ownership
+A project SHALL belong to at most one tracker owned by the same user, or to none (local). On create, and when an update changes `trackerId` to a different non-null tracker, the target SHALL be a non-deleted tracker the user owns; a foreign or unknown one SHALL resolve to HTTP 404 without confirming it exists. An update that keeps `trackerId` SHALL NOT re-validate that tracker, so a project whose tracker was soft-deleted can still be renamed. Clearing `trackerId` needs no tracker.
 
 #### Scenario: Assigning a foreign tracker rejected
 - **WHEN** an authenticated user creates or updates a project with a `trackerId` owned by another user
@@ -127,7 +125,7 @@ Every project MAY optionally belong to at most one tracker owned by the same use
 - **THEN** the system SHALL accept the request without requiring a tracker
 
 ### Requirement: REQ-325 Optional remote project scope on a project
-A tracker-bound project MAY carry a remote project scope: one opaque `remoteProjectId` (trimmed, non-empty, length-bounded text) together with a cached `remoteProjectTitle` (trimmed, non-empty, length-bounded). Both SHALL be present or both absent — enforced identically for `POST /api/projects` and `PATCH /api/projects/[id]` through the shared boundary schema, rejecting a half-set pair with a `422` `{ messageKey, params }` error and persisting nothing. A local project (`trackerId` null) SHALL have no scope: `POST` SHALL reject a scope supplied with `trackerId` null or omitted with the same `422` contract, and `PATCH` SHALL reject a scope supplied for a project whose `trackerId` is not being changed by that request and is (or remains) null. A `PATCH` that changes or clears `trackerId` in the same request is governed by REQ-326 instead of this rejection. The server SHALL NOT contact the tracker to validate the id (it holds no secret) and SHALL store the pair as cached data. `GET /api/projects` and every project response SHALL return both fields (null when absent). Scope SHALL NOT affect project-name uniqueness.
+A tracker-bound project MAY carry a remote project scope: an opaque `remoteProjectId` and a cached `remoteProjectTitle`, each trimmed, non-empty and length-bounded, and either both present or both absent. Create and update SHALL reject a half-set pair with a `422` `{ messageKey, params }` and persist nothing. The server SHALL NOT contact the tracker to validate it (it holds no secret). Every project response SHALL return both fields (null when absent). The scope SHALL NOT affect name uniqueness.
 
 #### Scenario: Create a project with a scope
 - **WHEN** an authenticated user creates a project with a valid `trackerId`, `remoteProjectId`, and `remoteProjectTitle`
@@ -141,6 +139,13 @@ A tracker-bound project MAY carry a remote project scope: one opaque `remoteProj
 - **WHEN** a request supplies `remoteProjectId` without `remoteProjectTitle`, or vice versa
 - **THEN** the system SHALL respond with 422, a translated `messageKey`, and persist nothing
 
+#### Scenario: List includes scope fields
+- **WHEN** an authenticated user lists their projects
+- **THEN** each project SHALL include `remoteProjectId` and `remoteProjectTitle`, null for projects without a scope
+
+### Requirement: REQ-439 A local project has no remote project scope
+A local project (`trackerId` null) SHALL have no scope. `POST` SHALL reject a scope sent with `trackerId` null or omitted, and `PATCH` SHALL reject a scope for a project that is and stays local, both with `422` `{ messageKey, params }` and nothing persisted. A `PATCH` that changes or clears `trackerId` in the same request follows REQ-326 instead.
+
 #### Scenario: Scope on a local project is rejected at create
 - **WHEN** a create request supplies a scope while `trackerId` is null or omitted
 - **THEN** the system SHALL respond with 422 and persist nothing
@@ -149,12 +154,8 @@ A tracker-bound project MAY carry a remote project scope: one opaque `remoteProj
 - **WHEN** a `PATCH` request supplies a scope for a project whose `trackerId` is already null and the request does not set a `trackerId`
 - **THEN** the system SHALL respond with 422 and persist nothing
 
-#### Scenario: List includes scope fields
-- **WHEN** an authenticated user lists their projects
-- **THEN** each project SHALL include `remoteProjectId` and `remoteProjectTitle`, null for projects without a scope
-
 ### Requirement: REQ-326 Changing the tracker clears the scope
-When a `PATCH` changes a project's `trackerId` to a different tracker or to null, the system SHALL clear `remoteProjectId` and `remoteProjectTitle` regardless of the values in the request body, because a remote project id is meaningful only for the tracker it came from. This SHALL succeed (not the REQ-325 local-project rejection) even when the request body still carries the previous scope pair. A `PATCH` that leaves `trackerId` unchanged SHALL apply the scope fields from the body (set, replace, or clear), subject to REQ-325's local-project rejection when the project has no tracker.
+When a `PATCH` changes `trackerId` to another tracker or to null, the system SHALL clear `remoteProjectId` and `remoteProjectTitle` whatever the body says, because a remote project id is meaningful only for its tracker; this SHALL succeed even when the body still carries the old scope. A `PATCH` that keeps `trackerId` SHALL apply the body's scope fields (set, replace or clear), subject to REQ-439.
 
 #### Scenario: Reassigning to another tracker drops the scope
 - **WHEN** an authenticated user changes a scoped project's `trackerId` to another owned tracker while the body still carries the old scope
@@ -166,7 +167,7 @@ When a `PATCH` changes a project's `trackerId` to a different tracker or to null
 
 #### Scenario: Detaching succeeds even when the body still echoes the old scope
 - **WHEN** a detach request (`trackerId: null`) also carries the project's previous `remoteProjectId`/`remoteProjectTitle`
-- **THEN** the system SHALL succeed and persist the project as local with both scope fields null, rather than rejecting it under REQ-325
+- **THEN** the system SHALL succeed and persist the project as local with both scope fields null, rather than rejecting it under REQ-439
 
 #### Scenario: Same tracker, new scope
 - **WHEN** an authenticated user keeps `trackerId` unchanged and supplies a different remote project pair
@@ -176,19 +177,8 @@ When a `PATCH` changes a project's `trackerId` to a different tracker or to null
 - **WHEN** an authenticated user keeps `trackerId` unchanged and sends both scope fields null
 - **THEN** the system SHALL clear the stored scope
 
-### Requirement: REQ-089 Strict cross-user isolation
-Every read and write SHALL be scoped by the authenticated user's id. A project id belonging to another user, or an unknown id, SHALL resolve to HTTP 404 without confirming the resource's existence.
-
-#### Scenario: Foreign project id on read or write
-- **WHEN** an authenticated user references a project id owned by another user
-- **THEN** the system SHALL respond with HTTP 404 and SHALL NOT reveal that the resource exists
-
-#### Scenario: Unknown project id
-- **WHEN** an authenticated user references a project id that does not exist
-- **THEN** the system SHALL respond with HTTP 404
-
 ### Requirement: REQ-091 Accessible, tokenized Projects UI
-The Projects page SHALL meet WCAG 2.1 AA: form fields including the optional Tracker select SHALL be labelled, the create/edit modal and confirm modal SHALL be accessible and keyboard operable, and invalid fields SHALL expose `aria-invalid` with an associated described error (mirroring `login.vue`). Styling SHALL derive from Tailwind utilities and Nuxt UI `--ui-*` design tokens with no ad-hoc inline colors, and all user-facing strings SHALL exist in `en` and `pl` in parity.
+The Projects page SHALL meet WCAG 2.1 AA: labelled fields including the optional Tracker select, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity.
 
 #### Scenario: Inline field error is accessible
 - **WHEN** a field validation error is shown
@@ -203,7 +193,7 @@ The Projects page SHALL meet WCAG 2.1 AA: form fields including the optional Tra
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
 ### Requirement: REQ-092 Client-side validation of the project form
-The project create/edit form SHALL validate input client-side using the shared `createProjectSchema` from `shared/types/project.ts` (bound directly to Nuxt UI's `UForm` `:schema`) before any request is sent. `trackerId` SHALL be optional (nullable uuid); the form SHALL NOT require a tracker. Validation failures SHALL render the schema's messageKey translated via `t()` as an inline field error and SHALL prevent the request. Server-side validation SHALL remain unchanged and authoritative; server-only field errors (e.g. `error.projectNameDuplicate`) SHALL still render inline under the field after submission.
+The project create/edit form SHALL validate input client-side with the same schema the server uses before any request is sent. `trackerId` SHALL be optional; the form SHALL NOT require a tracker. A validation failure SHALL show the translated `messageKey` inline under the field and SHALL prevent the request. The server SHALL stay authoritative; its field errors (e.g. `error.projectNameDuplicate`) SHALL still render inline under the field.
 
 #### Scenario: Empty name blocked client-side
 - **WHEN** the user submits the project form with an empty or whitespace-only name
@@ -217,23 +207,8 @@ The project create/edit form SHALL validate input client-side using the shared `
 - **WHEN** the submitted values pass client-side validation but the server rejects the name as a duplicate for that tracker scope
 - **THEN** the `error.projectNameDuplicate` message SHALL render inline under the name field
 
-### Requirement: REQ-260 Projects page list available on initial SSR render
-The Projects management page (`/projects`) SHALL resolve the authenticated user's full project list during server-side rendering of a full document load so the initial HTML/payload already contains the list data (or an empty list for the empty state). The SSR list fetch SHALL authenticate using the incoming session cookie and SHALL NOT depend on client-only `onMounted` bootstrap for the primary table.
-
-#### Scenario: Hard reload shows project rows without client-only bootstrap
-- **WHEN** an authenticated user with at least one project performs a full document load of `/projects`
-- **THEN** the initial render payload SHALL already include those projects so the table can render rows without depending solely on an `onMounted` client fetch
-
-#### Scenario: Hard reload empty state
-- **WHEN** an authenticated user with no projects performs a full document load of `/projects`
-- **THEN** the page SHALL be able to render the empty state from the SSR-resolved empty list
-
-#### Scenario: SSR list uses the session cookie
-- **WHEN** the Projects page resolves the list during SSR
-- **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request
-
 ### Requirement: REQ-261 Project form loads tracker options on dialog open
-The Projects create/edit dialog SHALL load active tracker options for the Tracker select only when the dialog is opened, not as part of the page's initial SSR list bootstrap. While tracker options are loading, the Tracker select SHALL expose a loading indicator (and MAY be disabled until options resolve). Edit flows SHALL continue to seed a soft-deleted or otherwise missing tracker via the project's `trackerId`/`trackerName` when that tracker is absent from the active list (REQ-086). Create flows SHALL default to no tracker selected (local) when the dialog opens.
+The project dialog SHALL load the active tracker options only when it opens, not as part of the page's initial data, showing a loading indicator on the Tracker select meanwhile (it MAY be disabled until they resolve). Edit SHALL still seed a soft-deleted or missing tracker from the project's `trackerId`/`trackerName` (REQ-086). Create SHALL default to no tracker (local).
 
 #### Scenario: Opening create does not require trackers on page load
 - **WHEN** an authenticated user loads `/projects` without opening the create/edit dialog
@@ -248,7 +223,7 @@ The Projects create/edit dialog SHALL load active tracker options for the Tracke
 - **THEN** the dialog MAY reuse the previously loaded tracker options without a mandatory network round-trip
 
 ### Requirement: REQ-327 Project form remote project select
-When the create/edit project dialog has a tracker selected, it SHALL show a labelled, keyboard-operable remote project select populated from the tracker's remote project catalog (REQ-318) fetched through the browser-held secret under the tracker's execution path. The select SHALL present the catalog as an indented hierarchy using each entry's parent id, SHALL offer an explicit "whole tracker" (no scope) choice, and SHALL show a loading indicator while fetching. When no secret is available in the browser, the select SHALL be disabled, SHALL still display the project's cached `remoteProjectTitle` when one exists, SHALL allow clearing the scope, and SHALL show a translated hint pointing to tracker settings. A catalog fetch failure SHALL render a translated, accessible error with a retry action and SHALL NOT block saving the project without a scope. Changing the selected tracker in the dialog SHALL clear the pending scope before loading the new catalog. Selecting a remote project SHALL submit its id and title as the scope pair. All strings SHALL exist in `en` and `pl` in parity.
+With a tracker selected, the project dialog SHALL show a labelled, keyboard-operable remote project select from that tracker's catalog (REQ-318), fetched with the browser-held secret, as an indented hierarchy with a "whole tracker" choice and a loading indicator. Choosing a project SHALL submit its id and title as the scope; changing the tracker SHALL clear the pending scope first. Strings SHALL have `en`/`pl` parity.
 
 #### Scenario: Tracker selected with a browser secret
 - **WHEN** the user selects a tracker for which a secret is stored in the browser
@@ -258,14 +233,6 @@ When the create/edit project dialog has a tracker selected, it SHALL show a labe
 - **WHEN** the catalog contains projects with parents
 - **THEN** child projects SHALL appear indented under their parent in the select
 
-#### Scenario: No secret in the browser
-- **WHEN** the user opens the dialog for a scoped project whose tracker has no stored secret
-- **THEN** the select SHALL be disabled, SHALL display the cached remote project title, SHALL allow clearing it, and SHALL show the tracker-settings hint
-
-#### Scenario: Catalog fetch fails
-- **WHEN** the catalog request fails
-- **THEN** the dialog SHALL show a translated error with a retry action and the project SHALL remain saveable without a scope
-
 #### Scenario: Switching tracker resets the pending scope
 - **WHEN** the user changes the tracker select while a remote project is chosen
 - **THEN** the remote project selection SHALL be cleared and the catalog for the new tracker SHALL load
@@ -274,12 +241,23 @@ When the create/edit project dialog has a tracker selected, it SHALL show a labe
 - **WHEN** no tracker is selected
 - **THEN** the remote project select SHALL NOT be rendered and no scope SHALL be submitted
 
+### Requirement: REQ-440 Remote project select without a catalog
+When the catalog cannot be loaded, the remote project select SHALL degrade without blocking the project. Without a browser secret, or with an extension that does not offer the catalog operation, it SHALL be disabled with a translated hint, still show the cached `remoteProjectTitle`, and allow clearing it. A failed fetch SHALL show an accessible translated error with a retry action, and the project SHALL stay saveable without a scope.
+
+#### Scenario: No secret in the browser
+- **WHEN** the user opens the dialog for a scoped project whose tracker has no stored secret
+- **THEN** the select SHALL be disabled, SHALL display the cached remote project title, SHALL allow clearing it, and SHALL show the tracker-settings hint
+
+#### Scenario: Catalog fetch fails
+- **WHEN** the catalog request fails
+- **THEN** the dialog SHALL show a translated error with a retry action and the project SHALL remain saveable without a scope
+
 #### Scenario: Extension mode without catalog support
 - **WHEN** the tracker requires the desktop extension and the installed extension does not advertise the catalog operation
 - **THEN** the select SHALL be disabled with a translated incompatibility hint, and the cached title (if any) SHALL remain clearable
 
 ### Requirement: REQ-371 Recent tracked time per project
-Each project returned by `GET /api/projects` (REQ-084) SHALL include `recentTrackedSeconds`, a non-negative integer. It is the sum of the durations of the authenticated user's time entries that belong to that project through their task and whose `startedAt` falls within the 30 days before the request's server time. A running entry SHALL count up to the current server time. Entries without a task, entries of other projects, and entries of other users SHALL NOT contribute. A project with no qualifying entries SHALL report `0`. The field SHALL NOT change the list's ordering (still by name) or its filtering. Computing it SHALL NOT require a query per project.
+Each project from `GET /api/projects` SHALL include `recentTrackedSeconds`: the summed duration of the user's time entries belonging to it through their task and started within the 30 days before the request, a running entry counting up to now. Untitled entries, other projects and other users SHALL NOT count; no qualifying entries means `0`. It SHALL NOT change the list's order (by name) or filtering, and SHALL NOT need a query per project.
 
 #### Scenario: Recent time is summed per project
 - **WHEN** the user has two stopped entries of 1 h and 30 min in "Helios" started within the last 30 days

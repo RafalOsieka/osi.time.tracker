@@ -1,7 +1,7 @@
 # ui-accessibility Specification
 
 ## Purpose
-Define the project-wide accessibility standard (WCAG 2.1 AA) that every page and component MUST follow, and the automated lint gate that enforces the statically checkable parts. This standard applies to all current and future UI under `app/`.
+Define the project-wide accessibility standard (WCAG 2.1 AA) that every page and component MUST follow, and the automated check that enforces its statically checkable parts. This standard applies to all current and future UI under `app/`.
 
 ## Requirements
 
@@ -36,7 +36,7 @@ All functionality SHALL be operable with the keyboard alone, in a logical focus 
 
 #### Scenario: Focus remains visible
 - **WHEN** an element receives keyboard focus
-- **THEN** a visible focus indicator SHALL be shown (default browser/PrimeVue outline preserved or replaced with an AA-contrast equivalent)
+- **THEN** a visible focus indicator SHALL be shown (the default browser or component-library outline preserved, or replaced with an AA-contrast equivalent)
 
 ### Requirement: REQ-004 Color contrast and non-color status
 Text and meaningful UI SHALL meet WCAG 2.1 AA contrast (≥ 4.5:1 for normal text, ≥ 3:1 for large text and essential non-text UI). Status and meaning (error, success, running/stopped) SHALL NOT be communicated by color alone; a text label, icon, or shape SHALL accompany it.
@@ -50,28 +50,29 @@ Text and meaningful UI SHALL meet WCAG 2.1 AA contrast (≥ 4.5:1 for normal tex
 - **THEN** it SHALL also be conveyed by text, icon, or shape, not color alone
 
 ### Requirement: REQ-005 Enforced accessibility lint gate
-The project SHALL enforce statically checkable accessibility rules in CI via `eslint-plugin-vuejs-accessibility` configured with its flat-config recommended ruleset. The plugin SHALL be appended to the `withNuxt()` chain in `eslint.config.mjs` **before** `eslint-config-prettier`. `pnpm lint` SHALL fail when a template violates an enabled accessibility rule. Any rule deviation SHALL be justified with an inline ESLint disable comment that explains why.
+Statically checkable accessibility rules SHALL be enforced on component templates by an automated check that blocks merging. Every exception to a rule SHALL carry an inline comment explaining why.
 
 #### Scenario: Lint fails on a missing label
 - **WHEN** a template introduces an interactive control without an accessible name that the ruleset detects
-- **THEN** `pnpm lint` SHALL exit non-zero and identify the offending element
-
-#### Scenario: Prettier ownership preserved
-- **WHEN** the ESLint config is assembled
-- **THEN** `eslint-config-prettier` SHALL remain the last entry so the a11y plugin does not introduce stylistic conflicts
+- **THEN** the automated check SHALL fail and identify the offending element
 
 ### Requirement: REQ-269 Hover and focus hints use a themed tooltip
-Hover and keyboard-focus hints in the application UI SHALL be presented as a themed tooltip that appears on pointer hover and on keyboard focus. The native browser `title` tooltip SHALL NOT be the mechanism for those hints. A tooltip SHALL NOT replace the control's accessible name (REQ-001): icon-only and status-only controls SHALL still expose `aria-label` or visually hidden text.
+Hover and keyboard-focus hints SHALL be shown as a themed tooltip that appears on pointer hover and on keyboard focus, never only through the native `title` attribute. A tooltip SHALL NOT replace a control's accessible name (REQ-001). A disabled control that needs an explanation SHALL still show it on hover and focus. A tooltip SHALL NOT contain interactive controls; menus, pickers and confirmations stay separate overlays. Dialog, page and confirm headings are not hints.
 
-A themed tooltip SHALL be shown when at least one of the following is true:
+#### Scenario: Native title is not the hint
+- **WHEN** a hover or focus hint is required
+- **THEN** the hint SHALL NOT be provided only by the native browser `title` tooltip
 
-- the control has no visible text label (icon-only or status-only chrome), in which case the tooltip text SHALL match the accessible name;
-- visible text is truncated with an ellipsis, in which case the tooltip SHALL present the complete string;
-- a compact labeled control needs extra explanation that is not fully visible (for example a summary chip whose visible text is a short label plus a value), in which case the tooltip MAY contain that extra explanation.
+#### Scenario: Disabled explanation remains reachable
+- **WHEN** a disabled control needs an explanation for why it is unavailable
+- **THEN** pointer hover or keyboard focus SHALL still show that explanation as a themed tooltip
 
-A themed tooltip SHALL NOT be shown when the control already has a visible text label that fully states its action or name, including expanded sidebar navigation labels. Dialog, page, and confirm headings are headings, not hover hints, and are outside this requirement.
+#### Scenario: Tooltip content is not interactive
+- **WHEN** a themed tooltip is shown
+- **THEN** it SHALL NOT contain buttons, links, or other interactive controls
 
-When displayed text fits its slot without truncation, the overflow tooltip SHALL be omitted so it is not anchored to empty space. Disabled controls that need an explanation SHALL still expose that explanation on pointer hover and on keyboard focus. A tooltip SHALL NOT contain interactive controls; menus, pickers, and confirmations remain separate overlays.
+### Requirement: REQ-427 When a themed tooltip is shown
+A themed tooltip SHALL be shown when a control has no visible text label (its text SHALL match the accessible name), when visible text is truncated with an ellipsis (it SHALL show the complete string), or when a compact labeled control needs explanation that is not fully visible (it MAY add that explanation). It SHALL NOT be shown when a visible label already fully states the action or name, including expanded sidebar labels, nor as an overflow tooltip when the text fits its slot.
 
 #### Scenario: Icon-only control shows a matching tooltip
 - **WHEN** an interactive control renders only an icon or status glyph (no visible text label)
@@ -88,15 +89,3 @@ When displayed text fits its slot without truncation, the overflow tooltip SHALL
 #### Scenario: Fitting text has no overflow tooltip
 - **WHEN** displayed text fits entirely in its slot
 - **THEN** the control SHALL NOT show an overflow tooltip
-
-#### Scenario: Native title is not the hint
-- **WHEN** a hover or focus hint is required
-- **THEN** the hint SHALL NOT be provided only by the native browser `title` tooltip
-
-#### Scenario: Disabled explanation remains reachable
-- **WHEN** a disabled control needs an explanation for why it is unavailable
-- **THEN** pointer hover or keyboard focus SHALL still show that explanation as a themed tooltip
-
-#### Scenario: Tooltip content is not interactive
-- **WHEN** a themed tooltip is shown
-- **THEN** it SHALL NOT contain buttons, links, or other interactive controls

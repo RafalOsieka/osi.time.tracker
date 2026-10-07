@@ -1,14 +1,12 @@
 # workspace-settings Specification
 
 ## Purpose
-Define account-level user preferences — the effective display timezone — together with their persistence model, API, settings page, and the timezone-aware date-time foundation that renders all times and day groupings according to those preferences. Settings are scoped to the authenticated user, survive across devices and sessions, ride along in the session payload for first-render availability, and change the UI as a pure client-side re-render (the on-the-wire representation remains UTC ISO 8601 instants). The settings API (REQ-166) follows the shared `core-api-conventions` for authentication, CSRF, validation, and the error contract.
+The user's account profile — display name and timezone — stored on the account, carried in the session for the first render, edited on `/profile`, and the timezone-aware date handling built on it. Times travel as UTC instants, so changing the timezone only re-renders. The profile API follows `core-api-conventions`.
 
 ## Requirements
 
 ### Requirement: REQ-168 Timezone-aware date-time foundation
-The application SHALL perform all timezone-sensitive date arithmetic (day keys, day/window boundaries, combining a wall-clock date and time into an instant) using the Temporal API via the `temporal-polyfill` package, and all human-readable formatting via `Intl` with an explicit `timeZone` option — replacing browser-local `Date` getter logic in the date utilities. Client display utilities SHALL be pure functions taking the effective `{ timeZone }` as an explicit parameter (no `weekStart`). Wall-clock→instant conversion SHALL use Temporal's `compatible` disambiguation so DST-ambiguous or skipped times resolve deterministically. Interop with date pickers that consume browser-local `Date` objects SHALL be confined to a dedicated adapter pair at the component boundary; no other code SHALL construct dates from browser-local getters. UTC ISO 8601 instants SHALL remain the only on-the-wire representation for create/update payloads, so changing the display timezone is a pure re-render for already-loaded entries.
-
-The timer-view feed (REQ-395) is an intentional exception that performs server-side day-boundary logic in the feed timezone; other list endpoints that accept raw `[from, to)` instants (REQ-148) SHALL continue to perform no timezone logic.
+Day keys, day boundaries and turning a wall-clock date and time into an instant SHALL use the user's timezone, never the browser's, and every displayed time SHALL be formatted in it. Skipped or repeated DST times SHALL resolve deterministically ("compatible" disambiguation). Payloads SHALL carry UTC ISO 8601 instants only, so a timezone change re-renders loaded entries. Only the feed (REQ-395) computes day boundaries on the server; other lists (REQ-148) SHALL do no timezone logic.
 
 #### Scenario: Day bucketing follows the configured timezone
 - **WHEN** an entry's `startedAt` falls on different calendar days in the configured timezone versus the browser's
@@ -22,20 +20,8 @@ The timer-view feed (REQ-395) is an intentional exception that performs server-s
 - **WHEN** any entry is created or edited under a non-browser timezone
 - **THEN** the client SHALL still send UTC ISO 8601 instants for mutation payloads
 
-#### Scenario: Week window honors week start
-- **WHEN** date utilities are used for display grouping after week-start removal
-- **THEN** they SHALL NOT require or apply a `weekStart` parameter (week-aligned windows are no longer part of settings)
-
-#### Scenario: No week-start parameter in date utilities
-- **WHEN** client date/window helpers are invoked for display grouping
-- **THEN** they SHALL NOT require a `weekStart` argument
-
 ### Requirement: REQ-398 Required account timezone
-The system SHALL persist an account-level `timezone` on the user record as a required (non-null) IANA timezone identifier. The setting SHALL be scoped strictly to the authenticated user and SHALL survive across devices and sessions. The effective display timezone SHALL always be the stored value. The system SHALL NOT fall back to a browser-detected or server-default timezone for display, and SHALL NOT upgrade the timezone after client mount. The timezone SHALL be included in the session payload (`AuthUser` boundary type) so it is available on first render without an extra request. Server-rendered and client-rendered timezone-formatted strings SHALL therefore use the same zone from the first paint. Server-side consumers that need day boundaries without a browser (including the timer-view feed, REQ-395) SHALL use the stored timezone.
-
-Existing users SHALL be migrated to `UTC` when no timezone was stored. Users created by any path (bootstrap seed, test helpers, future registration) SHALL receive a timezone at creation.
-
-The system SHALL NOT persist a week-start preference. Any prior `weekStart` / `week_start` column or session field SHALL be removed.
+Every user SHALL have a required IANA `timezone`, set at creation by any path, kept across devices. It SHALL be the only display timezone — no browser or server default, no change after mount — and SHALL ride in the session so server and first client paint format alike. Server code needing day boundaries (e.g. the feed, REQ-395) SHALL use it. A database upgraded from a version without it SHALL hold `UTC` for users who had none. No week-start preference SHALL be stored anywhere.
 
 #### Scenario: Stored timezone drives display
 - **WHEN** a user whose stored timezone is `Europe/Warsaw` opens the app in a browser whose local timezone differs
@@ -57,8 +43,8 @@ The system SHALL NOT persist a week-start preference. Any prior `weekStart` / `w
 - **WHEN** settings are read from the database, session, or profile API
 - **THEN** the payload SHALL NOT include a `weekStart` field
 
-### Requirement: REQ-399 User profile API
-The system SHALL expose `GET /api/user/profile` returning the authenticated user's profile DTO `{ displayName, timezone }`, and `PATCH /api/user/profile` accepting a partial update of `{ displayName?, timezone? }`. The former `/api/user/settings` endpoints SHALL be removed. Both endpoints SHALL require authentication via `requireAuth`. The PATCH SHALL be CSRF-protected and invoked client-side via `$csrfFetch` / `useCsrfFetch`. Request bodies SHALL be validated via a single zod schema in `shared/types`: `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`), and `displayName` MUST satisfy REQ-397. Validation failures SHALL be mapped to the `{ messageKey, params }` error contract via `mapZodError`. The schema and DTO SHALL NOT accept or return `weekStart`. On a successful PATCH the server SHALL update the session so the sealed cookie carries the new display name and timezone, and SHALL return the updated profile DTO.
+### Requirement: REQ-493 User profile API
+`GET /api/user/profile` SHALL return `{ displayName, timezone }`; `PATCH /api/user/profile` SHALL accept a partial `{ displayName?, timezone? }`. `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`); `displayName` MUST satisfy REQ-397. Neither SHALL accept or return `weekStart`. A successful PATCH SHALL refresh the session with the new values and return the updated profile.
 
 #### Scenario: Read profile
 - **WHEN** an authenticated user requests their profile
@@ -92,28 +78,27 @@ The system SHALL expose `GET /api/user/profile` returning the authenticated user
 - **WHEN** a PATCH body includes `weekStart`
 - **THEN** the system SHALL NOT persist a week-start preference (reject unknown keys or strip them per project validation conventions) and SHALL NOT return `weekStart` on success
 
-#### Scenario: Former settings endpoint is gone
-- **WHEN** a client calls `GET /api/user/settings`
-- **THEN** the server SHALL respond with HTTP 404
-
 #### Scenario: Unauthenticated or CSRF-less request rejected
 - **WHEN** the profile endpoints are called without a valid session, or the PATCH lacks a valid CSRF token
 - **THEN** the system SHALL respond with HTTP 401 (or reject the request for a missing CSRF token) without touching the stored profile
 
-### Requirement: REQ-400 Profile page
-The `/profile` page SHALL present the authenticated user's profile and preferences, reached from the account menu (ui-shell REQ-405). It SHALL replace the former `/settings` page, which SHALL no longer exist (no redirect). The page SHALL show, in an **Account** section:
-
-1. **Display name**: a labelled text field holding the stored display name. Leaving the field (blur) or pressing Enter SHALL save the trimmed value via partial `PATCH /api/user/profile` with `{ displayName }` when it differs from the stored value. Escape SHALL restore the stored value. An empty or whitespace-only value SHALL restore the stored value without a request.
-2. **Email**: the account email, read-only.
-3. **Timezone**: a filterable select populated with `UTC` followed by `Intl.supportedValuesOf('timeZone')`, pre-selected with the stored timezone. Changing the value SHALL immediately persist via partial `PATCH /api/user/profile` with `{ timezone }`.
-
-The page SHALL show, in a **Preferences** section, the language control (core-i18n REQ-401), labelled as applying to this browser. The page SHALL NOT contain a theme control (ui-theming REQ-402) or a week-start control. The page SHALL NOT have a form-level Save button.
-
-Successful saves SHALL be silent (no success toast or banner). A failed profile PATCH SHALL show a translated toast only, and the failed control SHALL return to the stored value. Concurrent profile PATCHes SHALL be last-write-wins. Saved changes SHALL take effect without a page reload: a new display name SHALL appear in the account control, and a new timezone SHALL re-render times. Controls SHALL meet WCAG 2.1 AA (labelled, keyboard operable), use Nuxt UI components, use theme tokens for styling, stay full-width (ui-shared-components REQ-403), and keep all strings in `en`/`pl` parity.
+### Requirement: REQ-494 Profile page
+`/profile`, opened from the account menu (REQ-405), SHALL show an **Account** section — a labelled display-name field, the email read-only, and a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')` — and a **Preferences** section with the browser's language control (REQ-401). It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (REQ-403), with `en`/`pl` parity.
 
 #### Scenario: Profile shows stored values
 - **WHEN** an authenticated user opens `/profile`
 - **THEN** the display name field SHALL hold the stored display name, the email SHALL be shown read-only, and the timezone select SHALL show the stored timezone without a "detected" hint
+
+#### Scenario: Timezone list is filterable
+- **WHEN** the user types into the timezone select's filter
+- **THEN** the option list SHALL narrow to matching IANA identifiers
+
+#### Scenario: No theme, week-start, or Save control
+- **WHEN** an authenticated user views `/profile`
+- **THEN** the page SHALL NOT present a theme control, a week-start control, or a "Save" submit control
+
+### Requirement: REQ-445 Profile fields save on their own
+The display name SHALL save on blur or Enter as a partial PATCH of the trimmed value, only when it differs from the stored one; Escape, or an empty value, SHALL restore the stored value without a request. A timezone change SHALL save immediately. Saves SHALL be silent; a failure SHALL show only a translated toast and restore the stored value. Concurrent saves SHALL be last-write-wins. Saved values SHALL apply without a reload.
 
 #### Scenario: Display name saves on blur
 - **WHEN** the user changes the display name to `Jan Kowalski` and moves focus out of the field
@@ -143,28 +128,16 @@ Successful saves SHALL be silent (no success toast or banner). A failed profile 
 - **WHEN** the user selects a different timezone on `/profile`
 - **THEN** the system SHALL persist it via partial PATCH, update the session-backed profile, and re-render times without a page reload; success SHALL be silent
 
-#### Scenario: Timezone list is filterable
-- **WHEN** the user types into the timezone select's filter
-- **THEN** the option list SHALL narrow to matching IANA identifiers
-
 #### Scenario: Timezone save failure reverts
 - **WHEN** a timezone PATCH fails
 - **THEN** a translated toast error SHALL be shown and the select SHALL show the stored timezone
-
-#### Scenario: Former settings route is gone
-- **WHEN** an authenticated user opens `/settings`
-- **THEN** the application SHALL render its not-found page
-
-#### Scenario: No theme, week-start, or Save control
-- **WHEN** an authenticated user views `/profile`
-- **THEN** the page SHALL NOT present a theme control, a week-start control, or a "Save" submit control
 
 #### Scenario: Rapid successive changes last-write-wins
 - **WHEN** the user changes a profile field twice in quick succession before the first PATCH completes
 - **THEN** the system SHALL treat the latest requested value as authoritative once outstanding requests settle
 
 ### Requirement: REQ-397 Required display name
-The system SHALL persist a required (non-null) `displayName` on the user record: a string of 1 to 100 characters after trimming surrounding whitespace, stored trimmed. The display name SHALL be included in the session payload. Existing users without a display name SHALL be migrated to the local part of their email (the text before `@`). Users created by any path SHALL receive a display name at creation.
+Every user SHALL have a required `displayName` of 1 to 100 characters after trimming, stored trimmed, set at creation by any path and carried in the session. A database upgraded from a version without it SHALL hold the email's local part (the text before `@`) for users who had none or a blank one.
 
 #### Scenario: Existing user without a display name is migrated
 - **WHEN** the migration runs against a database containing a user `jan.kowalski@example.com` whose `displayName` is null

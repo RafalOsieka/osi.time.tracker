@@ -44,27 +44,8 @@ describe('useRoundedDurations', () => {
     expect(displayedInput('task-2', 60, 'up_15m')).toBe('00:15:00');
   });
 
-  it('suggestionsFor de-duplicates and covers none / sub-increment / exact multiples', () => {
-    const { suggestionsFor, applyOverride, hasOverride, computedSeconds, reset } =
-      useRoundedDurations();
-
-    expect(suggestionsFor('t', 63 * 60, 'none')).toEqual([{ kind: 'exact', seconds: 63 * 60 }]);
-
-    expect(suggestionsFor('t', 63 * 60, 'nearest_15m')).toEqual([
-      { kind: 'exact', seconds: 63 * 60 },
-      { kind: 'floor', seconds: 60 * 60 },
-      { kind: 'ceil', seconds: 75 * 60 },
-    ]);
-
-    expect(suggestionsFor('t', 60 * 60, 'nearest_15m')).toEqual([
-      { kind: 'exact', seconds: 60 * 60 },
-    ]);
-
-    expect(suggestionsFor('t', 4 * 60, 'up_15m')).toEqual([
-      { kind: 'exact', seconds: 4 * 60 },
-      { kind: 'floor', seconds: 0 },
-      { kind: 'ceil', seconds: 15 * 60 },
-    ]);
+  it('applyOverride sets an override that reset clears', () => {
+    const { applyOverride, hasOverride, computedSeconds, reset } = useRoundedDurations();
 
     applyOverride('t', 60 * 60);
     expect(hasOverride('t')).toBe(true);

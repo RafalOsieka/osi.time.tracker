@@ -11,7 +11,7 @@ export function mapTimeEntryDeleteStatus(status: number): RemoteTimeEntryDeleteO
   if (status === 404) return { status: 'not_found' };
   if (status === 0) return { status: 'unknown', messageKey: 'error.remoteExportDeleteUnknown' };
   if (status === 401 || status === 403) {
-    return { status: 'rejected', messageKey: 'error.remoteServerModeAuthRejected' };
+    return { status: 'rejected', messageKey: 'error.remoteTrackerAuthRejected' };
   }
   return { status: 'rejected', messageKey: 'error.remoteExportDeleteRejected' };
 }

@@ -6,7 +6,11 @@ import {
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';
 import { timeEntries, tasks } from '../../db/schema';
-import { resolveTaskId, type ResolveTaskRemoteIssueOptions } from '../../utils/tasks';
+import {
+  deleteTaskIfEmpty,
+  resolveTaskId,
+  type ResolveTaskRemoteIssueOptions,
+} from '../../utils/tasks';
 import { toTimeEntryDto } from '../../utils/time-entries';
 import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
@@ -125,6 +129,11 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
       .set(patch)
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
       .returning();
+
+    // Moving the entry away may leave its previous task empty (REQ-491).
+    if (existing.taskId !== taskId) {
+      await deleteTaskIfEmpty(tx, user.id, existing.taskId);
+    }
 
     return row!;
   });

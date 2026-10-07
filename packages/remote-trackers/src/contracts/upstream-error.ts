@@ -19,7 +19,7 @@ export function toAdapterError(
   if (status === 401 || status === 403) {
     // Conceal the exact upstream status so the auth-rejection response
     // never leaks provider-specific detail about the rejected credential.
-    return new RemoteAdapterError('error.remoteServerModeAuthRejected', 502);
+    return new RemoteAdapterError('error.remoteTrackerAuthRejected', 502);
   }
 
   if (status !== undefined) {
@@ -27,7 +27,7 @@ export function toAdapterError(
   }
 
   // No HTTP status at all: connection refused, timeout, or DNS failure.
-  return new RemoteAdapterError('error.remoteServerModeConnectionFailed');
+  return new RemoteAdapterError('error.remoteTrackerConnectionFailed');
 }
 
 // oxlint-disable-next-line anti-slop/no-unknown-parameters -- catch binding is implicitly unknown

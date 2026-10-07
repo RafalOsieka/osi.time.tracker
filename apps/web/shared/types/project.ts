@@ -35,7 +35,7 @@ export const createProjectSchema = z
     error: 'error.projectRemoteScopeIncomplete',
     path: ['remoteProjectId'],
   });
-// "Scope requires a tracker" (REQ-325) is enforced per-route rather than here:
+// "Scope requires a tracker" (REQ-439) is enforced per-route rather than here:
 // on create there is no existing tracker to fall back on, so `trackerId: null`
 // with a scope is always invalid. On update, a request that also changes or
 // clears trackerId force-nulls the scope instead of rejecting it (REQ-326) —

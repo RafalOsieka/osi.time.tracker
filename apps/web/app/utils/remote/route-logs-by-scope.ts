@@ -18,7 +18,7 @@ export interface RouteLogsByScopeGroup {
  * whatever the user selects, independent of `defaultProjectId`.
  */
 export interface RemoteProjectBucket {
-  /** `null` when the log carried no remote project id at all (REQ-334). */
+  /** `null` when the log carried no remote project id at all (REQ-478). */
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   logs: RemoteTimeLogDto[];

@@ -1,15 +1,11 @@
 import { ref } from 'vue';
-import {
-  applyRoundingRule,
-  roundingSuggestionsFor,
-  type RoundingSuggestion,
-} from '~~/shared/utils/rounding';
+import { applyRoundingRule } from '~~/shared/utils/rounding';
 import type { TrackerRoundingRule } from '../../shared/types/tracker';
 import { formatDuration } from '~/utils/format-duration';
 import { normalizeDurationInput } from '~/utils/normalize-duration-input';
 
 /**
- * Rounded-duration overrides + raw input text with commit/revert semantics (REQ-113).
+ * Rounded-duration overrides + raw input text with commit/revert semantics (REQ-487).
  */
 export function useRoundedDurations() {
   const overrides = ref<Record<string, number>>({});
@@ -84,19 +80,6 @@ export function useRoundedDurations() {
     return taskId in overrides.value;
   }
 
-  /**
-   * One-tap alternatives for the editable export duration (REQ-222).
-   * Pure derivation from selected total + rule; `taskId` is accepted so
-   * call sites stay consistent with the rest of this composable.
-   */
-  function suggestionsFor(
-    _taskId: string,
-    selectedSeconds: number,
-    rule: TrackerRoundingRule,
-  ): RoundingSuggestion[] {
-    return roundingSuggestionsFor(selectedSeconds, rule);
-  }
-
   return {
     overrides,
     inputText,
@@ -107,6 +90,5 @@ export function useRoundedDurations() {
     applyOverride,
     reset,
     hasOverride,
-    suggestionsFor,
   };
 }

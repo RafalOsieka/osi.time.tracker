@@ -7,7 +7,7 @@ Lets a user save reusable client report setups (client name, trackers, hours for
 ## Requirements
 
 ### Requirement: REQ-380 Report preset fields and validation
-A report preset SHALL belong to exactly one user and SHALL hold: a client name (trimmed, 1–120 characters, unique per user ignoring case), an ordered list of 1–20 distinct tracker ids, an hours format (`hm` or `decimal`), a PDF locale (`en` or `pl`), and a last-used timestamp. Every tracker id SHALL identify a non-deleted tracker owned by the same user at the time the preset is created or updated. Input SHALL be validated by one shared boundary schema; violations SHALL be rejected with `422` and a `{ messageKey, params }` body, and nothing SHALL be persisted.
+A report preset SHALL belong to exactly one user and hold: a client name (trimmed, 1–120 characters, unique per user ignoring case), an ordered list of 1–20 distinct tracker ids, each a non-deleted tracker of that user when saved, an hours format (`hm` or `decimal`), a PDF locale (`en` or `pl`), and a last-used timestamp. Invalid input SHALL be rejected with `422` and `{ messageKey, params }`, persisting nothing.
 
 #### Scenario: Valid preset is accepted
 - **WHEN** the user submits client name `Helios Energy`, two of their active trackers, hours format `decimal`, and locale `pl`
@@ -45,7 +45,7 @@ The system SHALL expose `GET /api/report-presets` for the authenticated user. It
 - **THEN** the response SHALL NOT include them
 
 ### Requirement: REQ-382 Creating and updating report presets
-The system SHALL expose `POST /api/report-presets` to create a preset and `PATCH /api/report-presets/[id]` to replace its client name, trackers, hours format, and locale. Both SHALL validate per REQ-380, SHALL set the last-used timestamp to the current time, and SHALL return the saved preset in the REQ-381 shape. Updating a preset the user does not own, or that does not exist, SHALL respond 404 without revealing existence. Both endpoints SHALL require authentication and CSRF protection per shared conventions.
+`POST /api/report-presets` SHALL create a preset and `PATCH /api/report-presets/[id]` SHALL replace its client name, trackers, hours format and locale. Both SHALL validate per REQ-380, set the last-used timestamp to now, and return the saved preset in the REQ-381 shape, following `core-api-conventions` (session, CSRF). Updating a foreign or unknown preset SHALL respond 404 without revealing existence.
 
 #### Scenario: Create marks the preset as used
 - **WHEN** the user creates a preset

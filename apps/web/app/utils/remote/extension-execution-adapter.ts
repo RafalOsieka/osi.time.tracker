@@ -125,7 +125,7 @@ export class ExtensionExecutionAdapter implements RemoteTrackerAdapter {
             EXTENSION_ERROR_MESSAGE_KEYS.incompatible,
           );
         }
-        if (!this.secret) throw new RemoteAdapterError('error.remoteServerModeSecretRequired');
+        if (!this.secret) throw new RemoteAdapterError('error.remoteTrackerSecretRequired');
 
         const result = await bridge.request({
           operation,
