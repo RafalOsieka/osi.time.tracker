@@ -45,7 +45,13 @@ function parseSpec(text) {
     }
     if (!inFence && /^### Requirement:/.test(line)) {
       const header = line.replace(/^### Requirement:\s*/, '').trim();
-      req = { header, code: header.match(/^REQ-\d{3,}/)?.[0] ?? null, text: '', scenarios: [], body: '' };
+      req = {
+        header,
+        code: header.match(/^REQ-\d{3,}/)?.[0] ?? null,
+        text: '',
+        scenarios: [],
+        body: '',
+      };
       spec.requirements.push(req);
       continue;
     }
@@ -118,8 +124,12 @@ function overview(filters) {
     const long = s.requirements.filter((r) => r.text.length > MAX_REQ);
     const scenarios = s.requirements.reduce((n, r) => n + r.scenarios.length, 0);
     const purposeFlag = s.purpose.length < MIN_PURPOSE ? ' (too short)' : '';
-    const longList = long.map((r) => `${r.code ?? r.header.slice(0, 30)} (${r.text.length})`).join(', ');
-    console.log(`${id} | ${s.lines} | ${s.purpose.length}${purposeFlag} | ${s.requirements.length} | ${scenarios} | ${long.length}${longList ? ': ' + longList : ''}`);
+    const longList = long
+      .map((r) => `${r.code ?? r.header.slice(0, 30)} (${r.text.length})`)
+      .join(', ');
+    console.log(
+      `${id} | ${s.lines} | ${s.purpose.length}${purposeFlag} | ${s.requirements.length} | ${scenarios} | ${long.length}${longList ? ': ' + longList : ''}`,
+    );
     totals = {
       lines: totals.lines + s.lines,
       reqs: totals.reqs + s.requirements.length,
@@ -127,7 +137,9 @@ function overview(filters) {
       long: totals.long + long.length,
     };
   }
-  console.log(`TOTAL ${rows.length} specs | ${totals.lines} lines | ${totals.reqs} reqs | ${totals.scenarios} scenarios | ${totals.long} reqs >500`);
+  console.log(
+    `TOTAL ${rows.length} specs | ${totals.lines} lines | ${totals.reqs} reqs | ${totals.scenarios} scenarios | ${totals.long} reqs >500`,
+  );
 }
 
 function index(filters) {
@@ -163,10 +175,24 @@ function refs() {
   );
   let out = '';
   try {
-    out = execFileSync('git', ['grep', '-n', '-o', '-E', 'REQ-[0-9]{3,}', '--', '.', ':(exclude)openspec', `:(exclude)${RETIRED_FILE}`], {
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-    });
+    out = execFileSync(
+      'git',
+      [
+        'grep',
+        '-n',
+        '-o',
+        '-E',
+        'REQ-[0-9]{3,}',
+        '--',
+        '.',
+        ':(exclude)openspec',
+        `:(exclude)${RETIRED_FILE}`,
+      ],
+      {
+        encoding: 'utf8',
+        maxBuffer: 64 * 1024 * 1024,
+      },
+    );
   } catch (e) {
     if (e.status !== 1) throw e; // status 1 = no matches
   }
@@ -180,10 +206,13 @@ function refs() {
   const dangling = codes.filter((c) => !defined.has(c) && !retired.has(c));
   const retiredInUse = codes.filter((c) => !defined.has(c) && retired.has(c));
   const reused = [...defined].filter((c) => retired.has(c)).sort();
-  console.log(`${codes.length} codes referenced outside openspec/, ${defined.size} defined in specs, ${retired.size} retired`);
+  console.log(
+    `${codes.length} codes referenced outside openspec/, ${defined.size} defined in specs, ${retired.size} retired`,
+  );
   const printList = (title, list) => {
     console.log(`${title}: ${list.length ? '' : 'none'}`);
-    for (const c of list) console.log(`  ${c}${byCode.has(c) ? ': ' + [...byCode.get(c)].join(', ') : ''}`);
+    for (const c of list)
+      console.log(`  ${c}${byCode.has(c) ? ': ' + [...byCode.get(c)].join(', ') : ''}`);
   };
   printList('dangling (referenced, neither in a spec nor retired)', dangling);
   printList('retired but still referenced', retiredInUse);
@@ -205,7 +234,8 @@ function diff(beforePath, filters) {
     for (const [id, s] of Object.entries(specs)) {
       for (const r of s.requirements) {
         reqs.set(r.code ?? r.header, { id, r });
-        for (const name of r.scenarios) scenarios.set(`${name}`, [...(scenarios.get(name) ?? []), id]);
+        for (const name of r.scenarios)
+          scenarios.set(`${name}`, [...(scenarios.get(name) ?? []), id]);
       }
     }
     return { reqs, scenarios };
@@ -217,7 +247,13 @@ function diff(beforePath, filters) {
     .join('\n')
     .replace(/\s+/g, ' ');
 
-  const sections = { removedReqs: [], movedReqs: [], newReqs: [], removedScenarios: [], changedNormative: [] };
+  const sections = {
+    removedReqs: [],
+    movedReqs: [],
+    newReqs: [],
+    removedScenarios: [],
+    changedNormative: [],
+  };
   for (const [key, { id, r }] of b.reqs) {
     if (!inScope(id)) continue;
     const now = a.reqs.get(key);
@@ -227,7 +263,8 @@ function diff(beforePath, filters) {
       if (!a.scenarios.has(name)) sections.removedScenarios.push(`${id} ${key}: ${name}`);
     }
     for (const sentence of normativeSentences(r.body)) {
-      if (!afterText.includes(sentence.replace(/\s+/g, ' '))) sections.changedNormative.push(`${id} ${key}: ${sentence}`);
+      if (!afterText.includes(sentence.replace(/\s+/g, ' ')))
+        sections.changedNormative.push(`${id} ${key}: ${sentence}`);
     }
   }
   for (const [key, { id, r }] of a.reqs) {
@@ -237,11 +274,17 @@ function diff(beforePath, filters) {
     console.log(`\n${title} (${list.length})`);
     for (const item of list) console.log(`  ${item}`);
   };
-  print('Requirements gone (merged, moved to docs, dropped or renamed without code)', sections.removedReqs);
+  print(
+    'Requirements gone (merged, moved to docs, dropped or renamed without code)',
+    sections.removedReqs,
+  );
   print('Requirements moved to another spec', sections.movedReqs);
   print('New requirements (splits)', sections.newReqs);
   print('Scenarios gone (check each against the decision log)', sections.removedScenarios);
-  print('Normative sentences whose exact wording is gone (check meaning, qualifiers, strength)', sections.changedNormative);
+  print(
+    'Normative sentences whose exact wording is gone (check meaning, qualifiers, strength)',
+    sections.changedNormative,
+  );
 }
 
 const [mode, ...args] = process.argv.slice(2);

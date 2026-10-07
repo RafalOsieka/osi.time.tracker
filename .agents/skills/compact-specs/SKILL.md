@@ -36,13 +36,13 @@ Check them against the installed version (`openspec --version`, its docs and cha
 
 `scripts/spec-inventory.mjs` (in this skill's folder) measures and compares specs. It is read-only and never writes spec text. Run it from the repository root:
 
-| Command | Use |
-|---|---|
-| `overview [spec...]` | lines, Purpose length, requirements and scenarios, requirements over 500 characters |
-| `index [spec...]` | Purpose plus one line per requirement (code, title, first sentence), for spotting overlaps between specs without reading them in full |
-| `snapshot <file.json>` | full inventory, the baseline for `diff` |
-| `refs` | REQ codes referenced outside `openspec/`: dangling codes, retired codes still referenced, retired codes reused in a spec |
-| `diff <file.json> [spec...]` | requirements and scenarios gone or moved since the snapshot, new requirements, and normative sentences whose exact wording is gone |
+| Command                      | Use                                                                                                                                   |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `overview [spec...]`         | lines, Purpose length, requirements and scenarios, requirements over 500 characters                                                   |
+| `index [spec...]`            | Purpose plus one line per requirement (code, title, first sentence), for spotting overlaps between specs without reading them in full |
+| `snapshot <file.json>`       | full inventory, the baseline for `diff`                                                                                               |
+| `refs`                       | REQ codes referenced outside `openspec/`: dangling codes, retired codes still referenced, retired codes reused in a spec              |
+| `diff <file.json> [spec...]` | requirements and scenarios gone or moved since the snapshot, new requirements, and normative sentences whose exact wording is gone    |
 
 `[spec...]` takes spec ids or prefixes such as `tracking-`. Use the script instead of writing your own counting or comparison code.
 
@@ -74,7 +74,7 @@ Ask these together, before any work:
    - rewrite transitional wording into the current state,
    - describe one-time data migrations as the end state of an upgraded database,
    - drop scenarios that only verified a past upgrade or redesign ("type-check passes", "works under vN", "existing hooks keep working").
-   Changes covered by a standing approval are still listed in each spec's summary; they just do not need a question.
+     Changes covered by a standing approval are still listed in each spec's summary; they just do not need a question.
 3. **Scope:** all specs, or the scope given when the skill was invoked. Without an explicit scope, propose the specs that fail `validate --strict` or changed since the last commit whose message starts with `docs(specs): compact` (`git log --grep`).
 
 ## Step 2: baseline and overview (read-only)
@@ -92,7 +92,7 @@ An iteration is one cycle of: summary and questions → answers → changes appl
 
 1. **Read the spec in full**, plus fragments of other specs that the index flagged as overlapping.
 2. **Find the problems:**
-   - **A. Inflated Purpose.** Purpose is 1–3 sentences (≥50 characters) on *why* the capability exists. Lists of everything inside, change history and cross-references belong elsewhere.
+   - **A. Inflated Purpose.** Purpose is 1–3 sentences (≥50 characters) on _why_ the capability exists. Lists of everything inside, change history and cross-references belong elsewhere.
    - **B. Requirement over 500 characters.** Move examples and edge cases into scenarios, or split it into requirements with one behavior each and their own scenarios.
    - **C. Transitional wording** ("no longer", "before this change", "as today", "new", "unchanged"). Describe how things are, keeping the constraint.
    - **D. Implementation details**: class/function/library/component names, table schemas, implementation steps. Remove them when the behavior stays without them; sometimes a name is a real contract (a public endpoint), then it stays.
@@ -103,7 +103,7 @@ An iteration is one cycle of: summary and questions → answers → changes appl
      - **keep as spec** only if someone outside the implementation relies on it and the sentence would still be true with a different tool (e.g. "a pull request cannot merge unless every required check passes"). Rewrite it without tool names, commands or versions;
      - **move to `docs/`** if it tells a contributor something they cannot easily read from the config files. Describe the gate or rule and why, and link to the config file instead of copying versions and commands;
      - **drop** if it repeats what the workflow, `package.json` or other config already says, or only verified a past change. This is the default when in doubt, since the docs review at the end can still bring something back.
-     A version that is an external contract (supported runtime for users, browsers, a public API or data format version) stays in the spec.
+       A version that is an external contract (supported runtime for users, browsers, a public API or data format version) stays in the spec.
    - **I. Spec contradicts the code** (rule 6). Always a question.
 3. **Summarize in at most ~10 bullets**: what changes, grouped by kind. Mention changes covered by standing approvals in one line each.
 4. **Ask 1–3 questions, only about real decisions.** One decision per question. When asking to approve a group of changes, name what they are, not just "points 1–4", so the user can answer without scrolling back. Recommend an option when you have a view.
