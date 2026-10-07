@@ -1,13 +1,15 @@
 ---
 name: compact-specs
-description: Compact and clean up the main OpenSpec specs in openspec/specs/ without changing the behavior contract - shorten inflated Purpose sections, split requirements over 500 characters, rewrite transitional wording, merge duplicates, and move tooling/build/upgrade details out of specs into docs/ while keeping REQ codes traceable. Run only when the user explicitly invokes compact-specs. Do not start it on your own, even if specs look long; suggest it instead.
+description: Compact and clean up the main OpenSpec specs in openspec/specs/ without changing the behavior contract - shorten inflated Purpose sections, split requirements over 500 characters, rewrite transitional wording, merge duplicates, and move tooling/build/upgrade details out of specs while keeping REQ codes traceable. Accepts an optional scope (spec ids or a family prefix). Run only when the user explicitly invokes compact-specs. Do not start it on your own, even if specs look long; suggest it instead.
 ---
 
 # Compact specs
 
-Compact `openspec/specs/` in this repository: shorter, more readable specs that keep **100% of the behavior contract**. This is a documentation refactor. No system behavior is added, removed or weakened without the user's explicit approval. Tooling and build details that are not behavior move out of the specs into `docs/`.
+Make `openspec/specs/` shorter and easier to read while keeping **100% of the behavior contract**. This is a documentation refactor. No system behavior is added, removed or weakened without the user's explicit approval.
 
-Specs grow because every `MODIFIED` delta replaces a whole requirement block and agents tend to append to the description instead of adding a new requirement. Transitional wording ("no longer", "after the upgrade") and tooling details leak in along the way. The risk of compacting is silently losing or weakening a constraint, so this workflow is built around an inventory before and a verification after.
+Specs grow because every `MODIFIED` delta replaces a whole requirement block and agents tend to append to the description instead of adding a new requirement. Transitional wording ("no longer", "after the upgrade") and tooling details leak in along the way. The risk of compacting is silently losing or weakening a constraint. This workflow guards against that with a snapshot before, a check after every spec, and a decision log.
+
+The work runs as a conversation, one spec at a time. A full plan for every spec at once is too much to review, so the user sees a short overview first and then decides spec by spec.
 
 ## Check the facts first
 
@@ -19,104 +21,126 @@ The OpenSpec facts used below were current as of **OpenSpec 1.14.x (2026-10)**:
 - `rules.specs` in `config.yaml` applies when the agent merges specs in `/opsx:sync` and `/opsx:archive`, but the plain CLI `openspec archive` ignores it,
 - `skip_specs: true` in a change's `.openspec.yaml` marks a change with no behavior change.
 
-Check them against the installed version (`openspec --version`, its docs and changelog) and tell the user about any that no longer hold before starting.
+Check them against the installed version (`openspec --version`, its docs and changelog) and tell the user about any that no longer hold.
 
 ## Project conventions
 
 - Spec ids are flat `<family>-<topic>`. The families and their meaning are listed in `openspec/config.yaml` (`rules.specs`).
 - Requirement headers carry a globally unique traceability code: `### Requirement: REQ-<NNN> Title`. The codes are referenced outside `openspec/`, in app code, tests and SQL migrations.
+- Retired codes are listed in `docs/retired-requirements.md` (code → what it was → where it went).
 - Tooling documentation lives in `docs/`: `development.md` for build, test and CI; `e2e-guideline.md`, `coding-standards.md` and `self-hosting.md` for their topics.
 - The sources of truth for tooling are `.github/workflows/*.yml`, the root `package.json` (scripts, `devEngines`) and `pnpm-workspace.yaml` (catalog, overrides).
+- Before committing, run `pnpm exec vp fmt` on the touched files and check with `pnpm format:check`.
+
+## Helper script
+
+`scripts/spec-inventory.mjs` (in this skill's folder) measures and compares specs. It is read-only and never writes spec text. Run it from the repository root:
+
+| Command | Use |
+|---|---|
+| `overview [spec...]` | lines, Purpose length, requirements and scenarios, requirements over 500 characters |
+| `index [spec...]` | Purpose plus one line per requirement (code, title, first sentence), for spotting overlaps between specs without reading them in full |
+| `snapshot <file.json>` | full inventory, the baseline for `diff` |
+| `refs` | REQ codes referenced outside `openspec/`: dangling codes, retired codes still referenced, retired codes reused in a spec |
+| `diff <file.json> [spec...]` | requirements and scenarios gone or moved since the snapshot, new requirements, and normative sentences whose exact wording is gone |
+
+`[spec...]` takes spec ids or prefixes such as `tracking-`. Use the script instead of writing your own counting or comparison code.
 
 ## Ground rules
 
-1. **Meaning over brevity.** Every `SHALL`/`MUST`/`SHOULD`/`MAY` and every scenario still exists afterwards: in a spec (moved, reworded or merged with a duplicate) or, for tooling details, in `docs/`. When something seems worth dropping entirely, put it on a "needs decision" list with a reason instead of deleting it. The user decides what the system no longer promises.
-2. **Keep requirement strength.** `MUST` does not become `SHOULD`, "exactly 3 tabs" does not become "3 tabs", and negative constraints ("X does not exist / is not called") stay. Shorter wording often drops exactly these qualifiers, so compare normative sentences carefully.
-3. **Keep headers and REQ codes.** `### Requirement: REQ-<NNN> <name>` and `#### Scenario: <name>` stay unchanged unless the plan proposes a rename and the user accepts it. Archive matches deltas by header name, and code and tests reference the REQ codes.
+1. **Meaning over brevity.** Every `SHALL`/`MUST`/`SHOULD`/`MAY` and every scenario still exists afterwards, in a spec or, for tooling details, in `docs/`, unless the user approved dropping it. Shortening tends to lose qualifiers ("and no account request", "exactly", "per tracker"), so compare normative sentences after every spec, not only at the end.
+2. **Keep requirement strength.** `MUST` does not become `SHOULD`, "exactly 3 tabs" does not become "3 tabs", and negative constraints stay.
+3. **Keep headers and REQ codes** unless a rename is approved. Archive matches deltas by header name, and code and tests reference the codes. See "REQ codes" below.
 4. **No active changes.** Compaction runs only after all changes are archived, because an active delta written against the old text would conflict with the new one. Run `openspec list`. If any active change has deltas in `openspec/changes/*/specs/`, stop and name them.
-5. **Small steps.** One spec (or one pair of specs when merging) at a time, each as a separate, easy-to-review diff. Do not commit without the user's approval.
+5. **Write spec text yourself.** Every new sentence is your own wording, edited into the file by hand. No scripts that rewrite or reassemble spec files: they change parts nobody meant to touch (blank lines, wrapping), and the user reviews the diff in a git UI, where that noise hides the real changes. Leave untouched parts of a file exactly as they were. Scripts are fine for mechanical work outside spec text, such as swapping a REQ code in code comments.
+6. **A spec that contradicts the code is a decision, not a cleanup.** When the spec describes something the code does not do (a field that does not exist, a different key namespace, "username" where the code uses email), ask whether the spec or the code is wrong. Never align either one silently.
 
 ## REQ codes
 
-- **Split:** the original code stays with the main behavior. Each new requirement gets the next free code (highest code in use + 1). Check every reference to the original code outside `openspec/`. If it points to behavior that moved to a new block, list it for an update.
-- **Merge of duplicates:** one code survives, and the other is retired. References to the retired code move to the surviving one.
-- **Move to docs:** the code is retired. References in code or tests are either moved to a code that still covers the behavior or removed. Propose which, per reference.
-- **Retired codes are never reused.** Keep a short list of retired codes with what happened to each (merged into X, split into Y/Z, moved to `docs/<file>`), and propose where it lives (a section in `docs/` or the commit message). Someone who finds an old code in history or in code needs a way to look it up.
-- **Applied SQL migrations are never edited.** If one references a retired code, the retired-codes list is the only place that resolves it.
+- **Split:** the original code stays with the main behavior. Each new requirement gets the next free code (highest code in use or retired + 1).
+- **Merge of duplicates:** one code survives, and the other is retired. References in code move to the surviving code.
+- **Move to docs or drop:** the code is retired. References in code or tests move to a code that still covers the behavior or are removed. Propose which, per reference.
+- **Retired codes are never reused**, and each one gets a row in `docs/retired-requirements.md`.
+- **Applied SQL migrations are never edited.** If one references a retired code, the retired list is what resolves it.
 
-## Phase 0: baseline (read-only)
+## Step 1: setup (one round of questions)
 
-1. Check that `git status` is clean and note `openspec --version`.
-2. Run `openspec validate --specs --strict --json` and save the result as the baseline. On 1.14.0 or earlier, overlong requirements are only INFO, so count them separately.
-3. For every `openspec/specs/*/spec.md`, collect:
-   - line count,
-   - `## Purpose` length (characters),
-   - number of requirements and scenarios,
-   - requirements whose description exceeds 500 characters (the description is the text between `### Requirement:` and the first `#### Scenario:`),
-   - an **inventory**: `capability → requirement → [scenarios]`, saved to a temporary file outside the repository. The final verification compares against it.
-4. Build a **REQ code reference map**: every `REQ-<NNN>` found outside `openspec/` (excluding `node_modules`, build output and `.git`) → the files that reference it. Save it next to the inventory.
+Ask these together, before any work:
 
-## Phase 1: audit and plan (read-only, then stop)
+1. **Commits:** may you commit during the run? If yes, on which branch (propose `docs/compact-specs` or similar) and every how many iterations (default 5).
+2. **Standing approvals** for routine changes, so the per-spec questions can focus on real decisions. Offer these and let the user pick:
+   - rename a requirement or scenario title that contradicts its own text or names a library,
+   - remove library, function, file and component names from spec text when the behavior stays,
+   - rewrite transitional wording into the current state,
+   - describe one-time data migrations as the end state of an upgraded database,
+   - drop scenarios that only verified a past upgrade or redesign ("type-check passes", "works under vN", "existing hooks keep working").
+   Changes covered by a standing approval are still listed in each spec's summary; they just do not need a question.
+3. **Scope:** all specs, or the scope given when the skill was invoked. Without an explicit scope, propose the specs that fail `validate --strict` or changed since the last commit whose message starts with `docs(specs): compact` (`git log --grep`).
 
-Flag problems in each spec by category:
+## Step 2: baseline and overview (read-only)
 
-- **A. Inflated Purpose.** Purpose is 1–3 sentences (≥50 characters) on _why_ the capability exists. Change history, feature lists and details belong in requirements or in the archive.
-- **B. Long requirement description (>500 characters).** Propose one of:
-  - move examples and edge cases into scenarios,
-  - split into several `### Requirement:` blocks, each with one behavior and its own scenarios. The original header and code stay with the main behavior.
-- **C. Transitional wording**, i.e. describing the change instead of the state: "no longer", "from now on", "instead of the previous", "as before", "new", "no API changes". Rewrite it to describe how things are, keeping the constraint (rule 2).
-- **D. Implementation details**: class/function names, libraries, table schemas, implementation steps. Remove them or move them to `docs/` or code comments. Each case goes on the "needs decision" list, because sometimes it is a real contract (e.g. a public endpoint name).
-- **E. Duplication and scattering.** The same behavior in several requirements or specs, or one feature spread across many files. Propose its canonical home.
-- **F. Spec too large (>~500 lines) or several unrelated surfaces or contracts in one spec.** Propose a split into separate `<family>-<topic>` specs. A new spec id changes the capability path, so check references in `config.yaml`, AGENTS.md and `docs/`.
-- **G. Requirements without a scenario, and scenarios that only restate the requirement.** Flag only. Do not invent behavior.
-- **H. Tooling, build and upgrade details.** The default destination is `docs/` (usually `docs/development.md`). To decide per requirement or scenario, ask:
-  1. _Does anyone outside the implementation rely on it?_ For example "a pull request cannot be merged unless all quality gates pass", "UI strings come from message catalogs".
-  2. _Would the sentence still be true if the tool were replaced?_
+1. Check that `git status` is clean, note `openspec --version`, and check rule 4.
+2. Save `openspec validate --specs --strict --json` and `spec-inventory.mjs snapshot` to the scratchpad. The snapshot is the baseline for every later `diff`.
+3. Run `spec-inventory.mjs refs` and report dangling codes now, not at the end.
+4. Run `overview` and `index` for the scope. Read the index, not every spec in full. Use it to spot specs that overlap or repeat each other (the same rule in several domains, cross-cutting rules such as authentication or error handling restated per spec). When the index suggests an overlap, read just those fragments to confirm.
+5. Start the **decision log** in the scratchpad (see the end of this file).
+6. Show the overview: one line per spec in scope with lines, Purpose length, overlong requirements, suspected overlaps, and a rough risk. Propose an order (specs others depend on first, e.g. cross-cutting conventions before domain specs). Ask once: "start with X?". No detailed plan at this stage.
 
-  Only if both answers are yes does it **stay as a spec (gray zone)**, rewritten tool-agnostic: no job names, commands, cache keys, image tags, versions or config file details.
-  Everything else **moves to `docs/`**: CI job layout, install and cache steps, pinned versions, tool configuration order, Docker image tags, `vp`/`pnpm` commands. Scenarios like "type-check / lint / build / tests pass", "works under <library> vN" or "after the upgrade" were verification steps of past changes, so drop them rather than move them. The docs mention only the gates that still exist.
-  Docs do not copy configuration, or they go stale the same way the specs did. They explain which gates exist and why, and point to the source-of-truth files instead of repeating versions and commands.
-  Exception: a version that is an **external contract** a consumer would notice stays in the spec. Examples: supported runtime for users, supported browsers, a public API or protocol version, a data/config format version.
-  A spec left empty after this is retired: delete its file and note it in the plan. Expect this mostly in the `platform-` family.
+## Step 3: one iteration per spec
 
-Present a **plan** with:
+An iteration is one cycle of: summary and questions → answers → changes applied → check. Usually one spec, or two when merging duplicates between them.
 
-- a table: `spec | lines before | problems (A–H) | proposed actions | estimated lines after | risk`,
-- for H, **what moves to which `docs/` file** and **what stays as gray-zone spec** (with the rewritten wording),
-- **REQ code changes**: new codes for splits, retired codes, and references outside `openspec/` that need updating,
-- a separate **"needs decision"** list.
+1. **Read the spec in full**, plus fragments of other specs that the index flagged as overlapping.
+2. **Find the problems:**
+   - **A. Inflated Purpose.** Purpose is 1–3 sentences (≥50 characters) on *why* the capability exists. Lists of everything inside, change history and cross-references belong elsewhere.
+   - **B. Requirement over 500 characters.** Move examples and edge cases into scenarios, or split it into requirements with one behavior each and their own scenarios.
+   - **C. Transitional wording** ("no longer", "before this change", "as today", "new", "unchanged"). Describe how things are, keeping the constraint.
+   - **D. Implementation details**: class/function/library/component names, table schemas, implementation steps. Remove them when the behavior stays without them; sometimes a name is a real contract (a public endpoint), then it stays.
+   - **E. Duplication.** The same behavior in several requirements or specs. Keep it in one canonical place and point to it.
+   - **F. Spec too large or covering unrelated surfaces.** Propose a split into separate `<family>-<topic>` specs.
+   - **G. Titles and scenarios that do not match their text**, requirements without a scenario, scenarios that only restate the requirement.
+   - **H. Tooling, build and upgrade details.** For each one, pick one of three outcomes:
+     - **keep as spec** only if someone outside the implementation relies on it and the sentence would still be true with a different tool (e.g. "a pull request cannot merge unless every required check passes"). Rewrite it without tool names, commands or versions;
+     - **move to `docs/`** if it tells a contributor something they cannot easily read from the config files. Describe the gate or rule and why, and link to the config file instead of copying versions and commands;
+     - **drop** if it repeats what the workflow, `package.json` or other config already says, or only verified a past change. This is the default when in doubt, since the docs review at the end can still bring something back.
+     A version that is an external contract (supported runtime for users, browsers, a public API or data format version) stays in the spec.
+   - **I. Spec contradicts the code** (rule 6). Always a question.
+3. **Summarize in at most ~10 bullets**: what changes, grouped by kind. Mention changes covered by standing approvals in one line each.
+4. **Ask 1–3 questions, only about real decisions.** One decision per question. When asking to approve a group of changes, name what they are, not just "points 1–4", so the user can answer without scrolling back. Recommend an option when you have a view.
+5. **Apply the approved changes** by hand (rule 5). Write moved content into the agreed `docs/` file in the same iteration. Update REQ references outside `openspec/` and `docs/retired-requirements.md`.
+6. **Check this spec right away:**
+   - `openspec validate <spec> --strict`,
+   - `spec-inventory.mjs diff <snapshot> <spec>`: every gone or moved requirement or scenario must be in the decision log, and every listed normative sentence must have its meaning, qualifiers and strength preserved in the new wording. Fix what was lost before moving on.
+7. **Update the decision log.**
 
-Then **stop and wait for the user's approval**. The plan is where the user catches a wrong judgment call cheaply. After execution, the same mistake is buried in a large diff.
+## Every 5 iterations (or the agreed number)
 
-## Phase 2: execution (after approval, one spec at a time)
+1. **Status** for the user, short:
+   - progress: specs done / in scope (percentage), lines before → after so far,
+   - REQ codes added and retired so far,
+   - decisions still open, and the specs left in order.
+2. **Commit**, if the user allowed it in step 1: format the touched files, then one commit for the batch, following the repository's commit conventions (e.g. `docs(specs): compact the tracking specs`). If commits are not allowed, say the batch is ready to commit.
 
-Edit the main specs in `openspec/specs/` directly, without creating a change. A delta adds nothing to a refactor with no behavior change, and it fits poorly anyway: a delta cannot change an existing spec's Purpose, `MODIFIED` requires copying whole blocks, and moving a requirement between capabilities means `REMOVED` + `ADDED`.
+## Step 4: docs review
 
-For each spec:
+After the last spec, review everything this run added to `docs/`, because moving tooling details out of specs can bloat the docs instead. Show the additions grouped by file, each with the REQ code it came from. For each file, ask: keep as is, shorten, or remove. Docs that only repeat config files are candidates for removal. Apply the answers, keeping `docs/retired-requirements.md` consistent with what remains (a retired code may point to "dropped" instead of a docs section).
 
-1. Apply the approved actions.
-2. Keep the OpenSpec format: `# <Title>`, `## Purpose`, `## Requirements`, `### Requirement: REQ-<NNN> <name>`, `#### Scenario:` (exactly 4 `#`, or the parser misses it), WHEN/THEN (GIVEN/AND optional), `SHALL`/`MUST` in every requirement. Add no sections other than Purpose and Requirements.
-3. Write the moved content into the agreed `docs/` file in the same step. Keep it short and link to the config files.
-4. Update the retired-codes list and the agreed REQ references outside `openspec/`. Change only the reference (comment, test name, label), never the logic around it, and never an applied SQL migration.
-5. Report briefly: lines before/after, what moved where (spec or docs), what was merged, which codes were added or retired, and what awaits a decision.
+## Step 5: closing check
 
-## Phase 3: verification
+1. `openspec validate --specs --strict`: no new problem compared to the baseline, and the length/Purpose findings in scope are gone.
+2. `spec-inventory.mjs diff <snapshot>` for the whole scope: every item it lists is in the decision log.
+3. `spec-inventory.mjs refs`: no dangling codes, no reused retired codes, and retired codes still referenced in code have an agreed outcome.
+4. If tests reference scenario names, check that they still match.
+5. Final status, and the last commit if allowed.
 
-1. `openspec validate --specs --strict`: no new problem compared to the baseline, and the length/Purpose findings are gone.
-2. Compare the phase 0 inventory with the new one. Every requirement and scenario from the baseline exists (same name, possibly in another spec) or is on the approved rename/merge/move-to-docs/removal list. Show a table of discrepancies; an empty table means OK.
-3. **Semantic check**: per spec, list the normative sentences (`SHALL`/`MUST`/…) before and after and point out which changed wording, with one sentence each on why the meaning is preserved. For content moved to `docs/`, show where each item landed.
-4. **REQ codes**: rebuild the reference map. Every code referenced outside `openspec/` exists in a spec or is on the retired list with an agreed outcome. Codes stay unique, and no retired code appears on a new requirement.
-5. If tests reference scenario names, check that they still match.
+## Follow-up: keeping specs clean (propose, do not apply without approval)
 
-## Follow-up: keeping specs clean (propose, do not implement without approval)
+Check that `openspec/config.yaml`, AGENTS.md and CI still guard against what this run found. Propose new rules only for problems that came up in several specs; a one-off finding does not need a rule. If the user provides a file with suggested config changes, read it at this step and use it as a starting point. Before proposing config changes, check that OpenSpec accepts them (e.g. on a scratch copy of `openspec/`). Show a diff and do not overwrite.
 
-Review `openspec/config.yaml`, AGENTS.md and CI, and propose changes so the problems from phase 1 do not come back. At minimum, check that:
+## Decision log
 
-- upgrades, refactors and tooling changes use `skip_specs: true` instead of spec deltas,
-- spec rules keep tooling details, library versions and transitional wording out of specs, and keep requirement descriptions at or under 500 characters,
-- REQ codes are never changed or reused,
-- no spec family or rule invites tooling specs, and no rule states something the installed OpenSpec version contradicts,
-- CI runs `openspec validate --specs --strict`,
-- AGENTS.md points to `docs/` for tooling details.
+Keep it in the scratchpad from the first iteration. One line per decision:
 
-If the user provides a file with suggested config changes, read it first and use it as a starting point. Merge suggestions into the existing `config.yaml`, show the diff, and do not overwrite.
+`spec | code | action (rename / split / merge / move to docs / drop / reword) | details | approval (standing or the user's answer)`
+
+It feeds the status updates, the retired-codes list, the per-spec `diff` checks and the closing check. Without it, removals approved early in the run cannot be told apart from accidental losses at the end.
