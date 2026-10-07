@@ -28,4 +28,4 @@ All groups ship in one PR (`chore(deps): …`), one commit per group, on a branc
 
 ## 4. Integration check
 
-- [ ] 4.1 Rebase onto the latest `main` and re-run the full gate set (`pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:e2e`, `docker build .`). Verify that everything is green, then run `openspec validate bump-dependencies --strict`.
+- [x] 4.1 Rebase onto the latest `main` and re-run the full gate set (`pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, `pnpm test:e2e`, `docker build .`). Verify that everything is green, then run `openspec validate bump-dependencies --strict`.
