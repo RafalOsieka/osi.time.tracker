@@ -63,6 +63,9 @@ export default defineConfig({
       'tools/oxlint/anti-slop/index.ts',
       'tools/oxlint/anti-slop/rules/**',
       'tools/oxlint/anti-slop/shared/**',
+      // Agent skill helper scripts are not app code.
+      '.claude/skills/**/scripts/**',
+      '.agents/skills/**/scripts/**',
     ],
     rules: {
       'constructor-super': 'error',
