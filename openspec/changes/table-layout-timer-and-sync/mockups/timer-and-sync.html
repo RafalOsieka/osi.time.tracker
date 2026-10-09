@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>OSI – Stoper i Synchronizacja zdalna, układ tabelaryczny</title>
+<!--
+  Static mockup of the Timer view and the Remote Sync day page on one column-aligned list each.
+  Reference only: the real pages are built from Nuxt UI components. The mockup fixes hierarchy,
+  column structure, alignment, spacing and states; colors and sizes mirror the Nuxt UI tokens
+  (primary cyan, neutral slate). Toolbar: theme, list width presets (the list switches to the
+  two-line layout below 40rem of its own width), Sync scenario, and a cell-edge overlay.
+-->
+<style>
+  :root {
+    --bg: #fff; --text: #334155; --highlighted: #0f172a; --muted: #64748b; --dimmed: #94a3b8;
+    --border: #e2e8f0; --border-accented: #cbd5e1; --accent: #f1f5f9;
+    --primary: #06b6d4; --error: #ef4444; --success: #22c55e; --warning: #f59e0b; --neutral: #64748b;
+    --bar-h: 3rem; --w: 1148px; --pad: 1.5rem;
+    --font-sans: ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  }
+  .dark {
+    --bg: #0f172a; --text: #e2e8f0; --highlighted: #fff; --muted: #94a3b8; --dimmed: #64748b;
+    --border: #1e293b; --border-accented: #334155; --accent: #1e293b;
+    --primary: #22d3ee; --error: #f87171; --success: #4ade80; --warning: #fbbf24; --neutral: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.5 var(--font-sans);
+    -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  button { font: inherit; color: inherit; }
+  .ic { width: 1rem; height: 1rem; flex: none; }
+  .ic.sm { width: .875rem; height: .875rem; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* --- mockup toolbar (scrolls away) and the stand-in app top bar (sticky) --- */
+  .toolbar { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: center; padding: .6rem 1rem; font-size: .75rem; color: var(--muted);
+    background: color-mix(in oklab, var(--primary) 6%, var(--bg)); border-bottom: 1px dashed var(--border-accented); }
+  .toolbar label { display: inline-flex; gap: .4rem; align-items: center; }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border-accented); border-radius: .375rem; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: .2rem .5rem; cursor: pointer; color: var(--muted); }
+  .seg button.on { background: var(--primary); color: var(--bg); }
+  .topbar { position: sticky; top: 0; z-index: 20; height: var(--bar-h); display: flex; align-items: center; padding: 0 1rem;
+    background: var(--bg); border-bottom: 1px solid var(--border); font-size: .875rem; color: var(--muted); }
+  .topbar strong { color: var(--highlighted); margin-right: .75rem; }
+
+  .page { max-width: var(--w); margin: 0 auto; padding: var(--pad); display: grid; gap: 3.5rem; }
+  .view { display: grid; gap: 1.5rem; min-width: 0; }
+  .view-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: .75rem; }
+  h1 { font-size: 1.25rem; line-height: 1.75rem; font-weight: 600; margin: 0; color: var(--highlighted); }
+
+  /* --- atoms mirroring the app's classes --- */
+  .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: .875rem; line-height: 1.25rem; font-weight: 500; color: var(--muted); white-space: nowrap; }
+  .trunc { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; min-width: 0; }
+  .icon-btn { width: 1.5rem; height: 1.5rem; display: inline-flex; align-items: center; justify-content: center; border: 0; border-radius: .375rem; background: transparent; color: var(--muted); cursor: pointer; padding: 0; flex: none; }
+  .icon-btn:hover { background: var(--accent); }
+  .icon-btn.play { color: var(--primary); }
+  .icon-btn.stop { color: var(--error); }
+  .icon-btn.stop .ic { animation: pulse 1.4s ease-in-out infinite; }
+  .icon-btn.danger { color: var(--error); }
+  .icon-btn.disabled { color: var(--dimmed); opacity: .4; cursor: not-allowed; }
+  @keyframes pulse { 40% { transform: scale(1.28); } 70% { transform: scale(.94); } }
+  .btn { border: 0; border-radius: .375rem; background: var(--primary); color: var(--bg); padding: .375rem .625rem; font-size: .875rem; font-weight: 500; display: inline-flex; gap: .375rem; align-items: center; cursor: pointer; }
+  /* UButton size xs, ghost: px-2 py-1 text-xs */
+  .ghost { border: 0; background: transparent; border-radius: .375rem; padding: .25rem .5rem; font-size: .75rem; line-height: 1rem; color: var(--muted); cursor: pointer;
+    display: inline-flex; gap: .25rem; align-items: center; max-width: 100%; min-width: 0; text-align: left; }
+  .ghost:hover, .ghost.demo-hover { background: var(--accent); }
+  .ghost .trunc { flex: 1; }
+  .ghost.disabled { opacity: .4; cursor: not-allowed; }
+  .ghost.full { width: 100%; }
+  .count { display: inline-flex; justify-content: center; align-items: center; width: 1.25rem; padding: .25rem 0; border-radius: .25rem; font-size: 10px; line-height: .75rem; font-weight: 500;
+    background: color-mix(in oklab, var(--neutral) 10%, transparent); box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--neutral) 25%, transparent); color: var(--text); font-variant-numeric: tabular-nums; }
+  .issue-link { display: inline-flex; align-items: center; height: 1.5rem; color: var(--primary); text-decoration: none; font-family: var(--font-mono); font-size: .75rem; font-variant-numeric: tabular-nums; }
+  .issue-link:hover { text-decoration: underline; }
+  .title { font-size: .875rem; line-height: 1rem; font-weight: 500; color: var(--text); }
+  .placeholder { color: var(--dimmed); font-weight: 400; }
+  .small-muted { font-size: .75rem; line-height: 1rem; color: var(--muted); }
+  /* InlineEditText = UInput size xs: px-2 py-1 text-sm/4 */
+  .inline-edit { display: block; padding: .25rem .5rem; border-radius: .375rem; cursor: pointer; }
+  .inline-edit:hover, .inline-edit.demo-hover { background: var(--accent); }
+  .timefield { display: inline-flex; gap: .375rem; align-items: center; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .timefield .seg-t { padding: 0 .125rem; border-radius: .2rem; }
+  .timefield .seg-t:hover { background: var(--accent); }
+  .to-send { border: 0; background: transparent; padding: 0; cursor: pointer; }
+  .to-send:hover { color: var(--text); }
+  .spinner { width: .75rem; height: .75rem; border: 2px solid var(--dimmed); border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  a.sync-link { color: var(--primary); text-decoration: none; font-size: .875rem; font-weight: 400; }
+  .day-nav { display: flex; gap: .5rem; align-items: center; }
+  .day-nav .date { min-width: 7rem; text-align: center; font-weight: 500; font-size: .875rem; }
+  .k-primary { --c: var(--primary); } .k-success { --c: var(--success); } .k-warning { --c: var(--warning); } .k-neutral { --c: var(--neutral); }
+  .state { color: var(--c); width: 1.5rem; height: 1.5rem; display: inline-flex; align-items: center; justify-content: center; border-radius: .375rem; }
+  .issue-cell { display: flex; gap: .25rem; min-width: 0; font-size: .75rem; line-height: 1rem; color: var(--muted); }
+  .issue-cell .id { flex: none; }
+  .act-error { color: var(--error); display: inline-flex; }
+  .notice-text { display: inline-flex; gap: .375rem; align-items: baseline; color: var(--muted); }
+  .notice-text .ic { color: var(--error); align-self: center; }
+  .link-btn { border: 0; background: none; padding: 0; color: var(--primary); font-size: .75rem; cursor: pointer; display: inline-flex; gap: .25rem; align-items: center; }
+
+  /* --- themed tooltip, styled like UTooltip content --- */
+  [data-tip] { position: relative; }
+  [data-tip]:hover::after, [data-tip]:focus-visible::after {
+    content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 30;
+    height: 1.5rem; padding: .25rem .625rem; display: flex; align-items: center; white-space: nowrap; pointer-events: none;
+    font: 400 .75rem/1rem var(--font-sans); color: var(--highlighted); background: var(--bg); border-radius: .25rem;
+    box-shadow: 0 1px 3px rgb(0 0 0 / .1), 0 0 0 1px var(--border); }
+  [data-tip].tip-start:hover::after, [data-tip].tip-start:focus-visible::after { left: 0; transform: none; }
+  [data-tip]:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+  /* --- Sync day summary --- */
+  .stats { display: flex; flex-wrap: wrap; gap: .75rem; }
+  .stat { display: grid; gap: .125rem; padding: .625rem 1rem; border: 1px solid var(--border); border-radius: .5rem; min-width: 13rem; flex: 0 1 auto; }
+  .stat .lbl { font-size: .75rem; color: var(--muted); }
+  .stat .val { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; color: var(--highlighted); }
+  .stat .sub-val { font-size: .75rem; color: var(--muted); }
+  .stat .sub-val .mono { font-size: .75rem; line-height: 1rem; }
+
+  /*
+   * Text-edge alignment: the first glyph of every cell sits on the column's left edge.
+   * Controls keep their padding (hit area, hover fill, edit-mode input) but pull it
+   * into the column gap with a negative start margin equal to that padding.
+   */
+  .bleed { margin-inline-start: -.5rem; max-width: calc(100% + .5rem); }
+  .bleed.inline-edit { width: calc(100% + .5rem); }
+  .bleed-icon { margin-inline-start: -.25rem; }
+
+  /* debug overlay: every cell box */
+  .guides .c { outline: 1px dashed color-mix(in oklab, var(--error) 45%, transparent); outline-offset: -1px; }
+  .guides .hdr .c { background: color-mix(in oklab, var(--error) 6%, transparent); }
+
+  /* scenario switches */
+  body:not(.sc-ext) .only-ext, body:not(.sc-loading) .only-loading { display: none !important; }
+  .sc-ext .hide-ext, .sc-loading .hide-loading { display: none !important; }
+
+  /* ================= WIDE: one grid per list, every row on subgrid ================= */
+  /* The list's own width decides the layout (container query), not the viewport. */
+  .list { container: list / inline-size; }
+  .tbl { display: grid; column-gap: .75rem; }
+  /*
+   * Predictable content (icons, count, #id, times, actions) gets rem tracks; text columns
+   * share the rest in fixed proportions with a floor. Widths depend only on the list width.
+   */
+  .timer.tbl { grid-template-columns: 1.5rem 1.25rem minmax(8rem, 3fr) minmax(7rem, 1.2fr) 4.5rem 5rem 1.5rem; }
+  .sync.tbl  { grid-template-columns: 1.5rem 1.5rem minmax(8rem, 3fr) minmax(6rem, 1.5fr) minmax(6rem, 1fr) 5rem 6rem 1.5rem; }
+  .row, .detail, .sub { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+  .row { min-height: 2.25rem; padding: .25rem 0; border-bottom: 1px solid var(--border); }
+  .row.expanded, .row.has-notice { border-bottom: 0; }
+  .detail { border-bottom: 1px solid var(--border); padding-bottom: .375rem; }
+  .detail[hidden] { display: none; }
+  .sub { min-height: 1.75rem; font-size: .875rem; color: var(--muted); }
+  .sub.label { min-height: 1.5rem; padding-top: .375rem; font-size: .75rem; font-weight: 500; color: var(--dimmed); }
+  .sub.status { font-size: .75rem; }
+  .sub.notice { border-bottom: 1px solid var(--border); padding: 0 0 .5rem; min-height: 0; font-size: .75rem; line-height: 1rem; }
+  .sub.notice .c { gap: .25rem .75rem; flex-wrap: wrap; align-items: baseline; }
+  .row.expanded.has-notice + .sub.notice { border-bottom: 0; }
+  .c { min-width: 0; display: flex; align-items: center; gap: .5rem; }
+  .c-dur, .h-dur { justify-content: flex-end; }
+  .c-times { justify-content: flex-end; }
+  .c-times .timefield { width: 11.5rem; justify-content: center; }
+  .hdr { position: sticky; top: var(--bar-h); z-index: 5; background: var(--bg); min-height: 2rem; padding: 0;
+    border-bottom: 1px solid var(--border-accented); font-size: .75rem; font-weight: 500; color: var(--muted); }
+  .row.day { border-bottom: 1px solid var(--border-accented); padding-top: 1.5rem; }
+  .row.day .day-label { font-weight: 600; color: var(--highlighted); gap: .25rem .75rem; flex-wrap: wrap; }
+  .row.day .mono { color: var(--highlighted); font-weight: 600; }
+  .row.untitled .c-title { font-size: .875rem; font-weight: 500; color: var(--muted); }
+  .etitle { font-size: .875rem; color: var(--muted); }
+  .n-arrow { display: none; }
+
+  /* ================= NARROW: list under 40rem -> two-line rows ================= */
+  @container list (max-width: 40rem) {
+    .tbl { display: block; }
+    .detail { display: block; }
+    .detail[hidden] { display: none; }
+    .hdr { position: absolute !important; width: 1px; height: 1px; min-height: 0; overflow: hidden; clip: rect(0 0 0 0); border: 0; }
+    .row, .sub { column-gap: .5rem; row-gap: 0; }
+    .row { padding: .375rem 0; align-items: start; }
+    .row > .c, .sub > .c { min-height: 1.5rem; }
+
+    /* left edge = title edge, right edge = fixed duration + action tracks */
+    .timer .row, .timer .sub { grid-template-columns: 1.5rem 1.25rem minmax(0, 1fr) 4.5rem 5rem 1.5rem; }
+    .timer .n-tog     { grid-column: 1 !important; grid-row: 1; }
+    .timer .n-count   { grid-column: 2 !important; grid-row: 1; }
+    .timer .n-title   { grid-column: 3 / 5 !important; grid-row: 1; }
+    .timer .n-dur     { grid-column: 5 !important; grid-row: 1; }
+    .timer .n-act     { grid-column: 6 !important; grid-row: 1; }
+    .timer .n-project { grid-column: 3 !important; grid-row: 2; }
+    .timer .n-issue   { grid-column: 4 !important; grid-row: 2; }
+    /* entry: times, duration, delete first; editable title second */
+    .timer .n-times   { grid-column: 3 / 5 !important; grid-row: 1; justify-content: flex-start; }
+    .timer .n-times .timefield { width: auto; }
+    .timer .n-etitle  { grid-column: 3 / 5 !important; grid-row: 2; }
+    .timer .n-daylabel { grid-column: 1 / 5 !important; grid-row: 1; }
+    .timer .row.day { padding-top: 1.25rem; }
+
+    /* Sync: state + title first; issue | tracked, activity | to send */
+    .sync .row, .sync .sub { grid-template-columns: 1.5rem 1.5rem minmax(0, 1fr) 6rem 1.5rem; }
+    .sync .n-tog      { grid-column: 1 !important; grid-row: 1; }
+    .sync .n-state    { grid-column: 2 !important; grid-row: 1; }
+    .sync .n-title    { grid-column: 3 / 5 !important; grid-row: 1; }
+    .sync .n-act      { grid-column: 5 !important; grid-row: 1; }
+    .sync .n-issue    { grid-column: 3 !important; grid-row: 2; }
+    .sync .n-tracked  { grid-column: 4 !important; grid-row: 2; }
+    .sync .n-activity { grid-column: 3 !important; grid-row: 3; }
+    .sync .n-tosend   { grid-column: 4 !important; grid-row: 3; }
+    .sync .n-arrow    { display: inline; color: var(--dimmed); }
+    /* detail rows and the untitled row are single-line */
+    .sync .sub .n-tracked, .sync .row.untitled .n-tracked { grid-row: 1; }
+    .sync .n-etimes   { grid-column: 3 !important; grid-row: 1; }
+    .sync .n-comment  { grid-column: 3 !important; grid-row: 1; }
+    .sync .n-logdur   { grid-column: 4 !important; grid-row: 1; }
+    .sync .n-logact   { grid-column: 3 !important; grid-row: 2; }
+    .sync .n-full     { grid-column: 3 / -1 !important; grid-row: 1; }
+  }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <strong>Mockup</strong>
+  <label>Motyw <span class="seg" data-ctl="theme"><button data-v="light">Jasny</button><button data-v="dark">Ciemny</button></span></label>
+  <label>Szerokość listy <span class="seg" data-ctl="width">
+    <button data-v="343">343 · telefon</button>
+    <button data-v="600">600 · wąski kontener</button>
+    <button data-v="720">720 · tablet / lg + sidebar</button>
+    <button data-v="912">912 · lg, zwinięty</button>
+    <button data-v="1100">1100 · szeroko</button></span></label>
+  <label>Scenariusz Sync <span class="seg" data-ctl="scenario">
+    <button data-v="ok">Wczytane</button><button data-v="loading">Wczytywanie</button><button data-v="ext">Wtyczka niezatwierdzona</button></span></label>
+  <label><input type="checkbox" id="guides"> Krawędzie komórek</label>
+</div>
+<header class="topbar"><strong>OSI</strong><span>pasek górny aplikacji</span></header>
+
+<main class="page" id="root"></main>
+
+<script>
+const I = {
+  chevR: '<path d="m9 18 6-6-6-6"/>', chevD: '<path d="m6 9 6 6 6-6"/>', chevL: '<path d="m15 18-6-6 6-6"/>',
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>', square: '<rect width="14" height="14" x="5" y="5" rx="2"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+  linkOff: '<path d="M9 17H7A5 5 0 0 1 7 7"/><path d="M15 7h2a5 5 0 0 1 4 8"/><line x1="8" x2="12" y1="12" y2="12"/><line x1="2" x2="22" y1="2" y2="22"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>', down: '<path d="m6 9 6 6 6-6"/>',
+  ready: '<circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4"/><path d="M12 16V8"/>',
+  sent: '<path d="M18 6 7 17l-5-5"/><path d="m22 10-7.5 7.5L13 16"/>',
+  alert: '<circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/>',
+  send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.112z"/><path d="m21.854 2.147-10.94 10.939"/>',
+  refresh: '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+};
+const icon = (n, cls = '') => `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I[n]}</svg>`;
+const col = (a, b) => `style="grid-column:${a} / ${b ?? a + 1}"`;
+/** One table cell: `n` names its narrow-layout placement, `a`/`b` its wide-layout column span. */
+const cell = (n, a, b, inner, extra = '') => `<div class="c ${n} ${extra}" ${col(a, b)} role="cell">${inner}</div>`;
+const toggle = (open) => `<button class="icon-btn" data-toggle data-tip="${open ? 'Zwiń' : 'Rozwiń'}" aria-expanded="${open}">${icon(open ? 'chevD' : 'chevR')}</button>`;
+
+/** Icon-only state; the tooltip and accessible name carry the short label and the full reason. */
+const stateIcon = ({ text, reason, kind, ic }) => `
+  <span class="state ${kind} tip-start" tabindex="0" data-tip="${text} – ${reason}" aria-label="${text}: ${reason}" role="img">
+    ${ic === 'spinner' ? '<span class="spinner"></span>' : icon(ic)}</span>`;
+
+// ---------------- Stoper ----------------
+const PORTAL = 'Portal klienta – utrzymanie i rozwój';
+const timerDays = [
+  { label: 'czwartek, 9 października 2026', total: '08:19:10', groups: [
+    { count: '1', title: 'Przegląd PR #134 – kompaktowanie specyfikacji', project: 'OSI Time Tracker', issue: ['linked', '4821'], dur: '00:42:10', live: true,
+      entries: [{ s: '13:10', e: null, d: '00:42:10' }] },
+    { count: '3', title: 'Spotkanie zespołu', project: PORTAL, issue: ['linked', '87'], dur: '01:35:00', expanded: true,
+      entries: [{ s: '08:00', e: '08:30', d: '00:30:00' }, { s: '11:00', e: '11:45', d: '00:45:00' }, { s: '15:00', e: '15:20', d: '00:20:00' }] },
+    { count: '2', title: 'Refaktoryzacja widoku synchronizacji', project: 'OSI Time Tracker', issue: ['linked', '12345'], dur: '01:47:00', demoHover: true,
+      entries: [{ s: '09:00', e: '10:12', d: '01:12:00' }, { s: '16:00', e: '16:35', d: '00:35:00' }] },
+    { count: '3', title: 'Wdrożenie raportu PDF dla klienta', project: 'OSI Time Tracker', issue: ['linked', '4790'], dur: '03:10:00',
+      entries: [{ s: '07:00', e: '08:00', d: '01:00:00' }, { s: '12:00', e: '13:10', d: '01:10:00' }, { s: '17:00', e: '18:00', d: '01:00:00' }] },
+    { count: '1', title: 'Code review modułu płatności', project: PORTAL, issue: ['unlinked'], dur: '00:25:00', entries: [{ s: '10:15', e: '10:40', d: '00:25:00' }] },
+    { count: '2', title: 'Odpowiedzi na maile', project: 'Wewnętrzne', issue: ['disabled'], dur: '00:25:00',
+      entries: [{ s: '08:30', e: '08:45', d: '00:15:00' }, { s: '14:00', e: '14:10', d: '00:10:00' }] },
+    { count: '1', title: null, project: null, issue: ['disabled'], dur: '00:15:00', entries: [{ s: '18:00', e: '18:15', d: '00:15:00' }] },
+  ] },
+  { label: 'środa, 8 października 2026', total: '07:40:00', groups: [
+    { count: '9+', title: 'Wdrożenie raportu PDF dla klienta', project: 'OSI Time Tracker', issue: ['linked', '4790'], dur: '06:10:00', entries: [] },
+    { count: '1', title: 'Code review', project: 'Bardzo długa nazwa projektu klienta, która się nie mieści', issue: ['unlinked'], dur: '01:30:00', entries: [] },
+  ] },
+];
+
+function issueCell([kind, id]) {
+  if (kind === 'linked') return `<a href="#" class="issue-link" data-tip="Zgłoszenie #${id} · tytuł z pamięci podręcznej">#${id}</a>`;
+  if (kind === 'unlinked') return `<button class="icon-btn bleed-icon" data-tip="Zadanie nie jest połączone ze zgłoszeniem" aria-label="Zadanie nie jest połączone ze zgłoszeniem">${icon('link')}</button>`;
+  return `<button class="icon-btn disabled bleed-icon" data-tip="Projekt nie ma aktywnego trackera" aria-label="Projekt nie ma aktywnego trackera">${icon('linkOff')}</button>`;
+}
+
+const timeField = (e) => e.e
+  ? `<span class="timefield"><span class="seg-t">${e.s}</span>–<span class="seg-t">${e.e}</span></span>`
+  : `<span class="timefield"><span class="seg-t">${e.s}</span>–<span>teraz</span></span>`;
+
+function timerGroup(g) {
+  const hover = g.demoHover ? 'demo-hover' : '';
+  const title = `<span class="title trunc inline-edit bleed ${g.title ? '' : 'placeholder'} ${hover}">${g.title ?? '(brak tytułu)'}</span>`;
+  const projectText = g.project ?? '(brak projektu)';
+  const project = g.title
+    ? `<button class="ghost full bleed ${hover}" ${projectText.length > 34 ? `data-tip="${projectText}"` : ''}><span class="trunc">${projectText}</span></button>`
+    : `<button class="ghost full bleed disabled" data-tip="Najpierw nadaj tytuł"><span class="trunc">${projectText}</span></button>`;
+  const action = g.live
+    ? `<button class="icon-btn stop" data-tip="Zatrzymaj" aria-label="Zatrzymaj">${icon('square')}</button>`
+    : `<button class="icon-btn play" data-tip="Kontynuuj" aria-label="Kontynuuj">${icon('play')}</button>`;
+  const entries = g.entries.map((e) => `
+    <div class="sub" role="row">
+      ${cell('n-etitle c-title etitle', 3, 4, `<span class="trunc inline-edit bleed">${g.title ?? '(brak tytułu)'}</span>`)}
+      ${cell('n-times c-times', 4, 6, timeField(e))}
+      ${cell('n-dur c-dur mono', 6, 7, e.d)}
+      ${cell('n-act', 7, 8, `<button class="icon-btn danger" data-tip="Usuń wpis" aria-label="Usuń wpis">${icon('trash')}</button>`)}
+    </div>`).join('');
+  return `
+    <div class="row ${g.expanded ? 'expanded' : ''}" role="row">
+      ${cell('n-tog', 1, 2, toggle(!!g.expanded))}
+      ${cell('n-count', 2, 3, `<span class="count">${g.count}</span>`)}
+      ${cell('n-title c-title', 3, 4, title)}
+      ${cell('n-project', 4, 5, project)}
+      ${cell('n-issue', 5, 6, issueCell(g.issue))}
+      ${cell('n-dur c-dur mono', 6, 7, g.dur)}
+      ${cell('n-act', 7, 8, action)}
+    </div>
+    <div class="detail" ${g.expanded ? '' : 'hidden'}>${entries}</div>`;
+}
+
+function timerView() {
+  const days = timerDays.map((d) => `
+    <div class="row day" role="row">
+      <div class="c n-daylabel day-label" ${col(1, 6)} role="rowheader">${d.label}<a href="#" class="sync-link">Synchronizacja zdalna</a></div>
+      ${cell('n-dur c-dur mono', 6, 7, d.total)}
+    </div>
+    ${d.groups.map(timerGroup).join('')}`).join('');
+  return `
+  <section class="view">
+    <div class="view-head"><h1>Stoper</h1><button class="btn">${icon('plus')} Nowy</button></div>
+    <div class="list">
+      <div class="tbl timer" role="table" aria-label="Wpisy czasu">
+        <div class="row hdr" role="row">
+          <div class="c" ${col(3)} role="columnheader">Zadanie</div><div class="c" ${col(4)} role="columnheader">Projekt</div>
+          <div class="c" ${col(5)} role="columnheader">Zgłoszenie</div><div class="c h-dur" ${col(6)} role="columnheader">Czas</div>
+        </div>
+        ${days}
+      </div>
+    </div>
+  </section>`;
+}
+
+// ---------------- Synchronizacja ----------------
+const S = {
+  ready:    { text: 'Gotowe', reason: 'Gotowe do eksportu.', kind: 'k-primary', ic: 'ready' },
+  sent:     { text: 'Wysłane', reason: 'Już wyeksportowane w tym dniu.', kind: 'k-success', ic: 'sent' },
+  loading:  { text: 'Wczytywanie', reason: 'Wczytywanie wymaganych pól zdalnych…', kind: 'k-neutral', ic: 'spinner' },
+  unlinked: { text: 'Nie wyeksportujesz', reason: 'Zadanie nie jest połączone ze zdalnym zgłoszeniem.', kind: 'k-warning', ic: 'alert' },
+  noTracker:{ text: 'Nie wyeksportujesz', reason: 'Projekt tego zadania nie ma aktywnego trackera.', kind: 'k-warning', ic: 'alert' },
+  activityError: { text: 'Nie wyeksportujesz', reason: 'Nie udało się wczytać wymaganych pól zdalnych.', kind: 'k-warning', ic: 'alert' },
+  linked:   { text: 'Powiązany', reason: 'Wpis pochodzi z eksportu tego zadania.', kind: 'k-success', ic: 'link' },
+  foreign:  { text: 'Niepowiązany', reason: 'Wpis dodany w trackerze poza OSI.', kind: 'k-neutral', ic: 'linkOff' },
+};
+const syncRows = [
+  { st: S.ready, title: 'Refaktoryzacja widoku synchronizacji', editable: true,
+    issue: ['Widok Sync – układ tabeli', '12345'], activity: 'Development', tracked: '01:47:00', tosend: '02:00:00', delta: '+00:13:00',
+    entries: [{ s: '09:00', e: '10:12', d: '01:12:00' }, { s: '16:00', e: '16:35', d: '00:35:00' }], logs: [] },
+  { st: S.ready, title: 'Spotkanie zespołu', editable: true, expanded: true, demoHover: true, portal: true,
+    issue: ['Spotkania', '87'], activity: 'Spotkanie', tracked: '01:35:00', tosend: '01:45:00', delta: '+00:10:00',
+    entries: [{ s: '08:00', e: '08:30', d: '00:30:00' }, { s: '11:00', e: '11:45', d: '00:45:00' }, { s: '15:00', e: '15:20', d: '00:20:00' }],
+    logs: [{ id: '9930', comment: 'Planowanie sprintu – dopisane ręcznie w trackerze, długi komentarz który się utnie', activity: 'Spotkanie', d: '00:15:00', linked: false }] },
+  { st: S.sent, title: 'Wdrożenie raportu PDF dla klienta', expanded: true,
+    issue: ['Raport PDF', '4790'], activity: 'Development', tracked: '03:10:00', tosend: '03:15:00', delta: '+00:05:00',
+    entries: [{ s: '07:00', e: '08:00', d: '01:00:00' }, { s: '12:00', e: '13:10', d: '01:10:00' }, { s: '17:00', e: '18:00', d: '01:00:00' }],
+    logs: [{ id: '9912', comment: 'Wdrożenie raportu PDF dla klienta', activity: 'Development', d: '03:15:00', linked: true }] },
+  { st: S.loading, title: 'Przegląd PR #134 – kompaktowanie specyfikacji', loading: true,
+    issue: ['Code review', '4821'], tracked: '00:42:10', tosend: '00:45:00', delta: '+00:02:50', entries: [], logs: [] },
+  { st: S.unlinked, title: 'Code review modułu płatności', picker: true, tracked: '00:25:00', tosend: '00:00:00', delta: '−00:25:00',
+    entries: [{ s: '10:15', e: '10:40', d: '00:25:00' }], logs: [] },
+  { st: S.noTracker, title: 'Odpowiedzi na maile', tracked: '00:25:00', tosend: '00:00:00', delta: '−00:25:00', entries: [], logs: [] },
+];
+
+const EXT_MSG = 'To miejsce docelowe trackera nie jest zatwierdzone we wtyczce OSI.';
+
+/** Remote-logs section body; `ext` = the tracker's logs failed because the extension blocks it. */
+function logsBody(r, ext) {
+  if (ext) return `<div class="sub status" role="row">${cell('n-full', 3, 8,
+    `<span class="notice-text" role="alert">${icon('alert', 'sm')} Nie udało się wczytać zdalnych wpisów.</span>`)}</div>`;
+  const loading = `<div class="sub status only-loading" role="row">${cell('n-full', 3, 8,
+    `<span class="spinner"></span><span role="status">Wczytywanie wpisów z trackera…</span>`)}</div>`;
+  const loaded = r.logs.length === 0
+    ? `<div class="sub status hide-loading" role="row">${cell('n-full', 3, 8, 'Brak wpisów w trackerze w tym dniu.')}</div>`
+    : r.logs.map((l) => `
+      <div class="sub hide-loading" role="row">
+        ${cell('n-state', 2, 3, stateIcon(l.linked ? S.linked : S.foreign))}
+        ${cell('n-comment', 3, 5, `<span class="trunc" data-tip="${l.comment}"><span class="mono">#${l.id}</span> · ${l.comment}</span>`)}
+        ${cell('n-logact', 5, 6, `<span class="small-muted trunc">${l.activity}</span>`)}
+        ${cell('n-logdur c-dur mono', 7, 8, l.d)}
+        ${cell('n-act', 8, 9, l.linked
+          ? `<button class="icon-btn danger" data-tip="Usuń zdalny wpis" aria-label="Usuń zdalny wpis">${icon('trash')}</button>`
+          : `<button class="icon-btn" data-tip="Powiąż z tym zadaniem" aria-label="Powiąż z tym zadaniem">${icon('link')}</button>`)}
+      </div>`).join('');
+  return loading + loaded;
+}
+
+/** `variant` is an extra class (scenario visibility); `ext` renders the extension-blocked state. */
+function syncRow(r, variant = '', ext = false) {
+  const hover = r.demoHover && !ext ? 'demo-hover' : '';
+  const editable = r.editable && !ext;
+  const title = editable
+    ? `<span class="title trunc inline-edit bleed ${hover}">${r.title}</span>`
+    : r.loading ? `<span class="title trunc">${r.title}</span>`
+    : `<span class="small-muted trunc">${r.title}</span>`;
+  const issue = r.issue
+    ? `<span class="issue-cell" data-tip="${r.issue[0]} (#${r.issue[1]})"><span class="trunc">${r.issue[0]}</span><span class="id">(#${r.issue[1]})</span></span>`
+    : r.picker ? `<button class="ghost bleed">${icon('link', 'sm')} Połącz</button>` : `<span class="small-muted">—</span>`;
+  const activity = ext
+    ? `<span class="act-error tip-start" tabindex="0" role="img" aria-label="Nie udało się wczytać czynności. ${EXT_MSG}"
+         data-tip="Nie udało się wczytać czynności. ${EXT_MSG}">${icon('alert', 'sm')}</span>
+       <button class="ghost" style="margin-inline-start:-.25rem">Ponów</button>`
+    : editable
+    ? `<button class="ghost bleed ${hover}"><span class="trunc">${r.activity}</span>${icon('down', 'sm')}</button>`
+    : r.loading ? `<button class="ghost bleed disabled" aria-busy="true"><span class="spinner"></span><span class="trunc">Wczytywanie…</span></button>`
+    : `<span class="small-muted trunc">${r.activity ?? '—'}</span>`;
+  const tosend = `<span class="n-arrow mono" aria-hidden="true">→</span>` + (editable
+    ? `<button class="to-send mono" data-tip="Różnica: ${r.delta}" aria-label="Czas do eksportu ${r.tosend}, różnica ${r.delta}">${r.tosend}</button>`
+    : `<span class="mono" tabindex="0" data-tip="Różnica: ${r.delta}">${r.tosend}</span>`);
+
+  const entries = r.entries.length ? `
+      <div class="sub label">${cell('n-full', 3, 9, 'Lokalne wpisy')}</div>
+      ${r.entries.map((e) => `
+      <div class="sub" role="row">
+        ${cell('n-etimes', 3, 6, `<span class="timefield">${e.s}–${e.e}</span>`)}
+        ${cell('n-tracked c-dur mono', 6, 7, e.d)}
+      </div>`).join('')}` : '';
+  const logs = r.issue ? `<div class="sub label">${cell('n-full', 3, 9, 'Wpisy w trackerze')}</div>${logsBody(r, ext)}` : '';
+  // Extension guidance does not fit a cell: a full-width row under the task, shown without expanding.
+  const notice = ext ? `
+    <div class="sub notice ${variant}" role="row">${cell('n-full', 3, 9, `
+      <span class="notice-text">${icon('alert', 'sm')} ${EXT_MSG} Zatwierdź je we wtyczce, a potem sprawdź ponownie.</span>
+      <button class="link-btn">${icon('send', 'sm')} Poproś o zatwierdzenie w rozszerzeniu</button>`)}
+    </div>` : '';
+
+  return `
+    <div class="row ${r.expanded ? 'expanded' : ''} ${ext ? 'has-notice' : ''} ${variant}" role="row">
+      ${cell('n-tog', 1, 2, toggle(!!r.expanded))}
+      ${cell('n-state', 2, 3, stateIcon(ext ? S.activityError : r.st))}
+      ${cell('n-title c-title', 3, 4, title)}
+      ${cell('n-issue', 4, 5, issue)}
+      ${cell('n-activity', 5, 6, activity)}
+      ${cell('n-tracked c-dur mono', 6, 7, r.tracked)}
+      ${cell('n-tosend c-dur', 7, 8, tosend)}
+      ${cell('n-act', 8, 9, '')}
+    </div>${notice}
+    <div class="detail ${variant}" ${r.expanded ? '' : 'hidden'}>${entries}${logs}</div>`;
+}
+
+function syncView() {
+  // "Spotkanie zespołu" lives on the Portal tracker, which goes through the extension in the "ext" scenario.
+  const rows = syncRows.map((r) => r.portal
+    ? syncRow(r, 'hide-ext') + syncRow(r, 'only-ext', true)
+    : syncRow(r)).join('');
+  return `
+  <section class="view">
+    <div class="view-head">
+      <h1>Synchronizacja zdalna</h1>
+      <div class="day-nav">
+        <button class="icon-btn" data-tip="Poprzedni dzień" aria-label="Poprzedni dzień">${icon('chevL')}</button>
+        <span class="date">9 paź 2026</span>
+        <button class="icon-btn" data-tip="Następny dzień" aria-label="Następny dzień">${icon('chevR')}</button>
+        <button class="btn">Eksportuj</button>
+      </div>
+    </div>
+    <div class="stats" aria-live="polite">
+      <div class="stat">
+        <span class="lbl">Czas tego dnia</span><span class="val">08:19:10</span>
+        <span class="sub-val">wszystkie ukończone wpisy, jak w Stoperze</span>
+      </div>
+      <div class="stat hide-loading hide-ext">
+        <span class="lbl">W trackerze po eksporcie</span><span class="val">08:00:00</span>
+        <span class="sub-val">w trackerze <span class="mono">03:30:00</span> + do wysłania <span class="mono">04:30:00</span></span>
+      </div>
+      <div class="stat only-loading" role="status">
+        <span class="lbl">W trackerze po eksporcie</span><span class="val" style="display:flex;gap:.5rem;align-items:center">— <span class="spinner"></span></span>
+        <span class="sub-val">wczytywanie wpisów z trackerów…</span>
+      </div>
+      <div class="stat only-ext">
+        <span class="lbl">W trackerze po eksporcie</span><span class="val">—</span>
+        <span class="sub-val" style="display:flex;flex-wrap:wrap;gap:.25rem .5rem;align-items:center">
+          <span class="notice-text">${icon('alert', 'sm')} brak wpisów z trackera Portal</span>
+          <button class="link-btn">${icon('refresh', 'sm')} Ponów</button></span>
+      </div>
+    </div>
+    <div class="list">
+      <div class="tbl sync" role="table" aria-label="Zadania dnia">
+        <div class="row hdr" role="row">
+          <div class="c" ${col(2)} role="columnheader"><span class="sr-only">Stan</span></div>
+          <div class="c" ${col(3)} role="columnheader">Tytuł do wysłania</div><div class="c" ${col(4)} role="columnheader">Zgłoszenie</div>
+          <div class="c" ${col(5)} role="columnheader">Czynność</div><div class="c h-dur" ${col(6)} role="columnheader">Śledzone</div>
+          <div class="c h-dur" ${col(7)} role="columnheader">Do wysłania</div>
+        </div>
+        ${rows}
+        <div class="row untitled" role="row">
+          ${cell('n-title c-title', 3, 4, '(brak zadania)')}
+          ${cell('n-tracked c-dur mono', 6, 7, '00:15:00')}
+        </div>
+      </div>
+    </div>
+  </section>`;
+}
+
+const root = document.getElementById('root');
+root.innerHTML = timerView() + syncView();
+
+root.addEventListener('click', (ev) => {
+  const btn = ev.target.closest('[data-toggle]');
+  if (!btn) return;
+  const row = btn.closest('.row');
+  let detail = row.nextElementSibling;
+  while (detail && !detail.classList.contains('detail')) detail = detail.nextElementSibling;
+  const open = detail.hasAttribute('hidden');
+  detail.toggleAttribute('hidden', !open);
+  row.classList.toggle('expanded', open);
+  btn.setAttribute('aria-expanded', String(open));
+  btn.dataset.tip = open ? 'Zwiń' : 'Rozwiń';
+  btn.innerHTML = icon(open ? 'chevD' : 'chevR');
+});
+
+const params = new URLSearchParams(location.search);
+const state = { theme: params.get('theme') ?? 'light', width: params.get('width') ?? '1100', scenario: params.get('scenario') ?? 'ok' };
+function apply() {
+  const root = document.documentElement;
+  const narrow = Number(state.width) < 640;
+  root.classList.toggle('dark', state.theme === 'dark');
+  // Page padding is p-4 on phones and p-6 above; the preset is the list (content) width.
+  root.style.setProperty('--pad', narrow ? '1rem' : '1.5rem');
+  root.style.setProperty('--w', `calc(${state.width}px + ${narrow ? '2rem' : '3rem'})`);
+  document.body.classList.toggle('sc-loading', state.scenario === 'loading');
+  document.body.classList.toggle('sc-ext', state.scenario === 'ext');
+  document.querySelectorAll('.seg').forEach((seg) =>
+    seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === state[seg.dataset.ctl])));
+}
+document.querySelectorAll('.seg').forEach((seg) => seg.addEventListener('click', (ev) => {
+  const b = ev.target.closest('button');
+  if (!b) return;
+  state[seg.dataset.ctl] = b.dataset.v;
+  apply();
+}));
+apply();
+const guides = document.getElementById('guides');
+guides.checked = params.has('guides');
+const applyGuides = () => document.body.classList.toggle('guides', guides.checked);
+guides.addEventListener('change', applyGuides);
+applyGuides();
+</script>
+</body>
+</html>
