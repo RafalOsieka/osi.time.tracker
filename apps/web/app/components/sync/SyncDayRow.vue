@@ -3,8 +3,19 @@ import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
 import type { RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
 import type { RemoteFieldOption, RemoteIssueScope } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '~~/shared/types/tracker';
+import type { ColumnDefinition } from '../ColumnList.vue';
 
 const {
+  columns = [
+    { key: 'expand', track: '1.5rem' },
+    { key: 'state', track: '1.5rem' },
+    { key: 'title', track: '8rem' },
+    { key: 'issue', track: '6rem' },
+    { key: 'activity', track: '6rem' },
+    { key: 'tracked', track: '5rem' },
+    { key: 'toSend', track: '6rem' },
+    { key: 'actions', track: '1.5rem' },
+  ],
   row,
   expanded,
   canEdit,
@@ -31,12 +42,14 @@ const {
   selectedActivityId,
   noActivity,
 } = defineProps<{
+  columns?: readonly ColumnDefinition[];
   row: RemoteSyncDayRowDto;
   expanded: boolean;
   canEdit: boolean;
   showEditors: boolean;
   kindLabel: string | null;
-  kindColor: 'success' | 'warning' | 'error' | 'neutral';
+  /** One color per state kind: Ready, Sent, Loading, not exportable. */
+  kindColor: 'primary' | 'success' | 'neutral' | 'warning';
   reason: string;
   issueTitle: string | null;
   issueId: string | null;
@@ -92,15 +105,17 @@ const unapprovedDestination = computed(() =>
     : null,
 );
 const suggestion = useExtensionSuggestion(() => emit('retry-activity'));
+/** Extension guidance does not fit a cell: a full-width line under the row, shown collapsed too. */
+const hasGuidance = computed(() => activityError && !!extensionActivityErrorKey.value);
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
-const durationClusterAria = computed(() =>
-  t('remoteSync.durationClusterAria', {
-    tracked: trackedLabel,
-    toSend: toSendLabel,
-    delta: deltaLabel,
-  }),
-);
+/** A distinct shape per kind, so states never rely on color alone. */
+const stateIcons = {
+  primary: 'i-lucide-circle-arrow-up',
+  success: 'i-lucide-check-check',
+  neutral: 'i-lucide-loader-circle',
+  warning: 'i-lucide-circle-alert',
+} as const satisfies Record<typeof kindColor, string>;
 const activityOpen = ref(false);
 const selectedActivityName = computed(
   () => activityOptions.find((option) => option.id === selectedActivityId)?.name,
@@ -131,27 +146,40 @@ function onEditToSend() {
 </script>
 
 <template>
-  <CompactExpandableRow
-    :expanded="expanded"
-    :expand-label="t('remoteSync.expandRow')"
-    :collapse-label="t('remoteSync.collapseRow')"
-    :expand-testid="`remote-sync-expand-${row.taskId}`"
-    :details-id="`remote-sync-detail-${row.taskId}`"
-    :data-testid="`remote-sync-row-${row.taskId}`"
-    @toggle="emit('toggle')"
-  >
-    <template #title>
-      <UBadge
-        v-if="kindLabel"
-        :color="kindColor"
-        variant="subtle"
-        size="sm"
-        :data-testid="`remote-sync-state-${row.taskId}`"
-      >
-        <UTooltip :text="reason" :content="{ side: 'top' }">
-          <span tabindex="0">{{ kindLabel }}</span>
-        </UTooltip>
-      </UBadge>
+  <ColumnRow :data-testid="`remote-sync-row-${row.taskId}`" :joined="expanded || hasGuidance">
+    <ColumnCell :columns="columns" col="expand" :narrow="{ col: [1, 2], row: 1 }">
+      <UButton
+        :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+        color="neutral"
+        variant="ghost"
+        size="xs"
+        :aria-label="t(expanded ? 'remoteSync.collapseRow' : 'remoteSync.expandRow')"
+        :aria-expanded="expanded"
+        :aria-controls="`remote-sync-detail-${row.taskId}`"
+        :data-testid="`remote-sync-expand-${row.taskId}`"
+        @click="emit('toggle')"
+      />
+    </ColumnCell>
+    <ColumnCell :columns="columns" col="state" :narrow="{ col: [2, 3], row: 1 }">
+      <UPopover mode="hover" enable-touch :content="{ side: 'top' }">
+        <UButton
+          :icon="stateIcons[kindColor]"
+          :color="kindColor"
+          variant="ghost"
+          square
+          size="xs"
+          :ui="{ leadingIcon: kindColor === 'neutral' ? 'animate-spin' : '' }"
+          :aria-label="`${kindLabel ?? t('remoteSync.kind.blocked')}: ${reason}`"
+          :data-testid="`remote-sync-state-${row.taskId}`"
+        >
+          <span class="sr-only">{{ kindLabel }}</span>
+        </UButton>
+        <template #content>
+          <p class="max-w-xs p-2 text-xs">{{ kindLabel }}: {{ reason }}</p>
+        </template>
+      </UPopover>
+    </ColumnCell>
+    <ColumnCell :columns="columns" col="title" :narrow="{ col: [3, 5], row: 1 }">
       <InlineEditText
         v-if="showEditors"
         :model-value="comment"
@@ -160,7 +188,7 @@ function onEditToSend() {
         :field-label="t('remoteSync.titleToSendLabel')"
         :display-testid="`remote-sync-task-name-${row.taskId}`"
         :input-testid="`remote-sync-comment-${row.taskId}`"
-        display-class="font-medium"
+        display-class="font-medium text-default"
         @edit="emit('edit-title')"
         @update:model-value="(value) => emit('update:comment', value)"
         @commit="emit('commit-title')"
@@ -173,41 +201,56 @@ function onEditToSend() {
       >
         {{ row.taskName }}
       </span>
-    </template>
+    </ColumnCell>
 
-    <template #secondary>
-      <span
+    <ColumnCell :columns="columns" col="issue" :narrow="{ col: [3, 4], row: 2 }">
+      <UTooltip
         v-if="issueTitle && issueId"
-        class="block max-w-48 truncate text-xs text-muted"
-        :data-testid="`remote-sync-issue-${row.taskId}`"
+        :text="`${issueTitle} (#${issueId})`"
+        :content="{ side: 'top' }"
       >
-        {{ issueTitle }}
-        <span>(#{{ issueId }})</span>
-      </span>
+        <span
+          class="flex min-w-0 gap-1 text-xs text-muted"
+          :data-testid="`remote-sync-issue-${row.taskId}`"
+        >
+          <span class="truncate">{{ issueTitle }}</span>
+          <span class="shrink-0">(#{{ issueId }})</span>
+        </span>
+      </UTooltip>
       <RemoteIssuePicker
         v-else-if="showLinkPicker && pickerConfig"
         :config="pickerConfig"
         :scope="pickerScope"
+        :link-label="t('remoteSync.linkAction')"
         :data-testid="`remote-sync-link-${row.taskId}`"
         @link="(payload) => emit('link', payload)"
       />
       <span v-else class="text-xs text-muted">{{ t('remoteSync.emptyCell') }}</span>
-    </template>
+    </ColumnCell>
 
-    <template #meta>
-      <div class="w-48 min-w-0 max-w-full">
+    <ColumnCell :columns="columns" col="activity" :narrow="{ col: [3, 4], row: 3 }">
+      <div class="min-w-0">
         <template v-if="activityError">
-          <div class="flex min-w-0 flex-wrap items-center gap-1">
-            <span
-              role="alert"
-              class="text-xs text-muted"
-              :data-testid="`remote-sync-activity-error-${row.taskId}`"
-            >
-              {{ t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError') }}
-            </span>
-            <p v-if="extensionActivityErrorKey" class="text-xs text-muted">
-              {{ t('trackers.extensionSetupGuidance') }}
-            </p>
+          <div class="flex min-w-0 items-center gap-1">
+            <UPopover mode="hover" enable-touch :content="{ side: 'top' }">
+              <UButton
+                icon="i-lucide-circle-alert"
+                color="error"
+                variant="ghost"
+                size="xs"
+                :aria-label="t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError')"
+                :data-testid="`remote-sync-activity-error-${row.taskId}`"
+              >
+                <span class="sr-only">
+                  {{ t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError') }}
+                </span>
+              </UButton>
+              <template #content>
+                <p class="max-w-xs p-2 text-xs">
+                  {{ t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError') }}
+                </p>
+              </template>
+            </UPopover>
             <UButton
               variant="ghost"
               size="xs"
@@ -221,12 +264,6 @@ function onEditToSend() {
               :data-testid="`remote-sync-activity-retry-${row.taskId}`"
               @click="emit('retry-activity')"
             />
-            <ExtensionApprovalRequest
-              v-if="unapprovedDestination"
-              :state="suggestion.states.value[suggestionKey(unapprovedDestination)]"
-              :test-id="`remote-sync-activity-request-${row.taskId}`"
-              @request="suggestion.request(unapprovedDestination)"
-            />
           </div>
         </template>
         <span
@@ -237,13 +274,13 @@ function onEditToSend() {
           {{ t('remoteSync.noActivityReason') }}
         </span>
         <UTooltip v-else-if="showEditors && !canEdit" :text="reason" :content="{ side: 'top' }">
-          <span tabindex="0" class="inline-flex w-full min-w-0">
+          <span tabindex="0" class="inline-flex min-w-0">
             <UButton
               variant="ghost"
               color="neutral"
               size="xs"
               disabled
-              class="w-full justify-start truncate text-muted disabled:opacity-40"
+              class="-ms-2 justify-start truncate font-normal text-muted disabled:opacity-40"
               :label="activityDisplayValue"
               :loading="activityLoading"
               :aria-label="t('remoteSync.activityLabel')"
@@ -263,12 +300,14 @@ function onEditToSend() {
           :content="{ side: 'bottom', align: 'start', sideOffset: 4 }"
           @update:open="onActivityOpen"
         >
-          <OverflowTooltip class="w-full" :text="activityDisplayValue">
+          <OverflowTooltip :text="activityDisplayValue">
             <UButton
               variant="ghost"
               color="neutral"
               size="xs"
-              class="w-full justify-start truncate text-muted"
+              trailing-icon="i-lucide-chevron-down"
+              class="-ms-2 max-w-[calc(100%+0.5rem)] justify-start font-normal text-muted"
+              :ui="{ label: 'truncate', trailingIcon: 'size-3.5' }"
               :label="activityDisplayValue"
               :aria-label="t('remoteSync.activityLabel')"
               :data-testid="`remote-sync-activity-select-${row.taskId}`"
@@ -303,17 +342,25 @@ function onEditToSend() {
           {{ selectedActivityName ?? t('remoteSync.emptyCell') }}
         </span>
       </div>
-    </template>
+    </ColumnCell>
 
-    <template #duration>
+    <ColumnCell :columns="columns" col="tracked" align="end" :narrow="{ col: [4, 5], row: 2 }">
+      <span
+        class="font-mono text-sm font-medium tabular-nums text-muted"
+        :data-testid="`remote-sync-tracked-${row.taskId}`"
+      >
+        {{ trackedLabel }}
+      </span>
+    </ColumnCell>
+    <ColumnCell :columns="columns" col="toSend" align="end" :narrow="{ col: [4, 5], row: 3 }">
       <UTooltip :text="rowDeltaTooltip" :disabled="editingToSend" :content="{ side: 'top' }">
         <div
           class="inline-flex items-baseline gap-1 font-mono text-sm font-medium tabular-nums text-muted"
-          :aria-label="durationClusterAria"
           :data-testid="`remote-sync-row-duration-${row.taskId}`"
         >
-          <span :data-testid="`remote-sync-tracked-${row.taskId}`">{{ trackedLabel }}</span>
-          <span aria-hidden="true">{{ t('remoteSync.trackedToSendArrow') }}</span>
+          <span aria-hidden="true" class="hidden @max-[40rem]/list:inline">
+            {{ t('remoteSync.trackedToSendArrow') }}
+          </span>
           <DurationInput
             v-if="showEditors && editingToSend"
             :model-value="toSendInput"
@@ -343,10 +390,30 @@ function onEditToSend() {
           </span>
         </div>
       </UTooltip>
-    </template>
-
-    <template #detail>
-      <slot name="detail" />
-    </template>
-  </CompactExpandableRow>
+    </ColumnCell>
+    <ColumnCell :columns="columns" col="actions" :narrow="{ col: [5, 6], row: 1 }" />
+  </ColumnRow>
+  <ColumnRow
+    v-if="hasGuidance"
+    kind="sub"
+    :class="!expanded && 'border-b border-default pb-2'"
+    :data-testid="`remote-sync-activity-guidance-${row.taskId}`"
+  >
+    <ColumnCell
+      :columns="columns"
+      col="title"
+      to="actions"
+      :narrow="{ col: [3, 6], row: 1 }"
+      class="text-xs text-muted"
+    >
+      {{ t('trackers.extensionSetupGuidance') }}
+      <ExtensionApprovalRequest
+        v-if="unapprovedDestination"
+        :state="suggestion.states.value[suggestionKey(unapprovedDestination)]"
+        :test-id="`remote-sync-activity-request-${row.taskId}`"
+        @request="suggestion.request(unapprovedDestination)"
+      />
+    </ColumnCell>
+  </ColumnRow>
+  <slot v-if="expanded" name="detail" />
 </template>

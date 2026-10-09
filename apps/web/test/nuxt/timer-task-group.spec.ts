@@ -167,9 +167,20 @@ type TimerTaskGroupMountProps = {
   scope?: { remoteProjectId: string; remoteProjectTitle: string } | null;
 };
 
+const columns = [
+  { key: 'toggle', track: '1.5rem' },
+  { key: 'count', track: '1.25rem' },
+  { key: 'title', track: '8rem' },
+  { key: 'project', track: '7rem' },
+  { key: 'issue', track: '4.5rem' },
+  { key: 'duration', track: '5rem' },
+  { key: 'action', track: '1.5rem' },
+] as const;
+
 function mount(props: TimerTaskGroupMountProps = {}) {
   return mountSuspended(TimerTaskGroup, {
     props: {
+      columns,
       group: group(),
       isLive: false,
       now: Date.now(),
@@ -288,15 +299,15 @@ describe('TimerTaskGroup', () => {
       components: { TimerTaskGroup },
       setup: () => {
         const active = ref<string | null>(null);
-        return { active, group };
+        return { active, group, columns };
       },
       template: `
-        <TimerTaskGroup :group="group('task-a')" :is-live="false" :now="0" time-zone="UTC" editor-key="a" :active-editor-key="active" @editing-started="active = 'a'" />
-        <TimerTaskGroup :group="group('task-b')" :is-live="false" :now="0" time-zone="UTC" editor-key="b" :active-editor-key="active" @editing-started="active = 'b'" />
+        <TimerTaskGroup :columns="columns" :group="group('task-a')" :is-live="false" :now="0" time-zone="UTC" editor-key="a" :active-editor-key="active" @editing-started="active = 'a'" />
+        <TimerTaskGroup :columns="columns" :group="group('task-b')" :is-live="false" :now="0" time-zone="UTC" editor-key="b" :active-editor-key="active" @editing-started="active = 'b'" />
       `,
     };
     const wrapper = await mountSuspended(Host, { global: { plugins: [testI18n()], stubs } });
-    const firstHeader = wrapper.findAll('[data-testid="timer-group-header-controls"]')[0]!;
+    const firstHeader = wrapper.find('[data-testid="timer-group-task-a"]');
     expect(firstHeader.findAll('button').length).toBeGreaterThanOrEqual(1);
     expect(firstHeader.find('[data-testid="timer-group-title-task-a"]').exists()).toBe(true);
     expect(firstHeader.find('[data-testid="timer-group-project-task-a"]').exists()).toBe(true);

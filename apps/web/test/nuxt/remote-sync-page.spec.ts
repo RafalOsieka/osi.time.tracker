@@ -380,12 +380,9 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
       'remoteSync.kind.blocked',
     );
-    expect(
-      wrapper
-        .find('[data-testid="remote-sync-expand-task-1"]')
-        .element.closest('[data-tooltip-text]')
-        ?.getAttribute('data-tooltip-text'),
-    ).toBe('remoteSync.expandRow');
+    expect(wrapper.find('[data-testid="remote-sync-expand-task-1"]').attributes('aria-label')).toBe(
+      'remoteSync.expandRow',
+    );
     await expandRow(wrapper, 'task-1');
     expect(wrapper.find('[data-testid="remote-sync-detail-task-1"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-rounded-duration-task-1"]').exists()).toBe(
@@ -517,7 +514,9 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-to-send-task-inline"]').text()).toContain(
       '00:45:00',
     );
-    expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('00:45:00');
+    expect(wrapper.find('[data-testid="remote-sync-total-in-tracker-parts"]').text()).toContain(
+      '00:45:00',
+    );
   });
 
   it('shows a Sent row as read-only and keeps extra local time unsent', async () => {
@@ -904,7 +903,9 @@ describe('RemoteSync page', () => {
     fetchMock.mockResolvedValue(activitiesPayload());
 
     const wrapper = await mount();
-    expect(wrapper.find('[data-testid="remote-sync-state-task-5"]').exists()).toBe(false);
+    expect(
+      wrapper.find('[data-testid="remote-sync-state-task-5"]').attributes('aria-label'),
+    ).toContain('remoteSync.kind.blocked');
     expect(wrapper.find('[data-testid="remote-sync-link-task-5"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-activity-loading-task-5"]').exists()).toBe(
       false,
@@ -1298,7 +1299,7 @@ describe('RemoteSync page', () => {
     );
   });
 
-  it('shows reconciling day summary chips including blocked and untitled time', async () => {
+  it('shows the day total and an in-tracker estimate without counting blocked and untitled time for export', async () => {
     dayData = makeDay({
       untitledTotalSeconds: 300,
       rows: [
@@ -1336,26 +1337,47 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     await chooseActivity(wrapper, 'task-sum-ok', '1');
     expect(wrapper.find('[data-testid="remote-sync-total-day"]').text()).toContain('01:15:00');
-    expect(wrapper.find('[data-testid="remote-sync-total-tracked"]').text()).toContain('01:00:00');
-    expect(wrapper.find('[data-testid="remote-sync-total-to-send"]').text()).toContain('01:00:00');
-    expect(wrapper.find('[data-testid="remote-sync-total-blocked"]').text()).toContain('00:10:00');
-    expect(wrapper.find('[data-testid="remote-sync-total-untitled"]').text()).toContain('00:05:00');
+    expect(wrapper.find('[data-testid="remote-sync-total-in-tracker-parts"]').text()).toContain(
+      '01:00:00',
+    );
+    expect(wrapper.find('[data-testid="remote-sync-untitled-duration"]').text()).toContain(
+      '00:05:00',
+    );
     expect(wrapper.find('[data-testid="remote-sync-state-task-sum-blocked"]').text()).toContain(
       'remoteSync.kind.blocked',
     );
 
-    const tooltipTexts = wrapper
-      .findAll('[data-tooltip-text]')
-      .map((node) => node.attributes('data-tooltip-text') ?? '');
-    expect(tooltipTexts).toEqual(
-      expect.arrayContaining([
-        'remoteSync.dayTotalTooltip',
-        'remoteSync.trackedTooltip',
-        'remoteSync.toSendTooltip',
-        'remoteSync.deltaTooltip',
-        'remoteSync.blockedTooltip',
-        'remoteSync.untitledTooltip',
-      ]),
+    expect(wrapper.find('[data-testid="remote-sync-total-in-tracker"]').exists()).toBe(true);
+  });
+
+  it('counts a Ready row in the in-tracker estimate before its activity is chosen', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-no-activity-yet',
+          taskName: 'Ready',
+          projectName: 'Project',
+          trackerName: 'Client',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          totalSeconds: 3600,
+          config: { ...baseConfig, id: 'config-no-activity-yet' },
+          issueRef: { remoteIssueId: '1', cachedTitle: 'Issue' },
+          entries: [entry({ id: 'e-no-activity-yet', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await flushPromises();
+    expect(wrapper.find('[data-testid="remote-sync-to-send-task-no-activity-yet"]').text()).toBe(
+      '01:00:00',
+    );
+    expect(wrapper.find('[data-testid="remote-sync-total-in-tracker-parts"]').text()).toContain(
+      '01:00:00',
     );
   });
 

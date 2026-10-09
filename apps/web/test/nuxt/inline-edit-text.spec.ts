@@ -30,6 +30,9 @@ describe('InlineEditText', () => {
 
     const display = wrapper.find('[data-testid="title"]');
     expect(display.exists()).toBe(true);
+    expect(wrapper.find('div').classes()).toContain('-ms-2');
+    expect(wrapper.find('div').classes()).toContain('w-[calc(100%+0.5rem)]');
+    expect(display.attributes('size')).toBe('xs');
     expect(display.attributes('readonly')).toBeDefined();
     expect(wrapper.find('[data-testid="title-input"]').exists()).toBe(false);
 
@@ -51,6 +54,8 @@ describe('InlineEditText', () => {
 
     const input = wrapper.find('[data-testid="title-input"]');
     expect(input.exists()).toBe(true);
+    expect(wrapper.find('div').classes()).toContain('-ms-2');
+    expect(input.attributes('size')).toBe('xs');
     expect(wrapper.find('[data-testid="title"]').exists()).toBe(false);
 
     await input.setValue('New title');

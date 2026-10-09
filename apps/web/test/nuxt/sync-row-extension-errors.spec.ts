@@ -30,7 +30,7 @@ describe('sync row extension errors', () => {
         canEdit: false,
         showEditors: false,
         kindLabel: null,
-        kindColor: 'error',
+        kindColor: 'warning',
         reason: '',
         issueTitle: 'Linked',
         issueId: '42',

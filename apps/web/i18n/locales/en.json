@@ -231,6 +231,7 @@
     "toastDeletedDetail": "The project has been deleted."
   },
   "timerView": {
+    "columns": { "task": "Task", "project": "Project", "issue": "Issue", "duration": "Duration" },
     "pageTitle": "Timer",
     "neverTrackedEmptyState": "You haven't tracked any time yet. Start the timer above to begin.",
     "neverTrackedCta": "Start tracking",
@@ -318,6 +319,11 @@
   "remoteSync": {
     "pageTitle": "Remote Sync",
     "dayTotalLabel": "Day total",
+    "inTrackerLabel": "In tracker after export",
+    "inTrackerLoading": "Loading tracker entries…",
+    "inTrackerLogs": "in tracker",
+    "inTrackerToSend": "to send",
+    "dayTotalHint": "all completed entries, as in Timer",
     "dayTotalTooltip": "All completed time for this day, including sent, blocked, and untitled entries. Matches the Timer view day total.",
     "trackedLabel": "Tracked",
     "trackedTooltip": "Sum of completed time on Ready tasks that will be included in this export, before rounding or manual overrides.",
@@ -367,6 +373,14 @@
     "columnActivity": "Activity",
     "columnDuration": "Tracked → to send",
     "columnState": "State",
+    "columns": {
+      "state": "State",
+      "title": "Title",
+      "issue": "Issue",
+      "activity": "Activity",
+      "tracked": "Tracked",
+      "toSend": "To send"
+    },
     "emptyCell": "\u2014",
     "prevDay": "Previous day",
     "nextDay": "Next day",
@@ -468,7 +482,7 @@
       "loading": "Loading",
       "blocked": "Can't export"
     },
-    "linkAction": "Link remote issue"
+    "linkAction": "Link"
   },
   "remoteIssuePicker": {
     "modeLabel": "Search by",

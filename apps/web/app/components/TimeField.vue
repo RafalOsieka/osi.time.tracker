@@ -46,7 +46,7 @@ const {
   clampSeconds?: boolean;
   size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   variant?: 'outline' | 'soft' | 'subtle' | 'ghost' | 'none';
-  ui?: { base?: string };
+  ui?: { base?: string; segment?: string };
   disabled?: boolean;
   id?: string;
   /** Accessible label for the whole field (both segments in range mode). */
@@ -257,6 +257,8 @@ function onFocusOut(event: FocusEvent) {
     @keydown.enter.prevent="commit"
     @keydown.esc.prevent="cancel"
   >
-    <template v-if="range" #separator>{{ separator }}</template>
+    <template v-if="range" #separator>
+      <span class="px-1.5">{{ separator }}</span>
+    </template>
   </UInputTime>
 </template>

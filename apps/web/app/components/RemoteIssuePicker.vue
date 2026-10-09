@@ -17,6 +17,7 @@ const {
   linkTestid = undefined,
   cachedTestid = undefined,
   unlinkedTestid = undefined,
+  linkLabel = undefined,
 } = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
@@ -25,6 +26,8 @@ const {
   linkTestid?: string;
   cachedTestid?: string;
   unlinkedTestid?: string;
+  /** Shows the unlinked trigger as a labelled button (Remote Sync) instead of an icon. */
+  linkLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -180,7 +183,7 @@ onBeforeUnmount(() => {
   <span
     ref="rootEl"
     v-bind="$attrs"
-    class="group/ri relative inline-flex h-6 min-w-6 items-center justify-center"
+    class="group/ri relative inline-flex h-6 min-w-6 items-center justify-start"
   >
     <UTooltip
       v-if="currentRef && currentRef.url"
@@ -193,7 +196,7 @@ onBeforeUnmount(() => {
         external
         variant="link"
         size="xs"
-        class="h-6 min-h-6 min-w-6 justify-center px-0 font-mono text-xs leading-none tabular-nums"
+        class="h-6 min-h-6 min-w-6 justify-start px-0 font-mono text-xs leading-none tabular-nums"
         :label="`#${currentRef.remoteIssueId}`"
         :aria-label="linkedTooltip(currentRef)"
         :data-testid="linkTestid"
@@ -202,7 +205,7 @@ onBeforeUnmount(() => {
     <UTooltip v-else-if="currentRef" :text="linkedTooltip(currentRef)" :content="{ side: 'top' }">
       <span
         tabindex="0"
-        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-center font-mono text-xs leading-none tabular-nums text-primary"
+        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-start font-mono text-xs leading-none tabular-nums text-primary"
         :data-testid="cachedTestid"
       >
         #{{ currentRef.remoteIssueId }}
@@ -233,18 +236,29 @@ onBeforeUnmount(() => {
         />
       </div>
     </div>
+    <UButton
+      v-else-if="!currentRef && linkLabel"
+      icon="i-lucide-link"
+      color="neutral"
+      variant="ghost"
+      size="xs"
+      class="-ms-2 font-normal text-muted"
+      :label="linkLabel"
+      :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
+      @click.stop="onTriggerClick"
+    />
     <UTooltip
       v-else-if="!currentRef"
       :text="t('timerView.remoteIssue.unlinked')"
       :content="{ side: 'top' }"
     >
       <UButton
-        icon="i-lucide-link-2-off"
+        icon="i-lucide-link"
         color="neutral"
         variant="ghost"
         square
         size="xs"
-        class="h-6 w-6 shrink-0 justify-center"
+        class="-ms-1 h-6 w-6 shrink-0 justify-center text-muted"
         :aria-label="t('timerView.remoteIssue.unlinked')"
         :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
         @click.stop="onTriggerClick"

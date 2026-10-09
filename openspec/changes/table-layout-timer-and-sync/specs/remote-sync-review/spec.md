@@ -138,11 +138,15 @@ Once above the list, the page SHALL show the labelled **day total**: every compl
 - **THEN** the day total SHALL include all of it
 
 ### Requirement: REQ-509 In-tracker-after-export summary
-Next to the day total the page SHALL show **in tracker after export**: the current account's same-day logs on the issues linked to the day's tasks (REQ-118), each log counted once, plus the to-send durations of the rows going into Export, with both parts labelled. It SHALL update at once when a to-send duration changes and after Export or a log refresh.
+Next to the day total the page SHALL show **in tracker after export**: the current account's same-day logs on the issues linked to the day's tasks (REQ-118), each log counted once, plus the shown to-send durations of the rows not sent yet, whether or not their activity is chosen, with both parts labelled and the to-send part set apart from the logs part. It SHALL update at once when a to-send duration changes and after Export or a log refresh.
 
 #### Scenario: Logs and to send add up
 - **WHEN** the day's linked issues hold remote logs and Ready rows have to-send durations
-- **THEN** the summary SHALL equal the logs' durations plus the to-send durations of the rows going into Export, and show both parts
+- **THEN** the summary SHALL equal the logs' durations plus the to-send durations of the rows not sent yet, and show both parts
+
+#### Scenario: A Ready row counts before its activity is chosen
+- **WHEN** a Ready row shows a to-send duration but no activity is chosen yet
+- **THEN** that duration SHALL be part of the summary's to-send part
 
 #### Scenario: Logs added outside OSI are included
 - **WHEN** a linked issue holds a same-day log of the current account that no export created

@@ -8,6 +8,8 @@ import type {
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
 import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
+import { computeInTrackerSummary } from '~~/shared/utils/compute-in-tracker-summary';
+import type { ColumnDefinition } from '~/components/ColumnList.vue';
 import type { ActivityByTask, ExportCommentsByTask, IssueRefByTask } from '~/types/sync-ui-maps';
 
 const route = useRoute();
@@ -85,11 +87,21 @@ const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const reconciling = ref(false);
 
-/** Allow multi-line explanations on dense summary chips (default tooltip is single-line). */
-const summaryTooltipUi = {
-  content: 'h-auto max-w-xs px-2.5 py-1.5',
-  text: 'whitespace-normal text-pretty',
-};
+/** Narrow layout (D5): expand, state, text, durations, actions. */
+const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.5rem';
+const columns = computed(
+  () =>
+    [
+      { key: 'expand', track: '1.5rem' },
+      { key: 'state', track: '1.5rem', header: t('remoteSync.columns.state'), headerSrOnly: true },
+      { key: 'title', track: { fr: 3, min: '8rem' }, header: t('remoteSync.columns.title') },
+      { key: 'issue', track: { fr: 1.5, min: '6rem' }, header: t('remoteSync.columns.issue') },
+      { key: 'activity', track: { fr: 1, min: '6rem' }, header: t('remoteSync.columns.activity') },
+      { key: 'tracked', track: '5rem', header: t('remoteSync.columns.tracked'), align: 'end' },
+      { key: 'toSend', track: '6rem', header: t('remoteSync.columns.toSend'), align: 'end' },
+      { key: 'actions', track: '1.5rem' },
+    ] satisfies ColumnDefinition[],
+);
 
 const {
   ensureLoaded: ensureActivitiesLoaded,
@@ -206,23 +218,17 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
   }
 }
 
-function stateBadgeColor(row: RemoteSyncDayRowDto): 'success' | 'warning' | 'error' | 'neutral' {
+/** Ready is the primary action color; every not-exportable reason shares one warning color. */
+function stateBadgeColor(row: RemoteSyncDayRowDto) {
   switch (stateFor(row)) {
     case 'manageable':
+      return 'primary';
     case 'sent':
       return 'success';
     case 'activity_loading':
       return 'neutral';
-    case 'unlinked':
-      return 'warning';
-    case 'activity_error':
-    case 'no_activity':
-    case 'no_project':
-    case 'no_tracker':
-    case 'system_not_implemented':
-      return 'error';
     default:
-      return 'neutral';
+      return 'warning';
   }
 }
 
@@ -424,13 +430,37 @@ const dayTotalsSafe = computed(() =>
   computeRemoteSyncDayTotals(
     rows.value.map((row) => ({
       totalSeconds: row.totalSeconds,
-      exportSeconds: isPushable(row) ? roundedSecondsFor(row) : 0,
-      isPushable: isPushable(row),
+      toSendSeconds: toSendSecondsFor(row),
       isSent: stateFor(row) === 'sent',
     })),
     untitledTotal.value,
   ),
 );
+
+const inTrackerSummary = computed(() =>
+  computeInTrackerSummary(
+    rows.value
+      .filter((row) => !!row.config && !!issueRefFor(row))
+      .map((row) => {
+        const state = remoteLogsFor(row);
+        return {
+          trackerId: row.config!.id,
+          name: row.trackerName ?? row.config!.baseUrl,
+          loading: state.loading,
+          loaded: state.loaded,
+          errorKey: state.errorKey,
+          logs: state.logs,
+        };
+      }),
+    dayTotalsSafe.value.toSend,
+  ),
+);
+
+function retryFailedLogs() {
+  for (const row of rows.value) {
+    if (remoteLogsFor(row).errorKey) void retryRemoteLogs(row);
+  }
+}
 
 function trackedSecondsFor(row: RemoteSyncDayRowDto): number {
   return selectedSecondsFor(row);
@@ -712,101 +742,98 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       @export="openExportDialog"
     />
 
-    <div
-      class="flex flex-wrap items-center gap-2"
-      data-testid="remote-sync-summaries"
-      aria-live="polite"
-    >
-      <UTooltip
-        :text="t('remoteSync.dayTotalTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
+    <div class="flex flex-wrap gap-3" data-testid="remote-sync-summaries" aria-live="polite">
+      <div
+        class="grid min-w-52 content-start gap-0.5 rounded-lg border border-default px-4 py-2.5"
+        data-testid="remote-sync-total-day"
       >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-day">
-            {{ t('remoteSync.dayTotalLabel') }}: {{ formatDuration(dayTotalsSafe.dayTotal) }}
-          </UBadge>
-        </span>
-      </UTooltip>
-      <UTooltip
-        :text="t('remoteSync.trackedTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
+        <p class="text-xs text-muted">{{ t('remoteSync.dayTotalLabel') }}</p>
+        <p class="font-mono text-lg/7 font-semibold tabular-nums text-highlighted">
+          {{ formatDuration(dayTotalsSafe.dayTotal) }}
+        </p>
+        <p class="text-xs text-muted">{{ t('remoteSync.dayTotalHint') }}</p>
+      </div>
+      <div
+        class="grid min-w-52 content-start gap-0.5 rounded-lg border border-default px-4 py-2.5"
+        data-testid="remote-sync-total-in-tracker"
       >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="primary" variant="subtle" data-testid="remote-sync-total-tracked">
-            {{ t('remoteSync.trackedLabel') }}: {{ formatDuration(dayTotalsSafe.tracked) }}
-          </UBadge>
-        </span>
-      </UTooltip>
-      <UTooltip
-        :text="t('remoteSync.toSendTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
-      >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="success" variant="subtle" data-testid="remote-sync-total-to-send">
-            {{ t('remoteSync.toSendLabel') }}: {{ formatDuration(dayTotalsSafe.toSend) }}
-          </UBadge>
-        </span>
-      </UTooltip>
-      <UTooltip
-        :text="t('remoteSync.deltaTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
-      >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="neutral" variant="outline" data-testid="remote-sync-total-delta">
-            {{ t('remoteSync.deltaLabel') }}: {{ formatSignedDuration(dayTotalsSafe.delta) }}
-          </UBadge>
-        </span>
-      </UTooltip>
-      <UTooltip
-        v-if="dayTotalsSafe.blocked > 0"
-        :text="t('remoteSync.blockedTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
-      >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="warning" variant="subtle" data-testid="remote-sync-total-blocked">
-            {{ t('remoteSync.blockedLabel') }}: {{ formatDuration(dayTotalsSafe.blocked) }}
-          </UBadge>
-        </span>
-      </UTooltip>
-      <UTooltip
-        v-if="dayTotalsSafe.sent > 0"
-        :text="t('remoteSync.sentTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
-      >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-sent">
-            {{ t('remoteSync.sentLabel') }}: {{ formatDuration(dayTotalsSafe.sent) }}
-          </UBadge>
-        </span>
-      </UTooltip>
-      <UTooltip
-        v-if="dayTotalsSafe.untitled > 0"
-        :text="t('remoteSync.untitledTooltip')"
-        :content="{ side: 'bottom' }"
-        :ui="summaryTooltipUi"
-      >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="neutral" variant="subtle" data-testid="remote-sync-total-untitled">
-            {{ t('remoteSync.untitledLabel') }}: {{ formatDuration(dayTotalsSafe.untitled) }}
-          </UBadge>
-        </span>
-      </UTooltip>
+        <p class="text-xs text-muted">{{ t('remoteSync.inTrackerLabel') }}</p>
+        <template v-if="inTrackerSummary.status === 'loading'">
+          <p class="flex items-center gap-2 font-mono text-lg/7 font-semibold text-highlighted">
+            {{ t('remoteSync.emptyCell') }}
+            <UIcon
+              name="i-lucide-loader-circle"
+              class="size-3.5 animate-spin text-dimmed"
+              aria-hidden="true"
+            />
+          </p>
+          <p
+            class="text-xs text-muted"
+            role="status"
+            data-testid="remote-sync-total-in-tracker-loading"
+          >
+            {{ t('remoteSync.inTrackerLoading') }}
+          </p>
+        </template>
+        <template v-else-if="inTrackerSummary.status === 'unavailable'">
+          <p class="font-mono text-lg/7 font-semibold text-highlighted">
+            {{ t('remoteSync.emptyCell') }}
+          </p>
+          <div
+            class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted"
+            role="alert"
+            data-testid="remote-sync-total-in-tracker-unavailable"
+          >
+            <p
+              v-for="tracker in inTrackerSummary.trackers"
+              :key="tracker.name"
+              class="inline-flex items-center gap-1.5"
+            >
+              <UIcon name="i-lucide-circle-alert" class="size-3.5 text-error" aria-hidden="true" />
+              {{ tracker.name }}: {{ t(tracker.messageKey) }}
+            </p>
+            <UButton
+              v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)"
+              size="xs"
+              variant="link"
+              icon="i-lucide-refresh-cw"
+              class="p-0"
+              :label="t('remoteSync.remoteLogsRetry')"
+              @click="retryFailedLogs"
+            />
+          </div>
+        </template>
+        <template v-else>
+          <p class="font-mono text-lg/7 font-semibold tabular-nums text-highlighted">
+            {{ formatDuration(inTrackerSummary.totalSeconds) }}
+          </p>
+          <p class="text-xs text-muted" data-testid="remote-sync-total-in-tracker-parts">
+            {{ t('remoteSync.inTrackerLogs') }}
+            <span class="font-mono tabular-nums">
+              {{ formatDuration(inTrackerSummary.logsSeconds) }}
+            </span>
+            {{ '+' }}
+            <!-- Primary like Ready and Export: the part that is not in the tracker yet. -->
+            <span class="text-primary">
+              {{ t('remoteSync.inTrackerToSend') }}
+              <span class="font-mono tabular-nums">
+                {{ formatDuration(inTrackerSummary.toSendSeconds) }}
+              </span>
+            </span>
+          </p>
+        </template>
+      </div>
     </div>
 
     <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">
       {{ t('remoteSync.emptyState') }}
     </p>
 
-    <div v-else class="grid" data-testid="remote-sync-list">
+    <ColumnList v-else :columns="columns" :narrow="narrowColumns" data-testid="remote-sync-list">
       <SyncDayRow
         v-for="row in rows"
         :key="row.taskId"
+        :columns="columns"
         :row="row"
         :expanded="isExpanded(row.taskId)"
         :can-edit="canEditRow(row)"
@@ -851,6 +878,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       >
         <template #detail>
           <SyncRowDetail
+            :columns="columns"
             :task-id="row.taskId"
             :entries="row.entries"
             :export-records="row.exports"
@@ -873,17 +901,27 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           />
         </template>
       </SyncDayRow>
-      <div
-        v-if="untitledTotal > 0"
-        class="flex items-center justify-between border-b border-default py-1"
-        data-testid="remote-sync-untitled-row"
-      >
-        <span class="font-semibold">{{ t('remoteSync.untitledBucketLabel') }}</span>
-        <span class="font-mono text-sm tabular-nums" data-testid="remote-sync-untitled-duration">
+      <ColumnRow v-if="untitledTotal > 0" data-testid="remote-sync-untitled-row">
+        <ColumnCell
+          :columns="columns"
+          col="title"
+          :narrow="{ col: [3, 4], row: 1 }"
+          class="text-sm font-medium text-muted"
+        >
+          {{ t('remoteSync.untitledBucketLabel') }}
+        </ColumnCell>
+        <ColumnCell
+          :columns="columns"
+          col="tracked"
+          :narrow="{ col: [4, 5], row: 1 }"
+          align="end"
+          class="font-mono text-sm font-medium tabular-nums text-muted"
+          data-testid="remote-sync-untitled-duration"
+        >
           {{ formatDuration(untitledTotal) }}
-        </span>
-      </div>
-    </div>
+        </ColumnCell>
+      </ColumnRow>
+    </ColumnList>
 
     <SyncExportDialog
       v-model:open="exportDialogOpen"

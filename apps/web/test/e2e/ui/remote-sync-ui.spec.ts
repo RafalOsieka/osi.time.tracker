@@ -10,6 +10,11 @@ import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
 import type { JsonObject } from '@osi/remote-trackers/contracts';
+import {
+  expectStartEdgesEqual,
+  expectEndEdgesEqual,
+  expectNoHorizontalOverflow,
+} from './layout-geometry';
 
 const describeRemoteSyncUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
@@ -174,6 +179,14 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.waitForSelector(rowSelector);
     const stateText = await page.textContent(`[data-testid="remote-sync-state-${entry.taskId}"]`);
     expect(stateText).toBeTruthy();
+    expect(
+      await page
+        .locator(`[data-testid="remote-sync-state-${entry.taskId}"]`)
+        .getAttribute('aria-label'),
+    ).toMatch(/^.+: .+$/);
+    expect(await page.locator('[data-testid="remote-sync-total-day"]').count()).toBe(1);
+    expect(await page.locator('[data-testid="remote-sync-total-in-tracker"]').count()).toBe(1);
+    expect(await page.locator('[data-testid="remote-sync-summaries"] > *').count()).toBe(2);
 
     await chooseDevelopment(page, entry.taskId);
 
@@ -324,6 +337,34 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     );
     expect(await page.locator(`[data-testid="remote-sync-entry-${entryA.id}"]`).count()).toBe(1);
 
+    const list = page.locator('[data-testid="remote-sync-list"]');
+    const row = page.locator(`[data-testid="remote-sync-row-${entryA.taskId}"]`);
+    for (const [header, index] of [
+      ['Title', 2],
+      ['Issue', 3],
+      ['Activity', 4],
+    ] as const) {
+      await expectStartEdgesEqual(
+        list.getByRole('columnheader', { name: header }),
+        row.getByRole('cell').nth(index),
+      );
+    }
+    await expectEndEdgesEqual(
+      row.getByRole('cell').nth(5),
+      page.locator(`[data-testid="remote-sync-entry-${entryA.id}"]`).getByRole('cell').last(),
+    );
+
+    await page.setViewportSize({ width: 375, height: 900 });
+    const titleBox = await row.getByRole('cell').nth(2).boundingBox();
+    const issueBox = await row.getByRole('cell').nth(3).boundingBox();
+    const activityBox = await row.getByRole('cell').nth(4).boundingBox();
+    expect(titleBox).not.toBeNull();
+    expect(issueBox).not.toBeNull();
+    expect(activityBox).not.toBeNull();
+    expect(titleBox!.y).toBeLessThan(issueBox!.y);
+    expect(issueBox!.y).toBeLessThan(activityBox!.y);
+    await expectNoHorizontalOverflow(page);
+
     await page.close();
   });
 
@@ -381,7 +422,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
 
     // Wait until the row is pushable so tracked includes the hour.
     await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
+      const el = document.querySelector('[data-testid="remote-sync-total-day"]');
       return !!el && el.textContent?.includes('01:00:00');
     });
 
@@ -404,7 +445,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await chooseDevelopment(page, entry.taskId);
     // Review state must not carry over from the empty day (defaults restore).
     await page.waitForFunction(() => {
-      const el = document.querySelector('[data-testid="remote-sync-total-tracked"]');
+      const el = document.querySelector('[data-testid="remote-sync-total-day"]');
       return !!el && el.textContent?.includes('01:00:00');
     });
 
@@ -475,6 +516,10 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
       });
     });
     let deleted = false;
+    let failLogs = true;
+    // Holds the first logs response so the loading state can be observed before it fails.
+    let releaseLogs!: () => void;
+    const logsGate = new Promise<void>((resolve) => (releaseLogs = resolve));
     await page.route(`${OPENPROJECT_BASE_URL}/api/v3/time_entries**`, async (route) => {
       const method = route.request().method();
       if (method === 'DELETE') {
@@ -483,6 +528,11 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
         return;
       }
       if (method === 'GET') {
+        if (failLogs) {
+          await logsGate;
+          await route.fulfill({ status: 503, body: 'Unavailable' });
+          return;
+        }
         await route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -515,8 +565,24 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     });
 
     await openSyncDay(page, dayKey, title);
+    await page.waitForSelector('[data-testid="remote-sync-total-in-tracker-loading"]');
+    expect(await page.locator('[data-testid="remote-sync-total-in-tracker-parts"]').count()).toBe(
+      0,
+    );
+    releaseLogs();
+    await page.waitForSelector('[data-testid="remote-sync-total-in-tracker-unavailable"]');
+    expect(
+      await page.locator('[data-testid="remote-sync-total-in-tracker-unavailable"]').textContent(),
+    ).toContain(tracker.name);
+    failLogs = false;
+    await page.locator('[data-testid="remote-sync-total-in-tracker-unavailable"] button').click();
+    await page.waitForSelector('[data-testid="remote-sync-total-in-tracker-parts"]');
     await page.click(`[data-testid="remote-sync-expand-${taskId}"]`);
     await page.waitForSelector('[data-testid="remote-sync-link-entry-11"]');
+    await expectEndEdgesEqual(
+      page.locator(`[data-testid="remote-sync-row-${taskId}"]`).getByRole('cell').nth(6),
+      page.locator('[data-testid="remote-sync-remote-log-11"]').getByRole('cell').nth(3),
+    );
     await page.click('[data-testid="remote-sync-link-entry-11"]');
     await page.waitForSelector('[data-testid="confirm-modal"]');
     await page.click('[data-testid="confirm-accept"]');

@@ -187,7 +187,9 @@ describe('RemoteIssuePicker', () => {
     expect(link.classes()).toContain('min-w-6');
     expect(link.classes()).toContain('h-6');
     expect(link.classes()).toContain('px-0');
+    expect(link.classes()).toContain('justify-start');
     expect(wrapper.find('.group\\/ri').classes()).toContain('h-6');
+    expect(wrapper.find('.group\\/ri').classes()).not.toContain('-ms-1');
     const menu = wrapper.find('[data-testid="remote-issue-picker-edit-menu"]');
     expect(menu.exists()).toBe(true);
     expect(menu.classes()).toContain('absolute');
@@ -205,8 +207,9 @@ describe('RemoteIssuePicker', () => {
     expect(trigger.classes()).toContain('w-6');
     expect(trigger.classes()).toContain('h-6');
     expect(wrapper.find('.group\\/ri').classes()).toContain('h-6');
+    expect(wrapper.find('.group\\/ri').classes()).toContain('justify-start');
     expect(trigger.classes()).not.toContain('absolute');
-    expect(trigger.attributes('data-icon')).toBe('i-lucide-link-2-off');
+    expect(trigger.attributes('data-icon')).toBe('i-lucide-link');
     expect(trigger.attributes('data-size')).toBe('xs');
     expect(trigger.attributes('title')).toBeUndefined();
     expect(hintFor(wrapper, 'remote-issue-picker-trigger')).toBe('timerView.remoteIssue.unlinked');

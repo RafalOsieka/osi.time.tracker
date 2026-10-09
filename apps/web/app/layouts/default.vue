@@ -64,7 +64,12 @@ onMounted(() => {
       </template>
     </UDashboardSidebar>
 
-    <UDashboardPanel data-testid="app-content">
+    <!--
+      The body is the scroll container. Its top padding moves onto the inner wrapper so
+      sticky list headers pin flush under the top bar instead of inside that padding,
+      where scrolled rows would show through above them.
+    -->
+    <UDashboardPanel data-testid="app-content" :ui="{ body: 'pt-0 sm:pt-0' }">
       <template #header>
         <!--
           Center is `hidden lg:flex` in Nuxt UI by default; override so the timer stays
@@ -75,7 +80,7 @@ onMounted(() => {
           data-testid="app-topbar"
           :toggle="sidebarToggle"
           :ui="{
-            root: 'min-h-(--ui-header-height) h-auto py-2',
+            root: 'relative z-20 min-h-(--ui-header-height) h-auto bg-default py-2',
             center: 'flex flex-1 min-w-0 px-2',
             left: 'flex items-center gap-1.5 shrink-0',
             right: 'flex items-center shrink-0 gap-1.5',
@@ -94,7 +99,7 @@ onMounted(() => {
       </template>
 
       <template #body>
-        <div class="p-4">
+        <div class="p-4 pt-8 sm:pt-10">
           <NuxtPage />
         </div>
       </template>

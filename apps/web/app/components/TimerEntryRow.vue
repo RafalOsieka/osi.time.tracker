@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import type { ZonedDateTime } from '@internationalized/date';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
+import type { ColumnDefinition } from './ColumnList.vue';
 
 const {
   entry,
   now,
   timeZone = 'UTC',
+  columns,
 } = defineProps<{
+  columns: readonly ColumnDefinition<
+    'toggle' | 'count' | 'title' | 'project' | 'issue' | 'duration' | 'action'
+  >[];
   entry: TimeEntryDto;
   now: number;
   timeZone?: string;
@@ -45,7 +50,11 @@ watch(
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(entry, now)));
 const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask'));
-const timeFieldUi = { base: 'px-2 py-1 text-sm/4 tabular-nums' };
+// Tight segments like a plain "08:00 – 08:30" label; each keeps a small hover/focus pad.
+const timeFieldUi = {
+  base: 'justify-center gap-0 px-0 py-1 text-xs text-muted tabular-nums @max-[40rem]/list:justify-start',
+  segment: 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto',
+};
 
 async function startEditTitle() {
   editingField.value = null;
@@ -143,11 +152,8 @@ async function onDelete() {
 </script>
 
 <template>
-  <div
-    class="flex items-center justify-between gap-4 text-sm text-muted"
-    :data-testid="`timer-entry-${entry.id}`"
-  >
-    <span class="min-w-0 flex-1">
+  <ColumnRow kind="sub" :data-testid="`timer-entry-${entry.id}`">
+    <ColumnCell :columns="columns" col="title" :narrow="{ col: [3, 5], row: 2 }">
       <InlineEditText
         v-model="titleValue"
         :editing="editingField === 'title'"
@@ -155,11 +161,12 @@ async function onDelete() {
         :field-label="t('timerView.entryRow.titleLabel')"
         :display-testid="`timer-entry-title-${entry.id}`"
         :input-testid="`timer-entry-title-input-${entry.id}`"
+        display-class="text-muted"
         @edit="startEditTitle"
         @commit="commitTitle"
         @cancel="cancelEdit"
       />
-    </span>
+    </ColumnCell>
 
     <!--
       One fixed-width slot for either a stopped entry's start–stop range field
@@ -167,7 +174,13 @@ async function onDelete() {
       slot (and the duration column after it) never shifts between rows
       (REQ-459, REQ-361).
     -->
-    <span class="inline-flex w-[11.5rem] shrink-0 items-center gap-1.5">
+    <ColumnCell
+      :columns="columns"
+      col="project"
+      to="issue"
+      :narrow="{ col: [3, 5], row: 1 }"
+      class="flex min-w-0 items-center justify-end gap-1.5 @max-[40rem]/list:justify-start"
+    >
       <TimeField
         v-if="entry.stoppedAt"
         v-model="timesModel"
@@ -179,7 +192,7 @@ async function onDelete() {
         :separator="t('timerView.entryRow.separator')"
         :label="t('timerView.entryRow.timesLabel')"
         :testid="`timer-entry-times-${entry.id}`"
-        class="flex-1"
+        class="w-full max-w-46"
         @commit="commitTimes"
       />
       <template v-else>
@@ -190,30 +203,40 @@ async function onDelete() {
           :ui="timeFieldUi"
           :label="t('timerView.entryRow.startLabel')"
           :testid="`timer-entry-times-${entry.id}`"
-          class="flex-1"
+          class="min-w-0 max-w-24 flex-1"
           @commit="commitTimes"
         />
         <span aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
-        <span class="flex-1 text-center">{{ t('timerView.entryRow.nowLabel') }}</span>
+        <span class="min-w-0 max-w-24 flex-1 text-center">
+          {{ t('timerView.entryRow.nowLabel') }}
+        </span>
       </template>
-    </span>
+    </ColumnCell>
 
-    <span class="min-w-[4.5rem] text-right font-mono text-sm font-medium tabular-nums text-muted">
+    <ColumnCell
+      :columns="columns"
+      col="duration"
+      align="end"
+      :narrow="{ col: [5, 6], row: 1 }"
+      class="font-mono text-sm font-medium tabular-nums"
+    >
       {{ durationLabel }}
-    </span>
+    </ColumnCell>
 
-    <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
-      <UButton
-        icon="i-lucide-trash-2"
-        variant="ghost"
-        square
-        size="xs"
-        color="error"
-        :aria-label="t('timerView.entryRow.deleteLabel')"
-        :loading="deleting"
-        :data-testid="`timer-entry-delete-${entry.id}`"
-        @click="onDelete"
-      />
-    </UTooltip>
-  </div>
+    <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
+      <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
+        <UButton
+          icon="i-lucide-trash-2"
+          variant="ghost"
+          square
+          size="xs"
+          color="error"
+          :aria-label="t('timerView.entryRow.deleteLabel')"
+          :loading="deleting"
+          :data-testid="`timer-entry-delete-${entry.id}`"
+          @click="onDelete"
+        />
+      </UTooltip>
+    </ColumnCell>
+  </ColumnRow>
 </template>

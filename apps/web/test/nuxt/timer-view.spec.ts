@@ -563,6 +563,44 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(false);
   });
 
+  it('places multiple days and their totals in one column list', async () => {
+    mockState.feed = {
+      entries: [
+        entry({
+          id: 'today',
+          taskId: 'today-task',
+          startedAt: '2024-06-15T09:00:00.000Z',
+          stoppedAt: '2024-06-15T10:00:00.000Z',
+        }),
+        entry({
+          id: 'yesterday',
+          taskId: 'yesterday-task',
+          startedAt: '2024-06-14T09:00:00.000Z',
+          stoppedAt: '2024-06-14T10:00:00.000Z',
+        }),
+      ],
+      hasMore: false,
+      nextBefore: null,
+    };
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+
+    const table = wrapper.get('[role="table"]');
+    expect(wrapper.findAll('[role="table"]')).toHaveLength(1);
+    expect(table.findAll('[role="columnheader"]')).toHaveLength(7);
+    for (const day of ['2024-06-15', '2024-06-14']) {
+      const heading = table.get(`[data-testid="timer-day-${day}"]`);
+      expect(heading.find('h2').exists()).toBe(true);
+      expect(heading.find('[role="rowheader"]').exists()).toBe(true);
+      expect(
+        heading
+          .get(`[data-testid="timer-day-total-${day}"]`)
+          .element.closest('[role="cell"]')
+          ?.getAttribute('style'),
+      ).toContain('--col: 6 / 7');
+    }
+  });
+
   it('refreshes the whole loaded window with one range request after an edit', async () => {
     mockState.feed = loadedDayFeed();
     mockState.feedResponses = [
