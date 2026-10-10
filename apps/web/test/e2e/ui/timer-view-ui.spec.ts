@@ -21,6 +21,13 @@ import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
 import type { JsonObject } from '@osi/remote-trackers/contracts';
+import {
+  columnWidths,
+  expectEndEdgesEqual,
+  expectNoHorizontalOverflow,
+  expectStartEdgesEqual,
+  expectTextStartsAtColumn,
+} from './layout-geometry';
 
 const describeTimerViewUI = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();
@@ -65,6 +72,147 @@ describeTimerViewUI('timer view UI flow', async () => {
       body: JSON.stringify({ stoppedAt: new Date().toISOString() }),
     });
   }
+
+  it('keeps timer columns aligned across days and wraps groups without overflow', async () => {
+    const email = 'timerviewgeometry@example.com';
+    await seedUsers(dbUrl, [{ email, displayName: 'timerviewgeometryuser' }]);
+    const { jar, token } = await apiLogin(email);
+    const tracker = await createTracker(jar, token, 'Geometry Tracker', {
+      baseUrl: 'https://geometry.example.com',
+      directBrowserAccess: true,
+    });
+    const { id: projectId } = await createProject(jar, token, 'Geometry Project', tracker.id);
+    await startEntry(jar, token, {
+      title: 'Geometry Task',
+      projectId,
+      startedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+      stoppedAt: new Date(Date.now() - 23 * 60 * 60 * 1000).toISOString(),
+    });
+    const { db, sql } = createDatabaseClient(dbUrl, { max: 3 });
+    try {
+      const [user] = await db.select().from(users).where(eq(users.email, email));
+      if (!user) throw new Error('seeded user not found');
+      await db.insert(timeEntries).values(
+        Array.from({ length: 12 }, (_, index) => {
+          const daysAgo = index + 2;
+          const startedAt = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
+          return {
+            userId: user.id,
+            taskId: null,
+            startedAt,
+            stoppedAt: new Date(startedAt.getTime() + 30 * 60 * 1000),
+          };
+        }),
+      );
+    } finally {
+      await sql.end({ timeout: 5 });
+    }
+
+    const page = await loginAs(email);
+    const table = page.locator('[data-testid="timer-view-page"] [role="table"]');
+    await page.waitForSelector('[data-testid="timer-view-page"] [role="table"]');
+    expect(await table.count()).toBe(1);
+    const days = page.locator('[data-testid^="timer-day-"][role="row"]');
+    await days.first().waitFor();
+    expect(await days.count()).toBeGreaterThanOrEqual(2);
+    const durationHeader = table.locator('[role="columnheader"]').nth(5);
+    const firstGroup = table.locator('[data-testid^="timer-group-"][role="row"]').first();
+    const headers = table.locator('[role="columnheader"]');
+    const widthsBefore = await columnWidths(headers);
+    const columnPositions: [number, number][] = [
+      [2, 2],
+      [3, 3],
+      [4, 4],
+    ];
+    for (const [headerIndex, cellIndex] of columnPositions) {
+      await expectStartEdgesEqual(
+        headers.nth(headerIndex),
+        firstGroup.locator('[role="cell"]').nth(cellIndex),
+      );
+    }
+    await expectTextStartsAtColumn(
+      headers.nth(2),
+      firstGroup.locator('[data-testid^="timer-group-title-"]'),
+    );
+    await expectTextStartsAtColumn(
+      headers.nth(3),
+      firstGroup.locator('[data-testid^="timer-group-project-"]'),
+    );
+    await expectStartEdgesEqual(
+      days.nth(0).locator('[role="cell"]').nth(1),
+      days.nth(1).locator('[role="cell"]').nth(1),
+    );
+    await firstGroup.locator('[data-testid^="timer-group-toggle-"]').click();
+    expect(await columnWidths(headers)).toEqual(widthsBefore);
+    await expectEndEdgesEqual(
+      durationHeader,
+      table.locator('[data-testid^="timer-entry-"][role="row"] [role="cell"]').nth(2),
+    );
+    for (const selector of [
+      '[data-testid^="timer-day-total-"]',
+      '[data-testid^="timer-group-total-"]',
+    ]) {
+      for (const cell of await table.locator(selector).all()) {
+        await expectEndEdgesEqual(durationHeader, cell.locator('xpath=ancestor::*[@role="cell"]'));
+      }
+    }
+
+    const titledGroup = firstGroup;
+    const title = titledGroup.locator('[data-testid^="timer-group-title-"]');
+    await title.click();
+    const input = titledGroup.locator('[data-testid^="timer-group-title-input-"]');
+    await input.locator('input').or(input).first().fill('Geometry Edited Task');
+    await input.locator('input').or(input).first().press('Enter');
+    await page.waitForFunction(pageIncludesText, 'Geometry Edited Task');
+    expect(await columnWidths(headers)).toEqual(widthsBefore);
+
+    await page.route('https://geometry.example.com/**', async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        // The picker opens in ID mode, so the lookup hits `/work_packages/111`.
+        body: JSON.stringify({ id: 111, subject: 'Geometry Issue' }),
+      });
+    });
+    const unlinked = table.locator('[data-testid^="timer-group-remote-issue-unlinked-"]').first();
+    await unlinked.click();
+    const query = page.locator('[data-testid="remote-issue-picker-query"]');
+    await query.locator('input').or(query).first().fill('111');
+    await page.locator('[data-testid="remote-issue-picker-submit"]').click();
+    await page.locator('[data-testid="remote-issue-picker-result-111"]').click();
+    await page.locator('[data-testid^="timer-group-remote-issue-link-"]').first().waitFor();
+    await expectTextStartsAtColumn(
+      headers.nth(4),
+      table.locator('[data-testid^="timer-group-remote-issue-link-"]').first(),
+    );
+    expect(await columnWidths(headers)).toEqual(widthsBefore);
+
+    // The sentinel is an empty span, which Playwright never treats as visible.
+    await page.evaluate(() =>
+      document.querySelector('[data-testid="timer-view-load-more-sentinel"]')?.scrollIntoView(),
+    );
+    await page.waitForFunction(
+      () => document.querySelectorAll('[data-testid^="timer-day-"][role="row"]').length > 7,
+    );
+    expect(await columnWidths(headers)).toEqual(widthsBefore);
+    // Scrolled to the end, the sticky header sits flush under the top bar, leaving no gap
+    // for scrolled rows to show through.
+    await days.last().scrollIntoViewIfNeeded();
+    const sticky = await table.locator('[role="row"]').first().boundingBox();
+    const topbar = await page.locator('[data-testid="app-topbar"]').boundingBox();
+    if (!sticky || !topbar) throw new Error('sticky header or top bar missing');
+    expect(Math.abs(sticky.y - (topbar.y + topbar.height))).toBeLessThanOrEqual(1);
+
+    await page.setViewportSize({ width: 375, height: 800 });
+    const narrowTitle = await firstGroup
+      .locator('[data-testid^="timer-group-title-"]')
+      .boundingBox();
+    const duration = await firstGroup.locator('[data-testid^="timer-group-total-"]').boundingBox();
+    if (!narrowTitle || !duration) throw new Error('narrow group cells missing');
+    expect(Math.abs(narrowTitle.y - duration.y)).toBeLessThanOrEqual(12);
+    await expectNoHorizontalOverflow(page);
+    await page.close();
+  });
 
   it('lists seeded entries grouped by day and task, and supports continue/inline-assign/merge/load-more', async () => {
     const { jar, token } = await apiLogin('timerviewui@example.com');

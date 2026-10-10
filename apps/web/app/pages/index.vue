@@ -1,7 +1,22 @@
 <script setup lang="ts">
 import type { TimerViewFeedDto, TimeEntryDto } from '~~/shared/types/time-entry';
+import type { ColumnDefinition } from '~/components/ColumnList.vue';
 
 const { t, locale } = useI18n();
+const columns = computed(
+  () =>
+    [
+      { key: 'toggle', track: '1.5rem' },
+      { key: 'count', track: '1.25rem' },
+      { key: 'title', track: { fr: 3, min: '8rem' }, header: t('timerView.columns.task') },
+      { key: 'project', track: { fr: 1.2, min: '7rem' }, header: t('timerView.columns.project') },
+      { key: 'issue', track: '4.5rem', header: t('timerView.columns.issue') },
+      { key: 'duration', track: '5rem', header: t('timerView.columns.duration'), align: 'end' },
+      { key: 'action', track: '1.5rem' },
+    ] as const satisfies readonly ColumnDefinition[],
+);
+/** Narrow layout (D5): toggle, count, text, issue, duration, action. */
+const narrowColumns = '1.5rem 1.25rem minmax(0,1fr) 4.5rem 5rem 1.5rem';
 usePageTitle(() => t('timerView.pageTitle'));
 const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useProfile();
@@ -334,55 +349,66 @@ async function onEntryDeleted() {
       @create="focusTimerWidget"
     />
 
-    <div v-else-if="hasEntries" class="grid gap-6">
-      <div
-        v-for="day in days"
-        :key="day.dayKey"
-        class="grid gap-1"
-        :data-testid="`timer-day-${day.dayKey}`"
-      >
-        <div
-          class="flex flex-wrap items-baseline justify-between gap-2 border-b-2 border-default pb-1 font-semibold"
-        >
-          <span>{{ dayHeading(day.dayKey) }}</span>
-          <span
-            class="min-w-[4.5rem] font-mono text-sm font-medium tabular-nums text-muted"
-            :data-testid="`timer-day-total-${day.dayKey}`"
+    <div v-else-if="hasEntries" class="grid min-w-0 gap-6">
+      <ColumnList :columns="columns" :narrow="narrowColumns" class="timer-list">
+        <template v-for="day in days" :key="day.dayKey">
+          <ColumnRow
+            :data-testid="`timer-day-${day.dayKey}`"
+            class="border-accented pt-6 font-semibold text-highlighted @max-[40rem]/list:pt-5"
           >
-            {{
-              t('timerView.dayTotal', {
-                duration: formatDuration(day.totalSeconds + liveSeconds(day.liveStartedAt, now)),
-              })
-            }}
-          </span>
-          <NuxtLink
-            :to="`/sync/${day.dayKey}`"
-            class="text-sm text-primary no-underline"
-            :data-testid="`timer-day-remote-sync-${day.dayKey}`"
-          >
-            {{ t('timerView.remoteSyncAction') }}
-          </NuxtLink>
-        </div>
-
-        <TimerTaskGroup
-          v-for="group in day.groups"
-          :key="group.key"
-          :editor-key="`${day.dayKey}:${group.key}`"
-          :group="group"
-          :is-live="isGroupLive(group)"
-          :now="group.liveStartedAt ? now : 0"
-          :time-zone="effective.timeZone"
-          :active-editor-key="activeEditorKey"
-          :project-options="projectOptions"
-          :tracker="trackerForGroup(group)"
-          :scope="scopeForGroup(group)"
-          @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
-          @continue="onContinue(group)"
-          @stop="onStop"
-          @entry-changed="onEntryChanged"
-          @entry-deleted="onEntryDeleted"
-        />
-      </div>
+            <ColumnCell
+              :columns="columns"
+              col="toggle"
+              to="issue"
+              role="rowheader"
+              :narrow="{ col: [1, 5], row: 1 }"
+              class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1"
+            >
+              <h2 class="min-w-0 truncate">{{ dayHeading(day.dayKey) }}</h2>
+              <NuxtLink
+                :to="`/sync/${day.dayKey}`"
+                class="shrink-0 text-sm text-primary no-underline"
+                :data-testid="`timer-day-remote-sync-${day.dayKey}`"
+              >
+                {{ t('timerView.remoteSyncAction') }}
+              </NuxtLink>
+            </ColumnCell>
+            <ColumnCell
+              :columns="columns"
+              col="duration"
+              align="end"
+              :narrow="{ col: [5, 6], row: 1 }"
+            >
+              <span
+                class="font-mono text-sm font-semibold tabular-nums text-highlighted"
+                :data-testid="`timer-day-total-${day.dayKey}`"
+              >
+                {{ formatDuration(day.totalSeconds + liveSeconds(day.liveStartedAt, now)) }}
+              </span>
+            </ColumnCell>
+            <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }" />
+          </ColumnRow>
+          <TimerTaskGroup
+            v-for="group in day.groups"
+            :key="group.key"
+            :columns="columns"
+            :editor-key="`${day.dayKey}:${group.key}`"
+            :group="group"
+            :is-live="isGroupLive(group)"
+            :now="group.liveStartedAt ? now : 0"
+            :time-zone="effective.timeZone"
+            :active-editor-key="activeEditorKey"
+            :project-options="projectOptions"
+            :tracker="trackerForGroup(group)"
+            :scope="scopeForGroup(group)"
+            @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
+            @continue="onContinue(group)"
+            @stop="onStop"
+            @entry-changed="onEntryChanged"
+            @entry-deleted="onEntryDeleted"
+          />
+        </template>
+      </ColumnList>
 
       <div v-if="hasMore" class="flex justify-center">
         <span
@@ -410,11 +436,16 @@ async function onEntryDeleted() {
       :aria-label="t('timerView.loading')"
       data-testid="timer-view-loading"
     >
-      <div v-for="day in 3" :key="day" class="grid gap-2">
-        <USkeleton class="h-6 w-64" />
-        <USkeleton class="h-8 w-full" />
-        <USkeleton class="h-8 w-full" />
-      </div>
+      <ColumnList :columns="columns" :narrow="narrowColumns">
+        <ColumnRow v-for="row in 6" :key="row">
+          <ColumnCell :columns="columns" col="title" to="project" :narrow="{ col: [3, 5], row: 1 }">
+            <USkeleton class="h-6 w-full" />
+          </ColumnCell>
+          <ColumnCell :columns="columns" col="duration" :narrow="{ col: [5, 6], row: 1 }">
+            <USkeleton class="h-6 w-full" />
+          </ColumnCell>
+        </ColumnRow>
+      </ColumnList>
     </div>
 
     <TimerAddEntryDialog
@@ -424,3 +455,11 @@ async function onEntryDeleted() {
     />
   </section>
 </template>
+
+<style scoped>
+@container list (max-width: 40rem) {
+  .timer-list :deep([role='table']) {
+    grid-template-columns: 1.5rem 1.25rem repeat(3, minmax(0, 1fr)) 5rem 1.5rem !important;
+  }
+}
+</style>

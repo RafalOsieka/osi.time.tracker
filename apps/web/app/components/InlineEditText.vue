@@ -32,8 +32,10 @@ const emit = defineEmits<{
   cancel: [];
 }>();
 
-const rootClass = 'min-w-0 w-full max-w-full';
-const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate' };
+const rootClass = '-ms-2 min-w-0 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)]';
+const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate md:text-sm/4' };
+// `displayClass` goes on the input itself: UInput sets its own text color there.
+const displayUi = computed(() => ({ ...slotInputUi, base: `${slotInputUi.base} ${displayClass}` }));
 const shownValue = computed(() => displayValue ?? modelValue);
 
 function onInput(value: string | undefined) {
@@ -70,8 +72,8 @@ function onEdit() {
         readonly
         size="xs"
         class="w-full min-w-0 max-w-full"
-        :class="[displayClass, disabled ? 'cursor-default' : 'cursor-pointer']"
-        :ui="slotInputUi"
+        :class="disabled ? 'cursor-default' : 'cursor-pointer'"
+        :ui="displayUi"
         :aria-label="fieldLabel"
         :data-testid="displayTestid"
         @focus="onEdit"

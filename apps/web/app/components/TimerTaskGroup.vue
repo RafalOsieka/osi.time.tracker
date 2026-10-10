@@ -2,6 +2,7 @@
 import type { TimerViewGroup } from '~/utils/timer-view-grouping';
 import type { RemoteIssueScope } from '@osi/remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
+import type { ColumnDefinition } from './ColumnList.vue';
 
 const {
   group,
@@ -13,7 +14,11 @@ const {
   projectOptions = [],
   tracker = null,
   scope = null,
+  columns,
 } = defineProps<{
+  columns: readonly ColumnDefinition<
+    'toggle' | 'count' | 'title' | 'project' | 'issue' | 'duration' | 'action'
+  >[];
   group: TimerViewGroup;
   isLive: boolean;
   /** Current time for the running entry's live duration; constant for groups without one. */
@@ -212,17 +217,27 @@ async function unlinkRemoteIssue() {
 </script>
 
 <template>
-  <CompactExpandableRow
-    :expanded="expanded"
-    :expand-label="t('timerView.expandLabel')"
-    :collapse-label="t('timerView.collapseLabel')"
-    :expand-testid="`timer-group-toggle-${group.key}`"
-    :details-id="entriesId"
-    header-testid="timer-group-header-controls"
-    :data-testid="`timer-group-${group.key}`"
-    @toggle="expanded = !expanded"
-  >
-    <template #title>
+  <ColumnRow :data-testid="`timer-group-${group.key}`" :joined="expanded">
+    <ColumnCell :columns="columns" col="toggle" :narrow="{ col: [1, 2], row: 1 }">
+      <UTooltip
+        :text="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
+        :content="{ side: 'top' }"
+      >
+        <UButton
+          :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
+          variant="ghost"
+          color="neutral"
+          square
+          size="xs"
+          :aria-label="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
+          :aria-expanded="expanded"
+          :aria-controls="entriesId"
+          :data-testid="`timer-group-toggle-${group.key}`"
+          @click="expanded = !expanded"
+        />
+      </UTooltip>
+    </ColumnCell>
+    <ColumnCell :columns="columns" col="count" :narrow="{ col: [2, 3], row: 1 }">
       <UBadge
         color="neutral"
         variant="subtle"
@@ -233,6 +248,8 @@ async function unlinkRemoteIssue() {
       >
         {{ countDisplay }}
       </UBadge>
+    </ColumnCell>
+    <ColumnCell :columns="columns" col="title" :narrow="{ col: [3, 5], row: 1 }">
       <InlineEditText
         v-model="titleValue"
         :editing="editingTitle"
@@ -241,15 +258,15 @@ async function unlinkRemoteIssue() {
         :display-testid="`timer-group-title-${group.key}`"
         :input-testid="`timer-group-title-input-${group.key}`"
         :placeholder="t('timerView.noTask')"
-        display-class="font-medium"
+        :display-class="group.taskName ? 'font-medium text-default' : 'text-dimmed'"
         @edit="beginTitleEdit"
         @commit="commitTitle"
         @cancel="cancelTitleEdit"
       />
-    </template>
+    </ColumnCell>
 
-    <template #secondary>
-      <div class="w-48 min-w-0 max-w-full">
+    <ColumnCell :columns="columns" col="project" :narrow="{ col: [3, 4], row: 2 }">
+      <div class="min-w-0">
         <UTooltip
           v-if="!canAssignProject"
           :text="t('timerView.projectRequiresTitle')"
@@ -261,7 +278,7 @@ async function unlinkRemoteIssue() {
               color="neutral"
               size="xs"
               disabled
-              class="w-full justify-start truncate text-muted disabled:opacity-40"
+              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-start truncate font-normal text-muted disabled:opacity-40"
               :label="projectDisplayValue"
               :aria-label="t('timerView.projectRequiresTitle')"
               :data-testid="`timer-group-project-${group.key}`"
@@ -280,7 +297,7 @@ async function unlinkRemoteIssue() {
               variant="ghost"
               color="neutral"
               size="xs"
-              class="w-full justify-start truncate text-muted"
+              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-start truncate font-normal text-muted"
               :label="projectDisplayValue"
               :aria-label="t('timerView.editor.projectLabel')"
               :data-testid="`timer-group-project-${group.key}`"
@@ -317,15 +334,15 @@ async function unlinkRemoteIssue() {
           </template>
         </UPopover>
       </div>
-    </template>
+    </ColumnCell>
 
-    <template #meta>
+    <ColumnCell :columns="columns" col="issue" :narrow="{ col: [4, 5], row: 2 }">
       <RemoteIssuePicker
         v-if="showRemoteIssueControl"
         :config="tracker!"
         :current-ref="remoteIssueRef"
         :scope="scope"
-        class="shrink-0"
+        class="min-w-0"
         :link-testid="`timer-group-remote-issue-link-${group.key}`"
         :cached-testid="`timer-group-remote-issue-cached-${group.key}`"
         :unlinked-testid="`timer-group-remote-issue-unlinked-${group.key}`"
@@ -342,24 +359,24 @@ async function unlinkRemoteIssue() {
             square
             size="xs"
             disabled
-            class="h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
+            class="-ms-1 h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
             :aria-label="remoteIssueUnavailableLabel"
             :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
           />
         </span>
       </UTooltip>
-    </template>
+    </ColumnCell>
 
-    <template #duration>
+    <ColumnCell :columns="columns" col="duration" align="end" :narrow="{ col: [5, 6], row: 1 }">
       <span
-        class="block min-w-[4.5rem] text-right font-mono text-sm font-medium tabular-nums text-muted"
+        class="block text-right font-mono text-sm font-medium tabular-nums text-muted"
         :data-testid="`timer-group-total-${group.key}`"
       >
         {{ formatDuration(group.totalSeconds + liveSeconds(group.liveStartedAt, now)) }}
       </span>
-    </template>
+    </ColumnCell>
 
-    <template #action>
+    <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
           :icon="isLive ? 'i-lucide-square' : 'i-lucide-play'"
@@ -374,20 +391,19 @@ async function unlinkRemoteIssue() {
           @click="onActionClick"
         />
       </UTooltip>
-    </template>
+    </ColumnCell>
+  </ColumnRow>
 
-    <template #detail>
-      <div class="grid gap-0.5" :data-testid="`timer-group-entries-${group.key}`">
-        <TimerEntryRow
-          v-for="entry in group.entries"
-          :key="entry.id"
-          :entry="entry"
-          :now="entry.stoppedAt ? 0 : now"
-          :time-zone="timeZone"
-          @changed="emit('entry-changed')"
-          @deleted="emit('entry-deleted')"
-        />
-      </div>
-    </template>
-  </CompactExpandableRow>
+  <ColumnDetail v-if="expanded" :id="entriesId" :data-testid="`timer-group-entries-${group.key}`">
+    <TimerEntryRow
+      v-for="entry in group.entries"
+      :key="entry.id"
+      :columns="columns"
+      :entry="entry"
+      :now="entry.stoppedAt ? 0 : now"
+      :time-zone="timeZone"
+      @changed="emit('entry-changed')"
+      @deleted="emit('entry-deleted')"
+    />
+  </ColumnDetail>
 </template>

@@ -5,6 +5,16 @@ import TimerEntryRow from '../../app/components/TimerEntryRow.vue';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
 import type { instantToZonedDateTime } from '../../app/utils/date-time';
 
+const columns = [
+  { key: 'toggle', track: '1.5rem' },
+  { key: 'count', track: '1.25rem' },
+  { key: 'title', track: '8rem' },
+  { key: 'project', track: '7rem' },
+  { key: 'issue', track: '4.5rem' },
+  { key: 'duration', track: '5rem' },
+  { key: 'action', track: '1.5rem' },
+] as const;
+
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const confirmMock = vi.hoisted(() => vi.fn(async () => true));
 const toastErrorMock = vi.hoisted(() => vi.fn());
@@ -113,7 +123,7 @@ describe('TimerEntryRow', () => {
     csrfFetchMock.mockResolvedValue(makeEntry({ taskName: 'Renamed', taskId: 'task-1' }));
 
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now() },
+      props: { columns, entry: makeEntry(), now: Date.now() },
       global: { stubs: commonStubs },
     });
 
@@ -132,7 +142,7 @@ describe('TimerEntryRow', () => {
 
   it('cancels an edit on Escape without sending a request', async () => {
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now() },
+      props: { columns, entry: makeEntry(), now: Date.now() },
       global: { stubs: commonStubs },
     });
 
@@ -151,6 +161,7 @@ describe('TimerEntryRow', () => {
     csrfFetchMock.mockResolvedValue(makeEntry());
     const wrapper = await mountSuspended(TimerEntryRow, {
       props: {
+        columns,
         entry: makeEntry({ startedAt: '2024-03-15T09:00:17.000Z' }),
         now: Date.now(),
         timeZone: 'UTC',
@@ -179,7 +190,7 @@ describe('TimerEntryRow', () => {
 
   it('sends no request when a commit leaves the value unchanged', async () => {
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
+      props: { columns, entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
       global: { stubs: commonStubs },
     });
 
@@ -198,6 +209,7 @@ describe('TimerEntryRow', () => {
     csrfFetchMock.mockResolvedValue(makeEntry());
     const wrapper = await mountSuspended(TimerEntryRow, {
       props: {
+        columns,
         entry: makeEntry({
           startedAt: '2024-03-15T10:42:50.000Z',
           stoppedAt: '2024-03-15T10:43:10.000Z',
@@ -240,7 +252,7 @@ describe('TimerEntryRow', () => {
     csrfFetchMock.mockResolvedValue({ success: true });
 
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now() },
+      props: { columns, entry: makeEntry(), now: Date.now() },
       global: { stubs: commonStubs },
     });
 
@@ -262,7 +274,12 @@ describe('TimerEntryRow', () => {
   it('exposes a long title in a tooltip and keeps editors off ch-based widths', async () => {
     const longName = 'A very long time entry title that should truncate in the row';
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry({ taskName: longName }), now: Date.now(), timeZone: 'UTC' },
+      props: {
+        columns,
+        entry: makeEntry({ taskName: longName }),
+        now: Date.now(),
+        timeZone: 'UTC',
+      },
       global: { stubs: commonStubs },
     });
 
@@ -281,6 +298,7 @@ describe('TimerEntryRow', () => {
     csrfFetchMock.mockResolvedValue(makeEntry());
     const wrapper = await mountSuspended(TimerEntryRow, {
       props: {
+        columns,
         entry: makeEntry({ startedAt: '2024-03-15T09:00:00.000Z' }),
         now: Date.now(),
         timeZone: 'UTC',
@@ -307,19 +325,20 @@ describe('TimerEntryRow', () => {
     );
   });
 
-  it('keeps the time slot a stable width for a stopped entry', async () => {
+  it('places stopped entry times across project and issue columns', async () => {
     const wrapper = await mountSuspended(TimerEntryRow, {
-      props: { entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
+      props: { columns, entry: makeEntry(), now: Date.now(), timeZone: 'UTC' },
       global: { stubs: commonStubs },
     });
 
     const field = findTimesField(wrapper);
-    expect(field.element.closest('span')?.className ?? '').toContain('w-[11.5rem]');
+    expect(field.element.closest('[role="cell"]')?.getAttribute('style')).toContain('--col: 4 / 6');
   });
 
-  it('keeps the time slot the same width for a running entry', async () => {
+  it('places running entry times across project and issue columns', async () => {
     const wrapper = await mountSuspended(TimerEntryRow, {
       props: {
+        columns,
         entry: makeEntry({ stoppedAt: null }),
         now: Date.now(),
         timeZone: 'UTC',
@@ -328,7 +347,7 @@ describe('TimerEntryRow', () => {
     });
 
     const field = findTimesField(wrapper);
-    expect(field.element.closest('span')?.className ?? '').toContain('w-[11.5rem]');
+    expect(field.element.closest('[role="cell"]')?.getAttribute('style')).toContain('--col: 4 / 6');
     expect(wrapper.text()).toContain('timerView.entryRow.nowLabel');
   });
 });

@@ -29,16 +29,24 @@ function dayKeyIn(date: Date, timeZone: string): string {
 }
 
 function dayIncludesTitleScript(): (args: { dayKey: string; title: string }) => boolean {
+  // The day heading row and its group rows are siblings in one list, so scan the rows after
+  // the heading up to the next day's heading.
   return ({ dayKey, title }) => {
     const day = document.querySelector(`[data-testid="timer-day-${dayKey}"]`);
     if (!day) return false;
-    if (day.textContent?.includes(title)) return true;
-    for (const el of day.querySelectorAll('input, textarea')) {
-      if (
-        (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
-        el.value.includes(title)
-      ) {
-        return true;
+    for (
+      let row = day.nextElementSibling;
+      row && !row.matches('[data-testid^="timer-day-"][role="row"]');
+      row = row.nextElementSibling
+    ) {
+      if (row.textContent?.includes(title)) return true;
+      for (const el of row.querySelectorAll('input, textarea')) {
+        if (
+          (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) &&
+          el.value.includes(title)
+        ) {
+          return true;
+        }
       }
     }
     return false;

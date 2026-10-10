@@ -231,6 +231,12 @@
     "toastDeletedDetail": "Projekt został usunięty."
   },
   "timerView": {
+    "columns": {
+      "task": "Zadanie",
+      "project": "Projekt",
+      "issue": "Zgłoszenie",
+      "duration": "Czas"
+    },
     "pageTitle": "Stoper",
     "neverTrackedEmptyState": "Nie śledziłeś jeszcze czasu. Uruchom stoper powyżej, aby zacząć.",
     "neverTrackedCta": "Zacznij śledzenie",
@@ -318,6 +324,11 @@
   "remoteSync": {
     "pageTitle": "Synchronizacja zdalna",
     "dayTotalLabel": "Suma dnia",
+    "inTrackerLabel": "W trackerze po eksporcie",
+    "inTrackerLoading": "Wczytywanie wpisów z trackera…",
+    "inTrackerLogs": "w trackerze",
+    "inTrackerToSend": "do wysłania",
+    "dayTotalHint": "wszystkie ukończone wpisy, jak w Stoperze",
     "dayTotalTooltip": "Cały ukończony czas tego dnia, w tym wysłany, zablokowany i bez tytułu. Zgodny z sumą dnia w widoku Timera.",
     "trackedLabel": "Śledzone",
     "trackedTooltip": "Suma ukończonego czasu w gotowych zadaniach, które wejdą w ten eksport, przed zaokrągleniem lub ręcznymi korektami.",
@@ -367,6 +378,14 @@
     "columnActivity": "Czynność",
     "columnDuration": "Śledzone → do wysłania",
     "columnState": "Stan",
+    "columns": {
+      "state": "Stan",
+      "title": "Tytuł",
+      "issue": "Zgłoszenie",
+      "activity": "Czynność",
+      "tracked": "Śledzone",
+      "toSend": "Do wysłania"
+    },
     "emptyCell": "\u2014",
     "prevDay": "Poprzedni dzień",
     "nextDay": "Następny dzień",
@@ -468,7 +487,7 @@
       "loading": "Wczytywanie",
       "blocked": "Nie wyeksportujesz"
     },
-    "linkAction": "Połącz ze zdalnym zgłoszeniem"
+    "linkAction": "Połącz"
   },
   "remoteIssuePicker": {
     "modeLabel": "Szukaj według",

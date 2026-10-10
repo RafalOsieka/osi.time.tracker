@@ -5,8 +5,19 @@ import type {
   RemoteSyncExportProvenanceDto,
 } from '~~/shared/types/remote-sync-day';
 import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { ColumnDefinition } from '../ColumnList.vue';
 
 const {
+  columns = [
+    { key: 'expand', track: '1.5rem' },
+    { key: 'state', track: '1.5rem' },
+    { key: 'title', track: '8rem' },
+    { key: 'issue', track: '6rem' },
+    { key: 'activity', track: '6rem' },
+    { key: 'tracked', track: '5rem' },
+    { key: 'toSend', track: '6rem' },
+    { key: 'actions', track: '1.5rem' },
+  ],
   taskId,
   entries,
   exportRecords,
@@ -22,6 +33,7 @@ const {
   formatEntryStart,
   formatEntryStop,
 } = defineProps<{
+  columns?: readonly ColumnDefinition[];
   taskId: string;
   entries: RemoteSyncDayEntryDto[];
   exportRecords: RemoteSyncExportProvenanceDto[];
@@ -109,56 +121,93 @@ const displayedRemoteLogs = computed(() => {
 </script>
 
 <template>
-  <div class="grid gap-4 py-2" :data-testid="`remote-sync-detail-${taskId}`">
-    <div class="grid gap-4 lg:grid-cols-2" :class="{ 'lg:grid-cols-1': !showRemoteLogs }">
-      <div
-        v-if="entries.length > 0"
-        class="grid gap-1"
+  <ColumnDetail :id="`remote-sync-detail-${taskId}`" :data-testid="`remote-sync-detail-${taskId}`">
+    <ColumnRow kind="label">
+      <ColumnCell
+        :columns="columns"
+        col="title"
+        to="actions"
+        :narrow="{ col: [3, 6], row: 1 }"
         :data-testid="`remote-sync-entries-${taskId}`"
       >
-        <p class="m-0 text-sm font-semibold">{{ t('remoteSync.entriesHeading') }}</p>
-        <div
-          v-for="entry in entries"
-          :key="entry.id"
-          class="flex items-center justify-between gap-3 text-sm text-muted"
-          :data-testid="`remote-sync-entry-${entry.id}`"
-        >
-          <span>
-            {{
-              t('remoteSync.entrySummary', {
-                start: formatEntryStart(entry.startedAt),
-                stop: formatEntryStop(entry.stoppedAt),
-                duration: formatDuration(entry.durationSeconds),
-              })
-            }}
-          </span>
-        </div>
-      </div>
-
-      <div
-        v-if="showRemoteLogs"
-        class="grid gap-1"
-        :data-testid="`remote-sync-remote-logs-${taskId}`"
+        {{ t('remoteSync.entriesHeading') }}
+      </ColumnCell>
+    </ColumnRow>
+    <ColumnRow
+      v-for="entry in entries"
+      :key="entry.id"
+      kind="sub"
+      :data-testid="`remote-sync-entry-${entry.id}`"
+    >
+      <ColumnCell
+        :columns="columns"
+        col="title"
+        to="activity"
+        :narrow="{ col: [3, 4], row: 1 }"
+        class="text-xs tabular-nums"
       >
-        <p class="m-0 text-sm font-semibold">{{ t('remoteSync.remoteLogsHeading') }}</p>
-        <span
-          v-if="remoteLogsLoading"
+        {{ [formatEntryStart(entry.startedAt), formatEntryStop(entry.stoppedAt)].join('–') }}
+      </ColumnCell>
+      <ColumnCell
+        :columns="columns"
+        col="tracked"
+        :narrow="{ col: [4, 5], row: 1 }"
+        align="end"
+        class="font-mono font-medium tabular-nums"
+      >
+        {{ formatDuration(entry.durationSeconds) }}
+      </ColumnCell>
+    </ColumnRow>
+    <template v-if="showRemoteLogs">
+      <ColumnRow kind="label" :data-testid="`remote-sync-remote-logs-${taskId}`">
+        <ColumnCell :columns="columns" col="title" to="actions" :narrow="{ col: [3, 6], row: 1 }">
+          {{ t('remoteSync.remoteLogsHeading') }}
+        </ColumnCell>
+      </ColumnRow>
+      <ColumnRow v-if="remoteLogsLoading" kind="sub">
+        <ColumnCell
+          :columns="columns"
+          col="title"
+          to="actions"
+          :narrow="{ col: [3, 6], row: 1 }"
+          class="flex items-center gap-1.5 text-xs"
           role="status"
           aria-live="polite"
           :data-testid="`remote-sync-remote-logs-loading-${taskId}`"
         >
+          <UIcon
+            name="i-lucide-loader-circle"
+            class="size-3.5 shrink-0 animate-spin text-dimmed"
+            aria-hidden="true"
+          />
           {{ t('remoteSync.remoteLogsLoading') }}
-        </span>
-        <template v-else-if="remoteLogsErrorKey">
-          <span role="alert" :data-testid="`remote-sync-remote-logs-error-${taskId}`">
+        </ColumnCell>
+      </ColumnRow>
+      <ColumnRow v-else-if="remoteLogsErrorKey" kind="sub">
+        <ColumnCell
+          :columns="columns"
+          col="title"
+          to="actions"
+          :narrow="{ col: [3, 6], row: 1 }"
+          class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs"
+        >
+          <span
+            class="inline-flex items-center gap-1.5"
+            role="alert"
+            :data-testid="`remote-sync-remote-logs-error-${taskId}`"
+          >
+            <UIcon
+              name="i-lucide-circle-alert"
+              class="size-3.5 shrink-0 text-error"
+              aria-hidden="true"
+            />
             {{ t(extensionLogsErrorKey ?? 'remoteSync.remoteLogsError') }}
           </span>
-          <p v-if="extensionLogsErrorKey" class="text-sm text-muted">
-            {{ t('trackers.extensionSetupGuidance') }}
-          </p>
+          <span v-if="extensionLogsErrorKey">{{ t('trackers.extensionSetupGuidance') }}</span>
           <UButton
-            variant="ghost"
+            variant="link"
             size="xs"
+            class="p-0"
             :label="
               t(
                 extensionLogsErrorKey
@@ -175,74 +224,119 @@ const displayedRemoteLogs = computed(() => {
             :test-id="`remote-sync-remote-logs-request-${taskId}`"
             @request="suggestion.request(unapprovedDestination)"
           />
-        </template>
-        <p
-          v-else-if="remoteLogsLoaded && displayedRemoteLogs.length === 0"
-          class="m-0 text-sm text-muted"
+        </ColumnCell>
+      </ColumnRow>
+      <ColumnRow v-else-if="remoteLogsLoaded && displayedRemoteLogs.length === 0" kind="sub">
+        <ColumnCell
+          :columns="columns"
+          col="title"
+          to="actions"
+          :narrow="{ col: [3, 6], row: 1 }"
+          class="text-xs"
           :data-testid="`remote-sync-remote-logs-empty-${taskId}`"
         >
           {{ t('remoteSync.remoteLogsEmpty') }}
-        </p>
-        <ul v-else-if="displayedRemoteLogs.length > 0" class="m-0 grid gap-2 pl-0">
-          <li
-            v-for="log in displayedRemoteLogs"
-            :key="log.remoteLogId"
-            class="grid list-none gap-1"
-            :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
+        </ColumnCell>
+      </ColumnRow>
+      <ColumnRow
+        v-for="log in !remoteLogsLoading && !remoteLogsErrorKey ? displayedRemoteLogs : []"
+        :key="log.remoteLogId"
+        kind="sub"
+        :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
+      >
+        <ColumnCell :columns="columns" col="state" :narrow="{ col: [2, 3], row: 1 }">
+          <UTooltip
+            :text="
+              isLinked(log) ? t('remoteSync.remoteLogLinked') : t('remoteSync.remoteLogUnlinked')
+            "
+            :content="{ side: 'top' }"
           >
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="text-sm">
+            <span
+              tabindex="0"
+              class="inline-flex size-6 items-center justify-center"
+              :data-testid="`remote-sync-remote-log-state-${log.remoteLogId}`"
+            >
+              <UIcon
+                :name="isLinked(log) ? 'i-lucide-link' : 'i-lucide-link-2-off'"
+                class="size-4"
+                :class="isLinked(log) ? 'text-success' : 'text-muted'"
+                aria-hidden="true"
+              />
+              <span class="sr-only">
                 {{
-                  t('remoteSync.remoteLogItem', {
-                    duration: formatDuration(log.durationSeconds),
-                    activity: log.activityName ?? t('remoteSync.emptyCell'),
-                    id: log.remoteLogId,
-                  })
-                }}
-              </span>
-              <UBadge
-                :color="isLinked(log) ? 'success' : 'neutral'"
-                variant="subtle"
-                size="sm"
-                :label="
                   isLinked(log)
                     ? t('remoteSync.remoteLogLinked')
                     : t('remoteSync.remoteLogUnlinked')
-                "
-                :data-testid="`remote-sync-remote-log-state-${log.remoteLogId}`"
-              />
-              <UButton
-                v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"
-                variant="ghost"
-                size="xs"
-                :disabled="busy"
-                :label="t('remoteSync.linkRemoteEntry')"
-                :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
-                @click="emit('link', log)"
-              />
-              <UButton
-                v-if="canReconcile && isLinked(log) && linkedExport(log)"
-                color="error"
-                variant="ghost"
-                size="xs"
-                :disabled="busy"
-                :label="t('remoteSync.deleteRemoteEntry')"
-                :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"
-                @click="emitDelete(log)"
-              />
-            </div>
-            <OverflowTooltip :text="commentText(log)">
-              <span
-                class="block max-w-prose truncate text-sm text-muted"
-                :aria-label="commentText(log)"
-                :data-testid="`remote-sync-remote-log-comment-${log.remoteLogId}`"
-              >
-                {{ commentText(log) }}
+                }}
               </span>
-            </OverflowTooltip>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </div>
+            </span>
+          </UTooltip>
+        </ColumnCell>
+        <ColumnCell
+          :columns="columns"
+          col="title"
+          to="issue"
+          :narrow="{ col: [3, 4], row: 1 }"
+          class="flex min-w-0 items-center gap-1"
+        >
+          <span
+            class="shrink-0 font-mono font-medium tabular-nums after:ms-1 after:font-sans after:font-normal after:content-['·']"
+          >
+            {{ `#${log.remoteLogId}` }}
+          </span>
+          <OverflowTooltip :text="commentText(log)">
+            <span
+              class="block min-w-0 truncate"
+              :aria-label="commentText(log)"
+              :data-testid="`remote-sync-remote-log-comment-${log.remoteLogId}`"
+            >
+              {{ commentText(log) }}
+            </span>
+          </OverflowTooltip>
+        </ColumnCell>
+        <ColumnCell
+          :columns="columns"
+          col="activity"
+          :narrow="{ col: [3, 4], row: 2 }"
+          class="truncate text-xs"
+        >
+          {{ log.activityName ?? t('remoteSync.emptyCell') }}
+        </ColumnCell>
+        <ColumnCell
+          :columns="columns"
+          col="toSend"
+          :narrow="{ col: [4, 5], row: 1 }"
+          align="end"
+          class="font-mono font-medium tabular-nums"
+        >
+          {{ formatDuration(log.durationSeconds) }}
+        </ColumnCell>
+        <ColumnCell :columns="columns" col="actions" :narrow="{ col: [5, 6], row: 1 }">
+          <UButton
+            v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"
+            icon="i-lucide-link"
+            variant="ghost"
+            square
+            size="xs"
+            :disabled="busy"
+            :aria-label="t('remoteSync.linkRemoteEntry')"
+            :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
+            @click="emit('link', log)"
+          />
+          <UButton
+            v-if="canReconcile && isLinked(log) && linkedExport(log)"
+            icon="i-lucide-trash-2"
+            color="error"
+            variant="ghost"
+            square
+            size="xs"
+            :disabled="busy"
+            :aria-label="t('remoteSync.deleteRemoteEntry')"
+            :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"
+            @click="emitDelete(log)"
+          />
+        </ColumnCell>
+      </ColumnRow>
+    </template>
+  </ColumnDetail>
 </template>
