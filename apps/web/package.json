@@ -28,7 +28,7 @@
     "@osi/remote-trackers": "workspace:*",
     "consola": "3.4.2",
     "drizzle-orm": "^0.45.3",
-    "nuxt": "^4.5.2",
+    "nuxt": "^4.6.1",
     "nuxt-auth-utils": "^0.5.30",
     "nuxt-security": "^2.6.0",
     "pdfmake": "^0.3.11",
@@ -42,7 +42,7 @@
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.140",
     "@nuxt/eslint": "^1.17.0",
-    "@nuxt/schema": "^4.5.2",
+    "@nuxt/schema": "^4.6.1",
     "@nuxt/test-utils": "^4.3.3",
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/migrator": "workspace:*",
