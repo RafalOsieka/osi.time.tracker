@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ZodSafeParseResult } from 'zod';
 import {
   REPORT_PRESET_CLIENT_NAME_MAX_LENGTH,
+  REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH,
   REPORT_PRESET_MAX_TRACKERS,
   reportPresetInputSchema,
   type ReportPresetInput,
@@ -31,9 +32,49 @@ function trackerIds(count: number): string[] {
 
 describe('reportPresetInputSchema', () => {
   it('accepts a valid preset and trims the client name', () => {
-    expect(reportPresetInputSchema.parse({ ...valid, clientName: '  Helios Energy  ' })).toEqual(
-      valid,
-    );
+    expect(reportPresetInputSchema.parse({ ...valid, clientName: '  Helios Energy  ' })).toEqual({
+      ...valid,
+      contractorDetails: null,
+    });
+  });
+
+  it('trims contractor details and keeps their inner lines', () => {
+    expect(
+      reportPresetInputSchema.parse({
+        ...valid,
+        contractorDetails: '  NIP: 123-456-78-90\n  ul. Długa 1\n\n ',
+      }).contractorDetails,
+    ).toBe('NIP: 123-456-78-90\n  ul. Długa 1');
+  });
+
+  it('reads blank, null and omitted contractor details as none', () => {
+    for (const contractorDetails of [' \n \n', '', null, undefined]) {
+      expect(
+        reportPresetInputSchema.parse({ ...valid, contractorDetails }).contractorDetails,
+      ).toBeNull();
+    }
+  });
+
+  it('limits contractor details to the maximum length', () => {
+    const max = REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH;
+    expect(
+      messageKeyOf(
+        reportPresetInputSchema.safeParse({ ...valid, contractorDetails: 'a'.repeat(max) }),
+      ),
+    ).toBeUndefined();
+    expect(
+      messageKeyOf(
+        reportPresetInputSchema.safeParse({
+          ...valid,
+          contractorDetails: ` ${'a'.repeat(max)}\n`,
+        }),
+      ),
+    ).toBeUndefined();
+    expect(
+      messageKeyOf(
+        reportPresetInputSchema.safeParse({ ...valid, contractorDetails: 'a'.repeat(max + 1) }),
+      ),
+    ).toBe('error.reportPresetContractorDetailsTooLong');
   });
 
   it('rejects a blank or oversized client name', () => {

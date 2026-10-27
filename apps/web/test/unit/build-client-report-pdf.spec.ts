@@ -75,7 +75,7 @@ function pdf(
   locale: ReportLocale = 'pl',
 ): TDocumentDefinitions {
   const report = buildClientReport({
-    preset: { clientName: 'Helios Energy', hoursFormat: 'decimal' },
+    preset: { clientName: 'Helios Energy', hoursFormat: 'decimal', contractorDetails: null },
     trackers: [openProject, redmine],
     logsByTracker,
     month: '2026-09',
@@ -113,6 +113,19 @@ function timesheetRows(doc: TDocumentDefinitions) {
   if (!timesheet) throw new Error('timesheet table not found');
   expect(timesheet.table.dontBreakRows).toBe(true);
   return timesheet.table.body.slice(1);
+}
+
+/** The title page's contractor column: label, name, email, then the optional details. */
+function contractorStack(doc: TDocumentDefinitions): Content[] {
+  const contents: Content[] = Array.isArray(doc.content) ? doc.content : [doc.content];
+  for (const node of contents) {
+    if (!(node instanceof Object) || !('columns' in node)) continue;
+    const column = node.columns?.[0];
+    const stack = column instanceof Object && 'stack' in column ? column.stack : undefined;
+    const label = JSON.stringify(stack?.[0] ?? null);
+    if (stack && (label.includes('WYKONAWCA') || label.includes('CONTRACTOR'))) return stack;
+  }
+  throw new Error('contractor column not found');
 }
 
 function headerOrFooter(
@@ -170,6 +183,33 @@ describe('buildClientReportPdf title page', () => {
     expect(contentText(doc)).not.toContain('John Doe');
     expect(doc.info?.author).toBe('john.doe@example.com');
     expect(headerOrFooter(doc.footer, 2, 3)).toContain('john.doe@example.com · wygenerowano');
+  });
+
+  it('prints contractor details below the email on the title page only', () => {
+    const details = 'NIP: 123-456-78-90\nul. Długa 1, 00-001 Warszawa';
+    const doc = pdf(
+      { op: [log()] },
+      {
+        preset: { clientName: 'Helios Energy', hoursFormat: 'decimal', contractorDetails: details },
+      },
+    );
+    const block = contractorStack(doc);
+
+    // One left-aligned text node keeps the line break and follows the email.
+    expect(block.at(-2)).toMatchObject({ text: 'john.doe@example.com' });
+    expect(block.at(-1)).toMatchObject({ text: details });
+    expect(block.at(-1)).not.toHaveProperty('alignment');
+    expect(contentText(doc).split(JSON.stringify(details))).toHaveLength(2);
+    for (const page of [1, 2, 3]) {
+      expect(headerOrFooter(doc.header, page, 3)).not.toContain('NIP');
+      expect(headerOrFooter(doc.footer, page, 3)).not.toContain('NIP');
+    }
+  });
+
+  it('adds nothing below the email without contractor details', () => {
+    expect(contractorStack(pdf({ op: [log()] })).at(-1)).toMatchObject({
+      text: 'john.doe@example.com',
+    });
   });
 
   it('prints the generation time with the time zone in the first-page footer only', () => {

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 export const REPORT_PRESET_CLIENT_NAME_MAX_LENGTH = 120;
 export const REPORT_PRESET_MAX_TRACKERS = 20;
+export const REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH = 500;
 
 /** `hm` prints unpadded `H:MM`; `decimal` prints hours with two decimals (REQ-387). */
 export const reportHoursFormatSchema = z.enum(['hm', 'decimal'], {
@@ -35,6 +36,16 @@ export const reportPresetInputSchema = z.object({
     }),
   hoursFormat: reportHoursFormatSchema,
   locale: reportLocaleSchema,
+  /** Free text printed below the contractor's email on the PDF title page (REQ-511, REQ-513). */
+  contractorDetails: z
+    .string()
+    .trim()
+    .max(REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH, {
+      error: 'error.reportPresetContractorDetailsTooLong',
+    })
+    .nullish()
+    // Blank and omitted details both mean "none", stored as `null`.
+    .transform((details) => details || null),
 });
 
 export type ReportPresetInput = z.infer<typeof reportPresetInputSchema>;
@@ -49,6 +60,7 @@ export interface ReportPresetDto {
   inactiveTrackerCount: number;
   hoursFormat: ReportHoursFormat;
   locale: ReportLocale;
+  contractorDetails: string | null;
   lastUsedAt: string | null;
   createdAt: string;
   updatedAt: string;
