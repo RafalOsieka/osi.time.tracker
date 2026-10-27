@@ -43,7 +43,7 @@ function build(
   overrides: Partial<BuildClientReportInput> = {},
 ) {
   return buildClientReport({
-    preset: { clientName: 'Helios Energy', hoursFormat: 'decimal' },
+    preset: { clientName: 'Helios Energy', hoursFormat: 'decimal', contractorDetails: null },
     trackers: [openProject, redmine],
     logsByTracker,
     month: '2026-09',
@@ -108,10 +108,31 @@ describe('buildClientReport', () => {
   it('floors seconds in hm format (7:50:59 → 7:50)', () => {
     const report = build(
       { op: [log({ durationSeconds: 7 * 3600 + 50 * 60 + 59 })] },
-      { preset: { clientName: 'Helios Energy', hoursFormat: 'hm' } },
+      { preset: { clientName: 'Helios Energy', hoursFormat: 'hm', contractorDetails: null } },
     );
 
     expect(formatReportHours(report.days[0]!.rows[0]!.units, 'hm', 'pl')).toBe('7:50');
+  });
+
+  it('carries the preset contractor details next to the user, keeping none as null', () => {
+    expect(build({}).contractor).toEqual({
+      displayName: 'John Doe',
+      email: 'john@example.com',
+      details: null,
+    });
+    const details = 'NIP: 123-456-78-90\nul. Długa 1';
+    expect(
+      build(
+        {},
+        {
+          preset: {
+            clientName: 'Helios Energy',
+            hoursFormat: 'decimal',
+            contractorDetails: details,
+          },
+        },
+      ).contractor.details,
+    ).toBe(details);
   });
 
   it('rounds decimal hundredths half-up', () => {

@@ -96,6 +96,10 @@ describeClientReportUi('client report UI', async () => {
     await page.goto(url('/reports/client?month=2026-09'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="client-report-form"]');
     await page.fill('input[data-testid="client-report-client-name"]', 'Helios Energy');
+    await page.fill(
+      'textarea[data-testid="client-report-contractor-details"]',
+      'NIP: 123-456-78-90\nul. Długa 1',
+    );
     await page.getByRole('checkbox', { name: 'Helios OpenProject' }).click();
     await page.getByRole('checkbox', { name: 'Helios Redmine' }).click();
 
@@ -122,8 +126,19 @@ describeClientReportUi('client report UI', async () => {
     expect(
       await page.getByRole('checkbox', { name: 'Helios Redmine' }).getAttribute('aria-checked'),
     ).toBe('true');
+    expect(await page.inputValue('textarea[data-testid="client-report-contractor-details"]')).toBe(
+      'NIP: 123-456-78-90\nul. Długa 1',
+    );
     expect((await page.textContent('[data-testid="client-report-export"]'))?.trim()).toBe(
       'Export PDF',
     );
+
+    // Pasting past the limit keeps only the first 500 characters (REQ-512).
+    await page.focus('textarea[data-testid="client-report-contractor-details"]');
+    await page.keyboard.press('ControlOrMeta+A');
+    await page.keyboard.insertText('x'.repeat(600));
+    expect(
+      await page.inputValue('textarea[data-testid="client-report-contractor-details"]'),
+    ).toHaveLength(500);
   });
 });

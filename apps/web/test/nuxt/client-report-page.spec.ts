@@ -133,6 +133,7 @@ function preset(overrides: Partial<ReportPresetDto> = {}): ReportPresetDto {
     inactiveTrackerCount: 0,
     hoursFormat: 'decimal',
     locale: 'pl',
+    contractorDetails: null,
     lastUsedAt: '2026-09-01T10:00:00.000Z',
     createdAt: '2026-09-01T10:00:00.000Z',
     updatedAt: '2026-09-01T10:00:00.000Z',
@@ -166,8 +167,15 @@ function adapterReturning(byTracker: Record<string, RemoteTimeLogDto[] | Error>)
   }));
 }
 
+/** The tooltip needs the `UApp` provider; the stub keeps its text for assertions. */
+const globalOptions = {
+  stubs: {
+    UTooltip: { props: ['text'], template: '<span :data-tooltip-text="text"><slot /></span>' },
+  },
+};
+
 async function mountPage() {
-  const wrapper = await mountSuspended(ClientReportPage);
+  const wrapper = await mountSuspended(ClientReportPage, { global: globalOptions });
   await flushPromises();
   return wrapper;
 }
@@ -303,6 +311,43 @@ describe('client report page — presets (REQ-385)', () => {
     expect(exportLabel(wrapper)).toBe('clientReport.saveAndExportButton');
   });
 
+  it('fills contractor details from the preset and empties them for a new preset', async () => {
+    harness.presets = [preset({ contractorDetails: 'NIP: 123-456-78-90' })];
+    const wrapper = await mountPage();
+    const details = () =>
+      wrapper.get<HTMLTextAreaElement>('textarea[data-testid="client-report-contractor-details"]');
+
+    expect(details().element.value).toBe('NIP: 123-456-78-90');
+    expect(details().attributes('maxlength')).toBe('500');
+
+    wrapper.findComponent({ name: 'USelect' }).vm.$emit('update:modelValue', 'new');
+    await flushPromises();
+    expect(details().element.value).toBe('');
+  });
+
+  it('labels export "save and export" once contractor details are edited', async () => {
+    const wrapper = await mountPage();
+    expect(exportLabel(wrapper)).toBe('clientReport.exportButton');
+
+    await wrapper
+      .get('textarea[data-testid="client-report-contractor-details"]')
+      .setValue('NIP: 123-456-78-90');
+
+    expect(exportLabel(wrapper)).toBe('clientReport.saveAndExportButton');
+  });
+
+  it('names the contractor details help button for assistive technology', async () => {
+    const wrapper = await mountPage();
+
+    const help = wrapper.get('[data-testid="client-report-contractor-details-help"]');
+    expect(help.element.tagName).toBe('BUTTON');
+    expect(help.attributes('aria-label')).toBe('clientReport.contractorDetailsHelpAria');
+    expect(help.element.closest('label')).toBeNull();
+    expect(help.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+      'clientReport.contractorDetailsHelp',
+    );
+  });
+
   it('warns when trackers of the preset were deleted', async () => {
     harness.presets = [
       preset({
@@ -362,12 +407,31 @@ describe('client report page — export (REQ-386)', () => {
 
     expect(harness.csrfFetch).toHaveBeenCalledWith(
       `/api/report-presets/${preset().id}`,
-      expect.objectContaining({ method: 'PATCH' }),
+      expect.objectContaining({
+        method: 'PATCH',
+        body: expect.objectContaining({ contractorDetails: null }),
+      }),
     );
     expect(harness.createAdapter).toHaveBeenCalledTimes(2);
     // Loading the preset locale's messages and the PDF library settles after several ticks.
     await vi.waitFor(() =>
       expect(harness.download).toHaveBeenCalledWith('zestawienie-godzin-helios-energy-2026-09.pdf'),
+    );
+  });
+
+  it('saves trimmed contractor details with their line breaks', async () => {
+    const wrapper = await mountPage();
+    await wrapper
+      .get('textarea[data-testid="client-report-contractor-details"]')
+      .setValue('  NIP: 123-456-78-90\nul. Długa 1\n\n');
+
+    await submitExport(wrapper);
+
+    expect(harness.csrfFetch).toHaveBeenCalledWith(
+      `/api/report-presets/${preset().id}`,
+      expect.objectContaining({
+        body: expect.objectContaining({ contractorDetails: 'NIP: 123-456-78-90\nul. Długa 1' }),
+      }),
     );
   });
 
@@ -433,7 +497,7 @@ describe('client report page — export (REQ-386)', () => {
 describe('client report page — loading (REQ-391)', () => {
   it('shows the skeleton instead of the form while presets load', async () => {
     harness.presetsGate = new Promise(() => {});
-    const wrapper = await mountSuspended(ClientReportPage);
+    const wrapper = await mountSuspended(ClientReportPage, { global: globalOptions });
     await nextTick();
 
     expect(wrapper.find('[data-testid="client-report-loading"]').exists()).toBe(true);

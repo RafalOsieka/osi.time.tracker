@@ -30,7 +30,8 @@ export interface ClientReport {
   /** `YYYY-MM` */
   month: string;
   range: MonthBounds;
-  contractor: { displayName: string | null; email: string };
+  /** `details` is the preset's contractor details, printed below the email (REQ-513). */
+  contractor: { displayName: string | null; email: string; details: string | null };
   /** Preset trackers in preset order with their month totals. */
   trackers: { tracker: ClientReportTracker; totalUnits: number }[];
   days: ClientReportDay[];
@@ -41,7 +42,7 @@ export interface ClientReport {
 }
 
 export interface BuildClientReportInput {
-  preset: Pick<ReportPresetInput, 'clientName' | 'hoursFormat'>;
+  preset: Pick<ReportPresetInput, 'clientName' | 'hoursFormat' | 'contractorDetails'>;
   /** Preset trackers in preset order. */
   trackers: ClientReportTracker[];
   logsByTracker: Record<string, RemoteTimeLogDto[]>;
@@ -126,7 +127,7 @@ export function buildClientReport(input: BuildClientReportInput): ClientReport {
     hoursFormat,
     month: input.month,
     range: monthDateRange(input.month),
-    contractor: input.user,
+    contractor: { ...input.user, details: input.preset.contractorDetails },
     trackers: input.trackers.map((tracker) => ({
       tracker,
       totalUnits: sumUnits(allRows.filter((row) => row.tracker.id === tracker.id)),

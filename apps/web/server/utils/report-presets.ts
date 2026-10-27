@@ -57,6 +57,7 @@ export async function listReportPresets(
       inactiveTrackerCount: rows.filter((row) => row.deletedAt !== null).length,
       hoursFormat: preset.hoursFormat,
       locale: preset.locale,
+      contractorDetails: preset.contractorDetails,
       lastUsedAt: preset.lastUsedAt?.toISOString() ?? null,
       createdAt: preset.createdAt.toISOString(),
       updatedAt: preset.updatedAt.toISOString(),
@@ -112,6 +113,7 @@ export async function saveReportPreset(
     clientName: input.clientName,
     hoursFormat: input.hoursFormat,
     locale: input.locale,
+    contractorDetails: input.contractorDetails,
     lastUsedAt: now,
     updatedAt: now,
   };

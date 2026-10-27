@@ -4,6 +4,7 @@ import type { FormError } from '@nuxt/ui';
 import type { MessageParams } from '~~/shared/types/message-params';
 import {
   REPORT_PRESET_CLIENT_NAME_MAX_LENGTH,
+  REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH,
   reportPresetInputSchema,
   type ReportHoursFormat,
   type ReportLocale,
@@ -100,9 +101,18 @@ function isSettled(status: AsyncDataRequestStatus): boolean {
  */
 const formReady = ref(false);
 
+/**
+ * The form edits contractor details as a string (empty for none) for `UTextarea`;
+ * parsing with the shared schema on export turns blank back into `null` (design D4).
+ */
+type PresetFormState = Omit<ReportPresetInput, 'contractorDetails'> & {
+  contractorDetails: string;
+};
+
 const uiLocale = computed((): ReportLocale => (locale.value === 'pl' ? 'pl' : 'en'));
-const state = reactive<ReportPresetInput>({
+const state = reactive<PresetFormState>({
   clientName: '',
+  contractorDetails: '',
   trackerIds: [],
   hoursFormat: 'decimal',
   locale: uiLocale.value,
@@ -119,6 +129,7 @@ const exportMessage = ref<{ key: string; params?: MessageParams; tone: 'error' |
 function applyPreset(preset: ReportPresetDto) {
   selectedPresetId.value = preset.id;
   state.clientName = preset.clientName;
+  state.contractorDetails = preset.contractorDetails ?? '';
   state.trackerIds = preset.trackers.map((tracker) => tracker.id);
   state.hoursFormat = preset.hoursFormat;
   state.locale = preset.locale;
@@ -127,6 +138,7 @@ function applyPreset(preset: ReportPresetDto) {
 function startNewPreset() {
   selectedPresetId.value = null;
   state.clientName = '';
+  state.contractorDetails = '';
   state.trackerIds = [];
   state.hoursFormat = 'decimal';
   state.locale = uiLocale.value;
@@ -180,6 +192,7 @@ const hasUnsavedChanges = computed(() => {
   const trackerIds = preset.trackers.map((tracker) => tracker.id);
   return (
     state.clientName.trim() !== preset.clientName ||
+    state.contractorDetails.trim() !== (preset.contractorDetails ?? '') ||
     state.trackerIds.length !== trackerIds.length ||
     state.trackerIds.some((id, index) => id !== trackerIds[index]) ||
     state.hoursFormat !== preset.hoursFormat ||
@@ -205,7 +218,7 @@ const localeItems = computed(
     ] satisfies { label: string; value: ReportLocale }[],
 );
 
-function validate(formState: ReportPresetInput): Promise<FormError[]> {
+function validate(formState: PresetFormState): Promise<FormError[]> {
   return validateSchemaWithI18n(formState, reportPresetInputSchema, t);
 }
 
@@ -377,6 +390,46 @@ async function onExport() {
             :maxlength="REPORT_PRESET_CLIENT_NAME_MAX_LENGTH"
             class="w-full max-w-md"
             data-testid="client-report-client-name"
+          />
+        </UFormField>
+
+        <!-- The help button sits in the hint slot, beside (not inside) the field's <label>. -->
+        <UFormField
+          :label="t('clientReport.contractorDetailsLabel')"
+          name="contractorDetails"
+          :ui="{ labelWrapper: 'justify-start' }"
+        >
+          <template #hint>
+            <UTooltip
+              :text="t('clientReport.contractorDetailsHelp')"
+              :delay-duration="0"
+              :ui="{
+                content: 'h-auto max-w-xs whitespace-normal',
+                text: 'whitespace-normal',
+              }"
+            >
+              <UButton
+                type="button"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                square
+                icon="i-lucide-circle-help"
+                class="text-muted"
+                :ui="{ leadingIcon: 'size-3.5' }"
+                :aria-label="t('clientReport.contractorDetailsHelpAria')"
+                data-testid="client-report-contractor-details-help"
+              />
+            </UTooltip>
+          </template>
+          <UTextarea
+            id="client-report-contractor-details"
+            v-model="state.contractorDetails"
+            :maxlength="REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH"
+            :rows="3"
+            autoresize
+            class="w-full max-w-md"
+            data-testid="client-report-contractor-details"
           />
         </UFormField>
 

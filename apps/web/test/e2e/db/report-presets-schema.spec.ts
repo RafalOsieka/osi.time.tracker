@@ -56,6 +56,15 @@ describeDb('report presets schema', () => {
         })
         .returning();
       if (!preset) throw new Error('preset not inserted');
+      // Contractor details are optional; a preset saved without them reads NULL (REQ-511).
+      expect(preset.contractorDetails).toBeNull();
+
+      const [withDetails] = await db
+        .update(reportPresets)
+        .set({ contractorDetails: 'NIP: 123-456-78-90\nul. Długa 1' })
+        .where(eq(reportPresets.id, preset.id))
+        .returning({ contractorDetails: reportPresets.contractorDetails });
+      expect(withDetails?.contractorDetails).toBe('NIP: 123-456-78-90\nul. Długa 1');
 
       await expect(
         db.insert(reportPresets).values({

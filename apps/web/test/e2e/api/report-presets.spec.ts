@@ -1,4 +1,5 @@
 import { expect, it } from 'vitest';
+import type { z } from 'zod';
 import { url } from '../helpers/url';
 import { seedAndLogin, type SeededSession } from '../helpers/session';
 import { createTracker } from '../helpers/http';
@@ -6,16 +7,19 @@ import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { UNKNOWN_ID } from '../helpers/fixtures';
-import type { ReportPresetDto, ReportPresetInput } from '../../../shared/types/report-preset';
+import {
+  REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH,
+  type ReportPresetDto,
+  type reportPresetInputSchema,
+} from '../../../shared/types/report-preset';
 
 const describeReportPresets = requireDocker();
 
 type Session = Pick<SeededSession, 'jar' | 'token'>;
+/** The request body as sent, where optional fields such as `contractorDetails` may be omitted. */
+type PresetBody = z.input<typeof reportPresetInputSchema>;
 
-function presetBody(
-  trackerIds: string[],
-  overrides: Partial<ReportPresetInput> = {},
-): ReportPresetInput {
+function presetBody(trackerIds: string[], overrides: Partial<PresetBody> = {}): PresetBody {
   return {
     clientName: 'Helios Energy',
     trackerIds,
@@ -29,7 +33,7 @@ async function send(
   { jar, token }: Session,
   method: 'POST' | 'PATCH' | 'DELETE',
   path: string,
-  body?: ReportPresetInput,
+  body?: PresetBody,
 ): Promise<Response> {
   return fetch(url(path), {
     method,
@@ -47,7 +51,7 @@ async function listPresets({ jar }: Session): Promise<ReportPresetDto[]> {
 async function createPreset(
   session: Session,
   trackerIds: string[],
-  overrides: Partial<ReportPresetInput> = {},
+  overrides: Partial<PresetBody> = {},
 ): Promise<ReportPresetDto> {
   const res = await send(session, 'POST', '/api/report-presets', presetBody(trackerIds, overrides));
   expect(res.status).toBe(200);
@@ -144,6 +148,52 @@ describeReportPresets('report presets API integration', async () => {
       locale: 'en',
     });
     expect(await listPresets(session)).toEqual([updated]);
+  });
+
+  it('stores trimmed multiline contractor details and clears them on update without the field', async () => {
+    const session = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(session.jar, session.token, 'OP');
+
+    const created = await createPreset(session, [tracker.id], {
+      contractorDetails: '  NIP: 123-456-78-90\nul. Długa 1\n\n',
+    });
+    expect(created.contractorDetails).toBe('NIP: 123-456-78-90\nul. Długa 1');
+    expect(await listPresets(session)).toEqual([created]);
+
+    const blank = await createPreset(session, [tracker.id], {
+      clientName: 'Nordwind',
+      contractorDetails: ' \n ',
+    });
+    expect(blank.contractorDetails).toBeNull();
+
+    const cleared = await send(
+      session,
+      'PATCH',
+      `/api/report-presets/${created.id}`,
+      presetBody([tracker.id]),
+    );
+    expect(cleared.status).toBe(200);
+    const [listed] = (await listPresets(session)).filter((preset) => preset.id === created.id);
+    expect(listed?.contractorDetails).toBeNull();
+  });
+
+  it('rejects oversized contractor details with 422 and persists nothing', async () => {
+    const session = await seedAndLogin(dbUrl);
+    const tracker = await createTracker(session.jar, session.token, 'OP');
+
+    const res = await send(
+      session,
+      'POST',
+      '/api/report-presets',
+      presetBody([tracker.id], {
+        contractorDetails: 'a'.repeat(REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH + 1),
+      }),
+    );
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body?.data?.messageKey).toBe('error.reportPresetContractorDetailsTooLong');
+    expect(body?.data?.params).toEqual({ max: REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH });
+    expect(await listPresets(session)).toEqual([]);
   });
 
   it('rejects foreign, unknown, and deleted trackers with 422 and persists nothing', async () => {

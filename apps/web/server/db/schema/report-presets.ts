@@ -17,6 +17,7 @@ import type { ReportHoursFormat, ReportLocale } from '../../../shared/types/repo
  * A saved client report setup (REQ-380). Client names are unique per user
  * ignoring case. `lastUsedAt` orders the preset list (REQ-381) and is bumped
  * on every save, which the client report export performs first (REQ-386).
+ * `contractorDetails` is trimmed, non-empty text or `NULL` for none (REQ-511).
  */
 export const reportPresets = pgTable(
   'report_presets',
@@ -30,6 +31,7 @@ export const reportPresets = pgTable(
     clientName: text('clientName').notNull(),
     hoursFormat: text('hoursFormat').notNull().$type<ReportHoursFormat>(),
     locale: text('locale').notNull().$type<ReportLocale>(),
+    contractorDetails: text('contractorDetails'),
     lastUsedAt: timestamp('lastUsedAt', { withTimezone: true }),
     createdAt: timestamp('createdAt', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updatedAt', { withTimezone: true }).notNull().defaultNow(),

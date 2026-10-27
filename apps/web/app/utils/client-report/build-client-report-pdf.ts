@@ -214,6 +214,17 @@ function titlePage(report: ClientReport, t: ClientReportTranslate, f: ClientRepo
               margin: [0, 4.5, 0, 0],
             },
             { text: report.contractor.email, fontSize: 10.5, color: SLATE_700 },
+            // Free text from the preset (REQ-513): pdfmake keeps its line breaks and left-aligns it.
+            ...(report.contractor.details === null
+              ? []
+              : [
+                  {
+                    text: report.contractor.details,
+                    fontSize: 10.5,
+                    color: SLATE_700,
+                    margin: [0, 4.5, 0, 0],
+                  } satisfies Content,
+                ]),
           ],
         },
         { stack: [uppercaseLabel(t('clientReport.pdf.dataSources'), MUTED), ...dataSources] },
