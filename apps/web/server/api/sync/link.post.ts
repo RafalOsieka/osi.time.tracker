@@ -1,4 +1,5 @@
 import { and, eq, gte, isNotNull, lt } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import type { FinalizeRemoteExportResultDto } from '../../../shared/types/remote-export';
 import { linkRemoteEntrySchema } from '../../../shared/types/remote-export';
 import { getDb } from '../../db';
@@ -9,9 +10,9 @@ import { isUniqueViolation } from '../../utils/is-unique-violation';
 import { readZodBody } from '../../utils/zod-input';
 import type { ApiMessage } from '../../types/api-message';
 
-function reject(statusCode: number, messageKey: string): never {
+function reject(status: number, messageKey: string): never {
   throw createError({
-    statusCode,
+    status,
     data: { messageKey } satisfies ApiMessage,
   });
 }

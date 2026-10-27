@@ -1,3 +1,4 @@
+import { defineEventHandler } from 'nuxt/server';
 import { getDb } from '../../db/index';
 import { tasks, projects } from '../../db/schema';
 import { eq, isNull, asc, and, ilike, sql } from 'drizzle-orm';

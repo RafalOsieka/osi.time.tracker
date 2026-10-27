@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import { reassignTimeEntriesSchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     const foundIds = new Set(rows.map((row) => row.id));
     if (!parsedBody.ids.every((id) => foundIds.has(id))) {
       throw createError({
-        statusCode: 404,
+        status: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
       });
     }
@@ -65,7 +66,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     const effectiveName = parsedBody.name ?? sourceName;
     if (!effectiveName) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.timeEntryTitleInvalid' } satisfies ApiMessage,
       });
     }
@@ -92,7 +93,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       // Allow soft-deleted current project when projectId was omitted (keep scope).
       if (!ownedProject && parsedBody.projectId !== undefined) {
         throw createError({
-          statusCode: 404,
+          status: 404,
           data: { messageKey: 'error.notFound' } satisfies ApiMessage,
         });
       }
@@ -122,7 +123,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       // client-trusted.
       if (effectiveProjectId === null) {
         throw createError({
-          statusCode: 409,
+          status: 409,
           data: { messageKey: 'error.remoteIssueTaskNoConfig' } satisfies ApiMessage,
         });
       }
@@ -130,7 +131,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       const tracker = await resolveActiveTrackerForProject(user.id, effectiveProjectId);
       if (!tracker) {
         throw createError({
-          statusCode: 409,
+          status: 409,
           data: { messageKey: 'error.remoteIssueTaskNoConfig' } satisfies ApiMessage,
         });
       }
@@ -149,7 +150,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
     });
     if (!targetTaskId) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.timeEntryTitleInvalid' } satisfies ApiMessage,
       });
     }

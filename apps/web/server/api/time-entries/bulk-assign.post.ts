@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import { bulkAssignSchema } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';
 import { timeEntries } from '../../db/schema';
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event): Promise<{ success: true }> => {
 
     if (!allFoundAndUntitled) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.timeEntryBulkAssignInvalid' } satisfies ApiMessage,
       });
     }

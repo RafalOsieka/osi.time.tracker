@@ -1,4 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import { startTimeEntrySchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
         .limit(1);
       if (!ownedTask) {
         throw createError({
-          statusCode: 404,
+          status: 404,
           data: { messageKey: 'error.notFound' } satisfies ApiMessage,
         });
       }

@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-type MappedHttpError = Error & { statusCode: number; data: unknown };
+type MappedHttpError = Error & { status: number; data: unknown };
 
 const { readBody, getQuery, createError } = vi.hoisted(() => {
-  const createError = vi.fn((opts: { statusCode: number; data: unknown }): MappedHttpError => {
+  const createError = vi.fn((opts: { status: number; data: unknown }): MappedHttpError => {
     return Object.assign(new Error('createError'), opts);
   });
   return {
@@ -14,8 +14,8 @@ const { readBody, getQuery, createError } = vi.hoisted(() => {
   };
 });
 
-// oxlint-disable-next-line anti-slop/no-module-mocking -- h3 request helpers are not a project seam
-vi.mock('h3', () => ({
+// oxlint-disable-next-line anti-slop/no-module-mocking -- nuxt/server request helpers are not a project seam
+vi.mock('nuxt/server', () => ({
   readBody,
   getQuery,
   createError,
@@ -46,15 +46,15 @@ describe('readZodBody', () => {
   it('maps ZodError to a 422 createError with messageKey', async () => {
     readBody.mockResolvedValue({});
     await expect(readZodBody(event, schema)).rejects.toMatchObject({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.trackerNameRequired' },
     });
   });
 
-  it('uses a custom statusCode (login 400)', async () => {
+  it('uses a custom status (login 400)', async () => {
     readBody.mockResolvedValue({});
     await expect(readZodBody(event, schema, 400)).rejects.toMatchObject({
-      statusCode: 400,
+      status: 400,
     });
   });
 
@@ -78,7 +78,7 @@ describe('getZodQuery', () => {
   it('maps ZodError to a 422 createError with messageKey', async () => {
     getQuery.mockReturnValue({});
     await expect(getZodQuery(event, schema)).rejects.toMatchObject({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.trackerNameRequired' },
     });
   });

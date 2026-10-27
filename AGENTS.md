@@ -95,7 +95,7 @@ Formatting is owned by Oxfmt (2 spaces, single quotes, semicolons, trailing comm
 1. No explicit `any`. A justified exception uses `// oxlint-disable-next-line typescript/no-explicit-any -- reason`. Every remaining `as` needs a `// SAFETY:` comment; `as unknown as` is forbidden in `app/`.
 2. `catch (err)` without `: unknown`; narrow with `instanceof` on real classes (`FetchError`, `RemoteAdapterError`, `Error`) or a schema parse, not `isX` wrapper helpers.
 3. Cross-boundary shapes are defined once in `apps/web/shared/types` as zod schemas (`camelCaseSchema`) with response types named `PascalCaseDto`; derive inputs with `z.infer`.
-4. One `defineEventHandler` per route file (`name.<method>.ts`), typed with its DTO. Resolve the authenticated user first, validate with `readZodBody` / `getZodQuery`, and map `ZodError` to a `422` with `{ messageKey, params }` (never `received`).
+4. One `defineEventHandler` per route file (`name.<method>.ts`), typed with its DTO. Import server helpers from `nuxt/server`, not `h3` or auto-imports; only Nitro plugins stay on Nitro/h3. Resolve the authenticated user first, validate with `readZodBody` / `getZodQuery`, and map `ZodError` to a `422` with `{ messageKey, params }` (never `received`).
 5. The server never returns rendered text; clients translate `messageKey`. Timestamps cross the wire as ISO strings.
 6. Database access only through `getDb()`, bound once per handler (`const db = getDb()`).
 7. No hard-coded user-facing text: use `t(...)` and keep `en` and `pl` catalogs in parity.

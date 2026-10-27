@@ -1,3 +1,4 @@
+import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import { getDb } from '../../db/index';
 import { projects } from '../../db/schema';
 import { eq, isNull, and } from 'drizzle-orm';
@@ -17,7 +18,7 @@ export default defineEventHandler(async (event) => {
 
   if (!existing) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }

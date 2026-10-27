@@ -1,4 +1,5 @@
 import { and, eq, isNull } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import { createProjectSchema } from '../../../shared/types/project';
 import type { ProjectDto } from '../../../shared/types/project';
 import { getDb } from '../../db/index';
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   // A local project (no tracker) cannot carry a remote project scope (REQ-439).
   if (!trackerId && parsedBody.remoteProjectId) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.projectRemoteScopeRequiresTracker' } satisfies ApiMessage,
     });
   }
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
     if (!tracker) {
       throw createError({
-        statusCode: 404,
+        status: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
       });
     }
@@ -56,7 +57,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
   if (existing.length > 0) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.projectNameDuplicate' } satisfies ApiMessage,
     });
   }
@@ -75,7 +76,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
     if (!created) {
       throw createError({
-        statusCode: 500,
+        status: 500,
         data: { messageKey: 'error.unknown' } satisfies ApiMessage,
       });
     }
@@ -93,7 +94,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   } catch (err) {
     if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.projectNameDuplicate' } satisfies ApiMessage,
       });
     }

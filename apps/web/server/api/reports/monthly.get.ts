@@ -1,4 +1,5 @@
 import { and, asc, eq, gte, isNotNull, isNull, lt, lte } from 'drizzle-orm';
+import { defineEventHandler } from 'nuxt/server';
 import { monthlyReportQuerySchema, type MonthlyReportDto } from '../../../shared/types/report';
 import { getDb } from '../../db/index';
 import { remoteExports, timeEntries, trackers } from '../../db/schema';

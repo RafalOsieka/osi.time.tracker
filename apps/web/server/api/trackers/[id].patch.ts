@@ -1,4 +1,5 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import { updateTrackerSchema } from '../../../shared/types/tracker';
 import type { TrackerDto } from '../../../shared/types/tracker';
 import { getDb } from '../../db/index';
@@ -34,7 +35,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
 
   if (!existing) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }
@@ -54,7 +55,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
 
   if (duplicate.length > 0) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.trackerNameDuplicate' } satisfies ApiMessage,
     });
   }
@@ -75,7 +76,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
 
     if (!updated) {
       throw createError({
-        statusCode: 500,
+        status: 500,
         data: { messageKey: 'error.unknown' } satisfies ApiMessage,
       });
     }
@@ -84,7 +85,7 @@ export default defineEventHandler(async (event): Promise<TrackerDto> => {
   } catch (err) {
     if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.trackerNameDuplicate' } satisfies ApiMessage,
       });
     }

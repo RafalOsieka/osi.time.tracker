@@ -1,4 +1,5 @@
 import { and, desc, eq, gte, lt } from 'drizzle-orm';
+import { defineEventHandler } from 'nuxt/server';
 import {
   TIMER_VIEW_FEED_PAGE_ACTIVITY_DAYS,
   timerViewFeedQuerySchema,

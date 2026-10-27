@@ -1,3 +1,4 @@
+import { createError, defineEventHandler } from 'nuxt/server';
 import { loginSchema, type AuthUser } from '../../../shared/types/auth';
 import { findUserByEmail, DUMMY_HASH } from '../../utils/users';
 import { readZodBody } from '../../utils/zod-input';
@@ -24,7 +25,7 @@ export default defineEventHandler(async (event) => {
 
   if (!user || !isPasswordValid) {
     throw createError({
-      statusCode: 401,
+      status: 401,
       data: { messageKey: 'errors.auth.invalidCredentials' } satisfies ApiMessage,
     });
   }

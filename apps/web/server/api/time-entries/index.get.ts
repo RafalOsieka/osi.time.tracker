@@ -1,4 +1,5 @@
 import { and, desc, eq, lt, or, isNull, gte } from 'drizzle-orm';
+import { defineEventHandler } from 'nuxt/server';
 import { listTimeEntriesQuerySchema } from '../../../shared/types/time-entry';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { getDb } from '../../db/index';

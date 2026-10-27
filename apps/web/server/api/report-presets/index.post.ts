@@ -1,3 +1,4 @@
+import { defineEventHandler } from 'nuxt/server';
 import { reportPresetInputSchema } from '../../../shared/types/report-preset';
 import type { ReportPresetDto } from '../../../shared/types/report-preset';
 import { getDb } from '../../db/index';

@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import { profileSchema, type ProfileDto } from '../../../shared/types/profile';
 import { getDb } from '../../db';
 import { users } from '../../db/schema';
@@ -19,7 +20,7 @@ export default defineEventHandler(async (event): Promise<ProfileDto> => {
     .set({ ...update, updatedAt: new Date() })
     .where(eq(users.id, session.user.id))
     .returning({ displayName: users.displayName, timezone: users.timezone });
-  if (!updated) throw createError({ statusCode: 404, statusMessage: 'User not found' });
+  if (!updated) throw createError({ status: 404, statusText: 'User not found' });
 
   await setUserSession(event, { ...session, user: { ...session.user, ...updated } });
   return updated;

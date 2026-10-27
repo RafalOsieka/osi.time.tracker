@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import {
   updateTimeEntrySchema,
   TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS,
@@ -29,7 +30,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
 
   if (!existing) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }
@@ -49,7 +50,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
 
   if (effectiveStoppedAt !== null && effectiveStartedAt > effectiveStoppedAt) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.timeEntryStoppedBeforeStarted' } satisfies ApiMessage,
     });
   }
@@ -59,7 +60,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
     effectiveStartedAt.getTime() > Date.now() + TIME_ENTRY_CLOCK_SKEW_TOLERANCE_MS
   ) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.timeEntryStartedAtInFuture' } satisfies ApiMessage,
     });
   }
@@ -74,7 +75,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
         .limit(1);
       if (!ownedTask) {
         throw createError({
-          statusCode: 404,
+          status: 404,
           data: { messageKey: 'error.notFound' } satisfies ApiMessage,
         });
       }
