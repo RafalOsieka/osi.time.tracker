@@ -1,4 +1,5 @@
 import { eq } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import type { ProfileDto } from '../../../shared/types/profile';
 import { getDb } from '../../db';
 import { users } from '../../db/schema';
@@ -12,6 +13,6 @@ export default defineEventHandler(async (event): Promise<ProfileDto> => {
     .from(users)
     .where(eq(users.id, user.id))
     .limit(1);
-  if (!row) throw createError({ statusCode: 404, statusMessage: 'User not found' });
+  if (!row) throw createError({ status: 404, statusText: 'User not found' });
   return row;
 });

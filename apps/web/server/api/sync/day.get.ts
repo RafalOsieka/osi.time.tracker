@@ -1,4 +1,5 @@
 import { and, eq, isNull, gte, lt, inArray } from 'drizzle-orm';
+import { defineEventHandler } from 'nuxt/server';
 import { remoteSyncDayQuerySchema } from '../../../shared/types/remote-sync-day';
 import type {
   RemoteSyncDayDto,

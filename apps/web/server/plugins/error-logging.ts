@@ -22,6 +22,8 @@ export default defineNitroPlugin((nitroApp) => {
     // SAFETY: by the time the `error` hook fires, h3 has already normalized the
     // thrown value through `createError()` (see h3's `toNodeListener`), so every
     // error here carries the H3Error shape even though the hook types it as `Error`.
+    // `nuxt/server`'s `createError` builds on h3's, so its errors carry `statusCode` too.
+    // This plugin stays on Nitro/h3 because `nuxt/server` has no error hook.
     const h3Error = error as H3Error;
     const path = event.path.split('?')[0] ?? event.path;
     const entry = describeRequestError(h3Error, { method: event.method, path });

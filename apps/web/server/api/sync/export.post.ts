@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import {
   finalizeRemoteExportSchema,
   type FinalizeRemoteExportResultDto,
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   const uniqueEntryIds = [...new Set(parsed.entryIds)];
   if (uniqueEntryIds.length !== parsed.entryIds.length) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.remoteExportEntryIdsInvalid' } satisfies ApiMessage,
     });
   }
@@ -84,7 +85,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
 
   if (!task) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }
@@ -92,7 +93,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   const issueRef = await getRemoteIssueRefForTask(user.id, parsed.taskId);
   if (!issueRef || issueRef.remoteIssueId !== parsed.remoteIssueId) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.remoteExportIssueMismatch' } satisfies ApiMessage,
     });
   }
@@ -134,7 +135,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
 
   if (entryRows.length !== uniqueEntryIds.length) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.remoteExportEntriesInvalid' } satisfies ApiMessage,
     });
   }
@@ -142,14 +143,14 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
   for (const entry of entryRows) {
     if (entry.taskId !== parsed.taskId) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.remoteExportEntriesInvalid' } satisfies ApiMessage,
       });
     }
     const started = entry.startedAt.getTime();
     if (started < from.getTime() || started >= to.getTime()) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.remoteExportEntriesInvalid' } satisfies ApiMessage,
       });
     }
@@ -173,7 +174,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
 
     if (!inserted) {
       throw createError({
-        statusCode: 500,
+        status: 500,
         data: { messageKey: 'error.unknown' } satisfies ApiMessage,
       });
     }

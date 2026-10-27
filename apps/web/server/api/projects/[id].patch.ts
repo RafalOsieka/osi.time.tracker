@@ -1,4 +1,5 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import { updateProjectSchema } from '../../../shared/types/project';
 import type { ProjectDto } from '../../../shared/types/project';
 import { getDb } from '../../db/index';
@@ -22,7 +23,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
   if (!existing) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }
@@ -42,7 +43,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   // handled above by force-nulling instead of rejecting (REQ-326).
   if (!trackerChanged && !nextTrackerId && parsedBody.remoteProjectId) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.projectRemoteScopeRequiresTracker' } satisfies ApiMessage,
     });
   }
@@ -64,7 +65,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
     if (!tracker) {
       throw createError({
-        statusCode: 404,
+        status: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
       });
     }
@@ -86,7 +87,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
   if (duplicate.length > 0) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.projectNameDuplicate' } satisfies ApiMessage,
     });
   }
@@ -106,7 +107,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
 
     if (!updated) {
       throw createError({
-        statusCode: 500,
+        status: 500,
         data: { messageKey: 'error.unknown' } satisfies ApiMessage,
       });
     }
@@ -135,7 +136,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   } catch (err) {
     if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
-        statusCode: 422,
+        status: 422,
         data: { messageKey: 'error.projectNameDuplicate' } satisfies ApiMessage,
       });
     }

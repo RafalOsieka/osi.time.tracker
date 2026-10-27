@@ -1,4 +1,5 @@
 import { and, eq } from 'drizzle-orm';
+import { createError, defineEventHandler } from 'nuxt/server';
 import type { CleanupRemoteExportResultDto } from '../../../shared/types/remote-export';
 import { cleanupRemoteExportSchema } from '../../../shared/types/remote-export';
 import { getDb } from '../../db';
@@ -18,7 +19,7 @@ export default defineEventHandler(async (event): Promise<CleanupRemoteExportResu
 
   if (deleted.length === 0) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }

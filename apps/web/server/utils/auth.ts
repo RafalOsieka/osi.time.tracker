@@ -1,4 +1,4 @@
-import type { H3Event } from 'h3';
+import type { RequestEvent } from 'nuxt/server';
 
 /**
  * Route-protection helper for private/server endpoints.
@@ -9,12 +9,14 @@ import type { H3Event } from 'h3';
  *
  * Usage:
  * ```ts
+ * import { defineEventHandler } from 'nuxt/server';
+ *
  * export default defineEventHandler(async (event) => {
  *   const { user } = await requireAuth(event);
  *   // ...handle the authenticated request for `user`
  * });
  * ```
  */
-export async function requireAuth(event: H3Event) {
+export async function requireAuth(event: RequestEvent) {
   return await requireUserSession(event);
 }

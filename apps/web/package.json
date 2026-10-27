@@ -23,27 +23,27 @@
   },
   "dependencies": {
     "@internationalized/date": "^3.12.4",
-    "@nuxt/ui": "^4.11.3",
+    "@nuxt/ui": "^4.12.0",
     "@osi/extension-protocol": "workspace:*",
     "@osi/remote-trackers": "workspace:*",
     "consola": "3.4.2",
     "drizzle-orm": "^0.45.3",
-    "nuxt": "^4.5.2",
-    "nuxt-auth-utils": "^0.5.30",
-    "nuxt-security": "^2.6.0",
+    "nuxt": "^4.6.2",
+    "nuxt-auth-utils": "^0.5.32",
+    "nuxt-security": "^2.7.0",
     "pdfmake": "^0.3.11",
     "postgres": "^3.4.9",
     "tailwindcss": "^4.3.3",
     "temporal-polyfill": "^1.0.5",
-    "vue": "^3.5.43",
-    "vue-router": "^5.3.1",
+    "vue": "^3.5.44",
+    "vue-router": "^5.4.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
     "@iconify-json/lucide": "^1.2.140",
     "@nuxt/eslint": "^1.17.0",
-    "@nuxt/schema": "^4.5.2",
-    "@nuxt/test-utils": "^4.3.3",
+    "@nuxt/schema": "^4.6.2",
+    "@nuxt/test-utils": "^4.3.4",
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/migrator": "workspace:*",
     "@types/node": "^26.6.4",
@@ -65,6 +65,6 @@
     "vue-tsc": "^3.3.12"
   },
   "engines": {
-    "node": ">=24"
+    "node": ">=24.11"
   }
 }

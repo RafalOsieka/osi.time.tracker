@@ -1,5 +1,6 @@
 import { and, eq, gte, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { consola } from 'consola';
+import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import {
   importRemoteLogsSchema,
   type ImportRemoteLogDto,
@@ -24,9 +25,9 @@ import type { ApiMessage } from '../../../types/api-message';
 
 const log = consola.withTag('import');
 
-function reject(statusCode: number, messageKey: string): never {
+function reject(status: number, messageKey: string): never {
   throw createError({
-    statusCode,
+    status,
     data: { messageKey } satisfies ApiMessage,
   });
 }

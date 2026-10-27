@@ -1,3 +1,5 @@
+import { defineEventHandler } from 'nuxt/server';
+
 /**
  * Session ("me") endpoint.
  *

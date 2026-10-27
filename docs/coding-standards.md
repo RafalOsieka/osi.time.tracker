@@ -90,6 +90,7 @@ Rules:
 ## 5. Server / API Conventions
 
 - Export a single `defineEventHandler` per route file and annotate its return type with the response DTO.
+- Import server helpers (`defineEventHandler`, `createError`, `getRouterParam`, `readBody`, `RequestEvent`, …) explicitly from `nuxt/server`, never from `h3` or the auto-imports; a handler that mixes the two fails with `NUXT_E8012`. Errors use `createError({ status, statusText })`. Only Nitro plugins (`defineNitroPlugin`, Nitro hooks) stay on `nitropack`/`h3`.
 - Protect private endpoints by resolving the authenticated user through the shared auth helper before any other work.
 - Validate request bodies with `readZodBody` and query strings with `getZodQuery`, each using a single `zod` schema from `shared/types`. On `ZodError`, map the error to the `{ messageKey, params }` contract (`params` is `MessageParams`) and throw a `422` `createError`.
 - The shared mapper keeps `min`, `max`, `expected`, and custom primitive `params` from the first issue. It does **not** emit `received` (zod 4 no longer carries a string `received` field, and no locale interpolates it).

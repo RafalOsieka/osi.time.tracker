@@ -1,4 +1,5 @@
 import { and, eq, isNull, ne } from 'drizzle-orm';
+import { createError, defineEventHandler, getRouterParam } from 'nuxt/server';
 import { updateTaskSchema } from '../../../shared/types/task';
 import type { TaskDto } from '../../../shared/types/task';
 import { getDb } from '../../db/index';
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
   if (!existing) {
     throw createError({
-      statusCode: 404,
+      status: 404,
       data: { messageKey: 'error.notFound' } satisfies ApiMessage,
     });
   }
@@ -55,7 +56,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
     if (!project) {
       throw createError({
-        statusCode: 404,
+        status: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
       });
     }
@@ -114,7 +115,7 @@ export default defineEventHandler(async (event): Promise<TaskDto> => {
 
   if (!updated) {
     throw createError({
-      statusCode: 500,
+      status: 500,
       data: { messageKey: 'error.unknown' } satisfies ApiMessage,
     });
   }

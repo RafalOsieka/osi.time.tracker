@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { createError } from 'nuxt/server';
 import type { getDb } from '../db/index';
 import { reportPresets, reportPresetTrackers, trackers } from '../db/schema';
 import type { ReportPresetDto, ReportPresetInput } from '../../shared/types/report-preset';
@@ -84,7 +85,7 @@ export async function saveReportPreset(
       .limit(1);
     if (!existing) {
       throw createError({
-        statusCode: 404,
+        status: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
       });
     }
@@ -103,7 +104,7 @@ export async function saveReportPreset(
   // One key for foreign, unknown, and deleted ids so ownership is not revealed.
   if (ownedTrackers.length !== input.trackerIds.length) {
     throw createError({
-      statusCode: 422,
+      status: 422,
       data: { messageKey: 'error.reportPresetTrackerInvalid' } satisfies ApiMessage,
     });
   }
@@ -133,7 +134,7 @@ export async function saveReportPreset(
             .returning({ id: reportPresets.id });
       if (!saved) {
         throw createError({
-          statusCode: 404,
+          status: 404,
           data: { messageKey: 'error.notFound' } satisfies ApiMessage,
         });
       }
@@ -151,7 +152,7 @@ export async function saveReportPreset(
   } catch (err) {
     if (err instanceof Error && isUniqueViolation(err)) {
       throw createError({
-        statusCode: 409,
+        status: 409,
         data: { messageKey: 'error.reportPresetClientNameDuplicate' } satisfies ApiMessage,
       });
     }
@@ -161,7 +162,7 @@ export async function saveReportPreset(
   const [dto] = await listReportPresets(db, userId, savedId);
   if (!dto) {
     throw createError({
-      statusCode: 500,
+      status: 500,
       data: { messageKey: 'error.unknown' } satisfies ApiMessage,
     });
   }
