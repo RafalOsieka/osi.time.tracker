@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
   OpenProjectAdapter,
   OPENPROJECT_TIME_LOGS_MAX_PAGES,
-} from '@osi/remote-trackers/openproject';
+} from '@osi/time-tracker-remote-trackers/openproject';
 import type { ZodType } from 'zod';
 import {
   RemoteAdapterError,
@@ -11,7 +11,7 @@ import {
   type RemoteRequest,
   type RemoteResponse,
   type Transport,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 /** A `Transport` that throws for a status outside the 2xx range, mirroring a real transport's contract. */
 function fakeTransport(

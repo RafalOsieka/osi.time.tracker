@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { deriveIssueUrl, normalizeBaseUrl } from '@osi/remote-trackers/contracts';
+import { deriveIssueUrl, normalizeBaseUrl } from '@osi/time-tracker-remote-trackers/contracts';
 
 describe('normalizeBaseUrl', () => {
   it('strips a single trailing slash', () => {

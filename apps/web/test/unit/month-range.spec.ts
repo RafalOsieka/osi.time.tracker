@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   IMPORT_REQUEST_MAX_LOGS,
   splitGroupsIntoRequestBatches,

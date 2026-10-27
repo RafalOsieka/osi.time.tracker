@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import type { RemoteProjectDto, RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type {
+  RemoteProjectDto,
+  RemoteTimeLogDto,
+} from '@osi/time-tracker-remote-trackers/contracts';
 import {
   bucketKey,
   groupLogsBySelection,

@@ -1,4 +1,4 @@
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 import { EXTENSION_ERROR_MESSAGE_KEYS, safeWireErrorSchema, type SafeWireError } from './errors.js';
 import { handshakeRequestSchema, handshakeResultSchema } from './handshake.js';

@@ -1,4 +1,4 @@
-import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
+import { trackerSystemTypeSchema } from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 
 export const EXTENSION_OPERATION_NAMES = [

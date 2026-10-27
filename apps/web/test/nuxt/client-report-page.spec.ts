@@ -3,7 +3,7 @@ import { nextTick } from 'vue';
 import type { Router } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import ClientReportPage from '../../app/pages/reports/client.vue';
 import type { ReportPresetDto } from '../../shared/types/report-preset';
 import type { TrackerDto } from '../../shared/types/tracker';

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { MIGRATIONS_FOLDER } from '@osi/migrator';
+import { MIGRATIONS_FOLDER } from '@osi/time-tracker-migrator';
 
 const PREFIX = /^(\d{4})_/;
 

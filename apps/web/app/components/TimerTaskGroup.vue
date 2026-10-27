@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { TimerViewGroup } from '~/utils/timer-view-grouping';
-import type { RemoteIssueScope } from '@osi/remote-trackers/contracts';
+import type { RemoteIssueScope } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import type { ColumnDefinition } from './ColumnList.vue';
 

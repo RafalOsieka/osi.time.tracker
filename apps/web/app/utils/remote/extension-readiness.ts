@@ -1,5 +1,5 @@
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
-import type { DestinationSelector } from '@osi/extension-protocol';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
+import type { DestinationSelector } from '@osi/time-tracker-extension-protocol';
 import type { TrackerDto } from '../../../shared/types/tracker';
 import {
   probeExtensionAvailability,

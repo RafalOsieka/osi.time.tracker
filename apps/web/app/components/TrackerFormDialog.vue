@@ -4,7 +4,7 @@ import {
   TRACKER_SYSTEM_TYPE_LABELS,
   TRACKER_SYSTEM_TYPE_ORDER,
   type TrackerSystemType,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 const { open, tracker } = defineProps<{
   open: boolean;

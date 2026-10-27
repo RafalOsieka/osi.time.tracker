@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 
 export type FakeTrackerKind = 'openproject' | 'redmine';
 

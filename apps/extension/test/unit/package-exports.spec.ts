@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter } from '@osi/remote-trackers/redmine';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
-import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter } from '@osi/time-tracker-remote-trackers/redmine';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
+import { EXTENSION_PROTOCOL_VERSION } from '@osi/time-tracker-extension-protocol';
 import { createProviderAdapter } from '../../src/providers.js';
 
 describe('extension package resolution', () => {

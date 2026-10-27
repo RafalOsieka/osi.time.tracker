@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
+import { EXTENSION_RESOURCE_LIMITS } from '@osi/time-tracker-extension-protocol';
 import {
   ExtensionOperationGate,
   extensionOperationGate,

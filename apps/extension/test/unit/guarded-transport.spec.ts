@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { z } from 'zod';
-import { ExtensionProtocolError } from '@osi/extension-protocol';
-import { UpstreamHttpError, type JsonValue } from '@osi/remote-trackers/contracts';
+import { ExtensionProtocolError } from '@osi/time-tracker-extension-protocol';
+import { UpstreamHttpError, type JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,

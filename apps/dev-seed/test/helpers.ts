@@ -4,7 +4,7 @@ import type {
   RemoteTimeEntryDeleteOutcome,
   RemoteTimeLogDto,
   RemoteTrackerAdapter,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { JsonHttp, JsonMethod } from '../src/http.js';
 
 export interface RecordedRequest {

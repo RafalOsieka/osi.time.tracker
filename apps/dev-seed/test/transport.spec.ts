@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { z } from 'zod';
-import { UpstreamHttpError } from '@osi/remote-trackers/contracts';
+import { UpstreamHttpError } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   createFetchTransport,
   type FetchLike,

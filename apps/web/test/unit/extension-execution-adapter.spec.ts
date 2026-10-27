@@ -15,8 +15,8 @@ import {
   type OperationRequest,
   type OperationSuccess,
   type SafeWireError,
-} from '@osi/extension-protocol';
-import { RemoteAdapterError, type JsonValue } from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-extension-protocol';
+import { RemoteAdapterError, type JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapter';
 import {
   openExtensionBridge,
@@ -31,7 +31,7 @@ import type {
 import { ExtensionDocumentBridge } from '../../app/utils/remote/extension-bridge';
 import { ExtensionExecutionAdapter } from '../../app/utils/remote/extension-execution-adapter';
 import { ExtensionOperationGate } from '../../app/utils/remote/extension-operation-gate';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 /** Resolves once pending microtasks settle, without a fixed timer wait. */

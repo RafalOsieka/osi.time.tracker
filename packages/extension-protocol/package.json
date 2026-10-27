@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@osi/extension-protocol",
+  "name": "@osi/time-tracker-extension-protocol",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -21,7 +21,7 @@
     "test:unit": "vp test run"
   },
   "dependencies": {
-    "@osi/remote-trackers": "workspace:*",
+    "@osi/time-tracker-remote-trackers": "workspace:*",
     "zod": "^4.6.7"
   },
   "devDependencies": {

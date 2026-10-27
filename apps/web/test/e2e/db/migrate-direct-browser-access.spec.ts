@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createDatabaseClient } from '../../../server/db/client';
-import { MIGRATIONS_FOLDER, runMigrations } from '@osi/migrator';
+import { MIGRATIONS_FOLDER, runMigrations } from '@osi/time-tracker-migrator';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';
 import { applySqlFile, migrationFilesBefore, readMigrationSql } from '../harness/migrations';

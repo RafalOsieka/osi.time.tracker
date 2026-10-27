@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
+import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/time-tracker-extension-protocol';
 import {
   deriveExtensionAggregateState,
   orderReadinessTrackers,

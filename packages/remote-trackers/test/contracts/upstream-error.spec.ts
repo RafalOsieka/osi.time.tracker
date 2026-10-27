@@ -3,7 +3,7 @@ import {
   RemoteAdapterError,
   toAdapterError,
   UpstreamHttpError,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 describe('toAdapterError', () => {
   it('maps 401/403 to the auth-rejected key without leaking status', () => {

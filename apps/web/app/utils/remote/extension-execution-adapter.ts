@@ -4,7 +4,7 @@ import {
   type DestinationSelector,
   type ExtensionOperationName,
   type OperationRequest,
-} from '@osi/extension-protocol';
+} from '@osi/time-tracker-extension-protocol';
 import {
   RemoteAdapterError,
   type RemoteAccount,
@@ -17,7 +17,7 @@ import {
   type RemoteTimeLogDto,
   type RemoteTrackerAdapter,
   type TrackerSystemType,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { ExtensionBridgeOptions, ExtensionDocumentBridge } from './extension-bridge';
 import { openExtensionBridge } from './extension-availability';
 import { extensionOperationGate, type ExtensionOperationGate } from './extension-operation-gate';

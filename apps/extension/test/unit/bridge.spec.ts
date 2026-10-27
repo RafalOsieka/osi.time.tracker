@@ -1,6 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { EXTENSION_CHANNEL, EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import {
+  EXTENSION_CHANNEL,
+  EXTENSION_PROTOCOL_VERSION,
+} from '@osi/time-tracker-extension-protocol';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   acceptConnectEvent,
   pipePorts,

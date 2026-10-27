@@ -1,4 +1,7 @@
-import { ExtensionProtocolError, type DestinationSelector } from '@osi/extension-protocol';
+import {
+  ExtensionProtocolError,
+  type DestinationSelector,
+} from '@osi/time-tracker-extension-protocol';
 import {
   EXTENSION_PROBE_TIMEOUT_MS,
   openExtensionBridge,

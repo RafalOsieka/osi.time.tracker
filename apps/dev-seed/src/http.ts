@@ -1,5 +1,5 @@
 import type { ZodType } from 'zod';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import type { FetchLike, TransportDiagnostics } from './transport.js';
 
 export type JsonMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';

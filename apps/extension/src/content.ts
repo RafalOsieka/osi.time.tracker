@@ -1,4 +1,4 @@
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import { WORKER_PORT_NAME } from './port-name.js';
 import { acceptConnectEvent, pipePorts } from './content/bridge.js';
 

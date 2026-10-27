@@ -1,7 +1,7 @@
 import { pgTable, uuid, text, timestamp, boolean, index, uniqueIndex } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { users } from './users';
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerRoundingRule } from '../../../shared/types/tracker';
 
 export const trackers = pgTable(

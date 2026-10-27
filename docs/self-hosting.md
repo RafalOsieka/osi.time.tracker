@@ -81,7 +81,7 @@ The extension is not part of the Docker image; each person builds and loads it l
 ```bash
 pnpm install
 pnpm build:packages
-pnpm --filter @osi/extension build
+pnpm --filter @osi/time-tracker-extension build
 ```
 
 1. Open `chrome://extensions` (or `edge://extensions`), enable **Developer mode**, choose **Load unpacked** and select `apps/extension/dist`.

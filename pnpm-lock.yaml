@@ -215,7 +215,7 @@ importers:
 
   apps/dev-seed:
     dependencies:
-      '@osi/remote-trackers':
+      '@osi/time-tracker-remote-trackers':
         specifier: workspace:*
         version: link:../../packages/remote-trackers
       zod:
@@ -240,10 +240,10 @@ importers:
       '@nuxt/ui':
         specifier: ^4.11.3
         version: 4.12.0(8a0e75f8325179d3583dfa3ed601321e)
-      '@osi/extension-protocol':
+      '@osi/time-tracker-extension-protocol':
         specifier: workspace:*
         version: link:../../packages/extension-protocol
-      '@osi/remote-trackers':
+      '@osi/time-tracker-remote-trackers':
         specifier: workspace:*
         version: link:../../packages/remote-trackers
       vue:
@@ -320,10 +320,10 @@ importers:
       '@nuxt/ui':
         specifier: ^4.12.0
         version: 4.12.0(2c0ec27565656b1bed61d4ec80da5344)
-      '@osi/extension-protocol':
+      '@osi/time-tracker-extension-protocol':
         specifier: workspace:*
         version: link:../../packages/extension-protocol
-      '@osi/remote-trackers':
+      '@osi/time-tracker-remote-trackers':
         specifier: workspace:*
         version: link:../../packages/remote-trackers
       consola:
@@ -378,7 +378,7 @@ importers:
       '@nuxtjs/i18n':
         specifier: ^10.6.0
         version: 10.6.0(@nuxt/schema@4.6.2)(@types/node@26.6.5)(@voidzero-dev/vite-plus-core@1.3.0(@types/node@26.6.5)(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(@volar/typescript@2.4.28(typescript@6.0.3))(@vue/language-core@3.3.11)(db0@0.3.4(drizzle-orm@0.45.4(postgres@3.4.9)))(dotenv@18.0.9)(esbuild@0.28.2)(eslint@10.13.0(jiti@2.7.0)(supports-color@10.2.2))(giget@3.3.1)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(rolldown@1.2.12)(rollup@4.63.6)(supports-color@10.2.2)(terser@5.51.2)(tsx@4.23.15)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(vue@3.5.44(typescript@6.0.3))(yaml@2.9.1)
-      '@osi/migrator':
+      '@osi/time-tracker-migrator':
         specifier: workspace:*
         version: link:../migrator
       '@types/node':
@@ -435,7 +435,7 @@ importers:
 
   packages/extension-protocol:
     dependencies:
-      '@osi/remote-trackers':
+      '@osi/time-tracker-remote-trackers':
         specifier: workspace:*
         version: link:../remote-trackers
       zod:

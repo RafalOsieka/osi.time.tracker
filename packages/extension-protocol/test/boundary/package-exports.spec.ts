@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vite-plus/test';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   EXTENSION_PROTOCOL_VERSION,
   reconstructAdapterError,

@@ -1,5 +1,5 @@
-import { ExtensionProtocolError } from '@osi/extension-protocol';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
+import { ExtensionProtocolError } from '@osi/time-tracker-extension-protocol';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
 
 /**
  * Reads a stable i18n messageKey from an ofetch-shaped error.

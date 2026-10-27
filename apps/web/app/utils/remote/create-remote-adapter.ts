@@ -1,6 +1,6 @@
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter } from '@osi/remote-trackers/redmine';
-import type { RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter } from '@osi/time-tracker-remote-trackers/redmine';
+import type { RemoteTrackerAdapter } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '../../../shared/types/tracker';
 import { clientFetchTransport } from './client-fetch-transport';
 import { ExtensionExecutionAdapter } from './extension-execution-adapter';

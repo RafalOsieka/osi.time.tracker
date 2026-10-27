@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
-import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
+import { trackerSystemTypeSchema } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   createTrackerSchema,
   trackerDirectBrowserAccessSchema,

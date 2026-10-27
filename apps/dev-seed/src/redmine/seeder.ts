@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
+import type { RemoteTrackerAdapter } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerSeeder } from '../executor.js';
 import type { ClientFixture } from '../fixture/types.js';
 import type { JsonHttp } from '../http.js';

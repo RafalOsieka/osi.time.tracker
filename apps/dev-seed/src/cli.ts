@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter, redmineAuthHeaders } from '@osi/remote-trackers/redmine';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter, redmineAuthHeaders } from '@osi/time-tracker-remote-trackers/redmine';
 import { createComposeRunner } from './docker.js';
 import { readDotEnvFile, resolveSeedEnv } from './env.js';
 import { CLIENT_FIXTURES, HELIOS, NORDWIND } from './fixture/index.js';

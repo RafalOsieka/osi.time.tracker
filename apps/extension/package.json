@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@osi/extension",
+  "name": "@osi/time-tracker-extension",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,8 +15,8 @@
   },
   "dependencies": {
     "@nuxt/ui": "^4.11.3",
-    "@osi/extension-protocol": "workspace:*",
-    "@osi/remote-trackers": "workspace:*",
+    "@osi/time-tracker-extension-protocol": "workspace:*",
+    "@osi/time-tracker-remote-trackers": "workspace:*",
     "vue": "^3.5.43",
     "zod": "^4.6.7"
   },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
 
 describe('RemoteAdapterError', () => {
   it('carries a message key and is an Error instance', () => {

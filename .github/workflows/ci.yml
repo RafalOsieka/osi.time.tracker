@@ -99,7 +99,7 @@ jobs:
           run-install: false
 
       - name: Install package dependencies without Nuxt prepare
-        run: vp install --filter "@osi/extension-protocol..." --ignore-scripts --frozen-lockfile
+        run: vp install --filter "@osi/time-tracker-extension-protocol..." --ignore-scripts --frozen-lockfile
 
       - name: Run independent tracker and protocol package checks
         run: vp run package:check
@@ -135,19 +135,19 @@ jobs:
           run-install: false
 
       - name: Install extension dependencies without Nuxt prepare
-        run: vp install --filter "@osi/extension..." --ignore-scripts --frozen-lockfile
+        run: vp install --filter "@osi/time-tracker-extension..." --ignore-scripts --frozen-lockfile
 
       - name: Run independent extension lint
-        run: vp run --filter @osi/extension lint
+        run: vp run --filter @osi/time-tracker-extension lint
 
       - name: Build extension workspace dependencies
         run: vp run build:packages
 
       - name: Run independent extension type check
-        run: vp run --filter @osi/extension type-check
+        run: vp run --filter @osi/time-tracker-extension type-check
 
       - name: Install Playwright Chromium
-        run: vp exec --filter @osi/extension playwright install --with-deps chromium
+        run: vp exec --filter @osi/time-tracker-extension playwright install --with-deps chromium
 
       - name: Run extension unit and browser tests
         run: vp run test:extension
@@ -292,7 +292,7 @@ jobs:
           NODE_V8_COVERAGE: coverage-v8-e2e
 
       - name: Convert Nitro coverage
-        run: vp exec --filter @osi/time-tracker tsx test/e2e/harness/report-e2e-coverage.ts
+        run: vp exec --filter @osi/time-tracker-web tsx test/e2e/harness/report-e2e-coverage.ts
         env:
           NODE_V8_COVERAGE: coverage-v8-e2e
 
@@ -327,7 +327,7 @@ jobs:
           path: apps/web/.output
 
       - name: Install Playwright Chromium
-        run: vp exec --filter @osi/time-tracker playwright install --with-deps chromium
+        run: vp exec --filter @osi/time-tracker-web playwright install --with-deps chromium
 
       - name: Run UI e2e tests
         run: vp run test:e2e:ui

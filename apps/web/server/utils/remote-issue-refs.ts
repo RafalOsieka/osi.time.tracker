@@ -1,7 +1,7 @@
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { getDb } from '../db/index';
 import { tasks, projects, trackers } from '../db/schema';
-import { deriveIssueUrl } from '@osi/remote-trackers/contracts';
+import { deriveIssueUrl } from '@osi/time-tracker-remote-trackers/contracts';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 import { isImplementedTrackerSystemType } from '../../shared/utils/remote-sync-row-state';
 

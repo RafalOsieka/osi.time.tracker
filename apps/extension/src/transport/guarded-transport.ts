@@ -2,13 +2,13 @@ import {
   EXTENSION_RESOURCE_LIMITS,
   ExtensionProtocolError,
   EXTENSION_ERROR_MESSAGE_KEYS,
-} from '@osi/extension-protocol';
+} from '@osi/time-tracker-extension-protocol';
 import {
   UpstreamHttpError,
   type RemoteRequest,
   type RemoteResponse,
   type Transport,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { ZodType } from 'zod';
 import {
   destinationAllowsUrl,

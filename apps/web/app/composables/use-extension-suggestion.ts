@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { DestinationSelector } from '@osi/extension-protocol';
+import type { DestinationSelector } from '@osi/time-tracker-extension-protocol';
 import { suggestExtensionDestination } from '~/utils/remote/extension-suggestion';
 
 export type ExtensionSuggestionState =

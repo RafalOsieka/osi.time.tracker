@@ -1,4 +1,4 @@
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 
 export const extensionErrorKindSchema = z.enum([

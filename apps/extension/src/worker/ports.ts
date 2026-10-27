@@ -1,5 +1,5 @@
-import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/time-tracker-extension-protocol';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import type { ActivityStore } from '../activity/activity-store.js';
 import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import type { SuggestionService } from '../suggestions/suggestions.js';

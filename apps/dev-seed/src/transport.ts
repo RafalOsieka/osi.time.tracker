@@ -1,6 +1,10 @@
 import type { ZodType } from 'zod';
-import type { RemoteRequest, RemoteResponse, Transport } from '@osi/remote-trackers/contracts';
-import { UpstreamHttpError } from '@osi/remote-trackers/contracts';
+import type {
+  RemoteRequest,
+  RemoteResponse,
+  Transport,
+} from '@osi/time-tracker-remote-trackers/contracts';
+import { UpstreamHttpError } from '@osi/time-tracker-remote-trackers/contracts';
 
 /** The slice of `fetch` the transport needs; tests pass a fake, the CLI passes `fetch`. */
 export type FetchLike = (
@@ -14,7 +18,7 @@ export interface TransportDiagnostics {
 }
 
 /**
- * A plain Node `fetch` `Transport` for `@osi/remote-trackers`: forwards the
+ * A plain Node `fetch` `Transport` for `@osi/time-tracker-remote-trackers`: forwards the
  * provider-built headers untouched, sends JSON bodies, and mirrors the
  * extension transport's response contract (throw on non-2xx except 403/404,
  * `payload` is the schema-parsed body or `null`).

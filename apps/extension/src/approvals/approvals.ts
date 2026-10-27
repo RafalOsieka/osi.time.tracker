@@ -1,4 +1,4 @@
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   CanonicalizationError,
   canonicalizeDestination,

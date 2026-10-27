@@ -12,7 +12,7 @@ import UInput from '@nuxt/ui/components/Input.vue';
 import ULink from '@nuxt/ui/components/Link.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 import type { ActivityMap } from '../activity/activity-store.js';
 import { formatActivity } from '../activity/format-activity.js';
 import {

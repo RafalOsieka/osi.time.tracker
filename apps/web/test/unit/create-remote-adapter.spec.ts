@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createRemoteAdapter } from '../../app/utils/remote/create-remote-adapter';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter } from '@osi/remote-trackers/redmine';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter } from '@osi/time-tracker-remote-trackers/redmine';
 import { ExtensionExecutionAdapter } from '../../app/utils/remote/extension-execution-adapter';
 import type { TrackerDto } from '../../shared/types/tracker';
 

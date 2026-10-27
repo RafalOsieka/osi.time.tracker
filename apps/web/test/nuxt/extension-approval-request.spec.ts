@@ -5,7 +5,7 @@ import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ExtensionStatusFooter from '../../app/components/ExtensionStatusFooter.vue';
 import SyncDayRow from '../../app/components/sync/SyncDayRow.vue';
 import SyncRowDetail from '../../app/components/sync/SyncRowDetail.vue';
-import type { DestinationSelector } from '@osi/extension-protocol';
+import type { DestinationSelector } from '@osi/time-tracker-extension-protocol';
 import {
   suggestionKey,
   type ExtensionSuggestionState,

@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RemoteAdapterError, type RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import {
+  RemoteAdapterError,
+  type RemoteTimeLogDto,
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 const getCurrentAccount = vi.fn();

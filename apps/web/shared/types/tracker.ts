@@ -1,5 +1,8 @@
 import { z } from 'zod';
-import { trackerSystemTypeSchema, type TrackerSystemType } from '@osi/remote-trackers/contracts';
+import {
+  trackerSystemTypeSchema,
+  type TrackerSystemType,
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 /**
  * Whether the tracker origin allows direct browser requests. `true` (default)
