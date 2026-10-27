@@ -1,7 +1,10 @@
 import { ref } from 'vue';
 import { createRemoteAdapter } from '../utils/remote/create-remote-adapter';
-import type { RemoteFieldOption, TrackerSystemType } from '@osi/remote-trackers/contracts';
-import { resolveActivityScope } from '@osi/remote-trackers/contracts';
+import type {
+  RemoteFieldOption,
+  TrackerSystemType,
+} from '@osi/time-tracker-remote-trackers/contracts';
+import { resolveActivityScope } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { extractCaughtMessageKey } from '../utils/extract-message-key';
 import { useTrackerSecret } from './use-tracker-secret';

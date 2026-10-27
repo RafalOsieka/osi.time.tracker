@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue';
-import { ExtensionProtocolError, isUnknownCreateError } from '@osi/extension-protocol';
+import { ExtensionProtocolError, isUnknownCreateError } from '@osi/time-tracker-extension-protocol';
 import type {
   FinalizeRemoteExportResultDto,
   RemoteExportTaskOutcomeDto,

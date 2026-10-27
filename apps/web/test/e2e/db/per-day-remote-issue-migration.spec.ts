@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { MIGRATIONS_FOLDER } from '@osi/migrator';
+import { MIGRATIONS_FOLDER } from '@osi/time-tracker-migrator';
 import { createDatabaseClient } from '../../../server/db/client';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';

@@ -6,7 +6,7 @@ How to set up a local development environment. Day-to-day commands (lint, tests,
 
 - Node.js `^24.21` and pnpm `^12.8` (pinned in `devEngines` in the root `package.json`). Use `pnpm`, never `npm` or `yarn`.
 - Docker with Compose v2, for PostgreSQL and the optional local trackers.
-- Chromium for the UI e2e and extension browser tests only: `pnpm --filter @osi/time-tracker exec playwright install chromium`.
+- Chromium for the UI e2e and extension browser tests only: `pnpm --filter @osi/time-tracker-web exec playwright install chromium`.
 
 ## First run
 
@@ -73,7 +73,7 @@ Build the extension and load it unpacked:
 
 ```bash
 pnpm build:packages
-pnpm --filter @osi/extension build
+pnpm --filter @osi/time-tracker-extension build
 ```
 
 Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → **Load unpacked**, approve `http://localhost:3000` and the local tracker URLs in its options page, and turn off **Direct browser connection allowed** on the trackers that should use it. After a rebuild, click **Reload** on the extension card and refresh the OSI tab. The full user-facing flow is in [`self-hosting.md`](./self-hosting.md#browser-extension-chrome--edge).

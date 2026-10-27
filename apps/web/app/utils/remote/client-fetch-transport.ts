@@ -4,7 +4,7 @@ import {
   type RemoteRequest,
   type RemoteResponse,
   type Transport,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 /**
  * `client` execution-mode transport (L4): queries the configured tracker

@@ -1,4 +1,4 @@
-import { EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
+import { EXTENSION_RESOURCE_LIMITS } from '@osi/time-tracker-extension-protocol';
 
 /**
  * Page-side FIFO admission gate bounding concurrent extension operations to

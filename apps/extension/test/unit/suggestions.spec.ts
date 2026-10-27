@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { ExtensionProtocolError } from '@osi/extension-protocol';
+import { ExtensionProtocolError } from '@osi/time-tracker-extension-protocol';
 import {
   ApprovalService,
   createMemoryApprovalStore,

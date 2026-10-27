@@ -10,7 +10,7 @@ import { UNKNOWN_ID } from '../helpers/fixtures';
 import { createDatabaseClient } from '../../../server/db/client';
 import { remoteExportEntries, remoteExports } from '../../../server/db/schema';
 import { eq } from 'drizzle-orm';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 
 const describeSyncExport = requireDocker();
 

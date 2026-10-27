@@ -3,8 +3,8 @@ import {
   EXTENSION_ERROR_MESSAGE_KEYS,
   EXTENSION_PROTOCOL_VERSION,
   connectMessageSchema,
-} from '@osi/extension-protocol';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-extension-protocol';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 
 export interface ConnectEventLike {
   origin: string;

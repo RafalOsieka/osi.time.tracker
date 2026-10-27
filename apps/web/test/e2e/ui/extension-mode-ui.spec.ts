@@ -16,12 +16,12 @@ import {
   installUnavailableExtension,
   readFakeExtensionState,
 } from '../helpers/fake-extension';
-import { EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
+import { EXTENSION_RESOURCE_LIMITS } from '@osi/time-tracker-extension-protocol';
 import {
   PENDING_CREATE_STORAGE_KEY,
   pendingCreateMarkerSchema,
 } from '../../../app/utils/remote/pending-creates';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 
 const describeExtensionModeUi = requireBrowser();

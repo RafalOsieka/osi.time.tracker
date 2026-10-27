@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/extension-protocol';
+import { EXTENSION_ERROR_MESSAGE_KEYS } from '@osi/time-tracker-extension-protocol';
 import type { RemoteSyncDayRowDto } from '~~/shared/types/remote-sync-day';
-import type { RemoteFieldOption, RemoteIssueScope } from '@osi/remote-trackers/contracts';
+import type {
+  RemoteFieldOption,
+  RemoteIssueScope,
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { ColumnDefinition } from '../ColumnList.vue';
 

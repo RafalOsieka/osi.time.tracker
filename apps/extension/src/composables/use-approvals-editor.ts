@@ -1,5 +1,5 @@
 import { computed, getCurrentScope, onScopeDispose, readonly, shallowRef, watch } from 'vue';
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 import type {
   ApprovalService,
   DestinationApproval,

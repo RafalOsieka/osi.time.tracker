@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ExtensionProtocolError } from '@osi/extension-protocol';
+import { ExtensionProtocolError } from '@osi/time-tracker-extension-protocol';
 import { useSyncExport as createSyncExport } from '../../app/composables/use-sync-export';
 import type { RemoteSyncDayRowDto } from '../../shared/types/remote-sync-day';
 import type { TrackerDto } from '../../shared/types/tracker';

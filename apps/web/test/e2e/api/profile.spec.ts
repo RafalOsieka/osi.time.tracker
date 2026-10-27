@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import { url } from '../helpers/url';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 import type { CookieJar } from '../helpers/auth';
 import { requireDocker } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';

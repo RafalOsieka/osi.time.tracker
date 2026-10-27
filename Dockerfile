@@ -12,10 +12,10 @@ WORKDIR /app
 
 COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY --chown=vp:vp apps/migrator/package.json apps/migrator/
-RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/migrator..."
+RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/time-tracker-migrator..."
 
 COPY --chown=vp:vp apps/migrator apps/migrator
-RUN vp run --filter @osi/migrator build
+RUN vp run --filter @osi/time-tracker-migrator build
 
 # ── migrator ──────────────────────────────────────────────────────────────────
 # Node, the bundled CLI and the committed SQL — no package manager, toolchain or
@@ -56,14 +56,14 @@ COPY --chown=vp:vp apps/migrator/package.json apps/migrator/
 
 # Skip postinstall (nuxt prepare) here — source isn't copied yet, so it would
 # run against an empty workspace and produce incomplete type stubs.
-RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/time-tracker..."
+RUN vp install --frozen-lockfile --ignore-scripts --filter "@osi/time-tracker-web..."
 
 # Copy source (the build context is an allowlist — see .dockerignore), then
 # build the workspace libraries, generate Nuxt types and build the app
 COPY --chown=vp:vp . .
 RUN vp run build:packages \
-  && vp exec --filter @osi/time-tracker nuxt prepare \
-  && vp run --filter @osi/time-tracker build
+  && vp exec --filter @osi/time-tracker-web nuxt prepare \
+  && vp run --filter @osi/time-tracker-web build
 
 # ── runtime ───────────────────────────────────────────────────────────────────
 # The Nitro output is self-contained (no native modules), so a slim Node image

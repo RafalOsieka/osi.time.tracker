@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useRemoteActivities } from '../../app/composables/use-remote-activities';
 import type { TrackerDto } from '../../shared/types/tracker';
-import { ExtensionProtocolError } from '@osi/extension-protocol';
+import { ExtensionProtocolError } from '@osi/time-tracker-extension-protocol';
 
 const getActivityOptionsMock = vi.fn();
 const getSecretMock = vi.fn(() => 'secret');

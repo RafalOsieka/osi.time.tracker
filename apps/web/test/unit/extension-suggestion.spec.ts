@@ -6,8 +6,8 @@ import {
   handshakeRequestSchema,
   suggestDestinationRequestSchema,
   type SuggestDestinationResult,
-} from '@osi/extension-protocol';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-extension-protocol';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import type {
   ExtensionChannel,
   ExtensionMessagePort,

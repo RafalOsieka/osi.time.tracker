@@ -5,7 +5,7 @@ import type {
   RemoteProjectDto,
   RemoteTimeLogDto,
   RemoteTrackerAdapter,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type {
   CreateTimeEntryInput,
   CreateTimeEntryResult,

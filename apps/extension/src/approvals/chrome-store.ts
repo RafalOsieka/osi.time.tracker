@@ -1,4 +1,4 @@
-import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
+import { trackerSystemTypeSchema } from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 import type { ApprovalState, ApprovalStore, HostPermissionPort } from './approvals.js';
 

@@ -1,13 +1,16 @@
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
+import {
+  EXTENSION_PROTOCOL_VERSION,
+  EXTENSION_RESOURCE_LIMITS,
+} from '@osi/time-tracker-extension-protocol';
 import {
   RemoteAdapterError,
   type JsonValue,
   type RemoteAccount,
   type RemoteTrackerAdapter,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,

@@ -3,7 +3,7 @@ import {
   RedmineAdapter,
   REDMINE_TIME_LOGS_MAX_PAGES,
   REDMINE_TIME_LOGS_PAGE_SIZE,
-} from '@osi/remote-trackers/redmine';
+} from '@osi/time-tracker-remote-trackers/redmine';
 import type { ZodType } from 'zod';
 import {
   RemoteAdapterError,
@@ -12,7 +12,7 @@ import {
   type RemoteRequest,
   type RemoteResponse,
   type Transport,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 /** A `Transport` that throws for a status outside the 2xx range, mirroring a real transport's contract. */
 function fakeTransport(

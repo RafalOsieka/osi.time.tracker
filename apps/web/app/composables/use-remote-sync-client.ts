@@ -3,7 +3,7 @@ import {
   RemoteAdapterError,
   type RemoteTimeEntryDeleteOutcome,
   type RemoteTimeLogDto,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '../../shared/types/tracker';
 import { extractCaughtMessageKey } from '../utils/extract-message-key';
 import { useTrackerSecret } from './use-tracker-secret';

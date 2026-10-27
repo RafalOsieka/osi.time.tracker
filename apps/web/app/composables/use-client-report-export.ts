@@ -1,4 +1,4 @@
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import type { MessageParams } from '~~/shared/types/message-params';
 import type {
   ReportLocale,

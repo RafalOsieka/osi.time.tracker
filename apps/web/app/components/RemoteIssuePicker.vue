@@ -4,7 +4,7 @@ import {
   type RemoteIssueScope,
   type RemoteIssueSearchMode,
   type RemoteIssueSearchResult,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { RemoteIssueRefDto } from '../../shared/types/remote-issue-ref';
 import type { TrackerDto } from '../../shared/types/tracker';
 

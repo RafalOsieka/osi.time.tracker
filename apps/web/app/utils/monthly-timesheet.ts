@@ -1,4 +1,4 @@
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import type { MonthlyReportDto } from '~~/shared/types/report';
 import {
   attentionReasons,

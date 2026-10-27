@@ -2,7 +2,7 @@ import {
   EXTENSION_ERROR_MESSAGE_KEYS,
   EXTENSION_RESOURCE_LIMITS,
   type ExtensionOperationName,
-} from '@osi/extension-protocol';
+} from '@osi/time-tracker-extension-protocol';
 
 export type PendingOutcome = 'matched' | 'late' | 'mismatch';
 

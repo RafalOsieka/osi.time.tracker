@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { extractCaughtMessageKey, extractMessageKey } from '../../app/utils/extract-message-key';
-import { ExtensionProtocolError } from '@osi/extension-protocol';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
+import { ExtensionProtocolError } from '@osi/time-tracker-extension-protocol';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
 import type { MessageParams } from '../../shared/types/message-params';
 
 type NitroFetchError = Error & { data?: { data?: { messageKey?: string | number | null } } };

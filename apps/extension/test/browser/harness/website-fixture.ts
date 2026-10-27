@@ -1,5 +1,5 @@
 import { createServer, type Server } from 'node:http';
-import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
+import { EXTENSION_PROTOCOL_VERSION } from '@osi/time-tracker-extension-protocol';
 
 export interface WebsiteFixture {
   origin: string;

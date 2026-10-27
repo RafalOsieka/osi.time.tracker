@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { FormError, FormSubmitEvent } from '@nuxt/ui';
-import type { RemoteProjectDto } from '@osi/remote-trackers/contracts';
+import type { RemoteProjectDto } from '@osi/time-tracker-remote-trackers/contracts';
 import { createRemoteAdapter } from '~/utils/remote/create-remote-adapter';
 import { probeExtensionAvailability } from '~/utils/remote/extension-availability';
 

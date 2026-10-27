@@ -2,7 +2,7 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import postgres from 'postgres';
 import { sql as drizzleSql, eq } from 'drizzle-orm';
 import { createDatabaseClient } from '../../../server/db/client';
-import { readBootstrapUser, runMigrations } from '@osi/migrator';
+import { readBootstrapUser, runMigrations } from '@osi/time-tracker-migrator';
 import { users } from '../../../server/db/schema/users';
 import { requireDocker } from '../harness/guards';
 import { provisionEmptyDatabase } from '../harness/database';

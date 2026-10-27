@@ -1,4 +1,4 @@
-import { trackerSystemTypeSchema } from '@osi/remote-trackers/contracts';
+import { trackerSystemTypeSchema } from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 import { safeWireErrorSchema } from './errors.js';
 import { requestIdSchema } from './operations.js';

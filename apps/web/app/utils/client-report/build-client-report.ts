@@ -1,4 +1,4 @@
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { ReportHoursFormat, ReportPresetInput } from '~~/shared/types/report-preset';
 import { monthDateRange, type MonthBounds } from '~~/shared/utils/report-month';

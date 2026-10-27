@@ -1,5 +1,11 @@
-import { EXTENSION_ERROR_MESSAGE_KEYS, ExtensionProtocolError } from '@osi/extension-protocol';
-import { trackerSystemTypeSchema, type TrackerSystemType } from '@osi/remote-trackers/contracts';
+import {
+  EXTENSION_ERROR_MESSAGE_KEYS,
+  ExtensionProtocolError,
+} from '@osi/time-tracker-extension-protocol';
+import {
+  trackerSystemTypeSchema,
+  type TrackerSystemType,
+} from '@osi/time-tracker-remote-trackers/contracts';
 import { z } from 'zod';
 import {
   destinationKey,

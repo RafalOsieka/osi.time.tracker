@@ -20,7 +20,7 @@ import { localDayKey } from '../../../app/utils/timer-view-grouping';
 import { createDatabaseClient } from '../../../server/db/client';
 import { users } from '../../../server/db/schema/users';
 import { timeEntries } from '../../../server/db/schema/time-entries';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   columnWidths,
   expectEndEdgesEqual,

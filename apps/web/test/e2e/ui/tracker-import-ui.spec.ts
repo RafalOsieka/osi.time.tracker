@@ -11,7 +11,7 @@ import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { createProject, createTracker } from '../helpers/http';
 import { typeDateField } from '../helpers/date-field';
 import { pageIncludesTextScript } from '../helpers/dom';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 
 const describeTrackerImportUi = requireBrowser();
 const pageIncludesText = pageIncludesTextScript();

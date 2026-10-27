@@ -1,5 +1,8 @@
 import type { Page } from 'playwright-core';
-import { EXTENSION_PROTOCOL_VERSION, EXTENSION_RESOURCE_LIMITS } from '@osi/extension-protocol';
+import {
+  EXTENSION_PROTOCOL_VERSION,
+  EXTENSION_RESOURCE_LIMITS,
+} from '@osi/time-tracker-extension-protocol';
 
 const CHANNEL = 'osi-extension-protocol';
 const PROTOCOL_VERSION = EXTENSION_PROTOCOL_VERSION;

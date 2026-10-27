@@ -1,10 +1,10 @@
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter } from '@osi/remote-trackers/redmine';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter } from '@osi/time-tracker-remote-trackers/redmine';
 import type {
   RemoteTrackerAdapter,
   TrackerSystemType,
   Transport,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 export { OpenProjectAdapter, RedmineAdapter };
 export type { RemoteTrackerAdapter, Transport };

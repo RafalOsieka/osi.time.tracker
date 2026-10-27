@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@osi/remote-trackers",
+  "name": "@osi/time-tracker-remote-trackers",
   "version": "0.0.0",
   "private": true,
   "type": "module",

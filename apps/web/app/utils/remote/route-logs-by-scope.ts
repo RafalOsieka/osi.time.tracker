@@ -1,4 +1,7 @@
-import type { RemoteProjectDto, RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type {
+  RemoteProjectDto,
+  RemoteTimeLogDto,
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 /** The minimal Project shape routing needs: identity plus its remote scope, if any. */
 export interface ScopedProjectLike {

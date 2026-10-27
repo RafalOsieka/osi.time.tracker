@@ -1,4 +1,7 @@
-import { TRACKER_SYSTEM_TYPE_ORDER, type TrackerSystemType } from '@osi/remote-trackers/contracts';
+import {
+  TRACKER_SYSTEM_TYPE_ORDER,
+  type TrackerSystemType,
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { RemoteSyncRowState, RemoteSyncRowStateInput } from '../types/remote-sync-day';
 
 /** System types with a registered adapter. */

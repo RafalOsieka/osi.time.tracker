@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Content, ContentTable, TDocumentDefinitions } from 'pdfmake/interfaces';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import en from '../../i18n/locales/en.json';
 import pl from '../../i18n/locales/pl.json';
 import {

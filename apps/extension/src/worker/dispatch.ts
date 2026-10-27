@@ -16,14 +16,14 @@ import {
   type OperationResult,
   type SafeWireError,
   type SuggestDestinationResult,
-} from '@osi/extension-protocol';
+} from '@osi/time-tracker-extension-protocol';
 import {
   RemoteAdapterError,
   type JsonValue,
   type RemoteTrackerAdapter,
   type TrackerSystemType,
   type Transport,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 import type { ActivityStore } from '../activity/activity-store.js';
 import type { ApprovalService, DestinationApproval } from '../approvals/approvals.js';
 import { CanonicalizationError } from '../security/canonicalize.js';

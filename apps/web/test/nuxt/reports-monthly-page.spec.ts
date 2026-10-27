@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi, type MockInstance } from 'vitest'
 import type { Router } from 'vue-router';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import MonthlyReportPage from '../../app/pages/reports/monthly.vue';
 import type { MonthlyReportDto } from '../../shared/types/report';
 import type { TrackerDto } from '../../shared/types/tracker';

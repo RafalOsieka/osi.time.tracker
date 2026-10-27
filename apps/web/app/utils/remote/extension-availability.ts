@@ -3,7 +3,7 @@ import {
   ExtensionProtocolError,
   type DestinationSelector,
   type HandshakeResult,
-} from '@osi/extension-protocol';
+} from '@osi/time-tracker-extension-protocol';
 import {
   ExtensionDocumentBridge,
   type ExtensionBridgeOptions,

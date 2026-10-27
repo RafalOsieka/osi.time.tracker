@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { normalizeBaseUrl } from '@osi/remote-trackers/contracts';
+import { normalizeBaseUrl } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,

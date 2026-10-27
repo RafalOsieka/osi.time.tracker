@@ -19,12 +19,12 @@ import {
   type SafeWireError,
   type SuggestDestinationRequest,
   type SuggestDestinationStatus,
-} from '@osi/extension-protocol';
+} from '@osi/time-tracker-extension-protocol';
 import type {
   JsonValue,
   RemoteAdapterError,
   TrackerSystemType,
-} from '@osi/remote-trackers/contracts';
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 export type ExtensionPortPayload = JsonValue;
 

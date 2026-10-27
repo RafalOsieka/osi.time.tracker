@@ -15,9 +15,12 @@ import {
   RemoteAdapterError,
   UpstreamHttpError,
   normalizeBaseUrl,
-} from '@osi/remote-trackers/contracts';
-import { OpenProjectAdapter, OpenProjectClient } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter, RedmineClient } from '@osi/remote-trackers/redmine';
+} from '@osi/time-tracker-remote-trackers/contracts';
+import {
+  OpenProjectAdapter,
+  OpenProjectClient,
+} from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter, RedmineClient } from '@osi/time-tracker-remote-trackers/redmine';
 import { remoteIssuePickerFormSchema } from '~~/shared/types/remote-issue-ref';
 import { finalizeRemoteExportSchema } from '~~/shared/types/remote-export';
 import { createTrackerSchema } from '~~/shared/types/tracker';

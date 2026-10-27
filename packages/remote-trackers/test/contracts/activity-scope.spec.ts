@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { resolveActivityScope, TRACKER_SYSTEM_TYPE_ORDER } from '@osi/remote-trackers/contracts';
+import {
+  resolveActivityScope,
+  TRACKER_SYSTEM_TYPE_ORDER,
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 describe('resolveActivityScope', () => {
   it('resolves every registered system type without throwing', () => {

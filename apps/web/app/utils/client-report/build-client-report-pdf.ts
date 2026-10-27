@@ -6,7 +6,7 @@ import type {
   TableCellProperties,
   TDocumentDefinitions,
 } from 'pdfmake/interfaces';
-import { deriveIssueUrl } from '@osi/remote-trackers/contracts';
+import { deriveIssueUrl } from '@osi/time-tracker-remote-trackers/contracts';
 import type { MessageParams } from '~~/shared/types/message-params';
 import type { ClientReport, ClientReportDay, ClientReportRow } from './build-client-report';
 import type { ClientReportFormatters } from './format';

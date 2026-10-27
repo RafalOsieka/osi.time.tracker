@@ -3,7 +3,7 @@ import {
   redmineAuthHeaders,
   redmineHoursToSeconds,
   secondsToRedmineHours,
-} from '@osi/remote-trackers/redmine';
+} from '@osi/time-tracker-remote-trackers/redmine';
 
 describe('secondsToRedmineHours', () => {
   it('converts whole hours at 0.01 h precision', () => {

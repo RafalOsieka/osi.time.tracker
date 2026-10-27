@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
-import { EXTENSION_PROTOCOL_VERSION } from '@osi/extension-protocol';
-import type { JsonValue, RemoteTrackerAdapter } from '@osi/remote-trackers/contracts';
+import { EXTENSION_PROTOCOL_VERSION } from '@osi/time-tracker-extension-protocol';
+import type { JsonValue, RemoteTrackerAdapter } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   ApprovalService,
   createMemoryApprovalStore,

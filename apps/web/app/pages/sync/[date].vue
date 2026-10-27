@@ -6,7 +6,7 @@ import type {
   RemoteSyncRowState,
 } from '~~/shared/types/remote-sync-day';
 import type { TrackerDto } from '~~/shared/types/tracker';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
 import { computeInTrackerSummary } from '~~/shared/utils/compute-in-tracker-summary';
 import type { ColumnDefinition } from '~/components/ColumnList.vue';

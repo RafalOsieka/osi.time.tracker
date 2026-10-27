@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { applyRoundingRule } from '../../shared/utils/rounding';
-import { redmineHoursToSeconds, secondsToRedmineHours } from '@osi/remote-trackers/redmine';
+import {
+  redmineHoursToSeconds,
+  secondsToRedmineHours,
+} from '@osi/time-tracker-remote-trackers/redmine';
 
 describe('Redmine hours and tracker rounding', () => {
   it('is lossless for all up_* rounding rules', () => {

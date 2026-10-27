@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ZodError } from 'zod';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 import { profileSchema, TIME_ZONES } from '../../shared/types/profile';
 import { mapZodError } from '../../server/utils/zod-error';
 

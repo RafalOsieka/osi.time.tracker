@@ -3,7 +3,7 @@ import {
   formatOpenProjectDuration,
   hrefId,
   parseOpenProjectDuration,
-} from '@osi/remote-trackers/openproject';
+} from '@osi/time-tracker-remote-trackers/openproject';
 
 describe('formatOpenProjectDuration', () => {
   it('formats hours, minutes, and seconds together', () => {

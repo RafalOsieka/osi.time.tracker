@@ -1,4 +1,7 @@
-import { extensionErrorKindSchema, operationNameSchema } from '@osi/extension-protocol';
+import {
+  extensionErrorKindSchema,
+  operationNameSchema,
+} from '@osi/time-tracker-extension-protocol';
 import { z } from 'zod';
 import { destinationKey, type DestinationApproval } from '../approvals/approvals.js';
 

@@ -9,7 +9,7 @@ import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, type CookieJar, patchTimezone } from '../helpers/auth';
 import { pageIncludesTextScript } from '../helpers/dom';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   expectStartEdgesEqual,
   expectEndEdgesEqual,

@@ -3,9 +3,13 @@ import {
   RedmineClient,
   REDMINE_TIME_LOGS_PAGE_SIZE,
   REDMINE_TITLE_SEARCH_MAX_RESULTS,
-} from '@osi/remote-trackers/redmine';
+} from '@osi/time-tracker-remote-trackers/redmine';
 import type { ZodType } from 'zod';
-import type { RemoteRequest, RemoteResponse, Transport } from '@osi/remote-trackers/contracts';
+import type {
+  RemoteRequest,
+  RemoteResponse,
+  Transport,
+} from '@osi/time-tracker-remote-trackers/contracts';
 
 /** Records every request it is asked to execute and returns canned responses in order. */
 function fakeTransport(responses: RemoteResponse[]): Transport & { requests: RemoteRequest[] } {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
-  "name": "@osi/migrator",
+  "name": "@osi/time-tracker-migrator",
   "version": "0.0.0",
   "private": true,
   "type": "module",

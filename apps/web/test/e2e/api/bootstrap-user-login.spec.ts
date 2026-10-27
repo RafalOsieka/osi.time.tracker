@@ -1,6 +1,6 @@
 import postgres from 'postgres';
 import { beforeEach, expect, it } from 'vitest';
-import { readBootstrapUser, seedBootstrapUser } from '@osi/migrator';
+import { readBootstrapUser, seedBootstrapUser } from '@osi/time-tracker-migrator';
 import { url } from '../helpers/url';
 import { CookieJar, primeCsrf } from '../helpers/auth';
 import { requireDocker } from '../harness/guards';

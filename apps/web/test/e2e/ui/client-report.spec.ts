@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { expect, it } from 'vitest';
 import { createPage } from '@nuxt/test-utils/e2e';
 import type { Page } from 'playwright-core';
-import type { JsonObject } from '@osi/remote-trackers/contracts';
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 import { url } from '../helpers/url';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';

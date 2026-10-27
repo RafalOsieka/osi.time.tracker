@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { TrackerSystemType } from '@osi/remote-trackers/contracts';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 import type { TrackerRoundingRule } from './tracker';
 
 /**

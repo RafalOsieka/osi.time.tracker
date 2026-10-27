@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { EXTENSION_ERROR_MESSAGE_KEYS, type DestinationSelector } from '@osi/extension-protocol';
+import {
+  EXTENSION_ERROR_MESSAGE_KEYS,
+  type DestinationSelector,
+} from '@osi/time-tracker-extension-protocol';
 import type {
   RemoteSyncDayEntryDto,
   RemoteSyncExportProvenanceDto,
 } from '~~/shared/types/remote-sync-day';
-import type { RemoteTimeLogDto } from '@osi/remote-trackers/contracts';
+import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contracts';
 import type { ColumnDefinition } from '../ColumnList.vue';
 
 const {

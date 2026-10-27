@@ -6,9 +6,9 @@ import {
   RemoteAdapterError,
   deriveIssueUrl,
   normalizeBaseUrl,
-} from '@osi/remote-trackers/contracts';
-import { OpenProjectAdapter } from '@osi/remote-trackers/openproject';
-import { RedmineAdapter } from '@osi/remote-trackers/redmine';
+} from '@osi/time-tracker-remote-trackers/contracts';
+import { OpenProjectAdapter } from '@osi/time-tracker-remote-trackers/openproject';
+import { RedmineAdapter } from '@osi/time-tracker-remote-trackers/redmine';
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), '../..');
 
@@ -36,8 +36,8 @@ describe('package public exports', () => {
 
   it('rejects undeclared deep imports', async () => {
     const blocked = [
-      '@osi/remote-trackers/internal/remote-id',
-      '@osi/remote-trackers/src/contracts/json.js',
+      '@osi/time-tracker-remote-trackers/internal/remote-id',
+      '@osi/time-tracker-remote-trackers/src/contracts/json.js',
     ];
     for (const specifier of blocked) {
       await expect(import(/* @vite-ignore */ specifier)).rejects.toThrow(/is not exported/);

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { remoteIssueSearchModeSchema } from '@osi/remote-trackers/contracts';
+import { remoteIssueSearchModeSchema } from '@osi/time-tracker-remote-trackers/contracts';
 
 /**
  * Client-side form schema for the remote issue picker popover (mode + query).

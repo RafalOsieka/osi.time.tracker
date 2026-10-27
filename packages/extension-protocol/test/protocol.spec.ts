@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { RemoteAdapterError } from '@osi/remote-trackers/contracts';
-import type { JsonValue } from '@osi/remote-trackers/contracts';
+import { RemoteAdapterError } from '@osi/time-tracker-remote-trackers/contracts';
+import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
 import {
   EXTENSION_ERROR_MESSAGE_KEYS,
   EXTENSION_OPERATION_NAMES,
