@@ -59,7 +59,7 @@
     "playwright-core": "^1.64.1",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vite-doctor": "^0.0.12",
+    "vite-doctor": "^0.1.1",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "^3.3.13"
