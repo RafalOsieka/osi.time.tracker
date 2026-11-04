@@ -29,7 +29,7 @@
     "consola": "3.4.2",
     "drizzle-orm": "^0.45.4",
     "nuxt": "^4.6.2",
-    "nuxt-auth-utils": "^0.5.32",
+    "nuxt-auth-utils": "^0.6.0",
     "nuxt-security": "^2.7.0",
     "pdfmake": "^0.3.13",
     "postgres": "^3.4.9",
