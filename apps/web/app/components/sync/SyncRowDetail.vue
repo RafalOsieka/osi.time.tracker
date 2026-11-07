@@ -336,11 +336,11 @@ const displayedRemoteLogs = computed(() => {
           >
             <UButton
               icon="i-lucide-link"
-              color="neutral"
-              variant="ghost"
+              color="primary"
+              variant="soft"
               square
               size="xs"
-              class="text-muted"
+              class="size-6 justify-center"
               :disabled="busy"
               :aria-label="t('remoteSync.linkRemoteEntry')"
               :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
@@ -354,11 +354,11 @@ const displayedRemoteLogs = computed(() => {
           >
             <UButton
               icon="i-lucide-trash-2"
-              color="neutral"
-              variant="ghost"
+              color="error"
+              variant="soft"
               square
               size="xs"
-              class="text-muted hover:bg-error/10 hover:text-error focus-visible:text-error"
+              class="size-6 justify-center"
               :disabled="busy"
               :aria-label="t('remoteSync.deleteRemoteEntry')"
               :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"

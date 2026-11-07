@@ -107,7 +107,7 @@
   --ui-border-muted: oklch(27.5% 0.022 262);
   --ui-border-accented: var(--ui-color-neutral-500);
   --app-canvas: var(--ui-bg);
-  --app-surface-sidebar: oklch(18% 0.017 262);
+  --app-surface-sidebar: oklch(19% 0.017 262);
 }
 
 html,

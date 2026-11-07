@@ -238,11 +238,11 @@ async function onDelete() {
       <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
         <UButton
           icon="i-lucide-trash-2"
-          variant="ghost"
+          variant="soft"
           square
           size="xs"
-          color="neutral"
-          class="text-dimmed hover:bg-error/10 hover:text-error focus-visible:text-error"
+          color="error"
+          class="size-6 justify-center"
           :aria-label="t('timerView.entryRow.deleteLabel')"
           :loading="deleting"
           :data-testid="`timer-entry-delete-${entry.id}`"

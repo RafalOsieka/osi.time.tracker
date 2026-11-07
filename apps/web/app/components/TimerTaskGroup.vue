@@ -374,11 +374,11 @@ async function unlinkRemoteIssue() {
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
           :icon="isLive ? undefined : 'i-lucide-play'"
-          variant="ghost"
+          :variant="isLive ? 'solid' : 'soft'"
           square
           size="xs"
-          :color="isLive ? 'error' : 'neutral'"
-          :class="!isLive && 'text-dimmed hover:text-primary focus-visible:text-primary'"
+          :color="isLive ? 'error' : 'primary'"
+          class="size-6 justify-center rounded-full"
           :aria-label="actionLabel"
           :aria-pressed="isLive"
           :data-testid="`timer-group-continue-${group.key}`"

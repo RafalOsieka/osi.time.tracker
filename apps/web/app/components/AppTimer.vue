@@ -198,10 +198,6 @@ async function onSaveStartedAt() {
 </script>
 
 <template>
-  <!--
-    One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
-    live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
-  -->
   <div
     class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-1 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
@@ -211,6 +207,10 @@ async function onSaveStartedAt() {
     "
     data-testid="app-timer"
   >
+    <!--
+      One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
+      live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
+    -->
     <span
       v-if="isRunning"
       class="size-2 shrink-0 rounded-full bg-primary ring-4 ring-primary/20"
@@ -328,6 +328,7 @@ async function onSaveStartedAt() {
     <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
       <UButton
         square
+        size="sm"
         variant="solid"
         class="rounded-full"
         :icon="isRunning ? undefined : 'i-lucide-play'"

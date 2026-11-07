@@ -170,7 +170,10 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       :loading="trackersPending"
       data-testid="trackers-table"
       class="w-full"
-      :ui="{ base: 'w-full table-fixed' }"
+      :ui="{
+        root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
+        base: 'w-full table-fixed',
+      }"
     >
       <template #empty>
         <!-- Avoid empty-state flash while the initial list request is in flight. -->

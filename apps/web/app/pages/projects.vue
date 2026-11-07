@@ -130,7 +130,10 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
       :loading="projectsPending"
       data-testid="projects-table"
       class="w-full"
-      :ui="{ base: 'w-full table-fixed' }"
+      :ui="{
+        root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
+        base: 'w-full table-fixed',
+      }"
     >
       <template #empty>
         <!-- Avoid empty-state flash while the initial list request is in flight. -->

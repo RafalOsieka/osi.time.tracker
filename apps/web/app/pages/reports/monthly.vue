@@ -500,7 +500,11 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :columns="columns"
       :meta="tableMeta"
       :loading="reportPending"
-      :ui="{ root: 'rounded-lg', base: 'w-full table-fixed', thead: 'bg-elevated/50' }"
+      :ui="{
+        root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
+        base: 'w-full table-fixed',
+        thead: 'bg-elevated/50',
+      }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />

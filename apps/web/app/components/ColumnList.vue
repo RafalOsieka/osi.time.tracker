@@ -33,7 +33,10 @@ const template = computed(() =>
 </script>
 
 <template>
-  <div class="@container/list min-w-0">
+  <div
+    class="@container/list min-w-0 rounded-xl bg-default px-4 pb-1 ring ring-default dark:bg-muted"
+  >
+    <!-- The list sits on a card: white on the light canvas, one layer up in dark. -->
     <div
       role="table"
       class="grid gap-x-3 @max-[40rem]/list:block"
@@ -41,7 +44,7 @@ const template = computed(() =>
     >
       <div
         role="row"
-        class="col-span-full grid min-h-8 grid-cols-subgrid items-center border-b border-default bg-(--app-canvas) @max-[40rem]/list:sr-only"
+        class="col-span-full grid min-h-8 grid-cols-subgrid items-center border-b border-default bg-default dark:bg-muted @max-[40rem]/list:sr-only"
         :class="stickyHeader && 'sticky top-0 z-10'"
       >
         <div

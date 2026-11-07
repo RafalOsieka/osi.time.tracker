@@ -118,7 +118,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         :avatar="avatar"
         size="md"
         class="w-full min-w-0 cursor-pointer rounded-md px-1 py-1 text-start hover:bg-elevated"
-        :class="onProfile && 'bg-elevated'"
+        :class="onProfile && 'bg-primary/10'"
         data-testid="app-user-footer-trigger"
         :ui="{
           root: 'w-full min-w-0',
@@ -142,7 +142,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         variant="ghost"
         square
         :avatar="avatar"
-        :class="onProfile && 'bg-elevated'"
+        :class="onProfile && 'bg-primary/10'"
         :aria-label="primaryLabel || t('layout.logoutButton')"
         data-testid="app-user-footer-trigger"
       />
