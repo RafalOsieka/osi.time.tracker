@@ -198,7 +198,21 @@ async function onSaveStartedAt() {
 </script>
 
 <template>
-  <div class="flex w-full min-w-0 items-center gap-2" data-testid="app-timer">
+  <!--
+    One card frames the whole timer: a neutral field while idle, a light cyan card with a live
+    dot, cyan time and a round red stop while a timer runs.
+  -->
+  <div
+    class="flex h-11 w-full min-w-0 items-center gap-2 rounded-xl ps-3 pe-1.5 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
+    :class="isRunning ? 'bg-primary/8 ring-primary/30' : 'bg-default ring-accented'"
+    data-testid="app-timer"
+  >
+    <span v-if="isRunning" class="relative flex size-2 shrink-0" aria-hidden="true">
+      <span
+        class="absolute inline-flex size-full rounded-full bg-primary opacity-50 motion-safe:animate-ping"
+      />
+      <span class="relative inline-flex size-2 rounded-full bg-primary" />
+    </span>
     <TaskTitleInput
       ref="titleInput"
       v-model:text="inputText"
@@ -207,6 +221,7 @@ async function onSaveStartedAt() {
       :disabled="isLoading"
       :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
       :aria-label="t('timer.titleLabel')"
+      bare
       chip-testid="timer-project"
       data-testid="timer-title-input"
       @pick-project="onPickProject"
@@ -225,7 +240,7 @@ async function onSaveStartedAt() {
         color="neutral"
         variant="link"
         class="min-w-[5.5rem] justify-center font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
-        :class="isRunning ? 'text-highlighted' : 'text-dimmed'"
+        :class="isRunning ? 'text-primary' : 'text-dimmed'"
         role="timer"
         :label="elapsedLabel"
         :aria-label="isRunning ? t('timer.editStartLabel') : t('timer.elapsedLabel')"
@@ -310,7 +325,8 @@ async function onSaveStartedAt() {
     <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
       <UButton
         square
-        :variant="isRunning ? 'soft' : 'solid'"
+        variant="solid"
+        class="rounded-full"
         :icon="isRunning ? undefined : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
         :color="isRunning ? 'error' : 'primary'"

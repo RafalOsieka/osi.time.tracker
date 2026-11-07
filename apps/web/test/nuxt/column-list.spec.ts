@@ -63,7 +63,8 @@ describe('ColumnList', () => {
     expect(table.attributes('style')).toContain('--narrow-cols: 1.5rem minmax(0,1fr) 1.5rem');
     expect(table.classes()).toContain('@max-[40rem]/list:block');
     expect(wrapper.find('[role="row"]').classes()).toContain('sticky');
-    expect(wrapper.find('[role="row"]').classes()).toContain('bg-default');
+    // Opaque, in the page's canvas colour, so rows scrolled under the sticky header never show.
+    expect(wrapper.find('[role="row"]').classes()).toContain('bg-(--app-canvas)');
   });
 
   it('can disable the sticky header', async () => {

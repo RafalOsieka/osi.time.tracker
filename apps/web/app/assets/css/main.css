@@ -52,8 +52,10 @@
 /*
  * Surface and accent tokens. Light mode takes the accent one step darker than the framework
  * default so white text on primary fills meets WCAG AA (REQ-160); dark mode keeps the lighter
- * shade. Dark mode is layered greys, never near-black: the sidebar a shade below the page, inset
- * and card surfaces a shade above it, popovers and hovers above that.
+ * shade. Neutrals are cool slate. Light mode puts white cards and controls on a light slate
+ * canvas; dark mode is layered blue-charcoal, never near-black and never the saturated navy of
+ * the slate ramp's dark end: the sidebar a shade below the page, cards a shade above it,
+ * popovers and hovers above that.
  */
 :root {
   --ui-radius: 0.375rem;
@@ -78,7 +80,8 @@
     var(--ui-color-neutral-400) 50%,
     var(--ui-color-neutral-500)
   );
-  --app-surface-sidebar: var(--ui-color-neutral-50);
+  --app-canvas: var(--ui-color-neutral-50);
+  --app-surface-sidebar: oklch(96.3% 0.008 255);
 }
 
 .dark {
@@ -96,18 +99,15 @@
   --ui-text-toned: var(--ui-color-neutral-300);
   --ui-text: color-mix(in oklab, var(--ui-color-neutral-200) 50%, var(--ui-color-neutral-300));
   --ui-text-highlighted: var(--ui-color-neutral-200);
-  --ui-bg: var(--ui-color-neutral-900);
-  --ui-bg-muted: color-mix(in oklab, var(--ui-color-neutral-900) 55%, var(--ui-color-neutral-800));
-  --ui-bg-elevated: var(--ui-color-neutral-800);
-  --ui-bg-accented: var(--ui-color-neutral-700);
-  --ui-border: color-mix(in oklab, var(--ui-color-neutral-800) 70%, var(--ui-color-neutral-700));
-  --ui-border-muted: var(--ui-color-neutral-800);
+  --ui-bg: oklch(21% 0.018 262);
+  --ui-bg-muted: oklch(24% 0.02 262);
+  --ui-bg-elevated: oklch(27.5% 0.022 262);
+  --ui-bg-accented: oklch(34% 0.026 262);
+  --ui-border: oklch(30.5% 0.022 262);
+  --ui-border-muted: oklch(27.5% 0.022 262);
   --ui-border-accented: var(--ui-color-neutral-500);
-  --app-surface-sidebar: color-mix(
-    in oklab,
-    var(--ui-color-neutral-900) 55%,
-    var(--ui-color-neutral-950)
-  );
+  --app-canvas: var(--ui-bg);
+  --app-surface-sidebar: oklch(18% 0.017 262);
 }
 
 html,

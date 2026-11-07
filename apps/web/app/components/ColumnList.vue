@@ -41,7 +41,7 @@ const template = computed(() =>
     >
       <div
         role="row"
-        class="col-span-full grid min-h-8 grid-cols-subgrid items-center border-b border-default bg-default @max-[40rem]/list:sr-only"
+        class="col-span-full grid min-h-8 grid-cols-subgrid items-center border-b border-default bg-(--app-canvas) @max-[40rem]/list:sr-only"
         :class="stickyHeader && 'sticky top-0 z-10'"
       >
         <div

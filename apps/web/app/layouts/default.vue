@@ -70,7 +70,10 @@ onMounted(() => {
       sticky list headers pin flush under the top bar instead of inside that padding,
       where scrolled rows would show through above them.
     -->
-    <UDashboardPanel data-testid="app-content" :ui="{ body: 'pt-0 sm:pt-0' }">
+    <UDashboardPanel
+      data-testid="app-content"
+      :ui="{ root: 'bg-(--app-canvas)', body: 'pt-0 sm:pt-0' }"
+    >
       <template #header>
         <!--
           Center is `hidden lg:flex` in Nuxt UI by default; override so the timer stays

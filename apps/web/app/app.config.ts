@@ -2,8 +2,24 @@ export default defineAppConfig({
   ui: {
     colors: {
       primary: 'cyan',
-      neutral: 'zinc',
+      neutral: 'slate',
       warning: 'amber',
+    },
+    // The selected navigation item sits on a cyan wash rather than a grey one.
+    navigationMenu: {
+      variants: {
+        active: {
+          true: { childLink: 'before:bg-primary/10 text-primary', childLinkIcon: 'text-primary' },
+        },
+      },
+      compoundVariants: [
+        {
+          variant: 'pill',
+          active: true,
+          highlight: false,
+          class: { link: 'before:bg-primary/10' },
+        },
+      ],
     },
     // Cards sit one layer above the page in dark mode (layered greys), flush with it in light.
     card: {

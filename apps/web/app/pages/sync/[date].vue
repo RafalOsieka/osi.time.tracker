@@ -754,11 +754,19 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
 
     <!-- Two equal stat cards across the content width, stacked on phones. -->
     <div class="grid gap-4 sm:grid-cols-2" data-testid="remote-sync-summaries" aria-live="polite">
-      <StatCard :label="t('remoteSync.dayTotalLabel')" data-testid="remote-sync-total-day">
+      <StatCard
+        :label="t('remoteSync.dayTotalLabel')"
+        icon="i-lucide-clock"
+        data-testid="remote-sync-total-day"
+      >
         {{ formatDuration(dayTotalsSafe.dayTotal) }}
         <template #caption>{{ t('remoteSync.dayTotalHint') }}</template>
       </StatCard>
-      <StatCard :label="t('remoteSync.inTrackerLabel')" data-testid="remote-sync-total-in-tracker">
+      <StatCard
+        :label="t('remoteSync.inTrackerLabel')"
+        icon="i-lucide-cloud-upload"
+        data-testid="remote-sync-total-in-tracker"
+      >
         <template v-if="inTrackerSummary.status === 'loading'">
           <span class="text-dimmed">{{ t('remoteSync.emptyCell') }}</span>
           <UIcon

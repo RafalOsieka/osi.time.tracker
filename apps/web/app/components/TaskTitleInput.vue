@@ -24,12 +24,15 @@ const {
   eager = false,
   placeholder = undefined,
   disabled = false,
+  bare = false,
   chipTestid,
 } = defineProps<{
   /** Load the mention project list on mount instead of on first focus. */
   eager?: boolean;
   placeholder?: string;
   disabled?: boolean;
+  /** Draw no outline of its own: the caller frames the field (the top-bar timer card). */
+  bare?: boolean;
   /** Prefix for the chip's test ids: `${chipTestid}-chip` and `${chipTestid}-chip-remove`. */
   chipTestid: string;
 }>();
@@ -239,6 +242,7 @@ defineExpose({ resolveCommit });
     class="flex min-w-0 flex-1 items-center"
     :class="
       project &&
+      !bare &&
       'rounded-md bg-default ring ring-inset ring-accented focus-within:ring-2 focus-within:ring-primary'
     "
   >
@@ -247,15 +251,20 @@ defineExpose({ resolveCommit });
       class="ms-2.5 flex shrink-0 items-center"
       :data-testid="`${chipTestid}-chip`"
     >
-      <UBadge color="neutral" variant="subtle" size="md" class="max-w-40 gap-1 py-0.5 pe-0.5">
+      <UBadge
+        color="primary"
+        variant="soft"
+        size="md"
+        class="max-w-40 gap-1 rounded-full py-0.5 ps-2.5 pe-1 font-medium"
+      >
         <span class="truncate">{{ project.name }}</span>
         <UButton
           square
-          color="neutral"
+          color="primary"
           variant="link"
           size="xs"
           icon="i-lucide-x"
-          class="p-0"
+          class="p-0 text-primary/70 hover:text-primary"
           :aria-label="t('timer.mention.removeProject', { project: project.name })"
           :data-testid="`${chipTestid}-chip-remove`"
           @click="removeChip"
@@ -271,7 +280,7 @@ defineExpose({ resolveCommit });
       :items="menuItems"
       value-key="name"
       label-key="label"
-      :variant="project ? 'none' : 'outline'"
+      :variant="project || bare ? 'none' : 'outline'"
       :disabled="disabled"
       :placeholder="placeholder"
       mode="autocomplete"

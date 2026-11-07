@@ -438,7 +438,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       data-testid="reports-monthly-summaries"
       aria-live="polite"
     >
-      <StatCard :label="t('reports.monthly.summaryLocal')">
+      <StatCard :label="t('reports.monthly.summaryLocal')" icon="i-lucide-hard-drive">
         <span
           :class="localSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
           data-testid="reports-summary-local"
@@ -448,7 +448,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         <template #caption>{{ t('reports.monthly.summaryLocalCaption') }}</template>
       </StatCard>
 
-      <StatCard :label="t('reports.monthly.summaryRemote')">
+      <StatCard :label="t('reports.monthly.summaryRemote')" icon="i-lucide-cable">
         <span
           v-if="remoteHoursSummary.kind === 'ok' || remoteHoursSummary.kind === 'pending'"
           :class="remoteSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
