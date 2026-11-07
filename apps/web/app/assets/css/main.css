@@ -66,7 +66,11 @@
   --ui-warning: var(--ui-color-warning-700);
   --ui-error: var(--ui-color-error-600);
   /* A darker text ramp: even dimmed text (zeros, placeholders) stays readable. */
-  --ui-text-dimmed: var(--ui-color-neutral-500);
+  --ui-text-dimmed: color-mix(
+    in oklab,
+    var(--ui-color-neutral-500) 80%,
+    var(--ui-color-neutral-600)
+  );
   --ui-text-muted: var(--ui-color-neutral-600);
   --ui-text-toned: var(--ui-color-neutral-700);
   --ui-text: var(--ui-color-neutral-800);
