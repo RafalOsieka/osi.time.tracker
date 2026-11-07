@@ -9,7 +9,10 @@ export default defineAppConfig({
     navigationMenu: {
       variants: {
         active: {
-          true: { childLink: 'before:bg-primary/10 text-primary', childLinkIcon: 'text-primary' },
+          true: {
+            childLink: 'before:bg-primary-100/80 dark:before:bg-primary/12 text-primary',
+            childLinkIcon: 'text-primary',
+          },
         },
       },
       compoundVariants: [
@@ -17,7 +20,7 @@ export default defineAppConfig({
           variant: 'pill',
           active: true,
           highlight: false,
-          class: { link: 'before:bg-primary/10' },
+          class: { link: 'before:bg-primary-100/80 dark:before:bg-primary/12' },
         },
       ],
     },

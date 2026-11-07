@@ -21,7 +21,7 @@ const { t } = useI18n();
       color="primary"
       variant="soft"
       size="md"
-      class="group/chip max-w-48 gap-1 rounded-full py-0.5 ps-2.5 pe-1 font-medium"
+      class="group/chip max-w-48 gap-0 rounded-full px-2.5 py-0.5 font-medium"
     >
       <span class="truncate">{{ name }}</span>
       <UButton
@@ -30,7 +30,7 @@ const { t } = useI18n();
         variant="link"
         size="xs"
         icon="i-lucide-x"
-        class="p-0 text-primary/70 opacity-0 transition-opacity group-hover/chip:opacity-100 hover:text-primary focus-visible:opacity-100"
+        class="ms-0 w-0 overflow-hidden p-0 text-primary/70 opacity-0 group-hover/chip:ms-1 group-hover/chip:w-3.5 group-hover/chip:opacity-100 hover:text-primary focus-visible:ms-1 focus-visible:w-3.5 focus-visible:opacity-100"
         :aria-label="t('timer.mention.removeProject', { project: name })"
         :data-testid="`${testid}-chip-remove`"
         @click="emit('remove')"

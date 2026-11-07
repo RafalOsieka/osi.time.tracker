@@ -368,7 +368,7 @@
     "rowDeltaTooltip": "Różnica: {delta}",
     "durationClusterAria": "Zarejestrowane {tracked}, do wysłania {toSend}, różnica {delta}",
     "activityLabel": "Czynność",
-    "activityEmptyOption": "Wybierz czynność",
+    "activityEmptyOption": "Wybierz",
     "activityFetchError": "Nie udało się wczytać czynności.",
     "activityLoading": "Wczytywanie czynności\u2026",
     "activityRetry": "Ponów wczytywanie czynności",

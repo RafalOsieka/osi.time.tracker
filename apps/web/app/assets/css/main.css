@@ -92,7 +92,7 @@
   --ui-error: var(--ui-color-error-400);
   --ui-text-dimmed: color-mix(
     in oklab,
-    var(--ui-color-neutral-400) 55%,
+    var(--ui-color-neutral-400) 75%,
     var(--ui-color-neutral-500)
   );
   --ui-text-muted: var(--ui-color-neutral-400);

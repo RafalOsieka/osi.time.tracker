@@ -199,7 +199,7 @@ async function onSaveStartedAt() {
 
 <template>
   <div
-    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-1 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
+    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
       isRunning
         ? 'bg-primary-50 ring-primary-200 dark:bg-primary-950/50 dark:ring-primary-800/70'
@@ -331,6 +331,9 @@ async function onSaveStartedAt() {
         size="sm"
         variant="solid"
         class="rounded-full"
+        :class="
+          isRunning && 'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-error'
+        "
         :icon="isRunning ? undefined : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
         :color="isRunning ? 'error' : 'primary'"
