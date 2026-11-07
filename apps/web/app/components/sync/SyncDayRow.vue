@@ -341,15 +341,20 @@ function onEditToSend() {
           @update:open="onActivityOpen"
         >
           <OverflowTooltip :text="activityDisplayValue">
-            <!-- Still empty, the required activity is drawn as a control (outlined) so the row
-                 shows what Export waits for; once chosen it reads as plain row text. -->
+            <!-- Still empty, the required activity is drawn as a control (a dashed 3:1 outline,
+                 solid on hover and focus) so the row shows what Export waits for; once chosen it
+                 reads as plain row text. Either way its text starts on the column's edge. -->
             <UButton
-              :variant="selectedActivityName ? 'ghost' : 'outline'"
+              variant="ghost"
               color="neutral"
               size="xs"
               trailing-icon="i-lucide-chevron-down"
               class="max-w-[calc(100%+0.5rem)] justify-start text-sm font-normal"
-              :class="selectedActivityName ? '-ms-2 text-default' : 'text-muted'"
+              :class="
+                selectedActivityName
+                  ? '-ms-2 text-default'
+                  : '-ms-2 border border-dashed border-accented text-muted hover:border-solid focus-visible:border-solid'
+              "
               :ui="{ label: 'truncate', trailingIcon: 'size-3.5' }"
               :label="activityDisplayValue"
               :aria-label="t('remoteSync.activityLabel')"

@@ -364,14 +364,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     meta: {
       class: {
         // Centred over its three columns; the header band itself spans the whole table. The
-        // table is fixed-layout (Date and Local fixed, Tracker columns sharing the rest), so
-        // columns hold their place across languages.
+        // table is fixed-layout (Date and Local fixed, every Tracker column an equal share of
+        // the rest), so numbers hold their place whatever the translated headings.
         th: `py-2 text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
-      // An explicit equal share of what Date (9rem) and Local (6rem) leave: a fixed-layout
-      // table splits a spanning header's width evenly over its three columns, so the numbers
-      // sit at the same x whatever the translated headings.
-      style: { th: `width: calc((100% - 15rem) / ${trackers.length})` },
     },
     columns: [
       {
@@ -504,16 +500,16 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :columns="columns"
       :meta="tableMeta"
       :loading="reportPending"
-      :ui="{ root: 'rounded-lg', base: 'min-w-full table-fixed', thead: 'bg-elevated/50' }"
+      :ui="{ root: 'rounded-lg', base: 'w-full table-fixed', thead: 'bg-elevated/50' }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
     <p
       v-if="!reportErrorKey && !showEmpty"
-      class="m-0 flex items-center gap-2 text-[0.8125rem] text-muted"
+      class="m-0 -mt-1 flex items-center gap-1.5 px-4 text-xs text-muted"
       data-testid="reports-monthly-legend"
     >
-      <UIcon name="i-lucide-info" class="size-4 shrink-0 text-dimmed" aria-hidden="true" />
+      <UIcon name="i-lucide-info" class="size-3.5 shrink-0 text-dimmed" aria-hidden="true" />
       {{ t('reports.monthly.legend') }}
     </p>
   </div>

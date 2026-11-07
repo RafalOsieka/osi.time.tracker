@@ -130,7 +130,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
       :loading="projectsPending"
       data-testid="projects-table"
       class="w-full"
-      :ui="{ base: 'min-w-full table-fixed' }"
+      :ui="{ base: 'w-full table-fixed' }"
     >
       <template #empty>
         <!-- Avoid empty-state flash while the initial list request is in flight. -->
