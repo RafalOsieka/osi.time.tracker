@@ -80,6 +80,20 @@ Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → 
 
 Isolated fake trackers for extension tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at real trackers from CI.
 
+## Screenshots for design reviews
+
+`apps/screenshots` captures every page for a design review (the `council` skill's design branch):
+
+```bash
+pnpm --filter @osi/time-tracker-screenshots capture <outDir> \
+  [--viewport desktop|tablet|phone] [--theme light|dark|both] \
+  [--set pages|features] [--locale en|pl] [--base-url http://localhost:3000]
+```
+
+One run captures one slice; the defaults are `desktop`, `both`, `pages`, `en`. Sizes: desktop 1280 × 800, tablet 834 × 1112, phone 390 × 844. `pages` is every page as it opens; `features` is what the pages open or turn into: dialogs, popovers, menus, empty and error states.
+
+It needs `pnpm dev` running and Chromium installed (see Prerequisites). Each run inserts fresh `screenshots-…@example.com` users into the database in `DATABASE_URL` (one with seeded Trackers, Projects and four days of Time entries, and an empty one for the empty states) and fakes both trackers in the browser, so no tracker needs to run. It writes `<theme>-<viewport>-<locale>-<screen>.png` and `screens-<viewport>-<set>-<locale>.json`, which says what each screen shows. Restart the dev server before a capture when icons or styles changed since it started. The screens live in `apps/screenshots/src/screens.ts`, their data in `seed.ts` and the fake trackers in `trackers.ts`.
+
 ## Database and migrations
 
 After a schema change in `apps/web/server/db/schema`, run `pnpm db:generate` and commit the new migration from `apps/migrator/migrations`. Applied migrations are never edited.

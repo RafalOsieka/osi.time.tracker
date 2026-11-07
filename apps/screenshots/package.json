@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json.schemastore.org/package.json",
+  "name": "@osi/time-tracker-screenshots",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "The app's screenshot set for design reviews: seeds a user into a running app and captures every page at desktop and phone size, light and dark, with screens.json describing each",
+  "scripts": {
+    "capture": "tsx src/capture.ts",
+    "type-check": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@osi/time-tracker-migrator": "workspace:*",
+    "playwright": "^1.64.1",
+    "postgres": "^3.4.9",
+    "temporal-polyfill": "^1.0.6",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

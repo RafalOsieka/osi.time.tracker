@@ -112,6 +112,7 @@ apps/web/server/db/schema/    Drizzle schema (migrations live in apps/migrator)
 apps/migrator/                Committed SQL migrations + one-shot runner (also the prod image)
 apps/extension/               Chrome/Edge MV3 extension, built with Vite
 apps/dev-seed/                Seeds local OpenProject/Redmine (`pnpm trackers:seed`)
+apps/screenshots/             Screenshot set for design reviews (see docs/development.md)
 packages/remote-trackers/     Provider adapters behind a neutral contract
 packages/extension-protocol/  Message protocol shared by web app and extension
 tools/oxlint/anti-slop/       Vendored Oxlint plugin (frozen, see below)
