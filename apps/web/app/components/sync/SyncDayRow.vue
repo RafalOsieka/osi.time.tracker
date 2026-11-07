@@ -123,13 +123,12 @@ const titleDisplayClass = computed(() =>
     : 'font-medium text-default',
 );
 /**
- * To send is a row value (a touch above body weight, default text) next to tracked (400,
- * muted); it stays clearly under the stat figures, since the strongest text belongs to
- * totals. Zero recedes.
+ * To send and tracked share the body weight; colour carries the difference (to send in
+ * highlighted text, tracked muted), so neither reads like a total. Zero recedes.
  */
 const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
-  return showEditors ? 'font-[450] text-default dark:font-[340]' : 'font-normal text-muted';
+  return showEditors ? 'font-normal text-highlighted' : 'font-normal text-muted';
 });
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));

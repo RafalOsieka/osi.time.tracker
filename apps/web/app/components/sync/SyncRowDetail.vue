@@ -156,7 +156,7 @@ const displayedRemoteLogs = computed(() => {
         col="activity"
         :narrow="{ col: [3, 4], row: 1 }"
         align="end"
-        class="text-xs font-medium tabular-nums text-default"
+        class="text-xs font-medium tabular-nums text-default dark:font-normal"
       >
         {{ formatEntryStart(entry.startedAt) }}
         <span class="px-0.5">{{ t('timerView.entryRow.separator') }}</span>

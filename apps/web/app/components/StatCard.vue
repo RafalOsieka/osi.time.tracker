@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /**
- * One summary figure: a label, the value (default slot, a duration in the mono face) and an
+ * One summary figure: a label, the value (default slot, a duration in the mono face, at the
+ * same weight as a table's total row, since it is the same kind of figure) and an
  * optional one-line caption. Remote sync and the monthly timesheet share it, laid out in an
  * equal-width grid.
  */
@@ -13,7 +14,7 @@ defineProps<{ label: string }>();
   >
     <p class="m-0 text-[0.8125rem]/5 font-medium text-muted">{{ label }}</p>
     <div
-      class="flex min-h-8 items-center gap-2 font-mono text-2xl/8 font-medium tabular-nums text-highlighted"
+      class="flex min-h-8 items-center gap-2 font-mono text-2xl/8 font-semibold tabular-nums text-highlighted"
     >
       <slot />
     </div>

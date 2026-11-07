@@ -151,8 +151,8 @@ body,
 }
 
 html:not(.dark) .text-inverted {
-  --font-weight-medium: 460;
-  --font-weight-semibold: 560;
+  --font-weight-medium: 440;
+  --font-weight-semibold: 540;
 }
 
 /*
