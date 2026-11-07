@@ -94,7 +94,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       cell: ({ row }) =>
         h(
           resolveComponent('UBadge'),
-          { color: 'neutral', variant: 'soft', size: 'sm', class: 'font-medium' },
+          { color: 'neutral', variant: 'soft', size: 'md', class: 'py-0.5 font-medium' },
           () => TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType],
         ),
       meta: { class: { th: 'w-36' } },

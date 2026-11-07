@@ -301,29 +301,30 @@ const displayedRemoteLogs = computed(() => {
           :columns="columns"
           col="activity"
           :narrow="{ col: [3, 4], row: 2 }"
-          class="truncate"
+          class="truncate text-muted"
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A scope label right
-             above the value, and the muted body weight, keep it from reading as time still to
-             send. The cell's accessible name carries the scope. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A readable scope label
+             on the value's baseline (it may run into the empty Tracked cell), and the muted body
+             weight, keep it from reading as time still to send. The cell's accessible name
+             carries the scope. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="grid py-0.5"
+          class="flex items-baseline justify-end gap-1.5 whitespace-nowrap"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
         >
           <span
-            class="truncate text-[11px]/3 text-dimmed"
+            class="text-xs text-dimmed"
             aria-hidden="true"
             :data-testid="`remote-sync-remote-log-scope-${log.remoteLogId}`"
           >
             {{ t('remoteSync.inTrackerLogs') }}
           </span>
-          <span class="font-mono font-normal tabular-nums text-muted">
+          <span class="font-mono text-sm font-normal tabular-nums text-muted">
             {{ formatDuration(log.durationSeconds) }}
           </span>
         </ColumnCell>

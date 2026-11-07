@@ -138,3 +138,23 @@ body,
   --font-weight-semibold: 520;
   --font-weight-bold: 620;
 }
+
+/*
+ * Dark text on a bright fill (solid primary buttons, solid badges) does not bloom, so it keeps
+ * the light-mode weights.
+ */
+.dark .text-inverted {
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+}
+
+/*
+ * Geist Mono's even strokes bloom a little more than Geist on dark surfaces. Durations without
+ * a weight of their own step down further; explicit weights (utilities) still win.
+ */
+@layer base {
+  .dark .font-mono {
+    font-weight: 290;
+  }
+}

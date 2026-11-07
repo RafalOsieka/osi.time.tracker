@@ -98,7 +98,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     meta: {
       class: {
         // Fixed widths (the table is fixed-layout), so columns never shift between languages.
-        th: 'w-28 text-end',
+        th: 'w-36 text-end',
         td: 'whitespace-nowrap py-1.5 text-end',
       },
     },

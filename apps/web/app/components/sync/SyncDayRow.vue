@@ -123,12 +123,13 @@ const titleDisplayClass = computed(() =>
     : 'font-medium text-default',
 );
 /**
- * To send is a row value (500, default text) next to tracked (400, muted); it is never
- * highlighted, since 600 and the strongest text belong to totals. Zero recedes.
+ * To send is a row value (a touch above body weight, default text) next to tracked (400,
+ * muted); it stays clearly under the stat figures, since the strongest text belongs to
+ * totals. Zero recedes.
  */
 const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
-  return showEditors ? 'font-medium text-default' : 'font-normal text-muted';
+  return showEditors ? 'font-[450] text-default dark:font-[380]' : 'font-normal text-muted';
 });
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
@@ -340,13 +341,15 @@ function onEditToSend() {
           @update:open="onActivityOpen"
         >
           <OverflowTooltip :text="activityDisplayValue">
+            <!-- Still empty, the required activity is drawn as a control (outlined) so the row
+                 shows what Export waits for; once chosen it reads as plain row text. -->
             <UButton
-              variant="ghost"
+              :variant="selectedActivityName ? 'ghost' : 'outline'"
               color="neutral"
               size="xs"
               trailing-icon="i-lucide-chevron-down"
-              class="-ms-2 max-w-[calc(100%+0.5rem)] justify-start text-sm font-normal"
-              :class="selectedActivityName ? 'text-default' : 'text-dimmed'"
+              class="max-w-[calc(100%+0.5rem)] justify-start text-sm font-normal"
+              :class="selectedActivityName ? '-ms-2 text-default' : 'text-muted'"
               :ui="{ label: 'truncate', trailingIcon: 'size-3.5' }"
               :label="activityDisplayValue"
               :aria-label="t('remoteSync.activityLabel')"

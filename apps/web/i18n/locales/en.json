@@ -51,6 +51,7 @@
   "reports": {
     "monthly": {
       "pageTitle": "Monthly timesheet",
+      "legend": "Values in amber need attention: hover over one, or focus it, to see why.",
       "previousMonth": "Previous month",
       "nextMonth": "Next month",
       "columnDate": "Date",

@@ -91,7 +91,7 @@ function onTimezoneChange(value: string | undefined) {
       <UCard
         as="section"
         aria-labelledby="profile-account-heading"
-        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-5 p-6 sm:p-6' }"
+        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-6 p-6 sm:p-6' }"
       >
         <template #header>
           <h2 id="profile-account-heading" class="m-0 text-base font-semibold text-highlighted">
@@ -161,7 +161,7 @@ function onTimezoneChange(value: string | undefined) {
       <UCard
         as="section"
         aria-labelledby="profile-preferences-heading"
-        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-5 p-6 sm:p-6' }"
+        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-6 p-6 sm:p-6' }"
       >
         <template #header>
           <h2 id="profile-preferences-heading" class="m-0 text-base font-semibold text-highlighted">

@@ -805,8 +805,8 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           </span>
           <!-- One line, value before its word: "03:00:00 in trackers + 06:00:00 to send", the
                durations in the mono face like the figure. The to-send part, the time not in the
-               trackers yet, is set apart by weight and contrast, not the accent (it would read as
-               a link). -->
+               trackers yet, is set apart by its number's weight and contrast, not the accent (it
+               would read as a link). -->
           <span v-else data-testid="remote-sync-total-in-tracker-parts">
             <span class="font-mono tabular-nums">
               {{ formatDuration(inTrackerSummary.logsSeconds) }}
@@ -814,8 +814,8 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
             {{ t('remoteSync.inTrackersLogs') }}
             <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
             <span class="me-1 text-dimmed">+</span>
-            <span class="font-medium text-highlighted">
-              <span class="font-mono tabular-nums">
+            <span class="text-default">
+              <span class="font-mono font-medium tabular-nums text-highlighted">
                 {{ formatDuration(inTrackerSummary.toSendSeconds) }}
               </span>
               {{ t('remoteSync.inTrackerToSend') }}

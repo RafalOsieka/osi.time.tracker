@@ -51,6 +51,7 @@
   "reports": {
     "monthly": {
       "pageTitle": "Zestawienie miesięczne",
+      "legend": "Wartości wyróżnione na bursztynowo wymagają uwagi: najedź na wartość lub zaznacz ją, aby zobaczyć powód.",
       "previousMonth": "Poprzedni miesiąc",
       "nextMonth": "Następny miesiąc",
       "columnDate": "Data",

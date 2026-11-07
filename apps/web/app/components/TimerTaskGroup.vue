@@ -275,7 +275,7 @@ async function unlinkRemoteIssue() {
               color="neutral"
               size="xs"
               disabled
-              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-start truncate font-normal text-muted disabled:opacity-40"
+              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-start truncate text-[0.8125rem] font-normal text-muted disabled:opacity-40"
               :label="projectDisplayValue"
               :aria-label="t('timerView.projectRequiresTitle')"
               :data-testid="`timer-group-project-${group.key}`"
@@ -294,7 +294,7 @@ async function unlinkRemoteIssue() {
               variant="ghost"
               color="neutral"
               size="xs"
-              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-start truncate font-normal text-muted"
+              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-start truncate text-[0.8125rem] font-normal text-muted"
               :label="projectDisplayValue"
               :aria-label="t('timerView.editor.projectLabel')"
               :data-testid="`timer-group-project-${group.key}`"
