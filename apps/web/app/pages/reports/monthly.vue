@@ -205,12 +205,20 @@ function durationTd(isTotal: boolean, extra = ''): string {
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
 const GROUP_DIVIDER = 'border-s border-default';
 
-// The totals row closes the table with a heavier rule and a faint band.
+// The totals row closes the table with a divider-weight rule and a faint band.
 const tableMeta: TableProps<TimesheetRow>['meta'] = {
   class: {
-    tr: (row) => (row.original.isTotal ? 'border-t-2 border-accented bg-elevated/50' : ''),
+    tr: (row) => (row.original.isTotal ? 'border-t border-default bg-elevated/50' : ''),
   },
 };
+
+/**
+ * Date and Local have no group above them, so their headings sit in the lower header row under
+ * an empty cell. Lifting the label by half a header row centres it across both rows.
+ */
+function spanningHeader(label: string) {
+  return () => h('span', { class: 'relative -top-[1.125rem]' }, label);
+}
 
 function flaggedDuration(input: {
   text: string;
@@ -222,12 +230,15 @@ function flaggedDuration(input: {
 }) {
   if (input.warning) {
     const reason = t(ATTENTION_I18N[input.warning]);
+    // Colour, weight and a dotted underline: the underline is the cue that survives without
+    // colour (WCAG 1.4.1), and it is the usual sign that a value explains itself on hover.
     return h(resolveComponent('UTooltip'), { text: reason, content: { side: 'bottom' } }, () =>
       h(
         'span',
         {
           tabindex: 0,
-          class: 'text-warning font-semibold',
+          class:
+            'rounded-sm font-semibold text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-4 focus-visible:outline-2 focus-visible:outline-primary',
           'data-testid': input.warningTestId ?? input.testId,
           'aria-label': `${input.text}. ${reason}`,
         },
@@ -238,7 +249,9 @@ function flaggedDuration(input: {
   return h(
     'span',
     {
-      class: input.dimZero && input.zero ? 'font-normal text-dimmed' : undefined,
+      // Zeros recede by weight as well as the dimmed tone, so the grid stops reading as a sea of
+      // zeros while staying legible.
+      class: input.dimZero && input.zero ? 'font-light text-dimmed dark:font-[250]' : undefined,
       'data-testid': input.testId,
     },
     input.text,
@@ -298,7 +311,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
   const trackers = report?.trackers ?? [];
   const dateCol: TableColumn<TimesheetRow> = {
     accessorKey: 'date',
-    header: t('reports.monthly.columnDate'),
+    header: spanningHeader(t('reports.monthly.columnDate')),
     meta: {
       class: {
         th: 'w-36 align-bottom',
@@ -328,7 +341,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
   };
   const localCol: TableColumn<TimesheetRow> = {
     accessorKey: 'localSeconds',
-    header: t('reports.monthly.columnLocal'),
+    header: spanningHeader(t('reports.monthly.columnLocal')),
     meta: {
       class: {
         th: 'w-24 text-end align-bottom',

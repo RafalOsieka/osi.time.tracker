@@ -238,7 +238,10 @@ async function onSaveStartedAt() {
       Always UButton for consistent mono size. Idle: disabled (no popover).
       Running: opens start-time editor.
     -->
-    <UPopover v-model:open="startEditorOpen">
+    <UPopover
+      v-model:open="startEditorOpen"
+      :content="{ side: 'bottom', align: 'end', sideOffset: 10, collisionPadding: 16 }"
+    >
       <UButton
         color="neutral"
         variant="link"
@@ -252,12 +255,19 @@ async function onSaveStartedAt() {
         @click="openStartEditor"
       />
       <template #content>
-        <div class="grid min-w-64 gap-3 p-3" data-testid="timer-start-editor-popover">
-          <div class="grid gap-1">
-            <label for="timer-start-editor-date">{{ t('timer.startEditor.dateLabel') }}</label>
+        <div
+          role="group"
+          aria-labelledby="timer-start-editor-heading"
+          class="grid w-72 gap-4 p-4"
+          data-testid="timer-start-editor-popover"
+        >
+          <h3 id="timer-start-editor-heading" class="m-0 text-sm font-semibold text-highlighted">
+            {{ t('timer.startEditor.heading') }}
+          </h3>
+          <UFormField :label="t('timer.startEditor.dateLabel')" name="startDate">
             <UInputDate
-              id="timer-start-editor-date"
               v-model="startDate"
+              class="w-full"
               :aria-label="t('timer.startEditor.dateLabel')"
               data-testid="timer-start-editor-date-input"
             >
@@ -287,19 +297,17 @@ async function onSaveStartedAt() {
                 </UPopover>
               </template>
             </UInputDate>
-          </div>
-          <div class="grid gap-1">
-            <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
+          </UFormField>
+          <UFormField :label="t('timer.startEditor.timeLabel')" name="startTime">
             <TimeField
-              id="timer-start-editor-time"
               v-model="startTime"
               :label="t('timer.startEditor.timeLabel')"
               testid="timer-start-editor-time-input"
             />
-          </div>
+          </UFormField>
           <p
             v-if="startEditorError"
-            class="m-0 text-error"
+            class="m-0 text-sm text-error"
             role="alert"
             data-testid="timer-start-editor-error"
           >
@@ -308,7 +316,7 @@ async function onSaveStartedAt() {
           <div class="flex justify-end gap-2">
             <UButton
               color="neutral"
-              variant="ghost"
+              variant="outline"
               :label="t('timer.startEditor.cancelButton')"
               data-testid="timer-start-editor-cancel-button"
               @click="startEditorOpen = false"

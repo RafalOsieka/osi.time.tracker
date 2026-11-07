@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
 
-const { t, locale } = useI18n();
+const { t } = useI18n();
 usePageTitle(() => t('projects.pageTitle'));
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
-const { effective } = useProfile();
 // Forwards the incoming request cookies during SSR so the list is authenticated.
 const requestFetch = useRequestFetch();
 
@@ -17,6 +16,8 @@ const {
 } = useAsyncData('projects', () => requestFetch<ProjectDto[]>('/api/projects'));
 
 const projects = computed(() => projectsData.value ?? []);
+// Only once the list has loaded, so the empty state never flashes while it is in flight.
+const isEmpty = computed(() => !projectsPending.value && projects.value.length === 0);
 const dialogOpen = ref(false);
 const editingProject = ref<ProjectDto | null>(null);
 
@@ -64,12 +65,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     cell: ({ row }) => {
       const { trackerName, remoteProjectTitle } = row.original;
       // Local Projects get their own icon in the same slot, so every label starts on one edge.
-      // Shows the project's remote project scope alongside the tracker name (REQ-325).
-      const label = !trackerName
-        ? t('projects.localTrackerLabel')
-        : remoteProjectTitle
-          ? `${trackerName} · ${remoteProjectTitle}`
-          : trackerName;
+      // A remote project scope (REQ-325) follows the tracker name in a quieter tone.
       return h(
         'span',
         { class: ['flex min-w-0 items-center gap-2', trackerName ? 'text-default' : 'text-muted'] },
@@ -79,16 +75,29 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
             class: 'size-4 shrink-0 text-dimmed',
             'aria-hidden': 'true',
           }),
-          h('span', { class: 'truncate' }, label),
+          h('span', { class: 'truncate' }, [
+            trackerName ?? t('projects.localTrackerLabel'),
+            trackerName && remoteProjectTitle
+              ? h('span', { class: 'text-muted' }, ` · ${remoteProjectTitle}`)
+              : null,
+          ]),
         ],
       );
     },
   },
   {
-    accessorKey: 'createdAt',
-    header: t('projects.columnCreated'),
-    cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
-    meta: { class: { th: 'w-40', td: 'tabular-nums text-muted' } },
+    // Time tracked in the last 30 days (REQ-371), so Projects in use stand out from idle ones.
+    accessorKey: 'recentTrackedSeconds',
+    header: t('projects.columnRecent'),
+    cell: ({ row }) => {
+      const seconds = row.original.recentTrackedSeconds;
+      return h(
+        'span',
+        { class: seconds > 0 ? 'text-default' : 'text-dimmed' },
+        formatReportDuration(seconds),
+      );
+    },
+    meta: { class: { th: 'w-36 text-end', td: 'text-end font-mono tabular-nums' } },
   },
   {
     id: 'actions',
@@ -97,8 +106,8 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     enableSorting: false,
     meta: {
       class: {
-        // Fixed widths (the table is fixed-layout), so columns never shift between languages.
-        th: 'w-36 text-end',
+        // Fixed widths (the table is fixed-layout): two 32px tiles plus the cell padding.
+        th: 'w-28 text-end',
         td: 'whitespace-nowrap py-1.5 text-end',
       },
     },
@@ -116,15 +125,28 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
 </script>
 
 <template>
-  <div data-testid="projects-page" class="space-y-4">
+  <div data-testid="projects-page" class="grid gap-6">
+    <!-- In the empty state the card's call to action is the page's one primary button. -->
     <TableHeader
       :title="t('projects.pageTitle')"
       :new-label="t('projects.newButton')"
       new-testid="new-project-button"
+      :quiet="isEmpty"
+      @create="openCreate"
+    />
+
+    <EmptyState
+      v-if="isEmpty"
+      icon="i-lucide-folder-kanban"
+      :title="t('projects.emptyStateTitle')"
+      :message="t('projects.emptyState')"
+      :cta-label="t('projects.emptyStateCta')"
+      testid="projects-empty-state"
       @create="openCreate"
     />
 
     <UTable
+      v-else
       :data="projects"
       :columns="columns"
       :loading="projectsPending"
@@ -135,16 +157,8 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
         base: 'w-full table-fixed',
       }"
     >
-      <template #empty>
-        <!-- Avoid empty-state flash while the initial list request is in flight. -->
-        <EmptyState
-          v-if="!projectsPending"
-          :message="t('projects.emptyState')"
-          :cta-label="t('projects.emptyStateCta')"
-          testid="projects-empty-state"
-          @create="openCreate"
-        />
-      </template>
+      <!-- While the list loads it shows no "no data" text; the empty state replaces the table. -->
+      <template #empty><span /></template>
     </UTable>
 
     <ProjectFormDialog v-model:open="dialogOpen" :project="editingProject" @saved="fetchProjects" />

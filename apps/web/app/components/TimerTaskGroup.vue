@@ -335,6 +335,7 @@ async function unlinkRemoteIssue() {
         :config="tracker!"
         :current-ref="remoteIssueRef"
         :scope="scope"
+        :context-label="group.taskName ?? undefined"
         class="min-w-0"
         :link-testid="`timer-group-remote-issue-link-${group.key}`"
         :cached-testid="`timer-group-remote-issue-cached-${group.key}`"
@@ -371,21 +372,26 @@ async function unlinkRemoteIssue() {
     </ColumnCell>
 
     <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
+      <!--
+        The row-action tile: a 32px cyan soft tile to continue, or on the running group a 32px
+        solid red tile with the shell timer's animated stop glyph (REQ-501).
+      -->
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
           :icon="isLive ? undefined : 'i-lucide-play'"
           :variant="isLive ? 'solid' : 'soft'"
           square
-          size="xs"
+          size="md"
           :color="isLive ? 'error' : 'primary'"
-          class="size-6 justify-center rounded-full"
+          class="size-8 justify-center"
+          :ui="{ leadingIcon: 'size-4' }"
           :aria-label="actionLabel"
           :aria-pressed="isLive"
           :data-testid="`timer-group-continue-${group.key}`"
           @click="onActionClick"
         >
           <template v-if="isLive" #leading>
-            <StopGlyph size="sm" />
+            <StopGlyph />
           </template>
         </UButton>
       </UTooltip>

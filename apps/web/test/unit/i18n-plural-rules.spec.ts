@@ -98,4 +98,29 @@ describe('count-sensitive catalogs', () => {
       }),
     ).toBe('5 z 5 zadań ukończonych');
   });
+
+  it('declines the export review title and its not-ready count', () => {
+    const review = pl.remoteSync.exportDialog;
+    expect(applyPipePlural(review.titleReview, polishPluralRule(1, 3), { count: 1 })).toBe(
+      'Wyeksportować 1 zadanie?',
+    );
+    expect(applyPipePlural(review.titleReview, polishPluralRule(3, 3), { count: 3 })).toBe(
+      'Wyeksportować 3 zadania?',
+    );
+    expect(applyPipePlural(review.titleReview, polishPluralRule(5, 3), { count: 5 })).toBe(
+      'Wyeksportować 5 zadań?',
+    );
+    expect(applyPipePlural(review.notReady, polishPluralRule(1, 3), { count: 1 })).toBe(
+      '1 inne zadanie z tego dnia nie jest gotowe do eksportu.',
+    );
+    expect(applyPipePlural(review.notReady, polishPluralRule(2, 3), { count: 2 })).toBe(
+      '2 inne zadania z tego dnia nie są gotowe do eksportu.',
+    );
+    expect(applyPipePlural(review.notReady, polishPluralRule(5, 3), { count: 5 })).toBe(
+      '5 innych zadań z tego dnia nie jest gotowych do eksportu.',
+    );
+    expect(applyPipePlural(en.remoteSync.exportDialog.titleReview, 0, { count: 1 })).toBe(
+      'Export 1 task?',
+    );
+  });
 });

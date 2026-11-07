@@ -164,7 +164,7 @@ watch(
     void loadProjects();
   },
   // The page mounts this dialog via `v-if` only once a tracker is chosen, so
-  // it is created already `open: true` — a plain (non-immediate) watch would
+  // it is created already `open: true` - a plain (non-immediate) watch would
   // never see a false->true transition to seed the form on first open.
   { immediate: true },
 );
@@ -219,7 +219,7 @@ function closeDialog() {
       <!--
         UStepper here is a pure progress indicator (`disabled`): it has no
         say over what renders below. Its single `#content` slot isn't
-        re-rendered per step — everything inside it stays driven by `phase`
+        re-rendered per step - everything inside it stays driven by `phase`
         exactly as before; only the header dots/labels above react to
         `stepIndex`. Scanning/importing/error fold into their neighboring
         step (see `stepIndex`'s mapping) rather than getting their own step.
@@ -238,23 +238,33 @@ function closeDialog() {
             `UModal`'s template has two sibling root nodes (`DialogTrigger` +
             `DialogPortal`), so Vue disables automatic `$attrs` fallthrough and a
             `data-testid` passed to `UModal` is silently dropped in a real
-            browser — every other dialog in this codebase follows the same rule
+            browser - every other dialog in this codebase follows the same rule
             (`TrackerFormDialog`, `TimerAddEntryDialog`, …).
           -->
           <div class="grid gap-4" data-testid="tracker-import-dialog">
             <!-- Range phase -->
-            <div v-if="phase === 'range'" class="grid gap-3" data-testid="tracker-import-range">
-              <p class="text-sm text-muted">{{ t('trackerImport.description') }}</p>
+            <div v-if="phase === 'range'" class="grid gap-4" data-testid="tracker-import-range">
+              <p class="m-0 text-sm text-muted">{{ t('trackerImport.description') }}</p>
 
-              <div class="grid gap-1">
-                <label for="tracker-import-range">{{ t('trackerImport.rangeLabel') }}</label>
+              <UFormField
+                :label="t('trackerImport.rangeLabel')"
+                name="range"
+                :error="rangeError || undefined"
+              >
                 <UInputDate
                   id="tracker-import-range"
                   v-model="range"
                   range
+                  class="w-full"
                   :aria-label="t('trackerImport.rangeLabel')"
                   data-testid="tracker-import-range-input"
                 >
+                  <!-- The same en dash as every other range field, not the framework's wide minus. -->
+                  <template #separator>
+                    <span class="px-1.5 text-muted" aria-hidden="true">
+                      {{ t('timerView.entryRow.separator') }}
+                    </span>
+                  </template>
                   <template #trailing>
                     <UPopover v-model:open="rangeCalendarOpen">
                       <UButton
@@ -279,45 +289,56 @@ function closeDialog() {
                     </UPopover>
                   </template>
                 </UInputDate>
-              </div>
-
-              <p
-                v-if="rangeError"
-                id="tracker-import-range-error"
-                class="m-0 text-sm text-error"
-                role="alert"
-                data-testid="tracker-import-range-error"
-              >
-                {{ rangeError }}
-              </p>
+                <template v-if="rangeError" #error>
+                  <span
+                    id="tracker-import-range-error"
+                    role="alert"
+                    data-testid="tracker-import-range-error"
+                  >
+                    {{ rangeError }}
+                  </span>
+                </template>
+              </UFormField>
 
               <div
                 v-if="projectsLoaded"
-                class="grid gap-1"
+                class="grid gap-2"
                 data-testid="tracker-import-project-scopes"
               >
-                <p class="m-0 text-sm font-medium">
+                <p class="m-0 text-sm font-medium text-highlighted">
                   {{ t('trackerImport.scopedProjectsHeading') }}
                 </p>
-                <ul class="m-0 grid gap-0.5 p-0 text-sm">
+                <ul
+                  class="m-0 list-none divide-y divide-default rounded-md p-0 text-sm ring ring-default"
+                >
                   <li
                     v-for="project in scopedProjects"
                     :key="project.id"
-                    class="flex justify-between gap-2 list-none"
+                    class="flex items-center justify-between gap-3 px-3 py-2"
                   >
-                    <span>{{ project.name }}</span>
-                    <span class="text-muted">{{ project.remoteProjectTitle }}</span>
+                    <span class="truncate font-medium">{{ project.name }}</span>
+                    <span class="truncate text-muted">{{ project.remoteProjectTitle }}</span>
                   </li>
                   <li
                     v-for="project in unscopedProjects"
                     :key="project.id"
-                    class="flex justify-between gap-2 list-none"
+                    class="flex items-center justify-between gap-3 px-3 py-2"
                     :data-testid="`tracker-import-unscoped-${project.id}`"
                   >
-                    <span>{{ project.name }}</span>
-                    <span class="text-muted">{{ t('trackerImport.unscopedHint') }}</span>
+                    <span class="truncate font-medium">{{ project.name }}</span>
+                    <span class="flex shrink-0 items-center gap-1.5 text-warning">
+                      <UIcon name="i-lucide-triangle-alert" class="size-4" aria-hidden="true" />
+                      {{ t('trackerImport.unscopedHint') }}
+                    </span>
                   </li>
                 </ul>
+                <p
+                  v-if="unscopedProjects.length > 0"
+                  class="m-0 text-xs text-muted"
+                  data-testid="tracker-import-unscoped-help"
+                >
+                  {{ t('trackerImport.unscopedHelp') }}
+                </p>
               </div>
             </div>
 
@@ -440,7 +461,7 @@ function closeDialog() {
                     :data-testid="`tracker-import-preview-row-${row.key}`"
                   >
                     <td class="truncate py-1.5 pe-3" :title="row.remoteProjectTitle ?? undefined">
-                      {{ row.remoteProjectTitle ?? '—' }}
+                      {{ row.remoteProjectTitle ?? '-' }}
                     </td>
                     <td class="truncate py-1.5 pe-3" :title="row.localProjectName">
                       {{ row.localProjectName }}
@@ -565,7 +586,7 @@ function closeDialog() {
         <template v-if="phase === 'range'">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="outline"
             :label="t('trackerImport.cancelButton')"
             data-testid="tracker-import-cancel"
             @click="closeDialog"
@@ -582,7 +603,7 @@ function closeDialog() {
         <template v-else-if="phase === 'scanning'">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="outline"
             :label="t('trackerImport.cancelScanButton')"
             data-testid="tracker-import-cancel-scan"
             @click="importState.cancelScan()"
@@ -592,7 +613,7 @@ function closeDialog() {
         <template v-else-if="phase === 'mapping'">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="outline"
             :label="t('trackerImport.backButton')"
             data-testid="tracker-import-mapping-back"
             @click="backToRange"
@@ -609,7 +630,7 @@ function closeDialog() {
         <template v-else-if="phase === 'preview'">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="outline"
             :label="t('trackerImport.backButton')"
             data-testid="tracker-import-back"
             @click="importState.backToMapping()"
@@ -635,7 +656,7 @@ function closeDialog() {
         <template v-else-if="phase === 'error'">
           <UButton
             color="neutral"
-            variant="ghost"
+            variant="outline"
             :label="t('trackerImport.closeButton')"
             data-testid="tracker-import-error-close"
             @click="closeDialog"

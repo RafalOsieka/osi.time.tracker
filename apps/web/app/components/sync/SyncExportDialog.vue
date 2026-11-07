@@ -1,14 +1,29 @@
 <script setup lang="ts">
+/** One task in the export review: the title it sends, its duration and where it goes. */
 export interface ExportDialogIncludedRow {
   taskId: string;
   comment: string;
   toSendSeconds: number;
+  /** The destination, shown as a quiet second line: Tracker, issue and activity. */
+  trackerName: string | null;
+  issueId: string | null;
+  activityName: string | null;
 }
 
-const { open, included, toSendSeconds, isRunning, completedCount, totalCount } = defineProps<{
+const {
+  open,
+  included,
+  toSendSeconds,
+  notReadyCount = 0,
+  isRunning,
+  completedCount,
+  totalCount,
+} = defineProps<{
   open: boolean;
   included: ExportDialogIncludedRow[];
   toSendSeconds: number;
+  /** The day's other Tasks that are not ready (Sent ones aside), stated as a count only. */
+  notReadyCount?: number;
   isRunning: boolean;
   completedCount: number;
   totalCount: number;
@@ -32,8 +47,16 @@ const dialogOpen = computed({
 });
 
 const title = computed(() =>
-  isRunning ? t('remoteSync.exportDialog.titleRunning') : t('remoteSync.exportDialog.titleReview'),
+  isRunning
+    ? t('remoteSync.exportDialog.titleRunning')
+    : t('remoteSync.exportDialog.titleReview', { count: included.length }, included.length),
 );
+
+function destinationOf(item: ExportDialogIncludedRow): string {
+  return [item.trackerName, item.issueId && `#${item.issueId}`, item.activityName]
+    .filter((part): part is string => !!part)
+    .join(' · ');
+}
 </script>
 
 <template>
@@ -42,7 +65,6 @@ const title = computed(() =>
     :title="title"
     :dismissible="!isRunning"
     :close="!isRunning"
-    :ui="{ footer: 'justify-end gap-2' }"
     data-testid="remote-sync-export-dialog"
   >
     <template #body>
@@ -63,27 +85,49 @@ const title = computed(() =>
           }}
         </div>
 
-        <ul class="m-0 grid gap-2 p-0" data-testid="remote-sync-export-included">
+        <!-- Each task: the title to send with its duration, the destination quietly below. -->
+        <ul class="m-0 grid gap-3 p-0" data-testid="remote-sync-export-included">
           <li
             v-for="item in included"
             :key="item.taskId"
-            class="flex items-center justify-between gap-3 list-none"
+            class="grid list-none grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3 gap-y-0.5"
             :data-testid="`remote-sync-export-row-${item.taskId}`"
           >
-            <span class="min-w-0 truncate text-sm text-default">{{ item.comment }}</span>
-            <span class="shrink-0 font-mono text-sm font-medium tabular-nums text-muted">
+            <span class="min-w-0 truncate text-sm font-medium text-highlighted">
+              {{ item.comment }}
+            </span>
+            <span class="font-mono text-sm tabular-nums text-default">
               {{ formatDuration(item.toSendSeconds) }}
+            </span>
+            <span
+              v-if="destinationOf(item)"
+              class="col-span-2 min-w-0 truncate text-xs text-muted"
+              :data-testid="`remote-sync-export-destination-${item.taskId}`"
+            >
+              {{ destinationOf(item) }}
             </span>
           </li>
         </ul>
 
         <div
-          class="flex justify-between border-t border-default pt-3 text-sm font-medium text-highlighted"
+          class="flex items-baseline justify-between border-t border-default pt-3 text-highlighted"
           data-testid="remote-sync-export-dialog-to-send"
         >
-          <span>{{ t('remoteSync.toSendLabel') }}</span>
-          <span class="font-mono tabular-nums">{{ formatDuration(toSendSeconds) }}</span>
+          <span class="text-sm font-semibold">{{ t('remoteSync.toSendLabel') }}</span>
+          <span class="font-mono text-base font-semibold tabular-nums">
+            {{ formatDuration(toSendSeconds) }}
+          </span>
         </div>
+
+        <!-- REQ-229: the rows themselves say why; the review only counts them. -->
+        <p
+          v-if="notReadyCount > 0 && !isRunning"
+          class="m-0 flex items-center gap-1.5 text-xs text-muted"
+          data-testid="remote-sync-export-not-ready"
+        >
+          <UIcon name="i-lucide-info" class="size-3.5 shrink-0 text-dimmed" aria-hidden="true" />
+          {{ t('remoteSync.exportDialog.notReady', { count: notReadyCount }, notReadyCount) }}
+        </p>
       </div>
     </template>
 
@@ -91,7 +135,7 @@ const title = computed(() =>
       <div class="flex justify-end gap-2">
         <UButton
           color="neutral"
-          variant="ghost"
+          variant="outline"
           :disabled="isRunning"
           :label="t('remoteSync.exportDialog.cancel')"
           data-testid="remote-sync-export-cancel"

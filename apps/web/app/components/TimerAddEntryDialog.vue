@@ -70,6 +70,17 @@ const timesValue = computed<{ start: Time | undefined; end: Time | undefined }>(
   },
 });
 
+const HH_MM = /^\d{2}:\d{2}$/;
+
+/** The entry's length for a complete, non-inverted range (wall clock on the chosen day), else null. */
+const previewDuration = computed(() => {
+  if (!state.date || !HH_MM.test(state.startTime) || !HH_MM.test(state.endTime)) return null;
+  const startedAt = Date.parse(wallClockToInstant(state.date, state.startTime, timeZone));
+  const stoppedAt = Date.parse(wallClockToInstant(state.date, state.endTime, timeZone));
+  if (!(stoppedAt >= startedAt)) return null;
+  return formatDuration((stoppedAt - startedAt) / 1000);
+});
+
 watch(
   () => visible,
   (visible) => {
@@ -141,30 +152,31 @@ async function onSave() {
         :schema="timerAddEntryFormSchema"
         :state="state"
         data-testid="add-entry-dialog"
-        class="grid min-w-80 gap-3"
+        class="grid min-w-80 gap-4"
         @submit="onSave"
         @error="onError"
       >
-        <div class="grid gap-1">
-          <label for="add-entry-title">{{ t('timerView.addEntry.titleLabel') }}</label>
+        <UFormField
+          :label="t('timerView.addEntry.titleLabel')"
+          :hint="t('timerView.addEntry.optionalHint')"
+        >
           <TaskTitleInput
-            id="add-entry-title"
             ref="titleInput"
             v-model:text="state.title"
             v-model:project="chipProject"
             v-model:task="pickedTask"
+            class="w-full"
             eager
             :placeholder="t('timerView.addEntry.titlePlaceholder')"
             chip-testid="add-entry-project"
             data-testid="add-entry-title-input"
           />
-        </div>
+        </UFormField>
 
-        <div class="grid gap-1">
-          <label for="add-entry-date">{{ t('timerView.addEntry.dateLabel') }}</label>
+        <UFormField :label="t('timerView.addEntry.dateLabel')">
           <UInputDate
-            id="add-entry-date"
             v-model="dateValue"
+            class="w-full"
             :aria-label="t('timerView.addEntry.dateLabel')"
             data-testid="add-entry-date-input"
           >
@@ -194,12 +206,17 @@ async function onSave() {
               </UPopover>
             </template>
           </UInputDate>
-        </div>
+        </UFormField>
 
-        <div class="grid gap-1">
-          <label for="add-entry-times">{{ t('timerView.addEntry.timesLabel') }}</label>
+        <!-- The hint previews the entry's length, so a mistyped range is caught before saving. -->
+        <UFormField :label="t('timerView.addEntry.timesLabel')">
+          <template v-if="previewDuration" #hint>
+            {{ t('timerView.addEntry.durationHint') }}
+            <span class="ms-1 font-mono tabular-nums" data-testid="add-entry-duration">
+              {{ previewDuration }}
+            </span>
+          </template>
           <TimeField
-            id="add-entry-times"
             v-model="timesValue"
             range
             :label="t('timerView.addEntry.timesLabel')"
@@ -207,17 +224,16 @@ async function onSave() {
             :describedby="rangeError ? 'add-entry-range-error' : undefined"
             testid="add-entry-time-input"
           />
-        </div>
-
-        <p
-          v-if="rangeError"
-          id="add-entry-range-error"
-          class="m-0 text-sm text-error"
-          role="alert"
-          data-testid="add-entry-range-error"
-        >
-          {{ rangeError }}
-        </p>
+          <p
+            v-if="rangeError"
+            id="add-entry-range-error"
+            class="m-0 mt-2 text-sm text-error"
+            role="alert"
+            data-testid="add-entry-range-error"
+          >
+            {{ rangeError }}
+          </p>
+        </UFormField>
 
         <FormDialogFooter
           :cancel-label="t('timerView.addEntry.cancelButton')"

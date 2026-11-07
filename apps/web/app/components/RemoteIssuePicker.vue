@@ -18,6 +18,7 @@ const {
   cachedTestid = undefined,
   unlinkedTestid = undefined,
   linkLabel = undefined,
+  contextLabel = undefined,
 } = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
@@ -28,6 +29,8 @@ const {
   unlinkedTestid?: string;
   /** Shows the unlinked trigger as a labelled button (Remote Sync) instead of an icon. */
   linkLabel?: string;
+  /** What is being linked (the Task title), shown under the popover's heading. */
+  contextLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -47,6 +50,7 @@ const { search, results, outOfScopeId, loading, errorKey } = useRemoteIssueSearc
   () => scope ?? undefined,
 );
 
+const headingId = useId();
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
 // On by default whenever a scope exists (REQ-328); reset on every popover open.
@@ -63,6 +67,17 @@ const editMenuClass = computed(() => [
   'group-hover/ri:pointer-events-auto group-hover/ri:opacity-100',
   'group-focus-within/ri:pointer-events-auto group-focus-within/ri:opacity-100',
 ]);
+
+/**
+ * The radio group drawn as a compact segmented control: joined cells, the checked one cyan. Each
+ * radio is stretched, transparent, over its whole cell, so the cell is the radio itself.
+ */
+const MODE_UI = {
+  fieldset: 'w-fit',
+  item: 'relative cursor-pointer px-3 py-1 text-muted first-of-type:rounded-s-md last-of-type:rounded-e-md has-data-[state=checked]:text-primary',
+  base: 'not-sr-only absolute inset-0 z-[3] size-auto cursor-pointer rounded-none opacity-0 ring-0',
+  label: 'text-xs font-medium text-current',
+};
 
 const searchModeLabelKeys = {
   title: 'remoteIssuePicker.modeTitle',
@@ -104,12 +119,6 @@ const scopeToggleLabel = computed(() =>
 function linkedTooltip(ref: RemoteIssueRefDto): string {
   const base = `${t('timerView.remoteIssue.linkedTooltipPrefix')} #${ref.remoteIssueId}: ${ref.cachedTitle}`;
   return ref.cachedRemoteProjectTitle ? `${base} · ${ref.cachedRemoteProjectTitle}` : base;
-}
-
-function resultMeta(result: RemoteIssueSearchResult): string {
-  return result.remoteProjectTitle
-    ? `#${result.remoteIssueId} · ${result.remoteProjectTitle}`
-    : `#${result.remoteIssueId}`;
 }
 
 function resultAccessibleName(result: RemoteIssueSearchResult): string {
@@ -274,62 +283,101 @@ onBeforeUnmount(() => {
       @update:open="onOpenChange"
     >
       <template #content>
-        <div class="grid w-80 max-w-[min(20rem,calc(100vw-2rem))] gap-2 p-3">
+        <div
+          role="group"
+          :aria-labelledby="headingId"
+          class="grid w-88 max-w-[calc(100vw-2rem)] gap-3 p-3"
+        >
+          <!-- A heading naming what gets linked: the Task title, when the caller knows it. -->
+          <div class="grid min-w-0 gap-0.5">
+            <h3 :id="headingId" class="m-0 text-sm font-semibold text-highlighted">
+              {{ t('remoteIssuePicker.heading') }}
+            </h3>
+            <p
+              v-if="contextLabel"
+              class="m-0 truncate text-xs text-muted"
+              data-testid="remote-issue-picker-context"
+            >
+              {{ contextLabel }}
+            </p>
+          </div>
+
           <UForm
             :schema="remoteIssuePickerFormSchema"
             :state="state"
             class="grid gap-2"
             @submit="submit"
           >
-            <div class="flex items-center gap-1">
-              <UInput
-                id="remote-issue-query"
-                v-model="state.query"
-                class="min-w-0 flex-1"
-                :aria-label="t('remoteIssuePicker.queryLabel')"
-                :placeholder="t(queryPlaceholderKey)"
-                data-testid="remote-issue-picker-query"
+            <!--
+              The query comes first so it takes the popover's initial focus (REQ-460). The search
+              submit is the input's own trailing button; Enter submits too.
+            -->
+            <UInput
+              id="remote-issue-query"
+              v-model="state.query"
+              class="w-full"
+              :ui="{ trailing: 'pe-1' }"
+              :aria-label="t('remoteIssuePicker.queryLabel')"
+              :placeholder="t(queryPlaceholderKey)"
+              data-testid="remote-issue-picker-query"
+            >
+              <template #trailing>
+                <UTooltip :text="t('remoteIssuePicker.submitButton')" :content="{ side: 'top' }">
+                  <UButton
+                    type="submit"
+                    icon="i-lucide-search"
+                    color="primary"
+                    variant="soft"
+                    size="xs"
+                    square
+                    :loading="loading"
+                    :aria-label="t('remoteIssuePicker.submitButton')"
+                    data-testid="remote-issue-picker-submit"
+                  />
+                </UTooltip>
+              </template>
+            </UInput>
+            <!-- The search mode as a compact segmented control (still a radio group), the search
+              status beside it. -->
+            <div class="flex min-w-0 items-center gap-3">
+              <URadioGroup
+                id="remote-issue-mode"
+                v-model="state.mode"
+                :items="modeItems"
+                :aria-label="t('remoteIssuePicker.modeLabel')"
+                orientation="horizontal"
+                variant="table"
+                indicator="hidden"
+                size="xs"
+                value-key="value"
+                label-key="label"
+                :ui="MODE_UI"
+                class="shrink-0"
+                data-testid="remote-issue-picker-mode"
               />
-              <UTooltip :text="t('remoteIssuePicker.submitButton')" :content="{ side: 'top' }">
-                <UButton
-                  type="submit"
-                  icon="i-lucide-search"
-                  color="neutral"
-                  variant="ghost"
-                  square
-                  :loading="loading"
-                  :aria-label="t('remoteIssuePicker.submitButton')"
-                  data-testid="remote-issue-picker-submit"
-                />
-              </UTooltip>
+              <p
+                class="m-0 ms-auto min-w-0 text-end text-xs text-muted"
+                role="status"
+                aria-live="polite"
+              >
+                {{ statusMessage }}
+              </p>
             </div>
-            <URadioGroup
-              id="remote-issue-mode"
-              v-model="state.mode"
-              :items="modeItems"
-              :aria-label="t('remoteIssuePicker.modeLabel')"
-              orientation="horizontal"
-              value-key="value"
-              label-key="label"
-              data-testid="remote-issue-picker-mode"
-            />
           </UForm>
 
           <UCheckbox
             v-if="scope"
             id="remote-issue-picker-scope-toggle"
             v-model="applyScope"
+            size="sm"
             :label="scopeToggleLabel"
             data-testid="remote-issue-picker-scope-toggle"
           />
 
-          <p v-if="statusMessage" class="m-0 text-sm text-muted" role="status" aria-live="polite">
-            {{ statusMessage }}
-          </p>
-
+          <!-- Full-width option rows, aligned with the input: its edges and its text inset. -->
           <ul
             v-if="hasSearched && results.length > 0"
-            class="m-0 max-h-48 list-none overflow-auto p-0"
+            class="m-0 -mt-1 grid max-h-60 list-none gap-0.5 overflow-auto p-0"
             :aria-label="t('remoteIssuePicker.resultsLabel')"
             data-testid="remote-issue-picker-results"
           >
@@ -339,14 +387,25 @@ onBeforeUnmount(() => {
                 color="neutral"
                 variant="ghost"
                 block
-                class="h-auto justify-start py-1.5 text-left"
+                class="h-auto justify-start rounded-md px-2.5 py-2 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
                 :aria-label="resultAccessibleName(result)"
                 :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
                 @click="selectResult(result)"
               >
                 <span class="flex min-w-0 flex-col items-start gap-0.5">
-                  <span class="truncate">{{ result.title }}</span>
-                  <span class="truncate text-xs text-muted">{{ resultMeta(result) }}</span>
+                  <span class="w-full truncate text-sm font-medium text-default">
+                    {{ result.title }}
+                  </span>
+                  <span class="flex w-full min-w-0 items-baseline gap-1.5 text-xs text-muted">
+                    <span class="shrink-0 font-mono tabular-nums">#{{ result.remoteIssueId }}</span>
+                    <template v-if="result.remoteProjectTitle">
+                      <span
+                        class="size-[3px] shrink-0 self-center rounded-full bg-current"
+                        aria-hidden="true"
+                      />
+                      <span class="truncate">{{ result.remoteProjectTitle }}</span>
+                    </template>
+                  </span>
                   <span
                     v-if="result.remoteIssueId === outOfScopeId"
                     class="truncate text-xs text-warning"

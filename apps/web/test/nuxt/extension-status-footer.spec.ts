@@ -134,12 +134,16 @@ describe('ExtensionStatusFooter', () => {
     expect(wrapper.get('[data-testid="extension-status-trigger"]').attributes('aria-label')).toBe(
       'layout.extensionStatus.invalid',
     );
-    expect(wrapper.get('[data-testid="extension-status-trigger"]').classes()).toContain('px-1.5');
+    expect(wrapper.get('[data-testid="extension-status-trigger"]').classes()).toContain(
+      'justify-center',
+    );
   });
 
-  it('uses expanded trigger padding', async () => {
+  it('aligns the expanded trigger with the account row', async () => {
     const wrapper = await mountFooter();
-    expect(wrapper.get('[data-testid="extension-status-trigger"]').classes()).toContain('px-2.5');
+    expect(wrapper.get('[data-testid="extension-status-trigger"]').classes()).toContain(
+      'justify-start',
+    );
   });
 
   it('opens details from keyboard focus and lists required trackers first', async () => {
@@ -163,7 +167,7 @@ describe('ExtensionStatusFooter', () => {
       'layout.extensionStatus.websiteApproved',
     );
     expect(destinations[0]?.text()).toContain('layout.extensionStatus.destinationUnapproved');
-    expect(destinations[1]?.text()).toContain('layout.extensionStatus.notRequired');
+    expect(destinations[1]?.text()).toContain('layout.extensionStatus.destinationDirect');
   });
 
   it('opens on tap/click and shows status without approve or recheck actions', async () => {

@@ -13,7 +13,7 @@ const {
   dateLabel: string;
   exportLabel: string;
   exportDisabled: boolean;
-  /** Why Export is disabled, shown in its tooltip. */
+  /** Why Export is disabled, shown beside it and in its tooltip. */
   exportDisabledReason?: string | null;
 }>();
 
@@ -23,6 +23,7 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+const reasonId = useId();
 const calendarOpen = ref(false);
 const calendarValue = computed(() => parseDate(date));
 
@@ -79,17 +80,27 @@ function onCalendarSelect(value: CalendarDate | null) {
         </template>
       </UPopover>
     </PeriodStepper>
-    <!-- Disabled, Export turns neutral instead of a faded primary fill, and its focusable host
-         carries the reason in a tooltip. -->
+    <!-- Export is the page's primary action in every state. Disabled, it dims and says why: a
+         short line beside it (from md up) and the tooltip on its focusable host. -->
+    <span
+      v-if="exportDisabledReason"
+      :id="reasonId"
+      class="hidden max-w-60 text-end text-xs/4 text-balance text-muted md:inline"
+      data-testid="remote-sync-export-reason"
+    >
+      {{ exportDisabledReason }}
+    </span>
     <UTooltip :text="exportDisabledReason ?? ''" :disabled="!exportDisabledReason">
-      <span :tabindex="exportDisabledReason ? 0 : undefined" class="inline-flex rounded-md">
+      <span
+        :tabindex="exportDisabledReason ? 0 : undefined"
+        :aria-describedby="exportDisabledReason ? reasonId : undefined"
+        class="inline-flex rounded-md"
+      >
         <UButton
           icon="i-lucide-upload"
-          :color="exportDisabled ? 'neutral' : 'primary'"
-          :variant="exportDisabled ? 'subtle' : 'solid'"
           :label="exportLabel"
           :disabled="exportDisabled"
-          class="disabled:opacity-100 disabled:text-dimmed"
+          class="disabled:opacity-50"
           data-testid="remote-sync-export-button"
           @click="emit('export')"
         />

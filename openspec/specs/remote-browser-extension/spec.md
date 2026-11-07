@@ -177,6 +177,10 @@ The status row SHALL open a localized popover on hover, focus, click or tap, sep
 - **WHEN** a keyboard user focuses or activates the status row
 - **THEN** the popover SHALL open, remain keyboard operable, and expose its status meaning without relying on color alone
 
+#### Scenario: Extension not needed is said once
+- **WHEN** no active tracker requires the extension and the popover opens
+- **THEN** it SHALL state once that the extension is not needed, each tracker row SHALL say it connects directly without the extension, and the neutral row SHALL use the extension glyph rather than an error-like mark
+
 #### Scenario: Inspect status on touch
 - **WHEN** a touch user taps the status row
 - **THEN** the same tracker approval details SHALL be available without hover

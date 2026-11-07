@@ -31,6 +31,7 @@ const {
   reason,
   issueTitle,
   issueId,
+  issueReason = null,
   showLinkPicker,
   pickerConfig,
   pickerScope = null,
@@ -58,6 +59,8 @@ const {
   reason: string;
   issueTitle: string | null;
   issueId: string | null;
+  /** A short read-only reason ("Local project") shown in the issue cell instead of a bare dash. */
+  issueReason?: string | null;
   showLinkPicker: boolean;
   pickerConfig: TrackerDto | null;
   /** The owning project's remote project scope (REQ-328), if any. */
@@ -133,11 +136,11 @@ const toSendClass = computed(() => {
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 /**
- * A distinct shape per kind, so states never rely on color alone. Ready is the common case and
- * stays neutral; color marks the exceptions: amber for blocked, green for Sent.
+ * A distinct shape per kind, so states never rely on color alone. Each kind also carries its
+ * meaning color: cyan for Ready (it can go), green for Sent, amber for blocked; Loading is neutral.
  */
 const stateIcons = {
-  ready: { icon: 'i-lucide-circle-arrow-up', color: 'neutral', iconClass: 'text-muted' },
+  ready: { icon: 'i-lucide-circle-arrow-up', color: 'primary', iconClass: '' },
   sent: { icon: 'i-lucide-check-check', color: 'success', iconClass: '' },
   loading: {
     icon: 'i-lucide-loader-circle',
@@ -147,7 +150,7 @@ const stateIcons = {
   blocked: { icon: 'i-lucide-circle-alert', color: 'warning', iconClass: '' },
 } as const satisfies Record<
   SyncRowKind,
-  { icon: string; color: 'neutral' | 'success' | 'warning'; iconClass: string }
+  { icon: string; color: 'primary' | 'neutral' | 'success' | 'warning'; iconClass: string }
 >;
 const activityOpen = ref(false);
 const selectedActivityName = computed(
@@ -256,27 +259,41 @@ function onEditToSend() {
           </span>
         </span>
       </UTooltip>
-      <RemoteIssuePicker
-        v-else-if="showLinkPicker && pickerConfig"
-        :config="pickerConfig"
-        :scope="pickerScope"
-        :link-label="t('remoteSync.linkAction')"
-        :data-testid="`remote-sync-link-${row.taskId}`"
-        @link="(payload) => emit('link', payload)"
-      />
+      <!-- A flex host, so the inline trigger centres on the row like the issue text does. -->
+      <div v-else-if="showLinkPicker && pickerConfig" class="flex items-center">
+        <RemoteIssuePicker
+          :config="pickerConfig"
+          :scope="pickerScope"
+          :link-label="t('remoteSync.linkAction')"
+          :data-testid="`remote-sync-link-${row.taskId}`"
+          @link="(payload) => emit('link', payload)"
+        />
+      </div>
+      <span
+        v-else-if="issueReason"
+        class="block truncate text-sm text-dimmed"
+        :data-testid="`remote-sync-issue-reason-${row.taskId}`"
+      >
+        {{ issueReason }}
+      </span>
       <span v-else class="text-sm text-dimmed">{{ t('remoteSync.emptyCell') }}</span>
     </ColumnCell>
 
     <ColumnCell :columns="columns" col="activity" :narrow="{ col: [3, 4], row: 3 }">
       <div class="min-w-0">
+        <!-- REQ-506: the failure stays inside the cell, an icon carrying the message (in the
+             row's amber, so the row tells one failure) and a short retry that truncates rather
+             than run into the durations. -->
         <template v-if="activityError">
-          <div class="flex min-w-0 items-center gap-1">
+          <div class="-ms-1 flex min-w-0 items-center gap-0.5">
             <UPopover mode="hover" enable-touch :content="{ side: 'top' }">
               <UButton
-                icon="i-lucide-circle-alert"
-                color="error"
+                icon="i-lucide-cloud-off"
+                color="warning"
                 variant="ghost"
                 size="xs"
+                square
+                class="shrink-0"
                 :aria-label="t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError')"
                 :data-testid="`remote-sync-activity-error-${row.taskId}`"
               >
@@ -293,13 +310,16 @@ function onEditToSend() {
             <UButton
               variant="ghost"
               size="xs"
+              class="min-w-0"
+              :ui="{ label: 'truncate' }"
               :label="
                 t(
                   extensionActivityErrorKey
                     ? 'trackers.extensionRecheckButton'
-                    : 'remoteSync.activityRetry',
+                    : 'remoteSync.retry',
                 )
               "
+              :aria-label="extensionActivityErrorKey ? undefined : t('remoteSync.activityRetry')"
               :data-testid="`remote-sync-activity-retry-${row.taskId}`"
               @click="emit('retry-activity')"
             />
@@ -340,21 +360,25 @@ function onEditToSend() {
           @update:open="onActivityOpen"
         >
           <OverflowTooltip :text="activityDisplayValue">
-            <!-- Still empty, the required activity is drawn as a control (a dashed 3:1 outline,
-                 solid on hover and focus) so the row shows what Export waits for; once chosen it
-                 reads as plain row text. Either way its text starts on the column's edge. -->
+            <!-- Still empty, the required activity is the row's one "needs input" control: a
+                 cyan tint, like the other things on the page you act on, so the row shows what
+                 Export waits for. Once chosen it reads as plain row text on the column's edge.
+                 Open, either shape takes a cyan ring, tying the menu below to its row. -->
             <UButton
-              variant="ghost"
-              color="neutral"
+              :variant="selectedActivityName ? 'ghost' : 'soft'"
+              :color="selectedActivityName ? 'neutral' : 'primary'"
               size="xs"
               trailing-icon="i-lucide-chevron-down"
-              class="max-w-[calc(100%+0.5rem)] justify-start text-sm font-normal"
-              :class="
-                selectedActivityName
-                  ? '-ms-2 text-default'
-                  : '-ms-2 border border-dashed border-accented text-muted hover:border-solid focus-visible:border-solid'
-              "
-              :ui="{ label: 'truncate', trailingIcon: 'size-3.5' }"
+              class="max-w-full justify-start text-sm font-normal"
+              :class="[
+                selectedActivityName ? '-ms-2 max-w-[calc(100%+0.5rem)] text-default' : '',
+                activityOpen && 'ring ring-primary/60 ring-inset',
+                activityOpen && !selectedActivityName && 'bg-primary/15',
+              ]"
+              :ui="{
+                label: 'truncate',
+                trailingIcon: `size-3.5 transition-transform ${activityOpen ? 'rotate-180' : ''}`,
+              }"
               :label="activityDisplayValue"
               :aria-label="t('remoteSync.activityLabel')"
               :data-testid="`remote-sync-activity-select-${row.taskId}`"
@@ -367,13 +391,25 @@ function onEditToSend() {
               :aria-label="t('remoteSync.activityLabel')"
               :data-testid="`remote-sync-activity-list-${row.taskId}`"
             >
+              <!-- Which tracker the activities come from, so the menu names its source. -->
+              <p
+                v-if="row.trackerName"
+                class="m-0 truncate px-2.5 pt-1 pb-1.5 text-xs font-medium text-muted"
+                aria-hidden="true"
+              >
+                {{ t('remoteSync.activityMenuHeading', { tracker: row.trackerName }) }}
+              </p>
               <UButton
                 v-for="option in activityOptions"
                 :key="option.id"
                 variant="ghost"
                 color="neutral"
                 class="w-full justify-start"
+                :class="option.id === selectedActivityId && 'font-medium text-highlighted'"
+                :ui="{ trailingIcon: 'ms-auto size-4 text-primary' }"
                 role="option"
+                :aria-selected="option.id === selectedActivityId"
+                :trailing-icon="option.id === selectedActivityId ? 'i-lucide-check' : undefined"
                 :label="option.name"
                 :data-testid="`remote-sync-activity-option-${row.taskId}-${option.id}`"
                 @click.stop="commitActivity(option.id)"

@@ -11,6 +11,18 @@ const { collapsed = false, iconOnly = false } = defineProps<{
 
 const isCollapsed = computed(() => collapsed || iconOnly);
 
+/**
+ * Remote sync (`/sync/*`) is the Timer's per-day companion and has no item of its own, so the
+ * Timer item carries the selected wash there. Only the look: `aria-current` stays with the
+ * current route's own link (REQ-071), which Remote sync does not have.
+ */
+const onRemoteSync = computed(() => route.path.startsWith('/sync/'));
+const PARENT_ACTIVE_CLASS = 'text-primary before:bg-primary-100/80 dark:before:bg-primary/12';
+
+/** On the icon-only rail a small corner mark tells that Reports opens a menu, not a page. */
+const DISCLOSURE_CUE_CLASS =
+  "after:absolute after:end-1 after:bottom-1 after:size-0 after:border-[3px] after:border-transparent after:border-e-current after:border-b-current after:opacity-60 after:content-['']";
+
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
     label: t('nav.timer'),
@@ -18,6 +30,8 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     icon: 'i-lucide-timer',
     active: route.path === '/',
     exact: true,
+    class: onRemoteSync.value ? PARENT_ACTIVE_CLASS : undefined,
+    ui: onRemoteSync.value ? { linkLeadingIcon: 'text-primary' } : undefined,
   },
   {
     label: t('nav.trackers'),
@@ -38,6 +52,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     open: true,
     defaultOpen: true,
     active: false,
+    class: isCollapsed.value ? DISCLOSURE_CUE_CLASS : undefined,
     children: [
       {
         label: t('reports.monthly.pageTitle'),

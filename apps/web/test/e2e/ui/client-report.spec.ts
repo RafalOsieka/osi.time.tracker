@@ -105,7 +105,7 @@ describeClientReportUi('client report UI', async () => {
 
     // A new preset is saved by the export, and the action says so.
     expect(await page.textContent('[data-testid="client-report-export"]')).toContain(
-      'Save and export PDF',
+      'Save preset and download PDF',
     );
 
     const [download] = await Promise.all([
@@ -130,7 +130,7 @@ describeClientReportUi('client report UI', async () => {
       'NIP: 123-456-78-90\nul. Długa 1',
     );
     expect((await page.textContent('[data-testid="client-report-export"]'))?.trim()).toBe(
-      'Export PDF',
+      'Download PDF',
     );
 
     // Pasting past the limit keeps only the first 500 characters (REQ-512).

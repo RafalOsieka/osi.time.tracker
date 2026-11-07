@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
-import { TRACKER_SYSTEM_TYPE_LABELS } from '@osi/time-tracker-remote-trackers/contracts';
+import {
+  TRACKER_SYSTEM_TYPE_LABELS,
+  type TrackerSystemType,
+} from '@osi/time-tracker-remote-trackers/contracts';
 
-const { t, locale } = useI18n();
+/** Short type marks shown before each system's name in the list. */
+const SYSTEM_TYPE_MARKS = {
+  openproject: 'OP',
+  redmine: 'RM',
+} as const satisfies Record<TrackerSystemType, string>;
+
+const { t } = useI18n();
 usePageTitle(() => t('trackers.pageTitle'));
 const toast = useAppToast();
 const confirm = useAppConfirm();
 const { $csrfFetch } = useNuxtApp();
-const { effective } = useProfile();
 // Forwards the incoming request cookies during SSR so the list is authenticated.
 const requestFetch = useRequestFetch();
 
@@ -32,6 +40,8 @@ const {
 } = useAsyncData('trackers', () => requestFetch<TrackerDto[]>('/api/trackers'));
 
 const trackers = computed(() => trackersData.value ?? []);
+// Only once the list has loaded, so the empty state never flashes while it is in flight.
+const isEmpty = computed(() => !trackersPending.value && trackers.value.length === 0);
 const dialogOpen = ref(false);
 const editingTracker = ref<TrackerDto | null>(null);
 const importDialogOpen = ref(false);
@@ -75,7 +85,7 @@ async function onDelete(tracker: Pick<TrackerDto, 'id' | 'name'>) {
 
 const columns = computed<TableColumn<TrackerDto>[]>(() => {
   // Read at the top level so this computed re-evaluates (and rebuilds the
-  // `actions` cell closures below) once `secretsReady` flips post-mount —
+  // `actions` cell closures below) once `secretsReady` flips post-mount -
   // reading it only inside the nested `cell` callback would not register as
   // a dependency of this computed, since that callback runs later, outside
   // this function's own reactive tracking.
@@ -86,18 +96,26 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       accessorKey: 'name',
       header: t('trackers.columnName'),
       cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
-      meta: { class: { th: 'w-[28%]', td: 'truncate' } },
+      meta: { class: { th: 'w-[22%]', td: 'truncate' } },
     },
     {
       accessorKey: 'systemType',
       header: t('trackers.columnSystemType'),
+      // A small type mark gives each system an identity without leaving the palette.
       cell: ({ row }) =>
-        h(
-          resolveComponent('UBadge'),
-          { color: 'neutral', variant: 'soft', size: 'md', class: 'py-0.5 font-medium' },
-          () => TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType],
-        ),
-      meta: { class: { th: 'w-36' } },
+        h('span', { class: 'flex min-w-0 items-center gap-2' }, [
+          h(
+            'span',
+            {
+              class:
+                'inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded px-1 text-[10px]/none font-semibold tracking-wide bg-primary-100/80 text-primary dark:bg-primary/12',
+              'aria-hidden': 'true',
+            },
+            SYSTEM_TYPE_MARKS[row.original.systemType],
+          ),
+          h('span', { class: 'truncate' }, TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType]),
+        ]),
+      meta: { class: { th: 'w-40' } },
     },
     {
       accessorKey: 'baseUrl',
@@ -117,10 +135,25 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
         }),
     },
     {
-      accessorKey: 'createdAt',
-      header: t('trackers.columnCreated'),
-      cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
-      meta: { class: { th: 'w-40', td: 'tabular-nums text-muted' } },
+      // How the browser reaches the tracker: directly, or through the OSI extension.
+      accessorKey: 'directBrowserAccess',
+      header: t('trackers.columnConnection'),
+      cell: ({ row }) => {
+        const direct = row.original.directBrowserAccess;
+        return h('span', { class: 'flex min-w-0 items-center gap-2' }, [
+          h(resolveComponent('UIcon'), {
+            name: direct ? 'i-lucide-globe' : 'i-lucide-puzzle',
+            class: 'size-4 shrink-0 text-dimmed',
+            'aria-hidden': 'true',
+          }),
+          h(
+            'span',
+            { class: 'truncate' },
+            direct ? t('trackers.connectionDirect') : t('trackers.connectionExtension'),
+          ),
+        ]);
+      },
+      meta: { class: { th: 'w-48' } },
     },
     {
       id: 'actions',
@@ -129,7 +162,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       enableSorting: false,
       meta: {
         class: {
-          // Fixed widths (the table is fixed-layout), so columns never shift between languages.
+          // Fixed widths (the table is fixed-layout): three 32px tiles plus the cell padding.
           th: 'w-36 text-end',
           td: 'whitespace-nowrap py-1.5 text-end',
         },
@@ -141,7 +174,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           deleteLabel: t('trackers.deleteButton'),
           editTestid: `edit-tracker-${row.original.id}`,
           deleteTestid: `delete-tracker-${row.original.id}`,
-          extraIcon: 'i-lucide-history',
+          extraIcon: 'i-lucide-import',
           extraLabel: hasSecret ? t('trackers.importButton') : t('trackers.importNoSecretHint'),
           extraTestid: `import-tracker-${row.original.id}`,
           extraDisabled: !hasSecret,
@@ -156,15 +189,28 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
 </script>
 
 <template>
-  <div data-testid="trackers-page" class="space-y-4">
+  <div data-testid="trackers-page" class="grid gap-6">
+    <!-- In the empty state the card's call to action is the page's one primary button. -->
     <TableHeader
       :title="t('trackers.pageTitle')"
       :new-label="t('trackers.newButton')"
       new-testid="new-tracker-button"
+      :quiet="isEmpty"
+      @create="openCreate"
+    />
+
+    <EmptyState
+      v-if="isEmpty"
+      icon="i-lucide-plug"
+      :title="t('trackers.emptyStateTitle')"
+      :message="t('trackers.emptyState')"
+      :cta-label="t('trackers.emptyStateCta')"
+      testid="trackers-empty-state"
       @create="openCreate"
     />
 
     <UTable
+      v-else
       :data="trackers"
       :columns="columns"
       :loading="trackersPending"
@@ -175,24 +221,16 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
         base: 'w-full table-fixed',
       }"
     >
-      <template #empty>
-        <!-- Avoid empty-state flash while the initial list request is in flight. -->
-        <EmptyState
-          v-if="!trackersPending"
-          :message="t('trackers.emptyState')"
-          :cta-label="t('trackers.emptyStateCta')"
-          testid="trackers-empty-state"
-          @create="openCreate"
-        />
-      </template>
+      <!-- While the list loads it shows no "no data" text; the empty state replaces the table. -->
+      <template #empty><span /></template>
     </UTable>
 
     <TrackerFormDialog v-model:open="dialogOpen" :tracker="editingTracker" @saved="fetchTrackers" />
     <!--
       `:key` forces a fresh component instance per tracker: `v-if` alone stays
       continuously true across two different trackers (both truthy), so the
-      same instance — and its `useRemoteLogImport` composable, which captures
-      `tracker` once at setup — would otherwise persist stale state (and the
+      same instance - and its `useRemoteLogImport` composable, which captures
+      `tracker` once at setup - would otherwise persist stale state (and the
       wrong tracker's adapter) from one tracker into the next.
     -->
     <TrackerImportDialog

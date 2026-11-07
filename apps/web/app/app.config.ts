@@ -1,3 +1,14 @@
+/** Segment widths the framework fixes per size, released to the segment's own width. */
+const DATE_SEGMENT =
+  'data-[segment=day]:w-auto data-[segment=month]:w-auto data-[segment=year]:w-auto';
+const TIME_SEGMENT = 'not-data-[segment=literal]:w-auto';
+
+/** The same segment and gap override for every field size (a size variant outranks a slot). */
+function tightSegments(segment: string) {
+  const slots = { base: 'gap-0', segment };
+  return { xs: slots, sm: slots, md: slots, lg: slots, xl: slots };
+}
+
 export default defineAppConfig({
   ui: {
     colors: {
@@ -23,6 +34,61 @@ export default defineAppConfig({
           class: { link: 'before:bg-primary-100/80 dark:before:bg-primary/12' },
         },
       ],
+    },
+    // Floating surfaces rise above the cards in dark mode (the elevated layer), and the scrim
+    // behind a dialog dims the page in both themes rather than washing it out. Items inside a
+    // raised surface highlight on the accented layer, since the elevated one is their ground.
+    modal: {
+      slots: {
+        content: 'dark:bg-elevated',
+        footer: 'justify-end gap-2',
+      },
+      variants: {
+        overlay: { true: { overlay: 'bg-neutral-900/35 dark:bg-neutral-950/60' } },
+      },
+    },
+    slideover: {
+      slots: { overlay: 'bg-neutral-900/35 dark:bg-neutral-950/60', content: 'dark:bg-elevated' },
+    },
+    popover: { slots: { content: 'dark:bg-elevated' } },
+    tooltip: { slots: { content: 'dark:bg-elevated' } },
+    dropdownMenu: {
+      slots: { content: 'dark:bg-elevated' },
+      variants: {
+        active: {
+          false: {
+            item: 'dark:data-highlighted:before:bg-accented/60 dark:data-[state=open]:before:bg-accented/60',
+          },
+        },
+      },
+    },
+    select: {
+      slots: {
+        content: 'dark:bg-elevated',
+        item: 'dark:data-highlighted:not-data-disabled:before:bg-accented/60',
+      },
+    },
+    selectMenu: {
+      slots: {
+        content: 'dark:bg-elevated',
+        item: 'dark:data-highlighted:not-data-disabled:before:bg-accented/60',
+      },
+    },
+    inputMenu: {
+      slots: {
+        content: 'dark:bg-elevated',
+        item: 'dark:data-highlighted:not-data-disabled:before:bg-accented/60',
+      },
+    },
+    // Date and time fields read as one value ("7.11.2026", "09:00"), not as boxes spread across
+    // the field: segments take their own width with tabular figures and literals sit tight.
+    inputDate: {
+      slots: { segment: 'px-0.5 tabular-nums data-[segment=literal]:px-0' },
+      variants: { size: tightSegments(DATE_SEGMENT) },
+    },
+    inputTime: {
+      slots: { segment: 'px-0.5 tabular-nums data-[segment=literal]:px-0' },
+      variants: { size: tightSegments(TIME_SEGMENT) },
     },
     // Cards sit one layer above the page in dark mode (layered greys), flush with it in light.
     card: {

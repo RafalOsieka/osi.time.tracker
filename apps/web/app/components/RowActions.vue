@@ -12,6 +12,13 @@ defineProps<{
 }>();
 
 const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
+
+/**
+ * Cyan tiles sit on the cyan-100 wash in light mode (the selected navigation item's tint), so they
+ * read as clearly cyan beside the soft red delete tile; dark mode keeps the soft primary tint.
+ */
+const CYAN_TILE =
+  'size-8 justify-center bg-primary-100 hover:bg-primary-200/70 dark:bg-primary/10 dark:hover:bg-primary/15';
 </script>
 
 <template>
@@ -23,7 +30,7 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
         variant="soft"
         size="md"
         square
-        class="size-8 justify-center"
+        :class="CYAN_TILE"
         :ui="{ leadingIcon: 'size-4' }"
         :disabled="extraDisabled"
         :aria-label="extraLabel"
@@ -38,7 +45,7 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
         variant="soft"
         size="md"
         square
-        class="size-8 justify-center"
+        :class="CYAN_TILE"
         :ui="{ leadingIcon: 'size-4' }"
         :aria-label="editLabel"
         :data-testid="editTestid"

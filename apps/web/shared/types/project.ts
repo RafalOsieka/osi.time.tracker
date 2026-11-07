@@ -61,7 +61,7 @@ export interface ProjectDto {
   trackerName: string | null;
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
-  // Seconds tracked in the last 30 days (REQ-371); ranks @project mentions.
+  // Seconds tracked in the last 30 days (REQ-371): ranks @project mentions and shows on the Projects list.
   recentTrackedSeconds: number;
   createdAt: string;
 }

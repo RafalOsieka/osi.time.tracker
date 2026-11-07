@@ -149,14 +149,14 @@ const displayedRemoteLogs = computed(() => {
       kind="sub"
       :data-testid="`remote-sync-entry-${entry.id}`"
     >
-      <!-- Placed like the Timer's entry times: right-aligned in the column before the duration,
-           small tabular figures with a spaced separator. -->
+      <!-- The entry's clock range leads on the title edge, under its section label; its duration
+           sits in the tracked column, a step stronger than the muted range and in the mono
+           face, so the duration never reads lighter than the range. -->
       <ColumnCell
         :columns="columns"
-        col="activity"
+        col="title"
         :narrow="{ col: [3, 4], row: 1 }"
-        align="end"
-        class="text-xs font-medium tabular-nums text-default dark:font-normal"
+        class="tabular-nums"
       >
         {{ formatEntryStart(entry.startedAt) }}
         <span class="px-0.5">{{ t('timerView.entryRow.separator') }}</span>
@@ -167,7 +167,7 @@ const displayedRemoteLogs = computed(() => {
         col="tracked"
         :narrow="{ col: [4, 5], row: 1 }"
         align="end"
-        class="font-mono tabular-nums"
+        class="font-mono tabular-nums text-toned"
       >
         {{ formatDuration(entry.durationSeconds) }}
       </ColumnCell>
@@ -277,10 +277,12 @@ const displayedRemoteLogs = computed(() => {
             </span>
           </UTooltip>
         </ColumnCell>
-        <!-- The log's ref sits in the Issue column, under the issue it was logged on. -->
+        <!-- The log's comment is the same kind of text as a title to send, so it sits on the
+             title edge, after the log's own number; the issue it was logged on is the row's. -->
         <ColumnCell
           :columns="columns"
-          col="issue"
+          col="title"
+          to="issue"
           :narrow="{ col: [3, 4], row: 1 }"
           class="flex min-w-0 items-baseline gap-1.5"
         >
@@ -305,30 +307,26 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A readable scope label
-             on the value's baseline (it may run into the empty Tracked cell), and the muted body
-             weight, keep it from reading as time still to send. The cell's accessible name
-             carries the scope. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507), under the section's
+             "Already in the tracker" label, in the entries' tone and body weight, so it never
+             reads as time still to send. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="flex items-baseline justify-end gap-1.5 whitespace-nowrap"
+          class="font-mono tabular-nums whitespace-nowrap text-toned"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
         >
-          <span
-            class="text-xs text-dimmed"
-            aria-hidden="true"
-            :data-testid="`remote-sync-remote-log-scope-${log.remoteLogId}`"
-          >
-            {{ t('remoteSync.inTrackerLogs') }}
-          </span>
-          <span class="font-mono text-sm font-normal tabular-nums text-muted">
-            {{ formatDuration(log.durationSeconds) }}
-          </span>
+          {{ formatDuration(log.durationSeconds) }}
         </ColumnCell>
-        <ColumnCell :columns="columns" col="actions" :narrow="{ col: [5, 6], row: 1 }">
+        <!-- The denser rows' 28px tinted tile, square like every row action. -->
+        <ColumnCell
+          :columns="columns"
+          col="actions"
+          :narrow="{ col: [5, 6], row: 1 }"
+          class="flex justify-end"
+        >
           <UTooltip
             v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"
             :text="t('remoteSync.linkRemoteEntry')"
@@ -339,8 +337,9 @@ const displayedRemoteLogs = computed(() => {
               color="primary"
               variant="soft"
               square
-              size="xs"
-              class="size-6 justify-center"
+              size="sm"
+              class="size-7 justify-center rounded-md"
+              :ui="{ leadingIcon: 'size-4' }"
               :disabled="busy"
               :aria-label="t('remoteSync.linkRemoteEntry')"
               :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
@@ -357,8 +356,9 @@ const displayedRemoteLogs = computed(() => {
               color="error"
               variant="soft"
               square
-              size="xs"
-              class="size-6 justify-center"
+              size="sm"
+              class="size-7 justify-center rounded-md"
+              :ui="{ leadingIcon: 'size-4' }"
               :disabled="busy"
               :aria-label="t('remoteSync.deleteRemoteEntry')"
               :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"

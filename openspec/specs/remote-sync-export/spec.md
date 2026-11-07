@@ -167,18 +167,24 @@ The browser SHALL orchestrate remote reads, at most one remote creation per incl
 
 ### Requirement: REQ-229 Export runs through a review, running and report dialog
 
-Activating Export SHALL open a confirmation listing only each included task's title and to-send duration,
-plus the total to-send duration. Export SHALL include every Ready row with non-zero duration and a selected
-activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without
-changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
+Activating Export SHALL open a confirmation titled with the included task count, listing only the included
+tasks, each with its title to send, duration and destination (Tracker, issue, activity), then the total.
+Export SHALL include every Ready row with non-zero duration and a selected activity. No remote request SHALL
+occur before confirmation. Cancelling SHALL close the dialog without changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
 
 #### Scenario: Review lists exactly what will be sent
 - **WHEN** Export is activated with eligible rows
-- **THEN** the dialog SHALL list each included title and duration plus their total
+- **THEN** the dialog SHALL list each included title, destination and duration plus their total
 
 #### Scenario: Skipped tasks are stated with reasons
 - **WHEN** the day contains ineligible tasks
-- **THEN** their durable row states SHALL state why they are excluded without repeating them in the dialog
+- **THEN** their durable row states SHALL state why they are excluded, and the dialog SHALL only count the
+  tasks neither included nor Sent ("3 other tasks of this day are not ready to export") without listing them
+
+#### Scenario: Export is unavailable with a stated reason
+- **WHEN** Export is disabled
+- **THEN** it SHALL remain the dimmed primary action with a short translated reason beside it and on its
+  focusable host
 
 #### Scenario: Nothing is sent before confirmation
 - **WHEN** the confirmation is open

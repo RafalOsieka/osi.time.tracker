@@ -197,7 +197,6 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
               id="tracker-name"
               v-model="state.name"
               :maxlength="TRACKER_NAME_MAX_LENGTH"
-              :placeholder="t('trackers.namePlaceholder')"
               class="w-full"
               data-testid="tracker-name-input"
             />
@@ -252,6 +251,23 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             </template>
           </UFormField>
 
+          <!-- The browser-only promise is help text, so it stays visible while typing. -->
+          <UFormField
+            :label="t('trackers.secretLabel')"
+            :hint="t('trackers.optionalHint')"
+            :help="t('trackers.secretHelp')"
+            name="secret"
+          >
+            <UInput
+              id="tracker-secret"
+              v-model="secret"
+              type="password"
+              autocomplete="off"
+              class="w-full"
+              data-testid="tracker-secret-input"
+            />
+          </UFormField>
+
           <UFormField name="directBrowserAccess">
             <div class="flex items-center gap-1">
               <UCheckbox
@@ -296,20 +312,9 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             />
           </UFormField>
 
-          <UFormField :label="t('trackers.secretLabel')" name="secret">
-            <UInput
-              id="tracker-secret"
-              v-model="secret"
-              type="password"
-              :placeholder="t('trackers.secretPlaceholder')"
-              class="w-full"
-              data-testid="tracker-secret-input"
-            />
-          </UFormField>
-
           <FormDialogFooter
             :cancel-label="t('trackers.cancelButton')"
-            :save-label="t('trackers.saveButton')"
+            :save-label="tracker ? t('trackers.saveButton') : t('trackers.createButton')"
             :saving="saving"
             @cancel="closeDialog"
           />

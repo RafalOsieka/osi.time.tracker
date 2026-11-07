@@ -9,7 +9,7 @@ const {
   detailsId?: string;
   /**
    * `row` is a top-level list row with a divider. `sub` and `label` sit inside an
-   * expanded detail block (`ColumnDetail`): no divider, tighter height, and `label`
+   * expanded detail block (`ColumnDetail`): no divider, tighter height (32px, room for a 28px action tile), and `label`
    * is the small section heading.
    */
   kind?: 'row' | 'sub' | 'label';
@@ -19,7 +19,7 @@ const {
 
 const kindClass = {
   row: 'min-h-11 py-1 @max-[40rem]/list:py-1.5',
-  sub: 'min-h-7 text-sm text-muted',
+  sub: 'min-h-8 text-sm text-muted',
   label: 'min-h-6 pt-1.5 text-xs font-medium text-dimmed',
 } as const;
 </script>

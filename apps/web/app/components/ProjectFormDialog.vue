@@ -43,6 +43,16 @@ const trackerOptions = computed(() => {
   return [...active, ...missing];
 });
 
+// "None (local project)" is a real list item, so a bound project can be detached again
+// (REQ-086). Like `WHOLE_TRACKER_VALUE` below, the sentinel must be non-empty for Reka UI.
+const LOCAL_PROJECT_VALUE = '__local-project__';
+
+/** The Tracker select's items: the local choice first, each with the icon the list shows. */
+const trackerItems = computed(() => [
+  { id: LOCAL_PROJECT_VALUE, name: t('projects.trackerNone'), icon: 'i-lucide-hard-drive' },
+  ...trackerOptions.value.map(({ id, name }) => ({ id, name, icon: 'i-lucide-cable' })),
+]);
+
 /** UI uses undefined for empty/local; API null is mapped at open/submit boundaries. */
 type ProjectFormState = {
   name: string;
@@ -66,7 +76,7 @@ const saving = ref(false);
 // remote project catalog, loaded through the browser-held secret. Falls back
 // to a disabled, clearable display of the cached title when no secret is
 // available or (extension mode) the installed extension predates the catalog
-// operation — the project remains saveable without a scope either way.
+// operation - the project remains saveable without a scope either way.
 const { get: getSecret } = useTrackerSecret();
 const remoteProjectCatalog = ref<RemoteProjectDto[]>([]);
 const catalogLoading = ref(false);
@@ -86,7 +96,7 @@ const canBrowseCatalog = computed(
   () => !!selectedTracker.value && !!selectedTrackerSecret.value && !catalogUnsupported.value,
 );
 
-// USelect (Nuxt UI v4) has no `clearable` prop — it is silently ignored, which
+// USelect (Nuxt UI v4) has no `clearable` prop - it is silently ignored, which
 // left this control with no way to unset a scope once picked. The "whole
 // tracker" choice REQ-327 requires is a real list item with this sentinel
 // value, not a clear affordance layered on top. Reka UI's underlying
@@ -168,11 +178,11 @@ function clearRemoteProjectScope() {
 /**
  * Explicit handler (not a `state.trackerId` watcher) so a user-initiated
  * tracker change clears the pending scope and reloads the catalog (REQ-327)
- * without also firing — and wrongly wiping the seeded scope — when
+ * without also firing - and wrongly wiping the seeded scope - when
  * `seedForm` programmatically sets `trackerId` while opening the dialog.
  */
 function onTrackerSelected(value: string | undefined) {
-  state.trackerId = value || undefined;
+  state.trackerId = value && value !== LOCAL_PROJECT_VALUE ? value : undefined;
   state.remoteProjectId = undefined;
   state.remoteProjectTitle = undefined;
   cachedRemoteProjectTitle.value = null;
@@ -321,7 +331,6 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
               id="project-name"
               v-model="state.name"
               :maxlength="PROJECT_NAME_MAX_LENGTH"
-              :placeholder="t('projects.namePlaceholder')"
               class="w-full"
               data-testid="project-name-input"
             />
@@ -334,18 +343,18 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
 
           <UFormField
             :label="t('projects.trackerLabel')"
+            :hint="t('projects.optionalHint')"
+            :help="t('projects.trackerHelp')"
             name="trackerId"
             :error="trackerServerError || undefined"
           >
             <USelect
               id="project-tracker"
-              :model-value="state.trackerId"
-              :items="trackerOptions"
+              :model-value="state.trackerId ?? LOCAL_PROJECT_VALUE"
+              :items="trackerItems"
               value-key="id"
               label-key="name"
-              :placeholder="t('projects.trackerPlaceholder')"
               :loading="trackersPending"
-              clearable
               class="w-full"
               data-testid="project-tracker-select"
               @update:model-value="onTrackerSelected"
@@ -357,11 +366,18 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
             </template>
           </UFormField>
 
+          <!-- The remote project belongs to the chosen Tracker, so it sits indented under it. -->
           <UFormField
             v-if="state.trackerId"
             :label="t('projects.remoteProjectLabel')"
+            :hint="t('projects.optionalHint')"
+            :help="
+              canBrowseCatalog && !catalogErrorKey ? t('projects.remoteProjectHelp') : undefined
+            "
             name="remoteProjectId"
             :error="remoteProjectServerError || undefined"
+            class="ms-2 border-s-2 border-default ps-4"
+            data-testid="project-remote-project-field"
           >
             <template v-if="canBrowseCatalog">
               <USelect
@@ -427,7 +443,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
 
           <FormDialogFooter
             :cancel-label="t('projects.cancelButton')"
-            :save-label="t('projects.saveButton')"
+            :save-label="project ? t('projects.saveButton') : t('projects.createButton')"
             :saving="saving"
             @cancel="closeDialog"
           />

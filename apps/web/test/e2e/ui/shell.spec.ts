@@ -78,7 +78,7 @@ describeShell('authenticated shell navigation', async () => {
       footerHtml.indexOf('extension-status-footer'),
     );
     expect(await page.locator('[data-testid="extension-status-label"]').textContent()).toMatch(
-      /Extension not required|Wtyczka niewymagana/,
+      /Extension not required|Rozszerzenie niewymagane/,
     );
     await page.locator('[data-testid="extension-status-trigger"]').focus();
     await page.waitForSelector('[data-testid="extension-status-popover"]');

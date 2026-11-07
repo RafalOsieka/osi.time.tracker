@@ -378,4 +378,19 @@ describe('TimerAddEntryDialog', () => {
       'error.timeEntryStartedAtInvalid',
     );
   });
+
+  it('previews the duration of a complete range and hides it for an inverted one', async () => {
+    const wrapper = await mount();
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:15'),
+      end: parseTime('10:45'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe('01:30:00');
+
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('11:00'),
+      end: parseTime('10:00'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').exists()).toBe(false);
+  });
 });

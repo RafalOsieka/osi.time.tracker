@@ -9,6 +9,10 @@ How users manage trackers — named connections to an OpenProject or Redmine ins
 ### Requirement: REQ-244 List own trackers
 The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `directBrowserAccess`, `roundingRule`, timestamps) and SHALL never include an API secret or required-field defaults.
 
+#### Scenario: List shows how each tracker connects
+- **WHEN** the user views the Trackers page
+- **THEN** each row SHALL show the tracker's name, system type, base URL and connection mode; a tracker with `directBrowserAccess: false` SHALL show that it connects through the extension, and a tracker with `true` SHALL show a direct connection
+
 #### Scenario: User sees only their own trackers
 - **WHEN** an authenticated user requests their trackers
 - **THEN** the response SHALL contain only trackers where `userId` equals the user's id and `deletedAt` is null, ordered by name
@@ -114,6 +118,10 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
 
+#### Scenario: Confirmation states the consequences
+- **WHEN** the delete confirmation is shown
+- **THEN** it SHALL name the tracker, say that its browser-held secret is removed and that its projects and time entries stay while linking and export to it stop, and offer a named delete action and a cancel action
+
 #### Scenario: Browser secret cleared on delete
 - **WHEN** a tracker is soft-deleted
 - **THEN** the client SHALL clear the browser-held secret associated with that tracker id
@@ -133,12 +141,16 @@ The API secret SHALL be entered and kept only in the user's browser, keyed by tr
 - **WHEN** a user enters an API secret for a tracker
 - **THEN** it SHALL remain browser-held and SHALL NOT be persisted on the OSI server
 
+#### Scenario: The form states where the secret is kept
+- **WHEN** the tracker form shows the API secret field, empty or filled
+- **THEN** visible help text (not a placeholder) SHALL say that the secret stays in this browser and never reaches the OSI server
+
 #### Scenario: Changing direct browser access keeps the secret in the browser
 - **WHEN** a user changes `directBrowserAccess`
 - **THEN** the existing browser-held secret SHALL remain the credential source and SHALL NOT migrate to extension or server storage
 
 ### Requirement: REQ-251 Accessible, tokenized Trackers UI
-The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity. One create/edit form SHALL hold the name, every connection field and the browser-only secret input.
+The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity. One create/edit form SHALL hold, in this order, the name, the system type, the base URL, the browser-only secret input, the direct-browser checkbox and the rounding rule.
 
 #### Scenario: Inline field error is accessible
 - **WHEN** a field validation error is shown

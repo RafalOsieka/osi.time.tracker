@@ -39,13 +39,26 @@ function reject() {
 </script>
 
 <template>
-  <UModal
-    :title="title"
-    :description="description"
-    :dismissible="!pending"
-    :close="!pending"
-    :ui="{ footer: 'justify-end gap-2' }"
-  >
+  <UModal :title="title" :dismissible="!pending" :close="!pending">
+    <template v-if="description" #body>
+      <div class="flex items-start gap-3">
+        <span
+          class="flex size-9 shrink-0 items-center justify-center rounded-md"
+          :class="
+            confirmColor === 'error' ? 'bg-error/10 text-error' : 'bg-primary/10 text-primary'
+          "
+          aria-hidden="true"
+        >
+          <UIcon
+            :name="confirmColor === 'error' ? 'i-lucide-triangle-alert' : 'i-lucide-info'"
+            class="size-5"
+          />
+        </span>
+        <p class="m-0 pt-1.5 text-sm text-toned" data-testid="confirm-description">
+          {{ description }}
+        </p>
+      </div>
+    </template>
     <template #footer>
       <div class="flex justify-end gap-2" data-testid="confirm-modal">
         <UButton

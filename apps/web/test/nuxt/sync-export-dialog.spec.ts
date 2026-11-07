@@ -1,15 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
-import SyncExportDialog from '../../app/components/sync/SyncExportDialog.vue';
+import SyncExportDialog, {
+  type ExportDialogIncludedRow,
+} from '../../app/components/sync/SyncExportDialog.vue';
+
+function item(
+  taskId: string,
+  comment: string,
+  toSendSeconds: number,
+  destination: Partial<ExportDialogIncludedRow> = {},
+): ExportDialogIncludedRow {
+  return {
+    taskId,
+    comment,
+    toSendSeconds,
+    trackerName: null,
+    issueId: null,
+    activityName: null,
+    ...destination,
+  };
+}
 
 describe('SyncExportDialog', () => {
-  it('lists comments, durations, and the batch total', async () => {
+  it('lists comments, durations, destinations and the batch total', async () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
         included: [
-          { taskId: 'a', comment: 'Override for Alpha', toSendSeconds: 1800 },
-          { taskId: 'b', comment: 'Beta', toSendSeconds: 900 },
+          item('a', 'Override for Alpha', 1800, {
+            trackerName: 'Acme OpenProject',
+            issueId: '4821',
+            activityName: 'Development',
+          }),
+          item('b', 'Beta', 900),
         ],
         toSendSeconds: 2700,
         isRunning: false,
@@ -24,10 +47,37 @@ describe('SyncExportDialog', () => {
       'Override for Alpha',
     );
     expect(wrapper.get('[data-testid="remote-sync-export-row-a"]').text()).toContain('00:30:00');
+    expect(wrapper.get('[data-testid="remote-sync-export-destination-a"]').text()).toBe(
+      'Acme OpenProject · #4821 · Development',
+    );
+    expect(wrapper.find('[data-testid="remote-sync-export-destination-b"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="remote-sync-export-dialog-to-send"]').text()).toContain(
       '00:45:00',
     );
+    expect(wrapper.find('[data-testid="remote-sync-export-not-ready"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-export-confirm"]').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('counts the tasks that are not ready without listing them (REQ-229)', async () => {
+    const wrapper = await mountSuspended(SyncExportDialog, {
+      props: {
+        open: true,
+        included: [item('a', 'Alpha', 1800)],
+        toSendSeconds: 1800,
+        notReadyCount: 3,
+        isRunning: false,
+        completedCount: 0,
+        totalCount: 1,
+      },
+      global: {
+        stubs: { UModal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } },
+      },
+    });
+    expect(wrapper.get('[data-testid="remote-sync-export-not-ready"]').text()).toBe(
+      '3 other tasks of this day are not ready to export.',
+    );
+    expect(wrapper.findAll('[data-testid^="remote-sync-export-row-"]')).toHaveLength(1);
     wrapper.unmount();
   });
 
@@ -35,7 +85,7 @@ describe('SyncExportDialog', () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
-        included: [{ taskId: 'a', comment: 'Alpha', toSendSeconds: 1800 }],
+        included: [item('a', 'Alpha', 1800)],
         toSendSeconds: 1800,
         isRunning: true,
         completedCount: 0,

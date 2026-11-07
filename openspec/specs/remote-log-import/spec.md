@@ -154,7 +154,7 @@ Each tracker's "Import history" action SHALL open a dialog moving through range,
 
 #### Scenario: Unscoped project flagged before scanning
 - **WHEN** the range phase opens for a tracker with a bound Project that has no scope
-- **THEN** the project list SHALL show that Project marked as not receiving a default target, without any remote request
+- **THEN** the project list SHALL show that Project with a warning that it has no remote project, plus one hint that it can still be picked in the mapping phase or given a remote project in the project form, without any remote request
 
 #### Scenario: Range phase opens with the default range filled
 - **WHEN** the range phase opens

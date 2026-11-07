@@ -25,7 +25,24 @@ const storedTimezone = computed(() => profile.value?.timezone ?? 'UTC');
 
 const displayNameDraft = ref(storedDisplayName.value);
 const timezone = ref(storedTimezone.value);
-const timezones = [...TIME_ZONES];
+/** The zone's current UTC offset, e.g. `UTC+01:00` (DST applies, so it is today's offset). */
+function utcOffset(timeZone: string, now: Date): string {
+  const name = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' })
+    .formatToParts(now)
+    .find((part) => part.type === 'timeZoneName')?.value;
+  // `longOffset` writes `GMT+01:00`, or a bare `GMT` for a zero offset.
+  return !name || name === 'GMT' ? 'UTC+00:00' : name.replace('GMT', 'UTC');
+}
+
+/**
+ * Each option is its IANA id with today's UTC offset, e.g. "Europe/Warsaw (UTC+01:00)", so the
+ * list says what a zone means without a lookup; filtering still matches the id (REQ-494).
+ */
+const now = new Date();
+const timezones = TIME_ZONES.map((zone) => ({
+  value: zone,
+  label: zone === 'UTC' ? zone : `${zone} (${utcOffset(zone, now)})`,
+}));
 
 const localeItems = computed(
   () =>
@@ -84,8 +101,10 @@ function onTimezoneChange(value: string | undefined) {
 </script>
 
 <template>
-  <div data-testid="page-profile" class="grid gap-8">
-    <PageHeader :title="t('profile.title')" :description="t('profile.description')" />
+  <!-- The shared header (a bare title) and the same 24px gap to the content as every page; the
+       one autosave note is the display name's help, the only field that saves on leave. -->
+  <div data-testid="page-profile" class="grid gap-6">
+    <PageHeader :title="t('profile.title')" />
 
     <div class="grid max-w-[40rem] gap-6">
       <UCard
@@ -150,6 +169,8 @@ function onTimezoneChange(value: string | undefined) {
             id="profile-timezone"
             :model-value="timezone"
             :items="timezones"
+            value-key="value"
+            label-key="label"
             searchable
             class="w-full"
             data-testid="profile-timezone"

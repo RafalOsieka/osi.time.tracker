@@ -43,7 +43,8 @@ const statusColor = computed(() => {
 
 const statusIcon = computed(() => {
   const icons = {
-    neutral: 'i-lucide-circle-minus',
+    // Not required is not a problem, so it shows the extension glyph rather than a status mark.
+    neutral: 'i-lucide-puzzle',
     checking: 'i-lucide-loader-circle',
     red: 'i-lucide-circle-alert',
     orange: 'i-lucide-triangle-alert',
@@ -67,14 +68,15 @@ const hasRequiredTracker = computed(() =>
   orderedTrackers.value.some((tracker) => !tracker.directBrowserAccess),
 );
 
-const notRequiredStatus = computed((): StatusPresentation => ({
-  label: t('layout.extensionStatus.notRequired'),
-  icon: 'i-lucide-circle-minus',
+/** The one global statement when no Tracker needs the extension; each Tracker row adds its mode. */
+const notRequiredSummary = computed((): StatusPresentation => ({
+  label: t('layout.extensionStatus.notRequiredSummary'),
+  icon: 'i-lucide-globe',
   iconClass: 'text-muted',
 }));
 
 const websiteStatus = computed((): StatusPresentation => {
-  if (!hasRequiredTracker.value) return notRequiredStatus.value;
+  if (!hasRequiredTracker.value) return notRequiredSummary.value;
   const presentations = {
     checking: {
       label: t('layout.extensionStatus.checking'),
@@ -124,7 +126,13 @@ function destinationStatus(tracker: {
   directBrowserAccess: boolean;
   destinationApproved: boolean | null;
 }): StatusPresentation {
-  if (tracker.directBrowserAccess) return notRequiredStatus.value;
+  if (tracker.directBrowserAccess) {
+    return {
+      label: t('layout.extensionStatus.destinationDirect'),
+      icon: 'i-lucide-globe',
+      iconClass: 'text-muted',
+    };
+  }
   if (tracker.destinationApproved === true) {
     return {
       label: t('layout.extensionStatus.destinationApproved'),
@@ -148,7 +156,7 @@ function destinationStatus(tracker: {
   }
   return {
     label: t('layout.extensionStatus.websiteUnknown'),
-    icon: 'i-lucide-circle-minus',
+    icon: 'i-lucide-circle-help',
     iconClass: 'text-muted',
   };
 }
@@ -167,7 +175,7 @@ function openDetails() {
       :open-delay="50"
       :close-delay="200"
       class="w-full min-w-0"
-      :content="{ side: 'top', align: collapsed ? 'center' : 'start', sideOffset: 4 }"
+      :content="{ side: 'right', align: 'end', sideOffset: 12 }"
       :ui="{ content: 'max-w-80 p-3' }"
     >
       <UButton
@@ -175,17 +183,18 @@ function openDetails() {
         variant="ghost"
         size="xs"
         block
-        class="w-full min-w-0 justify-start gap-1.5 font-normal text-muted"
-        :class="collapsed ? 'px-1.5' : 'px-2.5'"
+        class="w-full min-w-0 gap-2 font-normal text-muted"
+        :class="collapsed ? 'justify-center px-1' : 'justify-start px-1'"
         :aria-label="t('layout.extensionStatus.rowAria', { status: statusLabel })"
         data-testid="extension-status-trigger"
         @focus="openDetails"
       >
         <template #leading>
-          <span class="inline-flex size-5 shrink-0 items-center justify-center">
+          <!-- As wide as the account avatar above, so icon and label line up with it. -->
+          <span class="inline-flex h-5 w-8 shrink-0 items-center justify-center">
             <UIcon
               :name="statusIcon"
-              class="size-3"
+              class="size-4"
               :class="statusIconClass"
               data-testid="extension-status-icon"
             />
@@ -223,13 +232,13 @@ function openDetails() {
             <span class="min-w-0">{{ t('layout.extensionStatus.title') }}</span>
           </h2>
 
-          <p class="m-0 flex items-center gap-2 text-sm" data-testid="extension-status-website">
-            <span class="inline-flex size-4 shrink-0 items-center justify-center overflow-hidden">
+          <p class="m-0 flex items-start gap-2 text-sm" data-testid="extension-status-website">
+            <span
+              class="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
+            >
               <UIcon :name="websiteStatus.icon" class="size-4" :class="websiteStatus.iconClass" />
             </span>
-            <span class="min-w-0">
-              {{ t('layout.extensionStatus.statusLabel') }}: {{ websiteStatus.label }}
-            </span>
+            <span class="min-w-0">{{ websiteStatus.label }}</span>
           </p>
 
           <ul

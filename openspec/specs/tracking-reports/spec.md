@@ -143,11 +143,15 @@ After successful fetches the table SHALL flag the duration itself, not via a sta
 - **THEN** the day SHALL NOT be marked as needing attention; a tooltip MAY mention the two durations as information
 
 ### Requirement: REQ-472 Flagged and zero duration styling
-A flagged duration (REQ-293) SHALL use warning-colored **semibold** text, weight plus color rather than color alone (REQ-004), with a themed hover and focus tooltip giving the reason (REQ-269). An unflagged `0:00` SHALL use dimmed text. The table SHALL NOT have an attention column.
+A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with a dotted underline, so a non-color cue marks it (REQ-004), and a themed hover and focus tooltip giving the reason (REQ-269). A note under the table SHALL say that underlined values need attention and how to reveal the reason with the pointer or Tab. An unflagged `0:00` SHALL use dimmed text at a lighter weight. The table SHALL NOT have an attention column.
+
+#### Scenario: Flagged durations have a non-color cue
+- **WHEN** a cell is flagged
+- **THEN** its duration SHALL be underlined as well as warning-colored and semibold
 
 #### Scenario: Zero durations recede
 - **WHEN** a cell is `0:00` and is not flagged
-- **THEN** that duration SHALL use dimmed text and SHALL NOT use warning styling
+- **THEN** that duration SHALL use dimmed text at a lighter weight and SHALL NOT use warning styling
 
 ### Requirement: REQ-294 Report durations use unpadded `H:MM`
 

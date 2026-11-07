@@ -148,6 +148,7 @@ type PickerMountProps = {
   cachedTestid?: string;
   unlinkedTestid?: string;
   config?: TrackerDto;
+  contextLabel?: string;
 };
 
 function mount(props: PickerMountProps = {}) {
@@ -219,6 +220,19 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
     await flushPromises();
     expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
+  });
+
+  it('names what it links: a heading plus the Task title when given', async () => {
+    const wrapper = await mount({ contextLabel: 'Release 2.4 smoke test' });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+
+    const group = wrapper.find('[role="group"]');
+    const heading = wrapper.find(`#${group.attributes('aria-labelledby')}`);
+    expect(heading.text()).toBe('remoteIssuePicker.heading');
+    expect(wrapper.find('[data-testid="remote-issue-picker-context"]').text()).toBe(
+      'Release 2.4 smoke test',
+    );
   });
 
   it('defaults to issue-ID search and hides empty results until a search', async () => {

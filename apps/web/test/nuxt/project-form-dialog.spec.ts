@@ -286,6 +286,29 @@ describe('ProjectFormDialog remote project scope', () => {
     expect(listProjectsMock).not.toHaveBeenCalled();
   });
 
+  it('detaches a bound project through the local Tracker choice after confirmation', async () => {
+    listProjectsMock.mockResolvedValue([]);
+    csrfFetchMock.mockResolvedValue({ id: 'project-1', name: 'Scoped Project' });
+    const wrapper = await mount(scopedProject());
+    await flushPromises();
+
+    await wrapper.find('[data-testid="project-tracker-select"]').setValue('__local-project__');
+    await flushPromises();
+    expect(wrapper.find('[data-testid="project-remote-project-field"]').exists()).toBe(false);
+
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    expect(confirmMock).toHaveBeenCalled();
+    expect(csrfFetchMock).toHaveBeenCalledWith(
+      '/api/projects/project-1',
+      expect.objectContaining({
+        method: 'PATCH',
+        body: expect.objectContaining({ trackerId: null, remoteProjectId: null }),
+      }),
+    );
+  });
+
   it('submits the selected remote project id and title', async () => {
     listProjectsMock.mockResolvedValue([{ remoteProjectId: '4', title: 'Spike Child' }]);
     csrfFetchMock.mockResolvedValue({ id: 'project-1', name: 'Scoped Project' });

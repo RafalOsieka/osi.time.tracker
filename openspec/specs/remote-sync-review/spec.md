@@ -31,6 +31,11 @@ The application SHALL provide a private Remote Sync page for one day, reached fr
 
 Each task row SHALL have exactly one state: **Sent** with a finalized export for the date; **read-only with a translated reason** when there is no project, no tracker, a missing or soft-deleted tracker, an unsupported system type, or no activity in a successful fetch; **read-only but linkable** with a usable tracker but no linked issue; **temporarily unavailable**, retryable, when required remote data failed to load; else **Ready**. The "(no task)" bucket SHALL always be read-only.
 
+#### Scenario: Short reason fills the issue cell
+- **WHEN** a row is read-only for a missing project or tracker, or an unsupported system
+- **THEN** its issue cell SHALL show a short translated reason (for example "Local project") instead
+  of an empty value
+
 #### Scenario: Task without a Project is read-only
 
 - **WHEN** a listed Task has no Project
@@ -366,7 +371,7 @@ When a row's activities fail to load (REQ-114), its activity cell SHALL show an 
 - **THEN** the error icon and the guidance row SHALL disappear and the activity select SHALL be shown
 
 ### Requirement: REQ-507 Expanded details are rows on the task columns
-Expanding a row SHALL reveal information only, as rows of the same list: the task's completed local entries that day, each duration in the tracked column, then the same-day current-account remote logs for its issue (REQ-118, REQ-226), each with its link state in the state column, duration in the to-send column and reconciliation action in the actions column. It SHALL offer no duration editors, rounding alternatives, comment editors or entry selection.
+Expanding a row SHALL reveal information only, as rows of the same list: the task's completed local entries that day (clock range on the title edge, duration in the tracked column), then the same-day current-account remote logs for its issue (REQ-118, REQ-226): link state in the state column, identifier and comment on the title edge, duration under to send, reconciliation action in the actions column. It SHALL offer no duration editors, rounding alternatives, comment editors or entry selection.
 
 #### Scenario: Local entries line up under tracked
 - **WHEN** a task row is expanded
@@ -427,7 +432,7 @@ Next to the day total the page SHALL show **in tracker after export**: the curre
 - **THEN** the exported durations SHALL count in the logs part and SHALL NOT count again as to send
 
 ### Requirement: REQ-510 In-tracker summary without complete logs
-While any tracker's logs for the day are loading, the in-tracker summary SHALL show no number and say that logs are loading. When a tracker's logs fail or cannot be fetched, for example an extension tracker on mobile, it SHALL show no number, name the affected tracker and the reason, and offer a retry where one exists. It SHALL never show a partial sum.
+While any tracker's logs for the day are loading, the in-tracker summary SHALL show no number and say that logs are loading. When a tracker's logs fail or cannot be fetched, for example an extension tracker on mobile, the summary SHALL show no number and say it is unavailable, keeping the summaries' shared height, and one alert directly under the summaries SHALL name the affected trackers with each reason once and offer a single retry where one exists. It SHALL never show a partial sum.
 
 #### Scenario: Loading logs show no number
 - **WHEN** the page is waiting for any tracker's logs
@@ -435,8 +440,9 @@ While any tracker's logs for the day are loading, the in-tracker summary SHALL s
 
 #### Scenario: A failed tracker shows the reason and a retry
 - **WHEN** one tracker's logs fail to load and another's load
-- **THEN** the summary SHALL show no number, name the failed tracker and the reason, and offer a retry
+- **THEN** the summary SHALL show no number, and the alert under the summaries SHALL name the failed
+  tracker and the reason and offer a retry
 
 #### Scenario: An unavailable tracker shows the reason
 - **WHEN** a tracker's logs cannot be fetched on this device
-- **THEN** the summary SHALL show no number and state why, without a retry action
+- **THEN** the summary SHALL show no number and the alert SHALL state why, without a retry action

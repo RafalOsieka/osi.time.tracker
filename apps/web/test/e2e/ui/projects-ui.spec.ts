@@ -88,31 +88,13 @@ describeProjectsUI('projects UI flow', async () => {
       .locator('[data-testid="project-name-input"] input, [data-testid="project-name-input"]')
       .first()
       .fill('UI Project Renamed');
-    // Clear tracker selection to detach
-    const trackerSelect = page.locator('[data-testid="project-tracker-select"]');
-    await trackerSelect.click();
-    // Prefer an explicit clear control if present; otherwise re-select placeholder path
-    const clearButton = page.locator(
-      '[data-testid="project-tracker-select"] button[aria-label*="clear" i], [data-testid="project-tracker-select"] [data-slot="clear"]',
-    );
-    if ((await clearButton.count()) > 0) {
-      await clearButton.first().click();
-    } else {
-      // Escape the select and force-clear via keyboard if clearable control is hard to hit
-      await page.keyboard.press('Escape');
-      await page.evaluate(() => {
-        document
-          .querySelector('[data-testid="project-tracker-select"]')
-          ?.dispatchEvent(new Event('focus', { bubbles: true }));
-      });
-    }
+    // Detach: the Tracker select offers an explicit local choice (REQ-086).
+    await page.click('[data-testid="project-tracker-select"]');
+    await page.getByRole('option', { name: /local project|projekt lokalny/i }).click();
     await page.click('[data-testid="save-button"]');
 
-    // Detach confirmation dialog (when tracker changes away from a linked value)
-    const confirm = page.locator('[data-testid="confirm-accept"]');
-    if ((await confirm.count()) > 0) {
-      await confirm.click();
-    }
+    // Detaching asks for confirmation first.
+    await page.locator('[data-testid="confirm-accept"]').click();
     await page.waitForSelector('[data-testid="project-dialog"]', { state: 'hidden' });
     await page.waitForFunction(() => document.body.textContent?.includes('UI Project Renamed'));
 

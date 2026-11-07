@@ -11,6 +11,7 @@ import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/uti
 import { computeInTrackerSummary } from '~~/shared/utils/compute-in-tracker-summary';
 import type { ColumnDefinition } from '~/components/ColumnList.vue';
 import type { SyncRowKind } from '~/components/sync/SyncDayRow.vue';
+import type { ExportDialogIncludedRow } from '~/components/sync/SyncExportDialog.vue';
 import type { ActivityByTask, ExportCommentsByTask, IssueRefByTask } from '~/types/sync-ui-maps';
 
 const route = useRoute();
@@ -89,7 +90,7 @@ const exportDialogOpen = ref(false);
 const reconciling = ref(false);
 
 /** Narrow layout (D5): expand, state, text, durations, actions. */
-const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.5rem';
+const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.75rem';
 const columns = computed(
   () =>
     [
@@ -102,7 +103,8 @@ const columns = computed(
       { key: 'activity', track: { fr: 1, min: '6rem' }, header: t('remoteSync.columns.activity') },
       { key: 'tracked', track: '6rem', header: t('remoteSync.columns.tracked'), align: 'end' },
       { key: 'toSend', track: '6rem', header: t('remoteSync.columns.toSend'), align: 'end' },
-      { key: 'actions', track: '1.5rem' },
+      // Sized for one 28px action tile (the expanded block's reconcile action, REQ-505).
+      { key: 'actions', track: '1.75rem' },
     ] satisfies ColumnDefinition[],
 );
 
@@ -218,6 +220,27 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
       return t('remoteSync.state.sent');
     default:
       return t('remoteSync.state.manageable');
+  }
+}
+
+/**
+ * A short read-only reason for a row that has no issue and cannot be linked, shown quietly in
+ * its issue cell; the full reason stays on the state indicator (REQ-112, REQ-504).
+ */
+function issueReasonFor(row: RemoteSyncDayRowDto): string | null {
+  switch (stateFor(row)) {
+    case 'no_project':
+      return t('remoteSync.shortReason.noProject');
+    case 'no_tracker':
+      return t(
+        row.trackerName
+          ? 'remoteSync.shortReason.noTracker'
+          : 'remoteSync.shortReason.localProject',
+      );
+    case 'system_not_implemented':
+      return t('remoteSync.shortReason.systemNotImplemented');
+    default:
+      return null;
   }
 }
 
@@ -459,8 +482,19 @@ const inTrackerSummary = computed(() =>
   ),
 );
 
+/** The failed Trackers grouped by reason, so the page alert states each reason once. */
+const inTrackerFailures = computed(() => {
+  const summary = inTrackerSummary.value;
+  if (summary.status !== 'unavailable') return [];
+  const byReason = new Map<string, string[]>();
+  for (const tracker of summary.trackers) {
+    byReason.set(tracker.messageKey, [...(byReason.get(tracker.messageKey) ?? []), tracker.name]);
+  }
+  return [...byReason].map(([messageKey, names]) => ({ messageKey, names: names.join(', ') }));
+});
+
 /**
- * Why Export is disabled, for its tooltip: no Ready row has time to send, or the Ready rows
+ * Why Export is disabled, shown beside it and in its tooltip: no Ready row has time to send, or the Ready rows
  * with time still need an activity. Null while exporting or when Export is available.
  */
 const exportDisabledReason = computed(() => {
@@ -564,11 +598,21 @@ function setComment(row: RemoteSyncDayRowDto, value: string | undefined) {
 }
 
 const exportIncludedRows = computed(() =>
-  pushableRows().map((row) => ({
+  pushableRows().map((row): ExportDialogIncludedRow => ({
     taskId: row.taskId,
     comment: resolveExportComment(commentFor(row), row.taskName),
     toSendSeconds: toSendSecondsFor(row),
+    trackerName: row.trackerName ?? row.config?.baseUrl ?? null,
+    issueId: issueRefFor(row)?.remoteIssueId ?? null,
+    activityName:
+      activitiesFor(row).options.find((option) => option.id === selectedActivity(row))?.name ??
+      null,
   })),
+);
+
+/** Tasks of the day that are neither in this export nor Sent, counted in the review only. */
+const exportNotReadyCount = computed(
+  () => rows.value.filter((row) => !isPushable(row) && stateFor(row) !== 'sent').length,
 );
 
 const exportIncludedTotalSeconds = computed(() =>
@@ -741,10 +785,10 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
 </script>
 
 <template>
-  <section class="grid gap-5" data-testid="remote-sync-page">
+  <section class="grid gap-6" data-testid="remote-sync-page">
     <SyncDayHeader
       :date="date"
-      :date-label="capitalizeFirst(dayHeadingText, locale)"
+      :date-label="dayHeadingText"
       :export-label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
       :export-disabled="exporting || pushableRows().length === 0"
       :export-disabled-reason="exportDisabledReason"
@@ -787,51 +831,59 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           >
             {{ t('remoteSync.inTrackerLoading') }}
           </span>
-          <span
-            v-else-if="inTrackerSummary.status === 'unavailable'"
-            class="flex flex-wrap items-center gap-x-2 gap-y-1"
-            role="alert"
-            data-testid="remote-sync-total-in-tracker-unavailable"
-          >
-            <span
-              v-for="tracker in inTrackerSummary.trackers"
-              :key="tracker.name"
-              class="inline-flex items-center gap-1.5"
-            >
-              <UIcon name="i-lucide-circle-alert" class="size-3.5 text-error" aria-hidden="true" />
-              {{ tracker.name }}: {{ t(tracker.messageKey) }}
-            </span>
-            <UButton
-              v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)"
-              size="xs"
-              variant="link"
-              icon="i-lucide-refresh-cw"
-              class="p-0"
-              :label="t('remoteSync.remoteLogsRetry')"
-              @click="retryFailedLogs"
-            />
+          <!-- The card keeps its one-line rhythm; the named failures are the alert below. -->
+          <span v-else-if="inTrackerSummary.status === 'unavailable'">
+            {{ t('remoteSync.inTrackerUnavailable') }}
           </span>
-          <!-- One line, value before its word: "03:00:00 in trackers + 06:00:00 to send", the
-               durations in the mono face like the figure. The to-send part, the time not in the
-               trackers yet, is set apart by its number's weight and contrast, not the accent (it
-               would read as a link). -->
+          <!-- One line, value before its word: "03:00:00 in trackers + 06:00:00 to send". Both
+               durations share the figure's mono face and the caption's colour and weight; the
+               "+" joins them quietly. -->
           <span v-else data-testid="remote-sync-total-in-tracker-parts">
-            <span class="font-mono tabular-nums">
+            <span class="font-mono tabular-nums text-default">
               {{ formatDuration(inTrackerSummary.logsSeconds) }}
             </span>
             {{ t('remoteSync.inTrackersLogs') }}
             <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
             <span class="me-1 text-dimmed">+</span>
-            <span class="text-default">
-              <span class="font-mono font-medium tabular-nums text-highlighted">
-                {{ formatDuration(inTrackerSummary.toSendSeconds) }}
-              </span>
-              {{ t('remoteSync.inTrackerToSend') }}
+            <span class="font-mono tabular-nums text-default">
+              {{ formatDuration(inTrackerSummary.toSendSeconds) }}
             </span>
+            {{ t('remoteSync.inTrackerToSend') }}
           </span>
         </template>
       </StatCard>
     </div>
+
+    <!-- REQ-510: why the in-tracker total is missing, told once for the page: the failed
+         Trackers grouped by reason, and one retry for all of them. -->
+    <UAlert
+      v-if="inTrackerSummary.status === 'unavailable'"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-cloud-off"
+      orientation="horizontal"
+      role="alert"
+      :ui="{ root: 'py-3', description: 'grid gap-0.5 opacity-100' }"
+      data-testid="remote-sync-total-in-tracker-unavailable"
+    >
+      <template #description>
+        <p v-for="failure in inTrackerFailures" :key="failure.messageKey" class="m-0">
+          <span class="font-medium">{{ failure.names }}:</span>
+          {{ t(failure.messageKey) }}
+        </p>
+      </template>
+      <template v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)" #actions>
+        <UButton
+          color="warning"
+          variant="outline"
+          size="sm"
+          icon="i-lucide-refresh-cw"
+          :label="t('remoteSync.retry')"
+          :aria-label="t('remoteSync.remoteLogsRetry')"
+          @click="retryFailedLogs"
+        />
+      </template>
+    </UAlert>
 
     <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">
       {{ t('remoteSync.emptyState') }}
@@ -851,6 +903,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :reason="reasonKeyFor(row)"
         :issue-title="issueRefFor(row)?.cachedTitle ?? null"
         :issue-id="issueRefFor(row)?.remoteIssueId ?? null"
+        :issue-reason="issueReasonFor(row)"
         :show-link-picker="stateFor(row) === 'unlinked' && !!row.config"
         :picker-config="row.config ? toPickerConfig(row.config) : null"
         :picker-scope="
@@ -935,6 +988,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       v-model:open="exportDialogOpen"
       :included="exportIncludedRows"
       :to-send-seconds="exportIncludedTotalSeconds"
+      :not-ready-count="exportNotReadyCount"
       :completed-count="exportCompletedCount"
       :total-count="exportTotalCount"
       :is-running="exporting"

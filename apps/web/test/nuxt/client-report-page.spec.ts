@@ -241,8 +241,19 @@ describe('client report page — month (REQ-384)', () => {
   it('says in the preview placeholder what export produces for the selected month', async () => {
     const wrapper = await mountPage();
 
-    expect(wrapper.get('[data-testid="client-report-preview"]').text()).toBe(
+    const preview = wrapper.get('[data-testid="client-report-preview"]');
+    expect(preview.get('h2').text()).toBe('clientReport.previewTitle');
+    expect(preview.get('p').text()).toBe(
       'clientReport.previewPlaceholder {"month":"September 2026"}',
+    );
+    // The summary reads the report's facts from the form as it stands.
+    expect(preview.findAll('dt')).toHaveLength(5);
+    expect(preview.get('[data-testid="client-report-summary-month"]').text()).toBe(
+      'September 2026',
+    );
+    await wrapper.get('[data-testid="client-report-client-name"]').setValue('Helios Energy');
+    expect(preview.get('[data-testid="client-report-summary-client"]').text()).toBe(
+      'Helios Energy',
     );
   });
 

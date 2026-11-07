@@ -12,11 +12,11 @@ const columns = computed(
       { key: 'project', track: { fr: 1.2, min: '7rem' }, header: t('timerView.columns.project') },
       { key: 'issue', track: '4.5rem', header: t('timerView.columns.issue') },
       { key: 'duration', track: '5rem', header: t('timerView.columns.duration'), align: 'end' },
-      { key: 'action', track: '1.5rem' },
+      { key: 'action', track: '2rem' },
     ] as const satisfies readonly ColumnDefinition[],
 );
 /** Narrow layout (D5): toggle, count, text, issue, duration, action. */
-const narrowColumns = '1.5rem 1.25rem minmax(0,1fr) 4.5rem 5rem 1.5rem';
+const narrowColumns = '1.5rem 1.25rem minmax(0,1fr) 4.5rem 5rem 2rem';
 usePageTitle(() => t('timerView.pageTitle'));
 const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useProfile();
@@ -340,13 +340,17 @@ async function onEntryDeleted() {
       :title="t('timerView.pageTitle')"
       :new-label="t('timerView.addEntry.buttonLabel')"
       new-testid="timer-view-add-entry"
+      :quiet="isNeverTracked"
       @create="openAddEntry"
     />
 
     <EmptyState
       v-if="isNeverTracked"
-      :message="t('timerView.neverTrackedEmptyState')"
+      icon="i-lucide-timer"
+      :title="t('timerView.neverTrackedTitle')"
+      :message="t('timerView.neverTrackedMessage')"
       :cta-label="t('timerView.neverTrackedCta')"
+      cta-icon="i-lucide-arrow-up"
       testid="timer-view-never-tracked"
       @create="focusTimerWidget"
     />
@@ -367,14 +371,16 @@ async function onEntryDeleted() {
               class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1"
             >
               <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">{{ dayHeading(day.dayKey) }}</h2>
-              <NuxtLink
+              <UButton
                 :to="`/sync/${day.dayKey}`"
-                class="inline-flex shrink-0 items-center gap-1 rounded-sm text-xs font-medium text-muted no-underline transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-2 focus-visible:outline-primary/50"
+                :label="t('timerView.remoteSyncAction')"
+                icon="i-lucide-cloud-upload"
+                color="primary"
+                variant="soft"
+                size="xs"
+                class="shrink-0 self-center"
                 :data-testid="`timer-day-remote-sync-${day.dayKey}`"
-              >
-                <UIcon name="i-lucide-cloud-upload" class="size-3.5" aria-hidden="true" />
-                {{ t('timerView.remoteSyncAction') }}
-              </NuxtLink>
+              />
             </ColumnCell>
             <ColumnCell
               :columns="columns"
@@ -462,7 +468,7 @@ async function onEntryDeleted() {
 <style scoped>
 @container list (max-width: 40rem) {
   .timer-list :deep([role='table']) {
-    grid-template-columns: 1.5rem 1.25rem repeat(3, minmax(0, 1fr)) 5rem 1.5rem !important;
+    grid-template-columns: 1.5rem 1.25rem repeat(3, minmax(0, 1fr)) 5rem 2rem !important;
   }
 }
 </style>

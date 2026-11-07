@@ -218,6 +218,43 @@ const localeItems = computed(
     ] satisfies { label: string; value: ReportLocale }[],
 );
 
+/** The report as the form stands, for the summary beside it; an empty fact reads "not set". */
+const summaryFacts = computed(() => {
+  const trackerNames = new Map(trackerItems.value.map((item) => [item.value, item.label]));
+  const clientName = state.clientName.trim();
+  return [
+    {
+      key: 'client',
+      label: t('clientReport.summaryClient'),
+      values: clientName ? [clientName] : [],
+    },
+    {
+      key: 'month',
+      label: t('clientReport.summaryMonth'),
+      values: monthLabel.value ? [capitalizeFirst(monthLabel.value, locale.value)] : [],
+    },
+    {
+      key: 'trackers',
+      label: t('clientReport.trackersLabel'),
+      values: state.trackerIds.flatMap((id) => trackerNames.get(id) ?? []),
+    },
+    {
+      key: 'hours-format',
+      label: t('clientReport.hoursFormatLabel'),
+      values: hoursFormatItems.value
+        .filter((item) => item.value === state.hoursFormat)
+        .map((item) => item.label),
+    },
+    {
+      key: 'locale',
+      label: t('clientReport.localeLabel'),
+      values: localeItems.value
+        .filter((item) => item.value === state.locale)
+        .map((item) => item.label),
+    },
+  ];
+});
+
 function validate(formState: PresetFormState): Promise<FormError[]> {
   return validateSchemaWithI18n(formState, reportPresetInputSchema, t);
 }
@@ -502,23 +539,30 @@ async function onExport() {
       </UForm>
 
       <!--
-        A page-on-desk placeholder (REQ-384): the sheet always sits lighter than its pane, white
-        on light grey and a raised grey in dark. The faint lines only suggest a document.
+        The report summary (REQ-384): what the PDF will hold, read live from the form, so the
+        user checks the output before downloading. A card beside the form with the shared cyan
+        icon chip, a title and one line, then the report's facts as a definition list.
       -->
-      <div
-        class="flex min-h-80 items-center justify-center rounded-lg border border-default bg-muted p-8"
+      <section
+        class="grid content-start gap-5 rounded-lg border border-default bg-default p-6 dark:bg-muted"
+        aria-labelledby="client-report-preview-title"
         data-testid="client-report-preview"
       >
-        <div
-          class="flex aspect-[210/297] w-full max-w-64 flex-col gap-5 rounded-md bg-default p-6 shadow-sm ring-1 ring-default dark:bg-elevated dark:shadow-md"
-        >
-          <div class="grid gap-2" aria-hidden="true">
-            <div class="h-2 w-1/2 rounded-full bg-accented" />
-            <div class="h-1.5 w-1/3 rounded-full bg-accented/60" />
-          </div>
-          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <UIcon name="i-lucide-file-down" class="size-6 text-dimmed" aria-hidden="true" />
-            <p class="max-w-[200px] text-sm text-balance text-muted">
+        <div class="flex items-start gap-3">
+          <span
+            class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 ring-inset"
+            aria-hidden="true"
+          >
+            <UIcon name="i-lucide-file-text" class="size-5" />
+          </span>
+          <div class="grid gap-0.5">
+            <h2
+              id="client-report-preview-title"
+              class="m-0 text-base font-semibold text-highlighted"
+            >
+              {{ t('clientReport.previewTitle') }}
+            </h2>
+            <p class="m-0 text-sm text-muted">
               {{
                 monthLabel
                   ? t('clientReport.previewPlaceholder', { month: monthLabel })
@@ -526,14 +570,29 @@ async function onExport() {
               }}
             </p>
           </div>
-          <div class="grid gap-2.5" aria-hidden="true">
-            <div v-for="row in 4" :key="row" class="flex items-center justify-between gap-6">
-              <div class="h-1.5 flex-1 rounded-full bg-accented/60" />
-              <div class="h-1.5 w-6 rounded-full bg-accented/60" />
-            </div>
-          </div>
         </div>
-      </div>
+        <USeparator />
+        <dl
+          class="m-0 grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-6 gap-y-3 text-sm"
+          data-testid="client-report-summary"
+        >
+          <template v-for="fact in summaryFacts" :key="fact.key">
+            <dt class="text-muted">{{ fact.label }}</dt>
+            <dd
+              class="m-0 min-w-0"
+              :class="fact.values.length ? 'font-medium text-highlighted' : 'text-dimmed'"
+              :data-testid="`client-report-summary-${fact.key}`"
+            >
+              <template v-if="fact.values.length">
+                <span v-for="value in fact.values" :key="value" class="block break-words">
+                  {{ value }}
+                </span>
+              </template>
+              <template v-else>{{ t('clientReport.summaryNone') }}</template>
+            </dd>
+          </template>
+        </dl>
+      </section>
     </div>
   </div>
 </template>

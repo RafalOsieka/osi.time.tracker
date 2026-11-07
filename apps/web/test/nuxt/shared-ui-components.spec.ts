@@ -67,12 +67,29 @@ describe('TableHeader', () => {
     await button.trigger('click');
     expect(wrapper.emitted('create')).toHaveLength(1);
   });
+
+  it('steps the New button down to neutral outline when quiet', async () => {
+    const wrapper = await mountSuspended(TableHeader, {
+      props: { title: 'trackers', newLabel: 'New', newTestid: 'new-button', quiet: true },
+      global: { stubs: { UButton: ButtonStub } },
+    });
+
+    const button = wrapper.find('[data-testid="new-button"]');
+    expect(button.attributes('color')).toBe('neutral');
+    expect(button.attributes('variant')).toBe('outline');
+  });
 });
 
 describe('EmptyState', () => {
   it('renders the message and CTA, and emits create on click', async () => {
     const wrapper = await mountSuspended(EmptyState, {
-      props: { message: 'No trackers yet', ctaLabel: 'Add one', testid: 'trackers-empty-state' },
+      props: {
+        icon: 'i-lucide-plug',
+        title: 'No trackers',
+        message: 'No trackers yet',
+        ctaLabel: 'Add one',
+        testid: 'trackers-empty-state',
+      },
       global: { stubs: { UButton: ButtonStub } },
     });
 
