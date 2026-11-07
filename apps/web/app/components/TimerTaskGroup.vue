@@ -209,11 +209,7 @@ async function unlinkRemoteIssue() {
 </script>
 
 <template>
-  <ColumnRow
-    :data-testid="`timer-group-${group.key}`"
-    :joined="expanded"
-    :class="isLive && 'running-row'"
-  >
+  <ColumnRow :data-testid="`timer-group-${group.key}`" :joined="expanded">
     <ColumnCell :columns="columns" col="toggle" :narrow="{ col: [1, 2], row: 1 }">
       <UTooltip
         :text="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
@@ -239,7 +235,7 @@ async function unlinkRemoteIssue() {
         variant="soft"
         size="sm"
         class="w-5 shrink-0 justify-center px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
-        :class="isLive && 'bg-default ring ring-inset ring-(--ui-border)'"
+        :class="isLive && 'bg-primary/10 text-primary'"
         :aria-label="countLabel"
         :data-testid="`timer-group-count-${group.key}`"
       >
@@ -367,7 +363,7 @@ async function unlinkRemoteIssue() {
     <ColumnCell :columns="columns" col="duration" align="end" :narrow="{ col: [5, 6], row: 1 }">
       <span
         class="block text-right font-mono text-sm tabular-nums"
-        :class="isLive ? 'font-medium text-highlighted' : 'text-default'"
+        :class="isLive ? 'font-medium text-primary' : 'text-default'"
         :data-testid="`timer-group-total-${group.key}`"
       >
         {{ formatDuration(group.totalSeconds + liveSeconds(group.liveStartedAt, now)) }}
@@ -378,7 +374,7 @@ async function unlinkRemoteIssue() {
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
           :icon="isLive ? undefined : 'i-lucide-play'"
-          :variant="isLive ? 'soft' : 'ghost'"
+          variant="ghost"
           square
           size="xs"
           :color="isLive ? 'error' : 'neutral'"
@@ -409,14 +405,3 @@ async function unlinkRemoteIssue() {
     />
   </ColumnDetail>
 </template>
-
-<style scoped>
-/*
- * The group holding the running entry: a faint accent wash with a 2px accent edge, so the live
- * Task reads at a glance without leaning on the red stop control.
- */
-.running-row {
-  background: color-mix(in oklab, var(--ui-primary) 6%, transparent);
-  box-shadow: inset 2px 0 0 var(--ui-primary);
-}
-</style>
