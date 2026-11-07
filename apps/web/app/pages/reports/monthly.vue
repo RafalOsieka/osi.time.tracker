@@ -358,30 +358,18 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
 
 <template>
   <div data-testid="reports-monthly" class="space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-xl font-semibold">{{ t('reports.monthly.pageTitle') }}</h1>
-      <div class="flex items-center gap-2">
-        <UButton
-          icon="i-lucide-chevron-left"
-          color="neutral"
-          variant="ghost"
-          :aria-label="t('reports.monthly.previousMonth')"
-          data-testid="reports-month-prev"
-          @click="goMonth(-1)"
-        />
-        <span data-testid="reports-month-label" class="min-w-40 text-center font-medium">
-          {{ monthLabel }}
-        </span>
-        <UButton
-          icon="i-lucide-chevron-right"
-          color="neutral"
-          variant="ghost"
-          :aria-label="t('reports.monthly.nextMonth')"
-          data-testid="reports-month-next"
-          @click="goMonth(1)"
-        />
-      </div>
-    </div>
+    <PageHeader :title="t('reports.monthly.pageTitle')">
+      <PeriodStepper
+        :prev-label="t('reports.monthly.previousMonth')"
+        :next-label="t('reports.monthly.nextMonth')"
+        prev-testid="reports-month-prev"
+        next-testid="reports-month-next"
+        @prev="goMonth(-1)"
+        @next="goMonth(1)"
+      >
+        <PeriodLabel data-testid="reports-month-label">{{ monthLabel }}</PeriodLabel>
+      </PeriodStepper>
+    </PageHeader>
 
     <p v-if="reportErrorKey" data-testid="reports-monthly-error" class="text-error" role="alert">
       {{ t(reportErrorKey) }}

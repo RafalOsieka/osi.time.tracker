@@ -282,32 +282,19 @@ async function onExport() {
 
 <template>
   <div data-testid="client-report" class="space-y-6">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-xl font-semibold">{{ t('clientReport.pageTitle') }}</h1>
-      <div class="flex items-center gap-2">
-        <UButton
-          icon="i-lucide-chevron-left"
-          color="neutral"
-          variant="ghost"
-          :aria-label="t('reports.monthly.previousMonth')"
-          :disabled="!month"
-          data-testid="client-report-month-prev"
-          @click="goMonth(-1)"
-        />
-        <span data-testid="client-report-month-label" class="min-w-40 text-center font-medium">
-          {{ monthLabel }}
-        </span>
-        <UButton
-          icon="i-lucide-chevron-right"
-          color="neutral"
-          variant="ghost"
-          :aria-label="t('reports.monthly.nextMonth')"
-          :disabled="!month"
-          data-testid="client-report-month-next"
-          @click="goMonth(1)"
-        />
-      </div>
-    </div>
+    <PageHeader :title="t('clientReport.pageTitle')">
+      <PeriodStepper
+        :prev-label="t('reports.monthly.previousMonth')"
+        :next-label="t('reports.monthly.nextMonth')"
+        prev-testid="client-report-month-prev"
+        next-testid="client-report-month-next"
+        :disabled="!month"
+        @prev="goMonth(-1)"
+        @next="goMonth(1)"
+      >
+        <PeriodLabel data-testid="client-report-month-label">{{ monthLabel }}</PeriodLabel>
+      </PeriodStepper>
+    </PageHeader>
 
     <p v-if="monthInvalid" class="text-error" role="alert" data-testid="client-report-month-error">
       {{ t('clientReport.invalidMonth') }}

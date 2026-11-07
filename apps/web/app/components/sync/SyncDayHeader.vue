@@ -33,27 +33,25 @@ function onCalendarSelect(value: CalendarDate | null) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-4" data-testid="remote-sync-day-nav">
-    <h1 class="text-xl font-semibold" data-testid="remote-sync-heading">
-      {{ t('remoteSync.pageTitle') }}
-    </h1>
-    <div class="flex flex-wrap items-center gap-2">
-      <UTooltip :text="t('remoteSync.prevDay')" :content="{ side: 'top' }">
-        <UButton
-          icon="i-lucide-chevron-left"
-          color="neutral"
-          variant="ghost"
-          square
-          :aria-label="t('remoteSync.prevDay')"
-          data-testid="remote-sync-prev-day"
-          @click="shift(-1)"
-        />
-      </UTooltip>
+  <PageHeader
+    :title="t('remoteSync.pageTitle')"
+    heading-testid="remote-sync-heading"
+    data-testid="remote-sync-day-nav"
+  >
+    <PeriodStepper
+      :prev-label="t('remoteSync.prevDay')"
+      :next-label="t('remoteSync.nextDay')"
+      prev-testid="remote-sync-prev-day"
+      next-testid="remote-sync-next-day"
+      @prev="shift(-1)"
+      @next="shift(1)"
+    >
       <UPopover v-model:open="calendarOpen">
         <UButton
           color="neutral"
-          variant="ghost"
-          class="min-w-36 justify-center text-center font-medium"
+          variant="outline"
+          icon="i-lucide-calendar"
+          class="min-w-44 justify-center font-medium text-highlighted"
           :aria-label="t('remoteSync.calendarLabel')"
           data-testid="remote-sync-date-label"
         >
@@ -72,23 +70,13 @@ function onCalendarSelect(value: CalendarDate | null) {
           </div>
         </template>
       </UPopover>
-      <UTooltip :text="t('remoteSync.nextDay')" :content="{ side: 'top' }">
-        <UButton
-          icon="i-lucide-chevron-right"
-          color="neutral"
-          variant="ghost"
-          square
-          :aria-label="t('remoteSync.nextDay')"
-          data-testid="remote-sync-next-day"
-          @click="shift(1)"
-        />
-      </UTooltip>
-      <UButton
-        :label="exportLabel"
-        :disabled="exportDisabled"
-        data-testid="remote-sync-export-button"
-        @click="emit('export')"
-      />
-    </div>
-  </div>
+    </PeriodStepper>
+    <UButton
+      icon="i-lucide-upload"
+      :label="exportLabel"
+      :disabled="exportDisabled"
+      data-testid="remote-sync-export-button"
+      @click="emit('export')"
+    />
+  </PageHeader>
 </template>

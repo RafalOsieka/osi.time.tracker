@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
+import { TRACKER_SYSTEM_TYPE_LABELS } from '@osi/time-tracker-remote-trackers/contracts';
 
 const { t, locale } = useI18n();
 usePageTitle(() => t('trackers.pageTitle'));
@@ -84,10 +85,17 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
     {
       accessorKey: 'name',
       header: t('trackers.columnName'),
+      cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
     },
     {
       accessorKey: 'systemType',
       header: t('trackers.columnSystemType'),
+      cell: ({ row }) =>
+        h(
+          resolveComponent('UBadge'),
+          { color: 'neutral', variant: 'subtle' },
+          () => TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType],
+        ),
     },
     {
       accessorKey: 'baseUrl',
@@ -98,8 +106,11 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           target: '_blank',
           external: true,
           variant: 'link',
-          label: row.original.baseUrl,
-          class: 'px-0',
+          color: 'neutral',
+          label: row.original.baseUrl.replace(/^https?:\/\//, ''),
+          trailingIcon: 'i-lucide-arrow-up-right',
+          class: 'px-0 font-normal text-default hover:text-highlighted',
+          ui: { trailingIcon: 'size-3.5 text-dimmed' },
           'data-testid': `tracker-base-url-${row.original.id}`,
         }),
     },
@@ -107,6 +118,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       accessorKey: 'createdAt',
       header: t('trackers.columnCreated'),
       cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
+      meta: { class: { td: 'tabular-nums' } },
     },
     {
       id: 'actions',
@@ -117,7 +129,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
         class: {
           // w-0 + whitespace-nowrap shrinks the column to its content and pins it right.
           th: 'w-0 whitespace-nowrap text-end',
-          td: 'w-0 whitespace-nowrap text-end',
+          td: 'w-0 whitespace-nowrap py-1.5 text-end',
         },
       },
       cell: ({ row }) => {

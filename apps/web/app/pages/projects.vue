@@ -55,22 +55,32 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
   {
     accessorKey: 'name',
     header: t('projects.columnName'),
+    cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
   },
   {
     id: 'tracker',
     header: t('projects.columnTracker'),
     cell: ({ row }) => {
-      const trackerLabel = row.original.trackerName ?? t('projects.localTrackerLabel');
+      const { trackerName, remoteProjectTitle } = row.original;
+      if (!trackerName) {
+        return h('span', { class: 'text-dimmed' }, t('projects.localTrackerLabel'));
+      }
       // Shows the project's remote project scope alongside the tracker name (REQ-325).
-      return row.original.remoteProjectTitle
-        ? `${trackerLabel} · ${row.original.remoteProjectTitle}`
-        : trackerLabel;
+      return h('span', { class: 'inline-flex items-center gap-2 text-default' }, [
+        h(resolveComponent('UIcon'), {
+          name: 'i-lucide-cable',
+          class: 'size-4 shrink-0 text-dimmed',
+          'aria-hidden': 'true',
+        }),
+        remoteProjectTitle ? `${trackerName} · ${remoteProjectTitle}` : trackerName,
+      ]);
     },
   },
   {
     accessorKey: 'createdAt',
     header: t('projects.columnCreated'),
     cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
+    meta: { class: { td: 'tabular-nums' } },
   },
   {
     id: 'actions',
@@ -81,7 +91,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
       class: {
         // w-0 + whitespace-nowrap shrinks the column to its content and pins it right.
         th: 'w-0 whitespace-nowrap text-end',
-        td: 'w-0 whitespace-nowrap text-end',
+        td: 'w-0 whitespace-nowrap py-1.5 text-end',
       },
     },
     cell: ({ row }) =>

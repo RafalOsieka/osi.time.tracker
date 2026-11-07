@@ -1,4 +1,5 @@
 <script setup lang="ts">
+/** The page header of a list page: its title and the button that creates a new item. */
 defineProps<{
   title: string;
   newLabel: string;
@@ -9,13 +10,12 @@ const emit = defineEmits<{ create: [] }>();
 </script>
 
 <template>
-  <div class="flex items-center justify-between gap-4">
-    <span class="text-xl font-semibold">{{ title }}</span>
+  <PageHeader :title="title">
     <UButton
       :label="newLabel"
       icon="i-lucide-plus"
       :data-testid="newTestid"
       @click="emit('create')"
     />
-  </div>
+  </PageHeader>
 </template>

@@ -230,7 +230,8 @@ async function onDelete() {
           variant="ghost"
           square
           size="xs"
-          color="error"
+          color="neutral"
+          class="text-dimmed hover:bg-error/10 hover:text-error focus-visible:text-error"
           :aria-label="t('timerView.entryRow.deleteLabel')"
           :loading="deleting"
           :data-testid="`timer-entry-delete-${entry.id}`"
