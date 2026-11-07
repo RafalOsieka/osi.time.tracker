@@ -2,11 +2,19 @@
 import { Temporal } from 'temporal-polyfill';
 import { CalendarDate, parseDate } from '@internationalized/date';
 
-const { date, dateLabel, exportLabel, exportDisabled } = defineProps<{
+const {
+  date,
+  dateLabel,
+  exportLabel,
+  exportDisabled,
+  exportDisabledReason = null,
+} = defineProps<{
   date: string;
   dateLabel: string;
   exportLabel: string;
   exportDisabled: boolean;
+  /** Why Export is disabled, shown in its tooltip. */
+  exportDisabledReason?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -71,12 +79,21 @@ function onCalendarSelect(value: CalendarDate | null) {
         </template>
       </UPopover>
     </PeriodStepper>
-    <UButton
-      icon="i-lucide-upload"
-      :label="exportLabel"
-      :disabled="exportDisabled"
-      data-testid="remote-sync-export-button"
-      @click="emit('export')"
-    />
+    <!-- Disabled, Export turns neutral instead of a faded primary fill, and its focusable host
+         carries the reason in a tooltip. -->
+    <UTooltip :text="exportDisabledReason ?? ''" :disabled="!exportDisabledReason">
+      <span :tabindex="exportDisabledReason ? 0 : undefined" class="inline-flex rounded-md">
+        <UButton
+          icon="i-lucide-upload"
+          :color="exportDisabled ? 'neutral' : 'primary'"
+          :variant="exportDisabled ? 'subtle' : 'solid'"
+          :label="exportLabel"
+          :disabled="exportDisabled"
+          class="disabled:opacity-100 disabled:text-dimmed"
+          data-testid="remote-sync-export-button"
+          @click="emit('export')"
+        />
+      </span>
+    </UTooltip>
   </PageHeader>
 </template>

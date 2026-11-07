@@ -217,7 +217,11 @@ async function unlinkRemoteIssue() {
 </script>
 
 <template>
-  <ColumnRow :data-testid="`timer-group-${group.key}`" :joined="expanded">
+  <ColumnRow
+    :data-testid="`timer-group-${group.key}`"
+    :joined="expanded"
+    :class="isLive && 'running-row'"
+  >
     <ColumnCell :columns="columns" col="toggle" :narrow="{ col: [1, 2], row: 1 }">
       <UTooltip
         :text="expanded ? t('timerView.collapseLabel') : t('timerView.expandLabel')"
@@ -240,9 +244,9 @@ async function unlinkRemoteIssue() {
     <ColumnCell :columns="columns" col="count" :narrow="{ col: [2, 3], row: 1 }">
       <UBadge
         color="neutral"
-        variant="subtle"
+        variant="soft"
         size="sm"
-        class="w-5 shrink-0 justify-center tabular-nums"
+        class="w-5 shrink-0 justify-center px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
         :aria-label="countLabel"
         :data-testid="`timer-group-count-${group.key}`"
       >
@@ -353,7 +357,7 @@ async function unlinkRemoteIssue() {
       <UTooltip v-else :text="remoteIssueUnavailableLabel" :content="{ side: 'top' }">
         <span tabindex="0" class="inline-flex">
           <UButton
-            icon="i-lucide-link-2-off"
+            icon="i-lucide-minus"
             color="neutral"
             variant="ghost"
             square
@@ -369,7 +373,8 @@ async function unlinkRemoteIssue() {
 
     <ColumnCell :columns="columns" col="duration" align="end" :narrow="{ col: [5, 6], row: 1 }">
       <span
-        class="block text-right font-mono text-sm font-medium tabular-nums text-muted"
+        class="block text-right font-mono text-sm font-medium tabular-nums"
+        :class="isLive ? 'text-highlighted' : 'text-toned'"
         :data-testid="`timer-group-total-${group.key}`"
       >
         {{ formatDuration(group.totalSeconds + liveSeconds(group.liveStartedAt, now)) }}
@@ -383,7 +388,8 @@ async function unlinkRemoteIssue() {
           variant="ghost"
           square
           size="xs"
-          :color="isLive ? 'error' : undefined"
+          :color="isLive ? 'error' : 'neutral'"
+          :class="!isLive && 'text-dimmed hover:text-primary focus-visible:text-primary'"
           :ui="actionButtonUi"
           :aria-label="actionLabel"
           :aria-pressed="isLive"
@@ -407,3 +413,16 @@ async function unlinkRemoteIssue() {
     />
   </ColumnDetail>
 </template>
+
+<style scoped>
+/*
+ * The group holding the running entry: a faint accent wash with a 2px accent edge, so the live
+ * Task reads at a glance without leaning on the red stop control.
+ */
+.running-row {
+  background: color-mix(in oklab, var(--ui-primary) 6%, transparent);
+  box-shadow: inset 2px 0 0 var(--ui-primary);
+  margin-inline-start: -0.5rem;
+  padding-inline-start: 0.5rem;
+}
+</style>

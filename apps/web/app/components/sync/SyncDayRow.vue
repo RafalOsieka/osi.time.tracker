@@ -111,6 +111,21 @@ const suggestion = useExtensionSuggestion(() => emit('retry-activity'));
 /** Extension guidance does not fit a cell: a full-width line under the row, shown collapsed too. */
 const hasGuidance = computed(() => activityError && !!extensionActivityErrorKey.value);
 
+/**
+ * Ready titles read as primary text and show a ghost input on hover, so they look editable
+ * without chrome at rest. While activities load they keep that shape, inactive.
+ */
+const titleDisplayClass = computed(() =>
+  canEdit
+    ? 'font-medium text-highlighted rounded-md transition-colors hover:bg-elevated hover:ring hover:ring-inset hover:ring-accented'
+    : 'font-medium text-default',
+);
+/** To send is the value this page is about: strong on exportable rows, receding at zero. */
+const toSendClass = computed(() => {
+  if (toSendLabel === formatDuration(0)) return 'text-dimmed';
+  return showEditors ? 'text-highlighted' : 'text-muted';
+});
+
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 /** A distinct shape per kind, so states never rely on color alone. */
 const stateIcons = {
@@ -191,7 +206,7 @@ function onEditToSend() {
         :field-label="t('remoteSync.titleToSendLabel')"
         :display-testid="`remote-sync-task-name-${row.taskId}`"
         :input-testid="`remote-sync-comment-${row.taskId}`"
-        display-class="font-medium text-default"
+        :display-class="titleDisplayClass"
         @edit="emit('edit-title')"
         @update:model-value="(value) => emit('update:comment', value)"
         @commit="emit('commit-title')"
@@ -199,7 +214,7 @@ function onEditToSend() {
       />
       <span
         v-else
-        class="truncate text-xs text-muted"
+        class="block truncate text-sm font-medium text-muted"
         :data-testid="`remote-sync-task-name-${row.taskId}`"
       >
         {{ row.taskName }}
@@ -209,15 +224,18 @@ function onEditToSend() {
     <ColumnCell :columns="columns" col="issue" :narrow="{ col: [3, 4], row: 2 }">
       <UTooltip
         v-if="issueTitle && issueId"
-        :text="`${issueTitle} (#${issueId})`"
-        :content="{ side: 'top' }"
+        :text="`#${issueId} ${issueTitle}`"
+        :content="{ side: 'top', align: 'start' }"
       >
+        <!-- The number leads and never truncates; the title gives way. -->
         <span
-          class="flex min-w-0 gap-1 text-xs text-muted"
+          class="flex min-w-0 items-baseline gap-1.5 text-sm"
           :data-testid="`remote-sync-issue-${row.taskId}`"
         >
-          <span class="truncate">{{ issueTitle }}</span>
-          <span class="shrink-0">(#{{ issueId }})</span>
+          <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">#{{ issueId }}</span>
+          <span class="truncate" :class="showEditors ? 'text-default' : 'text-muted'">
+            {{ issueTitle }}
+          </span>
         </span>
       </UTooltip>
       <RemoteIssuePicker
@@ -228,7 +246,7 @@ function onEditToSend() {
         :data-testid="`remote-sync-link-${row.taskId}`"
         @link="(payload) => emit('link', payload)"
       />
-      <span v-else class="text-xs text-muted">{{ t('remoteSync.emptyCell') }}</span>
+      <span v-else class="text-sm text-dimmed">{{ t('remoteSync.emptyCell') }}</span>
     </ColumnCell>
 
     <ColumnCell :columns="columns" col="activity" :narrow="{ col: [3, 4], row: 3 }">
@@ -271,7 +289,7 @@ function onEditToSend() {
         </template>
         <span
           v-else-if="noActivity"
-          class="truncate text-xs text-muted"
+          class="block truncate text-sm text-muted"
           :data-testid="`remote-sync-no-activity-${row.taskId}`"
         >
           {{ t('remoteSync.noActivityReason') }}
@@ -283,7 +301,7 @@ function onEditToSend() {
               color="neutral"
               size="xs"
               disabled
-              class="-ms-2 justify-start truncate font-normal text-muted disabled:opacity-40"
+              class="-ms-2 justify-start truncate text-sm font-normal text-dimmed disabled:opacity-100"
               :label="activityDisplayValue"
               :loading="activityLoading"
               :aria-label="t('remoteSync.activityLabel')"
@@ -309,7 +327,8 @@ function onEditToSend() {
               color="neutral"
               size="xs"
               trailing-icon="i-lucide-chevron-down"
-              class="-ms-2 max-w-[calc(100%+0.5rem)] justify-start font-normal text-muted"
+              class="-ms-2 max-w-[calc(100%+0.5rem)] justify-start text-sm font-normal"
+              :class="selectedActivityName ? 'text-default' : 'text-dimmed'"
               :ui="{ label: 'truncate', trailingIcon: 'size-3.5' }"
               :label="activityDisplayValue"
               :aria-label="t('remoteSync.activityLabel')"
@@ -339,7 +358,8 @@ function onEditToSend() {
         </UPopover>
         <span
           v-else
-          class="block truncate text-xs text-muted"
+          class="block truncate text-sm"
+          :class="selectedActivityName ? 'text-muted' : 'text-dimmed'"
           :data-testid="`remote-sync-activity-select-${row.taskId}`"
         >
           {{ selectedActivityName ?? t('remoteSync.emptyCell') }}
@@ -358,7 +378,8 @@ function onEditToSend() {
     <ColumnCell :columns="columns" col="toSend" align="end" :narrow="{ col: [4, 5], row: 3 }">
       <UTooltip :text="rowDeltaTooltip" :disabled="editingToSend" :content="{ side: 'top' }">
         <div
-          class="inline-flex items-baseline gap-1 font-mono text-sm font-medium tabular-nums text-muted"
+          class="inline-flex items-baseline gap-1 font-mono text-sm font-medium tabular-nums"
+          :class="toSendClass"
           :data-testid="`remote-sync-row-duration-${row.taskId}`"
         >
           <span aria-hidden="true" class="hidden @max-[40rem]/list:inline">
@@ -376,8 +397,8 @@ function onEditToSend() {
           <button
             v-else-if="showEditors"
             type="button"
-            class="bg-transparent p-0 font-[inherit] text-[length:inherit] leading-[inherit]"
-            :class="canEdit ? 'cursor-pointer' : 'cursor-default'"
+            class="-me-1 rounded-sm bg-transparent px-1 font-[inherit] text-[length:inherit] leading-[inherit] transition-colors"
+            :class="canEdit ? 'cursor-pointer hover:bg-elevated' : 'cursor-default'"
             :disabled="!canEdit"
             :aria-label="t('remoteSync.roundedDurationLabel')"
             :data-testid="`remote-sync-to-send-${row.taskId}`"

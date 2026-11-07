@@ -2,7 +2,8 @@
 @import '@nuxt/ui';
 
 /*
- * Running controls: pulse the icon (color + scale + glow), not the button chrome.
+ * Theme additions: the duration face, and running controls that pulse the icon (color + scale +
+ * glow), not the button chrome.
  */
 @theme {
   /*
@@ -70,7 +71,6 @@
   --ui-text-toned: var(--ui-color-neutral-700);
   --ui-text: var(--ui-color-neutral-800);
   --ui-text-highlighted: var(--ui-color-neutral-950);
-  --ui-bg-muted: color-mix(in oklab, var(--ui-color-neutral-50) 70%, white);
   /* Control outlines (inputs, outline buttons) need to be found without hunting. */
   --ui-border-accented: var(--ui-color-neutral-300);
 }
@@ -81,7 +81,11 @@
   --ui-info: var(--ui-color-info-400);
   --ui-warning: var(--ui-color-warning-400);
   --ui-error: var(--ui-color-error-400);
-  --ui-text-dimmed: color-mix(in oklab, var(--ui-color-neutral-400) 55%, var(--ui-color-neutral-500));
+  --ui-text-dimmed: color-mix(
+    in oklab,
+    var(--ui-color-neutral-400) 55%,
+    var(--ui-color-neutral-500)
+  );
   --ui-text-muted: var(--ui-color-neutral-400);
   --ui-text-toned: var(--ui-color-neutral-300);
   --ui-text: var(--ui-color-neutral-200);
@@ -109,4 +113,13 @@ body,
  */
 [data-slot='thead'] tr:nth-child(2) th:empty {
   display: none;
+}
+
+/*
+ * Durations: never fake a bold monospace. Cascadia Mono ships one weight on Windows, and
+ * synthesized bold smears the digits; emphasis comes from text color instead. Faces with real
+ * weights (SF Mono) still render them.
+ */
+.font-mono {
+  font-synthesis-weight: none;
 }

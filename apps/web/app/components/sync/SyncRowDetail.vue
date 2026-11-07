@@ -87,6 +87,13 @@ function isLinked(log: RemoteTimeLogDto): boolean {
   return !!linkedExport(log);
 }
 
+/** The log's link state with what it means for this task, for the tooltip and assistive tech. */
+function linkStateText(log: RemoteTimeLogDto): string {
+  return isLinked(log)
+    ? t('remoteSync.remoteLogLinkedHint')
+    : t('remoteSync.remoteLogUnlinkedHint');
+}
+
 function emitDelete(log: RemoteTimeLogDto) {
   const record = linkedExport(log);
   if (!record) return;
@@ -147,7 +154,7 @@ const displayedRemoteLogs = computed(() => {
         col="title"
         to="activity"
         :narrow="{ col: [3, 4], row: 1 }"
-        class="text-xs tabular-nums"
+        class="tabular-nums"
       >
         {{ [formatEntryStart(entry.startedAt), formatEntryStop(entry.stoppedAt)].join('–') }}
       </ColumnCell>
@@ -248,30 +255,21 @@ const displayedRemoteLogs = computed(() => {
         :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
       >
         <ColumnCell :columns="columns" col="state" :narrow="{ col: [2, 3], row: 1 }">
-          <UTooltip
-            :text="
-              isLinked(log) ? t('remoteSync.remoteLogLinked') : t('remoteSync.remoteLogUnlinked')
-            "
-            :content="{ side: 'top' }"
-          >
+          <!-- Linked: a check on the tracker's time. Unlinked: an open circle, so it never
+               reads as the opposite of the Link action at the row's end. -->
+          <UTooltip :text="linkStateText(log)" :content="{ side: 'top' }">
             <span
               tabindex="0"
               class="inline-flex size-6 items-center justify-center"
               :data-testid="`remote-sync-remote-log-state-${log.remoteLogId}`"
             >
               <UIcon
-                :name="isLinked(log) ? 'i-lucide-link' : 'i-lucide-link-2-off'"
+                :name="isLinked(log) ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'"
                 class="size-4"
-                :class="isLinked(log) ? 'text-success' : 'text-muted'"
+                :class="isLinked(log) ? 'text-success' : 'text-dimmed'"
                 aria-hidden="true"
               />
-              <span class="sr-only">
-                {{
-                  isLinked(log)
-                    ? t('remoteSync.remoteLogLinked')
-                    : t('remoteSync.remoteLogUnlinked')
-                }}
-              </span>
+              <span class="sr-only">{{ linkStateText(log) }}</span>
             </span>
           </UTooltip>
         </ColumnCell>
@@ -280,11 +278,9 @@ const displayedRemoteLogs = computed(() => {
           col="title"
           to="issue"
           :narrow="{ col: [3, 4], row: 1 }"
-          class="flex min-w-0 items-center gap-1"
+          class="flex min-w-0 items-baseline gap-1.5"
         >
-          <span
-            class="shrink-0 font-mono font-medium tabular-nums after:ms-1 after:font-sans after:font-normal after:content-['·']"
-          >
+          <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">
             {{ `#${log.remoteLogId}` }}
           </span>
           <OverflowTooltip :text="commentText(log)">
@@ -301,43 +297,59 @@ const displayedRemoteLogs = computed(() => {
           :columns="columns"
           col="activity"
           :narrow="{ col: [3, 4], row: 2 }"
-          class="truncate text-xs"
+          class="truncate"
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
+        <!-- Time already in the tracker: it sits on the to-send edge, set back so it does not
+             read as time still to send. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="font-mono font-medium tabular-nums"
+          class="font-mono tabular-nums text-dimmed"
+          :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
         >
           {{ formatDuration(log.durationSeconds) }}
         </ColumnCell>
         <ColumnCell :columns="columns" col="actions" :narrow="{ col: [5, 6], row: 1 }">
-          <UButton
+          <UTooltip
             v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"
-            icon="i-lucide-link"
-            variant="ghost"
-            square
-            size="xs"
-            :disabled="busy"
-            :aria-label="t('remoteSync.linkRemoteEntry')"
-            :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
-            @click="emit('link', log)"
-          />
-          <UButton
+            :text="t('remoteSync.linkRemoteEntry')"
+            :content="{ side: 'top' }"
+          >
+            <UButton
+              icon="i-lucide-link"
+              color="neutral"
+              variant="ghost"
+              square
+              size="xs"
+              class="text-muted"
+              :disabled="busy"
+              :aria-label="t('remoteSync.linkRemoteEntry')"
+              :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
+              @click="emit('link', log)"
+            />
+          </UTooltip>
+          <UTooltip
             v-if="canReconcile && isLinked(log) && linkedExport(log)"
-            icon="i-lucide-trash-2"
-            color="error"
-            variant="ghost"
-            square
-            size="xs"
-            :disabled="busy"
-            :aria-label="t('remoteSync.deleteRemoteEntry')"
-            :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"
-            @click="emitDelete(log)"
-          />
+            :text="t('remoteSync.deleteRemoteEntry')"
+            :content="{ side: 'top' }"
+          >
+            <UButton
+              icon="i-lucide-trash-2"
+              color="neutral"
+              variant="ghost"
+              square
+              size="xs"
+              class="text-muted hover:bg-error/10 hover:text-error focus-visible:text-error"
+              :disabled="busy"
+              :aria-label="t('remoteSync.deleteRemoteEntry')"
+              :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"
+              @click="emitDelete(log)"
+            />
+          </UTooltip>
         </ColumnCell>
       </ColumnRow>
     </template>

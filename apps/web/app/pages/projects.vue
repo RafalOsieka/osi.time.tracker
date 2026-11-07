@@ -66,7 +66,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
         return h('span', { class: 'text-dimmed' }, t('projects.localTrackerLabel'));
       }
       // Shows the project's remote project scope alongside the tracker name (REQ-325).
-      return h('span', { class: 'inline-flex items-center gap-2 text-default' }, [
+      return h('span', { class: 'flex items-center gap-2 text-default' }, [
         h(resolveComponent('UIcon'), {
           name: 'i-lucide-cable',
           class: 'size-4 shrink-0 text-dimmed',

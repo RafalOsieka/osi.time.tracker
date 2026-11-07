@@ -215,14 +215,16 @@ const hasEntries = computed(() => days.value.length > 0);
 /** Skeleton while the first feed is pending with nothing to show yet (REQ-391). */
 const feedLoading = computed(() => !feedSettled.value && entries.value.length === 0);
 
+/** The day's full date as a heading, capitalised (Polish weekdays are lower-case). */
 function dayHeading(dayKey: string): string {
-  return new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
+  const heading = new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     timeZone: effective.value.timeZone,
   });
+  return heading.charAt(0).toLocaleUpperCase(locale.value) + heading.slice(1);
 }
 
 function isGroupLive(group: { entries: TimeEntryDto[] }): boolean {
@@ -364,12 +366,13 @@ async function onEntryDeleted() {
               :narrow="{ col: [1, 5], row: 1 }"
               class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1"
             >
-              <h2 class="min-w-0 truncate">{{ dayHeading(day.dayKey) }}</h2>
+              <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">{{ dayHeading(day.dayKey) }}</h2>
               <NuxtLink
                 :to="`/sync/${day.dayKey}`"
-                class="shrink-0 text-sm text-primary no-underline"
+                class="inline-flex shrink-0 items-center gap-1 rounded-sm text-xs font-medium text-muted no-underline transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-2 focus-visible:outline-primary/50"
                 :data-testid="`timer-day-remote-sync-${day.dayKey}`"
               >
+                <UIcon name="i-lucide-cloud-upload" class="size-3.5" aria-hidden="true" />
                 {{ t('timerView.remoteSyncAction') }}
               </NuxtLink>
             </ColumnCell>

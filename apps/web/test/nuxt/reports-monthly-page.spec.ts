@@ -73,12 +73,14 @@ const emptyMonth: MonthlyReportDto = {
   exports: [],
 };
 
-// The page sets the table test id; the stub only exposes the loading prop.
+// The page sets the table test id; the stub only exposes the loading prop. The month
+// stepper's tooltips need the `UApp` provider, so they only pass their trigger through.
 const stubs = {
   UTable: {
     props: ['loading'],
     template: '<div :data-loading="loading" />',
   },
+  UTooltip: { template: '<span><slot /></span>' },
 };
 
 let replace: MockInstance<Router['replace']>;

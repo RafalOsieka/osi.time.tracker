@@ -39,6 +39,7 @@ onMounted(() => {
       :max-size="20"
       :collapsed-size="4"
       :toggle="sidebarToggle"
+      :ui="{ root: 'bg-muted dark:bg-default' }"
       data-testid="app-sidebar"
     >
       <template #header="{ collapsed: isCollapsed }">

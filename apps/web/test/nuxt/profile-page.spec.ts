@@ -35,8 +35,8 @@ mockNuxtImport('useUserSession', () => () => ({
 mockNuxtImport('useToast', () => () => ({ add: harness.toastAdd }));
 
 const FormFieldStub = {
-  props: ['label', 'hint'],
-  template: '<div><span>{{ label }}</span><slot /><span v-if="hint">{{ hint }}</span></div>',
+  props: ['label', 'help'],
+  template: '<div><span>{{ label }}</span><slot /><span v-if="help">{{ help }}</span></div>',
 };
 const InputStub = {
   inheritAttrs: false,

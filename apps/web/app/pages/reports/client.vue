@@ -300,187 +300,217 @@ async function onExport() {
       {{ t('clientReport.invalidMonth') }}
     </p>
 
-    <div
-      v-if="!formReady"
-      class="grid gap-4"
-      aria-busy="true"
-      :aria-label="t('clientReport.loading')"
-      data-testid="client-report-loading"
-    >
-      <USkeleton class="h-8 w-60" />
-      <USkeleton class="h-8 w-full max-w-md" />
-      <USkeleton class="h-24 w-full max-w-md" />
-    </div>
-
-    <UCard v-else>
-      <p
-        v-if="presetsStatus === 'error'"
-        class="mb-4 text-error"
-        role="alert"
-        data-testid="client-report-presets-error"
+    <!-- Desktop split: configuration on the left, the preview beside it; stacked below lg. -->
+    <div class="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
+      <div
+        v-if="!formReady"
+        class="grid content-start gap-5 rounded-lg border border-default p-6"
+        aria-busy="true"
+        :aria-label="t('clientReport.loading')"
+        data-testid="client-report-loading"
       >
-        {{ t('clientReport.presetsLoadFailed') }}
-      </p>
-      <div class="mb-4 flex flex-wrap items-end gap-2">
-        <UFormField :label="t('clientReport.presetLabel')" name="preset" class="min-w-60">
-          <USelect
-            id="client-report-preset"
-            :model-value="selectedPresetId ?? NEW_PRESET"
-            :items="presetItems"
-            class="w-full"
-            data-testid="client-report-preset-select"
-            @update:model-value="onPresetSelected"
-          />
-        </UFormField>
-        <UButton
-          v-if="selectedPreset"
-          icon="i-lucide-trash-2"
-          color="error"
-          variant="ghost"
-          :label="t('clientReport.deletePreset')"
-          data-testid="client-report-delete-preset"
-          @click="onDelete"
-        />
+        <USkeleton class="h-14 w-full" />
+        <USkeleton class="h-14 w-full" />
+        <USkeleton class="h-24 w-full" />
       </div>
 
-      <UAlert
-        v-if="selectedPreset && selectedPreset.inactiveTrackerCount > 0"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        class="mb-4"
-        :title="
-          t(
-            'clientReport.inactiveTrackers',
-            { count: selectedPreset.inactiveTrackerCount },
-            selectedPreset.inactiveTrackerCount,
-          )
-        "
-        data-testid="client-report-inactive-warning"
-      />
-
       <UForm
+        v-else
         :validate="validate"
         :state="state"
-        class="grid gap-4"
+        class="min-w-0"
         data-testid="client-report-form"
         @submit="onExport"
       >
-        <UFormField
-          :label="t('clientReport.clientNameLabel')"
-          name="clientName"
-          :error="clientNameError || undefined"
-        >
-          <UInput
-            id="client-report-client-name"
-            v-model="state.clientName"
-            :maxlength="REPORT_PRESET_CLIENT_NAME_MAX_LENGTH"
-            class="w-full max-w-md"
-            data-testid="client-report-client-name"
-          />
-        </UFormField>
-
-        <!-- The help button sits in the hint slot, beside (not inside) the field's <label>. -->
-        <UFormField
-          :label="t('clientReport.contractorDetailsLabel')"
-          name="contractorDetails"
-          :ui="{ labelWrapper: 'justify-start' }"
-        >
-          <template #hint>
-            <UTooltip
-              :text="t('clientReport.contractorDetailsHelp')"
-              :delay-duration="0"
-              :ui="{
-                content: 'h-auto max-w-xs whitespace-normal',
-                text: 'whitespace-normal',
-              }"
-            >
-              <UButton
-                type="button"
-                color="neutral"
-                variant="ghost"
-                size="xs"
-                square
-                icon="i-lucide-circle-help"
-                class="text-muted"
-                :ui="{ leadingIcon: 'size-3.5' }"
-                :aria-label="t('clientReport.contractorDetailsHelpAria')"
-                data-testid="client-report-contractor-details-help"
-              />
-            </UTooltip>
-          </template>
-          <UTextarea
-            id="client-report-contractor-details"
-            v-model="state.contractorDetails"
-            :maxlength="REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH"
-            :rows="3"
-            autoresize
-            class="w-full max-w-md"
-            data-testid="client-report-contractor-details"
-          />
-        </UFormField>
-
-        <UFormField :label="t('clientReport.trackersLabel')" name="trackerIds">
-          <UCheckboxGroup
-            v-if="trackerItems.length > 0"
-            v-model="state.trackerIds"
-            :items="trackerItems"
-            data-testid="client-report-trackers"
-          />
-          <p v-else class="text-sm text-muted" data-testid="client-report-no-trackers">
-            {{ t('clientReport.noTrackers') }}
-          </p>
-        </UFormField>
-
-        <UFormField :label="t('clientReport.hoursFormatLabel')" name="hoursFormat">
-          <URadioGroup
-            v-model="state.hoursFormat"
-            :items="hoursFormatItems"
-            orientation="horizontal"
-            data-testid="client-report-hours-format"
-          />
-        </UFormField>
-
-        <UFormField :label="t('clientReport.localeLabel')" name="locale">
-          <URadioGroup
-            v-model="state.locale"
-            :items="localeItems"
-            orientation="horizontal"
-            data-testid="client-report-locale"
-          />
-        </UFormField>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <UButton
-            type="submit"
-            icon="i-lucide-file-down"
-            :label="
-              hasUnsavedChanges
-                ? t('clientReport.saveAndExportButton')
-                : t('clientReport.exportButton')
-            "
-            :loading="exporting"
-            :disabled="!month"
-            data-testid="client-report-export"
-          />
+        <UCard :ui="{ body: 'space-y-5', footer: 'space-y-3' }">
           <p
-            v-if="exportMessage"
-            :class="exportMessage.tone === 'error' ? 'text-error' : 'text-muted'"
-            :role="exportMessage.tone === 'error' ? 'alert' : 'status'"
-            data-testid="client-report-export-message"
+            v-if="presetsStatus === 'error'"
+            class="text-sm text-error"
+            role="alert"
+            data-testid="client-report-presets-error"
           >
-            {{ t(exportMessage.key, exportMessage.params ?? {}) }}
+            {{ t('clientReport.presetsLoadFailed') }}
           </p>
-        </div>
-      </UForm>
-    </UCard>
 
-    <div
-      class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-default p-10 text-muted"
-      data-testid="client-report-preview"
-    >
-      <UIcon name="i-lucide-file-text" class="size-8" aria-hidden="true" />
-      <p>{{ t('clientReport.previewPlaceholder') }}</p>
+          <!-- Who the report is for and from. -->
+          <div class="space-y-4">
+            <UFormField :label="t('clientReport.presetLabel')" name="preset">
+              <div class="flex items-center gap-1">
+                <USelect
+                  id="client-report-preset"
+                  :model-value="selectedPresetId ?? NEW_PRESET"
+                  :items="presetItems"
+                  class="min-w-0 flex-1"
+                  data-testid="client-report-preset-select"
+                  @update:model-value="onPresetSelected"
+                />
+                <UTooltip
+                  v-if="selectedPreset"
+                  :text="t('clientReport.deletePreset')"
+                  :content="{ side: 'top' }"
+                >
+                  <UButton
+                    type="button"
+                    icon="i-lucide-trash-2"
+                    color="neutral"
+                    variant="ghost"
+                    square
+                    class="text-muted hover:bg-error/10 hover:text-error focus-visible:text-error"
+                    :aria-label="t('clientReport.deletePreset')"
+                    data-testid="client-report-delete-preset"
+                    @click="onDelete"
+                  />
+                </UTooltip>
+              </div>
+            </UFormField>
+
+            <UAlert
+              v-if="selectedPreset && selectedPreset.inactiveTrackerCount > 0"
+              color="warning"
+              variant="subtle"
+              icon="i-lucide-triangle-alert"
+              :title="
+                t(
+                  'clientReport.inactiveTrackers',
+                  { count: selectedPreset.inactiveTrackerCount },
+                  selectedPreset.inactiveTrackerCount,
+                )
+              "
+              data-testid="client-report-inactive-warning"
+            />
+
+            <UFormField
+              :label="t('clientReport.clientNameLabel')"
+              name="clientName"
+              :error="clientNameError || undefined"
+            >
+              <UInput
+                id="client-report-client-name"
+                v-model="state.clientName"
+                :maxlength="REPORT_PRESET_CLIENT_NAME_MAX_LENGTH"
+                class="w-full"
+                data-testid="client-report-client-name"
+              />
+            </UFormField>
+
+            <!-- The help button sits in the hint slot, beside (not inside) the field's <label>. -->
+            <UFormField
+              :label="t('clientReport.contractorDetailsLabel')"
+              name="contractorDetails"
+              :ui="{ labelWrapper: 'justify-start' }"
+            >
+              <template #hint>
+                <UTooltip
+                  :text="t('clientReport.contractorDetailsHelp')"
+                  :delay-duration="0"
+                  :ui="{
+                    content: 'h-auto max-w-xs whitespace-normal',
+                    text: 'whitespace-normal',
+                  }"
+                >
+                  <UButton
+                    type="button"
+                    color="neutral"
+                    variant="ghost"
+                    size="xs"
+                    square
+                    icon="i-lucide-circle-help"
+                    class="text-muted"
+                    :ui="{ leadingIcon: 'size-3.5' }"
+                    :aria-label="t('clientReport.contractorDetailsHelpAria')"
+                    data-testid="client-report-contractor-details-help"
+                  />
+                </UTooltip>
+              </template>
+              <UTextarea
+                id="client-report-contractor-details"
+                v-model="state.contractorDetails"
+                :maxlength="REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH"
+                :rows="3"
+                autoresize
+                class="w-full"
+                data-testid="client-report-contractor-details"
+              />
+            </UFormField>
+          </div>
+
+          <USeparator />
+
+          <!-- What goes into the PDF and how it reads. -->
+          <div class="space-y-4">
+            <UFormField :label="t('clientReport.trackersLabel')" name="trackerIds">
+              <UCheckboxGroup
+                v-if="trackerItems.length > 0"
+                v-model="state.trackerIds"
+                :items="trackerItems"
+                :ui="{ fieldset: 'gap-y-2', label: 'font-normal' }"
+                data-testid="client-report-trackers"
+              />
+              <p v-else class="text-sm text-muted" data-testid="client-report-no-trackers">
+                {{ t('clientReport.noTrackers') }}
+              </p>
+            </UFormField>
+
+            <UFormField :label="t('clientReport.hoursFormatLabel')" name="hoursFormat">
+              <URadioGroup
+                v-model="state.hoursFormat"
+                :items="hoursFormatItems"
+                orientation="horizontal"
+                :ui="{ fieldset: 'flex-wrap gap-x-6 gap-y-2', label: 'font-normal' }"
+                data-testid="client-report-hours-format"
+              />
+            </UFormField>
+
+            <UFormField :label="t('clientReport.localeLabel')" name="locale">
+              <URadioGroup
+                v-model="state.locale"
+                :items="localeItems"
+                orientation="horizontal"
+                :ui="{ fieldset: 'flex-wrap gap-x-6 gap-y-2', label: 'font-normal' }"
+                data-testid="client-report-locale"
+              />
+            </UFormField>
+          </div>
+
+          <template #footer>
+            <UButton
+              type="submit"
+              icon="i-lucide-file-down"
+              block
+              :label="
+                hasUnsavedChanges
+                  ? t('clientReport.saveAndExportButton')
+                  : t('clientReport.exportButton')
+              "
+              :loading="exporting"
+              :disabled="!month"
+              data-testid="client-report-export"
+            />
+            <p
+              v-if="exportMessage"
+              class="text-sm"
+              :class="exportMessage.tone === 'error' ? 'text-error' : 'text-muted'"
+              :role="exportMessage.tone === 'error' ? 'alert' : 'status'"
+              data-testid="client-report-export-message"
+            >
+              {{ t(exportMessage.key, exportMessage.params ?? {}) }}
+            </p>
+          </template>
+        </UCard>
+      </UForm>
+
+      <!-- A quiet page-on-desk surface where the PDF preview will go. -->
+      <div
+        class="flex min-h-80 items-center justify-center rounded-lg border border-default bg-muted p-8"
+        data-testid="client-report-preview"
+      >
+        <div
+          class="flex aspect-[210/297] w-full max-w-64 flex-col items-center justify-center gap-3 rounded-md bg-default p-6 text-center text-muted shadow-sm ring-1 ring-default"
+        >
+          <UIcon name="i-lucide-file-text" class="size-7 text-dimmed" aria-hidden="true" />
+          <p class="text-sm text-balance">{{ t('clientReport.previewPlaceholder') }}</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>

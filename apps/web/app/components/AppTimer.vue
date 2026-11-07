@@ -224,7 +224,8 @@ async function onSaveStartedAt() {
       <UButton
         color="neutral"
         variant="link"
-        class="min-w-[4.5rem] font-mono tabular-nums"
+        class="min-w-[5.5rem] justify-center font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
+        :class="isRunning ? 'text-highlighted' : 'text-dimmed'"
         role="timer"
         :label="elapsedLabel"
         :aria-label="isRunning ? t('timer.editStartLabel') : t('timer.elapsedLabel')"
@@ -309,7 +310,7 @@ async function onSaveStartedAt() {
     <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
       <UButton
         square
-        variant="ghost"
+        :variant="isRunning ? 'soft' : 'solid'"
         :icon="isRunning ? 'i-lucide-square' : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
         :color="isRunning ? 'error' : 'primary'"
