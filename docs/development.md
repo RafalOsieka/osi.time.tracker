@@ -94,6 +94,15 @@ One run captures one slice; the defaults are `desktop`, `both`, `pages`, `en`. S
 
 It needs `pnpm dev` running and Chromium installed (see Prerequisites). Each run inserts fresh `screenshots-…@example.com` users into the database in `DATABASE_URL` (one with seeded Trackers, Projects and four days of Time entries, and an empty one for the empty states) and fakes both trackers in the browser, so no tracker needs to run. It writes `<theme>-<viewport>-<locale>-<screen>.png` and `screens-<viewport>-<set>-<locale>.json`, which says what each screen shows. Restart the dev server before a capture when icons or styles changed since it started. The screens live in `apps/screenshots/src/screens.ts`, their data in `seed.ts` and the fake trackers in `trackers.ts`.
 
+The browser extension has its own slice, which needs neither the app nor the database:
+
+```bash
+pnpm --filter @osi/time-tracker-screenshots capture:extension <outDir> \
+  [--theme light|dark|both] [--locale en|pl]
+```
+
+It builds the extension, loads it unpacked into a fresh Chromium profile per screen and writes each state straight into the extension's storage: the popup and the setup page from fresh install to set up, suggested trackers, lost access, form feedback, dialogs and errors. Popup shots are 360 px wide at the height of their content, setup pages 1280 × 800 grown to the whole page. It writes `<theme>-extension-<locale>-<screen>.png` and `screens-extension-<locale>.json`; the screens live in `apps/screenshots/src/extension-screens.ts`.
+
 ## Database and migrations
 
 After a schema change in `apps/web/server/db/schema`, run `pnpm db:generate` and commit the new migration from `apps/migrator/migrations`. Applied migrations are never edited.

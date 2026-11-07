@@ -41,6 +41,14 @@ export async function hydrated(page: Page): Promise<void> {
   await page.waitForFunction(() => window.useNuxtApp?.().isHydrating === false);
 }
 
+/**
+ * The busy user's Timer view once its Trackers and Projects have loaded: a linked issue number is
+ * on screen. Until then every Issue cell is the disabled placeholder, and the groups' own
+ * selectors are already there, so waiting on those alone can catch the page half loaded.
+ */
+const TIMER_SETTLED =
+  '[data-testid^="timer-group-remote-issue-link-"], [data-testid^="timer-group-remote-issue-cached-"]';
+
 /** Expands the first group holding more than one entry, so the shot has open and closed groups. */
 async function expandFirstTimerGroup(page: Page): Promise<void> {
   // A group's key is its Task, so the same key repeats on every day; go by the row instead.
@@ -83,7 +91,7 @@ const PAGES: Screen[] = [
       'The running timer in the top bar and four days of Time entries grouped by Task, one group expanded to its entries, the rest collapsed.',
     as: 'busy',
     path: '/',
-    ready: '[data-testid^="timer-group-toggle-"]',
+    ready: TIMER_SETTLED,
     prepare: expandFirstTimerGroup,
   },
   {
@@ -158,7 +166,7 @@ const FEATURES: Screen[] = [
     shows: "The popover that moves the running timer's start: date and time.",
     as: 'busy',
     path: '/',
-    ready: '[data-testid="timer-elapsed"]',
+    ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
       await page.click('[data-testid="timer-elapsed"]');
@@ -171,7 +179,7 @@ const FEATURES: Screen[] = [
     shows: 'The dialog for a manual Time entry, with a new Task typed in as its title.',
     as: 'busy',
     path: '/',
-    ready: '[data-testid="timer-view-add-entry"]',
+    ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
       await page.click('[data-testid="timer-view-add-entry"]');
@@ -336,7 +344,7 @@ const FEATURES: Screen[] = [
       'The navigation in its other form: the collapsed rail on desktop, the open drawer on narrower screens.',
     as: 'busy',
     path: '/',
-    ready: '[data-testid="app-topbar"]',
+    ready: TIMER_SETTLED,
     prepare: async (page) => {
       const collapse = page.locator('[data-testid="sidebar-collapse"]');
       if (await collapse.isVisible()) await collapse.click();
@@ -349,7 +357,7 @@ const FEATURES: Screen[] = [
     shows: "The user menu open from the sidebar's footer.",
     as: 'busy',
     path: '/',
-    ready: '[data-testid="app-topbar"]',
+    ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
       await showSidebar(page);
@@ -363,7 +371,7 @@ const FEATURES: Screen[] = [
     shows: "The browser extension's status details, open from the sidebar's footer.",
     as: 'busy',
     path: '/',
-    ready: '[data-testid="app-topbar"]',
+    ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
       await showSidebar(page);
