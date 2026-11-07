@@ -189,6 +189,9 @@ async function main(): Promise<void> {
           await hydrated(page);
           await page.waitForSelector(screen.ready);
           await screen.prepare?.(page);
+          // A page shot shows the page at rest, not the hover state of the control `prepare`
+          // clicked. Overlays may open on hover, so they keep the pointer where it is.
+          if (!screen.overlay) await page.mouse.move(0, 0);
           await page.waitForLoadState('networkidle');
           const file = join(
             slice.out,
