@@ -78,8 +78,8 @@ describeProjectMention('top-bar @project mention journey', async () => {
       titleInput.boundingBox(),
       page.locator('[data-testid="timer-project-chip"]').boundingBox(),
     ]);
-    // The input starts after the chip, so the chip never covers the title.
-    expect(chipBox!.x + chipBox!.width).toBeLessThanOrEqual(inputBox!.x + 1);
+    // In the top-bar timer the chip follows the title (the running card), so it never covers it.
+    expect(chipBox!.x).toBeGreaterThanOrEqual(inputBox!.x + inputBox!.width - 1);
 
     // Cleanup: stop the entry so it doesn't leak into other test files.
     await fetch(url(`/api/time-entries/${reprojected.id}`), {
