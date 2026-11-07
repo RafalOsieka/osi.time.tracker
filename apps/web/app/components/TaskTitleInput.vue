@@ -31,7 +31,10 @@ const {
   eager?: boolean;
   placeholder?: string;
   disabled?: boolean;
-  /** Draw no outline of its own: the caller frames the field (the top-bar timer card). */
+  /**
+   * The top-bar timer's form: no outline or dropdown chevron of its own (the caller frames the
+   * field), and the Project chip after the text rather than before it.
+   */
   bare?: boolean;
   /** Prefix for the chip's test ids: `${chipTestid}-chip` and `${chipTestid}-chip-remove`. */
   chipTestid: string;
@@ -246,31 +249,13 @@ defineExpose({ resolveCommit });
       'rounded-md bg-default ring ring-inset ring-accented focus-within:ring-2 focus-within:ring-primary'
     "
   >
-    <span
-      v-if="project"
-      class="ms-2.5 flex shrink-0 items-center"
-      :data-testid="`${chipTestid}-chip`"
-    >
-      <UBadge
-        color="primary"
-        variant="soft"
-        size="md"
-        class="max-w-40 gap-1 rounded-full py-0.5 ps-2.5 pe-1 font-medium"
-      >
-        <span class="truncate">{{ project.name }}</span>
-        <UButton
-          square
-          color="primary"
-          variant="link"
-          size="xs"
-          icon="i-lucide-x"
-          class="p-0 text-primary/70 hover:text-primary"
-          :aria-label="t('timer.mention.removeProject', { project: project.name })"
-          :data-testid="`${chipTestid}-chip-remove`"
-          @click="removeChip"
-        />
-      </UBadge>
-    </span>
+    <TaskProjectChip
+      v-if="project && !bare"
+      class="ms-2.5"
+      :name="project.name"
+      :testid="chipTestid"
+      @remove="removeChip"
+    />
     <UInputMenu
       v-bind="$attrs"
       ref="menuRef"
@@ -286,6 +271,7 @@ defineExpose({ resolveCommit });
       mode="autocomplete"
       ignore-filter
       class="min-w-0 flex-1"
+      :ui="bare ? { trailing: 'hidden' } : undefined"
       @update:model-value="onModelUpdate"
       @update:search-term="onSearchTerm"
       @focus="loadMentionProjects"
@@ -293,6 +279,14 @@ defineExpose({ resolveCommit });
       @keydown.enter="onEnter"
       @keyup="syncCaret"
       @click="syncCaret"
+    />
+    <!-- The top-bar timer reads "Task, then its Project", so its chip follows the text. -->
+    <TaskProjectChip
+      v-if="project && bare"
+      class="ms-1"
+      :name="project.name"
+      :testid="chipTestid"
+      @remove="removeChip"
     />
   </div>
 </template>

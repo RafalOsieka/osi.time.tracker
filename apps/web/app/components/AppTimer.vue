@@ -199,20 +199,23 @@ async function onSaveStartedAt() {
 
 <template>
   <!--
-    One card frames the whole timer: a neutral field while idle, a light cyan card with a live
-    dot, cyan time and a round red stop while a timer runs.
+    One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
+    live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
   -->
   <div
-    class="flex h-11 w-full min-w-0 items-center gap-2 rounded-xl ps-3 pe-1.5 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
-    :class="isRunning ? 'bg-primary/8 ring-primary/30' : 'bg-default ring-accented'"
+    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-1 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
+    :class="
+      isRunning
+        ? 'bg-primary-50 ring-primary-200 dark:bg-primary-950/50 dark:ring-primary-800/70'
+        : 'bg-default ring-accented'
+    "
     data-testid="app-timer"
   >
-    <span v-if="isRunning" class="relative flex size-2 shrink-0" aria-hidden="true">
-      <span
-        class="absolute inline-flex size-full rounded-full bg-primary opacity-50 motion-safe:animate-ping"
-      />
-      <span class="relative inline-flex size-2 rounded-full bg-primary" />
-    </span>
+    <span
+      v-if="isRunning"
+      class="size-2 shrink-0 rounded-full bg-primary ring-4 ring-primary/20"
+      aria-hidden="true"
+    />
     <TaskTitleInput
       ref="titleInput"
       v-model:text="inputText"
