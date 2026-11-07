@@ -3,6 +3,7 @@ export default defineAppConfig({
     colors: {
       primary: 'cyan',
       neutral: 'zinc',
+      warning: 'amber',
     },
     // One table style for every list: quiet 12px headers, 44px rows, primary text in cells
     // (pages emphasise their first column themselves).

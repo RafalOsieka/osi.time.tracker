@@ -238,6 +238,14 @@ describe('client report page — month (REQ-384)', () => {
     });
   });
 
+  it('says in the preview placeholder what export produces for the selected month', async () => {
+    const wrapper = await mountPage();
+
+    expect(wrapper.get('[data-testid="client-report-preview"]').text()).toBe(
+      'clientReport.previewPlaceholder {"month":"September 2026"}',
+    );
+  });
+
   it('shows an error and disables export for an invalid month', async () => {
     harness.query = { month: '2026-13' };
     const wrapper = await mountPage();

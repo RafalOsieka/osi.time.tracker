@@ -142,6 +142,31 @@ describeSyncDay('sync day-review API integration', async () => {
     expect(row.config).toBeNull();
   });
 
+  it('orders rows longest first, ties by task name whatever the creation order', async () => {
+    const { jar, token } = await seedAndLogin(dbUrl);
+    await setTimezone(jar, token, 'UTC');
+    const date = '2026-03-19';
+    const entries = [
+      { title: 'Zeta review', start: '09:00', stop: '09:45' },
+      { title: 'Alpha export', start: '10:00', stop: '10:45' },
+      { title: 'Mid planning', start: '11:00', stop: '12:30' },
+    ];
+    for (const { title, start, stop } of entries) {
+      await createEntry(jar, token, {
+        title,
+        startedAt: `${date}T${start}:00.000Z`,
+        stoppedAt: `${date}T${stop}:00.000Z`,
+      });
+    }
+
+    const body = await (await getDay(jar, date)).json();
+    expect(body.rows.map((r: { taskName: string }) => r.taskName)).toEqual([
+      'Mid planning',
+      'Alpha export',
+      'Zeta review',
+    ]);
+  });
+
   it('requires authentication', async () => {
     const anonJar = new CookieJar();
     const res = await getDay(anonJar, '2026-03-15');

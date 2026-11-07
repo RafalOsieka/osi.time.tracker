@@ -149,21 +149,24 @@ const displayedRemoteLogs = computed(() => {
       kind="sub"
       :data-testid="`remote-sync-entry-${entry.id}`"
     >
+      <!-- Rendered like the Timer's entry times: small tabular figures, spaced separator. -->
       <ColumnCell
         :columns="columns"
         col="title"
         to="activity"
         :narrow="{ col: [3, 4], row: 1 }"
-        class="tabular-nums"
+        class="text-xs tabular-nums"
       >
-        {{ [formatEntryStart(entry.startedAt), formatEntryStop(entry.stoppedAt)].join('–') }}
+        {{ formatEntryStart(entry.startedAt) }}
+        <span class="px-0.5">{{ t('timerView.entryRow.separator') }}</span>
+        {{ formatEntryStop(entry.stoppedAt) }}
       </ColumnCell>
       <ColumnCell
         :columns="columns"
         col="tracked"
         :narrow="{ col: [4, 5], row: 1 }"
         align="end"
-        class="font-mono font-medium tabular-nums"
+        class="font-mono tabular-nums"
       >
         {{ formatDuration(entry.durationSeconds) }}
       </ColumnCell>
@@ -301,14 +304,26 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker: it sits on the to-send edge, set back so it does not
-             read as time still to send. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A scope label in the
+             empty tracked cell right before it, and a lighter weight than the export amounts, keep
+             it from reading as time still to send. The value's accessible name carries the scope. -->
+        <ColumnCell
+          :columns="columns"
+          col="tracked"
+          :narrow="{ col: [4, 5], row: 2 }"
+          align="end"
+          class="truncate text-xs text-dimmed"
+          aria-hidden="true"
+          :data-testid="`remote-sync-remote-log-scope-${log.remoteLogId}`"
+        >
+          {{ t('remoteSync.inTrackerLogs') }}
+        </ColumnCell>
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="font-mono tabular-nums text-dimmed"
+          class="font-mono tabular-nums text-muted"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
         >
           {{ formatDuration(log.durationSeconds) }}

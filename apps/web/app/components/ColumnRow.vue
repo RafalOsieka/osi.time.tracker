@@ -18,7 +18,7 @@ const {
 }>();
 
 const kindClass = {
-  row: 'min-h-9 py-1 @max-[40rem]/list:py-1.5',
+  row: 'min-h-11 py-1 @max-[40rem]/list:py-1.5',
   sub: 'min-h-7 text-sm text-muted',
   label: 'min-h-6 pt-1.5 text-xs font-medium text-dimmed',
 } as const;

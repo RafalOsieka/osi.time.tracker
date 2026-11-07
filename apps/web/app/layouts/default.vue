@@ -34,12 +34,12 @@ onMounted(() => {
       v-model:collapsed="collapsed"
       v-model:open="open"
       collapsible
-      :default-size="16"
+      :default-size="17"
       :min-size="12"
       :max-size="20"
       :collapsed-size="4"
       :toggle="sidebarToggle"
-      :ui="{ root: 'bg-muted dark:bg-default' }"
+      :ui="{ root: 'bg-(--app-surface-sidebar)' }"
       data-testid="app-sidebar"
     >
       <template #header="{ collapsed: isCollapsed }">

@@ -205,6 +205,20 @@ describe('monthly report page remote hours', () => {
     );
   });
 
+  it('sets a flagged duration semibold and a plain one at regular weight (REQ-472)', async () => {
+    harness.secrets = { [openProject.id]: 'op-key', [redmine.id]: 'rm-key' };
+    adapterReturning({ [redmine.id]: [remoteLog('2026-09-01', 1800)] });
+    const wrapper = await mountLoadedMonth();
+
+    const flagged = wrapper.get('[data-testid="reports-warning-2026-09-01-direct-rm"]');
+    expect(flagged.classes()).toEqual(expect.arrayContaining(['font-semibold', 'text-warning']));
+    const plainCell = wrapper
+      .get('[data-testid="reports-tracker-rm-2026-09-01-total"]')
+      .element.closest('td');
+    expect(plainCell?.classList.contains('font-normal')).toBe(true);
+    expect(plainCell?.classList.contains('font-semibold')).toBe(false);
+  });
+
   it('reports the remote summary as failed when no tracker could be fetched', async () => {
     const wrapper = await mountLoadedMonth();
 

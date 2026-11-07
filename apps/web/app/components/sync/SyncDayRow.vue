@@ -8,6 +8,9 @@ import type {
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { ColumnDefinition } from '../ColumnList.vue';
 
+/** A row's state kind (REQ-504): Ready, Sent, Loading while activities load, or blocked. */
+export type SyncRowKind = 'ready' | 'sent' | 'loading' | 'blocked';
+
 const {
   columns = [
     { key: 'expand', track: '1.5rem' },
@@ -24,7 +27,7 @@ const {
   canEdit,
   showEditors,
   kindLabel,
-  kindColor,
+  kind,
   reason,
   issueTitle,
   issueId,
@@ -51,8 +54,7 @@ const {
   canEdit: boolean;
   showEditors: boolean;
   kindLabel: string | null;
-  /** One color per state kind: Ready, Sent, Loading, not exportable. */
-  kindColor: 'primary' | 'success' | 'neutral' | 'warning';
+  kind: SyncRowKind;
   reason: string;
   issueTitle: string | null;
   issueId: string | null;
@@ -127,13 +129,23 @@ const toSendClass = computed(() => {
 });
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
-/** A distinct shape per kind, so states never rely on color alone. */
+/**
+ * A distinct shape per kind, so states never rely on color alone. Ready is the common case and
+ * stays neutral; color marks the exceptions: amber for blocked, green for Sent.
+ */
 const stateIcons = {
-  primary: 'i-lucide-circle-arrow-up',
-  success: 'i-lucide-check-check',
-  neutral: 'i-lucide-loader-circle',
-  warning: 'i-lucide-circle-alert',
-} as const satisfies Record<typeof kindColor, string>;
+  ready: { icon: 'i-lucide-circle-arrow-up', color: 'neutral', iconClass: 'text-muted' },
+  sent: { icon: 'i-lucide-check-check', color: 'success', iconClass: '' },
+  loading: {
+    icon: 'i-lucide-loader-circle',
+    color: 'neutral',
+    iconClass: 'animate-spin text-dimmed',
+  },
+  blocked: { icon: 'i-lucide-circle-alert', color: 'warning', iconClass: '' },
+} as const satisfies Record<
+  SyncRowKind,
+  { icon: string; color: 'neutral' | 'success' | 'warning'; iconClass: string }
+>;
 const activityOpen = ref(false);
 const selectedActivityName = computed(
   () => activityOptions.find((option) => option.id === selectedActivityId)?.name,
@@ -181,12 +193,12 @@ function onEditToSend() {
     <ColumnCell :columns="columns" col="state" :narrow="{ col: [2, 3], row: 1 }">
       <UPopover mode="hover" enable-touch :content="{ side: 'top' }">
         <UButton
-          :icon="stateIcons[kindColor]"
-          :color="kindColor"
+          :icon="stateIcons[kind].icon"
+          :color="stateIcons[kind].color"
           variant="ghost"
           square
           size="xs"
-          :ui="{ leadingIcon: kindColor === 'neutral' ? 'animate-spin' : '' }"
+          :ui="{ leadingIcon: stateIcons[kind].iconClass }"
           :aria-label="`${kindLabel ?? t('remoteSync.kind.blocked')}: ${reason}`"
           :data-testid="`remote-sync-state-${row.taskId}`"
         >
@@ -369,7 +381,7 @@ function onEditToSend() {
 
     <ColumnCell :columns="columns" col="tracked" align="end" :narrow="{ col: [4, 5], row: 2 }">
       <span
-        class="font-mono text-sm font-medium tabular-nums text-muted"
+        class="font-mono text-sm tabular-nums text-muted"
         :data-testid="`remote-sync-tracked-${row.taskId}`"
       >
         {{ trackedLabel }}

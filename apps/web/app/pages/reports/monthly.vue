@@ -193,9 +193,13 @@ function formatDay(date: string, options: Intl.DateTimeFormatOptions): string {
   });
 }
 
-/** Duration cells share the report's numeric face; the totals row is set semibold. */
+/**
+ * Duration cells share the report's numeric face. Plain values sit at 400 so a flagged value
+ * (600, warning) differs by weight as well as colour (REQ-472); the totals row is 600.
+ */
 function durationTd(isTotal: boolean, extra = ''): string {
-  return `text-end font-mono tabular-nums ${isTotal ? 'font-semibold' : 'font-medium'} ${extra}`;
+  const weight = isTotal ? 'font-semibold text-highlighted' : 'font-normal';
+  return `text-end font-mono tabular-nums ${weight} ${extra}`;
 }
 
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
@@ -359,7 +363,8 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     enableSorting: false,
     meta: {
       class: {
-        th: `text-end font-semibold text-highlighted bg-elevated/50 border-b ${GROUP_DIVIDER}`,
+        // Centred over its three columns; the header band itself spans the whole table.
+        th: `text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
     },
     columns: [
@@ -391,7 +396,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         meta: {
           class: {
             th: 'text-end',
-            td: ({ row }) => durationTd(row.original.isTotal, 'text-highlighted'),
+            td: ({ row }) => durationTd(row.original.isTotal),
           },
         },
         cell: ({ row }) =>
@@ -422,71 +427,76 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       {{ t(reportErrorKey) }}
     </p>
 
-    <!-- Month totals as a compact stat strip: a quiet label over a mono figure. -->
-    <dl
+    <!-- Month totals: the shared stat cards, side by side across the content width. -->
+    <div
       v-if="showSummaries"
-      class="flex flex-wrap items-stretch gap-y-3"
+      class="grid grid-cols-2 gap-4"
       data-testid="reports-monthly-summaries"
       aria-live="polite"
     >
-      <div class="flex flex-col gap-1 pe-8">
-        <dt class="text-[13px] text-muted">{{ t('reports.monthly.summaryLocal') }}</dt>
-        <dd
-          class="font-mono text-xl font-semibold tabular-nums"
-          :class="localSummaryText === SUMMARY_PENDING ? 'text-dimmed' : 'text-highlighted'"
+      <StatCard :label="t('reports.monthly.summaryLocal')">
+        <span
+          :class="localSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
           data-testid="reports-summary-local"
         >
           {{ localSummaryText }}
-        </dd>
-      </div>
-      <div class="flex flex-col gap-1 border-s border-default ps-8">
-        <dt class="text-[13px] text-muted">{{ t('reports.monthly.summaryRemote') }}</dt>
-        <dd
+        </span>
+        <template #caption>{{ t('reports.monthly.summaryLocalCaption') }}</template>
+      </StatCard>
+
+      <StatCard :label="t('reports.monthly.summaryRemote')">
+        <span
           v-if="remoteHoursSummary.kind === 'ok' || remoteHoursSummary.kind === 'pending'"
-          class="font-mono text-xl font-semibold tabular-nums"
-          :class="remoteSummaryText === SUMMARY_PENDING ? 'text-dimmed' : 'text-highlighted'"
+          :class="remoteSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
           data-testid="reports-summary-remote"
         >
           {{ remoteSummaryText }}
-        </dd>
-        <dd v-else-if="remoteHoursSummary.kind === 'partial'" class="flex">
-          <UTooltip :text="t('reports.monthly.summaryRemotePartial')" :content="{ side: 'bottom' }">
-            <span
-              tabindex="0"
-              class="inline-flex items-center gap-2 rounded-sm text-warning focus-visible:outline-2 focus-visible:outline-primary"
-              data-testid="reports-summary-remote"
-            >
-              <span class="font-mono text-xl font-semibold tabular-nums">
-                {{ remoteSummaryText }}
-              </span>
-              <UIcon name="i-lucide-triangle-alert" class="size-4" aria-hidden="true" />
-            </span>
-          </UTooltip>
-        </dd>
-        <dd
+        </span>
+        <!-- An incomplete total: warning colour, weight, an icon and a tooltip, never colour alone. -->
+        <UTooltip
+          v-else-if="remoteHoursSummary.kind === 'partial'"
+          :text="t('reports.monthly.summaryRemotePartial')"
+          :content="{ side: 'bottom' }"
+        >
+          <span
+            tabindex="0"
+            class="inline-flex items-center gap-2 rounded-sm font-semibold text-warning focus-visible:outline-2 focus-visible:outline-primary"
+            data-testid="reports-summary-remote"
+          >
+            {{ remoteSummaryText }}
+            <UIcon name="i-lucide-triangle-alert" class="size-5" aria-hidden="true" />
+          </span>
+        </UTooltip>
+        <span
           v-else
-          class="flex h-7 items-center gap-1.5 text-sm font-medium text-error"
+          class="inline-flex items-center gap-2 font-sans text-base font-medium text-error"
           data-testid="reports-summary-remote"
           :aria-label="t('reports.monthly.summaryRemoteFailed')"
         >
-          <UIcon name="i-lucide-circle-alert" class="size-4 shrink-0" aria-hidden="true" />
+          <UIcon name="i-lucide-circle-alert" class="size-5 shrink-0" aria-hidden="true" />
           {{ remoteSummaryText }}
-        </dd>
-      </div>
-    </dl>
+        </span>
+        <template #caption>
+          <span v-if="remoteHoursSummary.kind === 'partial'" class="text-warning">
+            {{ t('reports.monthly.summaryRemotePartialCaption') }}
+          </span>
+          <template v-else>{{ t('reports.monthly.summaryRemoteCaption') }}</template>
+        </template>
+      </StatCard>
+    </div>
 
     <p v-if="!reportErrorKey && showEmpty" class="text-muted" data-testid="reports-monthly-empty">
       {{ t('reports.monthly.empty') }}
     </p>
 
-    <!-- 40px rows: a full month of days fits without scrolling far. -->
+    <!-- The shared 44px rows; one faint band runs under both header rows, edge to edge. -->
     <UTable
       v-if="!reportErrorKey && !showEmpty"
       :data="rows"
       :columns="columns"
       :meta="tableMeta"
       :loading="reportPending"
-      :ui="{ td: 'py-2.5' }"
+      :ui="{ thead: 'bg-elevated/50' }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />

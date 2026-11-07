@@ -119,7 +119,7 @@ describeTrackersUI('trackers UI flow', async () => {
     await page.click('[data-testid="save-button"]');
 
     await page.waitForFunction(() =>
-      /Base URL must be a valid URL|Adres URL bazowy musi być prawidłowym adresem URL/.test(
+      /Base URL must be a valid URL|Bazowy adres URL musi być prawidłowym adresem URL/.test(
         document.body.textContent ?? '',
       ),
     );

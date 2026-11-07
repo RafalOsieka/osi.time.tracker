@@ -7,6 +7,13 @@ import {
 
 type AppLocale = 'en' | 'pl';
 
+/** Settings rows: the label on the left, the control (capped width) and its help on the right. */
+const settingsFieldUi = {
+  root: 'grid grid-cols-[11rem_minmax(0,24rem)] items-start justify-start gap-x-8',
+  wrapper: 'pt-1.5',
+  container: 'mt-0 w-full',
+};
+
 const { t, locale, setLocale } = useI18n();
 usePageTitle(() => t('profile.title'));
 const toast = useAppToast();
@@ -80,7 +87,7 @@ function onTimezoneChange(value: string | undefined) {
   <div data-testid="page-profile" class="grid gap-8">
     <PageHeader :title="t('profile.title')" :description="t('profile.description')" />
 
-    <div class="grid max-w-2xl gap-6">
+    <div class="grid max-w-3xl gap-6">
       <UCard
         as="section"
         aria-labelledby="profile-account-heading"
@@ -94,7 +101,10 @@ function onTimezoneChange(value: string | undefined) {
 
         <UFormField
           :label="t('profile.displayName')"
+          :help="t('profile.displayNameHelp')"
           name="displayName"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
           data-testid="profile-display-name-field"
         >
           <UInput
@@ -110,7 +120,13 @@ function onTimezoneChange(value: string | undefined) {
           />
         </UFormField>
 
-        <UFormField :label="t('profile.email')" name="email" data-testid="profile-email-field">
+        <UFormField
+          :label="t('profile.email')"
+          name="email"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
+          data-testid="profile-email-field"
+        >
           <UInput
             id="profile-email"
             :model-value="user?.email ?? ''"
@@ -126,6 +142,8 @@ function onTimezoneChange(value: string | undefined) {
         <UFormField
           :label="t('profile.timezone')"
           name="timezone"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
           data-testid="profile-timezone-field"
         >
           <USelectMenu
@@ -155,6 +173,8 @@ function onTimezoneChange(value: string | undefined) {
           :label="t('profile.language')"
           :help="t('profile.languageHint')"
           name="language"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
           data-testid="profile-language-field"
         >
           <USelect

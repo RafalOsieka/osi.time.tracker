@@ -86,6 +86,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       accessorKey: 'name',
       header: t('trackers.columnName'),
       cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
+      meta: { class: { th: 'w-[28%]', td: 'truncate' } },
     },
     {
       accessorKey: 'systemType',
@@ -93,9 +94,10 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       cell: ({ row }) =>
         h(
           resolveComponent('UBadge'),
-          { color: 'neutral', variant: 'subtle' },
+          { color: 'neutral', variant: 'soft', size: 'md', class: 'font-medium' },
           () => TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType],
         ),
+      meta: { class: { th: 'w-36' } },
     },
     {
       accessorKey: 'baseUrl',
@@ -109,8 +111,8 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           color: 'neutral',
           label: row.original.baseUrl.replace(/^https?:\/\//, ''),
           trailingIcon: 'i-lucide-arrow-up-right',
-          class: 'px-0 font-normal text-default hover:text-highlighted',
-          ui: { trailingIcon: 'size-3.5 text-dimmed' },
+          class: 'max-w-full px-0 py-0 font-normal text-default hover:text-highlighted',
+          ui: { label: 'truncate', trailingIcon: 'size-3.5 text-dimmed' },
           'data-testid': `tracker-base-url-${row.original.id}`,
         }),
     },
@@ -118,7 +120,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       accessorKey: 'createdAt',
       header: t('trackers.columnCreated'),
       cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
-      meta: { class: { td: 'tabular-nums' } },
+      meta: { class: { th: 'w-40', td: 'tabular-nums' } },
     },
     {
       id: 'actions',
@@ -127,9 +129,9 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       enableSorting: false,
       meta: {
         class: {
-          // w-0 + whitespace-nowrap shrinks the column to its content and pins it right.
-          th: 'w-0 whitespace-nowrap text-end',
-          td: 'w-0 whitespace-nowrap py-1.5 text-end',
+          // Fixed widths (the table is fixed-layout), so columns never shift between languages.
+          th: 'w-36 text-end',
+          td: 'whitespace-nowrap py-1.5 text-end',
         },
       },
       cell: ({ row }) => {
@@ -168,6 +170,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       :loading="trackersPending"
       data-testid="trackers-table"
       class="w-full"
+      :ui="{ base: 'min-w-full table-fixed' }"
     >
       <template #empty>
         <!-- Avoid empty-state flash while the initial list request is in flight. -->

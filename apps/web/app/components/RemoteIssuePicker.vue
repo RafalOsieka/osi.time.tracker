@@ -195,8 +195,9 @@ onBeforeUnmount(() => {
         target="_blank"
         external
         variant="link"
+        color="neutral"
         size="xs"
-        class="h-6 min-h-6 min-w-6 justify-start px-0 font-mono text-xs leading-none tabular-nums"
+        class="h-6 min-h-6 min-w-6 justify-start px-0 font-mono text-xs leading-none tabular-nums text-default hover:text-primary hover:underline focus-visible:text-primary"
         :label="`#${currentRef.remoteIssueId}`"
         :aria-label="linkedTooltip(currentRef)"
         :data-testid="linkTestid"
@@ -205,7 +206,7 @@ onBeforeUnmount(() => {
     <UTooltip v-else-if="currentRef" :text="linkedTooltip(currentRef)" :content="{ side: 'top' }">
       <span
         tabindex="0"
-        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-start font-mono text-xs leading-none tabular-nums text-primary"
+        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-start font-mono text-xs leading-none tabular-nums text-default"
         :data-testid="cachedTestid"
       >
         #{{ currentRef.remoteIssueId }}

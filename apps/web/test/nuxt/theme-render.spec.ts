@@ -111,7 +111,7 @@ describe('theme UI and SSR head wiring', () => {
         key: 'favicon-svg-idle',
       },
     ]);
-    // No manual font <link>; typography uses Nuxt UI / Tailwind defaults.
+    // No font <link>: the typefaces are bundled into the app stylesheet.
     const resolveTitle = headArg?.titleTemplate;
     expect(resolveTitle?.('Timer')).toBe('Timer | layout.title');
     expect(resolveTitle?.('')).toBe('layout.title');

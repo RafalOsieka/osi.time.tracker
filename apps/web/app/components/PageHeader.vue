@@ -11,7 +11,7 @@ defineProps<{
 </script>
 
 <template>
-  <header class="flex min-h-9 flex-wrap items-center justify-between gap-x-6 gap-y-3">
+  <header class="flex min-h-9 flex-wrap items-start justify-between gap-x-6 gap-y-3">
     <div class="grid min-w-0 gap-1">
       <h1
         class="m-0 truncate text-[1.375rem]/8 font-semibold tracking-tight text-highlighted"

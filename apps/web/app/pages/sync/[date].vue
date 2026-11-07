@@ -10,6 +10,7 @@ import type { RemoteTimeLogDto } from '@osi/time-tracker-remote-trackers/contrac
 import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/utils/export-comment';
 import { computeInTrackerSummary } from '~~/shared/utils/compute-in-tracker-summary';
 import type { ColumnDefinition } from '~/components/ColumnList.vue';
+import type { SyncRowKind } from '~/components/sync/SyncDayRow.vue';
 import type { ActivityByTask, ExportCommentsByTask, IssueRefByTask } from '~/types/sync-ui-maps';
 
 const route = useRoute();
@@ -220,17 +221,17 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
   }
 }
 
-/** Ready is the primary action color; every not-exportable reason shares one warning color. */
-function stateBadgeColor(row: RemoteSyncDayRowDto) {
+/** The row's state indicator kind (REQ-504); every not-exportable reason is one blocked kind. */
+function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   switch (stateFor(row)) {
     case 'manageable':
-      return 'primary';
+      return 'ready';
     case 'sent':
-      return 'success';
+      return 'sent';
     case 'activity_loading':
-      return 'neutral';
+      return 'loading';
     default:
-      return 'warning';
+      return 'blocked';
   }
 }
 
@@ -457,12 +458,6 @@ const inTrackerSummary = computed(() =>
     dayTotalsSafe.value.toSend,
   ),
 );
-
-const summaryCardClass =
-  'grid min-w-0 content-start gap-1 rounded-lg border border-default bg-default px-4 py-3';
-const summaryLabelClass = 'text-[0.8125rem]/5 font-medium text-muted';
-const summaryValueClass = 'font-mono text-2xl/8 font-medium tabular-nums text-highlighted';
-const summaryCaptionClass = 'text-xs/5 text-muted';
 
 /**
  * Why Export is disabled, for its tooltip: no Ready row has time to send, or the Ready rows
@@ -757,55 +752,47 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       @export="openExportDialog"
     />
 
-    <!-- Two equal cards: a 13px label, the value large, one caption line. -->
-    <div
-      class="grid gap-3 sm:grid-cols-[repeat(2,19rem)]"
-      data-testid="remote-sync-summaries"
-      aria-live="polite"
-    >
-      <div :class="summaryCardClass" data-testid="remote-sync-total-day">
-        <p :class="summaryLabelClass">{{ t('remoteSync.dayTotalLabel') }}</p>
-        <p :class="summaryValueClass">
-          {{ formatDuration(dayTotalsSafe.dayTotal) }}
-        </p>
-        <p :class="summaryCaptionClass">{{ t('remoteSync.dayTotalHint') }}</p>
-      </div>
-      <div :class="summaryCardClass" data-testid="remote-sync-total-in-tracker">
-        <p :class="summaryLabelClass">{{ t('remoteSync.inTrackerLabel') }}</p>
+    <!-- Two equal stat cards across the content width, stacked on phones. -->
+    <div class="grid gap-4 sm:grid-cols-2" data-testid="remote-sync-summaries" aria-live="polite">
+      <StatCard :label="t('remoteSync.dayTotalLabel')" data-testid="remote-sync-total-day">
+        {{ formatDuration(dayTotalsSafe.dayTotal) }}
+        <template #caption>{{ t('remoteSync.dayTotalHint') }}</template>
+      </StatCard>
+      <StatCard :label="t('remoteSync.inTrackerLabel')" data-testid="remote-sync-total-in-tracker">
         <template v-if="inTrackerSummary.status === 'loading'">
-          <p :class="[summaryValueClass, 'flex items-center gap-2 text-dimmed']">
-            {{ t('remoteSync.emptyCell') }}
-            <UIcon
-              name="i-lucide-loader-circle"
-              class="size-4 animate-spin text-dimmed"
-              aria-hidden="true"
-            />
-          </p>
-          <p
-            :class="summaryCaptionClass"
+          <span class="text-dimmed">{{ t('remoteSync.emptyCell') }}</span>
+          <UIcon
+            name="i-lucide-loader-circle"
+            class="size-4 animate-spin text-dimmed"
+            aria-hidden="true"
+          />
+        </template>
+        <span v-else-if="inTrackerSummary.status === 'unavailable'" class="text-dimmed">
+          {{ t('remoteSync.emptyCell') }}
+        </span>
+        <template v-else>{{ formatDuration(inTrackerSummary.totalSeconds) }}</template>
+        <template #caption>
+          <span
+            v-if="inTrackerSummary.status === 'loading'"
             role="status"
             data-testid="remote-sync-total-in-tracker-loading"
           >
             {{ t('remoteSync.inTrackerLoading') }}
-          </p>
-        </template>
-        <template v-else-if="inTrackerSummary.status === 'unavailable'">
-          <p :class="[summaryValueClass, 'text-dimmed']">
-            {{ t('remoteSync.emptyCell') }}
-          </p>
-          <div
-            class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs/5 text-muted"
+          </span>
+          <span
+            v-else-if="inTrackerSummary.status === 'unavailable'"
+            class="flex flex-wrap items-center gap-x-2 gap-y-1"
             role="alert"
             data-testid="remote-sync-total-in-tracker-unavailable"
           >
-            <p
+            <span
               v-for="tracker in inTrackerSummary.trackers"
               :key="tracker.name"
               class="inline-flex items-center gap-1.5"
             >
               <UIcon name="i-lucide-circle-alert" class="size-3.5 text-error" aria-hidden="true" />
               {{ tracker.name }}: {{ t(tracker.messageKey) }}
-            </p>
+            </span>
             <UButton
               v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)"
               size="xs"
@@ -815,29 +802,21 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
               :label="t('remoteSync.remoteLogsRetry')"
               @click="retryFailedLogs"
             />
-          </div>
-        </template>
-        <template v-else>
-          <p :class="summaryValueClass">
-            {{ formatDuration(inTrackerSummary.totalSeconds) }}
-          </p>
-          <!-- Value first, then its word: "03:00:00 in tracker + 06:00:00 to send". The to-send
-               part is primary, like Ready and Export: the time not in the tracker yet. -->
-          <p :class="summaryCaptionClass" data-testid="remote-sync-total-in-tracker-parts">
-            <span class="font-mono tabular-nums">
-              {{ formatDuration(inTrackerSummary.logsSeconds) }}
-            </span>
+          </span>
+          <!-- One sans line, value before its word: "03:00:00 in tracker + 06:00:00 to send".
+               The to-send part is primary, like Export: the time not in the tracker yet. -->
+          <span v-else class="tabular-nums" data-testid="remote-sync-total-in-tracker-parts">
+            {{ formatDuration(inTrackerSummary.logsSeconds) }}
             {{ t('remoteSync.inTrackerLogs') }}
-            <span class="mx-0.5 text-dimmed">+</span>
+            <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
+            <span class="me-1 text-dimmed">+</span>
             <span class="font-medium text-primary">
-              <span class="font-mono tabular-nums">
-                {{ formatDuration(inTrackerSummary.toSendSeconds) }}
-              </span>
+              {{ formatDuration(inTrackerSummary.toSendSeconds) }}
               {{ t('remoteSync.inTrackerToSend') }}
             </span>
-          </p>
+          </span>
         </template>
-      </div>
+      </StatCard>
     </div>
 
     <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">
@@ -854,7 +833,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :can-edit="canEditRow(row)"
         :show-editors="showEditorsFor(row)"
         :kind-label="kindLabelFor(row)"
-        :kind-color="stateBadgeColor(row)"
+        :kind="stateKindFor(row)"
         :reason="reasonKeyFor(row)"
         :issue-title="issueRefFor(row)?.cachedTitle ?? null"
         :issue-id="issueRefFor(row)?.remoteIssueId ?? null"
@@ -930,7 +909,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           col="tracked"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="font-mono text-sm font-medium tabular-nums text-muted"
+          class="font-mono text-sm tabular-nums text-muted"
           data-testid="remote-sync-untitled-duration"
         >
           {{ formatDuration(untitledTotal) }}

@@ -229,7 +229,7 @@ async function onDelete() {
       col="duration"
       align="end"
       :narrow="{ col: [5, 6], row: 1 }"
-      class="font-mono text-sm font-medium tabular-nums"
+      class="font-mono text-sm tabular-nums text-muted"
     >
       {{ durationLabel }}
     </ColumnCell>

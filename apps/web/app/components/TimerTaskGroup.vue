@@ -152,14 +152,6 @@ const countLabel = computed(() => {
 const countDisplay = computed(() => (entryCount.value > 9 ? '9+' : String(entryCount.value)));
 
 const actionLabel = computed(() => (isLive ? t('timer.stop') : t('timerView.continueLabel')));
-const actionButtonUi = computed(() =>
-  isLive
-    ? {
-        leadingIcon: 'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
-      }
-    : undefined,
-);
-
 function onActionClick() {
   if (isLive) {
     emit('stop');
@@ -247,6 +239,7 @@ async function unlinkRemoteIssue() {
         variant="soft"
         size="sm"
         class="w-5 shrink-0 justify-center px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
+        :class="isLive && 'bg-default ring ring-inset ring-(--ui-border)'"
         :aria-label="countLabel"
         :data-testid="`timer-group-count-${group.key}`"
       >
@@ -357,13 +350,13 @@ async function unlinkRemoteIssue() {
       <UTooltip v-else :text="remoteIssueUnavailableLabel" :content="{ side: 'top' }">
         <span tabindex="0" class="inline-flex">
           <UButton
-            icon="i-lucide-minus"
+            icon="i-lucide-link-2-off"
             color="neutral"
             variant="ghost"
             square
             size="xs"
             disabled
-            class="-ms-1 h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-40"
+            class="-ms-1 h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-30"
             :aria-label="remoteIssueUnavailableLabel"
             :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
           />
@@ -373,8 +366,8 @@ async function unlinkRemoteIssue() {
 
     <ColumnCell :columns="columns" col="duration" align="end" :narrow="{ col: [5, 6], row: 1 }">
       <span
-        class="block text-right font-mono text-sm font-medium tabular-nums"
-        :class="isLive ? 'text-highlighted' : 'text-toned'"
+        class="block text-right font-mono text-sm tabular-nums"
+        :class="isLive ? 'font-medium text-highlighted' : 'text-default'"
         :data-testid="`timer-group-total-${group.key}`"
       >
         {{ formatDuration(group.totalSeconds + liveSeconds(group.liveStartedAt, now)) }}
@@ -384,18 +377,21 @@ async function unlinkRemoteIssue() {
     <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
-          :icon="isLive ? 'i-lucide-square' : 'i-lucide-play'"
-          variant="ghost"
+          :icon="isLive ? undefined : 'i-lucide-play'"
+          :variant="isLive ? 'soft' : 'ghost'"
           square
           size="xs"
           :color="isLive ? 'error' : 'neutral'"
           :class="!isLive && 'text-dimmed hover:text-primary focus-visible:text-primary'"
-          :ui="actionButtonUi"
           :aria-label="actionLabel"
           :aria-pressed="isLive"
           :data-testid="`timer-group-continue-${group.key}`"
           @click="onActionClick"
-        />
+        >
+          <template v-if="isLive" #leading>
+            <StopGlyph size="sm" />
+          </template>
+        </UButton>
       </UTooltip>
     </ColumnCell>
   </ColumnRow>
@@ -422,7 +418,5 @@ async function unlinkRemoteIssue() {
 .running-row {
   background: color-mix(in oklab, var(--ui-primary) 6%, transparent);
   box-shadow: inset 2px 0 0 var(--ui-primary);
-  margin-inline-start: -0.5rem;
-  padding-inline-start: 0.5rem;
 }
 </style>

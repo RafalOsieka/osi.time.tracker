@@ -34,7 +34,7 @@ const ButtonStub = {
       :data-icon="icon"
       :data-ui-leading="ui?.leadingIcon"
       @click="$emit('click', $event)"
-    >{{ label }}<slot /></component>
+    ><slot name="leading" />{{ label }}<slot /></component>
   `,
   props: [
     'label',
@@ -467,8 +467,9 @@ describe('TimerTaskGroup', () => {
     expect(action.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
       'timer.stop',
     );
-    expect(action.attributes('data-icon')).toBe('i-lucide-square');
-    expect(action.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);
+    // The live group's action shows the filled stop glyph (with its pulse) instead of an icon.
+    expect(action.attributes('data-icon')).toBeUndefined();
+    expect(action.get('[data-testid="stop-glyph"]').attributes('class')).toMatch(/timer-stop-icon/);
     await action.trigger('click');
     expect(wrapper.emitted('continue')).toBeUndefined();
     expect(wrapper.emitted('stop')).toHaveLength(1);

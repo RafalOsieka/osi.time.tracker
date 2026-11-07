@@ -23,6 +23,7 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
         variant="ghost"
         size="md"
         square
+        :ui="{ leadingIcon: 'size-4' }"
         class="text-dimmed hover:text-highlighted"
         :disabled="extraDisabled"
         :aria-label="extraLabel"
@@ -37,6 +38,7 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
         variant="ghost"
         size="md"
         square
+        :ui="{ leadingIcon: 'size-4' }"
         class="text-dimmed hover:text-highlighted"
         :aria-label="editLabel"
         :data-testid="editTestid"
@@ -50,6 +52,7 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
         variant="ghost"
         size="md"
         square
+        :ui="{ leadingIcon: 'size-4' }"
         class="text-dimmed hover:bg-error/10 hover:text-error focus-visible:text-error"
         :aria-label="deleteLabel"
         :data-testid="deleteTestid"

@@ -356,7 +356,7 @@ async function onEntryDeleted() {
         <template v-for="day in days" :key="day.dayKey">
           <ColumnRow
             :data-testid="`timer-day-${day.dayKey}`"
-            class="border-accented pt-6 font-semibold text-highlighted @max-[40rem]/list:pt-5"
+            class="border-default pt-6 font-semibold text-highlighted @max-[40rem]/list:pt-5"
           >
             <ColumnCell
               :columns="columns"

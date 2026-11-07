@@ -311,23 +311,19 @@ async function onSaveStartedAt() {
       <UButton
         square
         :variant="isRunning ? 'soft' : 'solid'"
-        :icon="isRunning ? 'i-lucide-square' : 'i-lucide-play'"
+        :icon="isRunning ? undefined : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
         :color="isRunning ? 'error' : 'primary'"
-        :ui="
-          isRunning
-            ? {
-                leadingIcon:
-                  'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
-              }
-            : undefined
-        "
         :loading="starting || stopping"
         :disabled="isLoading"
         :aria-pressed="isRunning"
         data-testid="timer-toggle-button"
         @click="onToggle"
-      />
+      >
+        <template v-if="isRunning && !starting && !stopping" #leading>
+          <StopGlyph />
+        </template>
+      </UButton>
     </UTooltip>
   </div>
 </template>

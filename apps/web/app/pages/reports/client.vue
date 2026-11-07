@@ -499,16 +499,37 @@ async function onExport() {
         </UCard>
       </UForm>
 
-      <!-- A quiet page-on-desk surface where the PDF preview will go. -->
+      <!--
+        A page-on-desk placeholder (REQ-384): the sheet always sits lighter than its pane, white
+        on light grey and a raised grey in dark. The faint lines only suggest a document.
+      -->
       <div
         class="flex min-h-80 items-center justify-center rounded-lg border border-default bg-muted p-8"
         data-testid="client-report-preview"
       >
         <div
-          class="flex aspect-[210/297] w-full max-w-64 flex-col items-center justify-center gap-3 rounded-md bg-default p-6 text-center text-muted shadow-sm ring-1 ring-default"
+          class="flex aspect-[210/297] w-full max-w-64 flex-col gap-5 rounded-md bg-default p-6 shadow-sm ring-1 ring-default dark:bg-elevated dark:shadow-md"
         >
-          <UIcon name="i-lucide-file-text" class="size-7 text-dimmed" aria-hidden="true" />
-          <p class="text-sm text-balance">{{ t('clientReport.previewPlaceholder') }}</p>
+          <div class="grid gap-2" aria-hidden="true">
+            <div class="h-2 w-1/2 rounded-full bg-accented" />
+            <div class="h-1.5 w-1/3 rounded-full bg-accented/60" />
+          </div>
+          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
+            <UIcon name="i-lucide-file-down" class="size-6 text-dimmed" aria-hidden="true" />
+            <p class="max-w-[200px] text-sm text-balance text-muted">
+              {{
+                monthLabel
+                  ? t('clientReport.previewPlaceholder', { month: monthLabel })
+                  : t('clientReport.previewPlaceholderNoMonth')
+              }}
+            </p>
+          </div>
+          <div class="grid gap-2.5" aria-hidden="true">
+            <div v-for="row in 4" :key="row" class="flex items-center justify-between gap-6">
+              <div class="h-1.5 flex-1 rounded-full bg-accented/60" />
+              <div class="h-1.5 w-6 rounded-full bg-accented/60" />
+            </div>
+          </div>
         </div>
       </div>
     </div>
