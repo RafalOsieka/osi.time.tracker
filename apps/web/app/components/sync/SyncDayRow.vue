@@ -129,7 +129,7 @@ const titleDisplayClass = computed(() =>
  */
 const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
-  return showEditors ? 'font-[450] text-default dark:font-[380]' : 'font-normal text-muted';
+  return showEditors ? 'font-[450] text-default dark:font-[340]' : 'font-normal text-muted';
 });
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));

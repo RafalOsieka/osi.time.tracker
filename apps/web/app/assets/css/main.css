@@ -129,19 +129,20 @@ body,
 /*
  * Light text on a dark surface renders about one weight heavier (Windows ignores font
  * smoothing hints), which flattens the weight ramp. Geist is variable, so dark mode steps
- * every weight down by 80 to look like the same ramp as light mode.
+ * every weight down by about 100 to look like the same ramp as light mode.
  */
 .dark {
-  font-weight: 320;
-  --font-weight-normal: 320;
-  --font-weight-medium: 420;
-  --font-weight-semibold: 520;
-  --font-weight-bold: 620;
+  font-weight: 310;
+  --font-weight-normal: 310;
+  --font-weight-medium: 400;
+  --font-weight-semibold: 500;
+  --font-weight-bold: 600;
 }
 
 /*
- * Dark text on a bright fill (solid primary buttons, solid badges) does not bloom, so it keeps
- * the light-mode weights.
+ * Text on a solid fill (primary buttons, solid badges). Dark text on the bright dark-mode fill
+ * does not bloom, so it keeps the regular weights; white text on the saturated light-mode fill
+ * reads bolder, so it steps down a little. Both then look the same weight.
  */
 .dark .text-inverted {
   --font-weight-normal: 400;
@@ -149,10 +150,21 @@ body,
   --font-weight-semibold: 600;
 }
 
+html:not(.dark) .text-inverted {
+  --font-weight-medium: 460;
+  --font-weight-semibold: 560;
+}
+
 /*
- * Geist Mono's even strokes bloom a little more than Geist on dark surfaces. Durations without
- * a weight of their own step down further; explicit weights (utilities) still win.
+ * Geist Mono's even strokes bloom a little more than Geist on dark surfaces, so durations step
+ * down further: their weight utilities through the variables, unweighted ones through the base
+ * rule (which any utility still overrides).
  */
+.dark .font-mono {
+  --font-weight-medium: 370;
+  --font-weight-semibold: 470;
+}
+
 @layer base {
   .dark .font-mono {
     font-weight: 290;
