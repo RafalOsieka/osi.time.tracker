@@ -94,7 +94,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       cell: ({ row }) =>
         h(
           resolveComponent('UBadge'),
-          { color: 'neutral', variant: 'soft', size: 'md', class: 'font-medium' },
+          { color: 'neutral', variant: 'soft', size: 'sm', class: 'font-medium' },
           () => TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType],
         ),
       meta: { class: { th: 'w-36' } },
@@ -111,7 +111,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           color: 'neutral',
           label: row.original.baseUrl.replace(/^https?:\/\//, ''),
           trailingIcon: 'i-lucide-arrow-up-right',
-          class: 'max-w-full px-0 py-0 font-normal text-default hover:text-highlighted',
+          class: 'max-w-full px-0 py-0 font-normal text-muted hover:text-highlighted',
           ui: { label: 'truncate', trailingIcon: 'size-3.5 text-dimmed' },
           'data-testid': `tracker-base-url-${row.original.id}`,
         }),
@@ -120,7 +120,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       accessorKey: 'createdAt',
       header: t('trackers.columnCreated'),
       cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
-      meta: { class: { th: 'w-40', td: 'tabular-nums' } },
+      meta: { class: { th: 'w-40', td: 'tabular-nums text-muted' } },
     },
     {
       id: 'actions',

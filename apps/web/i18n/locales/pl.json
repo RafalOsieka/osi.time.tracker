@@ -330,9 +330,10 @@
   "remoteSync": {
     "pageTitle": "Synchronizacja zdalna",
     "dayTotalLabel": "Suma dnia",
-    "inTrackerLabel": "W trackerze po eksporcie",
+    "inTrackerLabel": "W trackerach po eksporcie",
     "inTrackerLoading": "Wczytywanie wpisów z trackera…",
     "inTrackerLogs": "w trackerze",
+    "inTrackersLogs": "w trackerach",
     "inTrackerToSend": "do wysłania",
     "dayTotalHint": "Wszystkie ukończone wpisy czasu, jak w Stoperze",
     "dayTotalTooltip": "Cały ukończony czas tego dnia, w tym wysłany, zablokowany i bez tytułu. Zgodny z sumą dnia w widoku Timera.",

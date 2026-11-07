@@ -301,7 +301,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     header: t('reports.monthly.columnDate'),
     meta: {
       class: {
-        th: 'align-bottom',
+        th: 'w-36 align-bottom',
         td: ({ row }) =>
           `text-highlighted ${row.original.isTotal ? 'font-semibold' : 'font-medium'}`,
       },
@@ -331,7 +331,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     header: t('reports.monthly.columnLocal'),
     meta: {
       class: {
-        th: 'text-end align-bottom',
+        th: 'w-24 text-end align-bottom',
         td: ({ row }) => durationTd(row.original.isTotal),
       },
     },
@@ -363,8 +363,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     enableSorting: false,
     meta: {
       class: {
-        // Centred over its three columns; the header band itself spans the whole table.
-        th: `text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
+        // Centred over its three columns; the header band itself spans the whole table. The
+        // table is fixed-layout (Date and Local fixed, Tracker columns sharing the rest), so
+        // columns hold their place across languages.
+        th: `py-2 text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
     },
     columns: [
@@ -419,7 +421,9 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         @prev="goMonth(-1)"
         @next="goMonth(1)"
       >
-        <PeriodLabel data-testid="reports-month-label">{{ monthLabel }}</PeriodLabel>
+        <PeriodLabel data-testid="reports-month-label">
+          {{ capitalizeFirst(monthLabel, locale) }}
+        </PeriodLabel>
       </PeriodStepper>
     </PageHeader>
 
@@ -496,7 +500,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :columns="columns"
       :meta="tableMeta"
       :loading="reportPending"
-      :ui="{ thead: 'bg-elevated/50' }"
+      :ui="{ base: 'min-w-full table-fixed', thead: 'bg-elevated/50' }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />

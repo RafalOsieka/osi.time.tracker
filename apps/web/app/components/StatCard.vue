@@ -9,7 +9,7 @@ defineProps<{ label: string }>();
 
 <template>
   <div
-    class="grid min-w-0 content-start gap-1 rounded-lg border border-default bg-default px-5 py-4"
+    class="grid min-w-0 content-start gap-1 rounded-lg border border-default bg-default px-5 py-4 dark:bg-muted"
   >
     <p class="m-0 text-[0.8125rem]/5 font-medium text-muted">{{ label }}</p>
     <div

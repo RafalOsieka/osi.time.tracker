@@ -325,9 +325,10 @@
   "remoteSync": {
     "pageTitle": "Remote sync",
     "dayTotalLabel": "Day total",
-    "inTrackerLabel": "In tracker after export",
+    "inTrackerLabel": "In trackers after export",
     "inTrackerLoading": "Loading tracker entries…",
     "inTrackerLogs": "in tracker",
+    "inTrackersLogs": "in trackers",
     "inTrackerToSend": "to send",
     "dayTotalHint": "All completed time entries, as in the Timer",
     "dayTotalTooltip": "All completed time for this day, including sent, blocked, and untitled entries. Matches the Timer view day total.",

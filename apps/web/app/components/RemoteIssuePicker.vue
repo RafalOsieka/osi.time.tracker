@@ -259,7 +259,7 @@ onBeforeUnmount(() => {
         variant="ghost"
         square
         size="xs"
-        class="-ms-1 h-6 w-6 shrink-0 justify-center text-muted"
+        class="-ms-1 h-6 w-6 shrink-0 justify-center text-toned hover:bg-primary/10 hover:text-primary focus-visible:text-primary"
         :aria-label="t('timerView.remoteIssue.unlinked')"
         :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
         @click.stop="onTriggerClick"

@@ -88,7 +88,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     accessorKey: 'createdAt',
     header: t('projects.columnCreated'),
     cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
-    meta: { class: { th: 'w-40', td: 'tabular-nums' } },
+    meta: { class: { th: 'w-40', td: 'tabular-nums text-muted' } },
   },
   {
     id: 'actions',

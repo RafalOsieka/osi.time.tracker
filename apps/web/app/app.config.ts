@@ -5,6 +5,14 @@ export default defineAppConfig({
       neutral: 'zinc',
       warning: 'amber',
     },
+    // Cards sit one layer above the page in dark mode (layered greys), flush with it in light.
+    card: {
+      variants: {
+        variant: {
+          outline: { root: 'bg-default dark:bg-muted ring ring-default divide-y divide-default' },
+        },
+      },
+    },
     // One table style for every list: quiet 12px headers, 44px rows, primary text in cells
     // (pages emphasise their first column themselves).
     table: {

@@ -744,7 +744,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
   <section class="grid gap-5" data-testid="remote-sync-page">
     <SyncDayHeader
       :date="date"
-      :date-label="dayHeadingText"
+      :date-label="capitalizeFirst(dayHeadingText, locale)"
       :export-label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
       :export-disabled="exporting || pushableRows().length === 0"
       :export-disabled-reason="exportDisabledReason"
@@ -803,15 +803,21 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
               @click="retryFailedLogs"
             />
           </span>
-          <!-- One sans line, value before its word: "03:00:00 in tracker + 06:00:00 to send".
-               The to-send part is primary, like Export: the time not in the tracker yet. -->
-          <span v-else class="tabular-nums" data-testid="remote-sync-total-in-tracker-parts">
-            {{ formatDuration(inTrackerSummary.logsSeconds) }}
-            {{ t('remoteSync.inTrackerLogs') }}
+          <!-- One line, value before its word: "03:00:00 in trackers + 06:00:00 to send", the
+               durations in the mono face like the figure. The to-send part, the time not in the
+               trackers yet, is set apart by weight and contrast, not the accent (it would read as
+               a link). -->
+          <span v-else data-testid="remote-sync-total-in-tracker-parts">
+            <span class="font-mono tabular-nums">
+              {{ formatDuration(inTrackerSummary.logsSeconds) }}
+            </span>
+            {{ t('remoteSync.inTrackersLogs') }}
             <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
             <span class="me-1 text-dimmed">+</span>
-            <span class="font-medium text-primary">
-              {{ formatDuration(inTrackerSummary.toSendSeconds) }}
+            <span class="font-medium text-highlighted">
+              <span class="font-mono tabular-nums">
+                {{ formatDuration(inTrackerSummary.toSendSeconds) }}
+              </span>
               {{ t('remoteSync.inTrackerToSend') }}
             </span>
           </span>

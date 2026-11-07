@@ -224,7 +224,7 @@ function dayHeading(dayKey: string): string {
     day: 'numeric',
     timeZone: effective.value.timeZone,
   });
-  return heading.charAt(0).toLocaleUpperCase(locale.value) + heading.slice(1);
+  return capitalizeFirst(heading, locale.value);
 }
 
 function isGroupLive(group: { entries: TimeEntryDto[] }): boolean {

@@ -55,7 +55,7 @@ const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask')
 const TIME_SIZER = '00:00';
 
 const timeFieldUi = {
-  base: 'justify-center gap-0 px-0 py-1 text-xs text-muted tabular-nums @max-[40rem]/list:justify-start',
+  base: 'justify-end gap-0 px-0 py-1 text-xs font-medium text-default tabular-nums @max-[40rem]/list:justify-start',
   segment: 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto',
 };
 
@@ -195,17 +195,14 @@ async function onDelete() {
         :separator="t('timerView.entryRow.separator')"
         :label="t('timerView.entryRow.timesLabel')"
         :testid="`timer-entry-times-${entry.id}`"
-        class="w-full max-w-46"
+        class="w-auto"
         @commit="commitTimes"
       />
       <!--
-        Laid out like the range field above (start, separator, end, centred in the same box),
-        with "now" in a box sized by an invisible `00:00`, so starts and dashes line up.
+        Laid out like the range field above (start, separator, end, right-aligned against the
+        duration), with "now" in a box sized by an invisible `00:00`, so starts and dashes line up.
       -->
-      <div
-        v-else
-        class="flex w-full max-w-46 items-center justify-center text-xs text-muted tabular-nums @max-[40rem]/list:justify-start"
-      >
+      <div v-else class="flex items-center text-xs font-medium text-default tabular-nums">
         <TimeField
           v-model="timesModel.start"
           size="xs"

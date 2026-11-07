@@ -149,13 +149,14 @@ const displayedRemoteLogs = computed(() => {
       kind="sub"
       :data-testid="`remote-sync-entry-${entry.id}`"
     >
-      <!-- Rendered like the Timer's entry times: small tabular figures, spaced separator. -->
+      <!-- Placed like the Timer's entry times: right-aligned in the column before the duration,
+           small tabular figures with a spaced separator. -->
       <ColumnCell
         :columns="columns"
-        col="title"
-        to="activity"
+        col="activity"
         :narrow="{ col: [3, 4], row: 1 }"
-        class="text-xs tabular-nums"
+        align="end"
+        class="text-xs font-medium tabular-nums text-default"
       >
         {{ formatEntryStart(entry.startedAt) }}
         <span class="px-0.5">{{ t('timerView.entryRow.separator') }}</span>
@@ -276,10 +277,10 @@ const displayedRemoteLogs = computed(() => {
             </span>
           </UTooltip>
         </ColumnCell>
+        <!-- The log's ref sits in the Issue column, under the issue it was logged on. -->
         <ColumnCell
           :columns="columns"
-          col="title"
-          to="issue"
+          col="issue"
           :narrow="{ col: [3, 4], row: 1 }"
           class="flex min-w-0 items-baseline gap-1.5"
         >
@@ -304,29 +305,27 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A scope label in the
-             empty tracked cell right before it, and a lighter weight than the export amounts, keep
-             it from reading as time still to send. The value's accessible name carries the scope. -->
-        <ColumnCell
-          :columns="columns"
-          col="tracked"
-          :narrow="{ col: [4, 5], row: 2 }"
-          align="end"
-          class="truncate text-xs text-dimmed"
-          aria-hidden="true"
-          :data-testid="`remote-sync-remote-log-scope-${log.remoteLogId}`"
-        >
-          {{ t('remoteSync.inTrackerLogs') }}
-        </ColumnCell>
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A scope label right
+             above the value, and the muted body weight, keep it from reading as time still to
+             send. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="font-mono tabular-nums text-muted"
+          class="grid py-0.5"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
         >
-          {{ formatDuration(log.durationSeconds) }}
+          <span
+            class="truncate text-[11px]/3 text-dimmed"
+            aria-hidden="true"
+            :data-testid="`remote-sync-remote-log-scope-${log.remoteLogId}`"
+          >
+            {{ t('remoteSync.inTrackerLogs') }}
+          </span>
+          <span class="font-mono font-normal tabular-nums text-muted">
+            {{ formatDuration(log.durationSeconds) }}
+          </span>
         </ColumnCell>
         <ColumnCell :columns="columns" col="actions" :narrow="{ col: [5, 6], row: 1 }">
           <UTooltip

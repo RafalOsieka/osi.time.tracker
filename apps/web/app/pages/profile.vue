@@ -87,7 +87,7 @@ function onTimezoneChange(value: string | undefined) {
   <div data-testid="page-profile" class="grid gap-8">
     <PageHeader :title="t('profile.title')" :description="t('profile.description')" />
 
-    <div class="grid max-w-3xl gap-6">
+    <div class="grid max-w-[40rem] gap-6">
       <UCard
         as="section"
         aria-labelledby="profile-account-heading"

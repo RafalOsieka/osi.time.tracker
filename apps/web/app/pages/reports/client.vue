@@ -292,7 +292,9 @@ async function onExport() {
         @prev="goMonth(-1)"
         @next="goMonth(1)"
       >
-        <PeriodLabel data-testid="client-report-month-label">{{ monthLabel }}</PeriodLabel>
+        <PeriodLabel data-testid="client-report-month-label">
+          {{ capitalizeFirst(monthLabel, locale) }}
+        </PeriodLabel>
       </PeriodStepper>
     </PageHeader>
 

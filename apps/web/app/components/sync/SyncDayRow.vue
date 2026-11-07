@@ -122,10 +122,13 @@ const titleDisplayClass = computed(() =>
     ? 'font-medium text-highlighted rounded-md transition-colors hover:bg-elevated hover:ring hover:ring-inset hover:ring-accented'
     : 'font-medium text-default',
 );
-/** To send is the value this page is about: strong on exportable rows, receding at zero. */
+/**
+ * To send is a row value (500, default text) next to tracked (400, muted); it is never
+ * highlighted, since 600 and the strongest text belong to totals. Zero recedes.
+ */
 const toSendClass = computed(() => {
-  if (toSendLabel === formatDuration(0)) return 'text-dimmed';
-  return showEditors ? 'text-highlighted' : 'text-muted';
+  if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
+  return showEditors ? 'font-medium text-default' : 'font-normal text-muted';
 });
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
@@ -178,10 +181,13 @@ function onEditToSend() {
 <template>
   <ColumnRow :data-testid="`remote-sync-row-${row.taskId}`" :joined="expanded || hasGuidance">
     <ColumnCell :columns="columns" col="expand" :narrow="{ col: [1, 2], row: 1 }">
+      <!-- The Timer's toggle: a plain ghost chevron. No hover/active tile, so a row never looks
+           selected while the pointer rests on it; the glyph darkens instead. -->
       <UButton
         :icon="expanded ? 'i-lucide-chevron-down' : 'i-lucide-chevron-right'"
         color="neutral"
         variant="ghost"
+        square
         size="xs"
         :aria-label="t(expanded ? 'remoteSync.collapseRow' : 'remoteSync.expandRow')"
         :aria-expanded="expanded"
@@ -390,7 +396,7 @@ function onEditToSend() {
     <ColumnCell :columns="columns" col="toSend" align="end" :narrow="{ col: [4, 5], row: 3 }">
       <UTooltip :text="rowDeltaTooltip" :disabled="editingToSend" :content="{ side: 'top' }">
         <div
-          class="inline-flex items-baseline gap-1 font-mono text-sm font-medium tabular-nums"
+          class="inline-flex items-baseline gap-1 font-mono text-sm tabular-nums"
           :class="toSendClass"
           :data-testid="`remote-sync-row-duration-${row.taskId}`"
         >

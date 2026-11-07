@@ -3,7 +3,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="grid min-h-dvh place-items-center bg-(--app-surface-sidebar) p-6">
+  <div class="grid min-h-dvh place-items-center bg-(--app-surface-sidebar) p-6 dark:bg-default">
     <section class="grid w-full max-w-sm gap-8">
       <div class="grid justify-items-center gap-1.5 text-center">
         <h1
