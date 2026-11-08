@@ -75,6 +75,9 @@ export default defineNuxtConfig({
       // Renamed from the default `nuxt-session` so sessions sealed before the
       // display name and timezone became required no longer authenticate.
       name: 'osi-session',
+      // Empty on purpose (the module's own default): the secret arrives at
+      // runtime via NUXT_SESSION_PASSWORD and is never baked into the build.
+      password: '',
       // Fixed lifetime (no sliding expiry for the MVP): 1 week.
       maxAge: 60 * 60 * 24 * 7,
       cookie: {
