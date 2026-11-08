@@ -34,11 +34,12 @@ onMounted(() => {
       v-model:collapsed="collapsed"
       v-model:open="open"
       collapsible
-      :default-size="16"
+      :default-size="17"
       :min-size="12"
       :max-size="20"
       :collapsed-size="4"
       :toggle="sidebarToggle"
+      :ui="{ root: 'bg-(--app-surface-sidebar)' }"
       data-testid="app-sidebar"
     >
       <template #header="{ collapsed: isCollapsed }">
@@ -69,7 +70,10 @@ onMounted(() => {
       sticky list headers pin flush under the top bar instead of inside that padding,
       where scrolled rows would show through above them.
     -->
-    <UDashboardPanel data-testid="app-content" :ui="{ body: 'pt-0 sm:pt-0' }">
+    <UDashboardPanel
+      data-testid="app-content"
+      :ui="{ root: 'bg-(--app-canvas)', body: 'pt-0 sm:pt-0' }"
+    >
       <template #header>
         <!--
           Center is `hidden lg:flex` in Nuxt UI by default; override so the timer stays

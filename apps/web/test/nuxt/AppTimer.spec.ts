@@ -118,7 +118,7 @@ const InputMenuStub = {
 };
 const ButtonStub = {
   template:
-    '<button :data-testid="$attrs[\'data-testid\'] ?? \'timer-toggle-button\'" :aria-label="$attrs[\'aria-label\']" :aria-pressed="ariaPressed" :disabled="disabled" :data-icon="icon" :data-ui-leading="ui?.leadingIcon" :class="$attrs.class" @click="$emit(\'click\')">{{ label }}</button>',
+    '<button :data-testid="$attrs[\'data-testid\'] ?? \'timer-toggle-button\'" :aria-label="$attrs[\'aria-label\']" :aria-pressed="ariaPressed" :disabled="disabled" :data-icon="icon" :data-ui-leading="ui?.leadingIcon" :class="$attrs.class" @click="$emit(\'click\')"><slot name="leading" />{{ label }}</button>',
   props: [
     'label',
     'square',
@@ -244,9 +244,10 @@ describe('AppTimer', () => {
     expect(toggle.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
       'timer.stop',
     );
-    expect(toggle.attributes('data-icon')).toBe('i-lucide-square');
+    // Running shows the filled stop glyph (with its pulse) instead of an icon.
+    expect(toggle.attributes('data-icon')).toBeUndefined();
     expect(toggle.attributes('aria-pressed')).toBe('true');
-    expect(toggle.attributes('data-ui-leading') ?? '').toMatch(/timer-stop-icon/);
+    expect(toggle.get('[data-testid="stop-glyph"]').attributes('class')).toMatch(/timer-stop-icon/);
     expect(wrapper.find('[data-testid="timer-elapsed"]').text()).toBe('00:01:05');
   });
 

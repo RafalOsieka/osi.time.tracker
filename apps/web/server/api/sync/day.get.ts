@@ -240,7 +240,14 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
     };
   });
 
-  dayRows.sort((a, b) => b.totalSeconds - a.totalSeconds);
+  // Longest first; ties by task name under one fixed collation, then id, so the order never
+  // depends on query order or the server's locale.
+  dayRows.sort(
+    (a, b) =>
+      b.totalSeconds - a.totalSeconds ||
+      a.taskName.localeCompare(b.taskName, 'en') ||
+      a.taskId.localeCompare(b.taskId, 'en'),
+  );
 
   return {
     date: parsedQuery.date,

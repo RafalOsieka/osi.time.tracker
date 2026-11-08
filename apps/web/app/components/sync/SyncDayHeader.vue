@@ -2,11 +2,19 @@
 import { Temporal } from 'temporal-polyfill';
 import { CalendarDate, parseDate } from '@internationalized/date';
 
-const { date, dateLabel, exportLabel, exportDisabled } = defineProps<{
+const {
+  date,
+  dateLabel,
+  exportLabel,
+  exportDisabled,
+  exportDisabledReason = null,
+} = defineProps<{
   date: string;
   dateLabel: string;
   exportLabel: string;
   exportDisabled: boolean;
+  /** Why Export is disabled, shown in its tooltip. */
+  exportDisabledReason?: string | null;
 }>();
 
 const emit = defineEmits<{
@@ -33,27 +41,25 @@ function onCalendarSelect(value: CalendarDate | null) {
 </script>
 
 <template>
-  <div class="flex flex-wrap items-center justify-between gap-4" data-testid="remote-sync-day-nav">
-    <h1 class="text-xl font-semibold" data-testid="remote-sync-heading">
-      {{ t('remoteSync.pageTitle') }}
-    </h1>
-    <div class="flex flex-wrap items-center gap-2">
-      <UTooltip :text="t('remoteSync.prevDay')" :content="{ side: 'top' }">
-        <UButton
-          icon="i-lucide-chevron-left"
-          color="neutral"
-          variant="ghost"
-          square
-          :aria-label="t('remoteSync.prevDay')"
-          data-testid="remote-sync-prev-day"
-          @click="shift(-1)"
-        />
-      </UTooltip>
+  <PageHeader
+    :title="t('remoteSync.pageTitle')"
+    heading-testid="remote-sync-heading"
+    data-testid="remote-sync-day-nav"
+  >
+    <PeriodStepper
+      :prev-label="t('remoteSync.prevDay')"
+      :next-label="t('remoteSync.nextDay')"
+      prev-testid="remote-sync-prev-day"
+      next-testid="remote-sync-next-day"
+      @prev="shift(-1)"
+      @next="shift(1)"
+    >
       <UPopover v-model:open="calendarOpen">
         <UButton
           color="neutral"
-          variant="ghost"
-          class="min-w-36 justify-center text-center font-medium"
+          variant="outline"
+          icon="i-lucide-calendar"
+          class="min-w-44 justify-center font-medium text-highlighted"
           :aria-label="t('remoteSync.calendarLabel')"
           data-testid="remote-sync-date-label"
         >
@@ -72,23 +78,22 @@ function onCalendarSelect(value: CalendarDate | null) {
           </div>
         </template>
       </UPopover>
-      <UTooltip :text="t('remoteSync.nextDay')" :content="{ side: 'top' }">
+    </PeriodStepper>
+    <!-- Disabled, Export turns neutral instead of a faded primary fill, and its focusable host
+         carries the reason in a tooltip. -->
+    <UTooltip :text="exportDisabledReason ?? ''" :disabled="!exportDisabledReason">
+      <span :tabindex="exportDisabledReason ? 0 : undefined" class="inline-flex rounded-md">
         <UButton
-          icon="i-lucide-chevron-right"
-          color="neutral"
-          variant="ghost"
-          square
-          :aria-label="t('remoteSync.nextDay')"
-          data-testid="remote-sync-next-day"
-          @click="shift(1)"
+          icon="i-lucide-upload"
+          :color="exportDisabled ? 'neutral' : 'primary'"
+          :variant="exportDisabled ? 'subtle' : 'solid'"
+          :label="exportLabel"
+          :disabled="exportDisabled"
+          class="disabled:opacity-100 disabled:text-dimmed"
+          data-testid="remote-sync-export-button"
+          @click="emit('export')"
         />
-      </UTooltip>
-      <UButton
-        :label="exportLabel"
-        :disabled="exportDisabled"
-        data-testid="remote-sync-export-button"
-        @click="emit('export')"
-      />
-    </div>
-  </div>
+      </span>
+    </UTooltip>
+  </PageHeader>
 </template>

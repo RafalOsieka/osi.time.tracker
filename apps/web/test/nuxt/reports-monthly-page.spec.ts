@@ -73,12 +73,14 @@ const emptyMonth: MonthlyReportDto = {
   exports: [],
 };
 
-// The page sets the table test id; the stub only exposes the loading prop.
+// The page sets the table test id; the stub only exposes the loading prop. The month
+// stepper's tooltips need the `UApp` provider, so they only pass their trigger through.
 const stubs = {
   UTable: {
     props: ['loading'],
     template: '<div :data-loading="loading" />',
   },
+  UTooltip: { template: '<span><slot /></span>' },
 };
 
 let replace: MockInstance<Router['replace']>;
@@ -201,6 +203,20 @@ describe('monthly report page remote hours', () => {
     expect(wrapper.get('[data-testid="reports-tracker-rm-2026-09-01-direct"]').text()).not.toBe(
       'reports.monthly.trackerError',
     );
+  });
+
+  it('sets a flagged duration semibold and a plain one at regular weight (REQ-472)', async () => {
+    harness.secrets = { [openProject.id]: 'op-key', [redmine.id]: 'rm-key' };
+    adapterReturning({ [redmine.id]: [remoteLog('2026-09-01', 1800)] });
+    const wrapper = await mountLoadedMonth();
+
+    const flagged = wrapper.get('[data-testid="reports-warning-2026-09-01-direct-rm"]');
+    expect(flagged.classes()).toEqual(expect.arrayContaining(['font-semibold', 'text-warning']));
+    const plainCell = wrapper
+      .get('[data-testid="reports-tracker-rm-2026-09-01-total"]')
+      .element.closest('td');
+    expect(plainCell?.classList.contains('font-normal')).toBe(true);
+    expect(plainCell?.classList.contains('font-semibold')).toBe(false);
   });
 
   it('reports the remote summary as failed when no tracker could be fetched', async () => {

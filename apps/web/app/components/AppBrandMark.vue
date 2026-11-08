@@ -1,5 +1,9 @@
 <script setup lang="ts">
-const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
+const { collapsed = false, size = 'size-6' } = defineProps<{
+  collapsed?: boolean;
+  /** Tailwind size class of the glyph. */
+  size?: 'size-6' | 'size-10';
+}>();
 
 const { t } = useI18n();
 </script>
@@ -13,7 +17,7 @@ const { t } = useI18n();
     xmlns="http://www.w3.org/2000/svg"
     viewBox="0 0 24 24"
     fill="currentColor"
-    class="size-6 shrink-0 text-primary"
+    :class="[size, 'shrink-0 text-primary']"
     data-testid="app-brand-mark"
     :aria-hidden="collapsed ? undefined : true"
     :aria-label="collapsed ? t('layout.title') : undefined"

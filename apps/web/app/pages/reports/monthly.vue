@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { TableColumn } from '@nuxt/ui';
+import type { TableColumn, TableProps } from '@nuxt/ui';
 import type { MonthlyReportDto } from '~~/shared/types/report';
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { AttentionReason } from '~~/shared/utils/monthly-report-attention';
@@ -185,14 +185,32 @@ const remoteSummaryText = computed(() => {
   return formatReportDuration(summary.seconds);
 });
 
-function formatDay(date: string, isTotal: boolean): string {
-  if (isTotal) return t('reports.monthly.totals');
+// Day keys are calendar dates, so they format in UTC to stay on the same day.
+function formatDay(date: string, options: Intl.DateTimeFormatOptions): string {
   return new Date(`${date}T00:00:00Z`).toLocaleDateString(locale.value, {
-    day: 'numeric',
-    month: 'short',
+    ...options,
     timeZone: 'UTC',
   });
 }
+
+/**
+ * Duration cells share the report's numeric face. Plain values sit at 400 so a flagged value
+ * (600, warning) differs by weight as well as colour (REQ-472); the totals row is 600.
+ */
+function durationTd(isTotal: boolean, extra = ''): string {
+  const weight = isTotal ? 'font-semibold text-highlighted' : 'font-normal';
+  return `text-end font-mono tabular-nums ${weight} ${extra}`;
+}
+
+/** Each tracker group opens with the same quiet divider, in both header rows and the body. */
+const GROUP_DIVIDER = 'border-s border-default';
+
+// The totals row closes the table with a heavier rule and a faint band.
+const tableMeta: TableProps<TimesheetRow>['meta'] = {
+  class: {
+    tr: (row) => (row.original.isTotal ? 'border-t-2 border-accented bg-elevated/50' : ''),
+  },
+};
 
 function flaggedDuration(input: {
   text: string;
@@ -220,7 +238,7 @@ function flaggedDuration(input: {
   return h(
     'span',
     {
-      class: input.dimZero && input.zero ? 'text-dimmed opacity-40' : undefined,
+      class: input.dimZero && input.zero ? 'font-normal text-dimmed' : undefined,
       'data-testid': input.testId,
     },
     input.text,
@@ -281,16 +299,42 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
   const dateCol: TableColumn<TimesheetRow> = {
     accessorKey: 'date',
     header: t('reports.monthly.columnDate'),
-    cell: ({ row }) =>
-      h(
-        'span',
-        { 'data-testid': `reports-day-${row.original.date}` },
-        formatDay(row.original.date, row.original.isTotal),
-      ),
+    meta: {
+      class: {
+        th: 'w-36 align-bottom',
+        td: ({ row }) =>
+          `text-highlighted ${row.original.isTotal ? 'font-semibold' : 'font-medium'}`,
+      },
+    },
+    cell: ({ row }) => {
+      const testId = `reports-day-${row.original.date}`;
+      if (row.original.isTotal) {
+        return h('span', { 'data-testid': testId }, t('reports.monthly.totals'));
+      }
+      // A muted weekday in a fixed slot after the date, so a month scans by week.
+      return h('span', { class: 'inline-flex items-baseline gap-2' }, [
+        h(
+          'span',
+          { class: 'w-12', 'data-testid': testId },
+          formatDay(row.original.date, { day: 'numeric', month: 'short' }),
+        ),
+        h(
+          'span',
+          { class: 'text-xs font-normal text-muted' },
+          formatDay(row.original.date, { weekday: 'short' }),
+        ),
+      ]);
+    },
   };
   const localCol: TableColumn<TimesheetRow> = {
     accessorKey: 'localSeconds',
     header: t('reports.monthly.columnLocal'),
+    meta: {
+      class: {
+        th: 'w-24 text-end align-bottom',
+        td: ({ row }) => durationTd(row.original.isTotal),
+      },
+    },
     cell: ({ row }) => {
       const text = formatReportDuration(row.original.localSeconds);
       const testId = `reports-local-${row.original.date}`;
@@ -319,7 +363,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     enableSorting: false,
     meta: {
       class: {
-        th: 'text-center border-s border-b border-default',
+        // Centred over its three columns; the header band itself spans the whole table. The
+        // table is fixed-layout (Date and Local fixed, every Tracker column an equal share of
+        // the rest), so numbers hold their place whatever the translated headings.
+        th: `py-2 text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
     },
     columns: [
@@ -329,8 +376,8 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         enableSorting: false,
         meta: {
           class: {
-            th: 'border-s border-default',
-            td: 'border-s border-default',
+            th: `text-end ${GROUP_DIVIDER}`,
+            td: ({ row }) => durationTd(row.original.isTotal, GROUP_DIVIDER),
           },
         },
         cell: ({ row }) =>
@@ -340,6 +387,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         id: `${tracker.id}-direct`,
         header: t('reports.monthly.columnDirect'),
         enableSorting: false,
+        meta: { class: { th: 'text-end', td: ({ row }) => durationTd(row.original.isTotal) } },
         cell: ({ row }) =>
           durationCell(row.original, row.original.trackerCells[tracker.id], 'direct', tracker.id),
       },
@@ -347,6 +395,12 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         id: `${tracker.id}-total`,
         header: t('reports.monthly.columnTotal'),
         enableSorting: false,
+        meta: {
+          class: {
+            th: 'text-end',
+            td: ({ row }) => durationTd(row.original.isTotal),
+          },
+        },
         cell: ({ row }) =>
           durationCell(row.original, row.original.trackerCells[tracker.id], 'total', tracker.id),
       },
@@ -357,100 +411,110 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
 </script>
 
 <template>
-  <div data-testid="reports-monthly" class="space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-4">
-      <h1 class="text-xl font-semibold">{{ t('reports.monthly.pageTitle') }}</h1>
-      <div class="flex items-center gap-2">
-        <UButton
-          icon="i-lucide-chevron-left"
-          color="neutral"
-          variant="ghost"
-          :aria-label="t('reports.monthly.previousMonth')"
-          data-testid="reports-month-prev"
-          @click="goMonth(-1)"
-        />
-        <span data-testid="reports-month-label" class="min-w-40 text-center font-medium">
-          {{ monthLabel }}
-        </span>
-        <UButton
-          icon="i-lucide-chevron-right"
-          color="neutral"
-          variant="ghost"
-          :aria-label="t('reports.monthly.nextMonth')"
-          data-testid="reports-month-next"
-          @click="goMonth(1)"
-        />
-      </div>
-    </div>
+  <div data-testid="reports-monthly" class="space-y-6">
+    <PageHeader :title="t('reports.monthly.pageTitle')">
+      <PeriodStepper
+        :prev-label="t('reports.monthly.previousMonth')"
+        :next-label="t('reports.monthly.nextMonth')"
+        prev-testid="reports-month-prev"
+        next-testid="reports-month-next"
+        @prev="goMonth(-1)"
+        @next="goMonth(1)"
+      >
+        <PeriodLabel data-testid="reports-month-label">
+          {{ capitalizeFirst(monthLabel, locale) }}
+        </PeriodLabel>
+      </PeriodStepper>
+    </PageHeader>
 
     <p v-if="reportErrorKey" data-testid="reports-monthly-error" class="text-error" role="alert">
       {{ t(reportErrorKey) }}
     </p>
 
+    <!-- Month totals: the shared stat cards, side by side across the content width. -->
     <div
       v-if="showSummaries"
-      class="flex flex-wrap items-center gap-2"
+      class="grid grid-cols-2 gap-4"
       data-testid="reports-monthly-summaries"
       aria-live="polite"
     >
-      <UBadge color="neutral" variant="subtle" data-testid="reports-summary-local">
-        {{ t('reports.monthly.summaryLocal') }}:
+      <StatCard :label="t('reports.monthly.summaryLocal')" icon="i-lucide-hard-drive">
         <span
-          class="inline-block min-w-[4ch] tabular-nums"
           :class="localSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
+          data-testid="reports-summary-local"
         >
           {{ localSummaryText }}
         </span>
-      </UBadge>
-      <UBadge
-        v-if="remoteHoursSummary.kind === 'ok' || remoteHoursSummary.kind === 'pending'"
-        color="neutral"
-        variant="subtle"
-        data-testid="reports-summary-remote"
-      >
-        {{ t('reports.monthly.summaryRemote') }}:
+        <template #caption>{{ t('reports.monthly.summaryLocalCaption') }}</template>
+      </StatCard>
+
+      <StatCard :label="t('reports.monthly.summaryRemote')" icon="i-lucide-cable">
         <span
-          class="inline-block min-w-[4ch] tabular-nums"
+          v-if="remoteHoursSummary.kind === 'ok' || remoteHoursSummary.kind === 'pending'"
           :class="remoteSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
+          data-testid="reports-summary-remote"
         >
           {{ remoteSummaryText }}
         </span>
-      </UBadge>
-      <UTooltip
-        v-else-if="remoteHoursSummary.kind === 'partial'"
-        :text="t('reports.monthly.summaryRemotePartial')"
-        :content="{ side: 'bottom' }"
-      >
-        <span tabindex="0" class="inline-flex">
-          <UBadge color="warning" variant="subtle" data-testid="reports-summary-remote">
-            {{ t('reports.monthly.summaryRemote') }}:
-            <span class="inline-block min-w-[4ch] tabular-nums">{{ remoteSummaryText }}</span>
-          </UBadge>
+        <!-- An incomplete total: warning colour, weight, an icon and a tooltip, never colour alone. -->
+        <UTooltip
+          v-else-if="remoteHoursSummary.kind === 'partial'"
+          :text="t('reports.monthly.summaryRemotePartial')"
+          :content="{ side: 'bottom' }"
+        >
+          <span
+            tabindex="0"
+            class="inline-flex items-center gap-2 rounded-sm font-semibold text-warning focus-visible:outline-2 focus-visible:outline-primary"
+            data-testid="reports-summary-remote"
+          >
+            {{ remoteSummaryText }}
+            <UIcon name="i-lucide-triangle-alert" class="size-5" aria-hidden="true" />
+          </span>
+        </UTooltip>
+        <span
+          v-else
+          class="inline-flex items-center gap-2 font-sans text-base font-medium text-error"
+          data-testid="reports-summary-remote"
+          :aria-label="t('reports.monthly.summaryRemoteFailed')"
+        >
+          <UIcon name="i-lucide-circle-alert" class="size-5 shrink-0" aria-hidden="true" />
+          {{ remoteSummaryText }}
         </span>
-      </UTooltip>
-      <UBadge
-        v-else
-        color="error"
-        variant="subtle"
-        data-testid="reports-summary-remote"
-        :aria-label="t('reports.monthly.summaryRemoteFailed')"
-      >
-        {{ t('reports.monthly.summaryRemote') }}:
-        {{ remoteSummaryText }}
-      </UBadge>
+        <template #caption>
+          <span v-if="remoteHoursSummary.kind === 'partial'" class="text-warning">
+            {{ t('reports.monthly.summaryRemotePartialCaption') }}
+          </span>
+          <template v-else>{{ t('reports.monthly.summaryRemoteCaption') }}</template>
+        </template>
+      </StatCard>
     </div>
 
-    <p v-if="!reportErrorKey && showEmpty" data-testid="reports-monthly-empty">
+    <p v-if="!reportErrorKey && showEmpty" class="text-muted" data-testid="reports-monthly-empty">
       {{ t('reports.monthly.empty') }}
     </p>
 
+    <!-- The shared 44px rows; one faint band runs under both header rows, edge to edge. -->
     <UTable
       v-if="!reportErrorKey && !showEmpty"
       :data="rows"
       :columns="columns"
+      :meta="tableMeta"
       :loading="reportPending"
+      :ui="{
+        root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
+        base: 'w-full table-fixed',
+        thead: 'bg-elevated/50',
+      }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
+    <p
+      v-if="!reportErrorKey && !showEmpty"
+      class="m-0 -mt-1 flex items-center gap-1.5 px-4 text-xs text-muted"
+      data-testid="reports-monthly-legend"
+    >
+      <UIcon name="i-lucide-info" class="size-3.5 shrink-0 text-dimmed" aria-hidden="true" />
+      {{ t('reports.monthly.legend') }}
+    </p>
   </div>
 </template>

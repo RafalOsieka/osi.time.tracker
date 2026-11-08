@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { formatDate } from '../../app/utils/format-date';
 
 describe('formatDate', () => {
-  it('formats an ISO string according to the given locale', () => {
-    const iso = '2024-03-15T00:00:00.000Z';
-    expect(formatDate(iso, 'en-US')).toBe(new Date(iso).toLocaleDateString('en-US'));
-    expect(formatDate(iso, 'pl-PL')).toBe(new Date(iso).toLocaleDateString('pl-PL'));
+  it('formats an ISO string as a medium date in the given locale and time zone', () => {
+    const iso = '2024-03-15T12:00:00.000Z';
+    expect(formatDate(iso, 'en-US', 'UTC')).toBe('Mar 15, 2024');
+    expect(formatDate(iso, 'pl-PL', 'UTC')).toBe('15 mar 2024');
   });
 
   it('returns an empty string for empty input', () => {

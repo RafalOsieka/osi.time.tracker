@@ -70,16 +70,19 @@ const title = computed(() =>
             class="flex items-center justify-between gap-3 list-none"
             :data-testid="`remote-sync-export-row-${item.taskId}`"
           >
-            <span class="min-w-0 text-sm">{{ item.comment }}</span>
-            <span class="shrink-0 text-sm tabular-nums">
+            <span class="min-w-0 truncate text-sm text-default">{{ item.comment }}</span>
+            <span class="shrink-0 font-mono text-sm font-medium tabular-nums text-muted">
               {{ formatDuration(item.toSendSeconds) }}
             </span>
           </li>
         </ul>
 
-        <div class="flex justify-between text-sm" data-testid="remote-sync-export-dialog-to-send">
+        <div
+          class="flex justify-between border-t border-default pt-3 text-sm font-medium text-highlighted"
+          data-testid="remote-sync-export-dialog-to-send"
+        >
           <span>{{ t('remoteSync.toSendLabel') }}</span>
-          <span>{{ formatDuration(toSendSeconds) }}</span>
+          <span class="font-mono tabular-nums">{{ formatDuration(toSendSeconds) }}</span>
         </div>
       </div>
     </template>

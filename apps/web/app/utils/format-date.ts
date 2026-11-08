@@ -1,7 +1,7 @@
 /**
- * Formats an ISO timestamp string for display in a table, honoring the
- * active i18n locale. Returns an empty string for empty or unparsable input
- * instead of rendering "Invalid Date".
+ * Formats an ISO timestamp string as a medium date (e.g. "Mar 15, 2024") for display in a
+ * table, honoring the active i18n locale. Returns an empty string for empty or unparsable
+ * input instead of rendering "Invalid Date".
  */
 export function formatDate(
   iso: string,
@@ -11,5 +11,5 @@ export function formatDate(
   if (!iso) return '';
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(locale, { timeZone });
+  return date.toLocaleDateString(locale, { dateStyle: 'medium', timeZone });
 }

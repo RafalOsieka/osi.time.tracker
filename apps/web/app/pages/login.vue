@@ -41,21 +41,29 @@ const errorText = computed(
 </script>
 
 <template>
-  <UCard data-testid="login-card">
+  <UCard
+    data-testid="login-card"
+    :ui="{ root: 'shadow-sm dark:bg-muted dark:shadow-none', body: 'p-6 sm:p-7' }"
+  >
     <UForm
       :schema="loginSchema"
       :state="state"
-      class="grid gap-3"
+      class="grid gap-5"
       data-testid="login-form"
       @submit="onSubmit"
       @error="onError"
     >
-      <UFormField :label="t('auth.emailLabel')" name="email" :ui="{ error: 'sr-only' }">
+      <UFormField
+        :label="t('auth.emailLabel')"
+        name="email"
+        :ui="{ error: 'sr-only', container: 'mt-2' }"
+      >
         <UInput
           id="email"
           v-model="state.email"
           type="email"
           autocomplete="email"
+          size="lg"
           class="w-full"
           data-testid="email"
           :aria-invalid="showError || undefined"
@@ -63,12 +71,17 @@ const errorText = computed(
         />
       </UFormField>
 
-      <UFormField :label="t('auth.passwordLabel')" name="password" :ui="{ error: 'sr-only' }">
+      <UFormField
+        :label="t('auth.passwordLabel')"
+        name="password"
+        :ui="{ error: 'sr-only', container: 'mt-2' }"
+      >
         <UInput
           id="password"
           v-model="state.password"
           type="password"
           autocomplete="current-password"
+          size="lg"
           class="w-full"
           data-testid="password"
           :aria-invalid="showError || undefined"
@@ -79,6 +92,8 @@ const errorText = computed(
       <UButton
         type="submit"
         block
+        size="lg"
+        class="mt-1"
         data-testid="login-button"
         :label="t('auth.loginButton')"
         :loading="pending"

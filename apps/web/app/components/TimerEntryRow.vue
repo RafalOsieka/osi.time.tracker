@@ -51,8 +51,11 @@ watch(
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(entry, now)));
 const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask'));
 // Tight segments like a plain "08:00 – 08:30" label; each keeps a small hover/focus pad.
+/** Invisible text that gives the running entry's "now" the width of an HH:mm end time. */
+const TIME_SIZER = '00:00';
+
 const timeFieldUi = {
-  base: 'justify-center gap-0 px-0 py-1 text-xs text-muted tabular-nums @max-[40rem]/list:justify-start',
+  base: 'justify-end gap-0 px-0 py-1 text-xs font-medium text-default tabular-nums dark:font-normal @max-[40rem]/list:justify-start',
   segment: 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto',
 };
 
@@ -181,21 +184,31 @@ async function onDelete() {
       :narrow="{ col: [3, 5], row: 1 }"
       class="flex min-w-0 items-center justify-end gap-1.5 @max-[40rem]/list:justify-start"
     >
-      <TimeField
-        v-if="entry.stoppedAt"
-        v-model="timesModel"
-        range
-        clamp-seconds
-        size="xs"
-        variant="none"
-        :ui="timeFieldUi"
-        :separator="t('timerView.entryRow.separator')"
-        :label="t('timerView.entryRow.timesLabel')"
-        :testid="`timer-entry-times-${entry.id}`"
-        class="w-full max-w-46"
-        @commit="commitTimes"
-      />
-      <template v-else>
+      <!--
+        Both kinds of entry put their times in the same fixed-width slot, right-aligned against
+        the duration (REQ-459): a stopped entry's range field, or a running entry's start field
+        with a separator and "now" in a box sized by an invisible `00:00`, so starts, dashes
+        and ends line up.
+      -->
+      <div v-if="entry.stoppedAt" class="flex w-28 shrink-0 justify-end">
+        <TimeField
+          v-model="timesModel"
+          range
+          clamp-seconds
+          size="xs"
+          variant="none"
+          :ui="timeFieldUi"
+          :separator="t('timerView.entryRow.separator')"
+          :label="t('timerView.entryRow.timesLabel')"
+          :testid="`timer-entry-times-${entry.id}`"
+          class="w-auto"
+          @commit="commitTimes"
+        />
+      </div>
+      <div
+        v-else
+        class="flex w-28 shrink-0 items-center justify-end text-xs font-medium text-default tabular-nums dark:font-normal"
+      >
         <TimeField
           v-model="timesModel.start"
           size="xs"
@@ -203,14 +216,15 @@ async function onDelete() {
           :ui="timeFieldUi"
           :label="t('timerView.entryRow.startLabel')"
           :testid="`timer-entry-times-${entry.id}`"
-          class="min-w-0 max-w-24 flex-1"
+          class="w-auto shrink-0"
           @commit="commitTimes"
         />
-        <span aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
-        <span class="min-w-0 max-w-24 flex-1 text-center">
-          {{ t('timerView.entryRow.nowLabel') }}
+        <span class="px-1.5" aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
+        <span class="relative inline-block">
+          <span class="invisible" aria-hidden="true">{{ TIME_SIZER }}</span>
+          <span class="absolute inset-0 text-center">{{ t('timerView.entryRow.nowLabel') }}</span>
         </span>
-      </template>
+      </div>
     </ColumnCell>
 
     <ColumnCell
@@ -218,7 +232,8 @@ async function onDelete() {
       col="duration"
       align="end"
       :narrow="{ col: [5, 6], row: 1 }"
-      class="font-mono text-sm font-medium tabular-nums"
+      class="font-mono text-sm tabular-nums"
+      :class="entry.stoppedAt ? 'text-muted' : 'font-medium text-primary'"
     >
       {{ durationLabel }}
     </ColumnCell>
@@ -227,10 +242,11 @@ async function onDelete() {
       <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
         <UButton
           icon="i-lucide-trash-2"
-          variant="ghost"
+          variant="soft"
           square
           size="xs"
           color="error"
+          class="size-6 justify-center"
           :aria-label="t('timerView.entryRow.deleteLabel')"
           :loading="deleting"
           :data-testid="`timer-entry-delete-${entry.id}`"

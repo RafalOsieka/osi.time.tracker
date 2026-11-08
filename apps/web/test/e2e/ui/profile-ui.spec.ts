@@ -109,7 +109,8 @@ describeProfileUI('profile UI flow', async () => {
     await openProfileFromMenu(page);
 
     await page.click('#profile-language');
-    await page.getByRole('option', { name: 'Polish' }).click();
+    // Languages are listed by their own names.
+    await page.getByRole('option', { name: 'Polski' }).click();
     await page.waitForFunction(pageIncludesText, 'Nazwa wyświetlana');
     expect(await page.locator('html').getAttribute('lang')).toMatch(/^pl/);
     await page.close();

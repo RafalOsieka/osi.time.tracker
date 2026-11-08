@@ -15,14 +15,16 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
 </script>
 
 <template>
-  <div class="flex shrink-0 justify-end gap-0.5">
+  <div class="flex shrink-0 justify-end gap-1.5">
     <UTooltip v-if="extraIcon" :text="extraLabel" :content="{ side: 'top' }">
       <UButton
         :icon="extraIcon"
-        color="neutral"
-        variant="ghost"
-        size="sm"
+        color="primary"
+        variant="soft"
+        size="md"
         square
+        class="size-8 justify-center"
+        :ui="{ leadingIcon: 'size-4' }"
         :disabled="extraDisabled"
         :aria-label="extraLabel"
         :data-testid="extraTestid"
@@ -32,10 +34,12 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
     <UTooltip :text="editLabel" :content="{ side: 'top' }">
       <UButton
         icon="i-lucide-pencil"
-        color="neutral"
-        variant="ghost"
-        size="sm"
+        color="primary"
+        variant="soft"
+        size="md"
         square
+        class="size-8 justify-center"
+        :ui="{ leadingIcon: 'size-4' }"
         :aria-label="editLabel"
         :data-testid="editTestid"
         @click="emit('edit')"
@@ -45,9 +49,11 @@ const emit = defineEmits<{ edit: []; delete: []; extra: [] }>();
       <UButton
         icon="i-lucide-trash-2"
         color="error"
-        variant="ghost"
-        size="sm"
+        variant="soft"
+        size="md"
         square
+        class="size-8 justify-center"
+        :ui="{ leadingIcon: 'size-4' }"
         :aria-label="deleteLabel"
         :data-testid="deleteTestid"
         @click="emit('delete')"

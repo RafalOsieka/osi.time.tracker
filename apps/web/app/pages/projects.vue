@@ -55,22 +55,40 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
   {
     accessorKey: 'name',
     header: t('projects.columnName'),
+    cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
+    meta: { class: { th: 'w-[34%]', td: 'truncate' } },
   },
   {
     id: 'tracker',
     header: t('projects.columnTracker'),
     cell: ({ row }) => {
-      const trackerLabel = row.original.trackerName ?? t('projects.localTrackerLabel');
+      const { trackerName, remoteProjectTitle } = row.original;
+      // Local Projects get their own icon in the same slot, so every label starts on one edge.
       // Shows the project's remote project scope alongside the tracker name (REQ-325).
-      return row.original.remoteProjectTitle
-        ? `${trackerLabel} · ${row.original.remoteProjectTitle}`
-        : trackerLabel;
+      const label = !trackerName
+        ? t('projects.localTrackerLabel')
+        : remoteProjectTitle
+          ? `${trackerName} · ${remoteProjectTitle}`
+          : trackerName;
+      return h(
+        'span',
+        { class: ['flex min-w-0 items-center gap-2', trackerName ? 'text-default' : 'text-muted'] },
+        [
+          h(resolveComponent('UIcon'), {
+            name: trackerName ? 'i-lucide-cable' : 'i-lucide-hard-drive',
+            class: 'size-4 shrink-0 text-dimmed',
+            'aria-hidden': 'true',
+          }),
+          h('span', { class: 'truncate' }, label),
+        ],
+      );
     },
   },
   {
     accessorKey: 'createdAt',
     header: t('projects.columnCreated'),
     cell: ({ row }) => formatDate(row.original.createdAt, locale.value, effective.value.timeZone),
+    meta: { class: { th: 'w-40', td: 'tabular-nums text-muted' } },
   },
   {
     id: 'actions',
@@ -79,9 +97,9 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     enableSorting: false,
     meta: {
       class: {
-        // w-0 + whitespace-nowrap shrinks the column to its content and pins it right.
-        th: 'w-0 whitespace-nowrap text-end',
-        td: 'w-0 whitespace-nowrap text-end',
+        // Fixed widths (the table is fixed-layout), so columns never shift between languages.
+        th: 'w-36 text-end',
+        td: 'whitespace-nowrap py-1.5 text-end',
       },
     },
     cell: ({ row }) =>
@@ -112,6 +130,10 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
       :loading="projectsPending"
       data-testid="projects-table"
       class="w-full"
+      :ui="{
+        root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
+        base: 'w-full table-fixed',
+      }"
     >
       <template #empty>
         <!-- Avoid empty-state flash while the initial list request is in flight. -->

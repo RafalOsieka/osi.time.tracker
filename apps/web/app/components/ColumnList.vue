@@ -33,15 +33,19 @@ const template = computed(() =>
 </script>
 
 <template>
-  <div class="@container/list min-w-0">
+  <div class="@container/list min-w-0 rounded-xl bg-default px-4 ring ring-default dark:bg-muted">
+    <!--
+      The list sits on a card: white on the light canvas, one layer up in dark. The card's edge
+      closes the list, so the last row or detail block drops its own divider.
+    -->
     <div
       role="table"
-      class="grid gap-x-3 @max-[40rem]/list:block"
+      class="grid gap-x-3 *:last:border-b-0 @max-[40rem]/list:block"
       :style="{ gridTemplateColumns: template, '--narrow-cols': narrow }"
     >
       <div
         role="row"
-        class="col-span-full grid min-h-8 grid-cols-subgrid items-center border-b border-accented bg-default @max-[40rem]/list:sr-only"
+        class="col-span-full grid min-h-8 grid-cols-subgrid items-center border-b border-default bg-default dark:bg-muted @max-[40rem]/list:sr-only"
         :class="stickyHeader && 'sticky top-0 z-10'"
       >
         <div

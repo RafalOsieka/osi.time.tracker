@@ -186,7 +186,7 @@ describe('request approval in the extension', () => {
         canEdit: false,
         showEditors: false,
         kindLabel: null,
-        kindColor: 'warning',
+        kind: 'blocked',
         reason: '',
         issueTitle: 'Linked',
         issueId: '42',

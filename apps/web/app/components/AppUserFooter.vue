@@ -19,6 +19,13 @@ const avatarInitial = computed(() => {
   return ch ? ch.toUpperCase() : '?';
 });
 
+/**
+ * On the Profile page the account control carries the selected-item surface, since Profile is
+ * reached from it rather than from the navigation.
+ */
+const route = useRoute();
+const onProfile = computed(() => route.path === '/profile');
+
 const avatar = computed<AvatarProps>(() => ({
   alt: primaryLabel.value || undefined,
   text: avatarInitial.value,
@@ -111,6 +118,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         :avatar="avatar"
         size="md"
         class="w-full min-w-0 cursor-pointer rounded-md px-1 py-1 text-start hover:bg-elevated"
+        :class="onProfile && 'bg-primary-100/80 dark:bg-primary/12'"
         data-testid="app-user-footer-trigger"
         :ui="{
           root: 'w-full min-w-0',
@@ -134,6 +142,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         variant="ghost"
         square
         :avatar="avatar"
+        :class="onProfile && 'bg-primary-100/80 dark:bg-primary/12'"
         :aria-label="primaryLabel || t('layout.logoutButton')"
         data-testid="app-user-footer-trigger"
       />

@@ -3,13 +3,17 @@ const { t } = useI18n();
 </script>
 
 <template>
-  <div class="grid min-h-dvh place-items-center bg-default p-6">
-    <section class="grid w-full max-w-md gap-4">
-      <h1 class="m-0 flex items-center gap-2 text-highlighted text-2xl font-semibold">
-        <AppBrandMark />
-        <!-- Trim the line box to the cap height so the mark centres on the letters, not the leading. -->
-        <span class="[text-box:trim-both_cap_alphabetic]">{{ t('layout.title') }}</span>
-      </h1>
+  <div class="grid min-h-dvh place-items-center bg-(--app-canvas) p-6">
+    <section class="grid w-full max-w-sm gap-8">
+      <div class="grid justify-items-center gap-1.5 text-center">
+        <h1
+          class="m-0 grid justify-items-center gap-3 text-xl font-semibold tracking-tight text-highlighted"
+        >
+          <AppBrandMark size="size-10" />
+          <span>{{ t('layout.title') }}</span>
+        </h1>
+        <p class="m-0 text-sm text-muted">{{ t('auth.subtitle') }}</p>
+      </div>
       <slot />
     </section>
   </div>

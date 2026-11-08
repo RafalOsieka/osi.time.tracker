@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
-import { defineComponent, h, type PropType, type VNode } from 'vue';
+import { defineComponent, h, type PropType, type VNode, type VNodeChild } from 'vue';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import ProjectsPage from '../../app/pages/projects.vue';
 import RowActions from '../../app/components/RowActions.vue';
@@ -103,25 +103,29 @@ const SelectStub = {
 };
 interface StubColumn {
   id?: string;
-  cell?: (context: { row: { original: Project } }) => string;
+  cell?: (context: { row: { original: Project } }) => VNodeChild;
 }
 
 // Renders the real `tracker` column cell function so the composed
 // "tracker · remote project" text (REQ-325) is actually exercised.
-function trackerCellText(row: Project, columns: StubColumn[] | undefined): string {
+function trackerCell(row: Project, columns: StubColumn[] | undefined): VNodeChild {
   const column = columns?.find((c) => c.id === 'tracker');
   return column?.cell ? column.cell({ row: { original: row } }) : '';
 }
+
+/** Renders a cell's string or VNode output in a stub template. */
+const RenderCell = (props: { content: VNodeChild }) => props.content;
 
 const TableStub = {
   template: `
     <div data-testid="projects-table" :data-loading="loading ? 'true' : 'false'">
       <slot name="empty" v-if="!loading && (!data || data.length === 0)" />
-      <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} {{ trackerCellText(row, columns) }}</div>
+      <div v-for="row in (data || [])" :key="row.id" data-testid="projects-row">{{ row.name }} <RenderCell :content="trackerCell(row, columns)" /></div>
     </div>
   `,
   props: ['data', 'columns', 'loading'],
-  methods: { trackerCellText },
+  components: { RenderCell },
+  methods: { trackerCell },
 };
 const ModalStub = {
   template:

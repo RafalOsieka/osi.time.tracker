@@ -63,6 +63,7 @@ describe('ColumnList', () => {
     expect(table.attributes('style')).toContain('--narrow-cols: 1.5rem minmax(0,1fr) 1.5rem');
     expect(table.classes()).toContain('@max-[40rem]/list:block');
     expect(wrapper.find('[role="row"]').classes()).toContain('sticky');
+    // Opaque, in the list card's colour, so rows scrolled under the sticky header never show.
     expect(wrapper.find('[role="row"]').classes()).toContain('bg-default');
   });
 

@@ -7,6 +7,13 @@ import {
 
 type AppLocale = 'en' | 'pl';
 
+/** Settings rows: the label on the left, the control (capped width) and its help on the right. */
+const settingsFieldUi = {
+  root: 'grid grid-cols-[11rem_minmax(0,24rem)] items-start justify-start gap-x-8',
+  wrapper: 'pt-1.5',
+  container: 'mt-0 w-full',
+};
+
 const { t, locale, setLocale } = useI18n();
 usePageTitle(() => t('profile.title'));
 const toast = useAppToast();
@@ -77,80 +84,110 @@ function onTimezoneChange(value: string | undefined) {
 </script>
 
 <template>
-  <div data-testid="page-profile" class="mx-auto max-w-xl space-y-6">
-    <h1 class="text-2xl font-semibold">{{ t('profile.title') }}</h1>
+  <div data-testid="page-profile" class="grid gap-8">
+    <PageHeader :title="t('profile.title')" :description="t('profile.description')" />
 
-    <section class="grid gap-4" aria-labelledby="profile-account-heading">
-      <h2 id="profile-account-heading" class="text-lg font-medium">
-        {{ t('profile.account') }}
-      </h2>
-
-      <UFormField
-        :label="t('profile.displayName')"
-        name="displayName"
-        data-testid="profile-display-name-field"
+    <div class="grid max-w-[40rem] gap-6">
+      <UCard
+        as="section"
+        aria-labelledby="profile-account-heading"
+        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-6 p-6 sm:p-6' }"
       >
-        <UInput
-          id="profile-display-name"
-          v-model="displayNameDraft"
-          :maxlength="DISPLAY_NAME_MAX_LENGTH"
-          autocomplete="name"
-          class="w-full"
-          data-testid="profile-display-name"
-          @blur="commitDisplayName"
-          @keydown.enter="commitDisplayName"
-          @keydown.esc.prevent="cancelDisplayName"
-        />
-      </UFormField>
+        <template #header>
+          <h2 id="profile-account-heading" class="m-0 text-base font-semibold text-highlighted">
+            {{ t('profile.account') }}
+          </h2>
+        </template>
 
-      <UFormField :label="t('profile.email')" name="email" data-testid="profile-email-field">
-        <UInput
-          id="profile-email"
-          :model-value="user?.email ?? ''"
-          readonly
-          class="w-full"
-          data-testid="profile-email"
-        />
-      </UFormField>
+        <UFormField
+          :label="t('profile.displayName')"
+          :help="t('profile.displayNameHelp')"
+          name="displayName"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
+          data-testid="profile-display-name-field"
+        >
+          <UInput
+            id="profile-display-name"
+            v-model="displayNameDraft"
+            :maxlength="DISPLAY_NAME_MAX_LENGTH"
+            autocomplete="name"
+            class="w-full"
+            data-testid="profile-display-name"
+            @blur="commitDisplayName"
+            @keydown.enter="commitDisplayName"
+            @keydown.esc.prevent="cancelDisplayName"
+          />
+        </UFormField>
 
-      <UFormField
-        :label="t('profile.timezone')"
-        name="timezone"
-        data-testid="profile-timezone-field"
+        <UFormField
+          :label="t('profile.email')"
+          name="email"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
+          data-testid="profile-email-field"
+        >
+          <UInput
+            id="profile-email"
+            :model-value="user?.email ?? ''"
+            readonly
+            variant="soft"
+            trailing-icon="i-lucide-lock"
+            class="w-full"
+            :ui="{ base: 'text-muted cursor-default', trailingIcon: 'size-4 text-dimmed' }"
+            data-testid="profile-email"
+          />
+        </UFormField>
+
+        <UFormField
+          :label="t('profile.timezone')"
+          name="timezone"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
+          data-testid="profile-timezone-field"
+        >
+          <USelectMenu
+            id="profile-timezone"
+            :model-value="timezone"
+            :items="timezones"
+            searchable
+            class="w-full"
+            data-testid="profile-timezone"
+            @update:model-value="onTimezoneChange"
+          />
+        </UFormField>
+      </UCard>
+
+      <UCard
+        as="section"
+        aria-labelledby="profile-preferences-heading"
+        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-6 p-6 sm:p-6' }"
       >
-        <USelectMenu
-          id="profile-timezone"
-          :model-value="timezone"
-          :items="timezones"
-          searchable
-          class="w-full"
-          data-testid="profile-timezone"
-          @update:model-value="onTimezoneChange"
-        />
-      </UFormField>
-    </section>
+        <template #header>
+          <h2 id="profile-preferences-heading" class="m-0 text-base font-semibold text-highlighted">
+            {{ t('profile.preferences') }}
+          </h2>
+        </template>
 
-    <section class="grid gap-4" aria-labelledby="profile-preferences-heading">
-      <h2 id="profile-preferences-heading" class="text-lg font-medium">
-        {{ t('profile.preferences') }}
-      </h2>
-
-      <UFormField
-        :label="t('profile.language')"
-        :hint="t('profile.languageHint')"
-        name="language"
-        data-testid="profile-language-field"
-      >
-        <USelect
-          id="profile-language"
-          v-model="selectedLocale"
-          :items="localeItems"
-          value-key="value"
-          label-key="label"
-          class="w-full"
-          data-testid="profile-language"
-        />
-      </UFormField>
-    </section>
+        <UFormField
+          :label="t('profile.language')"
+          :help="t('profile.languageHint')"
+          name="language"
+          orientation="horizontal"
+          :ui="settingsFieldUi"
+          data-testid="profile-language-field"
+        >
+          <USelect
+            id="profile-language"
+            v-model="selectedLocale"
+            :items="localeItems"
+            value-key="value"
+            label-key="label"
+            class="w-full"
+            data-testid="profile-language"
+          />
+        </UFormField>
+      </UCard>
+    </div>
   </div>
 </template>

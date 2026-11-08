@@ -195,8 +195,9 @@ onBeforeUnmount(() => {
         target="_blank"
         external
         variant="link"
+        color="neutral"
         size="xs"
-        class="h-6 min-h-6 min-w-6 justify-start px-0 font-mono text-xs leading-none tabular-nums"
+        class="h-6 min-h-6 min-w-6 justify-start px-0 font-mono text-[0.8125rem] leading-none tabular-nums text-default hover:text-primary hover:underline focus-visible:text-primary"
         :label="`#${currentRef.remoteIssueId}`"
         :aria-label="linkedTooltip(currentRef)"
         :data-testid="linkTestid"
@@ -205,7 +206,7 @@ onBeforeUnmount(() => {
     <UTooltip v-else-if="currentRef" :text="linkedTooltip(currentRef)" :content="{ side: 'top' }">
       <span
         tabindex="0"
-        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-start font-mono text-xs leading-none tabular-nums text-primary"
+        class="inline-flex h-6 min-h-6 min-w-6 items-center justify-start font-mono text-[0.8125rem] leading-none tabular-nums text-default"
         :data-testid="cachedTestid"
       >
         #{{ currentRef.remoteIssueId }}
@@ -242,7 +243,7 @@ onBeforeUnmount(() => {
       color="neutral"
       variant="ghost"
       size="xs"
-      class="-ms-2 font-normal text-muted"
+      class="-ms-2 text-sm font-normal text-muted"
       :label="linkLabel"
       :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
       @click.stop="onTriggerClick"
@@ -258,7 +259,7 @@ onBeforeUnmount(() => {
         variant="ghost"
         square
         size="xs"
-        class="-ms-1 h-6 w-6 shrink-0 justify-center text-muted"
+        class="-ms-1 h-6 w-6 shrink-0 justify-center text-toned hover:bg-primary/10 hover:text-primary focus-visible:text-primary"
         :aria-label="t('timerView.remoteIssue.unlinked')"
         :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
         @click.stop="onTriggerClick"

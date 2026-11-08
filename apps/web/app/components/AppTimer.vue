@@ -198,7 +198,24 @@ async function onSaveStartedAt() {
 </script>
 
 <template>
-  <div class="flex w-full min-w-0 items-center gap-2" data-testid="app-timer">
+  <div
+    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
+    :class="
+      isRunning
+        ? 'bg-primary-50 ring-primary-200 dark:bg-primary-950/50 dark:ring-primary-800/70'
+        : 'bg-default ring-accented'
+    "
+    data-testid="app-timer"
+  >
+    <!--
+      One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
+      live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
+    -->
+    <span
+      v-if="isRunning"
+      class="size-2 shrink-0 rounded-full bg-primary ring-4 ring-primary/20"
+      aria-hidden="true"
+    />
     <TaskTitleInput
       ref="titleInput"
       v-model:text="inputText"
@@ -207,6 +224,7 @@ async function onSaveStartedAt() {
       :disabled="isLoading"
       :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
       :aria-label="t('timer.titleLabel')"
+      bare
       chip-testid="timer-project"
       data-testid="timer-title-input"
       @pick-project="onPickProject"
@@ -224,7 +242,8 @@ async function onSaveStartedAt() {
       <UButton
         color="neutral"
         variant="link"
-        class="min-w-[4.5rem] font-mono tabular-nums"
+        class="min-w-[5.5rem] justify-center font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
+        :class="isRunning ? 'text-primary' : 'text-dimmed'"
         role="timer"
         :label="elapsedLabel"
         :aria-label="isRunning ? t('timer.editStartLabel') : t('timer.elapsedLabel')"
@@ -309,24 +328,25 @@ async function onSaveStartedAt() {
     <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
       <UButton
         square
-        variant="ghost"
-        :icon="isRunning ? 'i-lucide-square' : 'i-lucide-play'"
+        size="sm"
+        variant="solid"
+        class="rounded-full"
+        :class="
+          isRunning && 'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-error'
+        "
+        :icon="isRunning ? undefined : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
         :color="isRunning ? 'error' : 'primary'"
-        :ui="
-          isRunning
-            ? {
-                leadingIcon:
-                  'origin-center motion-safe:animate-timer-stop-icon motion-reduce:animate-none',
-              }
-            : undefined
-        "
         :loading="starting || stopping"
         :disabled="isLoading"
         :aria-pressed="isRunning"
         data-testid="timer-toggle-button"
         @click="onToggle"
-      />
+      >
+        <template v-if="isRunning && !starting && !stopping" #leading>
+          <StopGlyph />
+        </template>
+      </UButton>
     </UTooltip>
   </div>
 </template>

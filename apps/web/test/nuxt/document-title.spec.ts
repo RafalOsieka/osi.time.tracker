@@ -14,7 +14,7 @@ const catalogs = {
     'timerView.pageTitle': 'Timer',
     'profile.title': 'Profile',
     'auth.pageTitle': 'Log in',
-    'remoteSync.pageTitle': 'Remote Sync',
+    'remoteSync.pageTitle': 'Remote sync',
     'layout.title': 'OSI Time Tracker',
   },
   pl: {
@@ -87,7 +87,7 @@ describe('document title page segment', () => {
     expect(titleFromHead()).toBe('Log in');
 
     await mountTitledPage('remoteSync.pageTitle');
-    expect(titleFromHead()).toBe('Remote Sync');
+    expect(titleFromHead()).toBe('Remote sync');
   });
 
   it('updates both page and brand segments when locale changes', async () => {
