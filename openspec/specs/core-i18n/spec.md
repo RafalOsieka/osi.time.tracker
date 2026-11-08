@@ -105,6 +105,10 @@ The `/profile` page (workspace-settings REQ-494) SHALL offer a language control 
 - **WHEN** an authenticated user opens `/profile`
 - **THEN** a language control listing English and Polish SHALL be present, with a hint that it applies to this browser
 
+#### Scenario: Each language is named in itself
+- **WHEN** the language control lists its options in either UI language
+- **THEN** each option SHALL carry its own language's name for itself ("English", "Polski"), so a user who cannot read the active language still finds theirs
+
 #### Scenario: Locale is not in the account menu
 - **WHEN** the sidebar footer account menu is opened
 - **THEN** language options SHALL NOT appear there
@@ -124,3 +128,18 @@ The `/profile` page (workspace-settings REQ-494) SHALL offer a language control 
 #### Scenario: Control is accessible and internationalized
 - **WHEN** the language control is rendered
 - **THEN** it SHALL expose an accessible name from the i18n catalogs and remain fully keyboard operable
+
+### Requirement: REQ-516 Spelled-out dates follow the locale's casing
+Wherever a web app page spells out a weekday, a month or a period by name (day headings, the Remote Sync date, month steppers, summaries and dialog text), it SHALL use the active locale's own casing, without capitalizing the first letter. Polish weekdays and months SHALL therefore read in lower case, also at the start of a heading.
+
+#### Scenario: Polish day heading
+- **WHEN** the active locale is `pl` and a day heading shows Saturday, November 7, 2026
+- **THEN** it SHALL read "sobota, 7 listopada 2026"
+
+#### Scenario: Polish month period
+- **WHEN** the active locale is `pl` and a month stepper shows November 2026
+- **THEN** it SHALL read "listopad 2026"
+
+#### Scenario: English keeps its own casing
+- **WHEN** the active locale is `en`
+- **THEN** weekday and month names SHALL be capitalized as English writes them ("Saturday, November 7, 2026")

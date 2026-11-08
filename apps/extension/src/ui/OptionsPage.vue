@@ -103,7 +103,7 @@ const disabled = computed(() => busy.value || !loaded.value);
 /** Saved settings could not be read: nothing below may pose as an empty configuration. */
 const unreadable = computed(() => errorKey.value === 'approvals.loadFailed' && !loaded.value);
 
-/** Add forms expanded on request; each one is always open while its list is empty. */
+/** Add forms expanded on request; each one is always open while its list is empty (REQ-523). */
 const websiteFormOpen = shallowRef(focus.website !== undefined);
 const destinationFormOpen = shallowRef(focus.step === 'tracker');
 
@@ -164,7 +164,10 @@ onMounted(async () => {
   // The popup handed this over: the click here runs the permission prompt.
   if (focus.website) await focusTestId('add-website');
   else if (focus.step) goToStep(focus.step);
-  else if (focus.restore) await focusTestId(`restore-${focus.restore}`);
+  // The only lost approval is restored from the alert, so its row has no restore button.
+  else if (focus.restore) {
+    await focusTestId(restorable.value ? 'missing-access-restore' : `restore-${focus.restore}`);
+  }
 });
 </script>
 

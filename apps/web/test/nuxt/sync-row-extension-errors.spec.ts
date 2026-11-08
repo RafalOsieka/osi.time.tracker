@@ -29,7 +29,7 @@ describe('sync row extension errors', () => {
         expanded: false,
         canEdit: false,
         showEditors: false,
-        kindLabel: null,
+        kindLabel: 'Needs attention',
         kind: 'blocked',
         reason: '',
         issueTitle: 'Linked',

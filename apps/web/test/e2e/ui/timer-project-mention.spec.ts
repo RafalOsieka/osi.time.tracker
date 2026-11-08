@@ -89,4 +89,32 @@ describeProjectMention('top-bar @project mention journey', async () => {
     });
     await page.close();
   });
+
+  it('removes the chip by touch, without a hover (REQ-374)', async () => {
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await createProject(jar, token, 'Touchstone');
+
+    const page = await createPage('/', { hasTouch: true, isMobile: true });
+    await fillLogin(page, user.email, user.password, { width: 1024, height: 900 });
+    expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
+
+    const titleInput = page
+      .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')
+      .first();
+    await titleInput.tap();
+    await titleInput.fill('touch @touchst');
+    const option = page.locator('[role="option"]').filter({ hasText: 'Touchstone' }).first();
+    await option.waitFor({ state: 'visible', timeout: 10000 });
+    await option.evaluate((el: HTMLElement) => el.click());
+
+    const chip = page.locator('[data-testid="timer-project-chip"]');
+    await chip.waitFor({ state: 'visible' });
+    const remove = page.locator('[data-testid="timer-project-chip-remove"]');
+    // Shown at rest: a touch screen has no hover to reveal it.
+    await expect.poll(async () => (await remove.boundingBox())?.width ?? 0).toBeGreaterThan(8);
+    await remove.tap();
+    await chip.waitFor({ state: 'detached' });
+    expect(await titleInput.inputValue()).toBe('touch');
+    await page.close();
+  });
 });

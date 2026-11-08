@@ -82,15 +82,6 @@ const runningInDay = computed(
     !!running.value &&
     localDayKeyFromInstant(running.value.startedAt, effective.value.timeZone) === date.value,
 );
-// The running entry is not part of the loaded rows' completed time: reload once it stops or
-// another one starts, so the rows and totals follow.
-watch(
-  () => running.value?.id ?? null,
-  (id, previousId) => {
-    if (id !== previousId) void refresh();
-  },
-);
-
 /**
  * Completed untitled time. The server counts a running untitled entry into the bucket up to the
  * moment it answered; that part is taken back out, since the running time is shown live.
@@ -308,8 +299,8 @@ function isExcluded(row: RemoteSyncDayRowDto): boolean {
 }
 
 /**
- * The row's state indicator kind (REQ-504). A row the user can fix (no Project, a missing Tracker,
- * no issue, a failed load) is blocked, in amber; a deliberate exclusion is neutral.
+ * The row's state indicator kind (REQ-504, REQ-520). A row the user can fix (no Project, a missing
+ * Tracker, no issue, a failed load) needs attention, in amber; a deliberate exclusion is neutral.
  */
 function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   switch (stateFor(row)) {
@@ -324,9 +315,9 @@ function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   }
 }
 
-function kindLabelFor(row: RemoteSyncDayRowDto): string | null {
+/** The short label of the row's state kind (REQ-520), the first part of its tooltip and name. */
+function kindLabelFor(row: RemoteSyncDayRowDto): string {
   const state = stateFor(row);
-  if (state === 'unlinked') return null;
   if (state === 'manageable' && !awaitsActivity(row)) return t('remoteSync.kind.ready');
   if (state === 'sent') return t('remoteSync.kind.sent');
   if (state === 'activity_loading') return t('remoteSync.kind.loading');
@@ -538,6 +529,31 @@ const dayTotalsSafe = computed(() =>
   ),
 );
 
+/** The day total as shown: completed time plus the running entry of this day, live (REQ-527). */
+const liveDayTotal = computed(() => dayTotalsSafe.value.dayTotal + runningSeconds.value);
+/**
+ * The last live total, held while the day reloads after its running entry stopped or was
+ * replaced: the timer drops the running time at once, the reloaded rows hold it only later.
+ */
+const heldDayTotal = ref<number | null>(null);
+const dayTotalShown = computed(() => heldDayTotal.value ?? liveDayTotal.value);
+
+// The running entry is not part of the loaded rows' completed time: reload once it stops or
+// another one starts, so the rows and totals follow. The watcher sees the total from before the
+// stop as its previous value.
+watch(
+  [() => running.value?.id ?? null, liveDayTotal],
+  async ([id, total], [previousId, previousTotal]) => {
+    if (id === previousId) return;
+    heldDayTotal.value = previousId ? Math.max(total, previousTotal) : null;
+    try {
+      await refresh();
+    } finally {
+      heldDayTotal.value = null;
+    }
+  },
+);
+
 const inTrackerSummary = computed(() =>
   computeInTrackerSummary(
     rows.value
@@ -597,7 +613,7 @@ const inTrackerFailures = computed(() => {
 });
 
 /**
- * Why Export is disabled, shown under it and in its tooltip: the Trackers cannot be reached (their
+ * Why Export is disabled (REQ-521), under it and in its tooltip: the Trackers cannot be reached (their
  * activities failed to load), the Ready rows with time still need an activity, or nothing is
  * ready. Null while exporting or when Export is available.
  */
@@ -976,7 +992,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         icon="i-lucide-clock"
         data-testid="remote-sync-total-day"
       >
-        {{ formatDuration(dayTotalsSafe.dayTotal + runningSeconds) }}
+        {{ formatDuration(dayTotalShown) }}
         <template #caption>
           <!-- While a Time entry runs, the total (like the Timer's) includes it: the caption splits
                it into the completed part, which the rows add up to, and the running part, in the

@@ -155,7 +155,7 @@ The sidebar SHALL show a compact extension-status row right below the user menu,
 
 #### Scenario: Extension is not required
 - **WHEN** no active tracker has `directBrowserAccess: false`
-- **THEN** the indicator SHALL show a neutral **Not required** state even if no extension is installed
+- **THEN** the indicator SHALL show a neutral state saying that the extension is not required, even if no extension is installed
 
 #### Scenario: Required extension or website approval is invalid
 - **WHEN** at least one active tracker requires the extension and the bridge is unavailable or incompatible, or the current OSI website is not approved
@@ -176,6 +176,10 @@ The status row SHALL open a localized popover on hover, focus, click or tap, sep
 #### Scenario: Inspect status with keyboard
 - **WHEN** a keyboard user focuses or activates the status row
 - **THEN** the popover SHALL open, remain keyboard operable, and expose its status meaning without relying on color alone
+
+#### Scenario: Extension not needed is said once
+- **WHEN** no active tracker requires the extension and the popover opens
+- **THEN** it SHALL state once, as plain text, that the extension is not needed, and each tracker row SHALL show the tracker without repeating that it connects directly
 
 #### Scenario: Inspect status on touch
 - **WHEN** a touch user taps the status row
@@ -250,7 +254,7 @@ The bridge SHALL carry time logs with the required, nullable issue title (REQ-34
 
 ### Requirement: REQ-408 Extension pages share the application's visual language
 
-The extension popup and options page SHALL use the same component library, brand `primary` (cyan) and `neutral` (slate) palette, and default font stack as the web application. Each page header SHALL show the brand mark tinted with the `primary` color, next to the product name. Every icon on these pages SHALL ship inside the extension build. The pages SHALL NOT fetch icons, fonts, or styles over the network, and the extension's content security policy SHALL NOT be relaxed to allow it.
+The extension popup and options page SHALL use the same component library, brand `primary` (cyan) and `neutral` (slate) palette, and typefaces as the web application. Each page header SHALL show the brand mark tinted with the `primary` color, next to the product name. Every icon and font on these pages SHALL ship inside the extension build. The pages SHALL NOT fetch icons, fonts, or styles over the network, and the extension's content security policy SHALL NOT be relaxed to allow it.
 
 #### Scenario: Header shows the brand mark
 - **WHEN** the popup or the options page opens in light or dark theme
@@ -258,17 +262,27 @@ The extension popup and options page SHALL use the same component library, brand
 
 #### Scenario: Pages render offline
 - **WHEN** an extension page opens while the browser has no network access
-- **THEN** every icon and style SHALL render, and the page SHALL make no network request to load them
+- **THEN** every icon, font and style SHALL render, and the page SHALL make no network request to load them
 
 #### Scenario: Popup status is a labelled badge
-- **WHEN** the popup has loaded the approvals and some approved origin lacks browser site access
-- **THEN** the header SHALL show a "Needs attention" badge, an alert SHALL explain the missing access, and the affected tracker row SHALL carry a "No access" badge
-- **WHEN** every approval has site access
+- **WHEN** reading the approvals or another popup operation failed
+- **THEN** the header SHALL show a "Needs attention" badge
+- **WHEN** nothing failed and some approved origin lacks browser site access
+- **THEN** the header SHALL show a "No access" badge, an alert SHALL name the affected website or tracker with a restore action that opens the setup page with focus on the control that restores it, and the affected row, where the approval lists are shown, SHALL carry a "No access" badge
+- **WHEN** nothing failed, every approval has access and tracker suggestions are pending
+- **THEN** the badge SHALL show the count to approve, for example "2 to approve"
+- **WHEN** nothing failed or is pending and no website or no tracker is approved yet
+- **THEN** the badge SHALL read "Setup needed"
+- **WHEN** a website and a tracker are approved, nothing failed or is pending and every approval has access
 - **THEN** the badge SHALL read "Ready"
+
+#### Scenario: Status never depends on color alone
+- **WHEN** the popup shows any status badge
+- **THEN** the badge SHALL carry its label and an icon of its own
 
 #### Scenario: Approval lists show access state per row
 - **WHEN** the options page lists an approved website or tracker whose origin lacks browser site access
-- **THEN** that row SHALL show a "No access" badge and a restore action, next to the revoke action
+- **THEN** an alert above the lists SHALL name it, and that row SHALL show a "No access" badge; when it is the only affected approval, the alert's action SHALL restore it and the row SHALL offer no second restore action, otherwise each affected row SHALL show its own restore action next to the revoke action
 - **WHEN** a row's origin has site access
 - **THEN** the row SHALL show only the revoke action
 
@@ -278,7 +292,7 @@ The extension popup and options page SHALL use the same component library, brand
 
 #### Scenario: Loading failure keeps the retry path
 - **WHEN** reading approvals or permissions fails on either page
-- **THEN** the page SHALL show the translated error in an alert, together with the existing retry action
+- **THEN** the page SHALL show the translated error in a titled alert, saying that nothing was deleted, together with a retry action that reads them again
 
 ### Requirement: REQ-409 Extension theme control
 
@@ -316,7 +330,6 @@ The extension manifest SHALL declare the app icon for the toolbar action and the
 - **WHEN** the extension build finishes
 - **THEN** the build output SHALL contain a PNG for each size declared in the manifest, at its declared pixel dimensions
 
-
 ### Requirement: REQ-421 Approved websites can suggest a tracker destination
 
 The bridge SHALL accept a credential-free suggestion message from an approved website. The message carries a provider and a tracker base URL. The extension SHALL take the website from the verified sender (REQ-309), never from the message, and SHALL canonicalize the destination like a manually entered one. A suggestion SHALL NOT approve anything or contact the tracker. Its result SHALL tell the website whether the destination was queued, was already approved, or was rejected.
@@ -352,3 +365,14 @@ The website and the extension SHALL both require the same bridge protocol versio
 #### Scenario: Outdated extension
 - **WHEN** the installed extension implements version 2
 - **THEN** the website SHALL show the incompatibility/update state and SHALL NOT send operations, suggestions or the tracker secret
+
+### Requirement: REQ-522 Popup content scrolls within the browser's popup
+The extension popup SHALL fit the height a browser allows for a popup (600 pixels). When its content is taller, the popup SHALL keep its header and footer in place and scroll only the content between them, so the status badge and the footer actions stay reachable.
+
+#### Scenario: Tall popup content
+- **WHEN** the popup's content is taller than the browser allows for a popup
+- **THEN** the header and footer SHALL stay visible and the content between them SHALL scroll
+
+#### Scenario: Short popup content
+- **WHEN** the popup's content fits
+- **THEN** the popup SHALL be only as tall as its content and SHALL NOT show a scroll bar

@@ -196,6 +196,19 @@ describe('TaskTitleInput', () => {
     expect(events.removeProject).toHaveBeenCalled();
   });
 
+  it('shows the chip remove control without hover on a touch screen (REQ-374)', async () => {
+    const { wrapper, project, sync } = await mountInput();
+    project.value = { id: 'p-helios', name: 'Helios' };
+    await sync();
+
+    // A coarse pointer cannot hover, so the control is shown there at rest; the real media query
+    // is exercised by the touch journey in timer-project-mention.spec.ts.
+    const classes = wrapper.get('[data-testid="chip-chip-remove"]').classes();
+    expect(classes).toEqual(
+      expect.arrayContaining(['pointer-coarse:w-3.5', 'pointer-coarse:opacity-100']),
+    );
+  });
+
   it('restricts suggestions to the chip project and names it in the create row', async () => {
     const { rows, type, project, sync } = await mountInput();
     project.value = { id: 'p-helios', name: 'Helios' };

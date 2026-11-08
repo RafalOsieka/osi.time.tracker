@@ -1,7 +1,7 @@
 # ui-theming Specification
 
 ## Purpose
-Define the application's visual identity and theming: one brand accent, light and dark mode that follow the operating system unless the user chooses, no flash of the wrong theme, the default font stack, and the brand mark and favicon — all within the `ui-accessibility` WCAG 2.1 AA standard.
+Define the application's visual identity and theming: one brand accent, light and dark mode that follow the operating system unless the user chooses, no flash of the wrong theme, the bundled typefaces, and the brand mark and favicon - all within the `ui-accessibility` WCAG 2.1 AA standard.
 
 ## Requirements
 
@@ -57,16 +57,20 @@ The `auth` layout and login page SHALL show the login form in a centered card wh
 - **WHEN** the auth surface is restyled
 - **THEN** the `login-form`, `email`, `password`, `login-button`, and `login-error` hooks and the announced/associated error behavior SHALL remain intact
 
-### Requirement: REQ-175 Default font stack (no manual font loading)
-The application SHALL NOT load a custom webfont or inject an external font stylesheet. Sans-serif text SHALL use the framework's default font stack, with no project-level font-family override.
+### Requirement: REQ-175 Bundled typefaces (no external font loading)
+The application SHALL bundle its sans-serif and monospace typefaces and SHALL NOT load a webfont or font stylesheet from another origin; text SHALL use them through the theme.
 
 #### Scenario: No manual font-family override
 - **WHEN** any page is rendered
-- **THEN** the effective sans-serif family SHALL come from framework defaults, not from a manual `:root { font-family }` rule or a project `--font-sans` override
+- **THEN** the effective sans-serif and monospace families SHALL be the bundled typefaces, set through the theme's font settings, not through a manual `:root { font-family }` rule
 
 #### Scenario: No manual external font stylesheet link
 - **WHEN** the app document head is produced
 - **THEN** it SHALL NOT contain a hand-injected external font stylesheet `<link>` (e.g. rsms.me Inter)
+
+#### Scenario: Font files come from the app
+- **WHEN** a page loads its typefaces
+- **THEN** every font file SHALL be served from the application's own origin
 
 ### Requirement: REQ-368 SVG-first brand mark and favicon
 The application SHALL have an original vector brand mark, unlike any framework icon, built from constructed geometry on a grid, never traced type. It is an **open dial** — one stroke from a bar at 6 o'clock clockwise to 3, leaving the 3–6 quadrant empty — around a constructed "T" whose crossbar is heavier than the dial and whose stem tapers to 6 o'clock. It SHALL hold no words, abbreviations, play triangle or detail finer than the dial, and stay legible at 16 and 24 px.

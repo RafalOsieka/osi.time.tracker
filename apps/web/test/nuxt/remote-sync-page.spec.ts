@@ -930,6 +930,35 @@ describe('RemoteSync page', () => {
     expect(linkedState.attributes('aria-label')).toContain('remoteSync.state.needsActivity');
   });
 
+  it('names the needs-attention kind on an unlinked row (REQ-520)', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-6',
+          taskName: 'Unlinked Task',
+          projectName: 'Project',
+          trackerName: 'Client',
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          totalSeconds: 1200,
+          config: { ...baseConfig, id: 'config-6' },
+          issueRef: null,
+          entries: [entry({ id: 'entry-6', durationSeconds: 1200 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+
+    const wrapper = await mount();
+    const state = wrapper.get('[data-testid="remote-sync-state-task-6"]');
+    expect(state.text()).toBe('remoteSync.kind.blocked');
+    expect(state.attributes('aria-label')).toMatch(/^remoteSync\.kind\.blocked: \S/);
+    expect(wrapper.get('[data-testid="remote-sync-state-reason-task-6"]').text()).toMatch(
+      /^remoteSync\.kind\.blocked: \S/,
+    );
+  });
+
   it('fetches same-day remote logs for a linked Redmine row', async () => {
     dayData = makeDay({
       rows: [
@@ -1446,6 +1475,73 @@ describe('RemoteSync page', () => {
       expect(parts).toContain('00:30:00');
       expect(wrapper.get('[data-testid="remote-sync-tracked-task-running"]').text()).toBe(
         '01:00:00',
+      );
+    } finally {
+      running.value = null;
+      elapsed.value = 0;
+    }
+  });
+
+  it('keeps the day total while the day reloads after its running entry stops (REQ-527)', async () => {
+    const runningRow = (completedSeconds: number, entries: RemoteSyncDayEntryDto[]) => ({
+      taskId: 'task-running',
+      taskName: 'Running',
+      projectName: 'Local Project',
+      trackerName: null,
+      remoteProjectId: null,
+      remoteProjectTitle: null,
+      totalSeconds: completedSeconds,
+      config: null,
+      issueRef: null,
+      entries,
+      exports: [],
+    });
+    dayData = makeDay({
+      rows: [runningRow(3600 + 1800, [entry({ id: 'e-done', durationSeconds: 3600 })])],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    const running = useState<TimeEntryDto | null>('timer-running-entry');
+    const elapsed = useState<number>('timer-elapsed-seconds');
+    running.value = {
+      id: 'e-running-now',
+      taskId: 'task-running',
+      taskName: 'Running',
+      projectId: null,
+      projectName: null,
+      startedAt: '2026-03-15T10:00:00.000Z',
+      stoppedAt: null,
+    };
+    elapsed.value = 1800;
+    try {
+      const wrapper = await mount();
+      const total = () => wrapper.get('[data-testid="remote-sync-total-day"]').text();
+      expect(total()).toContain('01:30:00');
+
+      // Stop: the timer clears at once, the reloaded day arrives later.
+      let resolveReload: (day: RemoteSyncDayDto) => void = () => {};
+      dollarFetchMock.mockImplementation(
+        () => new Promise<RemoteSyncDayDto>((resolve) => (resolveReload = resolve)),
+      );
+      running.value = null;
+      elapsed.value = 0;
+      await flushPromises();
+      expect(total()).toContain('01:30:00');
+
+      resolveReload(
+        makeDay({
+          rows: [
+            runningRow(5400, [
+              entry({ id: 'e-done', durationSeconds: 3600 }),
+              entry({ id: 'e-running-now', durationSeconds: 1800 }),
+            ]),
+          ],
+        }),
+      );
+      await flushPromises();
+      await flushPromises();
+      expect(total()).toContain('01:30:00');
+      expect(wrapper.get('[data-testid="remote-sync-tracked-task-running"]').text()).toBe(
+        '01:30:00',
       );
     } finally {
       running.value = null;
