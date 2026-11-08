@@ -30,7 +30,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
 ### Requirement: REQ-492 Create a tracker
-`POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with accessible help (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
+`POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with visible help (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
 
 #### Scenario: Direct browser access defaults to true
 - **WHEN** a user submits a tracker without `directBrowserAccess`
@@ -81,8 +81,8 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the user SHALL be able to save and use `directBrowserAccess: true`
 
 #### Scenario: Help is available without a pointer
-- **WHEN** a keyboard user focuses the help control beside the checkbox
-- **THEN** the localized explanation SHALL become available without changing the field value
+- **WHEN** the tracker form shows the direct-browser checkbox
+- **THEN** the localized explanation SHALL be visible as help text under it, not only in a tooltip, and the checkbox SHALL reference it through `aria-describedby`
 
 ### Requirement: REQ-246 Edit a tracker
 `PATCH /api/trackers/[id]` SHALL update the user's own tracker, validating provided fields as on creation. Changing any field, including `systemType`, `baseUrl` or `directBrowserAccess`, SHALL keep the tracker's identity and its tasks' remote issue references, with no remote validation, cleanup or migration; a capability change affects only future remote requests. The updated tracker SHALL be returned and its row SHALL reflect the change.
@@ -113,6 +113,10 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 #### Scenario: Deletion requires confirmation
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
+
+#### Scenario: Confirmation states the consequences
+- **WHEN** the delete confirmation is shown
+- **THEN** it SHALL name the tracker, say that its browser-held secret is removed and that its projects and time entries stay while linking and export to it stop, and offer a named delete action and a cancel action
 
 #### Scenario: Browser secret cleared on delete
 - **WHEN** a tracker is soft-deleted
@@ -148,6 +152,10 @@ The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboa
 - **WHEN** new user-facing tracker strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
+#### Scenario: Form fields in order
+- **WHEN** the create or edit form opens
+- **THEN** its fields SHALL follow the order name, system type, base URL, API secret, direct-browser checkbox, rounding rule, in reading and tab order
+
 ### Requirement: REQ-252 Client-side validation of the tracker form
 The tracker create/edit form SHALL validate input client-side with the same schema the server uses before any request is sent. A validation failure SHALL show the translated `messageKey` inline under the field and SHALL prevent the request. The server SHALL stay authoritative; its field errors (e.g. `error.trackerNameDuplicate`) SHALL still render inline under the field.
 
@@ -173,6 +181,10 @@ A tracker's `roundingRule` SHALL be one of `none`, `up_15m`, `up_30m`, `up_1h`, 
 #### Scenario: Unsupported rounding rule is rejected
 - **WHEN** a user saves a tracker with a `roundingRule` outside the accepted set
 - **THEN** the system SHALL reject the request with a `{ messageKey, params }` validation error and persist nothing
+
+#### Scenario: The form says rounding affects export only
+- **WHEN** the tracker form shows the rounding rule select
+- **THEN** visible help text SHALL say that the rule applies only to export and does not change local time entries
 
 ### Requirement: REQ-257 Rounding never reduces a non-zero duration to zero
 For any increment-based rounding rule, a total greater than `0` SHALL never round to `0`; when the rounded result would be `0`, the system SHALL return exactly one increment instead. A total of exactly `0` SHALL still round to `0` so that a task with no selected entries remains excluded from export.
@@ -203,3 +215,29 @@ Each tracker row SHALL offer an "Import history" action beside edit and delete â
 #### Scenario: Row actions remain siblings
 - **WHEN** a tracker row renders edit, import, and delete
 - **THEN** the three controls SHALL be sibling buttons, none nested inside another interactive element
+
+### Requirement: REQ-525 Trackers page rows show how each tracker connects
+Each row of the Trackers page SHALL show the tracker's name, system type, base URL and connection mode: a tracker with `directBrowserAccess: true` connects directly from the browser, one with `false` connects through the extension. The mode SHALL be stated in text, not by color or icon alone.
+
+#### Scenario: Direct tracker
+- **WHEN** the user views a tracker with `directBrowserAccess: true`
+- **THEN** its row SHALL show its system type, base URL and a translated direct-connection label
+
+#### Scenario: Extension tracker
+- **WHEN** the user views a tracker with `directBrowserAccess: false`
+- **THEN** its row SHALL show a translated label saying that it connects through the extension
+
+### Requirement: REQ-526 The API secret field explains and reveals the secret
+The tracker form's API secret field SHALL carry visible help text, not a placeholder, saying that the secret stays in this browser and never reaches the OSI server (REQ-495). A toggle button in the field SHALL show the secret as plain text and mask it again, with a translated accessible name and its state exposed through `aria-pressed`. The field SHALL be masked each time the form opens.
+
+#### Scenario: The form states where the secret is kept
+- **WHEN** the tracker form shows the API secret field, empty or filled
+- **THEN** visible help text SHALL say that the secret stays in this browser and never reaches the OSI server
+
+#### Scenario: The secret can be shown to check it
+- **WHEN** the user activates the toggle button in the API secret field and later activates it again
+- **THEN** the secret SHALL show as plain text after the first activation and be masked after the second, with `aria-pressed` following that state
+
+#### Scenario: Masked on every open
+- **WHEN** the user revealed the secret, closed the form and opens it again
+- **THEN** the field SHALL be masked

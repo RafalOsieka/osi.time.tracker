@@ -21,7 +21,7 @@ The application SHALL use file-based routing, rendering each page inside its lay
 - **THEN** a progress bar SHALL be visible at the top of the viewport and SHALL disappear when the change finishes
 
 ### Requirement: REQ-060 Public login page on the auth layout
-The application SHALL expose a public `/login` page that renders the login form on the `auth` layout, with the `login-form`, `email`, `password`, `login-button` and `login-error` test hooks. The auth layout heading SHALL show the application brand mark beside the full application title (`layout.title`); the mark is decorative and the title remains the heading text.
+The application SHALL expose a public `/login` page that renders the login form on the `auth` layout, with the `login-form`, `email`, `password`, `login-button` and `login-error` test hooks. The auth layout heading SHALL show the application brand mark with the full application title (`layout.title`); the mark is decorative and the title remains the heading text.
 
 #### Scenario: Unauthenticated visitor can view login
 - **WHEN** an unauthenticated visitor navigates to `/login`
@@ -37,7 +37,7 @@ The application SHALL expose a public `/login` page that renders the login form 
 
 #### Scenario: Login heading shows mark and title
 - **WHEN** the login page is rendered
-- **THEN** the auth layout heading SHALL show the application brand mark beside the full application title
+- **THEN** the auth layout heading SHALL show the application brand mark with the full application title, and assistive technology SHALL read only the title
 
 ### Requirement: REQ-061 Authenticated home page on the default layout
 The application SHALL expose a `/` page that renders the timer view (the authenticated home) within the `default` layout. The page SHALL present a page-level header with a title and a primary action for adding a manual time entry. Initial timer-view data SHALL be available from SSR (tracking-timer-view REQ-396, tracking-api REQ-395). Logout is reachable from the shell's account menu (ui-shell REQ-064, REQ-405).

@@ -78,7 +78,7 @@ Matching SHALL compare **normalized** forms: lowercased, without diacritics (Pol
 - **THEN** they SHALL be ordered by name ascending
 
 ### Requirement: REQ-374 Picking a project sets the project chip
-Picking a project SHALL remove the `@` and query from the text, collapse leftover whitespace, and set the input's **project chip**: one project, named inside the input before the text, with a remove control; a new pick replaces it. A set chip SHALL limit suggestions to its project (`GET /api/tasks?projectId=`) and make the create option read "{title} (new task in {project})". Picking a task suggestion SHALL set the chip to its project, or clear it. Editing the text SHALL keep the chip.
+Picking a project SHALL remove the `@` and query from the text, collapse leftover whitespace, and set the input's **project chip**: one project, named inside the field beside the text, with a remove control; a new pick replaces it. A set chip SHALL limit suggestions to its project (`GET /api/tasks?projectId=`) and make the create option read "{title} (new task in {project})". Picking a task suggestion SHALL set the chip to its project, or clear it. Editing the text SHALL keep the chip.
 
 #### Scenario: Picked token is removed
 - **WHEN** the user types `fix login @hel` and picks "Helios"
@@ -103,6 +103,14 @@ Picking a project SHALL remove the `@` and query from the text, collapse leftove
 #### Scenario: Removing the chip
 - **WHEN** the user activates the chip's remove control
 - **THEN** the chip SHALL be empty and suggestions SHALL no longer be filtered by project
+
+#### Scenario: Chip placement per field
+- **WHEN** a chip is set in the top-bar timer and in the add-entry dialog
+- **THEN** the top-bar chip SHALL follow the title text, and the dialog chip SHALL precede it
+
+#### Scenario: Remove control on a touch screen
+- **WHEN** a chip is set on a device whose pointer cannot hover, such as a touch screen
+- **THEN** its remove control SHALL be shown and tappable without a hover or a keyboard
 
 ### Requirement: REQ-375 Typed mentions resolve only on an exact normalized name
 On start, retitle or save without a pick, the system SHALL try the **last** mention's word-prefixes, longest first (`@helios fix login`: `helios fix login`, `helios fix`, `helios`), taking the first whose normalized form **equals** exactly one project's. That prefix and `@` SHALL leave the title, its project used as if picked, replacing any chip. Otherwise, ambiguity included, the text SHALL be kept literally, chip unchanged; a partial name never resolves. The create option SHALL preview this.

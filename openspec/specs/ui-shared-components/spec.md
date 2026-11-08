@@ -175,12 +175,17 @@ The duration input SHALL take its accessible label and `data-testid` from its ow
 - **THEN** all eight characters SHALL be visible without clipping
 
 ### Requirement: REQ-178 Inline-edit affordance uses a Nuxt UI input
-Timer group and entry titles and the Remote Sync title-to-send SHALL share one inline editor that reads as plain text until activated. It SHALL commit the normalized value on blur or Enter and revert on Escape or invalid input without a model update or request. Its width SHALL come from the layout slot, not the text length; overflow SHALL be truncated; activating the editor SHALL fill the same slot without shifting neighbors. It SHALL keep its accessible label and `data-testid`.
+Timer group and entry titles and the Remote Sync title-to-send SHALL share one inline editor: plain text at rest on the Timer, a field at rest on Remote Sync. It SHALL commit the normalized value on blur or Enter and revert on Escape or invalid input without a model update or request. Its width SHALL come from the layout slot; overflow SHALL be truncated; activating it SHALL fill the same slot without shifting neighbors. It SHALL keep its accessible label and `data-testid`.
 
 #### Scenario: Text field reads as plain text until edited
 
-- **WHEN** an inline-editable title field is displayed without focus
+- **WHEN** a Timer group or entry title is displayed without focus
 - **THEN** it SHALL render as seamless plain text with no border, ring, or button chrome
+
+#### Scenario: Title to send reads as a field at rest
+
+- **WHEN** a Ready row's title-to-send is displayed on Remote Sync without focus
+- **THEN** it SHALL show a field frame that fills its column, and activating it SHALL keep the value in the same place
 
 #### Scenario: Field becomes editable on activation and commits
 

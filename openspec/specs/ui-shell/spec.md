@@ -102,6 +102,14 @@ The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The 
 - **WHEN** the desktop sidebar is collapsed to icon-only
 - **THEN** the user SHALL be able to activate Monthly timesheet from the Reports item's popover and navigate to `/reports/monthly`
 
+#### Scenario: Collapsed Reports shows that it opens a menu
+- **WHEN** the desktop sidebar is collapsed to icon-only
+- **THEN** the Reports item SHALL carry a disclosure mark that the destination links do not have
+
+#### Scenario: Remote Sync keeps the Timer item selected
+- **WHEN** the user is on `/sync/{date}`, which has no sidebar link of its own
+- **THEN** the Timer item SHALL show the selected style, and no sidebar link SHALL expose `aria-current="page"`
+
 ### Requirement: REQ-258 Running entry resolved during authenticated shell SSR
 During SSR of any authenticated route, the `default` layout SHALL fetch the user's running entry (`GET /api/time-entries/running`) with the request's session cookie and seed the shared running-timer state before first paint, seeding idle (`null`) when there is none, so the widget never accepts start actions against an unresolved state. Client navigations MAY reuse that state and SHALL NOT need a reload to stay correct after start/stop.
 
@@ -216,6 +224,10 @@ The sidebar footer SHALL present one account control on every authenticated rout
 #### Scenario: Footer updates after a display name change
 - **WHEN** the user saves a new display name on `/profile`
 - **THEN** the account control SHALL show the new display name and its initial without a page reload
+
+#### Scenario: Theme item shows the current choice
+- **WHEN** the active theme preference is `system` and the account menu is opened
+- **THEN** the Theme item SHALL show the translated name of that choice beside its label without opening the submenu
 
 ### Requirement: REQ-428 Account control trigger per sidebar state
 On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, and the email as a secondary line. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
