@@ -178,13 +178,13 @@ function combineStartedAt(): string | null {
   return combined.toDate().toISOString();
 }
 
-/** The effective timezone with its offset at the chosen start, so the wall-clock values are unambiguous. */
-const startTimeZoneLabel = computed(() => {
+/**
+ * The effective timezone with its offset at the chosen start, so the wall-clock values are
+ * unambiguous: shown as the zone after a globe glyph, read out with its "Time zone:" prefix.
+ */
+const startTimeZone = computed(() => {
   const at = combineStartedAt() ?? running.value?.startedAt;
-  if (!at) return '';
-  return t('timer.startEditor.timeZoneHint', {
-    zone: timeZoneLabel(effective.value.timeZone, at),
-  });
+  return at ? timeZoneLabel(effective.value.timeZone, at) : '';
 });
 
 async function onSaveStartedAt() {
@@ -227,23 +227,30 @@ async function onSaveStartedAt() {
       class="size-2 shrink-0 rounded-full bg-primary shadow-[0_0_6px_2px] shadow-primary/45"
       aria-hidden="true"
     />
-    <TaskTitleInput
-      ref="titleInput"
-      v-model:text="inputText"
-      v-model:project="chipProject"
-      v-model:task="boundTask"
-      :disabled="isLoading"
-      :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
-      :aria-label="t('timer.titleLabel')"
-      bare
-      chip-testid="timer-project"
-      data-testid="timer-title-input"
-      @pick-project="onPickProject"
-      @remove-project="onRemoveProject"
-      @pick-task="onPickTask"
-      @blur="onBlur"
-      @enter="onEnter"
-    />
+    <!--
+      While the start editor is open the title area stops short of it (the editor's width plus a
+      gap), so the editor covers no part of the Task or its Project pill: the input clips at its
+      own edge instead.
+    -->
+    <div class="flex min-w-0 flex-1 self-stretch" :class="startEditorOpen && 'me-[22.5rem]'">
+      <TaskTitleInput
+        ref="titleInput"
+        v-model:text="inputText"
+        v-model:project="chipProject"
+        v-model:task="boundTask"
+        :disabled="isLoading"
+        :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
+        :aria-label="t('timer.titleLabel')"
+        bare
+        chip-testid="timer-project"
+        data-testid="timer-title-input"
+        @pick-project="onPickProject"
+        @remove-project="onRemoveProject"
+        @pick-task="onPickTask"
+        @blur="onBlur"
+        @enter="onEnter"
+      />
+    </div>
 
     <!--
       Always UButton for consistent mono size. Idle: disabled (no popover).
@@ -281,7 +288,7 @@ async function onSaveStartedAt() {
         <div
           role="group"
           aria-labelledby="timer-start-editor-heading"
-          class="grid w-[26rem] grid-cols-[minmax(0,1fr)_6.5rem] gap-3 p-3"
+          class="grid w-[22rem] grid-cols-[minmax(0,1fr)_6.5rem] gap-3 p-3"
           data-testid="timer-start-editor-popover"
         >
           <!-- Date and time share one row, so the editor stays short over the page below. -->
@@ -343,12 +350,20 @@ async function onSaveStartedAt() {
             {{ startEditorError }}
           </p>
           <div class="col-span-full flex items-center gap-2">
-            <p
-              class="m-0 me-auto min-w-0 text-xs text-muted"
-              data-testid="timer-start-editor-time-zone"
+            <UTooltip
+              :text="t('timer.startEditor.timeZoneHint', { zone: startTimeZone })"
+              :content="{ side: 'bottom' }"
             >
-              {{ startTimeZoneLabel }}
-            </p>
+              <p
+                tabindex="0"
+                class="m-0 me-auto flex min-w-0 items-center gap-1 text-xs text-muted"
+                data-testid="timer-start-editor-time-zone"
+              >
+                <UIcon name="i-lucide-globe" class="size-3.5 shrink-0" aria-hidden="true" />
+                <span class="sr-only">{{ t('timer.startEditor.timeZoneLabel') }}</span>
+                <span class="truncate">{{ startTimeZone }}</span>
+              </p>
+            </UTooltip>
             <UButton
               color="neutral"
               variant="outline"

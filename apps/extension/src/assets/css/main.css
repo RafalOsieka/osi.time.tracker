@@ -106,13 +106,18 @@ html:not(.dark) .text-inverted {
   --font-weight-semibold: 540;
 }
 
-/* Paragraphs and headings never end on a lone short word. */
-p,
-li,
-h1,
-h2,
-h3 {
-  text-wrap: pretty;
+/*
+ * Paragraphs and headings never end on a lone short word. A base-layer default, so a
+ * `text-balance` or `text-wrap` utility still decides where a component needs it.
+ */
+@layer base {
+  p,
+  li,
+  h1,
+  h2,
+  h3 {
+    text-wrap: pretty;
+  }
 }
 
 /* Buttons and links show a 2px focus ring at 3:1 against their surface in both themes. */

@@ -269,14 +269,17 @@ async function onDelete() {
       class="flex justify-center"
     >
       <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
-        <!-- A 28px soft red tile: the denser size of the row-action tiles, for the expanded block. -->
+        <!--
+          A 28px soft red tile: the denser size of the row-action tiles, for the expanded block. In
+          dark mode its glyph is a step lighter (red-300), so it reads clearly on the deep red tile.
+        -->
         <UButton
           icon="i-lucide-trash-2"
           variant="soft"
           square
           size="sm"
           color="error"
-          class="size-7 justify-center"
+          class="size-7 justify-center dark:text-red-300"
           :ui="{ leadingIcon: 'size-4' }"
           :aria-label="t('timerView.entryRow.deleteLabel')"
           :loading="deleting"

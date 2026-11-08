@@ -9,7 +9,7 @@ import { useExtensionI18n } from '../composables/use-extension-i18n.js';
  * A tracker row's last activity (REQ-419): a mark, the operation and how long ago it ran. A
  * failure is a recoverable problem, so its mark is amber, and a second line says what went
  * wrong; the row's current state (such as a "No access" badge) is shown apart from this history,
- * and a denied attempt it already explains is told quietly (a muted mark, "Failed" alone).
+ * and a denied attempt it already explains is told quietly: one line under a muted failure mark.
  */
 const {
   record,
@@ -33,13 +33,13 @@ const summary = computed(() =>
   record ? summarizeActivity(record, now, locale.value, t.value) : null,
 );
 </script>
-
 <template>
   <span class="flex min-w-0 items-start gap-1.5 text-muted">
     <span class="sr-only">{{ t('activity.label') }}:</span>
     <template v-if="summary">
+      <!-- A past failure has its own glyph; the "!" circle is kept for problems that are live. -->
       <UIcon
-        :name="summary.ok ? 'i-lucide-circle-check' : 'i-lucide-circle-alert'"
+        :name="summary.ok ? 'i-lucide-circle-check' : 'i-lucide-circle-x'"
         class="mt-[0.2em] size-[1.1em] shrink-0"
         :class="summary.ok ? 'text-success' : quiet ? 'text-dimmed' : 'text-warning'"
         aria-hidden="true"
@@ -49,13 +49,10 @@ const summary = computed(() =>
           <span v-if="summary.ok" class="sr-only">{{ summary.outcome }}</span>
           {{ summary.operation }}
           <span :class="SEPARATOR">{{ summary.when }}</span>
+          <span v-if="quiet" class="sr-only">({{ t('activity.failedPast') }})</span>
         </span>
-        <span v-if="!summary.ok" data-testid="activity-failure">
-          {{
-            quiet
-              ? t('activity.failed')
-              : t('activity.failedWith', { outcome: summary.outcome.toLocaleLowerCase(locale) })
-          }}
+        <span v-if="!summary.ok && !quiet" data-testid="activity-failure">
+          {{ t('activity.failedWith', { outcome: summary.outcome.toLocaleLowerCase(locale) }) }}
         </span>
       </span>
     </template>

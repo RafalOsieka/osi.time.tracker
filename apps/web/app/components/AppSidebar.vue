@@ -95,11 +95,15 @@ const navItems = computed<NavigationMenuItem[]>(() => [
           />
           <span
             v-if="isCollapsed"
-            class="absolute -end-1.5 -bottom-1.5 flex size-3 items-center justify-center rounded-full bg-(--app-surface-sidebar) text-muted ring-1 ring-accented"
+            class="absolute -end-1.5 -bottom-1.5 flex size-3 items-center justify-center rounded-full bg-(--app-surface-sidebar) text-default ring-1 ring-accented"
             aria-hidden="true"
             data-testid="nav-reports-disclosure"
           >
-            <UIcon name="i-lucide-chevron-right" class="size-2.5" />
+            <!-- A chevron drawn with 1.5px borders: the icon font's 1px stroke is too faint here;
+                 a filled caret would read as "play". -->
+            <span
+              class="-ms-px size-[5px] -rotate-45 border-e-[1.5px] border-b-[1.5px] border-current"
+            />
           </span>
         </span>
       </template>

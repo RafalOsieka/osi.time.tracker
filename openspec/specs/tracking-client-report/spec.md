@@ -34,7 +34,7 @@ The private `/reports/client` page SHALL use the shared page header with month c
 The page SHALL load the user's presets (REQ-381), preselecting the most recently used, with a selector whose last option, "new preset", switches to an unsaved one. The inline form SHALL hold the client name, a checkbox list of active trackers, hours format (`H:MM` or decimal) and PDF language (`en` or `pl`); a new preset starts empty with `decimal` and the UI locale. A preset with inactive trackers SHALL warn how many were removed. The selected preset SHALL be deletable after confirmation.
 
 #### Scenario: Trackers show their type
-- **WHEN** the checkbox list of trackers is shown
+- **WHEN** the checkbox list of trackers or the report summary's trackers are shown
 - **THEN** each tracker SHALL carry its type mark (OP, RM) before its name, as on the Projects and
   Trackers pages
 

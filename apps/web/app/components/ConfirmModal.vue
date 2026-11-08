@@ -73,7 +73,10 @@ function reject() {
         >
           <UIcon :name="chipIcon" class="size-5" />
         </span>
-        <p class="m-0 pt-1.5 text-sm text-toned" data-testid="confirm-description">
+        <p
+          class="m-0 pt-1.5 text-sm whitespace-pre-line text-toned"
+          data-testid="confirm-description"
+        >
           <!-- Each part in its own element, so line breaks in the template add no spaces. -->
           <span v-text="descriptionParts.before" />
           <strong

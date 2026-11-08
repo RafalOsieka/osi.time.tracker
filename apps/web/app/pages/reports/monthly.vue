@@ -195,10 +195,13 @@ function durationTd(isTotal: boolean, extra = ''): string {
 }
 
 /**
- * A legend entry's key: a short swatch of the flag's dotted amber underline, with no text, so the
- * legend explains the mark without looking like a flagged value itself.
+ * A legend entry's key: a sample duration in the flag's look, in miniature (12px mono, the
+ * dotted amber underline), so the legend shows the mark it explains without reading as an
+ * ellipsis or as a row of data.
  */
-const LEGEND_SWATCH = 'me-2 inline-block w-5 border-b-2 border-dotted border-warning/80';
+const LEGEND_SAMPLE =
+  'me-1.5 font-mono text-xs font-semibold text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-[3px]';
+const LEGEND_SAMPLES = { local: formatReportDuration(26_100), direct: formatReportDuration(8100) };
 
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
 const GROUP_DIVIDER = 'border-s border-default';
@@ -557,17 +560,13 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       data-testid="reports-monthly-legend"
     >
       <span>
-        <span :class="LEGEND_SWATCH" aria-hidden="true" />
-        <span class="font-medium text-default">
-          {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnLocal') }) }}
-        </span>
+        <span :class="LEGEND_SAMPLE" aria-hidden="true">{{ LEGEND_SAMPLES.local }}</span>
+        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnLocal') }) }}
         {{ t('reports.monthly.legendLocal') }}
       </span>
       <span>
-        <span :class="LEGEND_SWATCH" aria-hidden="true" />
-        <span class="font-medium text-default">
-          {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnDirect') }) }}
-        </span>
+        <span :class="LEGEND_SAMPLE" aria-hidden="true">{{ LEGEND_SAMPLES.direct }}</span>
+        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnDirect') }) }}
         {{ t('reports.monthly.legendDirect') }}
       </span>
       <span class="w-full">{{ t('reports.monthly.legend') }}</span>

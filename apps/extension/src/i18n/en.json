@@ -12,7 +12,7 @@
     "themeDark": "Dark",
     "languageStorageFailed": "The language could not be saved or loaded. Choose it again.",
     "purpose": "The extension connects OSI to your trackers through this browser.",
-    "statusError": "Error",
+    "statusError": "Needs attention",
     "statusAccess": "No access",
     "statusReview": "{count} to approve",
     "statusSetup": "Setup needed",
@@ -25,7 +25,7 @@
     "checklistWebsiteAction": "Approve website",
     "checklistTrackerAction": "Approve tracker",
     "checklistOfferHelp": "You approve it on the setup page.",
-    "checklistOfferAction": "Approve {website}",
+    "checklistOfferAction": "Approve this website",
     "checklistDirectLabel": "In OSI:",
     "checklistDirect": "clear “Direct browser connection allowed” in the tracker's settings. OSI then reaches it through the extension.",
     "checklistDone": "Done",
@@ -39,7 +39,8 @@
     "checklistActionHelp": "You approve it on the setup page.",
     "checklistStepWebsite": "OSI website",
     "checklistStepWebsiteOffer": "The OSI website in this tab",
-    "checklistStepTracker": "A tracker for that website"
+    "checklistStepTracker": "A tracker for that website",
+    "checklistStepTrackerFirst": "A tracker for the website"
   },
   "approvals": {
     "websitesTitle": "Approved websites",
@@ -67,7 +68,6 @@
     "websitePlaceholder": "Choose a website",
     "websiteLine": "Website: {website}",
     "forWebsite": "for {website}",
-    "forWebsiteLine": "The tracker is approved for {website}.",
     "provider": "Tracker type",
     "destinationUrl": "Tracker address",
     "destinationHelp": "The tracker's base address, with its installation path if it has one.",
@@ -89,7 +89,7 @@
     "denied": "Permission was denied, so nothing was saved. Approve again to retry.",
     "deniedTitle": "Permission denied",
     "retry": "Try again",
-    "loadFailed": "The extension could not read its approved websites and trackers. Nothing was deleted. If this keeps happening, restart the browser.",
+    "loadFailed": "The extension could not read its approved websites and trackers. Nothing was deleted. If this keeps happening, restart the browser.",
     "loadFailedTitle": "Settings could not be read",
     "changeFailed": "The change could not be fully completed. The list shows the latest saved approvals. Try again to finish cleaning up permissions.",
     "changeFailedTitle": "The change did not finish",
@@ -99,16 +99,16 @@
     "websiteRequiredTitle": "No approved website",
     "lostAccessTitle": "No access to {name}",
     "lost_tracker_popup": "The browser took the extension's access to this tracker away.",
-    "lost_tracker_setup": "The browser took the extension's access away. The approval is still saved.",
+    "lost_tracker_setup": "The browser took the extension's access away. The approval is still saved.",
     "lost_website_popup": "The browser took the extension's access to this OSI website away.",
-    "lost_website_setup": "The browser took the extension's access away. The approval is still saved.",
+    "lost_website_setup": "The browser took the extension's access away. The approval is still saved.",
     "lostAccessManyTitle": "Browser access missing",
     "lostAccessMany_popup": "The browser took the extension's access away from: {names}.",
     "lostAccessMany_setup": "The browser took the extension's access away from: {names}. Restore it in their rows.",
     "websitePermissionMissing": "This tracker's website has no access. Restore it under Approved websites.",
     "restorePermission": "Restore access",
     "invalidWebsiteFormat": "Enter the full address with https://, e.g. https://time.example.com.",
-    "invalidWebsiteHttp": "Use an https:// address; http:// works only for localhost and 127.0.0.1.",
+    "invalidWebsiteHttp": "Use an https:// address. http:// is allowed only for localhost and 127.0.0.1.",
     "invalidWebsitePath": "Enter just the website address, without a path or parameters, e.g. https://time.example.com.",
     "invalidWebsiteCredentials": "Remove the user name and password from the address.",
     "invalidDestination": "Enter an address starting with https:// (or http://), without credentials, parameters or a fragment.",
@@ -124,7 +124,9 @@
     "revokeWebsiteConfirmBodyOne": "This removes the approval of this website and the approval of 1 tracker:",
     "reviewedTag": "To review",
     "destinationsActivityNote": "Last activity covers the current browser session.",
-    "retryLoad": "Retry loading"
+    "retryLoad": "Retry loading",
+    "forWebsiteLinePrefix": "The tracker is approved for",
+    "suggestedByAll": "All from {website}"
   },
   "activity": {
     "none": "No activity this session",
@@ -148,7 +150,7 @@
     "outcome_limit": "Limit reached",
     "label": "Last activity",
     "failedWith": "Failed: {outcome}",
-    "failed": "Failed"
+    "failedPast": "failed"
   },
   "error": {
     "extensionUnavailable": "The OSI extension is not available in this browser.",

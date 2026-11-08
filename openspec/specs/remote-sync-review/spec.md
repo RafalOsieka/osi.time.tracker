@@ -427,7 +427,8 @@ Expanding a row SHALL reveal information only, as rows of the same list: the tas
 #### Scenario: Remote logs line up under to send
 - **WHEN** a linked task row is expanded and its remote logs are loaded
 - **THEN** each log's duration SHALL share the to-send column's end edge in a quieter tone than to
-  send, so it never reads as time still to send; its Linked or Unlinked state SHALL sit in the state
+  send, labelled in place as in the tracker, so it never reads as time still to send, and the log
+  row SHALL use one text tone across its cells; its Linked or Unlinked state SHALL sit in the state
   column as an "already in the tracker" icon (a cloud, with a check when Linked), never a glyph that
   reads as pending or loading, explained by its tooltip and accessible name; and its action SHALL
   sit in the actions column

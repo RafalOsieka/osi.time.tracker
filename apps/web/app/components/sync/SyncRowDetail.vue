@@ -290,7 +290,7 @@ const displayedRemoteLogs = computed(() => {
           :narrow="{ col: [3, 4], row: 1 }"
           class="flex min-w-0 items-baseline gap-1.5"
         >
-          <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">
+          <span class="shrink-0 font-mono text-xs tabular-nums">
             {{ `#${log.remoteLogId}` }}
           </span>
           <OverflowTooltip :text="commentText(log)">
@@ -311,26 +311,31 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507) in the dimmed tone, two
-             steps below a to-send value, marked as already there by the row's cloud in the state
-             column. The cell's accessible name carries the scope. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507) in the row's one muted
+             tone, labelled in place ("w trackerze") so it never reads as time to send; the label
+             runs into the empty local-time column. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
-          col="toSend"
+          col="tracked"
+          to="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="font-mono tabular-nums whitespace-nowrap text-dimmed"
+          class="whitespace-nowrap"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
           :data-testid="`remote-sync-remote-log-duration-${log.remoteLogId}`"
         >
-          {{ formatDuration(log.durationSeconds) }}
+          <span class="me-2 text-xs text-dimmed" aria-hidden="true">
+            {{ t('remoteSync.remoteLogValueLabel') }}
+          </span>
+          <span class="font-mono tabular-nums">{{ formatDuration(log.durationSeconds) }}</span>
         </ColumnCell>
-        <!-- The denser rows' 28px tinted tile, square like every row action. -->
+        <!-- The denser rows' 28px tinted tile, square like every row action, inset from the
+             band's edge like the row content on its start side. -->
         <ColumnCell
           :columns="columns"
           col="actions"
           :narrow="{ col: [5, 6], row: 1 }"
-          class="flex justify-end"
+          class="flex justify-end pe-2"
         >
           <UTooltip
             v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"

@@ -200,7 +200,8 @@ const hasUnsavedChanges = computed(() => {
   );
 });
 
-const trackerItems = computed(() =>
+type TrackerItem = { label: string; value: string; systemType: TrackerDto['systemType'] };
+const trackerItems = computed((): TrackerItem[] =>
   (trackers.value ?? []).map((tracker) => ({
     label: tracker.name,
     value: tracker.id,
@@ -223,38 +224,47 @@ const localeItems = computed(
 );
 
 /** The report as the form stands, for the summary beside it; an empty fact reads "not set". */
+/** One summary value; a Tracker carries its OP/RM mark, as in the checkbox list. */
+type SummaryValue = { text: string; systemType?: TrackerItem['systemType'] };
+
 const summaryFacts = computed(() => {
-  const trackerNames = new Map(trackerItems.value.map((item) => [item.value, item.label]));
+  const trackersById = new Map(trackerItems.value.map((item) => [item.value, item]));
   const clientName = state.clientName.trim();
+  const plain = (texts: string[]): SummaryValue[] => texts.map((text) => ({ text }));
   return [
     {
       key: 'client',
       label: t('clientReport.summaryClient'),
-      values: clientName ? [clientName] : [],
+      values: plain(clientName ? [clientName] : []),
     },
     {
       key: 'month',
       label: t('clientReport.summaryMonth'),
-      values: monthLabel.value ? [monthLabel.value] : [],
+      values: plain(monthLabel.value ? [monthLabel.value] : []),
     },
     {
       key: 'trackers',
       label: t('clientReport.trackersLabel'),
-      values: state.trackerIds.flatMap((id) => trackerNames.get(id) ?? []),
+      values: state.trackerIds.flatMap((id): SummaryValue[] => {
+        const tracker = trackersById.get(id);
+        return tracker ? [{ text: tracker.label, systemType: tracker.systemType }] : [];
+      }),
     },
     {
       key: 'hours-format',
       label: t('clientReport.hoursFormatLabel'),
-      values: hoursFormatItems.value
-        .filter((item) => item.value === state.hoursFormat)
-        .map((item) => item.label),
+      values: plain(
+        hoursFormatItems.value
+          .filter((item) => item.value === state.hoursFormat)
+          .map((item) => item.label),
+      ),
     },
     {
       key: 'locale',
       label: t('clientReport.localeLabel'),
-      values: localeItems.value
-        .filter((item) => item.value === state.locale)
-        .map((item) => item.label),
+      values: plain(
+        localeItems.value.filter((item) => item.value === state.locale).map((item) => item.label),
+      ),
     },
   ];
 });
@@ -594,13 +604,18 @@ async function onExport() {
           <template v-for="fact in summaryFacts" :key="fact.key">
             <dt class="text-muted">{{ fact.label }}</dt>
             <dd
-              class="m-0 min-w-0"
+              class="m-0 grid min-w-0 gap-1"
               :class="fact.values.length ? 'font-medium text-highlighted' : 'text-dimmed'"
               :data-testid="`client-report-summary-${fact.key}`"
             >
               <template v-if="fact.values.length">
-                <span v-for="value in fact.values" :key="value" class="block break-words">
-                  {{ value }}
+                <span
+                  v-for="value in fact.values"
+                  :key="value.text"
+                  class="flex items-center gap-2 break-words"
+                >
+                  <TrackerTypeMark v-if="value.systemType" :system-type="value.systemType" />
+                  {{ value.text }}
                 </span>
               </template>
               <template v-else>{{ t('clientReport.summaryNone') }}</template>

@@ -266,7 +266,7 @@ The extension popup and options page SHALL use the web app's component library, 
 
 #### Scenario: Popup status is a labelled badge
 - **WHEN** the popup cannot read the approvals
-- **THEN** the header SHALL show an "Error" badge
+- **THEN** the header SHALL show an amber "Needs attention" badge, the word of a recoverable state
 - **WHEN** the popup has loaded the approvals and some approved origin lacks browser site access
 - **THEN** the header SHALL show a "No access" badge, an alert SHALL name the affected website or tracker with a restore action that opens the setup page focused on its restore control, and the affected row SHALL carry a "No access" badge
 - **WHEN** every approval has access and tracker suggestions are pending

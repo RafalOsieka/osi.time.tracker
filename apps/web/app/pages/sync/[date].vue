@@ -135,21 +135,23 @@ const columns = computed(
       { key: 'expand', track: '1.5rem' },
       { key: 'state', track: '1.5rem', header: t('remoteSync.columns.state'), headerSrOnly: true },
       // Title, issue and activity share the flexible width, sized to what each holds at desktop
-      // width: the activity column fits its "Wybierz czynność" chip (about 150px) and no more, so
-      // the issue's number and title get the largest share and the title the rest.
-      { key: 'title', track: { fr: 1.5, min: '8rem' }, header: t('remoteSync.columns.title') },
-      { key: 'issue', track: { fr: 1.45, min: '6rem' }, header: t('remoteSync.columns.issue') },
+      // width: the activity column fits its "Wybierz czynność" select (160px) and no more, the
+      // title (the row's own text) gets the largest share so it fits in both themes, and the
+      // issue title gives way with an ellipsis (its number never truncates).
+      { key: 'title', track: { fr: 1.65, min: '8rem' }, header: t('remoteSync.columns.title') },
+      { key: 'issue', track: { fr: 1.1, min: '6rem' }, header: t('remoteSync.columns.issue') },
       {
         key: 'activity',
-        track: { fr: 1, min: '9.25rem' },
+        track: { fr: 1, min: '10rem' },
         header: t('remoteSync.columns.activity'),
       },
       // The duration columns fit an HH:MM:SS value (the to-send frame hangs into the gap) and
       // their 12px headers, no wider, so the text columns keep the room.
       { key: 'tracked', track: '5rem', header: t('remoteSync.columns.tracked'), align: 'end' },
       { key: 'toSend', track: '5.5rem', header: t('remoteSync.columns.toSend'), align: 'end' },
-      // Sized for one 28px action tile (the expanded block's reconcile action, REQ-505).
-      { key: 'actions', track: '1.75rem' },
+      // One 28px action tile (the expanded block's reconcile action, REQ-505) plus the band's
+      // 8px end inset, so the tile never sits flush on the inset's edge.
+      { key: 'actions', track: '2.25rem' },
     ] satisfies ColumnDefinition[],
 );
 
@@ -1067,7 +1069,6 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         <UButton
           color="neutral"
           variant="outline"
-          size="sm"
           icon="i-lucide-refresh-cw"
           :label="t('remoteSync.retryLoading')"
           data-testid="remote-sync-retry-failed"

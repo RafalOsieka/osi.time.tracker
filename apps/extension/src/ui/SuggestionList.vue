@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, onMounted, watch } from 'vue';
+import { computed, nextTick, onMounted, watch } from 'vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
@@ -35,6 +35,17 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useExtensionI18n();
+
+/**
+ * The website every pending suggestion comes from, when they all share one: the section then
+ * names it once instead of on every row (REQ-416).
+ */
+const commonWebsite = computed(() => {
+  const [first, ...rest] = suggestions;
+  return first && rest.every((item) => item.websiteOrigin === first.websiteOrigin)
+    ? first.websiteOrigin
+    : null;
+});
 
 function sendsCredentialsInClear(item: DestinationSuggestion): boolean {
   return isHttpCredentialRisk(canonicalizeDestination(`${item.origin}${item.basePath}`));
@@ -87,12 +98,20 @@ onMounted(() =>
         />
       </div>
       <p class="mt-0.5 text-sm text-muted">{{ t('approvals.suggestionsHelp') }}</p>
+      <p v-if="commonWebsite" class="mt-0.5 text-sm text-muted" data-testid="suggestions-website">
+        {{ t('approvals.suggestedByAll', { website: displayUrl(commonWebsite) }) }}
+      </p>
     </template>
     <!-- In the popup every section is a label above a list, as for the approved ones; the
       header status badge already carries the count. -->
-    <h2 v-if="mode === 'popup'" id="suggestions-title" class="px-1 text-xs font-medium text-muted">
-      {{ t('approvals.suggestionsTitle') }}
-    </h2>
+    <div v-if="mode === 'popup'" class="flex flex-col px-1">
+      <h2 id="suggestions-title" class="text-xs font-medium text-muted">
+        {{ t('approvals.suggestionsTitle') }}
+      </h2>
+      <p v-if="commonWebsite" class="text-xs text-muted" data-testid="suggestions-website">
+        {{ t('approvals.suggestedByAll', { website: displayUrl(commonWebsite) }) }}
+      </p>
+    </div>
 
     <ul
       class="divide-y divide-default"
@@ -119,12 +138,11 @@ onMounted(() =>
             class="flex min-w-0 flex-col gap-0.5"
             :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'"
           >
-            <span class="truncate text-sm font-medium text-highlighted">
-              {{ displayDestination(item) }}
-              <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
-            </span>
-            <!-- The reviewed tag shares the metadata line, so the address keeps its full width. -->
             <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+              <span class="min-w-0 truncate text-sm font-medium text-highlighted">
+                {{ displayDestination(item) }}
+                <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
+              </span>
               <UBadge
                 v-if="suggestionId(item) === highlightId"
                 color="neutral"
@@ -134,9 +152,9 @@ onMounted(() =>
                 :label="t('approvals.reviewedTag')"
                 data-testid="suggestion-reviewed"
               />
-              <span class="text-muted">
-                {{ t('approvals.suggestedBy', { website: displayUrl(item.websiteOrigin) }) }}
-              </span>
+            </span>
+            <span v-if="!commonWebsite" class="text-muted">
+              {{ t('approvals.suggestedBy', { website: displayUrl(item.websiteOrigin) }) }}
             </span>
             <p
               v-if="mode === 'popup' && sendsCredentialsInClear(item)"

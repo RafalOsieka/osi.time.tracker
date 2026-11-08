@@ -219,9 +219,10 @@ function removeChip() {
 /**
  * The bare field's padding matches its sizing copy (`ps-2.5 pe-1`, no room for the hidden chevron),
  * and the copy repeats the input's type size (16px, 14px from `md`), so the chip lands 8px after
- * the last letter; the overlay keeps a usable width however short the title is.
+ * the last letter; the overlay keeps a usable width however short the title is. A title with no
+ * room left ends in an ellipsis at rest rather than a glyph cut in half.
  */
-const BARE_UI = { trailing: 'hidden', base: 'w-full pe-1', content: 'min-w-80' };
+const BARE_UI = { trailing: 'hidden', base: 'w-full pe-1 text-ellipsis', content: 'min-w-80' };
 
 /** The free space after a bare field's text and chip still belongs to the field. */
 function focusInput() {

@@ -414,7 +414,7 @@ function onEditToSend() {
           {{ t('remoteSync.noActivityReason') }}
         </span>
         <UTooltip v-else-if="showEditors && !canEdit" :text="reason" :content="{ side: 'top' }">
-          <span tabindex="0" class="-ms-2 flex w-[calc(100%+0.5rem)] min-w-0">
+          <span tabindex="0" class="flex w-full min-w-0">
             <UButton
               variant="outline"
               color="neutral"
@@ -449,7 +449,8 @@ function onEditToSend() {
         >
           <OverflowTooltip :text="activityDisplayValue">
             <!-- The outlined control language of the row's other editors: a rounded-md select
-                 with the 3:1 outline at rest, filling its column at their 28px height, a muted
+                 with the 3:1 outline at rest, filling its column at their 28px height (inside it,
+                 so the issue column keeps the full 12px gutter), a muted
                  placeholder until an activity is chosen, and a cyan ring while its menu is open.
                  The row's amber state, not a loud fill, says the activity is still missing. -->
             <UButton
@@ -457,7 +458,7 @@ function onEditToSend() {
               color="neutral"
               size="xs"
               trailing-icon="i-lucide-chevron-down"
-              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-between text-sm font-normal"
+              class="w-full max-w-full justify-between text-sm font-normal"
               :class="[
                 selectedActivityName ? 'text-default' : 'text-dimmed',
                 activityOpen && 'ring-primary',
@@ -481,14 +482,14 @@ function onEditToSend() {
               :data-testid="`remote-sync-activity-list-${row.taskId}`"
               @keydown="onActivityListKeydown"
             >
-              <!-- Which tracker the activities come from, so the menu names its source; at the
-                   trigger's width it wraps rather than cut the Tracker name. -->
+              <!-- Which tracker the activities come from, as a one-line group label: the
+                   Tracker's name alone fits the trigger's width. -->
               <p
                 v-if="row.trackerName"
-                class="m-0 px-2.5 pt-1 pb-1.5 text-xs font-medium text-balance text-muted"
+                class="m-0 truncate px-2.5 pt-1 pb-1.5 text-xs font-medium text-muted"
                 aria-hidden="true"
               >
-                {{ t('remoteSync.activityMenuHeading', { tracker: row.trackerName }) }}
+                {{ row.trackerName }}
               </p>
               <UButton
                 v-for="option in activityOptions"

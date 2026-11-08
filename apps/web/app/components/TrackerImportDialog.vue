@@ -246,7 +246,6 @@ const STEPPER_UI = {
         size="sm"
         :items="stepItems"
         :model-value="stepIndex"
-        class="mb-2"
         :ui="STEPPER_UI"
       >
         <template #content>
@@ -380,7 +379,7 @@ const STEPPER_UI = {
                       to: '/projects',
                       color: 'neutral',
                       variant: 'outline',
-                      size: 'sm',
+                      size: 'md',
                     },
                   ]"
                   data-testid="tracker-import-unscoped-help"

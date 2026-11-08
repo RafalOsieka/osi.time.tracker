@@ -176,7 +176,7 @@ function openDetails() {
         variant="ghost"
         size="xs"
         block
-        class="w-full min-w-0 gap-2 font-normal text-muted"
+        class="h-8 w-full min-w-0 gap-2 font-normal text-muted"
         :class="[
           collapsed ? 'justify-center px-1' : 'justify-start px-1',
           SIDEBAR_FOOTER_PRESSED_CLASS,
@@ -186,7 +186,8 @@ function openDetails() {
         @focus="openDetails"
       >
         <template #leading>
-          <!-- As wide as the account avatar above, so icon and label line up with it. -->
+          <!-- As wide as the account avatar above, so icon and label line up with it; the
+               trigger is a 32px control like the rest of the app's buttons. -->
           <span class="inline-flex h-5 w-8 shrink-0 items-center justify-center">
             <UIcon
               :name="statusIcon"

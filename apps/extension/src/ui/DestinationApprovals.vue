@@ -260,7 +260,12 @@ function closeForm(): void {
           data-testid="destination-website-single"
         >
           <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
-          {{ t('approvals.forWebsiteLine', { website: displayUrl(singleWebsite) }) }}
+          <span>
+            {{ t('approvals.forWebsiteLinePrefix') }}
+            <span class="font-medium text-highlighted after:content-['.']">
+              {{ displayUrl(singleWebsite) }}
+            </span>
+          </span>
         </p>
         <UFormField v-else :label="t('approvals.website')" name="website">
           <USelect

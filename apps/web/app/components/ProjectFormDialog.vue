@@ -61,8 +61,8 @@ const selectedSystemType = computed(
   () => trackerItems.value.find((item) => item.id === state.trackerId)?.systemType ?? null,
 );
 
-/** Help lines sit tight under their control (4px), not a field gap away. */
-const FIELD_UI = { help: 'mt-1' };
+/** Help lines sit tight under their control (4px), not a field gap away, one sentence per line. */
+const FIELD_UI = { help: 'mt-1 whitespace-pre-line' };
 
 /** UI uses undefined for empty/local; API null is mapped at open/submit boundaries. */
 type ProjectFormState = {

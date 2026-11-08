@@ -130,7 +130,7 @@ it('approves trackers for the only website without asking which one', async () =
     destinations: [],
   });
   expect(html).not.toContain('data-testid="destination-website"');
-  expect(html).toContain('The tracker is approved for time.example.com.');
+  expect(html).toMatch(/The tracker is approved for[\s\S]*?time\.example\.com/);
   expect(isDisabled(html, 'add-destination')).toBe(false);
 });
 

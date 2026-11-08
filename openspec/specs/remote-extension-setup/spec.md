@@ -128,11 +128,11 @@ When the popup opens on a tab whose origin is a valid website origin (REQ-308) a
 
 ### Requirement: REQ-416 Tracker suggestions are queued for review
 
-The extension SHALL keep suggestions received from approved websites (REQ-421 in remote-browser-extension) as pending items until the user handles them. Pages SHALL list them in a titled section and show their count once. Each pending item SHALL show the requesting website, provider and tracker URL, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, including the browser permission prompt and the HTTP warning. Dismissing SHALL remove the item without approving it.
+The extension SHALL keep suggestions from approved websites (remote-browser-extension REQ-421) as pending items until the user handles them. Pages SHALL list them in a titled section, showing their count once. Each item SHALL show its provider, tracker URL and requesting website (once per section when shared), with Approve and Dismiss actions. Approving SHALL follow the regular approval, with its permission prompt and HTTP warning. Dismissing SHALL remove the item without approving it.
 
 #### Scenario: Review a suggestion
 - **WHEN** an approved website suggests a Redmine destination
-- **THEN** the popup and the setup page SHALL list it as pending under a section that names trackers to approve, naming the website, the provider and the tracker URL; the setup page SHALL show the count beside the section title and the popup in its status badge
+- **THEN** the popup and the setup page SHALL list it as pending under a section that names trackers to approve, naming the website (once for the section when every pending item comes from the same website), the provider and the tracker URL; the setup page SHALL show the count beside the section title and the popup in its status badge
 
 #### Scenario: Approve from the setup page
 - **WHEN** the user approves a pending suggestion on the setup page and grants the browser permission
@@ -200,7 +200,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 
 #### Scenario: Failed operation
 - **WHEN** the latest operation on a destination failed
-- **THEN** the row SHALL show the operation and its time beside an amber mark, with a line below saying what went wrong, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the mark SHALL be muted and the line SHALL only say that it failed
+- **THEN** the row SHALL show the operation and its time beside an amber failure mark distinct from the live-problem glyph, with a line below saying what went wrong, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the history SHALL be one line under a muted failure mark, its failure stated to assistive technology
 
 #### Scenario: Timeout
 - **WHEN** the latest operation on a destination timed out

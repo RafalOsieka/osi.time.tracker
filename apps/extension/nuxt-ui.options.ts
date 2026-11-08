@@ -100,7 +100,7 @@ export const nuxtUiOptions = {
         {
           color: 'warning',
           variant: 'soft',
-          class: 'bg-amber-50 text-amber-800 dark:bg-amber-400/12 dark:text-amber-300',
+          class: 'bg-amber-50 text-amber-700 dark:bg-amber-400/12 dark:text-amber-300',
         },
         {
           color: 'neutral',

@@ -59,7 +59,12 @@ const steps = computed(() => {
     },
     {
       id: 'tracker',
-      labelKey: mode === 'setup' ? 'app.checklistTracker' : 'app.checklistStepTracker',
+      labelKey:
+        mode === 'setup'
+          ? 'app.checklistTracker'
+          : websiteDone
+            ? 'app.checklistStepTracker'
+            : 'app.checklistStepTrackerFirst',
       actionKey: 'app.checklistTrackerAction',
       state: tracker,
     },
@@ -170,6 +175,19 @@ const stateKeys = {
 
           <!-- The popup's step action hands over to the setup page, and says so. -->
           <template v-if="mode === 'popup' && step.state === 'current'">
+            <!-- The open tab's address on its own line, so the button stays short. -->
+            <p
+              v-if="step.id === 'website' && offer"
+              class="flex max-w-full items-center gap-1.5 font-medium text-highlighted"
+              data-testid="current-website-host"
+            >
+              <UIcon
+                name="i-lucide-globe"
+                class="size-4 shrink-0 text-primary"
+                aria-hidden="true"
+              />
+              <span class="truncate">{{ displayUrl(offer) }}</span>
+            </p>
             <p class="text-[13px] text-muted">
               {{ t(step.id === 'website' ? 'app.checklistOfferHelp' : 'app.checklistActionHelp') }}
             </p>
@@ -177,7 +195,8 @@ const stateKeys = {
               v-if="step.id === 'website' && offer"
               trailing-icon="i-lucide-arrow-up-right"
               data-testid="current-website-offer"
-              :label="t('app.checklistOfferAction', { website: displayUrl(offer) })"
+              :label="t('app.checklistOfferAction')"
+              :aria-label="`${t('app.checklistOfferAction')} ${displayUrl(offer)}`"
               @click="emit('act', 'website')"
             />
             <UButton
@@ -198,7 +217,7 @@ const stateKeys = {
       data-state="info"
     >
       <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0 text-dimmed" aria-hidden="true" />
-      <p class="text-muted" :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'">
+      <p class="text-muted" :class="mode === 'popup' ? 'text-[13px] text-balance' : 'text-sm'">
         <span class="font-medium text-toned">{{ t('app.checklistDirectLabel') }}</span>
         {{ t('app.checklistDirect') }}
       </p>

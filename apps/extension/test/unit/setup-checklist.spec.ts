@@ -58,7 +58,9 @@ describe('setup checklist', () => {
       offer: 'https://time.example.com',
     });
     expect(html).not.toContain('data-testid="checklist-action-website"');
-    expect(html).toMatch(/data-testid="current-website-offer"[\s\S]*Approve time\.example\.com/);
+    // The open tab's address sits on its own line above a short "Approve this website" button.
+    expect(html).toMatch(/data-testid="current-website-host"[\s\S]*?time\.example\.com/);
+    expect(html).toMatch(/aria-label="Approve this website time\.example\.com"/);
   });
 
   it('names the approved website in the done step', async () => {

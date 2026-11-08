@@ -251,6 +251,10 @@ Edit, or the unlinked icon, SHALL open a reusable search popover naming its day 
 - **WHEN** a search has listed results and the query, mode and scope toggle are unchanged since
 - **THEN** the first result SHALL be visibly active, marked by a 3:1 outline rather than only a background tint, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again, and focus SHALL return to the query input after each search
 
+#### Scenario: Picker opens below its row
+- **WHEN** the user opens the picker on a row near the bottom of the viewport and the page can scroll
+- **THEN** the page SHALL first scroll that row up so the popover opens below it, inside the list and clear of the row actions; it SHALL open above the row only when the page cannot make room
+
 #### Scenario: Mode control precedes the query
 - **WHEN** the picker is open
 - **THEN** the search mode control SHALL come before the query input in reading and tab order, and the query input SHALL still receive the initial focus

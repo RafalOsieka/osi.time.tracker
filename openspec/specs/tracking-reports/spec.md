@@ -152,10 +152,10 @@ A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with a 
 #### Scenario: The legend explains the flags at a glance
 - **WHEN** the timesheet is shown
 - **THEN** the legend under it SHALL name, for the Local and Direct columns, what an underlined value
-  there means (time that reached no tracker; time logged in the tracker outside the app), each keyed
-  by a short swatch of the flag's dotted underline in plain explanatory text (so the legend never
-  looks like a flagged value), without redefining the columns themselves, and SHALL say how to see
-  each value's reason with the pointer or Tab
+  there means (nothing from that day reached a tracker; time logged in the tracker, not sent from the
+  app), each keyed by a small sample duration in the flag's look followed by plain explanatory
+  text, without redefining the columns themselves, and SHALL say how to see each value's reason
+  with the pointer or Tab
 
 #### Scenario: Periods follow Polish casing
 - **WHEN** the month is shown in Polish (the stepper, the summary)

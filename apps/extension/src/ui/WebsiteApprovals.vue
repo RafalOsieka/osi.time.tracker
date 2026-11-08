@@ -210,23 +210,11 @@ function closeForm(): void {
       <h3 v-if="!empty" class="text-sm font-semibold text-highlighted">
         {{ t('approvals.websiteFormTitle') }}
       </h3>
-      <p
-        v-if="handedOff"
-        class="flex items-start gap-2.5 rounded-md bg-default p-3 text-sm text-toned ring-1 ring-primary/60 ring-inset dark:bg-elevated dark:ring-primary/40"
-        data-testid="website-handoff"
-      >
-        <UIcon
-          name="i-lucide-info"
-          class="mt-0.5 size-4 shrink-0 text-primary"
-          aria-hidden="true"
-        />
-        {{ t('approvals.websiteHandoff') }}
-      </p>
       <UForm :state="formState" class="flex flex-col gap-4" @submit="emit('add')">
         <UFormField
           :label="t('approvals.websiteOrigin')"
           name="origin"
-          :help="handedOff ? undefined : help"
+          :help="handedOff ? t('approvals.websiteHandoff') : help"
           :error="errorKey ? t(errorKey) : undefined"
           :ui="{ help: 'text-sm', error: 'text-sm' }"
         >
@@ -240,6 +228,10 @@ function closeForm(): void {
             :disabled="disabled"
             @update:model-value="emit('update:origin', String($event))"
           />
+          <!-- The popup's handoff explains the pre-filled address right where it is read. -->
+          <template v-if="handedOff" #help="{ help: handoff }">
+            <span data-testid="website-handoff">{{ handoff }}</span>
+          </template>
           <template v-if="errorKey" #error="{ error }">
             <span role="alert" class="flex items-start gap-1.5" data-testid="website-origin-error">
               <UIcon

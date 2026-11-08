@@ -204,7 +204,34 @@ async function resetForOpen() {
   focusQueryInput();
 }
 
+/** Room the popover needs below its row: header, mode, query and a full results list. */
+const POPOVER_ROOM_PX = 440;
+
+/** The nearest ancestor that scrolls vertically, or the page. */
+function scrollParent(element: HTMLElement): HTMLElement | null {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+  }
+  return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null;
+}
+
+/**
+ * Scrolls the trigger's row up until the popover fits below it, so it opens below rather than
+ * flipping over the rows above (the running row, a day's total). Flipping stays the last resort,
+ * when the page cannot scroll that far.
+ */
+function makeRoomBelow() {
+  const element = rootEl.value;
+  if (!element) return;
+  const missing = POPOVER_ROOM_PX - (window.innerHeight - element.getBoundingClientRect().bottom);
+  if (missing > 0) scrollParent(element)?.scrollBy({ top: missing, behavior: 'instant' });
+}
+
 async function onTriggerClick() {
+  makeRoomBelow();
   open.value = true;
   await resetForOpen();
 }
@@ -513,8 +540,8 @@ onBeforeUnmount(() => {
 
           <!--
             Full-width option rows, aligned with the input: its edges and its text inset. The
-            active row (the first after a search) carries a cyan outline, a 3:1 marker rather than
-            only a wash: Enter in the query picks it.
+            active row (the first after a search) carries a neutral 3:1 outline rather than only a
+            wash, quieter than the query's cyan focus ring: Enter in the query picks it.
           -->
           <ul
             v-if="hasSearched && results.length > 0"
@@ -529,10 +556,10 @@ onBeforeUnmount(() => {
                 color="neutral"
                 variant="ghost"
                 block
-                class="h-auto justify-start rounded-md px-2.5 py-2 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
+                class="h-auto justify-start rounded-md px-2.5 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
                 :class="
                   index === activeIndex &&
-                  'bg-elevated ring-1 ring-primary ring-inset dark:bg-accented/60'
+                  'bg-elevated ring-1 ring-accented ring-inset dark:bg-accented/60'
                 "
                 :data-active="index === activeIndex || undefined"
                 :aria-label="resultAccessibleName(result)"
