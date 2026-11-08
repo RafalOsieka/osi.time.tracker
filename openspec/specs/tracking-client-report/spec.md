@@ -7,12 +7,7 @@ Gives the user a per-client monthly timesheet PDF built only from the time logs 
 ## Requirements
 
 ### Requirement: REQ-384 Client report page and month selection
-The private `/reports/client` page SHALL use the shared page header with month controls. The month SHALL default to the current one in the user's timezone, live in the `month=YYYY-MM` query and change with previous/next. An invalid `month` SHALL show a translated error and disable export rather than guess. A summary beside the form SHALL show its client, month, Trackers, hours format and PDF language, live and without a request. The global guard SHALL redirect unauthenticated visitors.
-
-#### Scenario: Summary follows the form
-- **WHEN** the user types a client name and checks a Tracker
-- **THEN** the summary SHALL show that client name and Tracker for the selected month without any request,
-  and a fact left empty SHALL read as not set
+The private `/reports/client` page SHALL use the shared page header with month controls. The month SHALL default to the current one in the user's timezone, live in the `month=YYYY-MM` query and change with previous/next. An invalid `month` SHALL show a translated error and disable export rather than guess. The preview area SHALL show a translated placeholder. The global guard SHALL redirect unauthenticated visitors.
 
 #### Scenario: Default month
 - **WHEN** an authenticated user opens `/reports/client` without a `month` query
@@ -33,18 +28,13 @@ The private `/reports/client` page SHALL use the shared page header with month c
 ### Requirement: REQ-385 Preset selection and inline preset form
 The page SHALL load the user's presets (REQ-381), preselecting the most recently used, with a selector whose last option, "new preset", switches to an unsaved one. The inline form SHALL hold the client name, a checkbox list of active trackers, hours format (`H:MM` or decimal) and PDF language (`en` or `pl`); a new preset starts empty with `decimal` and the UI locale. A preset with inactive trackers SHALL warn how many were removed. The selected preset SHALL be deletable after confirmation.
 
-#### Scenario: Trackers show their type
-- **WHEN** the checkbox list of trackers or the report summary's trackers are shown
-- **THEN** each tracker SHALL carry its type mark (OP, RM) before its name, as on the Projects and
-  Trackers pages
-
 #### Scenario: Last used preset is preselected
 - **WHEN** the user has presets A and B and B was used last
 - **THEN** the page SHALL open with B selected and its values in the form
 
 #### Scenario: First visit
 - **WHEN** the user has no presets and the UI locale is `en`
-- **THEN** the selector SHALL show "new preset", the form SHALL be empty with hours format `decimal` and PDF language `en`, and the export action SHALL read "save preset and download PDF"
+- **THEN** the selector SHALL show "new preset", the form SHALL be empty with hours format `decimal` and PDF language `en`, and the export action SHALL read "save and export"
 
 #### Scenario: New preset from the selector
 - **WHEN** the user picks "new preset" in the selector
@@ -55,11 +45,11 @@ The page SHALL load the user's presets (REQ-381), preselecting the most recently
 - **THEN** the page SHALL show a translated warning and the form SHALL list only active trackers
 
 ### Requirement: REQ-473 Export label and form validation
-Because export saves the preset first (REQ-386), the export action SHALL read "save preset and download PDF" while the form holds a new preset or differs from the selected saved one, and "download PDF" otherwise. The form SHALL validate as REQ-380 does and show translated field errors before any request is sent.
+Because export saves the preset first (REQ-386), the export action SHALL read "save and export" while the form holds a new preset or differs from the selected saved one, and "export" otherwise. The form SHALL validate as REQ-380 does and show translated field errors before any request is sent.
 
 #### Scenario: Export label follows unsaved changes
 - **WHEN** a saved preset is selected unchanged, and the user then edits its client name
-- **THEN** the export action SHALL read "download PDF" before the edit and "save preset and download PDF" after it
+- **THEN** the export action SHALL read "export" before the edit and "save and export" after it
 
 #### Scenario: Invalid form blocks export
 - **WHEN** the client name is empty or no tracker is checked
@@ -78,12 +68,7 @@ The inline preset form (REQ-385) SHALL hold a multiline contractor details field
 
 #### Scenario: Editing details changes the export label
 - **WHEN** a saved preset is selected unchanged and the user adds a line to its contractor details
-- **THEN** the export action SHALL read "save preset and download PDF"
-
-#### Scenario: Label says the field is optional
-- **WHEN** the preset form is shown
-- **THEN** the contractor details label SHALL carry a translated "optional" hint, unlike the required
-  client name
+- **THEN** the export action SHALL read "save and export"
 
 #### Scenario: Tooltip from the keyboard
 - **WHEN** the user moves keyboard focus to the help control next to the contractor details label

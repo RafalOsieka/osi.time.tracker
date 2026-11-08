@@ -194,11 +194,7 @@ A task whose project has an active tracker SHALL show a compact remote-issue con
 
 #### Scenario: Eligible Task is unlinked
 - **WHEN** a Timer Task has an active tracker but no remote reference
-- **THEN** its group row SHALL display a compact unlinked status icon in a tinted tile, whose accessible name and tooltip are a localized sentence that the task is not linked, and SHALL NOT display that sentence as visible text
-
-#### Scenario: Open picker shows a pressed trigger
-- **WHEN** the picker is open from a group's unlinked icon
-- **THEN** that icon SHALL look pressed and expose its expanded state to assistive technology
+- **THEN** its group row SHALL display a compact unlinked status icon whose accessible name and tooltip are a localized sentence that the task is not linked, and SHALL NOT display that sentence as visible text
 
 #### Scenario: Unlinked icon and one-digit id share a slot
 - **WHEN** one group is unlinked and another shows `#<single digit>`
@@ -221,7 +217,7 @@ A task whose project has an active tracker SHALL show a compact remote-issue con
 - **THEN** the system SHALL perform the day-scoped unlink immediately without a confirmation dialog and SHALL NOT open the picker
 
 ### Requirement: REQ-460 Remote issue picker popover
-Edit, or the unlinked icon, SHALL open a reusable search popover naming its day and Tracker, its mode control (issue-ID selected, first) before the query, focus in the query, and Enter searching. Empty and error states SHALL appear only after a submit. Each result SHALL show the issue title, then `#<id>` and its remote project title, all in its accessible name. It SHALL have no unlink action, SHALL translate its validation, loading, empty, error and link states, and SHALL meet WCAG 2.1 AA.
+Edit, or the unlinked icon, SHALL open a reusable search popover with issue-ID mode selected and listed first, focus in the query input, and Enter submitting. Empty and error states SHALL appear only after a submit. Each result SHALL show the issue title, then `#<id>` and the remote project title when present, all in its accessible name. It SHALL have no unlink action, SHALL translate its validation, loading, empty, error and link states, and SHALL meet WCAG 2.1 AA.
 
 #### Scenario: Link from a Timer Task row
 - **WHEN** the user activates the link action on an eligible Timer Task group
@@ -232,32 +228,8 @@ Edit, or the unlinked icon, SHALL open a reusable search popover naming its day 
 - **THEN** issue-ID mode SHALL be selected, SHALL appear first in the mode control, and the query input SHALL have keyboard focus
 
 #### Scenario: Result shows remote project title
-- **WHEN** a search returns an issue that includes a remote project title other than the scoped project searched in
+- **WHEN** a search returns an issue that includes a remote project title
 - **THEN** that result SHALL display the issue title, the `#<id>`, and the remote project title
-
-#### Scenario: Scoped search names only other projects
-- **WHEN** a search ran inside the Project's remote scope (REQ-328) and a result belongs to the scoped remote project itself
-- **THEN** that result SHALL NOT repeat the scoped project's title visibly, SHALL keep it in its accessible name, and results from its subprojects SHALL still show their project title
-
-#### Scenario: Title search marks the match
-- **WHEN** a title search returns results whose titles contain the searched text
-- **THEN** that text SHALL be visibly marked inside each result title
-
-#### Scenario: Picker names its day and Tracker
-- **WHEN** the picker opens from a Timer group
-- **THEN** its heading SHALL name the Task ("Link an issue: <Task title>") and one line under it SHALL name the group's day and the Tracker (for example "Entries on November 7, 2026 · Acme OpenProject"), since a link moves only that day's entries (REQ-461)
-
-#### Scenario: Enter picks the active result
-- **WHEN** a search has listed results and the query, mode and scope toggle are unchanged since
-- **THEN** the first result SHALL be visibly active, marked by a 3:1 outline rather than only a background tint, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again, and focus SHALL return to the query input after each search
-
-#### Scenario: Picker opens below its row
-- **WHEN** the user opens the picker on a row near the bottom of the viewport and the page can scroll
-- **THEN** the page SHALL first scroll that row up so the popover opens below it, inside the list and clear of the row actions; it SHALL open above the row only when the page cannot make room
-
-#### Scenario: Mode control precedes the query
-- **WHEN** the picker is open
-- **THEN** the search mode control SHALL come before the query input in reading and tab order, and the query input SHALL still receive the initial focus
 
 #### Scenario: Result without a remote project title still selectable
 - **WHEN** a search returns an issue with no remote project title
@@ -313,10 +285,6 @@ The timer view at `/` SHALL group entries by the local day of `startedAt` in the
 - **WHEN** a day contains entries with `taskId` `null`
 - **THEN** those entries SHALL appear in a "(no task)" group for that day
 
-#### Scenario: Day heading spells out the date
-- **WHEN** a day section is rendered
-- **THEN** its heading SHALL show the full weekday, day, month name and year in the active locale, the weekday cased as the locale writes it (lower-case in Polish, for example "sobota, 7 listopada 2026"), the same form the Remote Sync day uses
-
 #### Scenario: Timezone change regroups without refetch
 - **WHEN** the user changes their timezone setting while entries are displayed
 - **THEN** the page SHALL regroup the loaded entries under the day boundaries of the new timezone without requiring a reload
@@ -366,22 +334,6 @@ The page header's primary action SHALL open a manual-entry dialog: an optional t
 #### Scenario: Manual form blocks an incomplete time
 - **WHEN** the user clears a segment of the start or end group and submits
 - **THEN** an inline error SHALL be shown and no request SHALL be sent
-
-#### Scenario: Manual form explains its title and timezone
-- **WHEN** the manual-entry dialog is open
-- **THEN** the title field SHALL say that a new title may be typed or an existing Task picked, with `@` picking a Project, and the times SHALL show the effective timezone with its UTC offset on the chosen date
-
-#### Scenario: Header action looks pressed while its dialog is open
-- **WHEN** the manual-entry dialog is open
-- **THEN** the page header action that opened it SHALL show a pressed state and expose its expanded state, until the dialog closes
-
-#### Scenario: Manual form marks a new Task
-- **WHEN** the user picks the create-new-task option (REQ-467) in the dialog's title field
-- **THEN** the field SHALL show a "New task" cue with the entry's Project, or that it has none, until the title text is edited
-
-#### Scenario: Manual form previews the length in words
-- **WHEN** the start–end pair is complete and not inverted
-- **THEN** the dialog SHALL preview the entry's length under the field in words (for example "1 godz. 30 min" in Polish), leaving out a zero part
 
 ### Requirement: REQ-456 Inline entry edits
 Each entry SHALL be editable in place (start, stop, title) and deletable after confirmation (REQ-143, REQ-151). A time edit SHALL change only the edited hour and minute, keeping stored seconds and milliseconds; an unchanged value SHALL send nothing; the same-minute clamp (REQ-432) SHALL be on, saving zero length instead of an error. Retitling one entry SHALL move only that entry. A start moved across midnight SHALL regroup it. The list SHALL refresh when the running entry stops or is replaced.

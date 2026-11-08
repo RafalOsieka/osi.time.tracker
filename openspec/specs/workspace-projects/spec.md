@@ -6,19 +6,15 @@ How users manage their projects: list, create, edit and soft-delete them, each p
 ## Requirements
 
 ### Requirement: REQ-084 List own projects
-`GET /api/projects` SHALL return the user's own non-deleted projects ordered by name. An optional `trackerId` filter SHALL narrow it to one tracker, and a dedicated filter value to local projects (no tracker). Each project SHALL carry nullable `trackerId`, `trackerName` and `trackerSystemType`; name and system SHALL be present even when the tracker is soft-deleted, and all three SHALL be null for local projects. The `/projects` page SHALL show the full list, with no tracker filter.
+`GET /api/projects` SHALL return the user's own non-deleted projects ordered by name. An optional `trackerId` filter SHALL narrow it to one tracker, and a dedicated filter value to local projects (no tracker). Each project SHALL carry nullable `trackerId` and `trackerName`; the name SHALL be present even when the tracker is soft-deleted, and both SHALL be null for local projects. The `/projects` page SHALL show the full unfiltered list and SHALL NOT offer a tracker filter.
 
-#### Scenario: Response includes optional tracker name and system
+#### Scenario: Response includes optional tracker name
 - **WHEN** an authenticated user lists their projects
-- **THEN** each returned project SHALL include `trackerId`, `trackerName` and `trackerSystemType` (all null when the project is local)
+- **THEN** each returned project SHALL include `trackerId` and `trackerName` (both null when the project is local)
 
 #### Scenario: Tracker name persists after the tracker is soft-deleted
 - **WHEN** a project's tracker has been soft-deleted
-- **THEN** the project SHALL still appear in the list (when not itself deleted) with its `trackerName` and `trackerSystemType` populated from the soft-deleted tracker
-
-#### Scenario: Projects page shows each Project's Tracker and scope
-- **WHEN** the user views the Projects page
-- **THEN** a tracker-bound row SHALL show the Tracker's system type mark and name, followed by its remote project title or, when unscoped, a translated "whole tracker" label; a local row SHALL show a neutral local mark and the translated "local project" label
+- **THEN** the project SHALL still appear in the list (when not itself deleted) with its `trackerName` populated from the soft-deleted tracker
 
 #### Scenario: User sees only their own projects
 - **WHEN** an authenticated user requests their projects
@@ -108,10 +104,6 @@ The system SHALL soft-delete a project via `DELETE /api/projects/[id]` by settin
 #### Scenario: Deletion requires confirmation
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
-
-#### Scenario: Confirmation states what the user keeps
-- **WHEN** the delete confirmation is shown
-- **THEN** it SHALL name the project (emphasised in the message), say in one line that it can no longer be picked for new entries and, on its own line, that its time entries are kept, and offer a named delete action and a cancel action
 
 ### Requirement: REQ-088 Tracker relationship and ownership
 A project SHALL belong to at most one tracker owned by the same user, or to none (local). On create, and when an update changes `trackerId` to a different non-null tracker, the target SHALL be a non-deleted tracker the user owns; a foreign or unknown one SHALL resolve to HTTP 404 without confirming it exists. An update that keeps `trackerId` SHALL NOT re-validate that tracker, so a project whose tracker was soft-deleted can still be renamed. Clearing `trackerId` needs no tracker.
@@ -216,11 +208,7 @@ The project create/edit form SHALL validate input client-side with the same sche
 - **THEN** the `error.projectNameDuplicate` message SHALL render inline under the name field
 
 ### Requirement: REQ-261 Project form loads tracker options on dialog open
-The project dialog SHALL load the active tracker options only when it opens, not as part of the page's initial data, showing a loading indicator on the Tracker select meanwhile (it MAY be disabled until they resolve). Edit SHALL still seed a soft-deleted or missing tracker from the project's `trackerId`/`trackerName` (REQ-086). The select SHALL offer an explicit "none (local project)" choice first, selected by default on create, so a bound project can be detached (REQ-086).
-
-#### Scenario: Detach through the local choice
-- **WHEN** the user picks the local choice for a project bound to a tracker and confirms the change
-- **THEN** the form SHALL submit `trackerId` null and hide the remote project select
+The project dialog SHALL load the active tracker options only when it opens, not as part of the page's initial data, showing a loading indicator on the Tracker select meanwhile (it MAY be disabled until they resolve). Edit SHALL still seed a soft-deleted or missing tracker from the project's `trackerId`/`trackerName` (REQ-086). Create SHALL default to no tracker (local).
 
 #### Scenario: Opening create does not require trackers on page load
 - **WHEN** an authenticated user loads `/projects` without opening the create/edit dialog
@@ -274,10 +262,6 @@ Each project from `GET /api/projects` SHALL include `recentTrackedSeconds`: the 
 #### Scenario: Recent time is summed per project
 - **WHEN** the user has two stopped entries of 1 h and 30 min in "Helios" started within the last 30 days
 - **THEN** "Helios" SHALL report `recentTrackedSeconds` of `5400`
-
-#### Scenario: Projects page shows recent time
-- **WHEN** the user views the Projects page
-- **THEN** each row SHALL show its `recentTrackedSeconds` under a translated "Last 30 days" header as a monospace `H:MM` duration, in place of a creation date
 
 #### Scenario: Older entries are excluded
 - **WHEN** the user's only entry in "Nordwind" started 31 days ago

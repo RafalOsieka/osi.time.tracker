@@ -83,7 +83,7 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 - **THEN** the system SHALL respond with HTTP 401 (or reject the request for a missing CSRF token) without touching the stored profile
 
 ### Requirement: REQ-494 Profile page
-`/profile`, opened from the account menu (REQ-405), SHALL show an **Account** section (a labelled display-name field and the email read-only) and a **Preferences** section (a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')` with today's UTC offsets, and the browser's language control, REQ-401), each with a short description. It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (REQ-403), with `en`/`pl` parity.
+`/profile`, opened from the account menu (REQ-405), SHALL show an **Account** section — a labelled display-name field, the email read-only, and a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')` — and a **Preferences** section with the browser's language control (REQ-401). It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (REQ-403), with `en`/`pl` parity.
 
 #### Scenario: Profile shows stored values
 - **WHEN** an authenticated user opens `/profile`
@@ -91,7 +91,7 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 
 #### Scenario: Timezone list is filterable
 - **WHEN** the user types into the timezone select's filter
-- **THEN** the option list SHALL narrow to matching IANA identifiers, each shown with its current UTC offset (`Europe/Warsaw (UTC+01:00)`)
+- **THEN** the option list SHALL narrow to matching IANA identifiers
 
 #### Scenario: No theme, week-start, or Save control
 - **WHEN** an authenticated user views `/profile`

@@ -9,10 +9,6 @@ How users manage trackers — named connections to an OpenProject or Redmine ins
 ### Requirement: REQ-244 List own trackers
 The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `directBrowserAccess`, `roundingRule`, timestamps) and SHALL never include an API secret or required-field defaults.
 
-#### Scenario: List shows how each tracker connects
-- **WHEN** the user views the Trackers page
-- **THEN** each row SHALL show the tracker's name, system type, base URL and connection mode; a tracker with `directBrowserAccess: false` SHALL show that it connects through the extension, and a tracker with `true` SHALL show a direct connection
-
 #### Scenario: User sees only their own trackers
 - **WHEN** an authenticated user requests their trackers
 - **THEN** the response SHALL contain only trackers where `userId` equals the user's id and `deletedAt` is null, ordered by name
@@ -34,7 +30,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
 ### Requirement: REQ-492 Create a tracker
-`POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with visible help text (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
+`POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with accessible help (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
 
 #### Scenario: Direct browser access defaults to true
 - **WHEN** a user submits a tracker without `directBrowserAccess`
@@ -85,8 +81,8 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the user SHALL be able to save and use `directBrowserAccess: true`
 
 #### Scenario: Help is available without a pointer
-- **WHEN** the tracker form shows the direct-browser checkbox
-- **THEN** the localized explanation SHALL be visible as help text under it, not only in a tooltip, and the checkbox SHALL reference it through `aria-describedby`
+- **WHEN** a keyboard user focuses the help control beside the checkbox
+- **THEN** the localized explanation SHALL become available without changing the field value
 
 ### Requirement: REQ-246 Edit a tracker
 `PATCH /api/trackers/[id]` SHALL update the user's own tracker, validating provided fields as on creation. Changing any field, including `systemType`, `baseUrl` or `directBrowserAccess`, SHALL keep the tracker's identity and its tasks' remote issue references, with no remote validation, cleanup or migration; a capability change affects only future remote requests. The updated tracker SHALL be returned and its row SHALL reflect the change.
@@ -118,10 +114,6 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** the user activates the delete action
 - **THEN** a confirm dialog SHALL be shown and no deletion SHALL occur until the user confirms
 
-#### Scenario: Confirmation states the consequences
-- **WHEN** the delete confirmation is shown
-- **THEN** it SHALL name the tracker (emphasised in the message), say that its browser-held secret is removed and that its projects and time entries stay while linking and export to it stop, and offer a named delete action and a cancel action
-
 #### Scenario: Browser secret cleared on delete
 - **WHEN** a tracker is soft-deleted
 - **THEN** the client SHALL clear the browser-held secret associated with that tracker id
@@ -141,20 +133,12 @@ The API secret SHALL be entered and kept only in the user's browser, keyed by tr
 - **WHEN** a user enters an API secret for a tracker
 - **THEN** it SHALL remain browser-held and SHALL NOT be persisted on the OSI server
 
-#### Scenario: The form states where the secret is kept
-- **WHEN** the tracker form shows the API secret field, empty or filled
-- **THEN** visible help text (not a placeholder) SHALL say that the secret stays in this browser and never reaches the OSI server
-
-#### Scenario: The secret can be shown to check it
-- **WHEN** the user activates the toggle button in the API secret field
-- **THEN** the secret SHALL show as plain text until the user activates it again, and the toggle SHALL carry a translated accessible name and expose its state through `aria-pressed`; the field SHALL be masked again each time the form opens
-
 #### Scenario: Changing direct browser access keeps the secret in the browser
 - **WHEN** a user changes `directBrowserAccess`
 - **THEN** the existing browser-held secret SHALL remain the credential source and SHALL NOT migrate to extension or server storage
 
 ### Requirement: REQ-251 Accessible, tokenized Trackers UI
-The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity. One create/edit form SHALL hold, in this order, the name, the system type, the base URL, the browser-only secret input, the direct-browser checkbox and the rounding rule.
+The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity. One create/edit form SHALL hold the name, every connection field and the browser-only secret input.
 
 #### Scenario: Inline field error is accessible
 - **WHEN** a field validation error is shown
@@ -177,10 +161,6 @@ The tracker create/edit form SHALL validate input client-side with the same sche
 
 ### Requirement: REQ-256 Nearest-increment rounding rules on trackers
 A tracker's `roundingRule` SHALL be one of `none`, `up_15m`, `up_30m`, `up_1h`, `nearest_15m`, `nearest_30m`, `nearest_1h`. `nearest_*` SHALL round a summed duration to the closest multiple of its increment, **up** at exactly half; `up_*` SHALL round up to the next multiple; `none` SHALL pass the total through. Rounding SHALL be a pure transformation applied once at export, never altering stored entries. The form SHALL offer every rule with an `en`/`pl` label.
-
-#### Scenario: The form says rounding affects export only
-- **WHEN** the tracker form shows the rounding rule select
-- **THEN** visible help text SHALL say that the rule applies only to export and does not change local time entries
 
 #### Scenario: Nearest rule rounds down below the midpoint
 - **WHEN** a selected total of 1 hour 3 minutes is rounded under `nearest_15m`

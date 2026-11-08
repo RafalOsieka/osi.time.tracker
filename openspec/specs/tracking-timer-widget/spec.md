@@ -6,7 +6,7 @@ Define the live timer widget in the authenticated shell's top bar: its layout an
 ## Requirements
 
 ### Requirement: REQ-070 Reserved timer region hosts the live timer widget
-The shell's timer region (ui-shell REQ-068) SHALL host one live timer widget: a title field with task autocomplete filling the free width, its Project chip right after the text, an elapsed-time display, and a start/stop control (REQ-469) on the right. While a timer runs, the widget SHALL show the running entry's title and live elapsed time. Its colors SHALL come from theme tokens, it SHALL meet WCAG 2.1 AA (labelled, keyboard-operable controls), and its strings SHALL have `en`/`pl` parity.
+The shell's timer region (ui-shell REQ-068) SHALL host one live timer widget: a title input with task autocomplete that grows to fill the free width, an elapsed-time display, and a start/stop control (REQ-469) on the right. While a timer runs, the widget SHALL show the running entry's title and live elapsed time. Its colors SHALL come from theme tokens, it SHALL meet WCAG 2.1 AA (labelled, keyboard-operable controls), and its strings SHALL have `en`/`pl` parity.
 
 #### Scenario: Running indicator shown while a timer runs
 - **WHEN** the authenticated user has a running entry
@@ -18,14 +18,10 @@ The shell's timer region (ui-shell REQ-068) SHALL host one live timer widget: a 
 
 #### Scenario: Title grows and controls sit on the right
 - **WHEN** the timer widget is rendered
-- **THEN** the title field SHALL consume free horizontal space within the widget and the elapsed display and start/stop control SHALL sit to the right of it
-
-#### Scenario: Project chip follows the title text
-- **WHEN** the widget shows a title with a Project chip
-- **THEN** the chip SHALL sit directly after the title text rather than at the far end of the field, and activating the free space after them SHALL focus the title input
+- **THEN** the title input SHALL grow to consume free horizontal space within the widget and the elapsed display and start/stop control SHALL sit to the right of the title input
 
 ### Requirement: REQ-469 Start/stop control
-The start/stop control SHALL be an icon-only round button with a play icon to start and a red square stop while running, with a translated accessible name and a pressed state while running. While running, the stop icon's color SHALL animate (not the whole button's opacity, not a halo), except for users who prefer reduced motion. The elapsed display SHALL be the same kind of button in both states, disabled while idle and, while running, opening the start-time editor (REQ-466).
+The start/stop control SHALL be icon-only, a ghost button with a play icon to start and a square icon to stop, with a translated accessible name and a pressed state while running. While running, the stop icon's color SHALL animate (not the whole button's opacity, not a halo), except for users who prefer reduced motion. The elapsed display SHALL be the same kind of button in both states, disabled while idle and, while running, opening the start-time editor (REQ-466).
 
 #### Scenario: Start and stop are icon-only with accessible names
 - **WHEN** the timer is idle
@@ -141,15 +137,7 @@ While running, the elapsed control SHALL open a popover anchored to it with the 
 
 #### Scenario: Popover anchored to the elapsed control
 - **WHEN** the user activates the elapsed-time control to edit the start
-- **THEN** the popover SHALL open beside that control, to its left with a small gap, its top just inside the timer card's top edge, so it ends above the Timer view list's column headers and hides neither a day total nor the page header's action; while it is open the title area SHALL stop short of it, so it covers no part of the Task title or its Project chip
-
-#### Scenario: Elapsed control looks pressed while the editor is open
-- **WHEN** the start editor is open
-- **THEN** the elapsed control SHALL keep its running colour and show a pressed state until the editor closes
-
-#### Scenario: Editor names its timezone
-- **WHEN** the start editor is open
-- **THEN** it SHALL show the effective timezone with its UTC offset at the chosen date and time (for example "Europe/Warsaw (UTC+01:00)"), updating as the date or time changes
+- **THEN** the popover SHALL open anchored to that control rather than misaligned to an unrelated element
 
 ### Requirement: REQ-180 Top-bar suggestion binding, labels, and popover anchoring
 Title suggestions SHALL come from `GET /api/tasks?search=` as object items with one selection handler and nothing clickable nested inside, so a pick fires once and never sets `[object Object]`. A label SHALL show the task name, its project and its remote issue id when present. A pick SHALL send that task's identity so the entry binds to it; free-form text SHALL take the title path (REQ-142) in the chip's project or none (REQ-376). A set chip SHALL limit suggestions to its project.

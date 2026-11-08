@@ -78,14 +78,6 @@ The top bar SHALL host a single timer region at every viewport width, never a se
 ### Requirement: REQ-071 Accessible shell navigation
 The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The sidebar SHALL be a named `<nav>` landmark whose items render as plain icon-plus-label links addressable by their `href`. The current route's link SHALL expose `aria-current="page"`; on `/reports/monthly` that is the Monthly child, not the Reports group. The menu toggle SHALL expose `aria-expanded`. On the icon-only rail each item SHALL show its label as a tooltip, and Reports SHALL expose its children in a popover.
 
-#### Scenario: Collapsed Reports shows it opens a menu
-- **WHEN** the desktop sidebar is collapsed to icon-only
-- **THEN** the Reports item SHALL carry a small disclosure mark that the destination links do not have
-
-#### Scenario: Remote sync keeps the Timer item selected
-- **WHEN** the user is on `/sync/{date}`
-- **THEN** the Timer item SHALL show the selected style and no sidebar link SHALL expose `aria-current="page"`
-
 #### Scenario: Current route is indicated
 - **WHEN** the user is on a route represented in the sidebar
 - **THEN** the corresponding navigation link SHALL expose `aria-current="page"`
@@ -209,18 +201,6 @@ The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Repor
 ### Requirement: REQ-405 Account menu
 The sidebar footer SHALL present one account control on every authenticated route, identified by the user's `displayName` (REQ-397) with the email as a secondary line; a name saved on `/profile` SHALL appear without a reload. Its menu SHALL contain, in order: **Profile** (to `/profile`), the **Theme** submenu (REQ-402), then **Log out** in a separate group, which clears the session and goes to `/login`. No locale control SHALL appear in the footer or top bar. Labels SHALL have `en`/`pl` parity.
 
-#### Scenario: Log out is not styled as destructive
-- **WHEN** the account menu is opened
-- **THEN** Log out SHALL use the neutral item style, not the error color
-
-#### Scenario: Open menu keeps its trigger pressed
-- **WHEN** the account menu is open
-- **THEN** its trigger SHALL show a pressed state and the menu SHALL be at least as wide as the trigger
-
-#### Scenario: Theme item shows the current choice
-- **WHEN** the active preference is `system` and the account menu is opened
-- **THEN** the Theme item SHALL show "System" beside its label without opening the submenu
-
 #### Scenario: Logout is in the account menu
 - **WHEN** the shell is rendered at any viewport size
 - **THEN** logout SHALL be reachable from the sidebar footer account menu (not from a top-bar utility menu)
@@ -238,7 +218,7 @@ The sidebar footer SHALL present one account control on every authenticated rout
 - **THEN** the account control SHALL show the new display name and its initial without a page reload
 
 ### Requirement: REQ-428 Account control trigger per sidebar state
-On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, the email as a secondary line, and a quiet disclosure chevron at its end. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
+On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, and the email as a secondary line. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
 
 #### Scenario: Expanded footer shows name and email
 - **WHEN** the sidebar is expanded (or the mobile drawer is open)

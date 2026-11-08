@@ -143,28 +143,11 @@ After successful fetches the table SHALL flag the duration itself, not via a sta
 - **THEN** the day SHALL NOT be marked as needing attention; a tooltip MAY mention the two durations as information
 
 ### Requirement: REQ-472 Flagged and zero duration styling
-A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with a dotted underline, so a non-color cue marks it (REQ-004), and a themed hover and focus tooltip giving the reason (REQ-269). A legend under the table SHALL name what flagged values usually mean and how to reveal each one's reason with the pointer or Tab. An unflagged `0:00` SHALL use dimmed text at a lighter weight. The table SHALL NOT have an attention column.
-
-#### Scenario: Flagged durations have a non-color cue
-- **WHEN** a cell is flagged
-- **THEN** its duration SHALL be underlined as well as warning-colored and semibold
-
-#### Scenario: The legend explains the flags at a glance
-- **WHEN** the timesheet is shown
-- **THEN** the legend under it SHALL name, for the Local and Direct columns, what an underlined value
-  there means (nothing from that day reached a tracker; time logged in the tracker, not sent from the
-  app), each keyed by a small sample duration in the flag's look followed by plain explanatory
-  text, without redefining the columns themselves, and SHALL say how to see each value's reason
-  with the pointer or Tab
-
-#### Scenario: Periods follow Polish casing
-- **WHEN** the month is shown in Polish (the stepper, the summary)
-- **THEN** it SHALL read in lowercase, as Polish writes months ("listopad 2026")
+A flagged duration (REQ-293) SHALL use warning-colored **semibold** text, weight plus color rather than color alone (REQ-004), with a themed hover and focus tooltip giving the reason (REQ-269). An unflagged `0:00` SHALL use dimmed text. The table SHALL NOT have an attention column.
 
 #### Scenario: Zero durations recede
 - **WHEN** a cell is `0:00` and is not flagged
-- **THEN** that duration SHALL use dimmed text at a lighter weight, still at least 4.5:1 against its
-  background, and SHALL NOT use warning styling
+- **THEN** that duration SHALL use dimmed text and SHALL NOT use warning styling
 
 ### Requirement: REQ-294 Report durations use unpadded `H:MM`
 

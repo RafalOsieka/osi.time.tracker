@@ -167,41 +167,18 @@ The browser SHALL orchestrate remote reads, at most one remote creation per incl
 
 ### Requirement: REQ-229 Export runs through a review, running and report dialog
 
-Activating Export SHALL open a confirmation titled with the included task count, naming the exported day,
-then listing only the included tasks, each with its title to send, duration and destination (Tracker,
-issue, activity), and their total when there is more than one. Export SHALL include every Ready row with non-zero duration and a
-selected activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
+Activating Export SHALL open a confirmation listing only each included task's title and to-send duration,
+plus the total to-send duration. Export SHALL include every Ready row with non-zero duration and a selected
+activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without
+changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
 
 #### Scenario: Review lists exactly what will be sent
 - **WHEN** Export is activated with eligible rows
-- **THEN** the dialog SHALL open with an introduction naming the day ("Time export for November 7,
-  2026") beside an icon chip, then list each included title, destination and duration, plus their
-  total when more than one task is included
-
-#### Scenario: One included task shows no separate total
-- **WHEN** exactly one task is included
-- **THEN** the dialog SHALL show its duration once, on its row, without a separate total
+- **THEN** the dialog SHALL list each included title and duration plus their total
 
 #### Scenario: Skipped tasks are stated with reasons
 - **WHEN** the day contains ineligible tasks
-- **THEN** their durable row states SHALL state why they are excluded, and the dialog SHALL count the
-  tasks neither included nor Sent by reason, in one line at helper-text size ("Not in this export: 3
-  without an activity, 1 without an issue, 1 from a local project"), without listing them
-
-#### Scenario: The introduction matches the count
-- **WHEN** exactly one task is included
-- **THEN** the introduction SHALL speak of that one task in the singular
-
-#### Scenario: Export shows it is pressed while its review is open
-- **WHEN** the review dialog is open
-- **THEN** the Export action SHALL show its pressed state and expose that its dialog is expanded
-
-#### Scenario: Export is unavailable with a stated reason
-- **WHEN** Export is disabled
-- **THEN** it SHALL stay in place in one neutral disabled style with a visible fill (not the primary
-  colour), the same in both themes, with a short translated reason under it and on its focusable
-  host; when the rows' activities failed to load, the reason SHALL say the trackers cannot be
-  reached
+- **THEN** their durable row states SHALL state why they are excluded without repeating them in the dialog
 
 #### Scenario: Nothing is sent before confirmation
 - **WHEN** the confirmation is open
