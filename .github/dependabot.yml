@@ -30,3 +30,13 @@ updates:
     # The Vite+ build image tag must match the vite-plus catalog version (moves with `vp migrate`).
     ignore:
       - dependency-name: 'ghcr.io/voidzero-dev/vite-plus'
+
+  # The osieka.dev compose's Postgres and cloudflared. CI fills in the app's own two images.
+  - package-ecosystem: 'docker-compose'
+    directory: '/deploy/osieka-dev'
+    schedule:
+      interval: 'weekly'
+    # A new Postgres major can't open the old one's volume: it needs a dump and restore.
+    ignore:
+      - dependency-name: 'postgres'
+        update-types: ['version-update:semver-major']

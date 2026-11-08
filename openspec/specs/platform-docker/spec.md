@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines how OSI Time Tracker is shipped for self-hosting with Docker: the application and migrator images, their runtime configuration, the self-contained production compose stack, the committed environment example, and migrations applied before the app serves traffic.
+Defines how OSI Time Tracker is packaged with Docker: the application and migrator images, their runtime configuration, the health endpoint, the committed environment example, and migrations applied before the app serves traffic.
 
 ## Requirements
 

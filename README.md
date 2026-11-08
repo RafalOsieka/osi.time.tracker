@@ -29,19 +29,10 @@ Your clients each run their own tracker, OpenProject or Redmine, and each expect
 
 ## Getting started
 
+To run it from source, follow [Development](./docs/development.md). See [Connecting trackers](./docs/connecting-trackers.md) for how your browser reaches your trackers and for the browser extension.
+
 > [!NOTE]
-> You need Docker with Compose v2 and a clone of this repository. Serve the app over HTTPS: the session cookie is `Secure` in production.
-
-```bash
-cp .env.example .env
-# Set POSTGRES_PASSWORD, PGADMIN_DEFAULT_PASSWORD and a fresh NUXT_APP_SECRET,
-# plus BOOTSTRAP_USER_EMAIL / BOOTSTRAP_USER_PASSWORD for your first login.
-docker compose -f docker-compose.prod.yml up -d --build
-```
-
-The stack migrates the database, creates your user and serves the app on port `3000`. Then add your trackers on the **Trackers** page.
-
-See [Self-hosting](./docs/self-hosting.md) for configuration, upgrades, the browser extension and troubleshooting, and [Development](./docs/development.md) to run it from source.
+> There is no supported production stack. To host your own instance, build the `runtime` and `migrator` targets of the [`Dockerfile`](./Dockerfile) and write your own setup. Serve the app over HTTPS: the session cookie is `Secure` in production.
 
 ## Tech stack
 
@@ -63,18 +54,19 @@ apps/extension/               Optional Chrome/Edge extension
 apps/dev-seed/                Seeds local OpenProject/Redmine instances for development
 packages/remote-trackers/     OpenProject and Redmine adapters behind a neutral contract
 packages/extension-protocol/  Messages shared by the web app and the extension
-docs/                         Self-hosting, development and contributor guides
+deploy/osieka-dev/            Compose template and runbook of one private instance
+docs/                         Tracker connection, development and contributor guides
 openspec/                     Behavior specifications and change proposals
 ```
 
 ## Documentation
 
-| Document                                       | What it covers                                             |
-| ---------------------------------------------- | ---------------------------------------------------------- |
-| [Self-hosting](./docs/self-hosting.md)         | Production stack, configuration, upgrades, extension, logs |
-| [Development](./docs/development.md)           | Local environment, local trackers and fixture data         |
-| [Coding standards](./docs/coding-standards.md) | Code style and conventions                                 |
-| [E2E guideline](./docs/e2e-guideline.md)       | End-to-end test suites and troubleshooting                 |
-| [Roadmap](./ROADMAP.md)                        | What is planned next                                       |
-| [`openspec/specs`](./openspec/specs/)          | How every feature behaves, as specifications               |
-| [`AGENTS.md`](./AGENTS.md)                     | Instructions for AI coding agents                          |
+| Document                                             | What it covers                                     |
+| ---------------------------------------------------- | -------------------------------------------------- |
+| [Connecting trackers](./docs/connecting-trackers.md) | Reaching your trackers, the browser extension      |
+| [Development](./docs/development.md)                 | Local environment, local trackers and fixture data |
+| [Coding standards](./docs/coding-standards.md)       | Code style and conventions                         |
+| [E2E guideline](./docs/e2e-guideline.md)             | End-to-end test suites and troubleshooting         |
+| [Roadmap](./ROADMAP.md)                              | What is planned next                               |
+| [`openspec/specs`](./openspec/specs/)                | How every feature behaves, as specifications       |
+| [`AGENTS.md`](./AGENTS.md)                           | Instructions for AI coding agents                  |
