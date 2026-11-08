@@ -1,6 +1,10 @@
 export interface AppConfirmOptions {
   title: string;
   description?: string;
+  /** The chip's glyph; defaults to a warning triangle (error) or an info mark. */
+  icon?: string;
+  /** Text inside the description shown in medium weight, e.g. the name of what is deleted. */
+  emphasis?: string;
   confirmLabel?: string;
   cancelLabel?: string;
   confirmColor?: 'error' | 'primary' | 'neutral';

@@ -221,7 +221,7 @@ A task whose project has an active tracker SHALL show a compact remote-issue con
 - **THEN** the system SHALL perform the day-scoped unlink immediately without a confirmation dialog and SHALL NOT open the picker
 
 ### Requirement: REQ-460 Remote issue picker popover
-Edit, or the unlinked icon, SHALL open a reusable search popover naming its day and Tracker, its mode control (issue-ID selected, first) before the query, focus in the query, and Enter submitting. Empty and error states SHALL appear only after a submit. Each result SHALL show the issue title, then `#<id>` and its remote project title, all in its accessible name. It SHALL have no unlink action, SHALL translate its validation, loading, empty, error and link states, and SHALL meet WCAG 2.1 AA.
+Edit, or the unlinked icon, SHALL open a reusable search popover naming its day and Tracker, its mode control (issue-ID selected, first) before the query, focus in the query, and Enter searching. Empty and error states SHALL appear only after a submit. Each result SHALL show the issue title, then `#<id>` and its remote project title, all in its accessible name. It SHALL have no unlink action, SHALL translate its validation, loading, empty, error and link states, and SHALL meet WCAG 2.1 AA.
 
 #### Scenario: Link from a Timer Task row
 - **WHEN** the user activates the link action on an eligible Timer Task group
@@ -245,7 +245,11 @@ Edit, or the unlinked icon, SHALL open a reusable search popover naming its day 
 
 #### Scenario: Picker names its day and Tracker
 - **WHEN** the picker opens from a Timer group
-- **THEN** under its heading it SHALL show the Task title and a line naming the group's day and the Tracker (for example "Entries on November 7, 2026 · Acme OpenProject"), since a link moves only that day's entries (REQ-461)
+- **THEN** its heading SHALL name the Task ("Link an issue: <Task title>") and one line under it SHALL name the group's day and the Tracker (for example "Entries on November 7, 2026 · Acme OpenProject"), since a link moves only that day's entries (REQ-461)
+
+#### Scenario: Enter picks the active result
+- **WHEN** a search has listed results and the query, mode and scope toggle are unchanged since
+- **THEN** the first result SHALL be visibly active, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again
 
 #### Scenario: Mode control precedes the query
 - **WHEN** the picker is open
@@ -363,9 +367,13 @@ The page header's primary action SHALL open a manual-entry dialog: an optional t
 - **WHEN** the manual-entry dialog is open
 - **THEN** the title field SHALL say that a new title may be typed or an existing Task picked, with `@` picking a Project, and the times SHALL show the effective timezone with its UTC offset on the chosen date
 
-#### Scenario: Manual form previews the length in minutes
+#### Scenario: Manual form marks a new Task
+- **WHEN** the user picks the create-new-task option (REQ-467) in the dialog's title field
+- **THEN** the field SHALL show a "New task" cue with the entry's Project, or that it has none, until the title text is edited
+
+#### Scenario: Manual form previews the length in words
 - **WHEN** the start–end pair is complete and not inverted
-- **THEN** the dialog SHALL preview the entry's length as hours and minutes (`H:MM`, for example `1:30`)
+- **THEN** the dialog SHALL preview the entry's length under the field in words (for example "1 godz. 30 min" in Polish), leaving out a zero part
 
 ### Requirement: REQ-456 Inline entry edits
 Each entry SHALL be editable in place (start, stop, title) and deletable after confirmation (REQ-143, REQ-151). A time edit SHALL change only the edited hour and minute, keeping stored seconds and milliseconds; an unchanged value SHALL send nothing; the same-minute clamp (REQ-432) SHALL be on, saving zero length instead of an error. Retitling one entry SHALL move only that entry. A start moved across midnight SHALL regroup it. The list SHALL refresh when the running entry stops or is replaced.

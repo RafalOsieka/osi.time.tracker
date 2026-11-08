@@ -254,7 +254,7 @@ async function unlinkRemoteIssue() {
         :display-testid="`timer-group-title-${group.key}`"
         :input-testid="`timer-group-title-input-${group.key}`"
         :placeholder="t('timerView.noTask')"
-        :display-class="group.taskName ? 'font-medium text-default' : 'text-dimmed'"
+        :display-class="group.taskName ? 'font-medium text-highlighted' : 'text-dimmed'"
         @edit="beginTitleEdit"
         @commit="commitTitle"
         @cancel="cancelTitleEdit"

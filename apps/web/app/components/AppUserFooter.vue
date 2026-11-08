@@ -27,11 +27,11 @@ const route = useRoute();
 const onProfile = computed(() => route.path === '/profile');
 
 /**
- * While the menu is open the trigger stays pressed: in light mode it rises to a white tile with a
- * control outline over the slate sidebar (the menu's own surface), in dark mode the accented layer.
+ * While the menu is open the trigger stays pressed, the same way in both themes: it rises to the
+ * page surface with a control outline, above the sidebar's deeper layer.
  */
 const PRESSED_CLASS =
-  'data-[state=open]:bg-default data-[state=open]:ring data-[state=open]:ring-accented dark:data-[state=open]:bg-accented/70 dark:data-[state=open]:ring-0';
+  'data-[state=open]:bg-default data-[state=open]:ring data-[state=open]:ring-accented';
 
 const avatar = computed<AvatarProps>(() => ({
   alt: primaryLabel.value || undefined,

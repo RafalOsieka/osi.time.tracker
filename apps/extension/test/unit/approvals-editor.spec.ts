@@ -169,7 +169,7 @@ describe('approvals editor', () => {
     editor.websiteOrigin.value = 'http://localhost:3000';
     await editor.addWebsite();
     expect(editor.websites.value).toEqual([{ origin: 'http://localhost:3000' }]);
-    expect(outcomes).toEqual(['approvals.websiteApproved http://localhost:3000']);
+    expect(outcomes).toEqual(['approvals.websiteApproved localhost:3000']);
     expect(registered).toContain('http://localhost:3000');
 
     editor.destinationWebsite.value = 'http://localhost:3000';
@@ -183,10 +183,10 @@ describe('approvals editor', () => {
     expect(editor.websites.value).toHaveLength(0);
     expect(registered).toEqual([]);
     expect(outcomes).toEqual([
-      'approvals.websiteApproved http://localhost:3000',
-      'approvals.trackerApproved http://127.0.0.1:8080',
-      'approvals.trackerRemoved http://127.0.0.1:8080',
-      'approvals.websiteRemoved http://localhost:3000',
+      'approvals.websiteApproved localhost:3000',
+      'approvals.trackerApproved 127.0.0.1:8080',
+      'approvals.trackerRemoved 127.0.0.1:8080',
+      'approvals.websiteRemoved localhost:3000',
     ]);
   });
 

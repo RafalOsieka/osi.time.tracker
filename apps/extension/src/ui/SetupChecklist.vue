@@ -3,26 +3,33 @@ import { computed } from 'vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
+import ULink from '@nuxt/ui/components/Link.vue';
+import { displayUrl } from '../approvals/display.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
+import { openWebsite } from './open-website.js';
 import type { SetupStep } from './open-setup.js';
 
 /**
  * Onboarding steps shown by the popup and the setup page until a website and a tracker are
- * approved (REQ-411). The current step carries its own action: the popup opens the setup page on
- * that step's form, the setup page moves focus to it. The OSI-side step is an instruction, set
- * apart below the steps: the extension cannot observe that setting.
+ * approved (REQ-411). The current step carries its own action: in the popup it opens the setup
+ * page on that step (or, on an unapproved OSI tab, approves that tab's website); on the setup page
+ * the step itself moves focus to its form. A done website step names the approved website. The
+ * OSI-side setting is an instruction set apart below the steps: the extension cannot observe it.
  */
 const {
   websiteDone,
   trackerDone,
   mode,
-  websiteActionHidden = false,
+  website = null,
+  offer = null,
 } = defineProps<{
   websiteDone: boolean;
   trackerDone: boolean;
   mode: 'popup' | 'setup';
-  /** The popup's website offer already is the website step's action. */
-  websiteActionHidden?: boolean;
+  /** The first approved website, named in the done website step. */
+  website?: string | null;
+  /** The popup's unapproved OSI tab, offered as the website step's action (REQ-415). */
+  offer?: string | null;
 }>();
 
 const emit = defineEmits<{ act: [step: SetupStep] }>();
@@ -32,12 +39,27 @@ type StepState = 'done' | 'current' | 'todo';
 const { t } = useExtensionI18n();
 
 const steps = computed(() => {
-  const website: StepState = websiteDone ? 'done' : 'current';
+  const websiteState: StepState = websiteDone ? 'done' : 'current';
   const tracker: StepState = trackerDone ? 'done' : websiteDone ? 'current' : 'todo';
   return [
-    { id: 'website', labelKey: 'app.checklistWebsite', state: website },
-    { id: 'tracker', labelKey: 'app.checklistTracker', state: tracker },
-  ] as const satisfies readonly { id: SetupStep; labelKey: string; state: StepState }[];
+    {
+      id: 'website',
+      labelKey: websiteDone ? 'app.checklistWebsiteDone' : 'app.checklistWebsite',
+      actionKey: 'app.checklistWebsiteAction',
+      state: websiteState,
+    },
+    {
+      id: 'tracker',
+      labelKey: 'app.checklistTracker',
+      actionKey: 'app.checklistTrackerAction',
+      state: tracker,
+    },
+  ] as const satisfies readonly {
+    id: SetupStep;
+    labelKey: string;
+    actionKey: string;
+    state: StepState;
+  }[];
 });
 
 const markers = {
@@ -46,28 +68,20 @@ const markers = {
   todo: 'text-muted ring-1 ring-accented ring-inset',
 } as const satisfies Record<StepState, string>;
 
+/** The dot before the approved website when it shares the done step's line (setup page). */
+const SEPARATOR = "before:me-1 before:content-['·']";
+
+const labelClasses = {
+  done: 'text-toned',
+  current: 'font-medium text-highlighted',
+  todo: 'text-muted',
+} as const satisfies Record<StepState, string>;
+
 const stateKeys = {
   done: 'app.checklistDone',
   current: 'app.checklistCurrent',
   todo: 'app.checklistTodo',
 } as const satisfies Record<StepState, string>;
-
-const actions = {
-  popup: {
-    website: 'app.checklistWebsiteAction',
-    tracker: 'app.checklistTrackerAction',
-    icon: 'i-lucide-arrow-up-right',
-  },
-  setup: {
-    website: 'app.checklistWebsiteField',
-    tracker: 'app.checklistTrackerField',
-    icon: 'i-lucide-arrow-down',
-  },
-} as const;
-
-function showsAction(id: SetupStep, state: StepState): boolean {
-  return state === 'current' && !(id === 'website' && websiteActionHidden);
-}
 </script>
 
 <template>
@@ -75,20 +89,28 @@ function showsAction(id: SetupStep, state: StepState): boolean {
     as="section"
     aria-labelledby="setup-checklist-title"
     data-testid="setup-checklist"
-    :ui="{ body: 'flex flex-col gap-4' }"
+    :ui="
+      mode === 'popup'
+        ? { body: 'flex flex-col gap-4' }
+        : { header: 'px-4 py-3.5 sm:px-6', body: 'flex flex-col gap-3 sm:py-4' }
+    "
   >
-    <div class="flex flex-col gap-1">
-      <h2
-        id="setup-checklist-title"
-        class="font-semibold text-highlighted"
-        :class="mode === 'popup' ? 'text-sm' : 'text-base'"
-      >
-        {{ t(mode === 'popup' ? 'app.checklistTitle' : 'app.checklistSetupTitle') }}
+    <template v-if="mode === 'setup'" #header>
+      <h2 id="setup-checklist-title" class="text-base font-semibold text-highlighted">
+        {{ t('app.checklistSetupTitle') }}
       </h2>
-      <p v-if="mode === 'popup'" class="text-[13px] text-muted">{{ t('app.purpose') }}</p>
+    </template>
+    <div v-if="mode === 'popup'" class="flex flex-col gap-1">
+      <h2 id="setup-checklist-title" class="text-sm font-semibold text-highlighted">
+        {{ t('app.checklistTitle') }}
+      </h2>
+      <p class="text-[13px] text-muted">{{ t('app.purpose') }}</p>
     </div>
 
-    <ol class="flex flex-col gap-3">
+    <ol
+      class="flex gap-3"
+      :class="mode === 'popup' ? 'flex-col' : 'flex-wrap items-center gap-x-6 gap-y-2'"
+    >
       <li
         v-for="(step, index) in steps"
         :key="step.id"
@@ -106,34 +128,71 @@ function showsAction(id: SetupStep, state: StepState): boolean {
           <template v-else>{{ index + 1 }}</template>
         </span>
         <div class="flex min-w-0 flex-col items-start gap-2 pt-0.5">
-          <span
-            :class="step.state === 'current' ? 'font-medium text-highlighted' : 'text-muted'"
-            data-testid="checklist-step-label"
-          >
-            <span class="sr-only">{{ t(stateKeys[step.state]) }}:</span>
-            {{ t(step.labelKey) }}
-          </span>
-          <UButton
-            v-if="showsAction(step.id, step.state)"
-            size="sm"
-            :color="mode === 'popup' ? 'primary' : 'neutral'"
-            :variant="mode === 'popup' ? 'solid' : 'outline'"
-            :trailing-icon="actions[mode].icon"
-            :label="t(actions[mode][step.id])"
+          <span class="sr-only">{{ t(stateKeys[step.state]) }}:</span>
+          <!-- On the setup page the current step is the way to its form. -->
+          <button
+            v-if="mode === 'setup' && step.state === 'current'"
+            type="button"
+            class="inline-flex items-center gap-1 rounded-sm font-medium text-highlighted hover:text-primary focus-visible:text-primary focus-visible:outline-2 focus-visible:outline-primary"
             :data-testid="`checklist-action-${step.id}`"
             @click="emit('act', step.id)"
-          />
+          >
+            {{ t(step.labelKey) }}
+            <UIcon name="i-lucide-arrow-down" class="size-3.5 text-dimmed" aria-hidden="true" />
+          </button>
+          <span v-else :class="labelClasses[step.state]">
+            {{ t(step.labelKey) }}
+            <span
+              v-if="step.id === 'website' && step.state === 'done' && website"
+              :class="mode === 'popup' ? 'block' : SEPARATOR"
+            >
+              <ULink
+                :to="website"
+                class="font-medium text-highlighted hover:text-primary hover:underline"
+                data-testid="checklist-website-link"
+                @click.prevent="openWebsite(website)"
+              >
+                {{ displayUrl(website) }}
+              </ULink>
+            </span>
+          </span>
+
+          <template v-if="mode === 'popup' && step.state === 'current'">
+            <div
+              v-if="step.id === 'website' && offer"
+              class="flex flex-col items-start gap-2"
+              data-testid="current-website-offer"
+            >
+              <p class="text-[13px] text-muted">{{ t('app.checklistOfferHelp') }}</p>
+              <UButton
+                size="sm"
+                trailing-icon="i-lucide-arrow-up-right"
+                data-testid="current-website-approve"
+                :label="t('app.checklistOfferAction', { website: displayUrl(offer) })"
+                @click="emit('act', 'website')"
+              />
+            </div>
+            <UButton
+              v-else
+              size="sm"
+              trailing-icon="i-lucide-arrow-up-right"
+              :label="t(step.actionKey)"
+              :data-testid="`checklist-action-${step.id}`"
+              @click="emit('act', step.id)"
+            />
+          </template>
         </div>
       </li>
     </ol>
 
     <div
-      class="flex items-start gap-3 border-t border-default pt-4"
+      class="flex items-start gap-3"
+      :class="mode === 'popup' ? 'border-t border-default pt-4' : ''"
       data-testid="checklist-direct"
       data-state="info"
     >
       <span
-        class="flex size-6 shrink-0 items-center justify-center rounded-md bg-elevated text-muted"
+        class="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
         aria-hidden="true"
       >
         <UIcon name="i-lucide-settings-2" class="size-3.5" />

@@ -15,13 +15,15 @@ export function relativeTime(at: string, now: number, locale: ExtensionLocale): 
   return format.format(Math.round(hours / 24), 'day');
 }
 
-/** A destination's latest operation, split for a row: its outcome, then what ran and when. */
+/** A destination's latest operation, split for a row: its outcome, what ran, and when. */
 export interface ActivitySummary {
   ok: boolean;
   /** "Succeeded", "Timed out"… */
   outcome: string;
-  /** "Time entry export · 4 minutes ago" */
-  detail: string;
+  /** "Time entry export" */
+  operation: string;
+  /** "4 minutes ago", with non-breaking spaces so it never splits across lines. */
+  when: string;
 }
 
 export function summarizeActivity(
@@ -33,10 +35,7 @@ export function summarizeActivity(
   return {
     ok: record.outcome === 'ok',
     outcome: t(`activity.outcome_${record.outcome}`),
-    detail: [
-      t(`activity.operation_${record.operation}`),
-      // "20 minutes ago" never breaks across lines.
-      relativeTime(record.at, now, locale).replaceAll(' ', ' '),
-    ].join(' · '),
+    operation: t(`activity.operation_${record.operation}`),
+    when: relativeTime(record.at, now, locale).replaceAll(' ', '\u00a0'),
   };
 }

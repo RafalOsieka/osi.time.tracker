@@ -33,6 +33,7 @@ function mountPanel(destinations: DestinationApproval[]) {
             disabled: false,
             errorKey: null,
             missingOrigins: [],
+            rowRestore: false,
             onRevoke: (origin: string) => revoked.push(origin),
           }),
       }),
@@ -70,9 +71,12 @@ it('asks before removing a website that still has trackers and names the tracker
 
   expect(revoked).toEqual([]);
   expect(document.body.textContent).toContain('Remove website “time.example.com”?');
-  expect(document.body.textContent).toContain(
-    'Its tracker approvals (2) are removed too: tracker.example.com/a, tracker.example.com/b.',
-  );
+  expect(document.body.textContent).toContain('along with these tracker approvals (2):');
+  expect(
+    [...byTestId('revoke-website-trackers')!.querySelectorAll('li')].map((item) =>
+      item.textContent?.replace(/\s+/g, ''),
+    ),
+  ).toEqual(['RMtracker.example.com/a', 'RMtracker.example.com/b']);
 
   await click('revoke-website-confirm-action');
   expect(revoked).toEqual([website]);

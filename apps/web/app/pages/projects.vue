@@ -20,6 +20,8 @@ const projects = computed(() => projectsData.value ?? []);
 const isEmpty = computed(() => !projectsPending.value && projects.value.length === 0);
 const dialogOpen = ref(false);
 const editingProject = ref<ProjectDto | null>(null);
+/** The row tile whose dialog is open, so it shows as pressed behind the scrim. */
+const pressedAction = ref<{ id: string; action: 'edit' | 'delete' } | null>(null);
 
 function openCreate() {
   editingProject.value = null;
@@ -28,17 +30,27 @@ function openCreate() {
 
 function openEdit(project: ProjectDto) {
   editingProject.value = project;
+  pressedAction.value = { id: project.id, action: 'edit' };
   dialogOpen.value = true;
 }
+
+watch(dialogOpen, (open) => {
+  if (!open) pressedAction.value = null;
+});
 
 defineExpose({ openEdit });
 
 async function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
+  pressedAction.value = { id: project.id, action: 'delete' };
   const accepted = await confirm({
     title: t('projects.deleteConfirmHeader'),
     description: t('projects.deleteConfirmMessage', { name: project.name }),
+    emphasis: project.name,
+    icon: 'i-lucide-trash-2',
     confirmLabel: t('projects.deleteConfirmAccept'),
     cancelLabel: t('projects.deleteConfirmReject'),
+  }).finally(() => {
+    pressedAction.value = null;
   });
   if (!accepted) return;
 
@@ -52,79 +64,82 @@ async function onDelete(project: Pick<ProjectDto, 'id' | 'name'>) {
   }
 }
 
-const columns = computed<TableColumn<ProjectDto>[]>(() => [
-  {
-    accessorKey: 'name',
-    header: t('projects.columnName'),
-    cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
-    meta: { class: { th: 'w-[34%]', td: 'truncate' } },
-  },
-  {
-    id: 'tracker',
-    header: t('projects.columnTracker'),
-    cell: ({ row }) => {
-      const { trackerName, trackerSystemType, remoteProjectTitle } = row.original;
-      // Local Projects get their own icon in the mark's slot, so every label starts on one edge.
-      if (!trackerName || !trackerSystemType) {
-        return h('span', { class: 'flex min-w-0 items-center gap-2 text-muted' }, [
-          h('span', { class: 'inline-flex w-7 shrink-0 justify-center', 'aria-hidden': 'true' }, [
-            h(resolveComponent('UIcon'), { name: 'i-lucide-hard-drive', class: 'size-4' }),
+const columns = computed<TableColumn<ProjectDto>[]>(() => {
+  // Read here, not only inside a cell callback, so the actions cells rebuild when it changes.
+  const pressed = pressedAction.value;
+  return [
+    {
+      accessorKey: 'name',
+      header: t('projects.columnName'),
+      cell: ({ row }) => h('span', { class: 'font-medium text-highlighted' }, row.original.name),
+      meta: { class: { th: 'w-[34%]', td: 'truncate' } },
+    },
+    {
+      id: 'tracker',
+      header: t('projects.columnTracker'),
+      cell: ({ row }) => {
+        const { trackerName, trackerSystemType, remoteProjectTitle } = row.original;
+        // Local Projects get the same chip in neutral slate, so every label starts on one edge.
+        if (!trackerName || !trackerSystemType) {
+          return h('span', { class: 'flex min-w-0 items-center gap-2 text-muted' }, [
+            h(resolveComponent('TrackerTypeMark'), { systemType: null }),
+            h('span', { class: 'truncate' }, t('projects.localTrackerLabel')),
+          ]);
+        }
+        // The Tracker's type mark, as on Trackers, then its remote scope (REQ-325) in a quieter
+        // tone, or "whole tracker" when unscoped, so a missing scope never looks like missing data.
+        return h('span', { class: 'flex min-w-0 items-center gap-2' }, [
+          h(resolveComponent('TrackerTypeMark'), { systemType: trackerSystemType }),
+          h('span', { class: 'truncate', 'data-testid': `project-tracker-${row.original.id}` }, [
+            trackerName,
+            h(
+              'span',
+              { class: 'text-muted' },
+              ` · ${remoteProjectTitle ?? t('projects.remoteProjectPlaceholder')}`,
+            ),
           ]),
-          h('span', { class: 'truncate' }, t('projects.localTrackerLabel')),
         ]);
-      }
-      // The Tracker's type mark, as on Trackers, then its remote scope (REQ-325) in a quieter
-      // tone, or "whole tracker" when unscoped, so a missing scope never looks like missing data.
-      return h('span', { class: 'flex min-w-0 items-center gap-2' }, [
-        h(resolveComponent('TrackerTypeMark'), { systemType: trackerSystemType }),
-        h('span', { class: 'truncate', 'data-testid': `project-tracker-${row.original.id}` }, [
-          trackerName,
-          h(
-            'span',
-            { class: 'text-muted' },
-            ` · ${remoteProjectTitle ?? t('projects.remoteProjectPlaceholder')}`,
-          ),
-        ]),
-      ]);
-    },
-  },
-  {
-    // Time tracked in the last 30 days (REQ-371), so Projects in use stand out from idle ones.
-    accessorKey: 'recentTrackedSeconds',
-    header: t('projects.columnRecent'),
-    cell: ({ row }) => {
-      const seconds = row.original.recentTrackedSeconds;
-      return h(
-        'span',
-        { class: seconds > 0 ? 'text-default' : 'text-dimmed' },
-        formatReportDuration(seconds),
-      );
-    },
-    meta: { class: { th: 'w-36 text-end', td: 'text-end font-mono tabular-nums' } },
-  },
-  {
-    id: 'actions',
-    // Empty header: buttons already expose accessible names; keeps the column tight.
-    header: '',
-    enableSorting: false,
-    meta: {
-      class: {
-        // Fixed widths (the table is fixed-layout): two 32px tiles plus the cell padding.
-        th: 'w-28 text-end',
-        td: 'whitespace-nowrap py-1.5 text-end',
       },
     },
-    cell: ({ row }) =>
-      h(resolveComponent('RowActions'), {
-        editLabel: t('projects.editButton'),
-        deleteLabel: t('projects.deleteButton'),
-        editTestid: `edit-project-${row.original.id}`,
-        deleteTestid: `delete-project-${row.original.id}`,
-        onEdit: () => openEdit(row.original),
-        onDelete: () => onDelete(row.original),
-      }),
-  },
-]);
+    {
+      // Time tracked in the last 30 days (REQ-371), so Projects in use stand out from idle ones.
+      accessorKey: 'recentTrackedSeconds',
+      header: t('projects.columnRecent'),
+      cell: ({ row }) => {
+        const seconds = row.original.recentTrackedSeconds;
+        return h(
+          'span',
+          { class: seconds > 0 ? 'text-default' : 'text-dimmed' },
+          formatReportDuration(seconds),
+        );
+      },
+      meta: { class: { th: 'w-36 text-end', td: 'text-end font-mono tabular-nums' } },
+    },
+    {
+      id: 'actions',
+      // Empty header: buttons already expose accessible names; keeps the column tight.
+      header: '',
+      enableSorting: false,
+      meta: {
+        class: {
+          // Fixed widths (the table is fixed-layout): two 32px tiles plus the cell padding.
+          th: 'w-28 text-end',
+          td: 'whitespace-nowrap py-1.5 text-end',
+        },
+      },
+      cell: ({ row }) =>
+        h(resolveComponent('RowActions'), {
+          editLabel: t('projects.editButton'),
+          deleteLabel: t('projects.deleteButton'),
+          editTestid: `edit-project-${row.original.id}`,
+          deleteTestid: `delete-project-${row.original.id}`,
+          pressed: pressed?.id === row.original.id ? pressed.action : undefined,
+          onEdit: () => openEdit(row.original),
+          onDelete: () => onDelete(row.original),
+        }),
+    },
+  ];
+});
 </script>
 
 <template>

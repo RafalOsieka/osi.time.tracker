@@ -170,6 +170,20 @@ describe('ExtensionStatusFooter', () => {
     expect(destinations[1]?.text()).toContain('layout.extensionStatus.destinationDirect');
   });
 
+  it('says once that no tracker needs the extension and lists the rows without a status', async () => {
+    state.snapshot = { ...state.snapshot, trackers: [optionalTracker] };
+    const wrapper = await mountFooter();
+    await wrapper.get('[data-testid="extension-status-trigger"]').trigger('focus');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="extension-status-website"]').text()).toBe(
+      'layout.extensionStatus.notRequiredSummary',
+    );
+    const row = wrapper.get('[data-testid="extension-status-destination-opt"]');
+    expect(row.text()).toContain('Optional Tracker');
+    expect(row.text()).not.toContain('layout.extensionStatus.destinationDirect');
+  });
+
   it('opens on tap/click and shows status without approve or recheck actions', async () => {
     state.snapshot = {
       connection: 'websiteUnapproved',

@@ -28,7 +28,7 @@ describe('setup checklist', () => {
     expect(stepState(html, 'website')).toBe('current');
     expect(stepState(html, 'tracker')).toBe('todo');
     expect(stepState(html, 'direct')).toBe('info');
-    expect(html).toMatch(/Current step:<\/span>\s*Approve your OSI website address/);
+    expect(html).toMatch(/Current step:<\/span>[\s\S]*?Approve your OSI website address/);
     expect(html).toContain('data-testid="checklist-action-website"');
     expect(html).not.toContain('data-testid="checklist-action-tracker"');
     expect(html).toContain('connects OSI to your trackers through this browser');
@@ -48,15 +48,28 @@ describe('setup checklist', () => {
     expect(html).toContain('data-testid="checklist-action-tracker"');
   });
 
-  it('leaves the website step to the popup offer when one is shown', async () => {
+  it('makes the popup offer for the open tab the website step itself', async () => {
     useExtensionI18n().setLocale('en');
     const html = await renderWithUi(SetupChecklist, {
       websiteDone: false,
       trackerDone: false,
       mode: 'popup',
-      websiteActionHidden: true,
+      offer: 'https://time.example.com',
     });
     expect(html).not.toContain('data-testid="checklist-action-website"');
+    expect(html).toMatch(/data-testid="current-website-offer"[\s\S]*Approve time\.example\.com/);
+  });
+
+  it('names the approved website in the done step', async () => {
+    useExtensionI18n().setLocale('en');
+    const html = await renderWithUi(SetupChecklist, {
+      websiteDone: true,
+      trackerDone: false,
+      mode: 'popup',
+      website: 'https://time.example.com',
+    });
+    expect(html).toContain('OSI website approved');
+    expect(html).toMatch(/data-testid="checklist-website-link"[\s\S]*?time\.example\.com/);
   });
 
   it('quotes the OSI setting exactly as the web app labels it', async () => {

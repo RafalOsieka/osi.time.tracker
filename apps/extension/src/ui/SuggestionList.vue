@@ -13,7 +13,8 @@ import TrackerMark from './TrackerMark.vue';
 /**
  * Trackers that approved websites asked the user to approve (REQ-416), as a titled section with
  * its count. The setup page approves them in place (the click runs the permission prompt); the
- * popup only dismisses or hands over to setup. A plain-HTTP tracker says so before approval.
+ * popup only dismisses or hands over to setup. A plain-HTTP tracker says so under its address,
+ * and its approval is worded as a deliberate exception.
  */
 const {
   suggestions,
@@ -95,47 +96,38 @@ onMounted(() =>
       <li
         v-for="item in suggestions"
         :key="suggestionId(item)"
-        class="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2"
+        class="flex gap-3"
         :class="[
-          mode === 'popup' ? 'px-4 py-2.5' : 'px-4 py-3 sm:px-6',
-          suggestionId(item) === highlightId ? 'bg-primary-50/80 dark:bg-primary/8' : '',
+          mode === 'popup' ? 'flex-col px-4 py-3' : 'flex-wrap items-center px-4 py-3 sm:px-6',
+          suggestionId(item) === highlightId ? 'shadow-[inset_3px_0_0_0_var(--ui-primary)]' : '',
         ]"
         :data-highlighted="suggestionId(item) === highlightId || undefined"
         :data-testid="`suggestion-${suggestionId(item)}`"
       >
-        <TrackerMark :provider="item.provider" class="row-start-1" />
-        <span
-          class="row-start-1 flex min-w-0 flex-col"
-          :class="mode === 'popup' ? 'col-span-2' : ''"
-        >
-          <span class="truncate font-medium text-highlighted">
-            {{ displayDestination(item) }}
-          </span>
-          <span class="truncate text-xs text-muted">
-            {{ t(`approvals.${item.provider}`) }}
-            <span class="before:me-1 before:content-['·']">
+        <div class="flex min-w-0 items-start gap-3" :class="mode === 'setup' ? 'flex-1' : ''">
+          <TrackerMark :provider="item.provider" class="mt-0.5" />
+          <div
+            class="flex min-w-0 flex-col gap-0.5"
+            :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'"
+          >
+            <span class="truncate text-sm font-medium text-highlighted">
+              {{ displayDestination(item) }}
+              <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
+            </span>
+            <span class="truncate text-muted">
               {{ t('approvals.suggestedBy', { website: displayUrl(item.websiteOrigin) }) }}
             </span>
-          </span>
-        </span>
-        <p
-          v-if="sendsCredentialsInClear(item)"
-          class="col-start-2 row-start-2 flex items-start gap-1.5 text-xs text-warning"
-          :class="mode === 'setup' ? 'col-span-2' : ''"
-          :data-testid="`http-suggestion-${suggestionId(item)}`"
-        >
-          <UIcon name="i-lucide-lock-open" class="mt-px size-3.5 shrink-0" aria-hidden="true" />
-          <span>
-            <span class="font-medium">
-              {{ t(mode === 'popup' ? 'approvals.httpShort' : 'approvals.httpTitle') }}
-            </span>
-            <template v-if="mode === 'setup'">{{ ' ' }}{{ t('approvals.httpWarning') }}</template>
-          </span>
-        </p>
-        <div
-          class="col-start-3 flex justify-end gap-2"
-          :class="mode === 'popup' ? 'row-start-2' : 'row-start-1'"
-        >
+            <p
+              v-if="mode === 'popup' && sendsCredentialsInClear(item)"
+              class="flex items-center gap-1.5 font-medium text-warning"
+              :data-testid="`http-suggestion-${suggestionId(item)}`"
+            >
+              <UIcon name="i-lucide-lock-open" class="size-3.5 shrink-0" />
+              {{ t('approvals.httpShort') }}
+            </p>
+          </div>
+        </div>
+        <div class="flex shrink-0 justify-end gap-2">
           <UButton
             color="neutral"
             variant="outline"
@@ -149,8 +141,9 @@ onMounted(() =>
           <UButton
             v-if="mode === 'setup'"
             size="sm"
+            class="w-44 justify-center"
             :color="sendsCredentialsInClear(item) ? 'warning' : 'primary'"
-            :variant="sendsCredentialsInClear(item) ? 'outline' : 'solid'"
+            :variant="sendsCredentialsInClear(item) ? 'soft' : 'solid'"
             icon="i-lucide-check"
             :disabled="disabled"
             :label="
@@ -167,6 +160,8 @@ onMounted(() =>
           <UButton
             v-else
             size="sm"
+            color="primary"
+            variant="soft"
             trailing-icon="i-lucide-arrow-up-right"
             :disabled="disabled"
             :label="t('approvals.reviewSuggestion')"
@@ -175,6 +170,24 @@ onMounted(() =>
             @click="emit('review', suggestionId(item))"
           />
         </div>
+        <!-- On the setup page the risk spans the row, under the address and its actions. -->
+        <p
+          v-if="mode === 'setup' && sendsCredentialsInClear(item)"
+          class="flex basis-full items-start gap-2 ps-10 text-sm text-toned"
+          :data-testid="`http-suggestion-${suggestionId(item)}`"
+        >
+          <UIcon
+            name="i-lucide-lock-open"
+            class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden="true"
+          />
+          <span>
+            <span class="font-medium text-amber-800 dark:text-amber-300">
+              {{ t('approvals.httpTitle') }}
+            </span>
+            {{ t('approvals.httpWarning') }}
+          </span>
+        </p>
       </li>
     </ul>
   </UCard>

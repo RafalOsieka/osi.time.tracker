@@ -120,7 +120,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 
 #### Scenario: Confirmation states the consequences
 - **WHEN** the delete confirmation is shown
-- **THEN** it SHALL name the tracker, say that its browser-held secret is removed and that its projects and time entries stay while linking and export to it stop, and offer a named delete action and a cancel action
+- **THEN** it SHALL name the tracker (emphasised in the message), say that its browser-held secret is removed and that its projects and time entries stay while linking and export to it stop, and offer a named delete action and a cancel action
 
 #### Scenario: Browser secret cleared on delete
 - **WHEN** a tracker is soft-deleted
@@ -144,6 +144,10 @@ The API secret SHALL be entered and kept only in the user's browser, keyed by tr
 #### Scenario: The form states where the secret is kept
 - **WHEN** the tracker form shows the API secret field, empty or filled
 - **THEN** visible help text (not a placeholder) SHALL say that the secret stays in this browser and never reaches the OSI server
+
+#### Scenario: The secret can be shown to check it
+- **WHEN** the user activates the toggle button in the API secret field
+- **THEN** the secret SHALL show as plain text until the user activates it again, and the toggle SHALL carry a translated accessible name and expose its state through `aria-pressed`; the field SHALL be masked again each time the form opens
 
 #### Scenario: Changing direct browser access keeps the secret in the browser
 - **WHEN** a user changes `directBrowserAccess`
@@ -173,6 +177,10 @@ The tracker create/edit form SHALL validate input client-side with the same sche
 
 ### Requirement: REQ-256 Nearest-increment rounding rules on trackers
 A tracker's `roundingRule` SHALL be one of `none`, `up_15m`, `up_30m`, `up_1h`, `nearest_15m`, `nearest_30m`, `nearest_1h`. `nearest_*` SHALL round a summed duration to the closest multiple of its increment, **up** at exactly half; `up_*` SHALL round up to the next multiple; `none` SHALL pass the total through. Rounding SHALL be a pure transformation applied once at export, never altering stored entries. The form SHALL offer every rule with an `en`/`pl` label.
+
+#### Scenario: The form says rounding affects export only
+- **WHEN** the tracker form shows the rounding rule select
+- **THEN** visible help text SHALL say that the rule applies only to export and does not change local time entries
 
 #### Scenario: Nearest rule rounds down below the midpoint
 - **WHEN** a selected total of 1 hour 3 minutes is rounded under `nearest_15m`

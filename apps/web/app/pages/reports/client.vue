@@ -339,8 +339,9 @@ async function onExport() {
       {{ t('clientReport.invalidMonth') }}
     </p>
 
-    <!-- Desktop split: configuration on the left, the preview beside it; stacked below lg. -->
-    <div class="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
+    <!-- Desktop split: configuration and the summary in two equal columns (the form never the
+         narrower one), on the stat-card grids' 16px gutter; stacked below lg. -->
+    <div class="grid gap-4 lg:grid-cols-2">
       <div
         v-if="!formReady"
         class="grid content-start gap-5 rounded-lg border border-default p-6"

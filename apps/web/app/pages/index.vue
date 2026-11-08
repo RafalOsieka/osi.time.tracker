@@ -361,14 +361,15 @@ async function onEntryDeleted() {
               <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">
                 {{ formatDayHeading(day.dayKey, locale) }}
               </h2>
+              <!-- A quiet link-style action, not a chip: chips only display. -->
               <UButton
                 :to="`/sync/${day.dayKey}`"
                 :label="t('timerView.remoteSyncAction')"
                 icon="i-lucide-cloud-upload"
-                color="primary"
-                variant="soft"
+                color="neutral"
+                variant="ghost"
                 size="xs"
-                class="shrink-0 self-center"
+                class="shrink-0 self-center rounded-md font-normal text-muted hover:text-primary focus-visible:text-primary"
                 :data-testid="`timer-day-remote-sync-${day.dayKey}`"
               />
             </ColumnCell>

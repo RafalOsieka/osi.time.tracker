@@ -169,10 +169,24 @@ const menuItems = computed(() =>
         };
       }
       text.value = typed;
+      createdTitle.value = typed;
       overlayOpen.value = false;
     },
   }),
 );
+
+/** The title the create-new-task option committed; it stays "new" until the text changes. */
+const createdTitle = ref<string | null>(null);
+/**
+ * Whether the text is a title from the create-new-task option (REQ-467), for a "new Task" cue.
+ * It reflects the user's choice, not server state: a same-named Task may still be matched.
+ */
+const isNewTask = computed(
+  () => !task.value && !!createdTitle.value && createdTitle.value === text.value,
+);
+/** Read-only for callers: mirrors `isNewTask` so a form can show a "new Task" cue. */
+const newTaskModel = defineModel<boolean>('newTask', { default: false });
+watch(isNewTask, (value) => (newTaskModel.value = value), { immediate: true });
 
 function onModelUpdate(value: string | null | undefined) {
   const next = value ?? '';
@@ -203,8 +217,9 @@ function removeChip() {
 }
 
 /**
- * The bare field's padding matches its sizing copy (`ps-2.5 pe-1`, no room for the hidden
- * chevron), and its overlay keeps a usable width however short the title is.
+ * The bare field's padding matches its sizing copy (`ps-2.5 pe-1`, no room for the hidden chevron),
+ * and the copy repeats the input's type size (16px, 14px from `md`), so the chip lands 8px after
+ * the last letter; the overlay keeps a usable width however short the title is.
  */
 const BARE_UI = { trailing: 'hidden', base: 'w-full pe-1', content: 'min-w-80' };
 
@@ -275,7 +290,7 @@ defineExpose({ resolveCommit });
     <div :class="bare ? 'grid min-w-0 grid-cols-[minmax(0,auto)]' : 'contents'">
       <span
         v-if="bare"
-        class="invisible col-start-1 row-start-1 min-w-12 overflow-hidden ps-2.5 pe-1 text-base/5 whitespace-pre"
+        class="invisible col-start-1 row-start-1 min-w-12 overflow-hidden ps-2.5 pe-1 text-base/5 whitespace-pre md:text-sm/5"
         aria-hidden="true"
       >
         {{ text || placeholder }}

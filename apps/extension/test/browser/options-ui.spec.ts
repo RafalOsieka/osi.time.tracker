@@ -246,9 +246,7 @@ describeChromium('extension options UI', () => {
       .toMatch(/without a path/);
     await page.getByTestId('website-origin').fill('http://localhost:3000');
     await page.getByTestId('add-website').press('Enter');
-    await expect
-      .poll(() => toasts(page).textContent())
-      .toMatch(/Website http:\/\/localhost:3000 approved/);
+    await expect.poll(() => toasts(page).textContent()).toMatch(/Website localhost:3000 approved/);
 
     await page.reload();
     await expect
@@ -261,23 +259,19 @@ describeChromium('extension options UI', () => {
       .poll(() => page.getByTestId('add-destination').textContent())
       .toMatch(/Zatwierdź tracker/i);
     await page.reload();
-    await expect.poll(() => page.getByTestId('language').textContent()).toContain('polski');
+    await expect.poll(() => page.getByTestId('language').textContent()).toContain('Polski');
     const popup = await harness!.context.newPage();
     await popup.goto(popupUrl(harness!));
-    // Halfway through setup the current step carries the way into setup.
+    // Halfway through setup the done step names the website and the current one carries the
+    // way into setup; the approval lists wait until setup is complete.
     await expect
       .poll(() => popup.getByTestId('checklist-action-tracker').textContent())
-      .toMatch(/Dodaj tracker/);
+      .toMatch(/Zatwierdź tracker/);
+    await expect
+      .poll(() => popup.getByTestId('checklist-website-link').textContent())
+      .toMatch(/^\s*localhost:3000\s*$/);
+    expect(await popup.getByTestId('saved-websites').count()).toBe(0);
     expect(await popup.getByTestId('saved-trackers').count()).toBe(0);
-
-    await expect
-      .poll(() => popup.getByTestId('saved-websites').textContent())
-      .toContain('Zatwierdzone witryny');
-    await expect
-      .poll(async () =>
-        (await popup.getByTestId('popup-website').allTextContents()).map((text) => text.trim()),
-      )
-      .toEqual(['http://localhost:3000']);
     await expect
       .poll(() => popup.getByTestId('popup-status').textContent())
       .toMatch(/Do skonfigurowania/);
@@ -285,6 +279,11 @@ describeChromium('extension options UI', () => {
     await page.getByTestId('add-destination').press('Enter');
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
     await expect.poll(() => popup.getByTestId('popup-status').textContent()).toMatch(/Gotowe/);
+    await expect
+      .poll(async () =>
+        (await popup.getByTestId('popup-website').allTextContents()).map((text) => text.trim()),
+      )
+      .toEqual(['localhost:3000']);
     await expect
       .poll(() => popup.getByTestId('saved-trackers').textContent())
       .toContain('Zatwierdzone trackery');
@@ -303,7 +302,7 @@ describeChromium('extension options UI', () => {
     await revokeLocalhost.press('Enter');
     await expect
       .poll(() => page.getByRole('dialog').textContent())
-      .toContain('trackerów (1): tracker.example.com/team');
+      .toMatch(/trackerów \(1\):[\s\S]*tracker\.example\.com\/team/);
     // Escape belongs to the dialog only once its focus trap has taken focus from the trigger.
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null))
@@ -316,9 +315,7 @@ describeChromium('extension options UI', () => {
       .toBe(true);
     await revokeLocalhost.press('Enter');
     await confirmRevoke(page);
-    await expect
-      .poll(() => toasts(page).textContent())
-      .toMatch(/Usunięto witrynę http:\/\/localhost:3000/);
+    await expect.poll(() => toasts(page).textContent()).toMatch(/Usunięto witrynę localhost:3000/);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
     await expect
       .poll(() => page.getByTestId('destination-website-required').isVisible())
@@ -332,7 +329,7 @@ describeChromium('extension options UI', () => {
     await page.getByTestId('add-website').press('Enter');
     await expect
       .poll(() => page.getByTestId('destination-website-single').textContent())
-      .toContain('http://localhost:3001');
+      .toContain('localhost:3001');
     expect(await page.getByTestId('destination-website').count()).toBe(0);
     await waitUntilIdle(page);
     await page.getByTestId('revoke-website-http://localhost:3001').click();
@@ -363,7 +360,7 @@ describeChromium('extension options UI', () => {
       if (index === 0) {
         await expect
           .poll(() => page.getByTestId('destination-website-single').textContent())
-          .toContain(origin);
+          .toContain(new URL(origin).host);
       } else {
         // Trackers are listed now, so their form waits behind "Add tracker".
         await openAddForm(page, 'destination');
@@ -425,7 +422,7 @@ describeChromium('extension options UI', () => {
     await openAddForm(page, 'destination');
     await expect
       .poll(() => page.getByTestId('destination-website-single').textContent())
-      .toContain('http://localhost:3101');
+      .toContain('localhost:3101');
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3101').click();
     await confirmRevoke(other);

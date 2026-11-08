@@ -148,7 +148,7 @@ describeChromium('website/content/worker bridge', () => {
       .poll(async () =>
         (await popup.getByTestId('popup-tracker-activity').allTextContents()).join('|'),
       )
-      .toMatch(/(Succeeded|Powodzenie)\s*(Issue search|Wyszukiwanie zadań)/);
+      .toMatch(/(Succeeded|Powodzenie)\s*(Issue search|Wyszukiwanie zgłoszeń)/);
     const storageKeys = await popup.evaluate(async () => ({
       local: Object.keys(await chrome.storage.local.get(null)),
       session: Object.keys(await chrome.storage.session.get(null)),

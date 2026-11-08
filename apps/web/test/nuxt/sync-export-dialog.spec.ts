@@ -51,8 +51,18 @@ describe('SyncExportDialog', () => {
       'Override for Alpha',
     );
     expect(wrapper.get('[data-testid="remote-sync-export-row-a"]').text()).toContain('00:30:00');
-    expect(wrapper.get('[data-testid="remote-sync-export-destination-a"]').text()).toBe(
-      'Acme OpenProject · #4821 · Development',
+    // The destination reads as separate pieces: Tracker, issue and activity.
+    expect(wrapper.get('[data-testid="remote-sync-export-destination-tracker-a"]').text()).toBe(
+      'Acme OpenProject',
+    );
+    expect(wrapper.get('[data-testid="remote-sync-export-destination-issue-a"]').text()).toBe(
+      '#4821',
+    );
+    expect(wrapper.get('[data-testid="remote-sync-export-destination-activity-a"]').text()).toBe(
+      'Development',
+    );
+    expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
+      'Each task creates one remote time entry.',
     );
     expect(wrapper.find('[data-testid="remote-sync-export-destination-b"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="remote-sync-export-dialog-to-send"]').text()).toContain(
@@ -63,14 +73,14 @@ describe('SyncExportDialog', () => {
     wrapper.unmount();
   });
 
-  it('counts the tasks that are not ready without listing them (REQ-229)', async () => {
+  it('counts the tasks left out by reason without listing them (REQ-229)', async () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
         dateLabel: 'November 7, 2026',
         included: [item('a', 'Alpha', 1800)],
         toSendSeconds: 1800,
-        notReadyCount: 3,
+        excludedSummary: '3 without an activity, 1 local project',
         isRunning: false,
         completedCount: 0,
         totalCount: 1,
@@ -80,7 +90,11 @@ describe('SyncExportDialog', () => {
       },
     });
     expect(wrapper.get('[data-testid="remote-sync-export-not-ready"]').text()).toBe(
-      '3 other tasks of this day are not ready to export: they have no activity chosen or cannot be sent.',
+      'Not in this export: 3 without an activity, 1 local project.',
+    );
+    // One Task: the introduction speaks of it in the singular.
+    expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
+      'The task creates one remote time entry.',
     );
     expect(wrapper.findAll('[data-testid^="remote-sync-export-row-"]')).toHaveLength(1);
     // One Task: its row already shows the duration, so no separate total repeats it.

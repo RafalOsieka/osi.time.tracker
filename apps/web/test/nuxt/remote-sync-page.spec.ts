@@ -6,6 +6,7 @@ import { createI18n } from 'vue-i18n';
 import { CalendarDate } from '@internationalized/date';
 import RemoteSyncPage from '../../app/pages/sync/[date].vue';
 import SyncDayHeader from '../../app/components/sync/SyncDayHeader.vue';
+import SyncExportDialog from '../../app/components/sync/SyncExportDialog.vue';
 import type {
   RemoteSyncDayDto,
   RemoteSyncDayEntryDto,
@@ -379,7 +380,7 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-table"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-include-task-1"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="remote-sync-state-task-1"]').text()).toBe(
-      'remoteSync.kind.blocked',
+      'remoteSync.kind.excluded',
     );
     expect(wrapper.find('[data-testid="remote-sync-expand-task-1"]').attributes('aria-label')).toBe(
       'remoteSync.expandRow',
@@ -846,7 +847,7 @@ describe('RemoteSync page', () => {
     const wrapper = await mount();
     expect(wrapper.find('[data-testid="remote-sync-no-activity-task-empty"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="remote-sync-state-task-empty"]').text()).toBe(
-      'remoteSync.kind.blocked',
+      'remoteSync.kind.excluded',
     );
   });
 
@@ -1091,6 +1092,51 @@ describe('RemoteSync page', () => {
       /Linked|Powiązany/,
     );
     expect(wrapper.find('[data-testid="remote-sync-delete-entry-11"]').exists()).toBe(true);
+  });
+
+  it('counts the Tasks left out of the export by reason (REQ-229)', async () => {
+    const ready = (taskId: string, issueId: string) => ({
+      taskId,
+      taskName: taskId,
+      projectName: 'Project',
+      trackerName: 'Client',
+      remoteProjectId: null,
+      remoteProjectTitle: null,
+      totalSeconds: 3600,
+      config: { ...baseConfig, id: 'config-excluded' },
+      issueRef: { remoteIssueId: issueId, cachedTitle: 'Issue' },
+      entries: [entry({ id: `entry-${taskId}`, durationSeconds: 3600 })],
+      exports: [],
+    });
+    dayData = makeDay({
+      rows: [
+        ready('task-going', '42'),
+        ready('task-no-activity', '43'),
+        { ...ready('task-unlinked', '44'), issueRef: null },
+        { ...ready('task-local', '45'), trackerName: null, config: null, issueRef: null },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    fetchMock.mockResolvedValue(activitiesPayload([{ id: 1, name: 'Dev' }]));
+
+    const wrapper = await mount();
+    await chooseActivity(wrapper, 'task-going', '1');
+    await wrapper.find('[data-testid="remote-sync-export-button"]').trigger('click');
+    await flushPromises();
+    // Fixable reasons first, then the deliberate exclusions; each counted once.
+    expect(wrapper.findComponent(SyncExportDialog).props('excludedSummary')).toBe(
+      [
+        'remoteSync.exportDialog.excluded.noActivityChosen',
+        'remoteSync.exportDialog.excluded.unlinked',
+        'remoteSync.exportDialog.excluded.localProject',
+      ].join(', '),
+    );
+    expect(wrapper.get('[data-testid="remote-sync-state-task-local"]').text()).toBe(
+      'remoteSync.kind.excluded',
+    );
+    expect(
+      wrapper.get('[data-testid="remote-sync-state-task-unlinked"]').attributes('aria-label'),
+    ).toContain('remoteSync.kind.blocked');
   });
 
   it('exports with the local task title as the OpenProject comment', async () => {
@@ -1345,7 +1391,7 @@ describe('RemoteSync page', () => {
       '00:05:00',
     );
     expect(wrapper.find('[data-testid="remote-sync-state-task-sum-blocked"]').text()).toContain(
-      'remoteSync.kind.blocked',
+      'remoteSync.kind.excluded',
     );
 
     expect(wrapper.find('[data-testid="remote-sync-total-in-tracker"]').exists()).toBe(true);

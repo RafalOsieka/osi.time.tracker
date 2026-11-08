@@ -143,6 +143,10 @@ While running, the elapsed control SHALL open a popover anchored to it with the 
 - **WHEN** the user activates the elapsed-time control to edit the start
 - **THEN** the popover SHALL open below the timer, right-aligned with the timer card that holds that control, rather than misaligned to an unrelated element
 
+#### Scenario: Elapsed control looks pressed while the editor is open
+- **WHEN** the start editor is open
+- **THEN** the elapsed control SHALL keep its running colour and show a pressed state until the editor closes
+
 #### Scenario: Editor names its timezone
 - **WHEN** the start editor is open
 - **THEN** it SHALL show the effective timezone with its UTC offset at the chosen date and time (for example "Europe/Warsaw (UTC+01:00)"), updating as the date or time changes

@@ -41,13 +41,22 @@ export const nuxtUiOptions = {
       ],
     },
     // Warning and error alerts use their own warm ramps, not a 10% tint of the status colour.
+    // Only the title and icon carry the colour; the explanation stays neutral and readable. The
+    // icon sits on the title line. In dark mode a warning sits on the elevated surface with an amber
+    // ring (as in the web app): any amber wash over slate reads brown.
     alert: {
+      slots: { description: 'opacity-100 text-pretty' },
+      variants: {
+        orientation: { horizontal: { root: 'items-start', actions: 'self-center' } },
+      },
       compoundVariants: [
         {
           color: 'warning',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/25',
+            root: 'bg-amber-50 ring-amber-200 dark:bg-elevated dark:ring-amber-400/40',
+            title: 'text-amber-800 dark:text-amber-300',
+            description: 'text-toned',
             icon: 'text-amber-600 dark:text-amber-400',
           },
         },
@@ -55,7 +64,9 @@ export const nuxtUiOptions = {
           color: 'error',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/25',
+            root: 'bg-red-50 ring-red-200 dark:bg-red-400/6 dark:ring-red-400/30',
+            title: 'text-red-800 dark:text-red-300',
+            description: 'text-toned',
             icon: 'text-red-600 dark:text-red-400',
           },
         },
@@ -69,6 +80,9 @@ export const nuxtUiOptions = {
       },
     },
     toast: { slots: { root: 'dark:bg-elevated' } },
+    // Toasts fit the right gutter beside the 640px setup column at desktop width, clear of its
+    // row actions.
+    toaster: { slots: { viewport: 'sm:w-72' } },
     // Cards sit one layer above the page in dark mode (layered greys), white on slate in light.
     card: {
       variants: {

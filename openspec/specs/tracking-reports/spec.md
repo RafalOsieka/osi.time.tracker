@@ -143,15 +143,22 @@ After successful fetches the table SHALL flag the duration itself, not via a sta
 - **THEN** the day SHALL NOT be marked as needing attention; a tooltip MAY mention the two durations as information
 
 ### Requirement: REQ-472 Flagged and zero duration styling
-A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with a dotted underline, so a non-color cue marks it (REQ-004), and a themed hover and focus tooltip giving the reason (REQ-269). A note under the table SHALL say that underlined values need attention and how to reveal the reason with the pointer or Tab. An unflagged `0:00` SHALL use dimmed text at a lighter weight. The table SHALL NOT have an attention column.
+A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with a dotted underline, so a non-color cue marks it (REQ-004), and a themed hover and focus tooltip giving the reason (REQ-269). A legend under the table SHALL name what flagged values usually mean and how to reveal each one's reason with the pointer or Tab. An unflagged `0:00` SHALL use dimmed text at a lighter weight. The table SHALL NOT have an attention column.
 
 #### Scenario: Flagged durations have a non-color cue
 - **WHEN** a cell is flagged
 - **THEN** its duration SHALL be underlined as well as warning-colored and semibold
 
+#### Scenario: The legend explains the flags at a glance
+- **WHEN** the timesheet is shown
+- **THEN** the legend under it SHALL show the flagged style on the Local and Direct column names,
+  each with its meaning (local time that reached no tracker; time logged in the tracker outside the
+  app), and SHALL say the tooltip gives each value's reason
+
 #### Scenario: Zero durations recede
 - **WHEN** a cell is `0:00` and is not flagged
-- **THEN** that duration SHALL use dimmed text at a lighter weight and SHALL NOT use warning styling
+- **THEN** that duration SHALL use dimmed text at a lighter weight, still at least 4.5:1 against its
+  background, and SHALL NOT use warning styling
 
 ### Requirement: REQ-294 Report durations use unpadded `H:MM`
 

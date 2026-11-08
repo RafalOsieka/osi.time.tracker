@@ -102,6 +102,11 @@ function emitDelete(log: RemoteTimeLogDto) {
 
 const hasFinalizedExport = computed(() => exportRecords.length > 0);
 
+/** Latest first, the order the Timer view's expanded Task lists its entries in. */
+const entriesLatestFirst = computed(() =>
+  entries.toSorted((a, b) => b.startedAt.localeCompare(a.startedAt)),
+);
+
 function logFromProvenance(record: RemoteSyncExportProvenanceDto): RemoteTimeLogDto {
   return {
     remoteLogId: record.remoteLogId,
@@ -144,14 +149,14 @@ const displayedRemoteLogs = computed(() => {
       </ColumnCell>
     </ColumnRow>
     <ColumnRow
-      v-for="entry in entries"
+      v-for="entry in entriesLatestFirst"
       :key="entry.id"
       kind="sub"
       :data-testid="`remote-sync-entry-${entry.id}`"
     >
       <!-- The entry's clock range leads on the title edge, under its section label; its duration
-           sits in the tracked column, a step stronger than the muted range and in the mono
-           face, so the duration never reads lighter than the range. -->
+           sits in the tracked column in the mono face, in the same muted tone as the row's own
+           tracked value above it, so a child never reads stronger than its parent. -->
       <ColumnCell
         :columns="columns"
         col="title"
@@ -167,7 +172,7 @@ const displayedRemoteLogs = computed(() => {
         col="tracked"
         :narrow="{ col: [4, 5], row: 1 }"
         align="end"
-        class="font-mono tabular-nums text-toned"
+        class="font-mono tabular-nums text-muted"
       >
         {{ formatDuration(entry.durationSeconds) }}
       </ColumnCell>

@@ -155,6 +155,10 @@ const stubs = {
       '<button type="button" v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
   },
   UProgress: { props: ['modelValue', 'max'], template: '<div role="progressbar" />' },
+  UAlert: {
+    props: ['title', 'description'],
+    template: '<div v-bind="$attrs" :data-title="title">{{ description }}</div>',
+  },
   UIcon: { props: ['name'], template: '<i />' },
 };
 
@@ -232,6 +236,20 @@ describe('TrackerImportDialog', () => {
     // SAFETY: the dialog calls startScan(range) with exactly one { from, to } argument.
     const call = startScanMock.mock.calls[0]![0] as { from: string; to: string };
     expect(call.from < call.to).toBe(true);
+  });
+
+  it('replaces the per-row warnings with one warning when no project is linked', async () => {
+    fetchMock.mockResolvedValue([
+      project({ id: 'proj-1', remoteProjectId: null }),
+      project({ id: 'proj-2', remoteProjectId: null }),
+    ]);
+    const wrapper = await mount();
+
+    expect(wrapper.find('[data-testid="tracker-import-unscoped-proj-1"]').exists()).toBe(true);
+    expect(wrapper.text()).not.toContain('trackerImport.unscopedHint');
+    expect(
+      wrapper.get('[data-testid="tracker-import-unscoped-help"]').attributes('data-title'),
+    ).toBe('trackerImport.allUnscopedWarning');
   });
 
   it('rejects an inverted range inline without starting a scan', async () => {

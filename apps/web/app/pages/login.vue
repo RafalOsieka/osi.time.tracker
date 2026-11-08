@@ -65,7 +65,7 @@ const errorText = computed(
           v-model="state.email"
           type="email"
           autocomplete="email"
-          size="lg"
+          size="md"
           class="w-full"
           data-testid="email"
           :aria-invalid="showError || undefined"
@@ -83,7 +83,7 @@ const errorText = computed(
           v-model="state.password"
           :type="passwordVisible ? 'text' : 'password'"
           autocomplete="current-password"
-          size="lg"
+          size="md"
           class="w-full"
           :ui="{ trailing: 'pe-1' }"
           data-testid="password"
@@ -109,7 +109,7 @@ const errorText = computed(
       <UButton
         type="submit"
         block
-        size="lg"
+        size="md"
         class="mt-1"
         data-testid="login-button"
         :label="t('auth.loginButton')"

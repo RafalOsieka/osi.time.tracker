@@ -75,7 +75,8 @@ const stepItems = computed<StepperItem[]>(() => [
   { title: t('trackerImport.stepRangeTitle'), icon: 'i-lucide-calendar' },
   { title: t('trackerImport.stepMappingTitle'), icon: 'i-lucide-route' },
   { title: t('trackerImport.stepPreviewTitle'), icon: 'i-lucide-eye' },
-  { title: t('trackerImport.stepDoneTitle'), icon: 'i-lucide-check' },
+  // A flag marks the finish line; a check would read as "already done" before it is.
+  { title: t('trackerImport.stepDoneTitle'), icon: 'i-lucide-flag' },
 ]);
 
 // Drives the Stepper header only; scanning/importing/error are sub-states
@@ -90,6 +91,10 @@ const stepIndex = computed<number>(() => {
 
 const scopedProjects = computed(() => projects.value.filter((p) => p.remoteProjectId));
 const unscopedProjects = computed(() => projects.value.filter((p) => !p.remoteProjectId));
+/** With no Project linked at all, one warning replaces a warning on every row. */
+const allUnscoped = computed(
+  () => unscopedProjects.value.length > 0 && scopedProjects.value.length === 0,
+);
 
 function projectName(projectId: string): string {
   return projects.value.find((p) => p.id === projectId)?.name ?? projectId;
@@ -208,9 +213,14 @@ function closeDialog() {
 
 /**
  * Upcoming step circles sit on the elevated layer, which is the dialog's own surface in dark
- * mode; the accented layer gives them the same filled look there as in light mode.
+ * mode; the accented layer gives them the same filled look there as in light mode. The current
+ * step's label is cyan and semibold, upcoming ones recede.
  */
-const STEPPER_UI = { trigger: 'dark:bg-accented' };
+const STEPPER_UI = {
+  trigger: 'dark:bg-accented',
+  title:
+    'group-data-[state=active]:font-semibold group-data-[state=active]:text-primary group-data-[state=inactive]:text-muted',
+};
 </script>
 
 <template>
@@ -333,20 +343,40 @@ const STEPPER_UI = { trigger: 'dark:bg-accented' };
                     :data-testid="`tracker-import-unscoped-${project.id}`"
                   >
                     <span class="truncate font-medium">{{ project.name }}</span>
-                    <span class="flex shrink-0 items-center gap-1.5 text-warning">
+                    <span
+                      v-if="!allUnscoped"
+                      class="flex shrink-0 items-center gap-1.5 text-warning"
+                    >
                       <UIcon name="i-lucide-triangle-alert" class="size-4" aria-hidden="true" />
                       {{ t('trackerImport.unscopedHint') }}
                     </span>
                   </li>
                 </ul>
+                <UAlert
+                  v-if="allUnscoped"
+                  color="warning"
+                  variant="subtle"
+                  icon="i-lucide-triangle-alert"
+                  :title="t('trackerImport.allUnscopedWarning')"
+                  :description="t('trackerImport.unscopedHelp')"
+                  data-testid="tracker-import-unscoped-help"
+                />
                 <p
-                  v-if="unscopedProjects.length > 0"
+                  v-else-if="unscopedProjects.length > 0"
                   class="m-0 text-sm text-muted"
                   data-testid="tracker-import-unscoped-help"
                 >
                   {{ t('trackerImport.unscopedHelp') }}
                 </p>
               </div>
+
+              <p
+                class="m-0 flex items-start gap-2 text-sm text-muted"
+                data-testid="tracker-import-scan-note"
+              >
+                <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                {{ t('trackerImport.scanNote') }}
+              </p>
             </div>
 
             <!-- Scanning phase -->

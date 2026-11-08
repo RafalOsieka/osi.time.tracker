@@ -88,14 +88,15 @@ export default defineAppConfig({
       ],
     },
     // Warning and error alerts use their own warm ramps, not a 10% tint of the status colour
-    // (amber over white read beige, amber over slate read olive).
+    // (amber over white read beige, amber over slate read olive). In dark mode a warning is a
+    // raised neutral surface with an amber edge and icon: any amber wash over slate reads brown.
     alert: {
       compoundVariants: [
         {
           color: 'warning',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-200 dark:ring-amber-400/25',
+            root: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-elevated dark:text-default dark:ring-amber-400/40',
             icon: 'text-amber-600 dark:text-amber-400',
           },
         },

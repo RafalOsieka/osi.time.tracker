@@ -37,6 +37,8 @@ const dialogOpen = ref(false);
 const editingTracker = ref<TrackerDto | null>(null);
 const importDialogOpen = ref(false);
 const importingTracker = ref<TrackerDto | null>(null);
+/** The row tile whose dialog is open, so it shows as pressed behind the scrim. */
+const pressedAction = ref<{ id: string; action: 'extra' | 'edit' | 'delete' } | null>(null);
 
 function openCreate() {
   editingTracker.value = null;
@@ -45,20 +47,31 @@ function openCreate() {
 
 function openEdit(tracker: TrackerDto) {
   editingTracker.value = tracker;
+  pressedAction.value = { id: tracker.id, action: 'edit' };
   dialogOpen.value = true;
 }
 
 function openImport(tracker: TrackerDto) {
   importingTracker.value = tracker;
+  pressedAction.value = { id: tracker.id, action: 'extra' };
   importDialogOpen.value = true;
 }
 
+watch([dialogOpen, importDialogOpen], ([editOpen, importOpen]) => {
+  if (!editOpen && !importOpen) pressedAction.value = null;
+});
+
 async function onDelete(tracker: Pick<TrackerDto, 'id' | 'name'>) {
+  pressedAction.value = { id: tracker.id, action: 'delete' };
   const accepted = await confirm({
     title: t('trackers.deleteConfirmHeader'),
     description: t('trackers.deleteConfirmMessage', { name: tracker.name }),
+    emphasis: tracker.name,
+    icon: 'i-lucide-trash-2',
     confirmLabel: t('trackers.deleteConfirmAccept'),
     cancelLabel: t('trackers.deleteConfirmReject'),
+  }).finally(() => {
+    pressedAction.value = null;
   });
   if (!accepted) return;
 
@@ -81,6 +94,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
   // a dependency of this computed, since that callback runs later, outside
   // this function's own reactive tracking.
   const ready = secretsReady.value;
+  const pressed = pressedAction.value;
 
   return [
     {
@@ -92,12 +106,10 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
     {
       accessorKey: 'systemType',
       header: t('trackers.columnSystemType'),
+      // The type's name alone: a mark here would only repeat it (Projects keeps the marks).
       cell: ({ row }) =>
-        h('span', { class: 'flex min-w-0 items-center gap-2' }, [
-          h(resolveComponent('TrackerTypeMark'), { systemType: row.original.systemType }),
-          h('span', { class: 'truncate' }, TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType]),
-        ]),
-      meta: { class: { th: 'w-40' } },
+        h('span', { class: 'truncate' }, TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType]),
+      meta: { class: { th: 'w-36', td: 'truncate' } },
     },
     {
       accessorKey: 'baseUrl',
@@ -157,8 +169,8 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           deleteLabel: t('trackers.deleteButton'),
           editTestid: `edit-tracker-${row.original.id}`,
           deleteTestid: `delete-tracker-${row.original.id}`,
-          // A clock-with-arrow glyph (history) reads apart from the edit pencil beside it.
-          extraIcon: 'i-lucide-history',
+          pressed: pressed?.id === row.original.id ? pressed.action : undefined,
+          extraIcon: 'i-lucide-import',
           extraLabel: hasSecret ? t('trackers.importButton') : t('trackers.importNoSecretHint'),
           extraTestid: `import-tracker-${row.original.id}`,
           extraDisabled: !hasSecret,

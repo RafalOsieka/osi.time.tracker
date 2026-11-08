@@ -3,7 +3,7 @@
  * Click-to-edit text: a read-only `UInput` until focused, then an editable one.
  * Parent owns the value and when editing is active. Unframed (the Timer's titles) it shows no
  * chrome at rest; `framed` (Remote sync's title to send) gives it the quiet editable frame of the
- * Timer's time editors at rest, hugging the text, and the same frame with a cyan ring while
+ * Timer's time editors at rest, filling its column, and the same frame with a cyan ring while
  * editing, so the value never jumps between the two states.
  */
 const {
@@ -40,11 +40,12 @@ const emit = defineEmits<{
 const rootClass = '-ms-2 min-w-0 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)]';
 const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate md:text-sm/4' };
 /**
- * The frame: a card-tone field with the 3:1 control outline, sized to its text (never past the
- * cell), tinted on hover and ringed in cyan while editing.
+ * The frame: a card-tone field with the 3:1 control outline, as wide as its column (so a column
+ * of them reads as aligned fields, not ragged chips), tinted on hover and ringed in cyan while
+ * editing.
  */
 const FRAME =
-  'w-auto min-w-16 max-w-full field-sizing-content rounded-md bg-default ring ring-inset ring-accented transition-shadow dark:bg-muted';
+  'w-full rounded-md bg-default ring ring-inset ring-accented transition-shadow dark:bg-muted';
 const editUi = computed(() =>
   framed ? { ...slotInputUi, base: `${slotInputUi.base} ${FRAME} ring-primary` } : slotInputUi,
 );

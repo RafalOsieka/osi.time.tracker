@@ -214,7 +214,7 @@ async function onSaveStartedAt() {
     class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
       isRunning
-        ? 'bg-primary-50 ring-primary-200 dark:bg-primary-950/50 dark:ring-primary-800/70'
+        ? 'bg-primary-50/55 ring-primary-200 dark:bg-primary-950/30 dark:ring-primary-800/70'
         : 'bg-default ring-accented'
     "
     data-testid="app-timer"
@@ -222,6 +222,7 @@ async function onSaveStartedAt() {
     <!--
       One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
       live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
+      The running fill stays a quiet wash: the card sits in view all day.
     -->
     <span
       v-if="isRunning"
@@ -259,8 +260,11 @@ async function onSaveStartedAt() {
       <UButton
         color="neutral"
         variant="link"
-        class="min-w-[5.5rem] justify-center font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
-        :class="isRunning ? 'text-primary' : 'text-dimmed'"
+        class="min-w-[5.5rem] justify-center rounded-md font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
+        :class="[
+          isRunning ? 'text-primary hover:text-primary active:text-primary' : 'text-dimmed',
+          startEditorOpen && 'bg-primary-100 dark:bg-primary/20',
+        ]"
         role="timer"
         :label="elapsedLabel"
         :aria-label="isRunning ? t('timer.editStartLabel') : t('timer.elapsedLabel')"
@@ -272,10 +276,14 @@ async function onSaveStartedAt() {
         <div
           role="group"
           aria-labelledby="timer-start-editor-heading"
-          class="grid w-72 gap-4 p-4"
+          class="grid w-80 grid-cols-[minmax(0,1fr)_6.5rem] gap-x-3 gap-y-4 p-4"
           data-testid="timer-start-editor-popover"
         >
-          <h3 id="timer-start-editor-heading" class="m-0 text-sm font-semibold text-highlighted">
+          <!-- Date and time share one row, so the editor stays short over the list below. -->
+          <h3
+            id="timer-start-editor-heading"
+            class="col-span-full m-0 text-sm font-semibold text-highlighted"
+          >
             {{ t('timer.startEditor.heading') }}
           </h3>
           <UFormField :label="t('timer.startEditor.dateLabel')" name="startDate">
@@ -312,27 +320,29 @@ async function onSaveStartedAt() {
               </template>
             </UInputDate>
           </UFormField>
-          <UFormField
-            :label="t('timer.startEditor.timeLabel')"
-            :help="startTimeZoneLabel"
-            name="startTime"
-            :ui="{ help: 'text-xs text-muted' }"
-          >
+          <UFormField :label="t('timer.startEditor.timeLabel')" name="startTime">
             <TimeField
               v-model="startTime"
+              class="w-full"
               :label="t('timer.startEditor.timeLabel')"
               testid="timer-start-editor-time-input"
             />
           </UFormField>
           <p
+            class="col-span-full -mt-2 mb-0 text-xs text-muted"
+            data-testid="timer-start-editor-time-zone"
+          >
+            {{ startTimeZoneLabel }}
+          </p>
+          <p
             v-if="startEditorError"
-            class="m-0 text-sm text-error"
+            class="col-span-full m-0 text-sm text-error"
             role="alert"
             data-testid="timer-start-editor-error"
           >
             {{ startEditorError }}
           </p>
-          <div class="flex justify-end gap-2">
+          <div class="col-span-full flex justify-end gap-2">
             <UButton
               color="neutral"
               variant="outline"

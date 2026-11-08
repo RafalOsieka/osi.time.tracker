@@ -184,14 +184,20 @@ selected activity. No remote request SHALL occur before confirmation. Cancelling
 
 #### Scenario: Skipped tasks are stated with reasons
 - **WHEN** the day contains ineligible tasks
-- **THEN** their durable row states SHALL state why they are excluded, and the dialog SHALL only count the
-  tasks neither included nor Sent, naming the kinds of reason briefly ("3 other tasks of this day are
-  not ready to export: they have no activity chosen or cannot be sent"), without listing them
+- **THEN** their durable row states SHALL state why they are excluded, and the dialog SHALL count the
+  tasks neither included nor Sent by reason, in one line at helper-text size ("Not in this export: 3
+  without an activity, 1 local project, 1 without an issue"), without listing them
+
+#### Scenario: The introduction matches the count
+- **WHEN** exactly one task is included
+- **THEN** the introduction SHALL speak of that one task in the singular
 
 #### Scenario: Export is unavailable with a stated reason
 - **WHEN** Export is disabled
-- **THEN** it SHALL stay in place in a neutral disabled style (not the primary colour), so it reads as
-  unavailable in both themes, with a short translated reason under it and on its focusable host
+- **THEN** it SHALL stay in place in one neutral disabled style with a visible fill (not the primary
+  colour), the same in both themes, with a short translated reason under it and on its focusable
+  host; when the rows' activities failed to load, the reason SHALL say the trackers cannot be
+  reached
 
 #### Scenario: Nothing is sent before confirmation
 - **WHEN** the confirmation is open

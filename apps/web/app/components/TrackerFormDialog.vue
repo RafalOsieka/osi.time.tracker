@@ -52,6 +52,11 @@ const state = reactive<{
   roundingRule: TRACKER_ROUNDING_RULE_ORDER[0],
 });
 const secret = ref('');
+/** Whether the API key shows as plain text (the trailing eye toggle); hidden on every open. */
+const secretVisible = ref(false);
+
+/** Help lines sit tight under their control (4px), not a field gap away. */
+const FIELD_UI = { help: 'mt-1' };
 const nameServerError = ref('');
 const baseUrlServerError = ref('');
 const systemTypeServerError = ref('');
@@ -65,6 +70,7 @@ function seedForm(tracker: TrackerDto | null) {
   state.directBrowserAccess = tracker?.directBrowserAccess ?? true;
   state.roundingRule = tracker?.roundingRule ?? TRACKER_ROUNDING_RULE_ORDER[0];
   secret.value = tracker ? (getSecret(tracker.id) ?? '') : '';
+  secretVisible.value = false;
   nameServerError.value = '';
   baseUrlServerError.value = '';
   systemTypeServerError.value = '';
@@ -195,11 +201,10 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
           class="grid gap-3"
           @submit="onSave"
         >
-          <!-- Fields the user must fill are marked required; the API key says it is optional. -->
+          <!-- Optional fields say so in their hint; required ones carry aria-required only. -->
           <UFormField
             :label="t('trackers.nameLabel')"
             name="name"
-            required
             :error="nameServerError || undefined"
           >
             <UInput
@@ -245,7 +250,6 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
           <UFormField
             :label="t('trackers.baseUrlLabel')"
             name="baseUrl"
-            required
             :error="baseUrlServerError || undefined"
           >
             <UInput
@@ -268,16 +272,33 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             :label="t('trackers.secretLabel')"
             :hint="t('trackers.optionalHint')"
             :help="t('trackers.secretHelp')"
+            :ui="FIELD_UI"
             name="secret"
           >
             <UInput
               id="tracker-secret"
               v-model="secret"
-              type="password"
+              :type="secretVisible ? 'text' : 'password'"
               autocomplete="off"
               class="w-full"
+              :ui="{ trailing: 'pe-1' }"
               data-testid="tracker-secret-input"
-            />
+            >
+              <!-- The same show/hide toggle as the sign-in password, to check a pasted key. -->
+              <template #trailing>
+                <UButton
+                  color="neutral"
+                  variant="link"
+                  size="sm"
+                  :icon="secretVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                  :aria-label="t('trackers.showSecret')"
+                  :aria-pressed="secretVisible"
+                  aria-controls="tracker-secret"
+                  data-testid="tracker-secret-visibility-toggle"
+                  @click="secretVisible = !secretVisible"
+                />
+              </template>
+            </UInput>
           </UFormField>
 
           <!--
@@ -297,7 +318,12 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             />
           </UFormField>
 
-          <UFormField :label="t('trackers.roundingRuleLabel')" name="roundingRule">
+          <UFormField
+            :label="t('trackers.roundingRuleLabel')"
+            :help="t('trackers.roundingRuleHelp')"
+            :ui="FIELD_UI"
+            name="roundingRule"
+          >
             <USelect
               id="tracker-rounding-rule"
               v-model="state.roundingRule"

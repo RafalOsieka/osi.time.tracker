@@ -104,6 +104,9 @@ const websiteStatus = computed((): StatusPresentation => {
 
 const destinationRows = computed(() =>
   orderedTrackers.value.map((tracker) => ({
+    // When no Tracker needs the extension the statement above already says they all connect
+    // directly, so the rows show only their mark and name.
+    showStatus: hasRequiredTracker.value,
     id: tracker.id,
     name: tracker.name,
     required: !tracker.directBrowserAccess,
@@ -245,15 +248,22 @@ function openDetails() {
             <li
               v-for="tracker in destinationRows"
               :key="tracker.id"
-              class="flex items-start gap-2"
+              class="flex gap-2"
+              :class="tracker.showStatus ? 'items-start' : 'items-center'"
               :data-testid="`extension-status-destination-${tracker.id}`"
               :data-required="tracker.required ? 'required' : 'optional'"
             >
               <!-- The Tracker's type mark gives each row its identity; status marks sit by the text. -->
-              <TrackerTypeMark :system-type="tracker.destination.provider" class="mt-px" />
+              <TrackerTypeMark
+                :system-type="tracker.destination.provider"
+                :class="tracker.showStatus && 'mt-px'"
+              />
               <div class="grid min-w-0 gap-0.5">
                 <p class="m-0 truncate text-sm">{{ tracker.name }}</p>
-                <p class="m-0 flex items-start gap-1.5 text-sm text-muted">
+                <p
+                  v-if="tracker.showStatus"
+                  class="m-0 flex items-start gap-1.5 text-sm text-muted"
+                >
                   <UIcon
                     v-if="tracker.status.icon"
                     :name="tracker.status.icon"

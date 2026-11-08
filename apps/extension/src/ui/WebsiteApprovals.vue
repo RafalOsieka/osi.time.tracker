@@ -14,25 +14,37 @@ import type { DestinationApproval, WebsiteApproval } from '../approvals/approval
 import { displayDestination, displayUrl } from '../approvals/display.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { openWebsite } from './open-website.js';
+import TrackerMark from './TrackerMark.vue';
 
 /**
  * The setup page's approved OSI websites: the list first, the approve form behind "Add website"
- * once something is listed (always open while the list is empty). Removing a website that still
- * has trackers asks first (REQ-413).
+ * once something is listed (always open, and the section titled as the task, while the list is
+ * empty). Removing a website that still has trackers asks first and lists them (REQ-413).
  */
-const { websites, destinations, origin, open, handedOff, disabled, errorKey, missingOrigins } =
-  defineProps<{
-    websites: readonly WebsiteApproval[];
-    destinations: readonly DestinationApproval[];
-    origin: string;
-    /** The approve form is expanded although websites are listed. */
-    open: boolean;
-    /** The popup handed the current address over from the active tab (REQ-415). */
-    handedOff: boolean;
-    disabled: boolean;
-    errorKey: string | null;
-    missingOrigins: readonly string[];
-  }>();
+const {
+  websites,
+  destinations,
+  origin,
+  open,
+  handedOff,
+  disabled,
+  errorKey,
+  missingOrigins,
+  rowRestore,
+} = defineProps<{
+  websites: readonly WebsiteApproval[];
+  destinations: readonly DestinationApproval[];
+  origin: string;
+  /** The approve form is expanded although websites are listed. */
+  open: boolean;
+  /** The popup handed the current address over from the active tab (REQ-415). */
+  handedOff: boolean;
+  disabled: boolean;
+  errorKey: string | null;
+  missingOrigins: readonly string[];
+  /** Rows offer their own restore; off while the page's alert restores the only lost one. */
+  rowRestore: boolean;
+}>();
 
 const emit = defineEmits<{
   'update:origin': [value: string];
@@ -46,6 +58,12 @@ const { t } = useExtensionI18n();
 const empty = computed(() => websites.length === 0);
 const formShown = computed(() => empty.value || open);
 const formState = computed(() => ({ origin }));
+/** The loopback exception only matters once someone types a plain-HTTP address. */
+const help = computed(() =>
+  origin.trim().startsWith('http://')
+    ? t.value('approvals.websiteHttpHelp')
+    : t.value('approvals.websiteHelp'),
+);
 
 /**
  * Website whose removal waits for confirmation because trackers would go with it. It outlives
@@ -84,14 +102,20 @@ function closeForm(): void {
 </script>
 
 <template>
-  <UCard as="section" aria-labelledby="websites-title" :ui="{ body: 'p-0 sm:p-0' }">
+  <UCard
+    as="section"
+    aria-labelledby="websites-title"
+    :ui="{ header: 'sm:py-5', body: 'p-0 sm:p-0' }"
+  >
     <template #header>
-      <div class="flex items-start justify-between gap-4">
+      <div class="flex items-center justify-between gap-4">
         <div class="min-w-0">
           <h2 id="websites-title" class="text-base font-semibold text-highlighted">
-            {{ t('approvals.websitesTitle') }}
+            {{ t(empty ? 'approvals.websitesEmptyTitle' : 'approvals.websitesTitle') }}
           </h2>
-          <p class="mt-1 text-[13px] text-muted">{{ t('approvals.websitesHelp') }}</p>
+          <p class="mt-0.5 text-[13px] text-muted">
+            {{ t(empty ? 'approvals.websitesEmptyHelp' : 'approvals.websitesHelp') }}
+          </p>
         </div>
         <UButton
           v-if="!formShown"
@@ -112,7 +136,7 @@ function closeForm(): void {
       <li
         v-for="website in websites"
         :key="website.origin"
-        class="flex min-h-14 items-center gap-3 px-4 py-2.5 sm:px-6"
+        class="flex min-h-11 items-center gap-3 px-4 py-1.5 sm:px-6"
       >
         <span
           class="inline-flex h-5 w-7 shrink-0 items-center justify-center rounded bg-primary-100/80 text-primary dark:bg-primary/16"
@@ -147,7 +171,7 @@ function closeForm(): void {
         </span>
         <div class="flex shrink-0 items-center gap-2">
           <UButton
-            v-if="missingOrigins.includes(website.origin)"
+            v-if="rowRestore && missingOrigins.includes(website.origin)"
             color="neutral"
             variant="outline"
             size="sm"
@@ -180,20 +204,28 @@ function closeForm(): void {
       class="flex flex-col gap-4 px-4 py-4 sm:px-6 sm:py-5"
       :class="{ 'border-t border-default': !empty }"
     >
+      <h3 v-if="!empty" class="text-sm font-semibold text-highlighted">
+        {{ t('approvals.newWebsite') }}
+      </h3>
       <p
         v-if="handedOff"
-        class="flex items-start gap-2.5 rounded-md bg-primary-50 p-3 text-[13px] text-toned ring-1 ring-primary/20 ring-inset dark:bg-primary/8"
+        class="flex items-start gap-2.5 rounded-md bg-primary-50 p-3 text-sm text-toned ring-1 ring-primary/20 ring-inset dark:bg-primary/8"
         data-testid="website-handoff"
       >
-        <UIcon name="i-lucide-info" class="mt-px size-4 shrink-0 text-primary" aria-hidden="true" />
+        <UIcon
+          name="i-lucide-info"
+          class="mt-0.5 size-4 shrink-0 text-primary"
+          aria-hidden="true"
+        />
         {{ t('approvals.websiteHandoff') }}
       </p>
       <UForm :state="formState" class="flex flex-col gap-4" @submit="emit('add')">
         <UFormField
           :label="t('approvals.websiteOrigin')"
           name="origin"
-          :help="t('approvals.websiteHelp')"
+          :help="help"
           :error="errorKey ? t(errorKey) : undefined"
+          :ui="{ help: 'text-[13px]', error: 'text-[13px]' }"
         >
           <UInput
             id="website-origin"
@@ -209,21 +241,21 @@ function closeForm(): void {
             <span role="alert" data-testid="website-origin-error">{{ error }}</span>
           </template>
         </UFormField>
-        <div class="flex gap-2">
+        <div class="flex justify-end gap-2">
+          <UButton
+            v-if="!empty"
+            color="neutral"
+            variant="outline"
+            data-testid="close-website-form"
+            :label="t('approvals.cancel')"
+            @click="closeForm"
+          />
           <UButton
             type="submit"
             icon="i-lucide-check"
             data-testid="add-website"
             :disabled="disabled"
             :label="t('approvals.addWebsite')"
-          />
-          <UButton
-            v-if="!empty"
-            color="neutral"
-            variant="ghost"
-            data-testid="close-website-form"
-            :label="t('approvals.cancel')"
-            @click="closeForm"
           />
         </div>
       </UForm>
@@ -241,16 +273,24 @@ function closeForm(): void {
           class="flex size-9 shrink-0 items-center justify-center rounded-md bg-error/10 text-error"
           aria-hidden="true"
         >
-          <UIcon name="i-lucide-triangle-alert" class="size-5" />
+          <UIcon name="i-lucide-trash-2" class="size-5" />
         </span>
-        <p class="m-0 pt-1.5 text-sm text-toned" data-testid="revoke-website-description">
-          {{
-            t('approvals.revokeWebsiteConfirmBody', {
-              count: pendingTrackers.length,
-              trackers: pendingTrackers.map((item) => displayDestination(item)).join(', '),
-            })
-          }}
-        </p>
+        <div class="flex min-w-0 flex-col gap-3 pt-1.5 text-sm text-toned">
+          <p class="m-0" data-testid="revoke-website-description">
+            {{ t('approvals.revokeWebsiteConfirmBody', { count: pendingTrackers.length }) }}
+          </p>
+          <ul class="m-0 flex flex-col gap-1.5 p-0" data-testid="revoke-website-trackers">
+            <li
+              v-for="item in pendingTrackers"
+              :key="`${item.provider}${item.origin}${item.basePath}`"
+              class="flex items-center gap-2 font-medium text-highlighted"
+            >
+              <TrackerMark :provider="item.provider" />
+              <span class="truncate">{{ displayDestination(item) }}</span>
+            </li>
+          </ul>
+          <p class="m-0 text-muted">{{ t('approvals.revokeWebsiteConfirmSafe') }}</p>
+        </div>
       </div>
     </template>
     <template #footer>

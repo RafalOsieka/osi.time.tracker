@@ -124,7 +124,7 @@ function testI18n() {
   return createI18n({
     legacy: false,
     locale: 'en',
-    messages: { en: {}, pl: {} },
+    messages: { en: { remoteIssuePicker: { headingFor: 'Link an issue: {task}' } }, pl: {} },
     missingWarn: false,
     fallbackWarn: false,
   });
@@ -222,15 +222,15 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
   });
 
-  it('names what it links: a heading plus the Task title when given', async () => {
+  it('names what it links: the heading, then the Task title in it when given', async () => {
     const wrapper = await mount({ contextLabel: 'Release 2.4 smoke test' });
     await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
     await flushPromises();
 
     const group = wrapper.find('[role="group"]');
     const heading = wrapper.find(`#${group.attributes('aria-labelledby')}`);
-    expect(heading.text()).toBe('remoteIssuePicker.heading');
-    expect(wrapper.find('[data-testid="remote-issue-picker-context"]').text()).toBe(
+    expect(heading.text()).toBe('Link an issue: Release 2.4 smoke test');
+    expect(heading.find('[data-testid="remote-issue-picker-context"]').text()).toBe(
       'Release 2.4 smoke test',
     );
     // Without a day it still names the Tracker the link goes to.
@@ -330,6 +330,37 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.emitted('link')).toEqual([
       [{ remoteIssueId: '7', cachedTitle: 'Closed issue', cachedRemoteProjectTitle: undefined }],
     ]);
+  });
+
+  it('marks the first result active and picks it on Enter for the unchanged query', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 7, subject: 'Closed issue' }),
+    });
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('7');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(
+      wrapper.find('[data-testid="remote-issue-picker-result-7"]').attributes('data-active'),
+    ).toBe('true');
+
+    // Enter again (the form submits) on the same query picks it instead of searching again.
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted('link')?.[0]?.[0]).toMatchObject({ remoteIssueId: '7' });
+
+    // An edited query searches again.
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('8');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not call fetch for a too-short title query and shows a validation message', async () => {

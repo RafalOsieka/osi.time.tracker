@@ -78,9 +78,19 @@ const previewDuration = computed(() => {
   const startedAt = Date.parse(wallClockToInstant(state.date, state.startTime, timeZone));
   const stoppedAt = Date.parse(wallClockToInstant(state.date, state.endTime, timeZone));
   if (!(stoppedAt >= startedAt)) return null;
-  // The range is entered in minutes, so its length is shown in minutes too ("1:30").
-  return formatReportDuration((stoppedAt - startedAt) / 1000);
+  // A preview inside a form reads as words ("1 godz. 30 min"); tables keep their mono formats.
+  const totalMinutes = Math.floor((stoppedAt - startedAt) / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [
+    hours > 0 ? t('timerView.addEntry.durationHours', { count: hours }) : '',
+    minutes > 0 || hours === 0 ? t('timerView.addEntry.durationMinutes', { count: minutes }) : '',
+  ];
+  return parts.filter(Boolean).join(' ');
 });
+
+/** Whether the title came from the create-new-task option, for the "new Task" cue. */
+const isNewTask = ref(false);
 
 /** The timezone with its offset on the chosen date and start (DST applies), e.g. UTC+01:00. */
 const timeZoneHint = computed(() => {
@@ -164,18 +174,43 @@ async function onSave() {
         @submit="onSave"
         @error="onError"
       >
-        <!-- The help line says a new title is as welcome as an existing Task. -->
+        <!--
+          The help line says a new title is as welcome as an existing Task; once the create option
+          is picked it says so ("Nowe zadanie") and names the entry's Project, or that it has none.
+        -->
         <UFormField
           :label="t('timerView.addEntry.titleLabel')"
           :hint="t('timerView.addEntry.optionalHint')"
-          :help="t('timerView.addEntry.titleHelp')"
-          :ui="{ help: 'text-xs text-muted' }"
+          :ui="{ help: 'mt-1.5 text-sm text-muted' }"
         >
+          <template #help>
+            <span
+              v-if="isNewTask"
+              class="flex flex-wrap items-center gap-x-2 gap-y-1"
+              data-testid="add-entry-new-task"
+            >
+              <UBadge
+                color="primary"
+                variant="soft"
+                size="sm"
+                :label="t('timerView.addEntry.newTaskBadge')"
+              />
+              <span>
+                {{
+                  chipProject
+                    ? t('timerView.addEntry.newTaskProject', { project: chipProject.name })
+                    : t('timerView.addEntry.newTaskNoProject')
+                }}
+              </span>
+            </span>
+            <template v-else>{{ t('timerView.addEntry.titleHelp') }}</template>
+          </template>
           <TaskTitleInput
             ref="titleInput"
             v-model:text="state.title"
             v-model:project="chipProject"
             v-model:task="pickedTask"
+            v-model:new-task="isNewTask"
             class="w-full"
             eager
             chip-testid="add-entry-project"
@@ -219,18 +254,21 @@ async function onSave() {
         </UFormField>
 
         <!--
-          The hint previews the entry's length, so a mistyped range is caught before saving; the
-          help line names the timezone the times are in.
+          Under the field: the entry's length in words, so a mistyped range is caught before
+          saving, and (quieter, as metadata) the timezone the times are in.
         -->
-        <UFormField
-          :label="t('timerView.addEntry.timesLabel')"
-          :help="timeZoneHint"
-          :ui="{ help: 'text-xs text-muted' }"
-        >
-          <template v-if="previewDuration" #hint>
-            {{ t('timerView.addEntry.durationHint') }}
-            <span class="ms-1 font-mono tabular-nums" data-testid="add-entry-duration">
-              {{ previewDuration }}
+        <UFormField :label="t('timerView.addEntry.timesLabel')" :ui="{ help: 'mt-1.5 text-muted' }">
+          <template #help>
+            <span class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+              <span v-if="previewDuration" class="text-sm">
+                {{ t('timerView.addEntry.durationHint') }}
+                <span class="ms-1 font-medium text-default" data-testid="add-entry-duration">
+                  {{ previewDuration }}
+                </span>
+              </span>
+              <span class="ms-auto text-xs" data-testid="add-entry-time-zone">
+                {{ timeZoneHint }}
+              </span>
             </span>
           </template>
           <TimeField

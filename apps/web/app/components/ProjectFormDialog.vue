@@ -34,7 +34,10 @@ const {
   immediate: false,
 });
 
-const extraTrackerOptions = ref<{ id: string; name: string }[]>([]);
+/** A soft-deleted Tracker the edited Project still points at, seeded from the Project (REQ-086). */
+const extraTrackerOptions = ref<
+  { id: string; name: string; systemType: ProjectDto['trackerSystemType'] }[]
+>([]);
 const trackerOptions = computed(() => {
   const active = trackersData.value ?? [];
   const missing = extraTrackerOptions.value.filter(
@@ -47,11 +50,19 @@ const trackerOptions = computed(() => {
 // (REQ-086). Like `WHOLE_TRACKER_VALUE` below, the sentinel must be non-empty for Reka UI.
 const LOCAL_PROJECT_VALUE = '__local-project__';
 
-/** The Tracker select's items: the local choice first, each with the icon the list shows. */
+/** The Tracker select's items: the local choice first, each with the chip the list shows. */
 const trackerItems = computed(() => [
-  { id: LOCAL_PROJECT_VALUE, name: t('projects.trackerNone'), icon: 'i-lucide-hard-drive' },
-  ...trackerOptions.value.map(({ id, name }) => ({ id, name, icon: 'i-lucide-cable' })),
+  { id: LOCAL_PROJECT_VALUE, name: t('projects.trackerNone'), systemType: null },
+  ...trackerOptions.value.map(({ id, name, systemType }) => ({ id, name, systemType })),
 ]);
+
+/** The chosen item's system, for the chip inside the closed select. */
+const selectedSystemType = computed(
+  () => trackerItems.value.find((item) => item.id === state.trackerId)?.systemType ?? null,
+);
+
+/** Help lines sit tight under their control (4px), not a field gap away. */
+const FIELD_UI = { help: 'mt-1' };
 
 /** UI uses undefined for empty/local; API null is mapped at open/submit boundaries. */
 type ProjectFormState = {
@@ -219,6 +230,7 @@ function seedForm(project: ProjectDto | null) {
       {
         id: project.trackerId,
         name: project.trackerName ?? project.trackerId,
+        systemType: project.trackerSystemType,
       },
     ];
   }
@@ -344,7 +356,6 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
           <UFormField
             :label="t('projects.nameLabel')"
             name="name"
-            required
             :error="nameServerError || undefined"
           >
             <UInput
@@ -366,6 +377,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
             :label="t('projects.trackerLabel')"
             :hint="t('projects.optionalHint')"
             :help="trackerHelp"
+            :ui="FIELD_UI"
             name="trackerId"
             :error="trackerServerError || undefined"
           >
@@ -377,9 +389,18 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
               label-key="name"
               :loading="trackersPending"
               class="w-full"
+              :ui="{ base: 'ps-11' }"
               data-testid="project-tracker-select"
               @update:model-value="onTrackerSelected"
-            />
+            >
+              <!-- The same OP/RM (or local) chips as the Projects list, closed and open. -->
+              <template #leading>
+                <TrackerTypeMark :system-type="selectedSystemType" />
+              </template>
+              <template #item-leading="{ item }">
+                <TrackerTypeMark :system-type="item.systemType" />
+              </template>
+            </USelect>
             <template v-if="trackerServerError" #error>
               <span id="project-tracker-error" data-testid="project-tracker-error" role="alert">
                 {{ trackerServerError }}
@@ -393,6 +414,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
             :label="t('projects.remoteProjectLabel')"
             :hint="t('projects.optionalHint')"
             :help="canBrowseCatalog && !catalogErrorKey ? remoteProjectHelp : undefined"
+            :ui="FIELD_UI"
             name="remoteProjectId"
             :error="remoteProjectServerError || undefined"
             class="ms-2 border-s-2 border-default ps-4"
@@ -441,7 +463,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
                   @click="clearRemoteProjectScope"
                 />
               </div>
-              <p class="mt-1 text-xs text-muted" data-testid="project-remote-project-hint">
+              <p class="mt-1 text-sm text-muted" data-testid="project-remote-project-hint">
                 {{
                   catalogUnsupported
                     ? t('projects.remoteProjectExtensionUnsupported')

@@ -54,18 +54,19 @@ const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask')
 const TIME_SIZER = '00:00';
 
 /**
- * The times sit in a field frame at rest (a card-tone pill with the 3:1 control outline), so they
- * read as editable; the ring darkens on hover and turns cyan while a segment has focus. A stopped
- * entry's range field is the frame; a running entry's frame holds its start field and "now".
+ * The times sit in a control frame at rest (the control shape, not a chip's pill, with the 3:1
+ * outline), filling the fixed slot so every row's frame has one width; the ring darkens on hover
+ * and turns cyan while a segment has focus. A stopped entry's range field is the frame; a running
+ * entry's frame holds its start field and "now".
  */
 const TIME_FRAME =
-  'rounded-md bg-default px-1.5 py-0.5 ring ring-inset ring-accented transition-shadow hover:ring-(--ui-text-dimmed) focus-within:ring-primary dark:bg-muted';
-const TIME_TEXT = 'text-xs font-medium text-default tabular-nums dark:font-normal';
+  'flex h-6 w-full items-center justify-center rounded-sm bg-default px-1.5 ring ring-inset ring-accented transition-shadow hover:ring-(--ui-text-dimmed) focus-within:ring-primary dark:bg-muted';
+const TIME_TEXT = 'text-xs font-medium text-default tabular-nums';
 /** Tight segments like a plain "08:00 – 08:30" label; each keeps a small hover/focus pad. */
 const TIME_SEGMENT = 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto';
 
 const rangeFieldUi = {
-  base: `justify-end gap-0 ${TIME_FRAME} ${TIME_TEXT}`,
+  base: `gap-0 ${TIME_FRAME} ${TIME_TEXT}`,
   segment: TIME_SEGMENT,
 };
 const startFieldUi = { base: `gap-0 p-0 ${TIME_TEXT}`, segment: TIME_SEGMENT };
@@ -216,7 +217,7 @@ async function onDelete() {
           :separator="t('timerView.entryRow.separator')"
           :label="t('timerView.entryRow.timesLabel')"
           :testid="`timer-entry-times-${entry.id}`"
-          class="w-auto"
+          class="w-full"
           @commit="commitTimes"
         />
       </div>
@@ -225,7 +226,7 @@ async function onDelete() {
         data-entry-times-slot
         class="flex w-28 shrink-0 justify-end @max-[40rem]/list:justify-start"
       >
-        <div class="inline-flex items-center" :class="[TIME_FRAME, TIME_TEXT]">
+        <div :class="[TIME_FRAME, TIME_TEXT]">
           <TimeField
             v-model="timesModel.start"
             size="xs"

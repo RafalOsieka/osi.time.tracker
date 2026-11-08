@@ -26,7 +26,8 @@ describe('activity formatting', () => {
     ).toEqual({
       ok: false,
       outcome: 'Przekroczony czas',
-      detail: 'Pobranie wpisów czasu · 1 godzinę temu',
+      operation: 'Pobranie wpisów czasu',
+      when: '1 godzinę temu',
     });
     expect(
       summarizeActivity(

@@ -87,7 +87,8 @@ function onCalendarSelect(value: CalendarDate | null) {
       </UPopover>
     </PeriodStepper>
     <!-- Export is the page's primary action. Unavailable, it turns neutral (no cyan, so it never
-         reads as enabled) and says why: a short line under it (from md up), hung in the gap below
+         reads as enabled) on one slate fill that shows in both themes, and says why: a short
+         line under it (from md up), hung in the gap below
          the header so the stepper and Export never move, and the tooltip on its focusable host. -->
     <div class="relative">
       <UTooltip :text="exportDisabledReason ?? ''" :disabled="!exportDisabledReason">
@@ -102,7 +103,7 @@ function onCalendarSelect(value: CalendarDate | null) {
             :color="exportDisabled ? 'neutral' : 'primary'"
             :variant="exportDisabled ? 'soft' : 'solid'"
             :disabled="exportDisabled"
-            class="disabled:text-dimmed disabled:opacity-100"
+            class="disabled:bg-accented/70 disabled:text-dimmed disabled:opacity-100 dark:disabled:bg-accented/70"
             data-testid="remote-sync-export-button"
             @click="emit('export')"
           />

@@ -229,6 +229,21 @@ describe('TaskTitleInput', () => {
     expect(task.value).toBeNull();
   });
 
+  it('reports a title from the create option as a new task until the text changes', async () => {
+    const { wrapper, rows, type, sync } = await mountInput([suggestion]);
+
+    await type('Sprint planning');
+    await settleSuggestions();
+    const newTask = () => wrapper.emitted('update:newTask')?.at(-1)?.[0];
+    expect(newTask()).toBeFalsy();
+    rows()[0]?.onSelect();
+    await sync();
+    expect(newTask()).toBe(true);
+
+    await type('Sprint planning 2');
+    expect(newTask()).toBe(false);
+  });
+
   it('only emits enter when the overlay is closed', async () => {
     const { wrapper, menu, events } = await mountInput();
     const input = wrapper.find('input');

@@ -17,7 +17,7 @@ import {
   type DestinationApproval,
   type WebsiteApproval,
 } from '../approvals/approvals.js';
-import { displayDestination, displayUrl } from '../approvals/display.js';
+import { displayDestination, displayUrl, isPlainHttp } from '../approvals/display.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import ActivityLine from './ActivityLine.vue';
 import TrackerMark from './TrackerMark.vue';
@@ -38,6 +38,7 @@ const {
   disabled,
   errorKey,
   missingOrigins,
+  rowRestore,
   activity,
   now,
 } = defineProps<{
@@ -52,6 +53,8 @@ const {
   disabled: boolean;
   errorKey: string | null;
   missingOrigins: readonly string[];
+  /** Rows offer their own restore; off while the page's alert restores the only lost one. */
+  rowRestore: boolean;
   /** Latest operation per destination key, shown on each tracker row. */
   activity: Readonly<ActivityMap>;
   now: number;
@@ -96,6 +99,16 @@ function destinationLabel(item: DestinationApproval): string {
   return `${t.value(`approvals.${item.provider}`)} ${item.origin}${item.basePath} (${t.value('approvals.forWebsite', { website: item.websiteOrigin })})`;
 }
 
+/**
+ * The "No access" badge marks a tracker that lost browser access, unless its last activity
+ * already says that access was denied: one fact, said once.
+ */
+function showsNoAccessBadge(item: DestinationApproval): boolean {
+  return (
+    missingOrigins.includes(item.origin) && activity[destinationKey(item)]?.outcome !== 'permission'
+  );
+}
+
 async function openForm(): Promise<void> {
   emit('update:open', true);
   await nextTick();
@@ -109,14 +122,20 @@ function closeForm(): void {
 </script>
 
 <template>
-  <UCard as="section" aria-labelledby="destinations-title" :ui="{ body: 'p-0 sm:p-0' }">
+  <UCard
+    as="section"
+    aria-labelledby="destinations-title"
+    :ui="{ header: 'sm:py-5', body: 'p-0 sm:p-0' }"
+  >
     <template #header>
-      <div class="flex items-start justify-between gap-4">
+      <div class="flex items-center justify-between gap-4">
         <div class="min-w-0">
           <h2 id="destinations-title" class="text-base font-semibold text-highlighted">
-            {{ t('approvals.destinationsTitle') }}
+            {{ t(empty ? 'approvals.destinationsEmptyTitle' : 'approvals.destinationsTitle') }}
           </h2>
-          <p class="mt-1 text-[13px] text-muted">{{ t('approvals.destinationsHelp') }}</p>
+          <p class="mt-0.5 text-[13px] text-muted">
+            {{ t(empty ? 'approvals.destinationsEmptyHelp' : 'approvals.destinationsHelp') }}
+          </p>
         </div>
         <UButton
           v-if="hasWebsite && !formShown"
@@ -150,7 +169,7 @@ function closeForm(): void {
             >
               <span class="truncate group-hover:underline">{{ displayDestination(item) }}</span>
               <UIcon
-                name="i-lucide-external-link"
+                name="i-lucide-arrow-up-right"
                 class="size-3.5 shrink-0 text-dimmed group-hover:text-primary"
                 aria-hidden="true"
               />
@@ -158,8 +177,16 @@ function closeForm(): void {
                 {{ t(`approvals.${item.provider}`) }} ({{ t('app.opensInNewTab') }})
               </span>
             </ULink>
+            <span
+              v-if="isPlainHttp(item)"
+              class="inline-flex shrink-0 items-center gap-1 text-[13px] text-warning"
+              :data-testid="`http-destination-${destinationKey(item)}`"
+            >
+              <UIcon name="i-lucide-lock-open" class="size-3.5" aria-hidden="true" />
+              {{ t('approvals.httpShort') }}
+            </span>
             <UBadge
-              v-if="missingOrigins.includes(item.origin)"
+              v-if="showsNoAccessBadge(item)"
               color="warning"
               variant="soft"
               size="sm"
@@ -168,17 +195,18 @@ function closeForm(): void {
               :label="t('approvals.noAccess')"
             />
           </span>
-          <span v-if="showsWebsite" class="truncate text-xs text-muted">
+          <span v-if="showsWebsite" class="truncate text-sm text-muted">
             {{ t('approvals.websiteLine', { website: displayUrl(item.websiteOrigin) }) }}
           </span>
           <span
             v-if="missingOrigins.includes(item.websiteOrigin)"
-            class="text-xs text-warning"
+            class="text-sm text-warning"
             :data-testid="`website-access-${destinationKey(item)}`"
           >
             {{ t('approvals.websitePermissionMissing') }}
           </span>
           <ActivityLine
+            class="text-sm"
             :record="activity[destinationKey(item)]"
             :now="now"
             :data-testid="`activity-${destinationKey(item)}`"
@@ -186,7 +214,7 @@ function closeForm(): void {
         </span>
         <div class="flex shrink-0 items-center gap-2">
           <UButton
-            v-if="missingOrigins.includes(item.origin)"
+            v-if="rowRestore && missingOrigins.includes(item.origin)"
             color="neutral"
             variant="outline"
             size="sm"
@@ -220,7 +248,7 @@ function closeForm(): void {
       data-testid="destination-website-required"
     >
       <span
-        class="flex size-8 shrink-0 items-center justify-center rounded-md bg-elevated text-muted"
+        class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
         aria-hidden="true"
       >
         <UIcon name="i-lucide-lock" class="size-4" />
@@ -234,6 +262,9 @@ function closeForm(): void {
       :class="{ 'border-t border-default': !empty }"
     >
       <UForm :state="formState" class="flex flex-col gap-4" @submit="emit('add')">
+        <h3 v-if="!empty" class="text-sm font-semibold text-highlighted">
+          {{ t('approvals.newDestination') }}
+        </h3>
         <p
           v-if="singleWebsite"
           class="flex items-center gap-1.5 text-[13px] text-muted"
@@ -270,8 +301,9 @@ function closeForm(): void {
           <UFormField
             :label="t('approvals.destinationUrl')"
             name="destinationUrl"
-            :help="t(httpWarning ? 'approvals.httpWarning' : 'approvals.destinationHelp')"
+            :help="t('approvals.destinationHelp')"
             :error="errorKey ? t(errorKey) : undefined"
+            :ui="{ help: 'text-[13px]', error: 'text-[13px]' }"
           >
             <UInput
               id="destination-url"
@@ -285,43 +317,47 @@ function closeForm(): void {
               :highlight="httpWarning || undefined"
               @update:model-value="emit('update:destinationUrl', String($event))"
             />
-            <template #help>
-              <span
-                v-if="httpWarning"
-                class="flex items-start gap-1.5 text-warning"
-                role="status"
-                data-testid="http-warning"
-              >
-                <UIcon name="i-lucide-lock-open" class="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                  <span class="font-medium">{{ t('approvals.httpTitle') }}</span>
-                  {{ t('approvals.httpWarning') }}
-                </span>
-              </span>
-              <template v-else>{{ t('approvals.destinationHelp') }}</template>
-            </template>
             <template v-if="errorKey" #error="{ error }">
               <span role="alert" data-testid="destination-url-error">{{ error }}</span>
             </template>
           </UFormField>
         </div>
-        <div class="flex gap-2">
+        <!-- The risk concerns the whole approval, so it spans the form under the fields. -->
+        <p
+          v-if="httpWarning"
+          class="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm text-toned ring-1 ring-amber-200 ring-inset dark:bg-elevated dark:ring-amber-400/40"
+          role="status"
+          data-testid="http-warning"
+        >
+          <UIcon
+            name="i-lucide-lock-open"
+            class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden="true"
+          />
+          <span>
+            <span class="font-medium text-amber-800 dark:text-amber-300">
+              {{ t('approvals.httpTitle') }}
+            </span>
+            {{ t('approvals.httpWarning') }}
+          </span>
+        </p>
+        <div class="flex justify-end gap-2">
+          <UButton
+            v-if="!empty"
+            color="neutral"
+            variant="outline"
+            data-testid="close-destination-form"
+            :label="t('approvals.cancel')"
+            @click="closeForm"
+          />
           <UButton
             type="submit"
             icon="i-lucide-check"
             data-testid="add-destination"
             :color="httpWarning ? 'warning' : 'primary'"
-            :variant="httpWarning ? 'outline' : 'solid'"
+            :variant="httpWarning ? 'soft' : 'solid'"
             :disabled="!canAdd"
             :label="t(httpWarning ? 'approvals.approveDespiteHttp' : 'approvals.addDestination')"
-          />
-          <UButton
-            v-if="!empty"
-            color="neutral"
-            variant="ghost"
-            data-testid="close-destination-form"
-            :label="t('approvals.cancel')"
-            @click="closeForm"
           />
         </div>
       </UForm>

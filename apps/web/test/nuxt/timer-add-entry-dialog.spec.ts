@@ -385,7 +385,24 @@ describe('TimerAddEntryDialog', () => {
       start: parseTime('09:15'),
       end: parseTime('10:45'),
     });
-    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe('1:30');
+    // In words: hours and minutes ("1 godz. 30 min"), dropping a zero part.
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe(
+      'timerView.addEntry.durationHours timerView.addEntry.durationMinutes',
+    );
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:00'),
+      end: parseTime('10:00'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe(
+      'timerView.addEntry.durationHours',
+    );
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:00'),
+      end: parseTime('09:45'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe(
+      'timerView.addEntry.durationMinutes',
+    );
 
     await findTimesStub(wrapper).vm.$emit('update:modelValue', {
       start: parseTime('11:00'),

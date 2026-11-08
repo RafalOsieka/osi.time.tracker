@@ -185,14 +185,6 @@ const remoteSummaryText = computed(() => {
   return formatReportDuration(summary.seconds);
 });
 
-// Day keys are calendar dates, so they format in UTC to stay on the same day.
-function formatDay(date: string, options: Intl.DateTimeFormatOptions): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString(locale.value, {
-    ...options,
-    timeZone: 'UTC',
-  });
-}
-
 /**
  * Duration cells share the report's numeric face. Plain values sit at 400 so a flagged value
  * (600, warning) differs by weight as well as colour (REQ-472); the totals row is 600.
@@ -202,15 +194,48 @@ function durationTd(isTotal: boolean, extra = ''): string {
   return `text-end font-mono tabular-nums ${weight} ${extra}`;
 }
 
+/** A legend entry's sample: the flagged look (warning, semibold, dotted underline) on a word. */
+const LEGEND_MARK =
+  'me-1 font-semibold text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-4';
+
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
 const GROUP_DIVIDER = 'border-s border-default';
 
-// The totals row closes the table with a divider-weight rule and a faint band.
+// The totals row closes the table with a divider-weight rule and its semibold figures, on the
+// same untinted ground as every other table.
 const tableMeta: TableProps<TimesheetRow>['meta'] = {
   class: {
-    tr: (row) => (row.original.isTotal ? 'border-t border-default bg-elevated/50' : ''),
+    tr: (row) => (row.original.isTotal ? 'border-t border-default' : ''),
   },
 };
+
+/**
+ * The day as "czw., 5 lis" (locale order): the weekday muted and right before the date it names,
+ * so a month scans by week without a floating weekday column. Day keys are calendar dates, so
+ * they format in UTC to stay on the same day.
+ */
+function dayParts(date: string) {
+  const parts = new Intl.DateTimeFormat(locale.value, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).formatToParts(new Date(`${date}T00:00:00Z`));
+  const weekdayAt = parts.findIndex((part) => part.type === 'weekday');
+  // The weekday and the literal right after it ("czw., ") form the muted lead, when it leads.
+  if (weekdayAt !== 0) return { weekday: '', rest: parts.map((part) => part.value).join('') };
+  const leadEnd = parts[1]?.type === 'literal' ? 2 : 1;
+  return {
+    weekday: parts
+      .slice(0, leadEnd)
+      .map((part) => part.value)
+      .join(''),
+    rest: parts
+      .slice(leadEnd)
+      .map((part) => part.value)
+      .join(''),
+  };
+}
 
 /**
  * Date and Local have no group above them, so their headings sit in the lower header row under
@@ -318,7 +343,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     header: spanningHeader(t('reports.monthly.columnDate')),
     meta: {
       class: {
-        th: 'w-36 align-bottom',
+        th: 'w-28 align-bottom',
         td: ({ row }) =>
           `text-highlighted ${row.original.isTotal ? 'font-semibold' : 'font-medium'}`,
       },
@@ -328,18 +353,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       if (row.original.isTotal) {
         return h('span', { 'data-testid': testId }, t('reports.monthly.totals'));
       }
-      // A muted weekday in a fixed slot after the date, so a month scans by week.
-      return h('span', { class: 'inline-flex items-baseline gap-2' }, [
-        h(
-          'span',
-          { class: 'w-12', 'data-testid': testId },
-          formatDay(row.original.date, { day: 'numeric', month: 'short' }),
-        ),
-        h(
-          'span',
-          { class: 'text-xs font-normal text-muted' },
-          formatDay(row.original.date, { weekday: 'short' }),
-        ),
+      const { weekday, rest } = dayParts(row.original.date);
+      return h('span', { 'data-testid': testId }, [
+        h('span', { class: 'font-normal text-muted' }, weekday),
+        rest,
       ]);
     },
   };
@@ -380,10 +397,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     enableSorting: false,
     meta: {
       class: {
-        // Centred over its three columns; the header band itself spans the whole table. The
-        // table is fixed-layout (Date and Local fixed, every Tracker column an equal share of
-        // the rest), so numbers hold their place whatever the translated headings.
-        th: `py-2 text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
+        // Aligned to its group's start, after the group divider, like a section label over its
+        // three columns. The table is fixed-layout (Date and Local fixed, every Tracker column
+        // an equal share of the rest), so numbers hold their place whatever the headings.
+        th: `py-2 text-start text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
     },
     columns: [
@@ -393,7 +410,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         enableSorting: false,
         meta: {
           class: {
-            th: `text-end ${GROUP_DIVIDER}`,
+            th: `ps-2 text-end whitespace-nowrap ${GROUP_DIVIDER}`,
             td: ({ row }) => durationTd(row.original.isTotal, GROUP_DIVIDER),
           },
         },
@@ -404,7 +421,12 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         id: `${tracker.id}-direct`,
         header: t('reports.monthly.columnDirect'),
         enableSorting: false,
-        meta: { class: { th: 'text-end', td: ({ row }) => durationTd(row.original.isTotal) } },
+        meta: {
+          class: {
+            th: 'ps-2 text-end whitespace-nowrap',
+            td: ({ row }) => durationTd(row.original.isTotal),
+          },
+        },
         cell: ({ row }) =>
           durationCell(row.original, row.original.trackerCells[tracker.id], 'direct', tracker.id),
       },
@@ -414,7 +436,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         enableSorting: false,
         meta: {
           class: {
-            th: 'text-end',
+            th: 'ps-2 text-end whitespace-nowrap',
             td: ({ row }) => durationTd(row.original.isTotal),
           },
         },
@@ -510,7 +532,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       {{ t('reports.monthly.empty') }}
     </p>
 
-    <!-- The shared 44px rows; one faint band runs under both header rows, edge to edge. -->
+    <!-- The shared table style: 44px rows, quiet headers on the card's own ground. -->
     <UTable
       v-if="!reportErrorKey && !showEmpty"
       :data="rows"
@@ -520,18 +542,26 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :ui="{
         root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
         base: 'w-full table-fixed',
-        thead: 'bg-elevated/50',
       }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
-    <p
+    <!-- The legend (REQ-472): what the underlined values usually mean, read at a glance, then how
+         to see each value's own reason. Helper text, so 14px. -->
+    <div
       v-if="!reportErrorKey && !showEmpty"
-      class="m-0 -mt-1 flex items-center gap-1.5 px-4 text-xs text-muted"
+      class="-mt-1 flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 text-sm text-muted"
       data-testid="reports-monthly-legend"
     >
-      <UIcon name="i-lucide-info" class="size-3.5 shrink-0 text-dimmed" aria-hidden="true" />
-      {{ t('reports.monthly.legend') }}
-    </p>
+      <span>
+        <span :class="LEGEND_MARK">{{ t('reports.monthly.columnLocal') }}</span>
+        {{ t('reports.monthly.legendLocal') }}
+      </span>
+      <span>
+        <span :class="LEGEND_MARK">{{ t('reports.monthly.columnDirect') }}</span>
+        {{ t('reports.monthly.legendDirect') }}
+      </span>
+      <span class="text-dimmed">{{ t('reports.monthly.legend') }}</span>
+    </div>
   </div>
 </template>

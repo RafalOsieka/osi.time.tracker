@@ -47,6 +47,7 @@ const destinationProps = {
   disabled: false,
   errorKey: null,
   missingOrigins: [],
+  rowRestore: true,
 };
 
 it('renders unambiguous tracker identities and permission restoration labels', async () => {
@@ -81,6 +82,7 @@ it('names the one rule a website address breaks and disables controls while busy
     disabled: true,
     errorKey: 'approvals.invalidWebsitePath',
     missingOrigins: [],
+    rowRestore: false,
   });
   expect(html).toContain('Zatwierdź witrynę');
   expect(html).toContain('Podaj sam adres witryny, bez ścieżki');
@@ -101,6 +103,7 @@ it('lists approved websites first and keeps the add form behind its button', asy
     disabled: false,
     errorKey: null,
     missingOrigins: [],
+    rowRestore: false,
   });
   expect(html).toContain('data-testid="new-website"');
   expect(html).not.toContain('data-testid="website-origin"');
@@ -141,7 +144,7 @@ it('makes approving a plain-HTTP tracker a visibly deliberate choice', async () 
     httpWarning: true,
   });
   expect(html).toContain('data-testid="http-warning"');
-  expect(html).toContain('Tracker credentials are sent without encryption');
+  expect(html).toContain('API key is sent without encryption');
   expect(html).toContain('Approve despite HTTP');
 });
 
@@ -161,7 +164,8 @@ it('lists trackers with their latest activity, the add form folded away', async 
     now: Date.parse('2026-10-05T10:02:00.000Z'),
   });
   expect(html).toContain('Succeeded');
-  expect(html).toContain('Time entry export · 2 minutes ago');
+  expect(html).toContain('Time entry export');
+  expect(html).toContain('2 minutes ago');
   expect(html).toContain('No activity this session');
   expect(html).toContain('data-testid="new-destination"');
   expect(html).not.toContain('data-testid="destination-url"');

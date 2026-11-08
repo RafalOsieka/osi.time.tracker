@@ -15,7 +15,7 @@ const {
   dateLabel,
   included,
   toSendSeconds,
-  notReadyCount = 0,
+  excludedSummary = '',
   isRunning,
   completedCount,
   totalCount,
@@ -25,8 +25,11 @@ const {
   dateLabel: string;
   included: ExportDialogIncludedRow[];
   toSendSeconds: number;
-  /** The day's other Tasks that are not ready (Sent ones aside), stated as a count only. */
-  notReadyCount?: number;
+  /**
+   * The day's other Tasks left out of this export (Sent ones aside), counted by reason without
+   * listing them ("3 bez czynności, 1 projekt lokalny"); empty when none is left out.
+   */
+  excludedSummary?: string;
   isRunning: boolean;
   completedCount: number;
   totalCount: number;
@@ -55,10 +58,13 @@ const title = computed(() =>
     : t('remoteSync.exportDialog.titleReview', { count: included.length }, included.length),
 );
 
-function destinationOf(item: ExportDialogIncludedRow): string {
-  return [item.trackerName, item.issueId && `#${item.issueId}`, item.activityName]
-    .filter((part): part is string => !!part)
-    .join(' · ');
+/** The destination as separate pieces (Tracker, issue, activity), so each scans on its own. */
+function destinationOf(item: ExportDialogIncludedRow) {
+  const parts: { key: 'tracker' | 'issue' | 'activity'; text: string; mono: boolean }[] = [];
+  if (item.trackerName) parts.push({ key: 'tracker', text: item.trackerName, mono: false });
+  if (item.issueId) parts.push({ key: 'issue', text: `#${item.issueId}`, mono: true });
+  if (item.activityName) parts.push({ key: 'activity', text: item.activityName, mono: false });
+  return parts;
 }
 </script>
 
@@ -100,7 +106,9 @@ function destinationOf(item: ExportDialogIncludedRow): string {
             <p class="m-0 text-sm font-medium text-highlighted">
               {{ t('remoteSync.exportDialog.intro', { date: dateLabel }) }}
             </p>
-            <p class="m-0 text-sm text-muted">{{ t('remoteSync.exportDialog.introHint') }}</p>
+            <p class="m-0 text-sm text-muted">
+              {{ t('remoteSync.exportDialog.introHint', included.length) }}
+            </p>
           </div>
         </div>
 
@@ -119,11 +127,23 @@ function destinationOf(item: ExportDialogIncludedRow): string {
               {{ formatDuration(item.toSendSeconds) }}
             </span>
             <span
-              v-if="destinationOf(item)"
-              class="col-span-2 min-w-0 truncate text-xs text-muted"
+              v-if="destinationOf(item).length"
+              class="col-span-2 flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted"
               :data-testid="`remote-sync-export-destination-${item.taskId}`"
             >
-              {{ destinationOf(item) }}
+              <template v-for="(part, index) in destinationOf(item)" :key="part.key">
+                <span
+                  v-if="index > 0"
+                  class="size-1 shrink-0 rounded-full bg-(--ui-text-dimmed)"
+                  aria-hidden="true"
+                />
+                <span
+                  :class="part.mono && 'font-mono text-[0.8125rem] tabular-nums text-default'"
+                  :data-testid="`remote-sync-export-destination-${part.key}-${item.taskId}`"
+                >
+                  {{ part.text }}
+                </span>
+              </template>
             </span>
           </li>
         </ul>
@@ -140,19 +160,19 @@ function destinationOf(item: ExportDialogIncludedRow): string {
           </span>
         </div>
 
-        <!-- REQ-229: each row states its own reason; the review only counts them and names the
-             kinds of reason in a few words. -->
+        <!-- REQ-229: the Tasks left out, counted by reason (each row states its own reason on
+             the page), at helper-text size since it qualifies what the export does. -->
         <p
-          v-if="notReadyCount > 0 && !isRunning"
-          class="m-0 flex items-start gap-1.5 text-xs text-muted"
+          v-if="excludedSummary && !isRunning"
+          class="m-0 flex items-start gap-2 text-sm text-muted"
           data-testid="remote-sync-export-not-ready"
         >
           <UIcon
             name="i-lucide-info"
-            class="mt-px size-3.5 shrink-0 text-dimmed"
+            class="mt-0.5 size-4 shrink-0 text-dimmed"
             aria-hidden="true"
           />
-          {{ t('remoteSync.exportDialog.notReady', { count: notReadyCount }, notReadyCount) }}
+          {{ t('remoteSync.exportDialog.excludedLine', { list: excludedSummary }) }}
         </p>
       </div>
     </template>

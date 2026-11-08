@@ -156,6 +156,14 @@ Each tracker's "Import history" action SHALL open a dialog moving through range,
 - **WHEN** the range phase opens for a tracker with a bound Project that has no scope
 - **THEN** the project list SHALL show that Project with a warning that it has no remote project, plus one hint that it can still be picked in the mapping phase or given a remote project in the project form, without any remote request
 
+#### Scenario: No project is linked
+- **WHEN** the range phase opens and none of the tracker's Projects has a remote project
+- **THEN** the list SHALL show the Projects without a per-row warning, and one warning with the same hint SHALL say that no Project is linked
+
+#### Scenario: Scanning is presented as read-only
+- **WHEN** the range phase is shown
+- **THEN** it SHALL say that scanning only reads the history and that nothing is imported before the preview
+
 #### Scenario: Range phase opens with the default range filled
 - **WHEN** the range phase opens
 - **THEN** the date-range field SHALL show a start of five years before today and an end of today, both ends complete, under a single translated label

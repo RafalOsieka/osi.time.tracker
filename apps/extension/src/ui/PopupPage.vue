@@ -6,12 +6,16 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import ULink from '@nuxt/ui/components/Link.vue';
-import { ApprovalService, destinationKey } from '../approvals/approvals.js';
+import {
+  ApprovalService,
+  destinationKey,
+  type DestinationApproval,
+} from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
   createChromeHostPermissions,
 } from '../approvals/chrome-store.js';
-import { displayDestination, displayUrl } from '../approvals/display.js';
+import { displayDestination, displayUrl, isPlainHttp } from '../approvals/display.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
@@ -24,7 +28,7 @@ import { openWebsite } from './open-website.js';
 import SetupChecklist from './SetupChecklist.vue';
 import SuggestionList from './SuggestionList.vue';
 import TrackerMark from './TrackerMark.vue';
-import { currentWebsiteOffer, openSetupPage } from './open-setup.js';
+import { currentWebsiteOffer, openSetupPage, type SetupStep } from './open-setup.js';
 
 const { t, localeErrorKey } = useExtensionI18n();
 const { activity, now } = useTrackerActivity();
@@ -85,11 +89,32 @@ const websiteOffer = computed(() =>
     : null,
 );
 
+/**
+ * While the website step is current, the tab's offer is that step's own action (REQ-415);
+ * otherwise an unapproved OSI tab gets its own card above everything else.
+ */
+const offerInChecklist = computed(() => onboarding.value && websites.value.length === 0);
+
+function actOnStep(step: SetupStep): void {
+  const website = websiteOffer.value;
+  if (step === 'website' && website) void openSetupPage({ website });
+  else void openSetupPage({ step });
+}
+
+/** A lost tracker's badge gives way to its last activity when that already says access failed. */
+function showsNoAccessBadge(destination: DestinationApproval): boolean {
+  return (
+    missingOrigins.value.includes(destination.origin) &&
+    activity.value[destinationKey(destination)]?.outcome !== 'permission'
+  );
+}
+
 const errorActions = computed(() => [
   {
     label: t.value('approvals.retry'),
     icon: 'i-lucide-rotate-cw',
-    color: 'error' as const,
+    color: 'neutral' as const,
+    variant: 'outline' as const,
     disabled: busy.value,
     onClick: () => refresh(),
   },
@@ -157,9 +182,15 @@ function openOptions(): void {
           variant="subtle"
           icon="i-lucide-circle-alert"
           :title="t(errorTitleKey(errorKey))"
-          :description="t(errorKey)"
           :actions="errorActions"
-        />
+        >
+          <template #description>
+            {{ t(errorKey) }}
+            <span v-if="errorKey === 'approvals.loadFailed'" class="mt-1 block">
+              {{ t('approvals.loadFailedSafe') }}
+            </span>
+          </template>
+        </UAlert>
         <UAlert
           v-if="localeErrorKey"
           role="alert"
@@ -180,28 +211,29 @@ function openOptions(): void {
           :actions="accessActions"
         />
 
-        <UCard v-if="websiteOffer" data-testid="current-website-offer" :ui="{ body: 'p-4' }">
+        <UCard
+          v-if="websiteOffer && !offerInChecklist"
+          data-testid="current-website-offer"
+          :ui="{ body: 'p-4 sm:p-4' }"
+        >
           <div class="flex items-start gap-3">
             <span
-              class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
+              class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
               aria-hidden="true"
             >
-              <UIcon name="i-lucide-globe" class="size-4.5" />
+              <UIcon name="i-lucide-globe" class="size-4" />
             </span>
-            <div class="flex min-w-0 flex-col items-start">
+            <div class="flex min-w-0 flex-col items-start gap-1">
               <h2 class="text-sm font-semibold text-highlighted">
                 {{ t('app.currentWebsiteTitle') }}
               </h2>
-              <p class="max-w-full truncate font-medium text-toned">
-                {{ displayUrl(websiteOffer) }}
-              </p>
-              <p class="mt-1 text-[13px] text-muted">{{ t('app.currentWebsiteHelp') }}</p>
+              <p class="text-[13px] text-muted">{{ t('app.currentWebsiteHelp') }}</p>
               <UButton
-                class="mt-3"
+                class="mt-2"
                 size="sm"
                 trailing-icon="i-lucide-arrow-up-right"
                 data-testid="current-website-approve"
-                :label="t('app.currentWebsiteApprove')"
+                :label="t('app.checklistOfferAction', { website: displayUrl(websiteOffer) })"
                 @click="openSetupPage({ website: websiteOffer })"
               />
             </div>
@@ -213,8 +245,9 @@ function openOptions(): void {
           mode="popup"
           :website-done="websites.length > 0"
           :tracker-done="destinations.length > 0"
-          :website-action-hidden="websiteOffer !== null"
-          @act="openSetupPage({ step: $event })"
+          :website="websites[0]?.origin ?? null"
+          :offer="offerInChecklist ? websiteOffer : null"
+          @act="actOnStep"
         />
 
         <template v-if="loaded">
@@ -226,8 +259,9 @@ function openOptions(): void {
             @review="openSetupPage({ suggestion: $event })"
           />
 
+          <!-- While onboarding, the checklist names the approved website instead. -->
           <section
-            v-if="websites.length"
+            v-if="!onboarding && websites.length"
             class="flex flex-col gap-2"
             aria-labelledby="saved-websites-title"
             data-testid="saved-websites"
@@ -236,12 +270,12 @@ function openOptions(): void {
               {{ t('approvals.websitesTitle') }}
             </h2>
             <ul
-              class="divide-y divide-default overflow-hidden rounded-md bg-default ring ring-default dark:bg-muted"
+              class="divide-y divide-default overflow-hidden rounded-lg bg-default ring ring-default dark:bg-muted"
             >
               <li
                 v-for="website in websites"
                 :key="website.origin"
-                class="flex min-h-11 items-center gap-3 px-3 py-2"
+                class="flex min-h-11 items-center gap-3 px-4 py-2"
               >
                 <span
                   class="inline-flex h-5 w-7 shrink-0 items-center justify-center rounded bg-primary-100/80 text-primary dark:bg-primary/16"
@@ -286,12 +320,12 @@ function openOptions(): void {
               {{ t('approvals.destinationsTitle') }}
             </h2>
             <ul
-              class="divide-y divide-default overflow-hidden rounded-md bg-default ring ring-default dark:bg-muted"
+              class="divide-y divide-default overflow-hidden rounded-lg bg-default ring ring-default dark:bg-muted"
             >
               <li
                 v-for="destination in destinations"
                 :key="destinationKey(destination)"
-                class="flex items-start gap-3 px-3 py-2.5"
+                class="flex items-start gap-3 px-4 py-2.5"
                 data-testid="popup-tracker"
               >
                 <TrackerMark :provider="destination.provider" class="mt-px" />
@@ -306,7 +340,7 @@ function openOptions(): void {
                         {{ displayDestination(destination) }}
                       </span>
                       <UIcon
-                        name="i-lucide-external-link"
+                        name="i-lucide-arrow-up-right"
                         class="size-3.5 shrink-0 text-dimmed group-hover:text-primary"
                         aria-hidden="true"
                       />
@@ -315,7 +349,7 @@ function openOptions(): void {
                       </span>
                     </ULink>
                     <UBadge
-                      v-if="missingOrigins.includes(destination.origin)"
+                      v-if="showsNoAccessBadge(destination)"
                       class="ms-auto shrink-0"
                       color="warning"
                       variant="soft"
@@ -324,8 +358,15 @@ function openOptions(): void {
                     />
                   </span>
                   <span
+                    v-if="isPlainHttp(destination)"
+                    class="flex items-center gap-1 text-[13px] text-warning"
+                  >
+                    <UIcon name="i-lucide-lock-open" class="size-3.5" aria-hidden="true" />
+                    {{ t('approvals.httpShort') }}
+                  </span>
+                  <span
                     v-if="showsWebsite"
-                    class="truncate text-xs text-muted"
+                    class="truncate text-[13px] text-muted"
                     data-testid="popup-tracker-website"
                   >
                     {{
@@ -333,6 +374,7 @@ function openOptions(): void {
                     }}
                   </span>
                   <ActivityLine
+                    class="text-[13px]"
                     :record="activity[destinationKey(destination)]"
                     :now="now"
                     data-testid="popup-tracker-activity"
@@ -343,14 +385,21 @@ function openOptions(): void {
           </section>
         </template>
       </div>
+      <!-- Content that scrolls on under the footer fades out instead of being cut off. -->
+      <div
+        class="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-linear-to-t from-(--app-canvas)"
+        aria-hidden="true"
+      />
     </div>
 
     <footer v-if="!onboarding" class="shrink-0 border-t border-default bg-default px-4 py-3">
       <UButton
         block
+        size="sm"
         color="neutral"
-        variant="outline"
+        variant="soft"
         icon="i-lucide-settings-2"
+        trailing-icon="i-lucide-arrow-up-right"
         data-testid="open-options"
         :label="t('app.openOptions')"
         @click="openOptions"

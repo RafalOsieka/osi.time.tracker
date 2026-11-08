@@ -33,7 +33,7 @@ const emit = defineEmits<{ create: [] }>();
         <UIcon :name="icon" class="size-6" />
       </span>
       <h2 class="m-0 text-base font-semibold text-highlighted">{{ title }}</h2>
-      <p class="mt-1.5 mb-5 text-sm text-muted">{{ message }}</p>
+      <p class="mt-1.5 mb-5 text-sm text-balance text-muted">{{ message }}</p>
       <UButton
         :label="ctaLabel"
         :icon="ctaIcon"

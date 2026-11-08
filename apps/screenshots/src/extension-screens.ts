@@ -164,9 +164,9 @@ function failStorage(): void {
   };
 }
 
-/** A tracker row showing its last activity: formatted activity has a `·`, "no activity" none. */
-const POPUP_ACTIVITY = '[data-testid="popup-tracker-activity"]:has-text("·")';
-const SETUP_ACTIVITY = '[data-testid^="activity-"]:has-text("·")';
+/** A tracker row showing its last activity: a recorded one carries its outcome icon. */
+const POPUP_ACTIVITY = '[data-testid="popup-tracker-activity"]:has(svg)';
+const SETUP_ACTIVITY = '[data-testid^="activity-"]:has(svg)';
 const SETUP_IDLE = 'main:not([aria-busy="true"])';
 
 const highlighted = destinationKey(INITECH_REDMINE);
@@ -287,11 +287,11 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
     id: 'e13-setup-missing-access',
     title: 'Setup page, access lost',
     shows:
-      'The setup page after the browser took away access to Globex Redmine: the warning and the restore button on that tracker.',
+      'The setup page after the browser took away access to Globex Redmine: the warning naming it, with the restore button.',
     surface: 'setup',
     state: redmineAccessLost,
     access: 'partial',
-    ready: ['[data-testid="missing-access"]', '[data-testid^="restore-destination-"]', SETUP_IDLE],
+    ready: ['[data-testid="missing-access"]', '[data-testid="missing-access-restore"]', SETUP_IDLE],
   },
   {
     id: 'e14-setup-form-feedback',

@@ -82,15 +82,16 @@ body {
 }
 
 /*
- * Light text on a dark surface renders about one weight heavier, which flattens the weight ramp.
- * Geist is variable, so dark mode steps every weight down by about 100.
+ * Light text on a dark surface renders heavier, so dark mode steps the weights down. The extension
+ * is mostly small supporting text, where the web app's full 100-step reads thin and disabled, so
+ * it steps down by about 40 and keeps the 400/500/600 hierarchy readable.
  */
 .dark {
-  font-weight: 310;
-  --font-weight-normal: 310;
-  --font-weight-medium: 400;
-  --font-weight-semibold: 500;
-  --font-weight-bold: 600;
+  font-weight: 360;
+  --font-weight-normal: 360;
+  --font-weight-medium: 460;
+  --font-weight-semibold: 560;
+  --font-weight-bold: 650;
 }
 
 /* Text on a solid fill: dark text on the bright dark-mode fill keeps the regular weights. */
@@ -103,4 +104,13 @@ body {
 html:not(.dark) .text-inverted {
   --font-weight-medium: 440;
   --font-weight-semibold: 540;
+}
+
+/* Paragraphs and headings never end on a lone short word. */
+p,
+li,
+h1,
+h2,
+h3 {
+  text-wrap: pretty;
 }

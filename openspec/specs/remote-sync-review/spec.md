@@ -59,7 +59,9 @@ Each task row SHALL have exactly one state: **Sent** with a finalized export for
 #### Scenario: Unlinked task is read-only but linkable
 
 - **WHEN** a listed Task resolves to a usable tracker but has no remote issue reference
-- **THEN** its row SHALL be read-only for export controls while exposing an inline link action
+- **THEN** its row SHALL be read-only for export controls while exposing an inline link action,
+  styled as an action (a tinted button with the link icon and label, like the Timer view's link
+  tile), not as plain text
 
 #### Scenario: Fully eligible task is manageable
 
@@ -203,8 +205,9 @@ The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the c
 
 #### Scenario: Ready editors look editable at rest
 - **WHEN** a Ready row is shown
-- **THEN** its title to send and to-send duration SHALL each sit in a quiet field frame with the
-  control outline, the same at-rest editable cue as the Timer view's time editors
+- **THEN** its title to send and to-send duration SHALL each sit in a field frame with the control
+  outline (the same at-rest editable cue as the Timer view's time editors) that fills its column,
+  so the frames line up down the list, with the values at the row-value weight
 
 #### Scenario: Expanding a row reveals its detail
 
@@ -343,7 +346,7 @@ Each Ready task SHALL have an editable comment sent as the remote log's note: th
 - **THEN** the local task name SHALL remain unchanged
 
 ### Requirement: REQ-504 Row state indicator
-Each collapsed row SHALL show its state as an icon in its own column, with a distinct icon per kind (Ready, Sent, Loading while activities load, not exportable) and never color alone. Its accessible name and tooltip SHALL give the short state label and the full reason. While activities load, a linked never-exported row SHALL keep Ready's title, duration and activity chrome, inactive. Read-only and Sent rows SHALL still show name, tracked time and loaded remote logs when expanded.
+Each collapsed row SHALL show its state as an icon in its own column, with a distinct icon per kind (Ready, Sent, Loading while activities load, needs attention, not exportable) and never color alone. Its accessible name and tooltip SHALL give the short state label and the full reason. While activities load, a linked never-exported row SHALL keep Ready's title, duration and activity chrome, inactive. Read-only and Sent rows SHALL still show name, tracked time and loaded remote logs when expanded.
 
 #### Scenario: Activities in flight show Loading, not blocked
 - **WHEN** a linked never-exported task is waiting on remote activities
@@ -356,6 +359,13 @@ Each collapsed row SHALL show its state as an icon in its own column, with a dis
 #### Scenario: Kinds differ by icon
 - **WHEN** rows of different kinds are shown
 - **THEN** each kind SHALL use a different icon shape, so the kinds can be told apart without color
+
+#### Scenario: Warning colour only for what the user can fix
+- **WHEN** a row is not exportable because of something the user can act on (no Project, a missing
+  Tracker, no linked issue, activities that failed to load)
+- **THEN** it SHALL use the needs-attention kind in the warning colour, while a row excluded by design
+  (a local Project, an unsupported system, no activity offered by the tracker) SHALL use the neutral
+  not-exportable kind
 
 #### Scenario: State column header is for assistive technology
 - **WHEN** the list shows its column headers
@@ -377,7 +387,7 @@ When a row's activities fail to load (REQ-114), its activity cell SHALL show an 
 
 #### Scenario: Failure shows a compact error
 - **WHEN** a row's activity fetch fails
-- **THEN** its activity cell SHALL show an error icon with the translated message as its accessible name and tooltip, plus a retry action, and no column SHALL change its width
+- **THEN** its activity cell SHALL show an error icon with the translated message as its accessible name and tooltip, plus a compact icon-only retry control whose accessible name and tooltip say it reloads the activities, and no column SHALL change its width
 
 #### Scenario: Extension guidance gets its own row
 - **WHEN** the failure needs browser-extension setup or approval
@@ -392,7 +402,12 @@ Expanding a row SHALL reveal information only, as rows of the same list: the tas
 
 #### Scenario: Local entries line up under tracked
 - **WHEN** a task row is expanded
-- **THEN** each local entry's duration SHALL share the tracked column's end edge
+- **THEN** each local entry's duration SHALL share the tracked column's end edge, in a tone no
+  stronger than the row's own tracked value
+
+#### Scenario: Entries follow the Timer view's order
+- **WHEN** a task row with several entries is expanded
+- **THEN** its entries SHALL be listed latest first, the order of the Timer view's expanded Task
 
 #### Scenario: Remote logs line up under to send
 - **WHEN** a linked task row is expanded and its remote logs are loaded
@@ -442,7 +457,8 @@ Next to the day total the page SHALL show **in tracker after export**: the curre
 
 #### Scenario: A Ready row counts before its activity is chosen
 - **WHEN** a Ready row shows a to-send duration but no activity is chosen yet
-- **THEN** that duration SHALL be part of the summary's to-send part
+- **THEN** that duration SHALL be part of the summary's to-send part, and the summary SHALL say it is
+  a forecast that includes time still awaiting an activity
 
 #### Scenario: Logs added outside OSI are included
 - **WHEN** a linked issue holds a same-day log of the current account that no export created
@@ -469,8 +485,13 @@ While any tracker's logs for the day are loading, the in-tracker summary SHALL s
 
 #### Scenario: A failed tracker shows the reason and a retry
 - **WHEN** one tracker's logs fail to load and another's load
-- **THEN** the summary SHALL show no number, and the alert under the summaries SHALL name the failed
-  tracker and the reason and offer a retry
+- **THEN** the summary SHALL show no number and say loading failed, and the alert under the
+  summaries SHALL name the failed tracker and the reason and offer a retry
+
+#### Scenario: Logs and activities failed together
+- **WHEN** a tracker's logs and its rows' activities both failed to load
+- **THEN** the alert SHALL name both, its one retry SHALL reload both, and Export's unavailable reason
+  SHALL say the trackers cannot be reached
 
 #### Scenario: An unavailable tracker shows the reason
 - **WHEN** a tracker's logs cannot be fetched on this device

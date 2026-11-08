@@ -99,7 +99,7 @@ describe('count-sensitive catalogs', () => {
     ).toBe('5 z 5 zadań ukończonych');
   });
 
-  it('declines the export review title and its not-ready count', () => {
+  it('declines the export review title, its introduction and the left-out counts', () => {
     const review = pl.remoteSync.exportDialog;
     expect(applyPipePlural(review.titleReview, polishPluralRule(1, 3), { count: 1 })).toBe(
       'Wyeksportować 1 zadanie?',
@@ -110,14 +110,17 @@ describe('count-sensitive catalogs', () => {
     expect(applyPipePlural(review.titleReview, polishPluralRule(5, 3), { count: 5 })).toBe(
       'Wyeksportować 5 zadań?',
     );
-    expect(applyPipePlural(review.notReady, polishPluralRule(1, 3), { count: 1 })).toBe(
-      '1 inne zadanie z tego dnia nie jest gotowe do eksportu: nie ma wybranej czynności lub nie da się go wysłać.',
+    expect(applyPipePlural(review.introHint, polishPluralRule(1, 3), {})).toBe(
+      'Zadanie utworzy jeden zdalny wpis czasu.',
     );
-    expect(applyPipePlural(review.notReady, polishPluralRule(2, 3), { count: 2 })).toBe(
-      '2 inne zadania z tego dnia nie są gotowe do eksportu: nie mają wybranej czynności lub nie da się ich wysłać.',
+    expect(applyPipePlural(review.introHint, polishPluralRule(3, 3), {})).toBe(
+      'Każde zadanie utworzy jeden zdalny wpis czasu.',
     );
-    expect(applyPipePlural(review.notReady, polishPluralRule(5, 3), { count: 5 })).toBe(
-      '5 innych zadań z tego dnia nie jest gotowych do eksportu: nie mają wybranej czynności lub nie da się ich wysłać.',
+    const local = review.excluded.localProject;
+    expect(applyPipePlural(local, polishPluralRule(1, 3), { count: 1 })).toBe('1 projekt lokalny');
+    expect(applyPipePlural(local, polishPluralRule(2, 3), { count: 2 })).toBe('2 projekty lokalne');
+    expect(applyPipePlural(local, polishPluralRule(5, 3), { count: 5 })).toBe(
+      '5 projektów lokalnych',
     );
     expect(applyPipePlural(en.remoteSync.exportDialog.titleReview, 0, { count: 1 })).toBe(
       'Export 1 task?',

@@ -134,17 +134,17 @@ const columns = computed(
     [
       { key: 'expand', track: '1.5rem' },
       { key: 'state', track: '1.5rem', header: t('remoteSync.columns.state'), headerSrOnly: true },
-      // Title, issue and activity share the flexible width. The title, the row's own text, gets
-      // the largest share, so it is not cut while the issue column has room to spare; the
-      // activity chip needs the least.
-      { key: 'title', track: { fr: 1.7, min: '8rem' }, header: t('remoteSync.columns.title') },
-      { key: 'issue', track: { fr: 1.5, min: '6rem' }, header: t('remoteSync.columns.issue') },
+      // Title, issue and activity share the flexible width, sized to what each holds at desktop
+      // width: the activity column fits its "Wybierz czynność" chip (about 150px) and no more, so
+      // the issue's number and title get the largest share and the title the rest.
+      { key: 'title', track: { fr: 1.35, min: '8rem' }, header: t('remoteSync.columns.title') },
+      { key: 'issue', track: { fr: 1.55, min: '6rem' }, header: t('remoteSync.columns.issue') },
       {
         key: 'activity',
-        track: { fr: 0.9, min: '6rem' },
+        track: { fr: 1, min: '9.5rem' },
         header: t('remoteSync.columns.activity'),
       },
-      { key: 'tracked', track: '6rem', header: t('remoteSync.columns.tracked'), align: 'end' },
+      { key: 'tracked', track: '5.5rem', header: t('remoteSync.columns.tracked'), align: 'end' },
       { key: 'toSend', track: '6rem', header: t('remoteSync.columns.toSend'), align: 'end' },
       // Sized for one 28px action tile (the expanded block's reconcile action, REQ-505).
       { key: 'actions', track: '1.75rem' },
@@ -287,7 +287,23 @@ function issueReasonFor(row: RemoteSyncDayRowDto): string | null {
   }
 }
 
-/** The row's state indicator kind (REQ-504); every not-exportable reason is one blocked kind. */
+/**
+ * Rows that are not exportable by design, with nothing to fix on this page: a local Project (no
+ * Tracker at all), an unsupported system, or an issue whose tracker offers no activity.
+ */
+function isExcluded(row: RemoteSyncDayRowDto): boolean {
+  const state = stateFor(row);
+  return (
+    state === 'system_not_implemented' ||
+    state === 'no_activity' ||
+    (state === 'no_tracker' && !row.trackerName)
+  );
+}
+
+/**
+ * The row's state indicator kind (REQ-504). A row the user can fix (no Project, a missing Tracker,
+ * no issue, a failed load) is blocked, in amber; a deliberate exclusion is neutral.
+ */
 function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   switch (stateFor(row)) {
     case 'manageable':
@@ -297,7 +313,7 @@ function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
     case 'activity_loading':
       return 'loading';
     default:
-      return 'blocked';
+      return isExcluded(row) ? 'excluded' : 'blocked';
   }
 }
 
@@ -307,7 +323,7 @@ function kindLabelFor(row: RemoteSyncDayRowDto): string | null {
   if (state === 'manageable') return t('remoteSync.kind.ready');
   if (state === 'sent') return t('remoteSync.kind.sent');
   if (state === 'activity_loading') return t('remoteSync.kind.loading');
-  return t('remoteSync.kind.blocked');
+  return t(isExcluded(row) ? 'remoteSync.kind.excluded' : 'remoteSync.kind.blocked');
 }
 
 function canEditRow(row: RemoteSyncDayRowDto): boolean {
@@ -527,41 +543,72 @@ const inTrackerSummary = computed(() =>
 );
 
 /**
+ * Whether a Tracker (by its shown name, as the in-tracker summary names it) also failed to load
+ * activities for one of the day's rows.
+ */
+function activitiesFailedFor(trackerName: string): boolean {
+  return rows.value.some(
+    (row) =>
+      !!row.config &&
+      (row.trackerName ?? row.config.baseUrl) === trackerName &&
+      stateFor(row) === 'activity_error',
+  );
+}
+
+/**
  * The failed Trackers grouped by reason, so the page alert states each reason once. The generic
- * fetch failure says "try again"; beside the alert's own retry button the page's wording, which
- * names the remote logs as everywhere else on the page, says it without the repetition.
+ * fetch failure says "try again"; beside the alert's own retry button the page's wording says it
+ * without the repetition, and names the activities too when they failed for the same Tracker.
  */
 const inTrackerFailures = computed(() => {
   const summary = inTrackerSummary.value;
   if (summary.status !== 'unavailable') return [];
   const byReason = new Map<string, string[]>();
   for (const tracker of summary.trackers) {
-    const messageKey =
-      tracker.messageKey === 'error.remoteTimeLogsFetchFailed'
-        ? 'remoteSync.remoteLogsError'
-        : tracker.messageKey;
+    let messageKey = tracker.messageKey;
+    if (messageKey === 'error.remoteTimeLogsFetchFailed') {
+      messageKey = activitiesFailedFor(tracker.name)
+        ? 'remoteSync.remoteLogsAndActivitiesError'
+        : 'remoteSync.remoteLogsError';
+    }
     byReason.set(messageKey, [...(byReason.get(messageKey) ?? []), tracker.name]);
   }
   return [...byReason].map(([messageKey, names]) => ({ messageKey, names: names.join(', ') }));
 });
 
 /**
- * Why Export is disabled, shown under it and in its tooltip: no Ready row has time to send, or the
- * Ready rows with time still need an activity. Null while exporting or when Export is available.
+ * Why Export is disabled, shown under it and in its tooltip: the Trackers cannot be reached (their
+ * activities failed to load), the Ready rows with time still need an activity, or nothing is
+ * ready. Null while exporting or when Export is available.
  */
 const exportDisabledReason = computed(() => {
   if (exporting.value || pushableRows().length > 0) return null;
+  if (rows.value.some((row) => stateFor(row) === 'activity_error')) {
+    return t('remoteSync.exportTrackersUnreachable');
+  }
   const waitingForActivity = rows.value.some(
     (row) => canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row),
   );
   return t(waitingForActivity ? 'remoteSync.exportNeedsActivity' : 'remoteSync.exportNothingReady');
 });
 
-function retryFailedLogs() {
+/**
+ * The alert's one retry: every failed remote log load and every failed activity load. A retried
+ * activity scope turns to loading at once, so rows sharing it are retried only once.
+ */
+function retryFailedLoads() {
   for (const row of rows.value) {
     if (remoteLogsFor(row).errorKey) void retryRemoteLogs(row);
   }
+  for (const row of rows.value) {
+    if (activitiesFor(row).errorKey) void retryActivities(row);
+  }
 }
+
+/** Ready rows whose to-send time waits for an activity, which the forecast still counts. */
+const forecastAwaitsActivity = computed(() =>
+  rows.value.some((row) => canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row)),
+);
 
 function trackedSecondsFor(row: RemoteSyncDayRowDto): number {
   return selectedSecondsFor(row);
@@ -662,10 +709,61 @@ const exportIncludedRows = computed(() =>
   })),
 );
 
-/** Tasks of the day that are neither in this export nor Sent, counted in the review only. */
-const exportNotReadyCount = computed(
-  () => rows.value.filter((row) => !isPushable(row) && stateFor(row) !== 'sent').length,
-);
+/** The counted phrase for each reason a Task stays out of the export, in the order they are told. */
+const EXCLUSION_I18N = {
+  noActivityChosen: 'remoteSync.exportDialog.excluded.noActivityChosen',
+  zeroDuration: 'remoteSync.exportDialog.excluded.zeroDuration',
+  unlinked: 'remoteSync.exportDialog.excluded.unlinked',
+  activityUnavailable: 'remoteSync.exportDialog.excluded.activityUnavailable',
+  noProject: 'remoteSync.exportDialog.excluded.noProject',
+  noTracker: 'remoteSync.exportDialog.excluded.noTracker',
+  localProject: 'remoteSync.exportDialog.excluded.localProject',
+  unsupported: 'remoteSync.exportDialog.excluded.unsupported',
+  noActivityAvailable: 'remoteSync.exportDialog.excluded.noActivityAvailable',
+} as const;
+type ExclusionReason = keyof typeof EXCLUSION_I18N;
+
+/** Why a Task of the day is neither in this export nor Sent; null when it is one of those. */
+function exclusionReasonFor(row: RemoteSyncDayRowDto): ExclusionReason | null {
+  switch (stateFor(row)) {
+    case 'sent':
+      return null;
+    case 'manageable':
+      if (isPushable(row)) return null;
+      return isZeroDuration(row) ? 'zeroDuration' : 'noActivityChosen';
+    case 'no_project':
+      return 'noProject';
+    case 'no_tracker':
+      return row.trackerName ? 'noTracker' : 'localProject';
+    case 'system_not_implemented':
+      return 'unsupported';
+    case 'unlinked':
+      return 'unlinked';
+    case 'no_activity':
+      return 'noActivityAvailable';
+    default:
+      return 'activityUnavailable';
+  }
+}
+
+/**
+ * The review's one line about the Tasks left out (REQ-229), counted by reason without listing
+ * them: "3 bez czynności, 1 projekt lokalny, 1 bez zgłoszenia". Empty when none is left out.
+ */
+const exportExcludedSummary = computed(() => {
+  const counts = new Map<ExclusionReason, number>();
+  for (const row of rows.value) {
+    const reason = exclusionReasonFor(row);
+    if (reason) counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+  // SAFETY: EXCLUSION_I18N is a literal object, so its keys are exactly ExclusionReason.
+  return (Object.keys(EXCLUSION_I18N) as ExclusionReason[])
+    .flatMap((reason) => {
+      const count = counts.get(reason);
+      return count ? [t(EXCLUSION_I18N[reason], { count }, count)] : [];
+    })
+    .join(', ');
+});
 
 const exportIncludedTotalSeconds = computed(() =>
   exportIncludedRows.value.reduce((sum, row) => sum + row.toSendSeconds, 0),
@@ -920,6 +1018,11 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
               {{ formatDuration(inTrackerSummary.toSendSeconds) }}
             </span>
             {{ t('remoteSync.inTrackerToSend') }}
+            <!-- A forecast: the to-send part still counts Ready time whose activity is not
+                 chosen yet, and says so. -->
+            <template v-if="forecastAwaitsActivity">
+              {{ t('remoteSync.inTrackerAwaitingActivity') }}
+            </template>
           </span>
         </template>
       </StatCard>
@@ -944,14 +1047,16 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         </p>
       </template>
       <template v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)" #actions>
+        <!-- The page's one retry style: a neutral outline control (the rows use its icon-only
+             tile). It reloads every failed load, remote time entries and activities. -->
         <UButton
-          color="warning"
+          color="neutral"
           variant="outline"
           size="sm"
           icon="i-lucide-refresh-cw"
-          :label="t('remoteSync.retry')"
-          :aria-label="t('remoteSync.remoteLogsRetry')"
-          @click="retryFailedLogs"
+          :label="t('remoteSync.retryLoading')"
+          data-testid="remote-sync-retry-failed"
+          @click="retryFailedLoads"
         />
       </template>
     </UAlert>
@@ -1061,7 +1166,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       :date-label="dayLabels.plain"
       :included="exportIncludedRows"
       :to-send-seconds="exportIncludedTotalSeconds"
-      :not-ready-count="exportNotReadyCount"
+      :excluded-summary="exportExcludedSummary"
       :completed-count="exportCompletedCount"
       :total-count="exportTotalCount"
       :is-running="exporting"

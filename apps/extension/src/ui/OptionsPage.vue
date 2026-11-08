@@ -151,7 +151,7 @@ onMounted(async () => {
 
 <template>
   <main
-    class="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6 pb-12 text-sm text-default"
+    class="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-6 pb-12 text-sm text-default"
     :aria-busy="busy"
   >
     <div class="flex items-center justify-between gap-4 border-b border-default pb-4">
@@ -206,11 +206,15 @@ onMounted(async () => {
     >
       <template #description>
         <span data-testid="setup-error">{{ t(errorKey) }}</span>
+        <span v-if="errorKey === 'approvals.loadFailed'" class="mt-1 block">
+          {{ t('approvals.loadFailedSafe') }}
+        </span>
       </template>
       <template #actions>
         <UButton
           data-testid="retry-setup"
-          color="error"
+          color="neutral"
+          variant="outline"
           size="sm"
           icon="i-lucide-rotate-cw"
           :disabled="busy"
@@ -257,6 +261,7 @@ onMounted(async () => {
         mode="setup"
         :website-done="websites.length > 0"
         :tracker-done="destinations.length > 0"
+        :website="websites[0]?.origin ?? null"
         @act="goToStep"
       />
       <SuggestionList
@@ -276,6 +281,7 @@ onMounted(async () => {
         :disabled="disabled"
         :error-key="websiteErrorKey"
         :missing-origins="missingOrigins"
+        :row-restore="!restorable"
         @update:origin="websiteOrigin = $event"
         @add="submitWebsite()"
         @revoke="revokeWebsite($event)"
@@ -292,6 +298,7 @@ onMounted(async () => {
         :disabled="disabled"
         :error-key="destinationErrorKey"
         :missing-origins="missingOrigins"
+        :row-restore="!restorable"
         :activity="activity"
         :now="now"
         @update:website="destinationWebsite = $event"

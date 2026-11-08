@@ -85,7 +85,12 @@ const editMenuClass = computed(() => [
  */
 const MODE_UI = {
   fieldset: 'w-fit',
-  item: 'relative cursor-pointer px-3 py-1 text-muted first-of-type:rounded-s-md last-of-type:rounded-e-md has-data-[state=checked]:text-primary',
+  item: [
+    'relative flex h-8 cursor-pointer items-center border-accented px-3 py-0 text-muted',
+    'first-of-type:rounded-s-md last-of-type:rounded-e-md',
+    'has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-100 has-data-[state=checked]:text-primary',
+    'dark:has-data-[state=checked]:bg-primary/20',
+  ].join(' '),
   base: 'not-sr-only absolute inset-0 z-[3] size-auto cursor-pointer rounded-none opacity-0 ring-0',
   label: 'text-xs font-medium text-current',
 };
@@ -206,11 +211,38 @@ function onClose() {
   hasSearched.value = false;
 }
 
+/** What the shown results answer, so Enter on an unchanged query picks instead of re-searching. */
+const searchedKey = shallowRef('');
+const currentKey = computed(() => `${state.mode}\n${applyScope.value}\n${state.query}`);
+/** The result Enter picks: the first after every search, moved by the arrow keys. */
+const activeIndex = shallowRef(0);
+const resultsList = useTemplateRef<HTMLElement>('resultsList');
+
 async function submit() {
+  const active = results.value[activeIndex.value];
+  if (hasSearched.value && !loading.value && active && searchedKey.value === currentKey.value) {
+    selectResult(active);
+    return;
+  }
   hasSearched.value = true;
+  activeIndex.value = 0;
+  searchedKey.value = currentKey.value;
   highlightQuery.value = state.mode === 'title' ? state.query.trim() : '';
   searchedScopeTitle.value = scope && applyScope.value ? scope.remoteProjectTitle : '';
   await search({ mode: state.mode, query: state.query }, applyScope.value);
+}
+
+/** Arrow keys move between the query and the results; the focused result becomes the active one. */
+function moveActive(step: 1 | -1) {
+  const buttons = resultsList.value?.querySelectorAll('button') ?? [];
+  const focusedIndex = Array.from(buttons).findIndex((button) => button === document.activeElement);
+  const next = focusedIndex < 0 ? (step === 1 ? activeIndex.value : -1) : focusedIndex + step;
+  if (next < 0) {
+    focusQueryInput();
+    return;
+  }
+  const target = buttons[Math.min(next, buttons.length - 1)];
+  target?.focus();
 }
 
 function selectResult(result: RemoteIssueSearchResult) {
@@ -293,10 +325,12 @@ onBeforeUnmount(() => {
     <UButton
       v-else-if="!currentRef && linkLabel"
       icon="i-lucide-link"
-      color="neutral"
-      variant="ghost"
+      color="primary"
+      variant="soft"
       size="xs"
-      class="-ms-2 text-sm font-normal text-muted"
+      :active="open"
+      active-variant="subtle"
+      class="text-sm font-normal"
       :label="linkLabel"
       :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
       @click.stop="onTriggerClick"
@@ -337,26 +371,30 @@ onBeforeUnmount(() => {
       @update:open="onOpenChange"
     >
       <template #content>
+        <!--
+          320px wide and right-aligned with the trigger: over the Timer list it covers the Project
+          and Issue columns whole and ends clear of the day headings' Remote sync links.
+        -->
         <div
           role="group"
           :aria-labelledby="headingId"
-          class="grid w-88 max-w-[calc(100vw-2rem)] gap-3 p-3"
+          class="grid w-80 max-w-[calc(100vw-2rem)] gap-3 p-3"
         >
           <!--
-            A heading naming what gets linked (the Task title, when the caller knows it), then
-            where it goes: the day whose entries move and the Tracker.
+            Two lines: a heading naming what gets linked (with the Task title, when the caller
+            knows it), then where it goes: the day whose entries move and the Tracker.
           -->
           <div class="grid min-w-0 gap-0.5">
-            <h3 :id="headingId" class="m-0 text-sm font-semibold text-highlighted">
-              {{ t('remoteIssuePicker.heading') }}
+            <h3 :id="headingId" class="m-0 truncate text-sm font-semibold text-highlighted">
+              <i18n-t v-if="contextLabel" keypath="remoteIssuePicker.headingFor" scope="global">
+                <template #task>
+                  <span class="font-medium text-default" data-testid="remote-issue-picker-context">
+                    {{ contextLabel }}
+                  </span>
+                </template>
+              </i18n-t>
+              <template v-else>{{ t('remoteIssuePicker.heading') }}</template>
             </h3>
-            <p
-              v-if="contextLabel"
-              class="m-0 truncate text-[0.8125rem] text-default"
-              data-testid="remote-issue-picker-context"
-            >
-              {{ contextLabel }}
-            </p>
             <p
               class="m-0 truncate text-xs text-muted"
               data-testid="remote-issue-picker-destination"
@@ -400,7 +438,10 @@ onBeforeUnmount(() => {
                 {{ statusMessage }}
               </p>
             </div>
-            <!-- The search submit is the input's own trailing button; Enter submits too. -->
+            <!--
+              The search submit is the input's own quiet trailing icon. Enter searches, and on an
+              unchanged query picks the active result; the down arrow moves into the results.
+            -->
             <UInput
               id="remote-issue-query"
               ref="queryInput"
@@ -410,16 +451,18 @@ onBeforeUnmount(() => {
               :aria-label="t('remoteIssuePicker.queryLabel')"
               :placeholder="t(queryPlaceholderKey)"
               data-testid="remote-issue-picker-query"
+              @keydown.down.prevent="moveActive(1)"
             >
               <template #trailing>
                 <UTooltip :text="t('remoteIssuePicker.submitButton')" :content="{ side: 'top' }">
                   <UButton
                     type="submit"
                     icon="i-lucide-search"
-                    color="primary"
-                    variant="soft"
+                    color="neutral"
+                    variant="link"
                     size="xs"
                     square
+                    class="text-dimmed hover:text-default"
                     :loading="loading"
                     :aria-label="t('remoteIssuePicker.submitButton')"
                     data-testid="remote-issue-picker-submit"
@@ -438,27 +481,39 @@ onBeforeUnmount(() => {
             data-testid="remote-issue-picker-scope-toggle"
           />
 
-          <!-- Full-width option rows, aligned with the input: its edges and its text inset. -->
+          <!--
+            Full-width option rows, aligned with the input: its edges and its text inset. The
+            active row (the first after a search) is highlighted: Enter in the query picks it.
+          -->
           <ul
             v-if="hasSearched && results.length > 0"
+            ref="resultsList"
             class="m-0 -mt-1 grid max-h-60 list-none gap-0.5 overflow-auto p-0"
             :aria-label="t('remoteIssuePicker.resultsLabel')"
             data-testid="remote-issue-picker-results"
           >
-            <li v-for="result in results" :key="result.remoteIssueId">
+            <li v-for="(result, index) in results" :key="result.remoteIssueId">
               <UButton
                 type="button"
                 color="neutral"
                 variant="ghost"
                 block
                 class="h-auto justify-start rounded-md px-2.5 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
+                :class="index === activeIndex && 'bg-elevated dark:bg-accented/60'"
+                :data-active="index === activeIndex || undefined"
                 :aria-label="resultAccessibleName(result)"
                 :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
                 @click="selectResult(result)"
+                @focus="activeIndex = index"
+                @keydown.down.prevent="moveActive(1)"
+                @keydown.up.prevent="moveActive(-1)"
               >
                 <span class="flex min-w-0 flex-col items-start gap-0.5">
                   <span class="w-full truncate text-sm font-medium text-default">
-                    <template v-for="(part, index) in titleParts(result.title)" :key="index">
+                    <template
+                      v-for="(part, partIndex) in titleParts(result.title)"
+                      :key="partIndex"
+                    >
                       <mark
                         v-if="part.match"
                         class="rounded-[3px] bg-primary-100 text-highlighted dark:bg-primary/20"
@@ -468,15 +523,15 @@ onBeforeUnmount(() => {
                       <template v-else>{{ part.text }}</template>
                     </template>
                   </span>
+                  <!-- The id in the table's mono face; one separator glyph (·) across the app. -->
                   <span class="flex w-full min-w-0 items-baseline gap-1.5 text-xs text-muted">
                     <span class="shrink-0 font-mono tabular-nums">#{{ result.remoteIssueId }}</span>
-                    <template v-if="visibleProjectTitle(result)">
-                      <span
-                        class="size-[3px] shrink-0 self-center rounded-full bg-current"
-                        aria-hidden="true"
-                      />
-                      <span class="truncate">{{ visibleProjectTitle(result) }}</span>
-                    </template>
+                    <span
+                      v-if="visibleProjectTitle(result)"
+                      class="truncate before:me-1.5 before:content-['·']"
+                    >
+                      {{ visibleProjectTitle(result) }}
+                    </span>
                   </span>
                   <span
                     v-if="result.remoteIssueId === outOfScopeId"

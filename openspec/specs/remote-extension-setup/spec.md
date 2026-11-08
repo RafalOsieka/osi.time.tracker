@@ -16,11 +16,19 @@ While setup is incomplete, the setup page and the popup SHALL show a checklist: 
 
 #### Scenario: First use in the popup
 - **WHEN** the popup opens before setup is complete
-- **THEN** it SHALL say in one sentence that the extension connects OSI to approved trackers through this browser, SHALL NOT show empty approval lists, and the current step's action SHALL open the setup page with that step's form focused
+- **THEN** it SHALL say in one sentence that the extension connects OSI to trackers through this browser, SHALL NOT show the approval lists, and the current step's action SHALL open the setup page with that step's form focused
+
+#### Scenario: Current step on the setup page
+- **WHEN** the setup page shows the checklist
+- **THEN** activating the current step SHALL move focus to that step's form field
 
 #### Scenario: Website approved, no tracker
 - **WHEN** a website is approved but no tracker destination is
-- **THEN** the checklist SHALL mark the website step done and the tracker step current, in both the popup and the setup page
+- **THEN** the checklist SHALL mark the website step done as a statement naming the approved website, and the tracker step current, in both the popup and the setup page
+
+#### Scenario: Copy follows the state
+- **WHEN** setup is complete, or the approvals cannot be read
+- **THEN** the setup page SHALL NOT keep onboarding instructions, only its one-sentence purpose
 
 #### Scenario: Setup complete
 - **WHEN** at least one website and one tracker destination are approved
@@ -60,7 +68,7 @@ Revoking (removing) a website that still has approved tracker destinations SHALL
 
 #### Scenario: Website with trackers
 - **WHEN** the user activates remove on a website that has three approved trackers
-- **THEN** a confirmation SHALL state that the website and its three tracker approvals will be removed, naming the three trackers, and nothing SHALL change until the user confirms
+- **THEN** a confirmation SHALL state that the website and its three tracker approvals will be removed, listing the three trackers with their type marks, and nothing SHALL change until the user confirms
 
 #### Scenario: Cancel
 - **WHEN** the user cancels the confirmation, by its button or the Escape key
@@ -72,7 +80,7 @@ Revoking (removing) a website that still has approved tracker destinations SHALL
 
 ### Requirement: REQ-414 Approved origins open from the extension
 
-Every approved website and tracker shown in the popup or the setup page SHALL be a link, marked with an indicator that it opens a page. Activating a website link SHALL focus an existing tab on that exact origin when one is open, and SHALL open a new tab otherwise. Activating a tracker link SHALL open the tracker's base URL in a new tab. Links SHALL be keyboard operable and SHALL have accessible names that identify the target.
+Every approved website and tracker shown in the popup or the setup page SHALL be a link with one open indicator, shown without its scheme (a plain-HTTP tracker is marked unencrypted). Activating a website link SHALL focus an existing tab on that exact origin when one is open, and SHALL open a new tab otherwise. Activating a tracker link SHALL open the tracker's base URL in a new tab. Links SHALL be keyboard operable and SHALL have accessible names that identify the target.
 
 #### Scenario: OSI tab already open
 - **WHEN** the user activates the website link for an origin with an open tab
@@ -96,7 +104,11 @@ When the popup opens on a tab whose origin is a valid website origin (REQ-308) a
 
 #### Scenario: Unapproved OSI tab
 - **WHEN** the user opens the popup on `https://time.example.com/timer` and that origin is not approved
-- **THEN** the popup SHALL offer to approve `https://time.example.com` above everything else, saying that approval continues on the setup page and that trackers are approved separately, and accepting SHALL open the setup page with that origin pre-filled and the approve action focused
+- **THEN** the popup SHALL offer to approve `https://time.example.com` (shown as `time.example.com`) above everything else, saying that approval continues on the setup page, and accepting SHALL open the setup page with that origin pre-filled and the approve action focused
+
+#### Scenario: Offer during onboarding
+- **WHEN** the offer appears while the checklist's website step is current
+- **THEN** the offer SHALL be that step's own action, not a second card repeating it
 
 #### Scenario: Handed-over address explained
 - **WHEN** the setup page opens with an address the popup handed over
@@ -136,7 +148,7 @@ The extension SHALL keep suggestions received from approved websites (REQ-421 in
 
 #### Scenario: HTTP destination
 - **WHEN** a pending suggestion targets an `http://` tracker
-- **THEN** the popup item SHALL be marked as unencrypted, and the setup page item SHALL show the credential-risk warning, without exempting local networks, and an approve action that says it approves despite HTTP
+- **THEN** the popup item SHALL be marked as unencrypted under its address, and the setup page item SHALL show the API-key risk warning across the row, without exempting local networks, and an approve action that says it approves despite HTTP
 
 #### Scenario: Website revoked
 - **WHEN** the suggesting website's approval is revoked
@@ -188,7 +200,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 
 #### Scenario: Failed operation
 - **WHEN** the latest operation on a destination failed
-- **THEN** the row SHALL name the failure in the error colour before the operation and its time
+- **THEN** the row SHALL name the failure beside an error mark, with the operation and its time on the line below
 
 #### Scenario: Timeout
 - **WHEN** the latest operation on a destination timed out

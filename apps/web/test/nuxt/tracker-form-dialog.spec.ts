@@ -97,11 +97,13 @@ const stubs = {
   UButton: {
     template: '<button type="button" v-bind="$attrs"><slot /></button>',
   },
+  // Renders the trailing slot too, where the API key keeps its show/hide toggle.
   UInput: {
-    props: ['modelValue'],
+    inheritAttrs: false,
+    props: ['modelValue', 'type'],
     emits: ['update:modelValue'],
     template:
-      '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+      '<span><input v-bind="$attrs" :type="type" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="trailing" /></span>',
   },
   FormDialogFooter: {
     template: '<button type="submit" data-testid="save-button">Save</button>',
@@ -151,6 +153,20 @@ describe('TrackerFormDialog direct browser access', () => {
       'trackers.directBrowserAccessHelp',
     );
     expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);
+  });
+
+  it('shows the API key as text while its toggle is pressed', async () => {
+    const wrapper = await openDialog(null);
+    const secret = () => wrapper.get('[data-testid="tracker-secret-input"]');
+    const toggle = wrapper.get('[data-testid="tracker-secret-visibility-toggle"]');
+
+    expect(secret().attributes('type')).toBe('password');
+    expect(toggle.attributes('aria-label')).toBe('trackers.showSecret');
+    expect(toggle.attributes('aria-pressed')).toBe('false');
+
+    await toggle.trigger('click');
+    expect(secret().attributes('type')).toBe('text');
+    expect(toggle.attributes('aria-pressed')).toBe('true');
   });
 
   it('seeds edit with persisted false and no extension readiness panel', async () => {

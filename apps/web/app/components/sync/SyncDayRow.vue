@@ -8,8 +8,11 @@ import type {
 import type { TrackerDto } from '~~/shared/types/tracker';
 import type { ColumnDefinition } from '../ColumnList.vue';
 
-/** A row's state kind (REQ-504): Ready, Sent, Loading while activities load, or blocked. */
-export type SyncRowKind = 'ready' | 'sent' | 'loading' | 'blocked';
+/**
+ * A row's state kind (REQ-504): Ready, Sent, Loading while activities load, blocked by something
+ * the user can fix (no issue, a failed load), or excluded by design (a local Project).
+ */
+export type SyncRowKind = 'ready' | 'sent' | 'loading' | 'blocked' | 'excluded';
 
 const {
   columns = [
@@ -127,12 +130,12 @@ const titleDisplayClass = computed(() =>
   canEdit ? 'font-medium text-highlighted' : 'font-medium text-default',
 );
 /**
- * To send and tracked share the body weight; colour carries the difference (to send in
- * highlighted text, tracked muted), so neither reads like a total. Zero recedes.
+ * An editable to send is a row value (500, highlighted); read-only to send and tracked sit at
+ * the body weight in muted text, so neither reads like a total. Zero recedes.
  */
 const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
-  return showEditors ? 'font-normal text-highlighted' : 'font-normal text-muted';
+  return showEditors ? 'font-medium text-highlighted' : 'font-normal text-muted';
 });
 /**
  * The to-send editor at rest: the same frame as the title to send (card tone, 3:1 outline),
@@ -144,7 +147,8 @@ const TO_SEND_FRAME =
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 /**
  * A distinct shape per kind, so states never rely on color alone. Each kind also carries its
- * meaning color: cyan for Ready (it can go), green for Sent, amber for blocked; Loading is neutral.
+ * meaning color: cyan for Ready (it can go), green for Sent, amber only for what the user can fix;
+ * Loading and a deliberate exclusion (a local Project) are neutral.
  */
 const stateIcons = {
   ready: { icon: 'i-lucide-circle-arrow-up', color: 'primary', iconClass: '' },
@@ -155,6 +159,7 @@ const stateIcons = {
     iconClass: 'animate-spin text-dimmed',
   },
   blocked: { icon: 'i-lucide-circle-alert', color: 'warning', iconClass: '' },
+  excluded: { icon: 'i-lucide-circle-minus', color: 'neutral', iconClass: 'text-dimmed' },
 } as const satisfies Record<
   SyncRowKind,
   { icon: string; color: 'primary' | 'neutral' | 'success' | 'warning'; iconClass: string }
@@ -339,19 +344,19 @@ function onEditToSend() {
 
     <ColumnCell :columns="columns" col="activity" :narrow="{ col: [3, 4], row: 3 }">
       <div class="min-w-0">
-        <!-- REQ-506: the failure stays inside the cell, an icon carrying the message (in the
-             row's amber, so the row tells one failure) and a short retry that truncates rather
-             than run into the durations. -->
+        <!-- REQ-506: the failure stays inside the cell, an icon carrying the message (muted: the
+             row's state icon is its one amber mark) and a compact retry, so a day of failed rows
+             stays calm. -->
         <template v-if="activityError">
           <div class="-ms-1 flex min-w-0 items-center gap-0.5">
             <UPopover mode="hover" enable-touch :content="{ side: 'top' }">
               <UButton
                 icon="i-lucide-cloud-off"
-                color="warning"
+                color="neutral"
                 variant="ghost"
                 size="xs"
                 square
-                class="shrink-0"
+                class="shrink-0 text-muted"
                 :aria-label="t(extensionActivityErrorKey ?? 'remoteSync.activityFetchError')"
                 :data-testid="`remote-sync-activity-error-${row.taskId}`"
               >
@@ -365,25 +370,35 @@ function onEditToSend() {
                 </p>
               </template>
             </UPopover>
-            <!-- A small outline button, so the retry reads as a control, not as link text. -->
+            <!-- The page's retry style (a neutral outline control). The extension check keeps its
+                 label; the plain retry is a quiet icon-only tile named by its tooltip, so a day of
+                 failed rows does not repeat "Ponów" down the column. -->
             <UButton
+              v-if="extensionActivityErrorKey"
               color="neutral"
               variant="outline"
               size="xs"
               icon="i-lucide-refresh-cw"
               class="min-w-0"
               :ui="{ label: 'truncate', leadingIcon: 'size-3.5' }"
-              :label="
-                t(
-                  extensionActivityErrorKey
-                    ? 'trackers.extensionRecheckButton'
-                    : 'remoteSync.retry',
-                )
-              "
-              :aria-label="extensionActivityErrorKey ? undefined : t('remoteSync.activityRetry')"
+              :label="t('trackers.extensionRecheckButton')"
               :data-testid="`remote-sync-activity-retry-${row.taskId}`"
               @click="emit('retry-activity')"
             />
+            <UTooltip v-else :text="t('remoteSync.activityRetry')" :content="{ side: 'top' }">
+              <UButton
+                color="neutral"
+                variant="outline"
+                size="xs"
+                square
+                icon="i-lucide-refresh-cw"
+                class="size-7 justify-center"
+                :ui="{ leadingIcon: 'size-3.5' }"
+                :aria-label="t('remoteSync.activityRetry')"
+                :data-testid="`remote-sync-activity-retry-${row.taskId}`"
+                @click="emit('retry-activity')"
+              />
+            </UTooltip>
           </div>
         </template>
         <span
@@ -508,7 +523,7 @@ function onEditToSend() {
     <ColumnCell :columns="columns" col="toSend" align="end" :narrow="{ col: [4, 5], row: 3 }">
       <UTooltip :text="rowDeltaTooltip" :disabled="editingToSend" :content="{ side: 'top' }">
         <div
-          class="inline-flex items-baseline gap-1 font-mono text-sm tabular-nums"
+          class="flex w-full items-baseline justify-end gap-1 font-mono text-sm tabular-nums"
           :class="toSendClass"
           :data-testid="`remote-sync-row-duration-${row.taskId}`"
         >
@@ -517,7 +532,7 @@ function onEditToSend() {
           </span>
           <DurationInput
             v-if="showEditors && editingToSend"
-            class="-me-1.5"
+            class="-me-1.5 min-w-0 flex-1"
             :model-value="toSendInput"
             :label="t('remoteSync.roundedDurationLabel')"
             :testid="`remote-sync-to-send-input-${row.taskId}`"
@@ -525,11 +540,12 @@ function onEditToSend() {
             @commit="emit('commit-to-send')"
             @cancel="emit('cancel-to-send')"
           />
-          <!-- The frame's padding hangs past the column edge, so the digits keep the edge. -->
+          <!-- The frame fills the column (no ragged column of chips); its padding hangs past the
+               column edge, so the digits keep the edge the other rows' values sit on. -->
           <button
             v-else-if="showEditors"
             type="button"
-            class="-me-1.5 font-[inherit] text-[length:inherit] leading-4"
+            class="-me-1.5 min-w-0 flex-1 text-end font-[inherit] text-[length:inherit] leading-4"
             :class="[
               TO_SEND_FRAME,
               canEdit ? 'cursor-pointer hover:bg-elevated' : 'cursor-default',

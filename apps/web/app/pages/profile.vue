@@ -90,7 +90,7 @@ function onTimezoneChange(value: string | undefined) {
   <div data-testid="page-profile" class="grid gap-6">
     <PageHeader :title="t('profile.title')" />
 
-    <div class="grid gap-8">
+    <div class="grid gap-6">
       <section
         class="grid gap-x-10 gap-y-4 lg:grid-cols-[16rem_minmax(0,1fr)]"
         aria-labelledby="profile-account-heading"
@@ -135,8 +135,6 @@ function onTimezoneChange(value: string | undefined) {
           </UFormField>
         </UCard>
       </section>
-
-      <USeparator />
 
       <section
         class="grid gap-x-10 gap-y-4 lg:grid-cols-[16rem_minmax(0,1fr)]"

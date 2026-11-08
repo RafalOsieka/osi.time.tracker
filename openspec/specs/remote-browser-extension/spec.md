@@ -179,7 +179,7 @@ The status row SHALL open a localized popover on hover, focus, click or tap, sep
 
 #### Scenario: Extension not needed is said once
 - **WHEN** no active tracker requires the extension and the popover opens
-- **THEN** it SHALL state once, as plain text, that the extension is not needed, each tracker row SHALL say only that it connects directly, and the neutral row SHALL use the extension glyph rather than an error-like mark
+- **THEN** it SHALL state once, as plain text, that the extension is not needed, each tracker row SHALL show the tracker without repeating that it connects directly, and the neutral row SHALL use the extension glyph rather than an error-like mark
 
 #### Scenario: Inspect status on touch
 - **WHEN** a touch user taps the status row
@@ -270,7 +270,7 @@ The extension popup and options page SHALL use the web app's component library, 
 - **WHEN** the popup has loaded the approvals and some approved origin lacks browser site access
 - **THEN** the header SHALL show a "No access" badge, an alert SHALL name the affected website or tracker with a restore action that opens the setup page focused on its restore control, and the affected row SHALL carry a "No access" badge
 - **WHEN** every approval has access and tracker suggestions are pending
-- **THEN** the badge SHALL show the count to review, for example "2 to review"
+- **THEN** the badge SHALL show the count to approve, for example "2 to approve"
 - **WHEN** nothing is pending and no website or no tracker is approved yet
 - **THEN** the badge SHALL read "Setup needed"
 - **WHEN** a website and a tracker are approved, nothing is pending and every approval has access
@@ -286,7 +286,7 @@ The extension popup and options page SHALL use the web app's component library, 
 
 #### Scenario: Approval lists show access state per row
 - **WHEN** the options page lists an approved website or tracker whose origin lacks browser site access
-- **THEN** that row SHALL show a "No access" badge beside its address and a restore button, next to the revoke action, and an alert above the lists SHALL name it; when it is the only affected approval, the alert SHALL restore it directly
+- **THEN** an alert above the lists SHALL name it, and that row SHALL show a "No access" badge beside its address unless its last activity already shows the denied access; when it is the only affected approval, the alert's action SHALL restore it and the row SHALL offer no second restore button, otherwise each affected row SHALL show its own restore button next to the revoke action
 - **WHEN** a row's origin has site access
 - **THEN** the row SHALL show only the revoke action
 
@@ -296,7 +296,7 @@ The extension popup and options page SHALL use the web app's component library, 
 
 #### Scenario: Loading failure keeps the retry path
 - **WHEN** reading approvals or permissions fails on either page
-- **THEN** the page SHALL show the translated error in a titled alert, together with a "Try again" action that reads them again
+- **THEN** the page SHALL show the translated error in a titled alert, saying nothing was deleted, together with a "Try again" action that reads them again and does not look destructive
 
 ### Requirement: REQ-409 Extension theme control
 
