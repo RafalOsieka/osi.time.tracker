@@ -111,7 +111,7 @@ The system SHALL soft-delete a project via `DELETE /api/projects/[id]` by settin
 
 #### Scenario: Confirmation states what the user keeps
 - **WHEN** the delete confirmation is shown
-- **THEN** it SHALL name the project (emphasised in the message), say that it leaves the list and can no longer be picked for new entries while its time entries are kept, and offer a named delete action and a cancel action
+- **THEN** it SHALL name the project (emphasised in the message), say in one line that it can no longer be picked for new entries and, on its own line, that its time entries are kept, and offer a named delete action and a cancel action
 
 ### Requirement: REQ-088 Tracker relationship and ownership
 A project SHALL belong to at most one tracker owned by the same user, or to none (local). On create, and when an update changes `trackerId` to a different non-null tracker, the target SHALL be a non-deleted tracker the user owns; a foreign or unknown one SHALL resolve to HTTP 404 without confirming it exists. An update that keeps `trackerId` SHALL NOT re-validate that tracker, so a project whose tracker was soft-deleted can still be renamed. Clearing `trackerId` needs no tracker.

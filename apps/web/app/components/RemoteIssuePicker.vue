@@ -230,8 +230,28 @@ function makeRoomBelow() {
   if (missing > 0) scrollParent(element)?.scrollBy({ top: missing, behavior: 'instant' });
 }
 
+/** The gap between the popover and the row it belongs to, the same 4px as the start editor's. */
+const POPOVER_GAP_PX = 4;
+/**
+ * The popover's distance from its reference: 4px, or with `alignTo` (a cell inside the row) the
+ * distance from that cell's edge to the row's edge plus 4px, so the popover starts just past the
+ * row and the row keeps its divider.
+ */
+const sideOffset = shallowRef(POPOVER_GAP_PX);
+
+function measureSideOffset() {
+  const row = alignTo?.closest('[role="row"]');
+  if (!alignTo || !row) {
+    sideOffset.value = POPOVER_GAP_PX;
+    return;
+  }
+  const inset = row.getBoundingClientRect().bottom - alignTo.getBoundingClientRect().bottom;
+  sideOffset.value = Math.max(0, inset) + POPOVER_GAP_PX;
+}
+
 async function onTriggerClick() {
   makeRoomBelow();
+  measureSideOffset();
   open.value = true;
   await resetForOpen();
 }
@@ -418,7 +438,7 @@ onBeforeUnmount(() => {
       :content="{
         side: 'bottom',
         align: alignTo ? 'end' : 'start',
-        sideOffset: 4,
+        sideOffset,
         collisionPadding: 16,
         onOpenAutoFocus: focusQueryInput,
       }"
@@ -556,7 +576,7 @@ onBeforeUnmount(() => {
                 color="neutral"
                 variant="ghost"
                 block
-                class="h-auto justify-start rounded-md px-2.5 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
+                class="h-auto justify-start rounded-md px-2.5 py-1 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
                 :class="
                   index === activeIndex &&
                   'bg-elevated ring-1 ring-accented ring-inset dark:bg-accented/60'

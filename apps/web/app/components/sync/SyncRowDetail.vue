@@ -154,14 +154,15 @@ const displayedRemoteLogs = computed(() => {
       kind="sub"
       :data-testid="`remote-sync-entry-${entry.id}`"
     >
-      <!-- The entry's clock range leads on the title edge, under its section label; its duration
-           sits in the tracked column in the mono face, in the same muted tone as the row's own
-           tracked value above it, so a child never reads stronger than its parent. -->
+      <!-- The entry's clock range leads on the title edge, under its section label, set like the
+           Timer's ranges (12px, medium, tabular) in the secondary tone; its duration sits in the
+           tracked column in the mono face, in the same muted tone as the row's own tracked value
+           above it, so a child never reads stronger than its parent. -->
       <ColumnCell
         :columns="columns"
         col="title"
         :narrow="{ col: [3, 4], row: 1 }"
-        class="tabular-nums"
+        class="text-xs font-medium tabular-nums text-muted"
       >
         {{ formatEntryStart(entry.startedAt) }}
         <span class="px-0.5">{{ t('timerView.entryRow.separator') }}</span>

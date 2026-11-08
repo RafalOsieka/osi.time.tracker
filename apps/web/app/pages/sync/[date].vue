@@ -135,20 +135,21 @@ const columns = computed(
       { key: 'expand', track: '1.5rem' },
       { key: 'state', track: '1.5rem', header: t('remoteSync.columns.state'), headerSrOnly: true },
       // Title, issue and activity share the flexible width, sized to what each holds at desktop
-      // width: the activity column fits its "Wybierz czynność" select (160px) and no more, the
-      // title (the row's own text) gets the largest share so it fits in both themes, and the
-      // issue title gives way with an ellipsis (its number never truncates).
-      { key: 'title', track: { fr: 1.65, min: '8rem' }, header: t('remoteSync.columns.title') },
-      { key: 'issue', track: { fr: 1.1, min: '6rem' }, header: t('remoteSync.columns.issue') },
+      // width: the activity column fits its "Wybierz czynność" select (160px) and no more, and
+      // the title and issue split the rest almost evenly: a long Task title (about 220px) fits
+      // in both themes and a typical issue title shows in full; longer ones give way with an
+      // ellipsis (the issue number never truncates).
+      { key: 'title', track: { fr: 1.15, min: '8rem' }, header: t('remoteSync.columns.title') },
+      { key: 'issue', track: { fr: 1, min: '6rem' }, header: t('remoteSync.columns.issue') },
       {
         key: 'activity',
-        track: { fr: 1, min: '10rem' },
+        track: { fr: 0.5, min: '10rem' },
         header: t('remoteSync.columns.activity'),
       },
       // The duration columns fit an HH:MM:SS value (the to-send frame hangs into the gap) and
       // their 12px headers, no wider, so the text columns keep the room.
-      { key: 'tracked', track: '5rem', header: t('remoteSync.columns.tracked'), align: 'end' },
-      { key: 'toSend', track: '5.5rem', header: t('remoteSync.columns.toSend'), align: 'end' },
+      { key: 'tracked', track: '4.75rem', header: t('remoteSync.columns.tracked'), align: 'end' },
+      { key: 'toSend', track: '5rem', header: t('remoteSync.columns.toSend'), align: 'end' },
       // One 28px action tile (the expanded block's reconcile action, REQ-505) plus the band's
       // 8px end inset, so the tile never sits flush on the inset's edge.
       { key: 'actions', track: '2.25rem' },
@@ -560,6 +561,11 @@ const inTrackerSummary = computed(() =>
  * Whether a Tracker (by its shown name, as the in-tracker summary names it) also failed to load
  * activities for one of the day's rows.
  */
+/** A message continuing after "Trackers:", lower-case as a sentence continues after a colon. */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLocaleLowerCase(locale.value) + text.slice(1);
+}
+
 function activitiesFailedFor(trackerName: string): boolean {
   return rows.value.some(
     (row) =>
@@ -621,7 +627,7 @@ function retryFailedLoads() {
 }
 
 /** Ready rows whose to-send time waits for an activity, which the forecast still counts. */
-const forecastAwaitsActivity = computed(() => rows.value.some(awaitsActivity));
+const awaitingActivityCount = computed(() => rows.value.filter(awaitsActivity).length);
 
 function trackedSecondsFor(row: RemoteSyncDayRowDto): number {
   return selectedSecondsFor(row);
@@ -1036,9 +1042,10 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
             </span>
             {{ t('remoteSync.inTrackerToSend') }}
             <!-- A forecast: the to-send part still counts Ready time whose activity is not
-                 chosen yet, and says so. -->
-            <template v-if="forecastAwaitsActivity">
-              {{ t('remoteSync.inTrackerAwaitingActivity') }}
+                 chosen yet, and says how many Tasks that is ("4 bez czynności", the export
+                 review's wording). -->
+            <template v-if="awaitingActivityCount > 0">
+              {{ t('remoteSync.inTrackerAwaitingActivity', { count: awaitingActivityCount }) }}
             </template>
           </span>
         </template>
@@ -1060,7 +1067,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       <template #description>
         <p v-for="failure in inTrackerFailures" :key="failure.messageKey" class="m-0">
           <span class="font-medium">{{ failure.names }}:</span>
-          {{ t(failure.messageKey) }}
+          {{ lowerFirst(t(failure.messageKey)) }}
         </p>
       </template>
       <template v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)" #actions>

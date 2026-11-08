@@ -141,7 +141,7 @@ While running, the elapsed control SHALL open a popover anchored to it with the 
 
 #### Scenario: Popover anchored to the elapsed control
 - **WHEN** the user activates the elapsed-time control to edit the start
-- **THEN** the popover SHALL open beside that control, to its left with a small gap, its top on the timer card's top edge, so it ends above the Timer view list's column headers and hides neither a day total nor the page header's action; while it is open the title area SHALL stop short of it, so it covers no part of the Task title or its Project chip
+- **THEN** the popover SHALL open beside that control, to its left with a small gap, its top just inside the timer card's top edge, so it ends above the Timer view list's column headers and hides neither a day total nor the page header's action; while it is open the title area SHALL stop short of it, so it covers no part of the Task title or its Project chip
 
 #### Scenario: Elapsed control looks pressed while the editor is open
 - **WHEN** the start editor is open

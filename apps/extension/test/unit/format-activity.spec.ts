@@ -27,6 +27,7 @@ describe('activity formatting', () => {
       ok: false,
       outcome: 'Przekroczony czas',
       operation: 'Pobranie wpisów czasu',
+      failure: 'Pobranie wpisów czasu nie powiodło się',
       when: '1 godzinę temu',
     });
     expect(

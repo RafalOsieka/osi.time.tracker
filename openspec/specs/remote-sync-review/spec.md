@@ -418,7 +418,8 @@ Expanding a row SHALL reveal information only, as rows of the same list: the tas
 #### Scenario: Local entries line up under tracked
 - **WHEN** a task row is expanded
 - **THEN** each local entry's duration SHALL share the tracked column's end edge, in a tone no
-  stronger than the row's own tracked value
+  stronger than the row's own tracked value, and its clock range SHALL be set like the Timer
+  view's ranges, in the secondary tone
 
 #### Scenario: Entries follow the Timer view's order
 - **WHEN** a task row with several entries is expanded
@@ -475,7 +476,7 @@ Next to the day total the page SHALL show **in tracker after export**: the curre
 #### Scenario: A Ready row counts before its activity is chosen
 - **WHEN** a Ready row shows a to-send duration but no activity is chosen yet
 - **THEN** that duration SHALL be part of the summary's to-send part, and the summary SHALL say it is
-  a forecast that includes time still awaiting an activity
+  a forecast that includes time still awaiting an activity, naming how many Tasks that is
 
 #### Scenario: Logs added outside OSI are included
 - **WHEN** a linked issue holds a same-day log of the current account that no export created

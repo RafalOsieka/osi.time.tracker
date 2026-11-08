@@ -212,7 +212,9 @@ async function captureScreen(
     for (const selector of screen.ready) await page.waitForSelector(selector);
     await page.bringToFront();
     await screen.prepare?.(page);
-    if (!screen.overlay) await page.mouse.move(0, 0);
+    // Park the pointer in the corner so no button keeps a hover state in the shot (dialogs and
+    // toasts included: moving the pointer opens or closes nothing).
+    await page.mouse.move(0, 0);
     await shoot(page, screen, file);
   } finally {
     await context.close();

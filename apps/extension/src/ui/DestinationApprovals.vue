@@ -262,7 +262,9 @@ function closeForm(): void {
           <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
           <span>
             {{ t('approvals.forWebsiteLinePrefix') }}
-            <span class="font-medium text-highlighted after:content-['.']">
+            <span
+              class="font-medium text-highlighted after:font-normal after:text-muted after:content-['.']"
+            >
               {{ displayUrl(singleWebsite) }}
             </span>
           </span>

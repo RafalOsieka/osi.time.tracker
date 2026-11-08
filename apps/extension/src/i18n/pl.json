@@ -51,7 +51,7 @@
     "websiteOrigin": "Adres witryny OSI",
     "websiteHelp": "Adres, pod którym otwierasz OSI. Po zatwierdzeniu przeglądarka zapyta o dostęp do tej witryny.",
     "websiteHttpHelp": "Adres http:// działa tylko lokalnie (localhost, 127.0.0.1).",
-    "websiteHandoff": "Ten adres pochodzi z karty, na której otwarto rozszerzenie. Zatwierdź go, jeśli to witryna OSI, z której korzystasz.",
+    "websiteHandoff": "Ten adres pochodzi z karty, na której otwarto rozszerzenie. Zatwierdź go, jeśli to witryna OSI, z której korzystasz. Po zatwierdzeniu przeglądarka zapyta o dostęp do tej witryny.",
     "addWebsite": "Zatwierdź witrynę",
     "openWebsite": "Otwórz witrynę",
     "revokeWebsite": "Usuń witrynę",
@@ -89,7 +89,7 @@
     "denied": "Odmówiono uprawnienia, więc nic nie zostało zapisane. Zatwierdź ponownie, aby spróbować jeszcze raz.",
     "deniedTitle": "Odmówiono uprawnienia",
     "retry": "Spróbuj ponownie",
-    "loadFailed": "Rozszerzenie nie odczytało zatwierdzonych witryn i trackerów. Nic nie usunięto. Jeśli błąd wróci, uruchom ponownie przeglądarkę.",
+    "loadFailed": "Rozszerzenie nie odczytało zatwierdzonych witryn i trackerów.\nNic nie usunięto. Pomoże też ponowne uruchomienie przeglądarki.",
     "loadFailedTitle": "Nie można odczytać ustawień",
     "changeFailed": "Zmiana nie została w pełni wykonana. Lista pokazuje ostatnio zapisane zatwierdzenia. Spróbuj ponownie, aby dokończyć porządkowanie uprawnień.",
     "changeFailedTitle": "Nie udało się dokończyć zmiany",
@@ -99,9 +99,9 @@
     "websiteRequiredTitle": "Brak zatwierdzonej witryny",
     "lostAccessTitle": "Brak dostępu do {name}",
     "lost_tracker_popup": "Przeglądarka odebrała rozszerzeniu dostęp do tego trackera.",
-    "lost_tracker_setup": "Przeglądarka odebrała rozszerzeniu dostęp. Zatwierdzenie zostaje zachowane.",
+    "lost_tracker_setup": "Przeglądarka odebrała rozszerzeniu dostęp.\nZatwierdzenie zostaje zachowane.",
     "lost_website_popup": "Przeglądarka odebrała rozszerzeniu dostęp do tej witryny OSI.",
-    "lost_website_setup": "Przeglądarka odebrała rozszerzeniu dostęp. Zatwierdzenie zostaje zachowane.",
+    "lost_website_setup": "Przeglądarka odebrała rozszerzeniu dostęp.\nZatwierdzenie zostaje zachowane.",
     "lostAccessManyTitle": "Brak dostępu w przeglądarce",
     "lostAccessMany_popup": "Przeglądarka odebrała rozszerzeniu dostęp do: {names}.",
     "lostAccessMany_setup": "Przeglądarka odebrała rozszerzeniu dostęp do: {names}. Przywróć go w ich wierszach.",
@@ -126,7 +126,8 @@
     "destinationsActivityNote": "Ostatnia aktywność pochodzi z bieżącej sesji przeglądarki.",
     "retryLoad": "Ponów wczytywanie",
     "forWebsiteLinePrefix": "Tracker zostanie zatwierdzony dla witryny",
-    "suggestedByAll": "Wszystkie z witryny {website}"
+    "suggestedByAll": "Wszystkie z witryny {website}",
+    "suggestionsHelpFrom": "Witryna {website} prosi o dostęp do tych trackerów. Zatwierdź tylko te, które znasz."
   },
   "activity": {
     "none": "Brak aktywności w tej sesji",
@@ -149,8 +150,15 @@
     "outcome_timeout": "Przekroczony czas",
     "outcome_limit": "Przekroczony limit",
     "label": "Ostatnia aktywność",
-    "failedWith": "Nie powiodło się: {outcome}",
-    "failedPast": "nie powiodło się"
+    "failed_searchIssues": "Wyszukiwanie zgłoszeń nie powiodło się",
+    "failed_getIssueById": "Pobranie zgłoszenia nie powiodło się",
+    "failed_listProjects": "Pobranie listy projektów nie powiodło się",
+    "failed_getActivityOptions": "Pobranie typów aktywności nie powiodło się",
+    "failed_getCurrentAccount": "Sprawdzenie konta nie powiodło się",
+    "failed_fetchTimeLogs": "Pobranie wpisów czasu nie powiodło się",
+    "failed_fetchTimeLogsInRange": "Pobranie wpisów czasu nie powiodło się",
+    "failed_createTimeEntry": "Eksport wpisu czasu nie powiódł się",
+    "failed_deleteTimeEntry": "Usunięcie wpisu czasu nie powiodło się"
   },
   "error": {
     "extensionUnavailable": "Rozszerzenie OSI jest niedostępne w tej przeglądarce.",

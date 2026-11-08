@@ -22,6 +22,8 @@ export interface ActivitySummary {
   outcome: string;
   /** "Time entry export" */
   operation: string;
+  /** "Time entry export failed", worded per operation so Polish agrees in gender */
+  failure: string;
   /** "4 minutes ago", with non-breaking spaces so it never splits across lines. */
   when: string;
 }
@@ -36,6 +38,7 @@ export function summarizeActivity(
     ok: record.outcome === 'ok',
     outcome: t(`activity.outcome_${record.outcome}`),
     operation: t(`activity.operation_${record.operation}`),
+    failure: t(`activity.failed_${record.operation}`),
     when: relativeTime(record.at, now, locale).replaceAll(' ', '\u00a0'),
   };
 }

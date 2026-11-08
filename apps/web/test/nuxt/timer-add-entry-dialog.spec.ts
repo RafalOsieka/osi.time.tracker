@@ -89,6 +89,8 @@ function mount() {
         UInputDate: InputDateStub,
         UInputTime: InputTimeStub,
         UAlert: { template: '<div v-bind="$attrs"><slot /></div>' },
+        // The timezone note's tooltip needs the app's TooltipProvider, absent in this mount.
+        UTooltip: { template: '<span><slot /></span>' },
         FormDialogFooter: {
           template: '<div><button type="submit" data-testid="save-button">save</button></div>',
         },
@@ -214,6 +216,7 @@ describe('TimerAddEntryDialog', () => {
             UInput: InputStub,
             UInputDate: InputDateStub,
             UInputTime: InputTimeStub,
+            UTooltip: { template: '<span><slot /></span>' },
             FormDialogFooter: {
               template: '<div><button type="submit" data-testid="save-button">save</button></div>',
             },

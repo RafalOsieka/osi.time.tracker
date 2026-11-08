@@ -56,9 +56,10 @@ export const nuxtUiOptions = {
     },
     // One alert recipe in both themes, as in the web app: a neutral surface and body, with the
     // colour only on the edge and the icon. The icon sits on the title line, and the explanation
-    // fills the measure beside the action instead of breaking early.
+    // fills the measure beside the action instead of breaking early. A two-sentence body may
+    // put its reassurance on a line of its own with a line break in the message.
     alert: {
-      slots: { description: 'opacity-100' },
+      slots: { description: 'opacity-100 whitespace-pre-line text-pretty' },
       variants: {
         orientation: { horizontal: { root: 'items-start', actions: 'self-center' } },
       },

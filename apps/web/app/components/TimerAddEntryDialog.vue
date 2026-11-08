@@ -93,10 +93,10 @@ const previewDuration = computed(() => {
 const isNewTask = ref(false);
 
 /** The timezone with its offset on the chosen date and start (DST applies), e.g. UTC+01:00. */
-const timeZoneHint = computed(() => {
+const zoneWithOffset = computed(() => {
   const time = HH_MM.test(state.startTime) ? state.startTime : '12:00';
   const at = state.date ? wallClockToInstant(state.date, time, timeZone) : new Date().toISOString();
-  return t('timerView.addEntry.timeZoneHint', { zone: timeZoneLabel(timeZone, at) });
+  return timeZoneLabel(timeZone, at);
 });
 
 watch(
@@ -283,13 +283,11 @@ async function onSave() {
           </p>
           <p v-if="previewDuration" class="m-0 text-sm text-muted">
             {{ t('timerView.addEntry.durationHint') }}
-            <span class="ms-1 font-medium text-default" data-testid="add-entry-duration">
+            <span class="ms-1 font-medium text-toned" data-testid="add-entry-duration">
               {{ previewDuration }}
             </span>
           </p>
-          <p class="m-0 text-xs text-muted" data-testid="add-entry-time-zone">
-            {{ timeZoneHint }}
-          </p>
+          <TimeZoneNote :zone="zoneWithOffset" testid="add-entry-time-zone" />
         </div>
 
         <FormDialogFooter

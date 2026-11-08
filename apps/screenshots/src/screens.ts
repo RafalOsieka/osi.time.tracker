@@ -341,6 +341,20 @@ const FEATURES: Screen[] = [
     before: failTrackers,
   },
   {
+    id: 'f18-sync-last-expanded',
+    title: 'Remote sync, last Task expanded',
+    shows:
+      "Remote sync with the list's last Task expanded: its detail block ends cleanly above the card's bottom edge.",
+    as: 'busy',
+    path: `/sync/${syncDay()}`,
+    ready: '[data-testid^="remote-sync-expand-"]',
+    prepare: async (page) => {
+      const expand = page.locator('[data-testid^="remote-sync-expand-"]').last();
+      await expand.click();
+      await page.waitForSelector('[data-testid^="remote-sync-expand-"][aria-expanded="true"]');
+    },
+  },
+  {
     id: 'f15-navigation',
     title: 'Navigation',
     shows:

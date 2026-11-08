@@ -175,7 +175,10 @@ const activityDisplayValue = computed(() => {
   return selectedActivityName.value ?? t('remoteSync.activityEmptyOption');
 });
 
-/** The option the keyboard is on: marked with a 3:1 outline, picked by Enter. */
+/**
+ * The option the keyboard is on: marked with the neutral 3:1 outline (as in the issue picker), so
+ * the open trigger's cyan ring stays the only cyan frame; picked by Enter.
+ */
 const activeOptionId = ref<string | null>(null);
 
 function onActivityOpen(open: boolean) {
@@ -500,7 +503,7 @@ function onEditToSend() {
                 :class="[
                   option.id === selectedActivityId && 'font-medium text-highlighted',
                   option.id === activeOptionId &&
-                    'bg-elevated ring-1 ring-primary ring-inset dark:bg-accented/60',
+                    'bg-elevated ring-1 ring-accented ring-inset dark:bg-accented/60',
                 ]"
                 :ui="{ trailingIcon: 'ms-auto size-4 text-primary' }"
                 role="option"

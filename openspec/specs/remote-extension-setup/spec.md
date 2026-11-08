@@ -132,7 +132,7 @@ The extension SHALL keep suggestions from approved websites (remote-browser-exte
 
 #### Scenario: Review a suggestion
 - **WHEN** an approved website suggests a Redmine destination
-- **THEN** the popup and the setup page SHALL list it as pending under a section that names trackers to approve, naming the website (once for the section when every pending item comes from the same website), the provider and the tracker URL; the setup page SHALL show the count beside the section title and the popup in its status badge
+- **THEN** the popup and the setup page SHALL list it as pending under a section that names trackers to approve, naming the website (once for the section when every pending item comes from the same website, in the setup page's introduction), the provider and the tracker URL; the setup page SHALL show the count beside the section title and the popup in its status badge
 
 #### Scenario: Approve from the setup page
 - **WHEN** the user approves a pending suggestion on the setup page and grants the browser permission
@@ -200,7 +200,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 
 #### Scenario: Failed operation
 - **WHEN** the latest operation on a destination failed
-- **THEN** the row SHALL show the operation and its time beside an amber failure mark distinct from the live-problem glyph, with a line below saying what went wrong, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the history SHALL be one line under a muted failure mark, its failure stated to assistive technology
+- **THEN** the row SHALL say in words that the operation failed, with its time, beside an amber failure mark distinct from the live-problem glyph, and a line below SHALL give the reason, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the history SHALL be that one line under a muted failure mark
 
 #### Scenario: Timeout
 - **WHEN** the latest operation on a destination timed out

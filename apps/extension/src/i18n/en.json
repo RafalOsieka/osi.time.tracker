@@ -51,7 +51,7 @@
     "websiteOrigin": "OSI website address",
     "websiteHelp": "The address you open OSI at. Approving it asks the browser for access to this website.",
     "websiteHttpHelp": "http:// works only for local addresses (localhost, 127.0.0.1).",
-    "websiteHandoff": "This address comes from the tab where you opened the extension. Approve it if it is the OSI website you use.",
+    "websiteHandoff": "This address comes from the tab where you opened the extension. Approve it if it is the OSI website you use. After approval the browser asks for access to this website.",
     "addWebsite": "Approve website",
     "openWebsite": "Open website",
     "revokeWebsite": "Remove website",
@@ -89,7 +89,7 @@
     "denied": "Permission was denied, so nothing was saved. Approve again to retry.",
     "deniedTitle": "Permission denied",
     "retry": "Try again",
-    "loadFailed": "The extension could not read its approved websites and trackers. Nothing was deleted. If this keeps happening, restart the browser.",
+    "loadFailed": "The extension could not read its approved websites and trackers.\nNothing was deleted. Restarting the browser also helps.",
     "loadFailedTitle": "Settings could not be read",
     "changeFailed": "The change could not be fully completed. The list shows the latest saved approvals. Try again to finish cleaning up permissions.",
     "changeFailedTitle": "The change did not finish",
@@ -99,9 +99,9 @@
     "websiteRequiredTitle": "No approved website",
     "lostAccessTitle": "No access to {name}",
     "lost_tracker_popup": "The browser took the extension's access to this tracker away.",
-    "lost_tracker_setup": "The browser took the extension's access away. The approval is still saved.",
+    "lost_tracker_setup": "The browser took the extension's access away.\nThe approval is still saved.",
     "lost_website_popup": "The browser took the extension's access to this OSI website away.",
-    "lost_website_setup": "The browser took the extension's access away. The approval is still saved.",
+    "lost_website_setup": "The browser took the extension's access away.\nThe approval is still saved.",
     "lostAccessManyTitle": "Browser access missing",
     "lostAccessMany_popup": "The browser took the extension's access away from: {names}.",
     "lostAccessMany_setup": "The browser took the extension's access away from: {names}. Restore it in their rows.",
@@ -126,7 +126,8 @@
     "destinationsActivityNote": "Last activity covers the current browser session.",
     "retryLoad": "Retry loading",
     "forWebsiteLinePrefix": "The tracker is approved for",
-    "suggestedByAll": "All from {website}"
+    "suggestedByAll": "All from {website}",
+    "suggestionsHelpFrom": "{website} asks for access to these trackers. Approve only the ones you know."
   },
   "activity": {
     "none": "No activity this session",
@@ -149,8 +150,15 @@
     "outcome_timeout": "Timed out",
     "outcome_limit": "Limit reached",
     "label": "Last activity",
-    "failedWith": "Failed: {outcome}",
-    "failedPast": "failed"
+    "failed_searchIssues": "Issue search failed",
+    "failed_getIssueById": "Issue lookup failed",
+    "failed_listProjects": "Project list failed",
+    "failed_getActivityOptions": "Activity types failed",
+    "failed_getCurrentAccount": "Account check failed",
+    "failed_fetchTimeLogs": "Time log fetch failed",
+    "failed_fetchTimeLogsInRange": "Time log fetch failed",
+    "failed_createTimeEntry": "Time entry export failed",
+    "failed_deleteTimeEntry": "Time entry deletion failed"
   },
   "error": {
     "extensionUnavailable": "The OSI extension is not available in this browser.",

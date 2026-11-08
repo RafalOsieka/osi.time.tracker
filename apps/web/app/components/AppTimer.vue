@@ -208,7 +208,7 @@ async function onSaveStartedAt() {
 
 <template>
   <div
-    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
+    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-1.5 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
       isRunning
         ? 'bg-primary-50/55 ring-primary-200 dark:bg-primary-950/30 dark:ring-primary-800/70'
@@ -254,17 +254,18 @@ async function onSaveStartedAt() {
 
     <!--
       Always UButton for consistent mono size. Idle: disabled (no popover).
-      Running: opens the start-time editor 8px to its left, its top on the timer card's top edge
-      (the time chip sits 2px lower), so the editor reads as attached to the card. Kept short (the
-      timezone shares the actions' row), it ends above the list's column headers: it hides no
-      header, no day total and no header button.
+      Running: opens the start-time editor 4px to its left (the picker's gap too), its top 4px
+      inside the timer card's top edge (the 28px time chip sits 6px inside it), so it floats over
+      the card without its edge running into the card's border. Kept short (the timezone shares
+      the actions' row), it ends above the list's column headers: it hides no header, no day total
+      and no header button.
     -->
     <UPopover
       v-model:open="startEditorOpen"
       :content="{
         side: 'left',
         align: 'start',
-        sideOffset: 8,
+        sideOffset: 4,
         alignOffset: -2,
         collisionPadding: { top: 8, right: 16, bottom: 16, left: 16 },
       }"
@@ -272,7 +273,7 @@ async function onSaveStartedAt() {
       <UButton
         color="neutral"
         variant="link"
-        class="min-w-[5.5rem] justify-center rounded-md font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
+        class="h-7 min-w-[5.5rem] justify-center rounded-md font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
         :class="[
           isRunning ? 'text-primary hover:text-primary active:text-primary' : 'text-dimmed',
           startEditorOpen && 'bg-primary-100 dark:bg-primary/20',
@@ -350,20 +351,9 @@ async function onSaveStartedAt() {
             {{ startEditorError }}
           </p>
           <div class="col-span-full flex items-center gap-2">
-            <UTooltip
-              :text="t('timer.startEditor.timeZoneHint', { zone: startTimeZone })"
-              :content="{ side: 'bottom' }"
-            >
-              <p
-                tabindex="0"
-                class="m-0 me-auto flex min-w-0 items-center gap-1 text-xs text-muted"
-                data-testid="timer-start-editor-time-zone"
-              >
-                <UIcon name="i-lucide-globe" class="size-3.5 shrink-0" aria-hidden="true" />
-                <span class="sr-only">{{ t('timer.startEditor.timeZoneLabel') }}</span>
-                <span class="truncate">{{ startTimeZone }}</span>
-              </p>
-            </UTooltip>
+            <div class="me-auto min-w-0">
+              <TimeZoneNote :zone="startTimeZone" testid="timer-start-editor-time-zone" />
+            </div>
             <UButton
               color="neutral"
               variant="outline"
@@ -383,12 +373,17 @@ async function onSaveStartedAt() {
       </template>
     </UPopover>
 
+    <!--
+      A 28px round control in the 40px card: the same 6px inset from the card's top, bottom and
+      right edges, running (red stop) or idle (play).
+    -->
     <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
       <UButton
         square
         size="sm"
         variant="solid"
-        class="rounded-full"
+        class="size-7 justify-center rounded-full"
+        :ui="{ leadingIcon: 'size-4' }"
         :class="
           isRunning &&
           'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-(--ui-color-error-600) dark:hover:bg-(--ui-color-error-500)'
@@ -403,7 +398,7 @@ async function onSaveStartedAt() {
         @click="onToggle"
       >
         <template v-if="isRunning && !starting && !stopping" #leading>
-          <StopGlyph />
+          <StopGlyph size="sm" />
         </template>
       </UButton>
     </UTooltip>

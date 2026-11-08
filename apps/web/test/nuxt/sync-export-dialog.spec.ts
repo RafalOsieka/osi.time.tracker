@@ -62,7 +62,7 @@ describe('SyncExportDialog', () => {
       'Development',
     );
     expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
-      'One time entry per task will be created in its tracker.',
+      '1 time entry per task will be created in its tracker.',
     );
     expect(wrapper.find('[data-testid="remote-sync-export-destination-b"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="remote-sync-export-dialog-to-send"]').text()).toContain(
@@ -94,7 +94,7 @@ describe('SyncExportDialog', () => {
     );
     // One Task: the introduction speaks of it in the singular.
     expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
-      'One time entry will be created in the tracker.',
+      '1 time entry will be created in the tracker.',
     );
     expect(wrapper.findAll('[data-testid^="remote-sync-export-row-"]')).toHaveLength(1);
     // One Task: its row already shows the duration, so no separate total repeats it.

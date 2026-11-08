@@ -85,7 +85,7 @@ const STATUS_BADGES = {
   setup: {
     labelKey: 'app.statusSetup',
     color: 'neutral',
-    variant: 'outline',
+    variant: 'soft',
     icon: 'i-lucide-circle-dashed',
   },
   ready: {
@@ -397,6 +397,7 @@ function openOptions(): void {
                     :record="activity[destinationKey(destination)]"
                     :now="now"
                     :access-missing="missingOrigins.includes(destination.origin)"
+                    stacked
                     data-testid="popup-tracker-activity"
                   />
                 </span>

@@ -32,11 +32,12 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const reasonId = useId();
 /**
- * Pressed while its review is open: the header buttons' strong recipe (a deeper fill and an inset
- * ring), so it reads as held down even under the dialog's scrim.
+ * Pressed while its review is open: the same recipe as the page header's create buttons
+ * (`TableHeader`), a deep fill with an inset ring, so it reads as held down even under the
+ * dialog's scrim.
  */
 const PRESSED =
-  'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-600) dark:ring-(--ui-color-primary-200) dark:hover:bg-(--ui-color-primary-600)';
+  'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-800) dark:text-white dark:ring-(--ui-color-primary-300) dark:hover:bg-(--ui-color-primary-800)';
 const calendarOpen = ref(false);
 const calendarValue = computed(() => parseDate(date));
 

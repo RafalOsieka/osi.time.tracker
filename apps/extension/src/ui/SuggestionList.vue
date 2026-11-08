@@ -47,6 +47,16 @@ const commonWebsite = computed(() => {
     : null;
 });
 
+/** The setup intro split around the shared website, so the name can carry its own weight. */
+const helpFrom = computed(() => {
+  if (!commonWebsite.value) return null;
+  const marker = '\u0000';
+  const [before = '', after = ''] = t
+    .value('approvals.suggestionsHelpFrom', { website: marker })
+    .split(marker);
+  return { before, website: displayUrl(commonWebsite.value), after };
+});
+
 function sendsCredentialsInClear(item: DestinationSuggestion): boolean {
   return isHttpCredentialRisk(canonicalizeDestination(`${item.origin}${item.basePath}`));
 }
@@ -97,10 +107,13 @@ onMounted(() =>
           data-testid="suggestions-count"
         />
       </div>
-      <p class="mt-0.5 text-sm text-muted">{{ t('approvals.suggestionsHelp') }}</p>
-      <p v-if="commonWebsite" class="mt-0.5 text-sm text-muted" data-testid="suggestions-website">
-        {{ t('approvals.suggestedByAll', { website: displayUrl(commonWebsite) }) }}
+      <!-- One sentence names the asking website (in medium weight) when every item shares it. -->
+      <p v-if="helpFrom" class="mt-0.5 text-sm text-muted" data-testid="suggestions-website">
+        {{ helpFrom.before }}
+        <span class="font-medium text-highlighted">{{ helpFrom.website }}</span>
+        {{ helpFrom.after }}
       </p>
+      <p v-else class="mt-0.5 text-sm text-muted">{{ t('approvals.suggestionsHelp') }}</p>
     </template>
     <!-- In the popup every section is a label above a list, as for the approved ones; the
       header status badge already carries the count. -->

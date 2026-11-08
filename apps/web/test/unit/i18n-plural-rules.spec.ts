@@ -111,10 +111,10 @@ describe('count-sensitive catalogs', () => {
       'Wyeksportować 5 zadań?',
     );
     expect(applyPipePlural(review.introHint, polishPluralRule(1, 3), {})).toBe(
-      'W trackerze powstanie jeden wpis czasu.',
+      'W trackerze powstanie 1 wpis czasu.',
     );
     expect(applyPipePlural(review.introHint, polishPluralRule(3, 3), {})).toBe(
-      'W trackerach powstanie po jednym wpisie czasu na zadanie.',
+      'W trackerach powstanie po 1 wpisie czasu na zadanie.',
     );
     const local = review.excluded.localProject;
     expect(applyPipePlural(local, polishPluralRule(1, 3), { count: 1 })).toBe(

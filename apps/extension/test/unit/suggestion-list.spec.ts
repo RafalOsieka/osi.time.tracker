@@ -36,7 +36,7 @@ describe('suggestion list', () => {
     expect(html).toContain(`data-testid="approve-suggestion-${suggestionId(plain)}"`);
     // Both come from one website, so the section names it once instead of every row.
     expect(html).toContain('data-testid="suggestions-website"');
-    expect(html).toContain('All from time.example.com');
+    expect(html).toMatch(/time\.example\.com<\/span>\s*asks for access to these trackers/);
     expect(html.match(/API key travels unencrypted/g)).toHaveLength(1);
     expect(html).toContain('Approve despite HTTP');
     expect(html).toContain('data-testid="suggestion-reviewed"');
