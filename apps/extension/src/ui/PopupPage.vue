@@ -174,6 +174,7 @@ function openOptions(): void {
 </script>
 
 <template>
+  <!-- At most the browser's 600px popup: header and footer stay, the content scrolls (REQ-522). -->
   <main class="flex max-h-150 w-90 flex-col text-sm text-default">
     <header class="flex shrink-0 items-center gap-3 border-b border-default bg-default px-4 py-3">
       <BrandMark :size="28" />

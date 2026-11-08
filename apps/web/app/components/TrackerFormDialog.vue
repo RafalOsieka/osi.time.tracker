@@ -52,7 +52,7 @@ const state = reactive<{
   roundingRule: TRACKER_ROUNDING_RULE_ORDER[0],
 });
 const secret = ref('');
-/** Whether the API key shows as plain text (the trailing eye toggle); hidden on every open. */
+/** Whether the API key shows as plain text (the trailing eye toggle); hidden on every open (REQ-526). */
 const secretVisible = ref(false);
 
 /** Help lines sit tight under their control (4px), not a field gap away. */

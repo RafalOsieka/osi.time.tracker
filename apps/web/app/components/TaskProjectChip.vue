@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * The title input's Project chip (REQ-374): the Project's name as a small cyan pill with a
- * keyboard-operable remove control that appears on hover or focus. `TaskTitleInput` places it
+ * keyboard-operable remove control that appears on hover or focus, and stays shown on a touch
+ * screen, which cannot hover. `TaskTitleInput` places it
  * before the text, or after it in the top-bar timer.
  */
 const { name, testid } = defineProps<{
@@ -30,7 +31,7 @@ const { t } = useI18n();
         variant="link"
         size="xs"
         icon="i-lucide-x"
-        class="ms-0 w-0 overflow-hidden p-0 text-primary/70 opacity-0 group-hover/chip:ms-1 group-hover/chip:w-3.5 group-hover/chip:opacity-100 hover:text-primary focus-visible:ms-1 focus-visible:w-3.5 focus-visible:opacity-100"
+        class="ms-0 w-0 overflow-hidden p-0 text-primary/70 opacity-0 group-hover/chip:ms-1 group-hover/chip:w-3.5 group-hover/chip:opacity-100 hover:text-primary focus-visible:ms-1 focus-visible:w-3.5 focus-visible:opacity-100 pointer-coarse:ms-1 pointer-coarse:w-3.5 pointer-coarse:opacity-100"
         :aria-label="t('timer.mention.removeProject', { project: name })"
         :data-testid="`${testid}-chip-remove`"
         @click="emit('remove')"

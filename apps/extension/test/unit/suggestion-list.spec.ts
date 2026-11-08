@@ -46,6 +46,24 @@ describe('suggestion list', () => {
     expect(html).toMatch(/data-testid="suggestions-count".*?class="truncate">2<\/span>/);
   });
 
+  it('names the HTTP approve action by its visible label (REQ-416)', async () => {
+    useExtensionI18n().setLocale('en');
+    const plain = suggestion('http://rm.internal');
+    const secure = suggestion('https://rm.example.com');
+    const html = await renderWithUi(SuggestionList, {
+      suggestions: [plain, secure],
+      disabled: false,
+      mode: 'setup',
+    });
+    const ariaLabelOf = (item: DestinationSuggestion) => {
+      const testid = `data-testid="approve-suggestion-${suggestionId(item)}"`;
+      const tag = html.split('<').find((part) => part.includes(testid)) ?? '';
+      return /aria-label="([^"]*)"/.exec(tag)?.[1];
+    };
+    expect(ariaLabelOf(plain)).toMatch(/^Approve despite HTTP .*rm\.internal/);
+    expect(ariaLabelOf(secure)).toMatch(/^Approve .*rm\.example\.com/);
+  });
+
   it('only dismisses or hands over to setup in the popup, flagging plain HTTP', async () => {
     useExtensionI18n().setLocale('pl');
     const item = suggestion('https://rm.example.com');

@@ -66,6 +66,13 @@ function sendsCredentialsInClear(item: DestinationSuggestion): boolean {
   return isHttpCredentialRisk(canonicalizeDestination(`${item.origin}${item.basePath}`));
 }
 
+/** The approve action's visible label, which its accessible name starts with (REQ-416). */
+function approveLabel(item: DestinationSuggestion): string {
+  return t.value(
+    sendsCredentialsInClear(item) ? 'approvals.approveDespiteHttp' : 'approvals.approveSuggestion',
+  );
+}
+
 // The popup handed this suggestion over: put focus on its approve action once it is listed, or
 // on its dismiss action when approving would accept an unencrypted tracker (focus never lands on
 // a risky action by default). Client only: focus means nothing while rendering on a server.
@@ -206,14 +213,8 @@ onMounted(() =>
             :variant="sendsCredentialsInClear(item) ? 'outline' : 'solid'"
             icon="i-lucide-check"
             :disabled="disabled"
-            :label="
-              t(
-                sendsCredentialsInClear(item)
-                  ? 'approvals.approveDespiteHttp'
-                  : 'approvals.approveSuggestion',
-              )
-            "
-            :aria-label="`${t('approvals.approveSuggestion')} ${displayDestination(item)}`"
+            :label="approveLabel(item)"
+            :aria-label="`${approveLabel(item)} ${displayDestination(item)}`"
             :data-testid="`approve-suggestion-${suggestionId(item)}`"
             @click="emit('approve', suggestionId(item))"
           />

@@ -1,7 +1,7 @@
 /**
  * The one long form of a calendar day, shared by the Timer view's day headings, the Remote sync
  * stepper and the issue picker: "sobota, 7 listopada 2026" / "Saturday, November 7, 2026", or
- * without the weekday "7 listopada 2026". The locale decides the case: Polish writes weekdays
+ * without the weekday "7 listopada 2026". The locale decides the case (REQ-516): Polish writes weekdays
  * lower-case, even at the start of a heading. `dayKey` is a `YYYY-MM-DD` calendar date, so it is
  * formatted in UTC: the user's timezone already decided which day it is.
  */

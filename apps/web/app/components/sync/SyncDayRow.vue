@@ -58,7 +58,7 @@ const {
   expanded: boolean;
   canEdit: boolean;
   showEditors: boolean;
-  kindLabel: string | null;
+  kindLabel: string;
   kind: SyncRowKind;
   reason: string;
   issueTitle: string | null;
@@ -271,13 +271,15 @@ function onEditToSend() {
           square
           size="xs"
           :ui="{ leadingIcon: stateIcons[kind].iconClass }"
-          :aria-label="`${kindLabel ?? t('remoteSync.kind.blocked')}: ${reason}`"
+          :aria-label="`${kindLabel}: ${reason}`"
           :data-testid="`remote-sync-state-${row.taskId}`"
         >
           <span class="sr-only">{{ kindLabel }}</span>
         </UButton>
         <template #content>
-          <p class="max-w-xs p-2 text-xs">{{ kindLabel }}: {{ reason }}</p>
+          <p class="max-w-xs p-2 text-xs" :data-testid="`remote-sync-state-reason-${row.taskId}`">
+            {{ kindLabel }}: {{ reason }}
+          </p>
         </template>
       </UPopover>
     </ColumnCell>

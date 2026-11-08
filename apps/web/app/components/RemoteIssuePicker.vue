@@ -153,7 +153,7 @@ function resultAccessibleName(result: RemoteIssueSearchResult): string {
     : base;
 }
 
-/** The Tracker the link goes to, after the day whose entries it moves when that is known. */
+/** The Tracker the link goes to, after the day whose entries it moves when known (REQ-518). */
 const destinationLabel = computed(() =>
   dayLabel
     ? t('remoteIssuePicker.dayContext', { day: dayLabel, tracker: config.name })
@@ -273,7 +273,7 @@ function onClose() {
 /** What the shown results answer, so Enter on an unchanged query picks instead of re-searching. */
 const searchedKey = shallowRef('');
 const currentKey = computed(() => `${state.mode}\n${applyScope.value}\n${state.query}`);
-/** The result Enter picks: the first after every search, moved by the arrow keys. */
+/** The result Enter picks (REQ-518): the first after every search, moved by the arrow keys. */
 const activeIndex = shallowRef(0);
 const resultsList = useTemplateRef<HTMLElement>('resultsList');
 

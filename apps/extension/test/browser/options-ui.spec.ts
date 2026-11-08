@@ -436,6 +436,43 @@ describeChromium('extension options UI', () => {
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
   });
 
+  it('focuses the alert restore when the popup hands over the only lost approval (REQ-408)', async () => {
+    const page = await harness!.context.newPage();
+    await page.goto(optionsUrl(harness!));
+    await chooseOption(page, 'language', optionNames.en);
+    await openAddForm(page, 'website');
+    await page.getByTestId('website-origin').fill('http://localhost:3200');
+    await page.getByTestId('add-website').click();
+    await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3200').isVisible())
+      .toBe(true);
+    await chooseOption(page, 'destination-provider', optionNames.redmine);
+    await page.getByTestId('destination-url').fill('https://restore.example.com');
+    await page.getByTestId('add-destination').click();
+    const key = 'http://localhost:3200|redmine|https://restore.example.com';
+    await expect.poll(() => page.getByTestId(`revoke-destination-${key}`).isVisible()).toBe(true);
+
+    // The popup's handoff for the one tracker that lost access, as `openSetupPage` builds it.
+    const handoff = await harness!.context.newPage();
+    await handoff.addInitScript(() => {
+      const contains = chrome.permissions.contains.bind(chrome.permissions);
+      chrome.permissions.contains = async (request) =>
+        request.origins.some((origin) => origin.includes('restore.example.com'))
+          ? false
+          : contains(request);
+    });
+    const query = new URLSearchParams({ restore: `destination-${key}` });
+    await handoff.goto(`${optionsUrl(harness!)}?${query}`);
+    await expect.poll(() => handoff.getByTestId('missing-access').isVisible()).toBe(true);
+    await expect
+      .poll(() => handoff.evaluate(() => document.activeElement?.getAttribute('data-testid')))
+      .toBe('missing-access-restore');
+
+    await waitUntilIdle(page);
+    await page.getByTestId('revoke-website-http://localhost:3200').click();
+    await confirmRevoke(page);
+  });
+
   it('shows saved approvals after bridge failure and retries registration explicitly', async () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));

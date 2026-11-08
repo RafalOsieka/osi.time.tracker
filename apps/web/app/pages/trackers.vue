@@ -129,7 +129,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
         }),
     },
     {
-      // How the browser reaches the tracker: directly, or through the OSI extension.
+      // How the browser reaches the tracker: directly, or through the OSI extension (REQ-525).
       accessorKey: 'directBrowserAccess',
       header: t('trackers.columnConnection'),
       cell: ({ row }) => {

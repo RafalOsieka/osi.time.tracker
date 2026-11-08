@@ -32,7 +32,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 const reasonId = useId();
 /**
- * Pressed while its review is open: the same recipe as the page header's create buttons
+ * Pressed while its review is open (REQ-514): the same recipe as the page header's create buttons
  * (`TableHeader`), a deep fill with an inset ring, so it reads as held down even under the
  * dialog's scrim.
  */

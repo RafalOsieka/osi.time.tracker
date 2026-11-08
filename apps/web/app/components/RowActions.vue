@@ -9,7 +9,7 @@ const { pressed = undefined } = defineProps<{
   extraLabel?: string;
   extraTestid?: string;
   extraDisabled?: boolean;
-  /** The tile whose dialog is open: it shows as pressed (the same look in both themes). */
+  /** The tile whose dialog is open: it shows as pressed (REQ-514; the same look in both themes). */
   pressed?: 'extra' | 'edit' | 'delete';
 }>();
 

@@ -551,7 +551,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
-    <!-- The legend (REQ-472): what an underlined value means in each column (a flag meaning, never
+    <!-- The legend (REQ-519): what an underlined value means in each column (a flag meaning, never
          a column definition), read at a glance, then how to see each value's own reason. Helper
          text, so 14px. -->
     <div

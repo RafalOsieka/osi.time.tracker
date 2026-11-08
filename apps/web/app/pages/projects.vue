@@ -86,7 +86,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => {
             h('span', { class: 'truncate' }, t('projects.localTrackerLabel')),
           ]);
         }
-        // The Tracker's type mark, as on Trackers, then its remote scope (REQ-325) in a quieter
+        // The Tracker's type mark, as on Trackers, then its remote scope (REQ-325, REQ-524) in a quieter
         // tone, or "whole tracker" when unscoped, so a missing scope never looks like missing data.
         return h('span', { class: 'flex min-w-0 items-center gap-2' }, [
           h(resolveComponent('TrackerTypeMark'), { systemType: trackerSystemType }),
@@ -102,7 +102,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => {
       },
     },
     {
-      // Time tracked in the last 30 days (REQ-371), so Projects in use stand out from idle ones.
+      // Time tracked in the last 30 days (REQ-371, REQ-524), so Projects in use stand out.
       accessorKey: 'recentTrackedSeconds',
       header: t('projects.columnRecent'),
       cell: ({ row }) => {
