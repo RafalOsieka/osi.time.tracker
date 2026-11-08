@@ -34,7 +34,7 @@ Your clients each run their own tracker, OpenProject or Redmine, and each expect
 
 ```bash
 cp .env.example .env
-# Set POSTGRES_PASSWORD, PGADMIN_DEFAULT_PASSWORD and a fresh NUXT_SESSION_PASSWORD,
+# Set POSTGRES_PASSWORD, PGADMIN_DEFAULT_PASSWORD and a fresh NUXT_APP_SECRET,
 # plus BOOTSTRAP_USER_EMAIL / BOOTSTRAP_USER_PASSWORD for your first login.
 docker compose -f docker-compose.prod.yml up -d --build
 ```

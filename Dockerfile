@@ -77,7 +77,7 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 # Runtime secrets/config — must be supplied at container start, never baked in
-# DATABASE_URL and NUXT_SESSION_PASSWORD are required at runtime
+# DATABASE_URL and NUXT_APP_SECRET are required at runtime
 
 # Copy only the Nitro server output from the build stage
 COPY --from=build /app/apps/web/.output .

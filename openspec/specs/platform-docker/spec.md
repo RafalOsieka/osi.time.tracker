@@ -29,10 +29,10 @@ The final image stage SHALL include only the production runtime artifacts — th
 - **THEN** it contains the `.output/` server bundle and does not contain `node_modules` dev dependencies, `test/`, or source-only tooling needed solely for building
 
 ### Requirement: REQ-045 Container runtime configuration
-The application container SHALL be configured entirely through environment variables and MUST require `DATABASE_URL` and `NUXT_SESSION_PASSWORD` at runtime, without baking secrets into the image. The image SHALL fix both `NODE_ENV=production` and the container listening port (`3000`). The container SHALL run as a non-root user.
+The application container SHALL be configured entirely through environment variables and MUST require `DATABASE_URL` and `NUXT_APP_SECRET` at runtime, without baking secrets into the image. The image SHALL fix both `NODE_ENV=production` and the container listening port (`3000`). The container SHALL run as a non-root user.
 
 #### Scenario: App starts with required configuration
-- **WHEN** the container is started with valid `DATABASE_URL` and `NUXT_SESSION_PASSWORD`
+- **WHEN** the container is started with valid `DATABASE_URL` and `NUXT_APP_SECRET`
 - **THEN** the Nitro server starts as a non-root user with `NODE_ENV=production` and serves HTTP on port `3000`
 
 #### Scenario: Missing required configuration
@@ -96,14 +96,14 @@ The production stack SHALL persist database and pgadmin state across container, 
 - **THEN** only then are the production volumes deleted; the dev volumes are never affected
 
 ### Requirement: REQ-051 Standalone startup ordering and configuration
-In the production stack, `migrate` SHALL wait for the `db` healthcheck before applying migrations, and `app` SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD` and `PGADMIN_DEFAULT_PASSWORD` (no insecure defaults) and SHALL provide overridable defaults for the database user and name, the pgadmin e-mail, and the published ports.
+In the production stack, `migrate` SHALL wait for the `db` healthcheck before applying migrations, and `app` SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_APP_SECRET`, `POSTGRES_PASSWORD` and `PGADMIN_DEFAULT_PASSWORD` (no insecure defaults) and SHALL provide overridable defaults for the database user and name, the pgadmin e-mail, and the published ports.
 
 #### Scenario: Ordered cold start
 - **WHEN** the production stack starts from scratch
 - **THEN** `migrate` runs only after the database healthcheck passes, and `app` starts only after `migrate` exits with status 0
 
 #### Scenario: Missing session secret fails fast
-- **WHEN** the stack is started with any of `NUXT_SESSION_PASSWORD`, `POSTGRES_PASSWORD`, or `PGADMIN_DEFAULT_PASSWORD` unset or empty
+- **WHEN** the stack is started with any of `NUXT_APP_SECRET`, `POSTGRES_PASSWORD`, or `PGADMIN_DEFAULT_PASSWORD` unset or empty
 - **THEN** compose refuses to start the stack and the error names the missing variable
 
 #### Scenario: Defaults are overridable
@@ -111,7 +111,7 @@ In the production stack, `migrate` SHALL wait for the `db` healthcheck before ap
 - **THEN** the stack uses the overridden values without editing the compose file
 
 ### Requirement: REQ-346 Single environment example grouped by audience
-The repository SHALL commit one `.env.example`, grouped into host development, dev compose overrides and the production stack, with every variable documented where it is read. Copied unchanged to `.env`, it SHALL run `pnpm dev` against the dev database on `localhost`. Production-only secrets (`POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_PASSWORD`) SHALL appear only commented out with generation hints, and the development `NUXT_SESSION_PASSWORD` SHALL be marked as not for production.
+The repository SHALL commit one `.env.example`, grouped into host development, dev compose overrides and the production stack, with every variable documented where it is read. Copied unchanged to `.env`, it SHALL run `pnpm dev` against the dev database on `localhost`. Production-only secrets (`POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_PASSWORD`) SHALL appear only commented out with generation hints, and the development `NUXT_APP_SECRET` SHALL be marked as not for production.
 
 #### Scenario: Dev example works unchanged
 - **WHEN** a developer copies `.env.example` to `.env`, starts the dev compose stack, and runs `pnpm db:migrate` then `pnpm dev`

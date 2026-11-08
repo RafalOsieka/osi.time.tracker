@@ -3,7 +3,7 @@ import type { NuxtConfig } from '@nuxt/schema';
 import { OUTPUT_DIR } from './skip-build';
 import { bindTestOrigin } from '../helpers/url';
 
-export const SESSION_PASSWORD = 'test-session-password-0123456789-abcdef';
+export const APP_SECRET = 'test-app-secret-0123456789-abcdef-0123';
 
 /**
  * `NuxtConfig` from `@nuxt/schema` deliberately omits `nitro` (it belongs to the
@@ -31,12 +31,12 @@ export async function setupServer({
 
   // Set local env vars for the test process itself to pick up
   process.env.DATABASE_URL = databaseUrl;
-  process.env.NUXT_SESSION_PASSWORD = SESSION_PASSWORD;
+  process.env.NUXT_APP_SECRET = APP_SECRET;
   process.env.IS_E2E = 'true';
 
   const env = {
     DATABASE_URL: databaseUrl,
-    NUXT_SESSION_PASSWORD: SESSION_PASSWORD,
+    NUXT_APP_SECRET: APP_SECRET,
     IS_E2E: 'true',
   };
   const coverage = process.env.NODE_V8_COVERAGE;

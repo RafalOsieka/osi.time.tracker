@@ -249,8 +249,6 @@ jobs:
 
       - name: Run database e2e tests with coverage
         run: vp run test:coverage:e2e-db
-        env:
-          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
 
       - name: Upload e2e-db coverage to Codecov
         if: success()
@@ -285,7 +283,6 @@ jobs:
       - name: Run API e2e tests
         run: vp run test:e2e:api
         env:
-          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           NUXT_TEST_SKIP_BUILD: '1'
           IS_E2E: 'true'
           NODE_V8_COVERAGE: coverage-v8-e2e
@@ -331,6 +328,5 @@ jobs:
       - name: Run UI e2e tests
         run: vp run test:e2e:ui
         env:
-          NUXT_SESSION_PASSWORD: ${{ secrets.NUXT_SESSION_PASSWORD }}
           NUXT_TEST_SKIP_BUILD: '1'
           IS_E2E: 'true'

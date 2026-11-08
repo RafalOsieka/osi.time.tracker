@@ -6,7 +6,7 @@
 # Stop:   docker compose -f docker-compose.prod.yml down     # keeps volumes
 # Wipe:   docker compose -f docker-compose.prod.yml down -v  # deletes prod volumes
 #
-# NUXT_SESSION_PASSWORD, POSTGRES_PASSWORD and PGADMIN_DEFAULT_PASSWORD are required;
+# NUXT_APP_SECRET, POSTGRES_PASSWORD and PGADMIN_DEFAULT_PASSWORD are required;
 # the stack refuses to start without them. The database port is not published.
 
 # Explicit project name so this stack never shares containers/volumes with the
@@ -61,7 +61,7 @@ services:
       - '${PORT:-3000}:3000'
     environment:
       DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-osi_time_tracker}
-      NUXT_SESSION_PASSWORD: ${NUXT_SESSION_PASSWORD:?NUXT_SESSION_PASSWORD is required}
+      NUXT_APP_SECRET: ${NUXT_APP_SECRET:?NUXT_APP_SECRET is required}
       # Optional; raises server log verbosity for troubleshooting (server-logging REQ-357).
       # 0 fatal, 1 error, 2 warn, 3 info (default), 4 debug, 5 trace.
       CONSOLA_LEVEL: ${CONSOLA_LEVEL:-3}
