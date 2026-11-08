@@ -48,6 +48,11 @@ describeAuth('authentication integration', async () => {
     expect(resData.user.id).toBeDefined();
     expect(resData.user).not.toHaveProperty('settings');
     expect(jar.has('osi-session')).toBe(true);
+    // Strict would drop the session on the navigation back from an external login page.
+    const sessionCookie = ok.headers
+      .getSetCookie()
+      .find((cookie) => cookie.startsWith('osi-session='));
+    expect(sessionCookie).toMatch(/;\s*SameSite=Lax/i);
 
     // Case-insensitive email match
     const caseJar = new CookieJar();

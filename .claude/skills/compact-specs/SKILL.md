@@ -28,7 +28,7 @@ Check them against the installed version (`openspec --version`, its docs and cha
 - Spec ids are flat `<family>-<topic>`. The families and their meaning are listed in `openspec/config.yaml` (`rules.specs`).
 - Requirement headers carry a globally unique traceability code: `### Requirement: REQ-<NNN> Title`. The codes are referenced outside `openspec/`, in app code, tests and SQL migrations.
 - Retired codes are listed in `docs/retired-requirements.md` (code → what it was → where it went).
-- Tooling documentation lives in `docs/`: `development.md` for build, test and CI; `e2e-guideline.md`, `coding-standards.md` and `self-hosting.md` for their topics.
+- Tooling documentation lives in `docs/`: `development.md` for build, test and CI; `e2e-guideline.md` and `coding-standards.md` for their topics.
 - The sources of truth for tooling are `.github/workflows/*.yml`, the root `package.json` (scripts, `devEngines`) and `pnpm-workspace.yaml` (catalog, overrides).
 - Before committing, run `pnpm exec vp fmt` on the touched files and check with `pnpm format:check`.
 

@@ -76,7 +76,7 @@ pnpm build:packages
 pnpm --filter @osi/time-tracker-extension build
 ```
 
-Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → **Load unpacked**, approve `http://localhost:3000` and the local tracker URLs in its options page, and turn off **Direct browser connection allowed** on the trackers that should use it. After a rebuild, click **Reload** on the extension card and refresh the OSI tab. The full user-facing flow is in [`self-hosting.md`](./self-hosting.md#browser-extension-chrome--edge).
+Load `apps/extension/dist` via `chrome://extensions` → **Developer mode** → **Load unpacked**, approve `http://localhost:3000` and the local tracker URLs in its options page, and turn off **Direct browser connection allowed** on the trackers that should use it. After a rebuild, click **Reload** on the extension card and refresh the OSI tab. The full user-facing flow is in [`connecting-trackers.md`](./connecting-trackers.md#browser-extension-chrome--edge).
 
 Isolated fake trackers for extension tests live in `apps/extension/test/browser/harness`; do not point the unpacked extension at real trackers from CI.
 
@@ -110,6 +110,8 @@ After a schema change in `apps/web/server/db/schema`, run `pnpm db:generate` and
 ## Continuous integration
 
 The gates run in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml). The ruleset that blocks merges on `main` lives in the GitHub repository settings, not in this repository; every CI job, including `db`, `api` and `ui` separately, is a required check. Codecov's own statuses stay informational.
+
+The `publish` and `verify-deploy` jobs are not required checks: they run only when the workflow is started by hand on `main`, after every gate passes. `publish` pushes the images and commits a digest-pinned compose file to the `deploy` branch, and `verify-deploy` waits until production's `/healthz` reports the commit. How the instance is set up and operated is in [`deploy/osieka-dev/README.md`](../deploy/osieka-dev/README.md).
 
 ## Troubleshooting
 

@@ -7,9 +7,12 @@ on:
   pull_request:
     branches:
       - main
+  # Runs every gate on the chosen ref; on `main` it also deploys (see `publish`).
+  workflow_dispatch:
 
+# The event name keeps a deploy out of the push group: a push to `main` must not cancel it.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 permissions:
@@ -330,3 +333,134 @@ jobs:
         env:
           NUXT_TEST_SKIP_BUILD: '1'
           IS_E2E: 'true'
+
+  # Ships a verified `main` to production when started by hand: pushes both images to GHCR,
+  # then commits the osieka.dev compose, pinned to their digests, to the `deploy` branch,
+  # which the host polls. See deploy/osieka-dev/README.md.
+  publish:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs:
+      [
+        lint,
+        format,
+        specs,
+        type-check,
+        package,
+        unit,
+        extension,
+        nuxt,
+        build,
+        coverage,
+        db,
+        api,
+        ui,
+      ]
+    permissions:
+      contents: write
+      packages: write
+    env:
+      MIGRATOR_REPOSITORY: ghcr.io/rafalosieka/osi-time-tracker-migrator
+      APP_REPOSITORY: ghcr.io/rafalosieka/osi-time-tracker
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Log in to GHCR
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+
+      # A package this push creates would take the repository's visibility, public from its
+      # first push, so both are created private by hand first.
+      - name: Check the packages exist and are private
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for repository in "$MIGRATOR_REPOSITORY" "$APP_REPOSITORY"; do
+            scope="repository:${repository#ghcr.io/}:pull"
+            # GHCR hands an anonymous pull token out only for a public package.
+            if curl -fsS "https://ghcr.io/token?scope=$scope" > /dev/null 2>&1; then
+              echo "$repository is public"
+              exit 1
+            fi
+            # As this run, the package must already exist and let this repository in.
+            token=$(curl -fsS -u "$GITHUB_ACTOR:$GITHUB_TOKEN" "https://ghcr.io/token?scope=$scope" | jq -r .token)
+            if ! curl -fsS -H "Authorization: Bearer $token" "https://ghcr.io/v2/${repository#ghcr.io/}/tags/list" > /dev/null; then
+              echo "$repository is missing, or this repository has no Actions access to it"
+              exit 1
+            fi
+          done
+
+      - name: Build and push images
+        run: |
+          docker build --target migrator --tag "$MIGRATOR_REPOSITORY:$GITHUB_SHA" --push .
+          docker build --target runtime --build-arg COMMIT_SHA="$GITHUB_SHA" \
+            --tag "$APP_REPOSITORY:$GITHUB_SHA" --push .
+
+      # Pinned to the digests GHCR holds, so the host runs exactly what was pushed.
+      - name: Render the production compose
+        run: |
+          digest() { docker buildx imagetools inspect "$1:$GITHUB_SHA" --format '{{json .Manifest}}' | jq -er .digest; }
+          MIGRATOR_IMAGE="$MIGRATOR_REPOSITORY@$(digest "$MIGRATOR_REPOSITORY")"
+          APP_IMAGE="$APP_REPOSITORY@$(digest "$APP_REPOSITORY")"
+          export MIGRATOR_IMAGE APP_IMAGE
+          # Only the two images: every other variable is a secret or setting the host supplies.
+          # shellcheck disable=SC2016 # the list names the variables, unexpanded
+          envsubst '${MIGRATOR_IMAGE} ${APP_IMAGE}' < deploy/osieka-dev/compose.yaml > "$RUNNER_TEMP/compose.yaml"
+          # Putting the variables back must give the template again, secrets and all.
+          sed -e "s|$MIGRATOR_IMAGE|\${MIGRATOR_IMAGE}|" -e "s|$APP_IMAGE|\${APP_IMAGE}|" "$RUNNER_TEMP/compose.yaml" |
+            diff - deploy/osieka-dev/compose.yaml
+          grep -qF "image: $MIGRATOR_IMAGE" "$RUNNER_TEMP/compose.yaml"
+          grep -qF "image: $APP_IMAGE" "$RUNNER_TEMP/compose.yaml"
+
+      # One commit per deploy, so the branch's history is the deploy log. Never forced: a push
+      # that isn't a fast-forward fails rather than rewrite it.
+      - name: Commit the production compose to deploy
+        run: |
+          message=$(git log -1 --format='Deploy %H to prod%n%n%s')
+          if git ls-remote --exit-code origin refs/heads/deploy; then
+            git fetch --depth=1 origin deploy
+            git switch --create deploy FETCH_HEAD
+          else
+            git switch --orphan deploy
+          fi
+          mkdir -p prod
+          cp "$RUNNER_TEMP/compose.yaml" prod/compose.yaml
+          git add prod/compose.yaml
+          if git diff --cached --quiet; then
+            echo "prod/compose.yaml on deploy already pins these images"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' \
+            -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --message "$message"
+          git push origin deploy
+
+  # CI can't see the host pull a deploy, so it waits for production's `/healthz` to report the
+  # commit. The URL and the access token are secrets so GitHub masks them in the public logs.
+  verify-deploy:
+    runs-on: ubuntu-latest
+    needs: publish
+    steps:
+      - name: Wait for production to run this commit
+        env:
+          PROD_URL: ${{ secrets.PROD_URL }}
+          PROD_ACCESS_CLIENT_ID: ${{ secrets.PROD_ACCESS_CLIENT_ID }}
+          PROD_ACCESS_CLIENT_SECRET: ${{ secrets.PROD_ACCESS_CLIENT_SECRET }}
+        run: |
+          deadline=$((SECONDS + 15 * 60))
+          while [ "$SECONDS" -lt "$deadline" ]; do
+            # An answer that isn't JSON, such as Cloudflare's error page, fails `jq`: not yet.
+            commit=$(curl -fsS --max-time 10 \
+              -H "CF-Access-Client-Id: $PROD_ACCESS_CLIENT_ID" \
+              -H "CF-Access-Client-Secret: $PROD_ACCESS_CLIENT_SECRET" \
+              "$PROD_URL/healthz" | jq -r .commit) || commit=
+            if [ "$commit" = "$GITHUB_SHA" ]; then
+              exit 0
+            fi
+            echo "production runs '${commit:-nothing}', waiting for $GITHUB_SHA"
+            sleep 30
+          done
+          echo "production didn't report $GITHUB_SHA within 15 minutes"
+          exit 1

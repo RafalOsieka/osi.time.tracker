@@ -69,6 +69,9 @@ export default defineNuxtConfig({
   runtimeConfig: {
     // Server-only. Override at runtime with NUXT_DATABASE_URL or DATABASE_URL.
     databaseUrl: process.env.DATABASE_URL ?? '',
+    // The Git commit the server was built from, which `/healthz` reports. The runtime image
+    // sets it as `NUXT_COMMIT_SHA` from its `COMMIT_SHA` build argument.
+    commitSha: 'dev',
     // Server-side session settings consumed by nuxt-auth-utils.
     // The cookie is sealed with a key derived from Nuxt's `appSecret`, which
     // arrives at runtime via NUXT_APP_SECRET (32+ chars) and is never baked in.
@@ -79,7 +82,7 @@ export default defineNuxtConfig({
       // Fixed lifetime (no sliding expiry for the MVP): 1 week.
       maxAge: 60 * 60 * 24 * 7,
       cookie: {
-        sameSite: 'strict',
+        sameSite: 'lax',
         httpOnly: true,
         // HTTPS-only cookie in production; relaxed for local HTTP dev.
         secure: process.env.NODE_ENV === 'production',

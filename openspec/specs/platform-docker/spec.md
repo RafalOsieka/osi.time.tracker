@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines how OSI Time Tracker is shipped for self-hosting with Docker: the application and migrator images, their runtime configuration, the self-contained production compose stack, the committed environment example, and migrations applied before the app serves traffic.
+Defines how OSI Time Tracker is packaged with Docker: the application and migrator images, their runtime configuration, the health endpoint, the committed environment example, and migrations applied before the app serves traffic.
 
 ## Requirements
 
@@ -61,77 +61,28 @@ The migrator image SHALL contain only the Node runtime, the bundled migration ru
 - **WHEN** the migrator image is inspected
 - **THEN** it contains the Node runtime, the bundled runner and the SQL migrations, and does not contain a package manager, `node_modules`, the build toolchain, or web application sources
 
-### Requirement: REQ-049 Standalone daily-use compose stack
-The system SHALL provide a self-contained `docker-compose.prod.yml`, separate from the dev `docker-compose.yml`, running a `db` service (PostgreSQL 18), the one-shot `migrate` service, the `app` service built from the `Dockerfile`, and `pgadmin`, without depending on another compose file or a pre-existing external network. Only the app and pgadmin ports SHALL be published, never the database port. The stack SHALL NOT include local tracker instances.
-
-#### Scenario: Single command brings up the full stack
-- **WHEN** `docker compose -f docker-compose.prod.yml up -d` is run on a machine with only the repository cloned (given required env vars)
-- **THEN** the database starts, pending migrations are applied, the app starts, and the app and pgadmin are reachable on their published ports without any other compose file running
-
-#### Scenario: No external network dependency
-- **WHEN** the production compose file is brought up while the dev `docker-compose.yml` stack is not running
-- **THEN** the stack creates and uses its own network and starts successfully
-
-#### Scenario: Database is not exposed on the host
-- **WHEN** the production stack is running
-- **THEN** PostgreSQL is reachable from `app`, `migrate`, and `pgadmin` by service name but no host port is published for it
-
-#### Scenario: Existing compose files keep their roles
-- **WHEN** a developer runs `docker compose up -d` (default file)
-- **THEN** no application image is built and no `app` or `migrate` container is started
-
-### Requirement: REQ-050 Persistent state across restarts
-The production stack SHALL persist database and pgadmin state across container, Docker daemon, and host restarts. PostgreSQL data SHALL be stored in a dedicated named volume (separate from the dev database volume), and the long-running services (`db`, `app`, `pgadmin`) SHALL use `restart: unless-stopped` so the stack resumes automatically when Docker starts.
-
-#### Scenario: Data survives a stack restart
-- **WHEN** the production stack is stopped with `docker compose -f docker-compose.prod.yml down` (without `-v`) and brought up again
-- **THEN** previously stored users and tracking data are still present
-
-#### Scenario: Stack resumes after Docker/host restart
-- **WHEN** the Docker daemon or the host machine restarts
-- **THEN** the `db`, `app`, and `pgadmin` containers restart automatically and the app serves traffic with the previous data intact
-
-#### Scenario: Explicit data removal only
-- **WHEN** the user runs `down -v` against the production compose file
-- **THEN** only then are the production volumes deleted; the dev volumes are never affected
-
-### Requirement: REQ-051 Standalone startup ordering and configuration
-In the production stack, `migrate` SHALL wait for the `db` healthcheck before applying migrations, and `app` SHALL start only after `migrate` completes successfully. The stack SHALL require `NUXT_APP_SECRET`, `POSTGRES_PASSWORD` and `PGADMIN_DEFAULT_PASSWORD` (no insecure defaults) and SHALL provide overridable defaults for the database user and name, the pgadmin e-mail, and the published ports.
-
-#### Scenario: Ordered cold start
-- **WHEN** the production stack starts from scratch
-- **THEN** `migrate` runs only after the database healthcheck passes, and `app` starts only after `migrate` exits with status 0
-
-#### Scenario: Missing session secret fails fast
-- **WHEN** the stack is started with any of `NUXT_APP_SECRET`, `POSTGRES_PASSWORD`, or `PGADMIN_DEFAULT_PASSWORD` unset or empty
-- **THEN** compose refuses to start the stack and the error names the missing variable
-
-#### Scenario: Defaults are overridable
-- **WHEN** the user overrides the published ports, database user, or database name via environment variables (e.g. an `.env` file)
-- **THEN** the stack uses the overridden values without editing the compose file
-
-### Requirement: REQ-346 Single environment example grouped by audience
-The repository SHALL commit one `.env.example`, grouped into host development, dev compose overrides and the production stack, with every variable documented where it is read. Copied unchanged to `.env`, it SHALL run `pnpm dev` against the dev database on `localhost`. Production-only secrets (`POSTGRES_PASSWORD`, `PGADMIN_DEFAULT_PASSWORD`) SHALL appear only commented out with generation hints, and the development `NUXT_APP_SECRET` SHALL be marked as not for production.
+### Requirement: REQ-528 Environment example for local development
+The repository SHALL commit one environment example, grouped into host development and dev compose overrides, with every variable documented where it is read. Copied unchanged, it SHALL run the app from source against the dev database on `localhost`.
 
 #### Scenario: Dev example works unchanged
-- **WHEN** a developer copies `.env.example` to `.env`, starts the dev compose stack, and runs `pnpm db:migrate` then `pnpm dev`
+- **WHEN** a developer copies the example to the real environment file, starts the dev compose stack, applies migrations and starts the app from source
 - **THEN** the app starts and connects to the dev database without editing any value
-
-#### Scenario: Unedited example does not start the production stack
-- **WHEN** a self-hoster copies `.env.example` to `.env` without uncommenting the production secrets and starts the production stack
-- **THEN** the stack refuses to start and names the first missing variable
 
 #### Scenario: Example is committed, real env files are not
 - **WHEN** the repository is inspected
-- **THEN** `.env.example` is tracked while `.env` and every other `.env.*` file are git-ignored
+- **THEN** the environment example is tracked while every real environment file is git-ignored
 
-### Requirement: REQ-354 Optional runtime log level variable
-The production compose stack SHALL pass an optional `CONSOLA_LEVEL` environment variable to the application container, defaulting to the `info` level when unset, so the server's log verbosity (core-logging REQ-357) can be raised for troubleshooting without rebuilding the image. `.env.example` SHALL document the variable, its accepted values and the default in the production section (REQ-346). The variable SHALL be optional: the stack SHALL start without it.
+### Requirement: REQ-529 Health endpoint reports database health and the running build
+`GET /healthz` SHALL answer `200` with `{ commit }` while the database answers, without requiring a session. `commit` SHALL be the Git commit the running image was built from, or `dev` when the build named none. While the database does not answer, the endpoint SHALL answer `503` using the API error contract.
 
-#### Scenario: Stack starts without the variable
-- **WHEN** the production stack is started with `.env` not defining `CONSOLA_LEVEL`
-- **THEN** the application starts and logs at the `info` level
+#### Scenario: Healthy instance
+- **WHEN** a client requests `GET /healthz` without a session and the database answers
+- **THEN** the response SHALL be `200` with the `commit` the image was built from
 
-#### Scenario: Raising verbosity without a rebuild
-- **WHEN** a self-hoster sets `CONSOLA_LEVEL` to the `debug` level in `.env` and restarts only the `app` service
-- **THEN** the container logs include debug output (including database statements) without the image being rebuilt
+#### Scenario: Build without a commit
+- **WHEN** the running image was built without naming a commit
+- **THEN** `GET /healthz` SHALL report `commit` as `dev`
+
+#### Scenario: Database unavailable
+- **WHEN** a client requests `GET /healthz` and the database does not answer
+- **THEN** the response SHALL be `503` with a `messageKey` and SHALL NOT include `commit`

@@ -26,6 +26,7 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 - **Tracker API secrets never reach the OSI server.** All tracker calls run in the browser, directly or through the extension (`packages/extension-protocol`). Do not add server-side proxying or credential storage.
 - **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers.
 - **Users are isolated.** Every query is scoped to the authenticated user.
+- **Deployment details stay private.** This repository and its workflow logs are public. Never write the production address, access credentials or specifics of the hosting infrastructure into files, issues, PRs, commits or logs; use placeholders and masked secrets (`deploy/osieka-dev/README.md`).
 - **Behavior is specified in `openspec/specs`.** Read the relevant spec before changing a feature, and keep spec and code aligned. Specs hold observable behavior only; tooling, build, CI and test-harness details live in `docs/` (`development.md`, `e2e-guideline.md`, `coding-standards.md`), and retired REQ codes in `docs/retired-requirements.md`.
 
 ## Commands
@@ -117,7 +118,8 @@ packages/remote-trackers/     Provider adapters behind a neutral contract
 packages/extension-protocol/  Message protocol shared by web app and extension
 tools/oxlint/anti-slop/       Vendored Oxlint plugin (frozen, see below)
 openspec/                     Specs (behavioral source of truth) and change proposals
-docs/                         Self-hosting, development, coding standards, e2e guideline
+deploy/osieka-dev/            Compose template and runbook of the one private instance
+docs/                         Connecting trackers, development, coding standards, e2e guideline
 ```
 
 ## Anti-slop plugin is frozen
