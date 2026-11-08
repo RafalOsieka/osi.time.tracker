@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 
 export const PROJECT_NAME_MAX_LENGTH = 100;
 export const PROJECT_REMOTE_PROJECT_ID_MAX_LENGTH = 64;
@@ -59,9 +60,11 @@ export interface ProjectDto {
   name: string;
   trackerId: string | null;
   trackerName: string | null;
+  // The Tracker's system (REQ-084), so lists can show its type mark; null for local projects.
+  trackerSystemType: TrackerSystemType | null;
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
-  // Seconds tracked in the last 30 days (REQ-371); ranks @project mentions.
+  // Seconds tracked in the last 30 days (REQ-371): ranks @project mentions and shows on the Projects list.
   recentTrackedSeconds: number;
   createdAt: string;
 }

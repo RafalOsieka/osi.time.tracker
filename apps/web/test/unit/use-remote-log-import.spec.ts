@@ -42,6 +42,7 @@ const project: ProjectDto = {
   name: 'Project 1',
   trackerId: config.id,
   trackerName: config.name,
+  trackerSystemType: config.systemType,
   remoteProjectId: 'R1',
   remoteProjectTitle: 'Remote Project',
   recentTrackedSeconds: 0,

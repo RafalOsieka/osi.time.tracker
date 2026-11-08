@@ -50,6 +50,12 @@ const themeOptions = [
   { value: 'system', icon: 'i-lucide-monitor' },
 ] satisfies Array<{ value: ColorModePreference; icon: string }>;
 
+/** The current theme's name, shown beside the Theme item so the menu tells it without opening. */
+const currentThemeLabel = computed(() => {
+  const option = themeOptions.find(({ value }) => value === colorMode.preference);
+  return option ? t(`theme.${option.value}`) : '';
+});
+
 /**
  * Account menu opened from UUser (expanded) or avatar (collapsed): Profile and the
  * Theme submenu (ui-theming REQ-402), then Log out in its own group (REQ-405).
@@ -65,6 +71,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
     {
       label: t('theme.toggleLabel'),
       icon: 'i-lucide-sun-moon',
+      slot: 'theme' as const,
       children: themeOptions.map(({ value, icon }) => ({
         label: t(`theme.${value}`),
         icon,
@@ -81,8 +88,8 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
   [
     {
       label: t('layout.logoutButton'),
+      // Signing out is not destructive, so it stays neutral rather than red.
       icon: 'i-lucide-log-out',
-      color: 'error' as const,
       disabled: pending.value,
       onSelect: () => {
         void onLogout();
@@ -105,9 +112,16 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
     <UDropdownMenu
       :items="menuItems"
       :content="{ side: 'top', align: 'start', sideOffset: 8 }"
-      :ui="{ content: 'min-w-48' }"
+      :ui="{ content: 'min-w-[max(12rem,var(--reka-dropdown-menu-trigger-width))]' }"
       data-testid="app-user-footer-menu"
     >
+      <template #theme-trailing>
+        <span class="text-xs text-muted" data-testid="app-user-footer-theme-current">
+          {{ currentThemeLabel }}
+        </span>
+        <UIcon name="i-lucide-chevron-right" class="size-5 shrink-0" aria-hidden="true" />
+      </template>
+
       <!-- Expanded: full UUser row is the clickable account control -->
       <UUser
         v-if="!collapsed && primaryLabel"
@@ -117,8 +131,8 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         :description="secondaryEmail || undefined"
         :avatar="avatar"
         size="md"
-        class="w-full min-w-0 cursor-pointer rounded-md px-1 py-1 text-start hover:bg-elevated"
-        :class="onProfile && 'bg-primary-100/80 dark:bg-primary/12'"
+        class="relative w-full min-w-0 cursor-pointer rounded-md py-1 ps-1 pe-7 text-start hover:bg-elevated"
+        :class="[SIDEBAR_FOOTER_PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
         data-testid="app-user-footer-trigger"
         :ui="{
           root: 'w-full min-w-0',
@@ -127,6 +141,19 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
           description: 'truncate',
         }"
       >
+        <!--
+          The avatar slot also carries the quiet up-down chevron at the trigger's end, so at rest it
+          reads as a menu, not a static identity block.
+        -->
+        <template #avatar>
+          <UAvatar v-bind="avatar" size="md" />
+          <UIcon
+            name="i-lucide-chevrons-up-down"
+            class="absolute end-2 top-1/2 size-4 -translate-y-1/2 text-dimmed"
+            aria-hidden="true"
+            data-testid="app-user-footer-disclosure"
+          />
+        </template>
         <template #name>
           <span data-testid="app-user-footer-primary">{{ primaryLabel }}</span>
         </template>
@@ -142,7 +169,9 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         variant="ghost"
         square
         :avatar="avatar"
-        :class="onProfile && 'bg-primary-100/80 dark:bg-primary/12'"
+        class="p-1"
+        :class="[SIDEBAR_FOOTER_PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
+        :ui="{ leadingAvatarSize: 'sm' }"
         :aria-label="primaryLabel || t('layout.logoutButton')"
         data-testid="app-user-footer-trigger"
       />

@@ -50,14 +50,26 @@ watch(
 
 const durationLabel = computed(() => formatDuration(entryDurationSeconds(entry, now)));
 const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask'));
-// Tight segments like a plain "08:00 – 08:30" label; each keeps a small hover/focus pad.
 /** Invisible text that gives the running entry's "now" the width of an HH:mm end time. */
 const TIME_SIZER = '00:00';
 
-const timeFieldUi = {
-  base: 'justify-end gap-0 px-0 py-1 text-xs font-medium text-default tabular-nums dark:font-normal @max-[40rem]/list:justify-start',
-  segment: 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto',
+/**
+ * The times sit in a control frame at rest (the control shape, not a chip's pill, with the 3:1
+ * outline), filling the fixed slot so every row's frame has one width; the ring darkens on hover
+ * and turns cyan while a segment has focus. A stopped entry's range field is the frame; a running
+ * entry's frame holds its start field and "now".
+ */
+const TIME_FRAME =
+  'flex h-6 w-full items-center justify-center rounded-sm bg-default px-1.5 ring ring-inset ring-accented transition-shadow hover:ring-(--ui-text-dimmed) focus-within:ring-primary dark:bg-muted';
+const TIME_TEXT = 'text-xs font-medium text-default tabular-nums';
+/** Tight segments like a plain "08:00 – 08:30" label; each keeps a small hover/focus pad. */
+const TIME_SEGMENT = 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto';
+
+const rangeFieldUi = {
+  base: `gap-0 ${TIME_FRAME} ${TIME_TEXT}`,
+  segment: TIME_SEGMENT,
 };
+const startFieldUi = { base: `gap-0 p-0 ${TIME_TEXT}`, segment: TIME_SEGMENT };
 
 async function startEditTitle() {
   editingField.value = null;
@@ -164,7 +176,7 @@ async function onDelete() {
         :field-label="t('timerView.entryRow.titleLabel')"
         :display-testid="`timer-entry-title-${entry.id}`"
         :input-testid="`timer-entry-title-input-${entry.id}`"
-        display-class="text-muted"
+        display-class="text-[0.8125rem] text-muted"
         @edit="startEditTitle"
         @commit="commitTitle"
         @cancel="cancelEdit"
@@ -188,42 +200,54 @@ async function onDelete() {
         Both kinds of entry put their times in the same fixed-width slot, right-aligned against
         the duration (REQ-459): a stopped entry's range field, or a running entry's start field
         with a separator and "now" in a box sized by an invisible `00:00`, so starts, dashes
-        and ends line up.
+        and ends line up. Both frames therefore have the same width.
       -->
-      <div v-if="entry.stoppedAt" class="flex w-28 shrink-0 justify-end">
+      <div
+        v-if="entry.stoppedAt"
+        data-entry-times-slot
+        class="flex w-28 shrink-0 justify-end @max-[40rem]/list:justify-start"
+      >
         <TimeField
           v-model="timesModel"
           range
           clamp-seconds
           size="xs"
           variant="none"
-          :ui="timeFieldUi"
+          :ui="rangeFieldUi"
           :separator="t('timerView.entryRow.separator')"
           :label="t('timerView.entryRow.timesLabel')"
           :testid="`timer-entry-times-${entry.id}`"
-          class="w-auto"
+          class="w-full"
           @commit="commitTimes"
         />
       </div>
       <div
         v-else
-        class="flex w-28 shrink-0 items-center justify-end text-xs font-medium text-default tabular-nums dark:font-normal"
+        data-entry-times-slot
+        class="flex w-28 shrink-0 justify-end @max-[40rem]/list:justify-start"
       >
-        <TimeField
-          v-model="timesModel.start"
-          size="xs"
-          variant="none"
-          :ui="timeFieldUi"
-          :label="t('timerView.entryRow.startLabel')"
-          :testid="`timer-entry-times-${entry.id}`"
-          class="w-auto shrink-0"
-          @commit="commitTimes"
-        />
-        <span class="px-1.5" aria-hidden="true">{{ t('timerView.entryRow.separator') }}</span>
-        <span class="relative inline-block">
-          <span class="invisible" aria-hidden="true">{{ TIME_SIZER }}</span>
-          <span class="absolute inset-0 text-center">{{ t('timerView.entryRow.nowLabel') }}</span>
-        </span>
+        <div :class="[TIME_FRAME, TIME_TEXT]">
+          <TimeField
+            v-model="timesModel.start"
+            size="xs"
+            variant="none"
+            :ui="startFieldUi"
+            :label="t('timerView.entryRow.startLabel')"
+            :testid="`timer-entry-times-${entry.id}`"
+            class="w-auto shrink-0"
+            @commit="commitTimes"
+          />
+          <span class="px-1.5 text-muted" aria-hidden="true">
+            {{ t('timerView.entryRow.separator') }}
+          </span>
+          <!-- `px-0.5` matches the end field's two 1px-padded segments. -->
+          <span class="relative inline-block px-0.5">
+            <span class="invisible" aria-hidden="true">{{ TIME_SIZER }}</span>
+            <span class="absolute inset-0 text-center text-primary">
+              {{ t('timerView.entryRow.nowLabel') }}
+            </span>
+          </span>
+        </div>
       </div>
     </ColumnCell>
 
@@ -238,15 +262,25 @@ async function onDelete() {
       {{ durationLabel }}
     </ColumnCell>
 
-    <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
+    <ColumnCell
+      :columns="columns"
+      col="action"
+      :narrow="{ col: [6, 7], row: 1 }"
+      class="flex justify-center"
+    >
       <UTooltip :text="t('timerView.entryRow.deleteLabel')" :content="{ side: 'top' }">
+        <!--
+          A 28px soft red tile: the denser size of the row-action tiles, for the expanded block. In
+          dark mode its glyph is a step lighter (red-300), so it reads clearly on the deep red tile.
+        -->
         <UButton
           icon="i-lucide-trash-2"
           variant="soft"
           square
-          size="xs"
+          size="sm"
           color="error"
-          class="size-6 justify-center"
+          class="size-7 justify-center dark:text-red-300"
+          :ui="{ leadingIcon: 'size-4' }"
           :aria-label="t('timerView.entryRow.deleteLabel')"
           :loading="deleting"
           :data-testid="`timer-entry-delete-${entry.id}`"

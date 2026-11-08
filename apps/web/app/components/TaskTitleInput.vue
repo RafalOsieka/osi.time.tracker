@@ -26,6 +26,7 @@ const {
   disabled = false,
   bare = false,
   chipTestid,
+  textMaxWidth = undefined,
 } = defineProps<{
   /** Load the mention project list on mount instead of on first focus. */
   eager?: boolean;
@@ -38,6 +39,12 @@ const {
   bare?: boolean;
   /** Prefix for the chip's test ids: `${chipTestid}-chip` and `${chipTestid}-chip-remove`. */
   chipTestid: string;
+  /**
+   * Caps the bare field's text at a fixed CSS width (the top bar while its start editor is open),
+   * so a title truncates at the same point in both themes instead of where each theme's glyph
+   * widths happen to run out of room.
+   */
+  textMaxWidth?: string;
 }>();
 
 /**
@@ -169,10 +176,24 @@ const menuItems = computed(() =>
         };
       }
       text.value = typed;
+      createdTitle.value = typed;
       overlayOpen.value = false;
     },
   }),
 );
+
+/** The title the create-new-task option committed; it stays "new" until the text changes. */
+const createdTitle = ref<string | null>(null);
+/**
+ * Whether the text is a title from the create-new-task option (REQ-467), for a "new Task" cue.
+ * It reflects the user's choice, not server state: a same-named Task may still be matched.
+ */
+const isNewTask = computed(
+  () => !task.value && !!createdTitle.value && createdTitle.value === text.value,
+);
+/** Read-only for callers: mirrors `isNewTask` so a form can show a "new Task" cue. */
+const newTaskModel = defineModel<boolean>('newTask', { default: false });
+watch(isNewTask, (value) => (newTaskModel.value = value), { immediate: true });
 
 function onModelUpdate(value: string | null | undefined) {
   const next = value ?? '';
@@ -200,6 +221,19 @@ function onEnter() {
 function removeChip() {
   project.value = null;
   emit('removeProject');
+}
+
+/**
+ * The bare field's padding matches its sizing copy (`ps-2.5 pe-1`, no room for the hidden chevron),
+ * and the copy repeats the input's type size (16px, 14px from `md`), so the chip lands 8px after
+ * the last letter; the overlay keeps a usable width however short the title is. A title with no
+ * room left ends in an ellipsis at rest rather than a glyph cut in half.
+ */
+const BARE_UI = { trailing: 'hidden', base: 'w-full pe-1 text-ellipsis', content: 'min-w-80' };
+
+/** The free space after a bare field's text and chip still belongs to the field. */
+function focusInput() {
+  menuRef.value?.inputRef?.focus();
 }
 
 export interface TitleCommit {
@@ -242,7 +276,7 @@ defineExpose({ resolveCommit });
     so the chip is ordinary flow content: no widths to guess or measure, nothing shifts.
   -->
   <div
-    class="flex min-w-0 flex-1 items-center"
+    class="flex min-w-0 flex-1 items-center self-stretch"
     :class="
       project &&
       !bare &&
@@ -256,37 +290,59 @@ defineExpose({ resolveCommit });
       :testid="chipTestid"
       @remove="removeChip"
     />
-    <UInputMenu
-      v-bind="$attrs"
-      ref="menuRef"
-      v-model:open="overlayOpen"
-      :model-value="text"
-      :search-term="text"
-      :items="menuItems"
-      value-key="name"
-      label-key="label"
-      :variant="project || bare ? 'none' : 'outline'"
-      :disabled="disabled"
-      :placeholder="placeholder"
-      mode="autocomplete"
-      ignore-filter
-      class="min-w-0 flex-1"
-      :ui="bare ? { trailing: 'hidden' } : undefined"
-      @update:model-value="onModelUpdate"
-      @update:search-term="onSearchTerm"
-      @focus="loadMentionProjects"
-      @blur="emit('blur')"
-      @keydown.enter="onEnter"
-      @keyup="syncCaret"
-      @click="syncCaret"
-    />
-    <!-- The top-bar timer reads "Task, then its Project", so its chip follows the text. -->
+    <!--
+      The top-bar timer reads "Task, then its Project": the bare field hugs its text (an invisible
+      copy of the text sizes the shared grid cell, shrinking when space runs out), so the chip
+      sits right after the title, and the free space after both still focuses the field.
+    -->
+    <div
+      :class="bare ? 'grid min-w-0 grid-cols-[minmax(0,auto)]' : 'contents'"
+      :style="bare && textMaxWidth ? { maxWidth: textMaxWidth } : undefined"
+    >
+      <span
+        v-if="bare"
+        class="invisible col-start-1 row-start-1 min-w-12 overflow-hidden ps-2.5 pe-1 text-base/5 whitespace-pre md:text-sm/5"
+        aria-hidden="true"
+      >
+        {{ text || placeholder }}
+      </span>
+      <UInputMenu
+        v-bind="$attrs"
+        ref="menuRef"
+        v-model:open="overlayOpen"
+        :model-value="text"
+        :search-term="text"
+        :items="menuItems"
+        value-key="name"
+        label-key="label"
+        :variant="project || bare ? 'none' : 'outline'"
+        :disabled="disabled"
+        :placeholder="placeholder"
+        mode="autocomplete"
+        ignore-filter
+        :class="bare ? 'col-start-1 row-start-1 min-w-0' : 'min-w-0 flex-1'"
+        :ui="bare ? BARE_UI : undefined"
+        @update:model-value="onModelUpdate"
+        @update:search-term="onSearchTerm"
+        @focus="loadMentionProjects"
+        @blur="emit('blur')"
+        @keydown.enter="onEnter"
+        @keyup="syncCaret"
+        @click="syncCaret"
+      />
+    </div>
     <TaskProjectChip
       v-if="project && bare"
-      class="ms-1"
+      class="ms-1 shrink-0"
       :name="project.name"
       :testid="chipTestid"
       @remove="removeChip"
+    />
+    <div
+      v-if="bare"
+      class="min-w-4 flex-1 self-stretch cursor-text"
+      aria-hidden="true"
+      @click="focusInput"
     />
   </div>
 </template>

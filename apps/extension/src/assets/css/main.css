@@ -1,15 +1,133 @@
 @import 'tailwindcss';
 @import '@nuxt/ui';
+/* Bundled with the extension, so its pages work offline and fetch nothing (REQ-408). */
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
 
 /*
- * Warnings use the darker 600 step on light surfaces so badge and alert text stays readable on
- * white (design D5). Dark mode keeps Nuxt UI's lighter step; `.dark` is restated because both
- * selectors match <html> with equal specificity and the later rule wins.
+ * The web app's design system (apps/web/app/assets/css/main.css), mirrored so the popup and the
+ * setup page look like OSI itself: Geist and Geist Mono, a cyan accent, cool slate neutrals.
+ * Keep the two files in sync when a token changes.
+ */
+@theme {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono Variable', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+/*
+ * Light mode takes the accent and status colours one step darker than the framework default so
+ * white text on fills and status text on white stay AA; dark mode keeps the lighter shades. Light
+ * mode puts white cards on a light slate canvas; dark mode is layered low-chroma blue-charcoal,
+ * never near-black and never the saturated navy at the slate ramp's dark end.
  */
 :root {
-  --ui-warning: var(--ui-color-warning-600);
+  --ui-radius: 0.375rem;
+  --ui-primary: var(--ui-color-primary-700);
+  --ui-success: var(--ui-color-success-700);
+  --ui-info: var(--ui-color-info-600);
+  --ui-warning: var(--ui-color-warning-700);
+  --ui-error: var(--ui-color-error-600);
+  /* A darker text ramp: even dimmed text (placeholders) stays readable. */
+  --ui-text-dimmed: color-mix(
+    in oklab,
+    var(--ui-color-neutral-500) 80%,
+    var(--ui-color-neutral-600)
+  );
+  --ui-text-muted: var(--ui-color-neutral-600);
+  --ui-text-toned: var(--ui-color-neutral-700);
+  --ui-text: var(--ui-color-neutral-800);
+  --ui-text-highlighted: var(--ui-color-neutral-950);
+  /* Control outlines (inputs, selects, outline buttons) reach 3:1; dividers stay lighter. */
+  --ui-border-accented: color-mix(
+    in oklab,
+    var(--ui-color-neutral-400) 50%,
+    var(--ui-color-neutral-500)
+  );
+  --app-canvas: oklch(97.1% 0.007 255);
 }
 
 .dark {
+  --ui-primary: var(--ui-color-primary-400);
+  --ui-success: var(--ui-color-success-400);
+  --ui-info: var(--ui-color-info-400);
   --ui-warning: var(--ui-color-warning-400);
+  --ui-error: var(--ui-color-error-400);
+  --ui-text-dimmed: color-mix(
+    in oklab,
+    var(--ui-color-neutral-400) 75%,
+    var(--ui-color-neutral-500)
+  );
+  --ui-text-muted: var(--ui-color-neutral-400);
+  --ui-text-toned: var(--ui-color-neutral-300);
+  --ui-text: color-mix(in oklab, var(--ui-color-neutral-200) 50%, var(--ui-color-neutral-300));
+  --ui-text-highlighted: var(--ui-color-neutral-200);
+  --ui-bg: oklch(22% 0.018 262);
+  --ui-bg-muted: oklch(25% 0.02 262);
+  --ui-bg-elevated: oklch(28.5% 0.022 262);
+  --ui-bg-accented: oklch(35% 0.026 262);
+  --ui-border: oklch(31.5% 0.022 262);
+  --ui-border-muted: oklch(28.5% 0.022 262);
+  --ui-border-accented: var(--ui-color-neutral-500);
+  --app-canvas: var(--ui-bg);
+}
+
+html,
+body {
+  margin: 0;
+}
+
+body {
+  background: var(--app-canvas);
+  color: var(--ui-text);
+}
+
+/* The popup is sized to its content; any sub-pixel rest under the footer matches the footer. */
+body[data-surface='popup'] {
+  background: var(--ui-bg);
+}
+
+/*
+ * One 400/500/600 ramp that reads the same in both themes. Light text on dark renders thinner in
+ * the browser's grayscale antialiasing at the extension's small sizes, so dark mode keeps body
+ * text a touch lighter but holds primary text at a full medium.
+ */
+.dark {
+  font-weight: 380;
+  --font-weight-normal: 380;
+  --font-weight-medium: 520;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 680;
+}
+
+/* Text on a solid fill: dark text on the bright dark-mode fill keeps the regular weights. */
+.dark .text-inverted {
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+}
+
+html:not(.dark) .text-inverted {
+  --font-weight-medium: 440;
+  --font-weight-semibold: 540;
+}
+
+/*
+ * Paragraphs and headings never end on a lone short word. A base-layer default, so a
+ * `text-balance` or `text-wrap` utility still decides where a component needs it.
+ */
+@layer base {
+  p,
+  li,
+  h1,
+  h2,
+  h3 {
+    text-wrap: pretty;
+  }
+}
+
+/* Buttons and links show a 2px focus ring at 3:1 against their surface in both themes. */
+button[data-slot='base']:focus-visible,
+a[data-slot='base']:focus-visible {
+  outline: 2px solid var(--ui-primary);
+  outline-offset: 2px;
 }

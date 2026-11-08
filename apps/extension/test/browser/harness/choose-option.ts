@@ -9,8 +9,8 @@ export async function chooseOption(page: Page, testId: string, name: string | Re
 
 /** Accessible option names that do not depend on the current UI language. */
 export const optionNames = {
-  en: /^(English|angielski)$/,
-  pl: /^(Polish|polski)$/,
+  en: /^(English|Angielski)$/,
+  pl: /^(Polish|Polski)$/,
   dark: /^(Dark|Ciemny)$/,
   light: /^(Light|Jasny)$/,
   openproject: 'OpenProject',

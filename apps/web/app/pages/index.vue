@@ -12,11 +12,11 @@ const columns = computed(
       { key: 'project', track: { fr: 1.2, min: '7rem' }, header: t('timerView.columns.project') },
       { key: 'issue', track: '4.5rem', header: t('timerView.columns.issue') },
       { key: 'duration', track: '5rem', header: t('timerView.columns.duration'), align: 'end' },
-      { key: 'action', track: '1.5rem' },
+      { key: 'action', track: '2rem' },
     ] as const satisfies readonly ColumnDefinition[],
 );
 /** Narrow layout (D5): toggle, count, text, issue, duration, action. */
-const narrowColumns = '1.5rem 1.25rem minmax(0,1fr) 4.5rem 5rem 1.5rem';
+const narrowColumns = '1.5rem 1.25rem minmax(0,1fr) 4.5rem 5rem 2rem';
 usePageTitle(() => t('timerView.pageTitle'));
 const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useProfile();
@@ -215,18 +215,6 @@ const hasEntries = computed(() => days.value.length > 0);
 /** Skeleton while the first feed is pending with nothing to show yet (REQ-391). */
 const feedLoading = computed(() => !feedSettled.value && entries.value.length === 0);
 
-/** The day's full date as a heading, capitalised (Polish weekdays are lower-case). */
-function dayHeading(dayKey: string): string {
-  const heading = new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: effective.value.timeZone,
-  });
-  return capitalizeFirst(heading, locale.value);
-}
-
 function isGroupLive(group: { entries: TimeEntryDto[] }): boolean {
   return !!running.value && group.entries.some((e) => e.id === running.value!.id);
 }
@@ -340,13 +328,18 @@ async function onEntryDeleted() {
       :title="t('timerView.pageTitle')"
       :new-label="t('timerView.addEntry.buttonLabel')"
       new-testid="timer-view-add-entry"
+      :quiet="isNeverTracked"
+      :pressed="addEntryVisible"
       @create="openAddEntry"
     />
 
     <EmptyState
       v-if="isNeverTracked"
-      :message="t('timerView.neverTrackedEmptyState')"
+      icon="i-lucide-timer"
+      :title="t('timerView.neverTrackedTitle')"
+      :message="t('timerView.neverTrackedMessage')"
       :cta-label="t('timerView.neverTrackedCta')"
+      cta-icon="i-lucide-arrow-up"
       testid="timer-view-never-tracked"
       @create="focusTimerWidget"
     />
@@ -366,15 +359,23 @@ async function onEntryDeleted() {
               :narrow="{ col: [1, 5], row: 1 }"
               class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1"
             >
-              <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">{{ dayHeading(day.dayKey) }}</h2>
-              <NuxtLink
+              <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">
+                {{ formatDayHeading(day.dayKey, locale) }}
+              </h2>
+              <!--
+                A quiet link-style action, not a chip (chips only display), at 14px and at the end of
+                the cell, so every day puts it in the same place, right before the day total.
+              -->
+              <UButton
                 :to="`/sync/${day.dayKey}`"
-                class="inline-flex shrink-0 items-center gap-1 rounded-sm text-xs font-medium text-muted no-underline transition-colors hover:text-primary focus-visible:text-primary focus-visible:outline-2 focus-visible:outline-primary/50"
+                :label="t('timerView.remoteSyncAction')"
+                icon="i-lucide-cloud-upload"
+                color="neutral"
+                variant="ghost"
+                size="xs"
+                class="ms-auto shrink-0 self-center rounded-md text-sm font-normal text-muted hover:text-primary focus-visible:text-primary"
                 :data-testid="`timer-day-remote-sync-${day.dayKey}`"
-              >
-                <UIcon name="i-lucide-cloud-upload" class="size-3.5" aria-hidden="true" />
-                {{ t('timerView.remoteSyncAction') }}
-              </NuxtLink>
+              />
             </ColumnCell>
             <ColumnCell
               :columns="columns"
@@ -404,6 +405,7 @@ async function onEntryDeleted() {
             :project-options="projectOptions"
             :tracker="trackerForGroup(group)"
             :scope="scopeForGroup(group)"
+            :day-label="formatDayHeading(day.dayKey, locale, { weekday: false })"
             @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
             @continue="onContinue(group)"
             @stop="onStop"
@@ -462,7 +464,7 @@ async function onEntryDeleted() {
 <style scoped>
 @container list (max-width: 40rem) {
   .timer-list :deep([role='table']) {
-    grid-template-columns: 1.5rem 1.25rem repeat(3, minmax(0, 1fr)) 5rem 1.5rem !important;
+    grid-template-columns: 1.5rem 1.25rem repeat(3, minmax(0, 1fr)) 5rem 2rem !important;
   }
 }
 </style>

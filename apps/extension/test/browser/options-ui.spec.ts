@@ -7,7 +7,7 @@ import {
   type ExtensionHarness,
 } from './harness/extension-context.js';
 import { chooseOption, optionNames } from './harness/choose-option.js';
-import { toasts, waitUntilIdle } from './harness/setup-page.js';
+import { openAddForm, toasts, waitUntilIdle } from './harness/setup-page.js';
 import { startWebsiteFixture } from './harness/website-fixture.js';
 import { requireChromium } from './harness/skip.js';
 
@@ -231,18 +231,24 @@ describeChromium('extension options UI', () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
     await chooseOption(page, 'language', optionNames.en);
-    await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
+    // Without a website there is no tracker form, only what to do first.
+    await expect
+      .poll(() => page.getByTestId('destination-website-required').isVisible())
+      .toBe(true);
+    expect(await page.getByTestId('add-destination').count()).toBe(0);
     await page.getByTestId('website-origin').fill('https://time.example.com/reports');
     await page.getByTestId('add-website').press('Enter');
     await expect
       .poll(() => page.getByTestId('website-origin').getAttribute('aria-invalid'))
       .toBe('true');
     await expect
-      .poll(() => page.locator('#website-origin-error').textContent())
-      .toMatch(/Remove paths/);
+      .poll(() => page.getByTestId('website-origin-error').textContent())
+      .toMatch(/without a path/);
     await page.getByTestId('website-origin').fill('http://localhost:3000');
     await page.getByTestId('add-website').press('Enter');
-    await expect.poll(() => toasts(page).textContent()).toMatch(/saved/i);
+    await expect
+      .poll(() => toasts(page).textContent())
+      .toMatch(/Website approved\..*localhost:3000/);
 
     await page.reload();
     await expect
@@ -250,52 +256,57 @@ describeChromium('extension options UI', () => {
       .toBe(true);
 
     await chooseOption(page, 'language', optionNames.pl);
-    await expect.poll(() => page.getByTestId('add-website').textContent()).toMatch(/Zatwierdź/i);
+    await expect
+      .poll(() => page.getByTestId('new-website').textContent())
+      .toMatch(/Zatwierdź witrynę/);
     await expect
       .poll(() => page.getByTestId('add-destination').textContent())
       .toMatch(/Zatwierdź tracker/i);
     await page.reload();
-    await expect.poll(() => page.getByTestId('language').textContent()).toContain('polski');
+    await expect.poll(() => page.getByTestId('language').textContent()).toContain('Polski');
     const popup = await harness!.context.newPage();
     await popup.goto(popupUrl(harness!));
+    // Halfway through setup the done step names the website and the current one carries the
+    // way into setup; the approval lists wait until setup is complete.
     await expect
-      .poll(() => popup.getByTestId('open-options').textContent())
-      .toMatch(/Otwórz konfigurację/);
-
+      .poll(() => popup.getByTestId('checklist-action-tracker').textContent())
+      .toMatch(/Zatwierdź tracker/);
     await expect
-      .poll(() => popup.getByTestId('saved-websites').textContent())
-      .toContain('Zapisane witryny');
+      .poll(() => popup.getByTestId('checklist-website-link').textContent())
+      .toMatch(/^\s*localhost:3000\s*$/);
+    expect(await popup.getByTestId('saved-websites').count()).toBe(0);
+    expect(await popup.getByTestId('saved-trackers').count()).toBe(0);
+    await expect
+      .poll(() => popup.getByTestId('popup-status').textContent())
+      .toMatch(/Do skonfigurowania/);
+    await page.getByTestId('destination-url').fill('https://tracker.example.com/team');
+    await page.getByTestId('add-destination').press('Enter');
+    await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
+    await expect.poll(() => popup.getByTestId('popup-status').textContent()).toMatch(/Gotowe/);
     await expect
       .poll(async () =>
         (await popup.getByTestId('popup-website').allTextContents()).map((text) => text.trim()),
       )
-      .toEqual(['http://localhost:3000']);
-    await expect.poll(() => popup.getByTestId('popup-status').textContent()).toMatch(/Gotowa/);
-    await page.getByTestId('destination-url').fill('https://tracker.example.com/team');
-    await page.getByTestId('add-destination').press('Enter');
-    await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(1);
+      .toEqual(['localhost:3000']);
     await expect
       .poll(() => popup.getByTestId('saved-trackers').textContent())
-      .toContain('Zapisane trackery');
+      .toContain('Zatwierdzone trackery');
     await expect
       .poll(async () =>
         (await popup.getByTestId('popup-tracker-url').allTextContents()).map((text) => text.trim()),
       )
-      .toEqual(['https://tracker.example.com/team']);
+      .toEqual(['tracker.example.com/team']);
     await expect
-      .poll(async () =>
-        (await popup.getByTestId('popup-tracker-detail').allTextContents()).map((text) =>
-          text.replace(/\s+/g, ' ').trim(),
-        ),
-      )
-      .toEqual(['OpenProject localhost:3000']);
+      .poll(() => popup.getByTestId('popup-tracker-activity').textContent())
+      .toMatch(/Brak aktywności/);
+    await expect.poll(() => popup.getByTestId('open-options').isVisible()).toBe(true);
     await waitUntilIdle(page);
     const revokeLocalhost = page.getByTestId('revoke-website-http://localhost:3000');
     await page.bringToFront();
     await revokeLocalhost.press('Enter');
     await expect
       .poll(() => page.getByRole('dialog').textContent())
-      .toContain('Liczba trackerów: 1');
+      .toMatch(/zatwierdzenie 1\s+trackera:[\s\S]*tracker\.example\.com\/team/);
     // Escape belongs to the dialog only once its focus trap has taken focus from the trigger.
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null))
@@ -308,28 +319,32 @@ describeChromium('extension options UI', () => {
       .toBe(true);
     await revokeLocalhost.press('Enter');
     await confirmRevoke(page);
-    await expect.poll(() => toasts(page).textContent()).toMatch(/cofni/i);
+    await expect
+      .poll(() => toasts(page).textContent())
+      .toMatch(/Usunięto witrynę\s*localhost:3000/);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
-    await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
     await expect
-      .poll(() => popup.getByTestId('saved-websites').textContent())
-      .toContain('Nie zatwierdzono jeszcze żadnej witryny.');
-    await expect
-      .poll(() => popup.getByTestId('saved-trackers').textContent())
-      .toContain('Nie zatwierdzono jeszcze żadnego trackera.');
+      .poll(() => page.getByTestId('destination-website-required').isVisible())
+      .toBe(true);
+    // Back to onboarding: the popup hides the empty lists behind the checklist.
+    await expect.poll(() => popup.getByTestId('setup-checklist').isVisible()).toBe(true);
+    expect(await popup.getByTestId('saved-websites').count()).toBe(0);
+    expect(await popup.getByTestId('saved-trackers').count()).toBe(0);
 
     await page.getByTestId('website-origin').fill('http://localhost:3001');
     await page.getByTestId('add-website').press('Enter');
     await expect
       .poll(() => page.getByTestId('destination-website-single').textContent())
-      .toContain('http://localhost:3001');
+      .toContain('localhost:3001');
     expect(await page.getByTestId('destination-website').count()).toBe(0);
     await waitUntilIdle(page);
     await page.getByTestId('revoke-website-http://localhost:3001').click();
     await expect
       .poll(() => page.getByTestId('revoke-website-http://localhost:3001').count())
       .toBe(0);
-    await expect.poll(() => page.getByTestId('add-destination').isDisabled()).toBe(true);
+    await expect
+      .poll(() => page.getByTestId('destination-website-required').isVisible())
+      .toBe(true);
   });
 
   it('synchronizes setup tabs, distinguishes destination identities, and restores lost browser access', async () => {
@@ -343,6 +358,7 @@ describeChromium('extension options UI', () => {
       .poll(() => other.getByTestId('add-website').textContent())
       .toMatch(/Approve website/);
     for (const [index, origin] of ['http://localhost:3100', 'http://localhost:3101'].entries()) {
+      await openAddForm(page, 'website');
       await page.getByTestId('website-origin').fill(origin);
       await page.getByTestId('add-website').click();
       await expect.poll(() => other.getByTestId(`revoke-website-${origin}`).isVisible()).toBe(true);
@@ -350,8 +366,10 @@ describeChromium('extension options UI', () => {
       if (index === 0) {
         await expect
           .poll(() => page.getByTestId('destination-website-single').textContent())
-          .toContain(origin);
+          .toContain(new URL(origin).host);
       } else {
+        // Trackers are listed now, so their form waits behind "Add tracker".
+        await openAddForm(page, 'destination');
         await chooseOption(page, 'destination-website', origin);
       }
       await chooseOption(page, 'destination-provider', optionNames.redmine);
@@ -362,7 +380,7 @@ describeChromium('extension options UI', () => {
       );
       await expect
         .poll(() => row.getAttribute('aria-label'))
-        .toBe(`Revoke tracker Website: ${origin} — Redmine https://shared.example.com/team`);
+        .toBe(`Remove tracker Redmine https://shared.example.com/team (for ${origin})`);
     }
     const popup = await harness!.context.newPage();
     await popup.addInitScript(() => {
@@ -373,9 +391,7 @@ describeChromium('extension options UI', () => {
           : contains(request);
     });
     await popup.goto(popupUrl(harness!));
-    await expect
-      .poll(() => popup.getByTestId('popup-status').textContent())
-      .toMatch(/Needs attention/);
+    await expect.poll(() => popup.getByTestId('popup-status').textContent()).toMatch(/No access/);
     await expect.poll(() => popup.getByTestId('popup-missing-access').isVisible()).toBe(true);
     await expect
       .poll(async () =>
@@ -407,8 +423,12 @@ describeChromium('extension options UI', () => {
     await other.getByTestId('revoke-website-http://localhost:3100').click();
     await confirmRevoke(other);
     await expect
+      .poll(() => page.getByTestId('revoke-website-http://localhost:3100').count())
+      .toBe(0);
+    await openAddForm(page, 'destination');
+    await expect
       .poll(() => page.getByTestId('destination-website-single').textContent())
-      .toContain('http://localhost:3101');
+      .toContain('localhost:3101');
     await waitUntilIdle(other);
     await other.getByTestId('revoke-website-http://localhost:3101').click();
     await confirmRevoke(other);
@@ -448,7 +468,7 @@ describeChromium('extension options UI', () => {
       .toBe(true);
     await expect
       .poll(() => page.getByTestId('setup-error').textContent())
-      .toMatch(/bridge could not be configured/);
+      .toMatch(/could not be connected to the extension/);
     await harness!.worker.evaluate(() => {
       // SAFETY: restore the native register function stashed for this test.
       const g = globalThis as typeof globalThis & {

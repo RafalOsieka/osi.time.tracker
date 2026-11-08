@@ -103,6 +103,7 @@ function project(overrides: Partial<ProjectDto> = {}): ProjectDto {
     name: 'Scoped Project',
     trackerId: tracker.id,
     trackerName: tracker.name,
+    trackerSystemType: tracker.systemType,
     remoteProjectId: 'R1',
     remoteProjectTitle: 'Remote One',
     recentTrackedSeconds: 0,
@@ -154,6 +155,11 @@ const stubs = {
       '<button type="button" v-bind="$attrs" :disabled="disabled" @click="$emit(\'click\')">{{ label }}</button>',
   },
   UProgress: { props: ['modelValue', 'max'], template: '<div role="progressbar" />' },
+  UAlert: {
+    props: ['title', 'description', 'actions'],
+    template:
+      '<div v-bind="$attrs" :data-title="title">{{ description }}<a v-for="action in actions" :key="action.label" :href="action.to" data-testid="alert-action">{{ action.label }}</a></div>',
+  },
   UIcon: { props: ['name'], template: '<i />' },
 };
 
@@ -231,6 +237,25 @@ describe('TrackerImportDialog', () => {
     // SAFETY: the dialog calls startScan(range) with exactly one { from, to } argument.
     const call = startScanMock.mock.calls[0]![0] as { from: string; to: string };
     expect(call.from < call.to).toBe(true);
+  });
+
+  it('replaces the per-row warnings with one warning when no project is linked', async () => {
+    fetchMock.mockResolvedValue([
+      project({ id: 'proj-1', remoteProjectId: null }),
+      project({ id: 'proj-2', remoteProjectId: null }),
+    ]);
+    const wrapper = await mount();
+
+    // Rows still name their (missing) link, but quietly: only the one warning is amber.
+    const row = wrapper.get('[data-testid="tracker-import-unscoped-proj-1"]');
+    expect(row.text()).toContain('trackerImport.unscopedHint');
+    expect(row.find('.text-warning').exists()).toBe(false);
+    expect(
+      wrapper.get('[data-testid="tracker-import-unscoped-help"]').attributes('data-title'),
+    ).toBe('trackerImport.allUnscopedWarning');
+    const action = wrapper.get('[data-testid="alert-action"]');
+    expect(action.text()).toBe('trackerImport.setLinksButton');
+    expect(action.attributes('href')).toBe('/projects');
   });
 
   it('rejects an inverted range inline without starting a scan', async () => {

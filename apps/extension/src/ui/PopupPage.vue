@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, shallowRef } from 'vue';
 import UAlert from '@nuxt/ui/components/Alert.vue';
-import UAvatar from '@nuxt/ui/components/Avatar.vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
+import UCard from '@nuxt/ui/components/Card.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import ULink from '@nuxt/ui/components/Link.vue';
 import { ApprovalService, destinationKey } from '../approvals/approvals.js';
@@ -11,18 +11,23 @@ import {
   createChromeApprovalStore,
   createChromeHostPermissions,
 } from '../approvals/chrome-store.js';
+import { displayDestination, displayUrl, isPlainHttp } from '../approvals/display.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
 import { useTrackerActivity } from '../composables/use-tracker-activity.js';
-import { formatActivity } from '../activity/format-activity.js';
+import ActivityLine from './ActivityLine.vue';
+import AlertBody from './AlertBody.vue';
+import { errorTitleKey, missingAccessAlert } from './alerts.js';
 import BrandMark from './BrandMark.vue';
+import { extensionStatus, missingAccessItems, type ExtensionStatus } from './extension-status.js';
 import { openWebsite } from './open-website.js';
 import SetupChecklist from './SetupChecklist.vue';
 import SuggestionList from './SuggestionList.vue';
-import { currentWebsiteOffer, openSetupPage } from './open-setup.js';
+import TrackerMark from './TrackerMark.vue';
+import { currentWebsiteOffer, openSetupPage, type SetupStep } from './open-setup.js';
 
-const { t, locale, localeErrorKey } = useExtensionI18n();
+const { t, localeErrorKey } = useExtensionI18n();
 const { activity, now } = useTrackerActivity();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const {
@@ -39,17 +44,64 @@ const {
   suggestions: new SuggestionService(createChromeSuggestionStore(), service),
 });
 
-const needsAttention = computed(() => errorKey.value !== null || missingOrigins.value.length > 0);
-const badge = computed(() =>
-  needsAttention.value
-    ? { label: t.value('app.statusAttention'), color: 'warning' as const }
-    : { label: t.value('app.statusOk'), color: 'success' as const },
-);
 const setupComplete = computed(() => websites.value.length > 0 && destinations.value.length > 0);
-const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
+/** First use: the checklist leads and replaces the footer's generic way into setup. */
+const onboarding = computed(() => loaded.value && !setupComplete.value);
+const lostAccess = computed(() =>
+  missingAccessItems(websites.value, destinations.value, missingOrigins.value),
+);
+const accessAlert = computed(() => missingAccessAlert(lostAccess.value, 'popup', t.value));
 
-/** Website shown under a tracker row: just the host, the scheme is noise at popup width. */
-const websiteHost = (origin: string) => new URL(origin).host;
+const status = computed(() =>
+  extensionStatus({
+    failed: errorKey.value !== null,
+    missingAccess: lostAccess.value.length,
+    pendingSuggestions: suggestions.value.length,
+    setupComplete: setupComplete.value,
+  }),
+);
+/**
+ * How the badge shows each status: a label, a colour and an icon, never colour alone. Kept in
+ * this file because the icon bundler only scans components for icon names.
+ */
+const STATUS_BADGES = {
+  error: {
+    labelKey: 'app.statusError',
+    color: 'warning',
+    variant: 'soft',
+    icon: 'i-lucide-circle-alert',
+  },
+  access: {
+    labelKey: 'app.statusAccess',
+    color: 'warning',
+    variant: 'soft',
+    icon: 'i-lucide-shield-alert',
+  },
+  review: {
+    labelKey: 'app.statusReview',
+    color: 'primary',
+    variant: 'soft',
+    icon: 'i-lucide-inbox',
+  },
+  setup: {
+    labelKey: 'app.statusSetup',
+    color: 'neutral',
+    variant: 'soft',
+    icon: 'i-lucide-circle-dashed',
+  },
+  ready: {
+    labelKey: 'app.statusReady',
+    color: 'success',
+    variant: 'soft',
+    icon: 'i-lucide-circle-check',
+  },
+} as const satisfies Record<
+  ExtensionStatus,
+  { labelKey: string; color: string; variant: string; icon: string }
+>;
+const badge = computed(() => STATUS_BADGES[status.value]);
+/** Trackers name their website only when there is more than one to tell apart. */
+const showsWebsite = computed(() => websites.value.length > 1);
 
 /** The active tab's address, readable thanks to activeTab once the user opened the popup. */
 const activeTabUrl = shallowRef<string | undefined>();
@@ -62,14 +114,44 @@ const websiteOffer = computed(() =>
     : null,
 );
 
-const websiteOfferActions = computed(() => {
+/**
+ * While the website step is current, the tab's offer is that step's own action (REQ-415);
+ * otherwise an unapproved OSI tab gets its own card above everything else.
+ */
+const offerInChecklist = computed(() => onboarding.value && websites.value.length === 0);
+
+function actOnStep(step: SetupStep): void {
   const website = websiteOffer.value;
-  if (!website) return [];
+  if (step === 'website' && website) void openSetupPage({ website });
+  else void openSetupPage({ step });
+}
+
+const errorActions = computed(() => [
+  {
+    label: t.value(
+      errorKey.value === 'approvals.loadFailed' ? 'approvals.retryLoad' : 'approvals.retry',
+    ),
+    icon: 'i-lucide-rotate-cw',
+    color: 'neutral' as const,
+    variant: 'outline' as const,
+    size: 'md' as const,
+    disabled: busy.value,
+    onClick: () => refresh(),
+  },
+]);
+
+/** The popup never requests permissions itself: restoring continues on the setup page. */
+const accessActions = computed(() => {
+  const [first] = lostAccess.value;
+  if (!first) return [];
   return [
     {
-      label: t.value('app.currentWebsiteApprove'),
-      color: 'primary' as const,
-      onClick: () => openSetupPage({ website }),
+      label: t.value('approvals.restorePermission'),
+      trailingIcon: 'i-lucide-arrow-up-right',
+      color: 'neutral' as const,
+      variant: 'outline' as const,
+      size: 'md' as const,
+      onClick: () => openSetupPage({ restore: first.focus }),
     },
   ];
 });
@@ -92,8 +174,8 @@ function openOptions(): void {
 </script>
 
 <template>
-  <main class="flex w-90 flex-col bg-default text-sm text-default">
-    <header class="flex items-center gap-2.5 border-b border-default px-4 py-3">
+  <main class="flex max-h-150 w-90 flex-col text-sm text-default">
+    <header class="flex shrink-0 items-center gap-3 border-b border-default bg-default px-4 py-3">
       <BrandMark :size="28" />
       <div class="flex min-w-0 grow flex-col">
         <h1 class="text-sm font-semibold text-highlighted">OSI Time Tracker</h1>
@@ -104,169 +186,242 @@ function openOptions(): void {
         role="status"
         aria-live="polite"
         data-testid="popup-status"
+        :data-status="status"
+        class="shrink-0"
         :color="badge.color"
-        variant="soft"
-        :label="badge.label"
+        :variant="badge.variant"
+        :icon="badge.icon"
+        :label="t(badge.labelKey, { count: suggestions.length })"
       />
     </header>
 
-    <div class="flex flex-col gap-4 p-4">
-      <UAlert
-        v-if="errorKey"
-        role="alert"
-        color="error"
-        variant="subtle"
-        icon="i-lucide-circle-alert"
-        :description="t(errorKey)"
-        :actions="[
-          { label: t('approvals.retry'), color: 'error', variant: 'outline', onClick: refresh },
-        ]"
-      />
-      <UAlert
-        v-else-if="missingOrigins.length"
-        role="alert"
-        data-testid="popup-missing-access"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        :title="t('approvals.permissionMissing')"
-        :description="t('approvals.missingPermissionShort')"
-      />
-      <SetupChecklist
-        v-else-if="loaded && !setupComplete"
-        :website-done="websites.length > 0"
-        :tracker-done="destinations.length > 0"
-      />
-      <UAlert
-        v-if="localeErrorKey"
-        role="alert"
-        color="error"
-        variant="subtle"
-        :description="t(localeErrorKey)"
-      />
-
-      <UAlert
-        v-if="websiteOffer"
-        data-testid="current-website-offer"
-        color="primary"
-        variant="subtle"
-        icon="i-lucide-globe"
-        :title="t('app.currentWebsiteTitle', { website: websiteOffer })"
-        :description="t('app.currentWebsiteHelp')"
-        :actions="websiteOfferActions"
-      />
-      <template v-if="loaded">
-        <SuggestionList
-          :suggestions="suggestions"
-          :disabled="busy"
-          mode="popup"
-          @dismiss="dismissSuggestion($event)"
-          @review="openSetupPage({ suggestion: $event })"
+    <div class="min-h-0 grow overflow-y-auto bg-(--app-canvas) [scrollbar-width:thin]">
+      <div class="flex flex-col gap-3 p-4">
+        <UAlert
+          v-if="errorKey"
+          role="alert"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-circle-alert"
+          :title="t(errorTitleKey(errorKey))"
+          :actions="errorActions"
+        >
+          <template #description>
+            <AlertBody :text="t(errorKey)" />
+          </template>
+        </UAlert>
+        <UAlert
+          v-if="localeErrorKey"
+          role="alert"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-languages"
+          :description="t(localeErrorKey)"
         />
-        <section
-          class="flex flex-col gap-2"
-          aria-labelledby="saved-websites-title"
-          data-testid="saved-websites"
-        >
-          <h2 id="saved-websites-title" class="text-xs font-semibold text-muted">
-            {{ t('approvals.savedWebsites') }}
-          </h2>
-          <ul
-            v-if="websites.length"
-            class="divide-y divide-default rounded-md ring ring-default ring-inset"
-          >
-            <li
-              v-for="website in websites"
-              :key="website.origin"
-              class="flex items-center gap-2 px-3 py-2"
-            >
-              <UIcon name="i-lucide-globe" class="size-4 shrink-0 text-muted" />
-              <ULink
-                :to="website.origin"
-                class="min-w-0 grow text-[13px] break-all text-highlighted hover:underline focus-visible:underline"
-                data-testid="popup-website"
-                @click.prevent="openWebsite(website.origin)"
-              >
-                {{ website.origin }}
-              </ULink>
-              <UBadge
-                v-if="missingOrigins.includes(website.origin)"
-                color="warning"
-                variant="soft"
-                size="sm"
-                :label="t('approvals.noAccess')"
-              />
-            </li>
-          </ul>
-          <p v-else class="text-muted">{{ t('approvals.noWebsites') }}</p>
-        </section>
+        <UAlert
+          v-if="accessAlert"
+          role="alert"
+          data-testid="popup-missing-access"
+          color="warning"
+          variant="subtle"
+          icon="i-lucide-shield-alert"
+          :title="accessAlert.title"
+          :description="accessAlert.description"
+          :actions="accessActions"
+        />
 
-        <section
-          class="flex flex-col gap-2"
-          aria-labelledby="saved-trackers-title"
-          data-testid="saved-trackers"
+        <UCard
+          v-if="websiteOffer && !offerInChecklist"
+          data-testid="current-website-offer"
+          :ui="{ body: 'p-4 sm:p-4' }"
         >
-          <h2 id="saved-trackers-title" class="text-xs font-semibold text-muted">
-            {{ t('approvals.savedTrackers') }}
-          </h2>
-          <ul
-            v-if="destinations.length"
-            class="divide-y divide-default rounded-md ring ring-default ring-inset"
-          >
-            <li
-              v-for="destination in destinations"
-              :key="destinationKey(destination)"
-              class="flex items-center gap-2.5 px-3 py-2"
-              data-testid="popup-tracker"
+          <div class="flex items-start gap-3">
+            <span
+              class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
+              aria-hidden="true"
             >
-              <UAvatar
-                :text="providerInitials[destination.provider]"
-                size="sm"
-                class="rounded-md"
-                aria-hidden="true"
+              <UIcon name="i-lucide-globe" class="size-4" />
+            </span>
+            <div class="flex min-w-0 flex-col items-start gap-1">
+              <h2 class="text-sm font-semibold text-highlighted">
+                {{ t('app.currentWebsiteTitle') }}
+              </h2>
+              <p class="text-[13px] text-muted">{{ t('app.currentWebsiteHelp') }}</p>
+              <UButton
+                class="mt-2"
+                trailing-icon="i-lucide-arrow-up-right"
+                data-testid="current-website-approve"
+                :label="t('app.checklistOfferAction', { website: displayUrl(websiteOffer) })"
+                @click="openSetupPage({ website: websiteOffer })"
               />
-              <span class="flex min-w-0 grow flex-col">
-                <ULink
-                  :to="`${destination.origin}${destination.basePath}`"
-                  target="_blank"
-                  class="text-[13px] break-all text-highlighted hover:underline focus-visible:underline"
+            </div>
+          </div>
+        </UCard>
+
+        <SetupChecklist
+          v-if="onboarding && !errorKey"
+          mode="popup"
+          :website-done="websites.length > 0"
+          :tracker-done="destinations.length > 0"
+          :website="websites[0]?.origin ?? null"
+          :offer="offerInChecklist ? websiteOffer : null"
+          @act="actOnStep"
+        />
+
+        <template v-if="loaded">
+          <SuggestionList
+            :suggestions="suggestions"
+            :disabled="busy"
+            mode="popup"
+            @dismiss="dismissSuggestion($event)"
+            @review="openSetupPage({ suggestion: $event })"
+          />
+
+          <!-- While onboarding, the checklist names the approved website instead. -->
+          <section
+            v-if="!onboarding && websites.length"
+            class="flex flex-col gap-2"
+            aria-labelledby="saved-websites-title"
+            data-testid="saved-websites"
+          >
+            <h2 id="saved-websites-title" class="px-1 text-xs font-medium text-muted">
+              {{ t('approvals.websitesTitle') }}
+            </h2>
+            <ul
+              class="divide-y divide-default overflow-hidden rounded-lg bg-default ring ring-default dark:bg-muted"
+            >
+              <li
+                v-for="website in websites"
+                :key="website.origin"
+                class="flex min-h-11 items-center gap-3 px-4 py-2"
+              >
+                <span
+                  class="inline-flex size-6 shrink-0 items-center justify-center rounded-sm bg-primary-100/50 text-primary dark:bg-primary/10"
+                  aria-hidden="true"
                 >
-                  <span data-testid="popup-tracker-url">
-                    {{ destination.origin }}{{ destination.basePath }}
+                  <UIcon name="i-lucide-globe" class="size-3.5" />
+                </span>
+                <ULink
+                  :to="website.origin"
+                  class="group inline-flex min-w-0 items-center gap-1 font-medium text-highlighted hover:text-primary focus-visible:text-primary"
+                  data-testid="popup-website"
+                  @click.prevent="openWebsite(website.origin)"
+                >
+                  <span class="truncate group-hover:underline">
+                    {{ displayUrl(website.origin) }}
                   </span>
-                  <span class="sr-only">({{ t('app.opensInNewTab') }})</span>
+                  <UIcon
+                    name="i-lucide-arrow-up-right"
+                    class="size-3.5 shrink-0 text-dimmed group-hover:text-primary"
+                    aria-hidden="true"
+                  />
                 </ULink>
-                <span class="text-xs break-all text-muted" data-testid="popup-tracker-detail">
-                  {{ t(`approvals.${destination.provider}`) }}
-                  <span class="before:me-1 before:content-['·']">
-                    {{ websiteHost(destination.websiteOrigin) }}
+                <UBadge
+                  v-if="missingOrigins.includes(website.origin)"
+                  class="ms-auto shrink-0"
+                  color="warning"
+                  variant="soft"
+                  size="sm"
+                  icon="i-lucide-shield-alert"
+                  :label="t('approvals.noAccess')"
+                />
+              </li>
+            </ul>
+          </section>
+
+          <section
+            v-if="destinations.length"
+            class="flex flex-col gap-2"
+            aria-labelledby="saved-trackers-title"
+            data-testid="saved-trackers"
+          >
+            <h2 id="saved-trackers-title" class="px-1 text-xs font-medium text-muted">
+              {{ t('approvals.destinationsTitle') }}
+            </h2>
+            <ul
+              class="divide-y divide-default overflow-hidden rounded-lg bg-default ring ring-default dark:bg-muted"
+            >
+              <li
+                v-for="destination in destinations"
+                :key="destinationKey(destination)"
+                class="flex items-start gap-3 px-4 py-2.5"
+                data-testid="popup-tracker"
+              >
+                <TrackerMark :provider="destination.provider" class="mt-px" />
+                <span class="flex min-w-0 grow flex-col gap-0.5">
+                  <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                    <ULink
+                      :to="`${destination.origin}${destination.basePath}`"
+                      target="_blank"
+                      class="group inline-flex min-w-0 items-center gap-1 font-medium text-highlighted hover:text-primary focus-visible:text-primary"
+                    >
+                      <span class="truncate group-hover:underline" data-testid="popup-tracker-url">
+                        {{ displayDestination(destination) }}
+                      </span>
+                      <UIcon
+                        name="i-lucide-arrow-up-right"
+                        class="size-3.5 shrink-0 text-dimmed group-hover:text-primary"
+                        aria-hidden="true"
+                      />
+                      <span class="sr-only">
+                        {{ t(`approvals.${destination.provider}`) }} ({{ t('app.opensInNewTab') }})
+                      </span>
+                    </ULink>
+                    <UBadge
+                      v-if="missingOrigins.includes(destination.origin)"
+                      class="shrink-0"
+                      color="warning"
+                      variant="soft"
+                      size="sm"
+                      icon="i-lucide-shield-alert"
+                      :label="t('approvals.noAccess')"
+                    />
                   </span>
+                  <span
+                    v-if="isPlainHttp(destination)"
+                    class="flex items-center gap-1 text-[13px] text-warning"
+                  >
+                    <UIcon name="i-lucide-lock-open" class="size-3.5" aria-hidden="true" />
+                    {{ t('approvals.httpShort') }}
+                  </span>
+                  <span
+                    v-if="showsWebsite"
+                    class="truncate text-[13px] text-muted"
+                    data-testid="popup-tracker-website"
+                  >
+                    {{
+                      t('approvals.websiteLine', { website: displayUrl(destination.websiteOrigin) })
+                    }}
+                  </span>
+                  <ActivityLine
+                    class="text-[13px]"
+                    :record="activity[destinationKey(destination)]"
+                    :now="now"
+                    :access-missing="missingOrigins.includes(destination.origin)"
+                    compact
+                    data-testid="popup-tracker-activity"
+                  />
                 </span>
-                <span class="text-xs text-muted" data-testid="popup-tracker-activity">
-                  <span class="sr-only">{{ t('activity.label') }}:</span>
-                  {{ formatActivity(activity[destinationKey(destination)], now, locale, t) }}
-                </span>
-              </span>
-              <UBadge
-                v-if="missingOrigins.includes(destination.origin)"
-                color="warning"
-                variant="soft"
-                size="sm"
-                :label="t('approvals.noAccess')"
-              />
-            </li>
-          </ul>
-          <p v-else class="text-muted">{{ t('approvals.noDestinations') }}</p>
-        </section>
-      </template>
+              </li>
+            </ul>
+          </section>
+        </template>
+      </div>
+      <!-- Content that scrolls on under the footer fades out instead of being cut off. -->
+      <div
+        class="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-linear-to-t from-(--app-canvas)"
+        aria-hidden="true"
+      />
     </div>
 
-    <footer class="border-t border-default px-4 py-3">
+    <footer class="shrink-0 border-t border-default bg-default px-4 py-3">
       <UButton
         block
         color="neutral"
-        variant="outline"
+        variant="soft"
+        :ui="{ trailingIcon: 'ms-0' }"
         icon="i-lucide-settings-2"
+        trailing-icon="i-lucide-arrow-up-right"
         data-testid="open-options"
         :label="t('app.openOptions')"
         @click="openOptions"

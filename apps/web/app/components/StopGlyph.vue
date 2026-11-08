@@ -5,7 +5,8 @@ const { size = 'md' } = defineProps<{ size?: 'sm' | 'md' }>();
 
 <!--
   The stop control's glyph: a filled, slightly rounded square (Lucide's square is an outline,
-  which reads as an unchecked checkbox). Pulses like the running icons, unless motion is reduced.
+  which reads as an unchecked checkbox). It sits on a solid red stop control, so it pulses from
+  white to a pale red tint (REQ-469: the icon's colour animates), unless motion is reduced.
 -->
 <template>
   <span
@@ -15,8 +16,31 @@ const { size = 'md' } = defineProps<{ size?: 'sm' | 'md' }>();
   >
     <span
       data-testid="stop-glyph"
-      class="block origin-center rounded-[3px] bg-current motion-safe:animate-timer-stop-icon motion-reduce:animate-none"
+      class="timer-stop-icon block origin-center rounded-[3px] bg-current text-white motion-reduce:animate-none"
       :class="size === 'sm' ? 'size-2.5' : 'size-3'"
     />
   </span>
 </template>
+
+<style scoped>
+@media (prefers-reduced-motion: no-preference) {
+  .timer-stop-icon {
+    animation: stop-glyph-pulse 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes stop-glyph-pulse {
+  0%,
+  100% {
+    color: white;
+    transform: scale(1);
+  }
+  40% {
+    color: color-mix(in oklab, white 72%, var(--ui-color-error-300));
+    transform: scale(1.18);
+  }
+  70% {
+    transform: scale(0.94);
+  }
+}
+</style>

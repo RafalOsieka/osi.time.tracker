@@ -92,4 +92,26 @@ describe('REQ-129: shared confirm overlay', () => {
     expect(confirmed).toBe(true);
     expect(confirmMock).toHaveBeenCalledWith(expect.objectContaining({ title: 'Delete client' }));
   });
+
+  it('shows the emphasised name in medium weight and the given chip glyph', async () => {
+    const wrapper = await mountSuspended(ConfirmModal, {
+      props: {
+        title: 'Delete project?',
+        description: 'Project „Acme” leaves the list.',
+        emphasis: 'Acme',
+        icon: 'i-lucide-trash-2',
+      },
+      global: {
+        stubs: {
+          UModal: { template: '<div><slot name="body" /></div>' },
+          UIcon: { props: ['name'], template: '<i :data-icon="name" />' },
+        },
+      },
+    });
+
+    const description = wrapper.get('[data-testid="confirm-description"]');
+    expect(description.text()).toBe('Project „Acme” leaves the list.');
+    expect(description.get('strong').text()).toBe('Acme');
+    expect(wrapper.get('[data-icon]').attributes('data-icon')).toBe('i-lucide-trash-2');
+  });
 });

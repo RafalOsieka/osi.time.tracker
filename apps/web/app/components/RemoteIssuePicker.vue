@@ -18,6 +18,9 @@ const {
   cachedTestid = undefined,
   unlinkedTestid = undefined,
   linkLabel = undefined,
+  contextLabel = undefined,
+  dayLabel = undefined,
+  alignTo = null,
 } = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
@@ -28,6 +31,19 @@ const {
   unlinkedTestid?: string;
   /** Shows the unlinked trigger as a labelled button (Remote Sync) instead of an icon. */
   linkLabel?: string;
+  /** What is being linked (the Task title), shown under the popover's heading. */
+  contextLabel?: string;
+  /**
+   * The day whose entries a link moves (REQ-461), e.g. "7 listopada 2026", named with the
+   * Tracker in the popover's context line.
+   */
+  dayLabel?: string;
+  /**
+   * An element the popover's end edge lines up with, below its row, instead of opening from the
+   * trigger: the Timer passes its duration cell, so the popover stays inside the list and clear
+   * of the row-action column (the running row's stop).
+   */
+  alignTo?: HTMLElement | null;
 }>();
 
 const emit = defineEmits<{
@@ -47,11 +63,17 @@ const { search, results, outOfScopeId, loading, errorKey } = useRemoteIssueSearc
   () => scope ?? undefined,
 );
 
+const headingId = useId();
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
 // On by default whenever a scope exists (REQ-328); reset on every popover open.
 const applyScope = shallowRef(true);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
+const queryInput = useTemplateRef('queryInput');
+/** The last submitted title query, highlighted inside the result titles. */
+const highlightQuery = shallowRef('');
+/** The scoped project's title when the last search ran inside the scope, else empty. */
+const searchedScopeTitle = shallowRef('');
 const state = reactive<{ mode: RemoteIssueSearchMode; query: string }>({
   mode: REMOTE_ISSUE_SEARCH_MODE_ORDER[0],
   query: '',
@@ -63,6 +85,22 @@ const editMenuClass = computed(() => [
   'group-hover/ri:pointer-events-auto group-hover/ri:opacity-100',
   'group-focus-within/ri:pointer-events-auto group-focus-within/ri:opacity-100',
 ]);
+
+/**
+ * The radio group drawn as a compact segmented control: joined cells, the checked one cyan. Each
+ * radio is stretched, transparent, over its whole cell, so the cell is the radio itself.
+ */
+const MODE_UI = {
+  fieldset: 'w-fit',
+  item: [
+    'relative flex h-8 cursor-pointer items-center border-accented px-3 py-0 text-muted',
+    'first-of-type:rounded-s-md last-of-type:rounded-e-md',
+    'has-data-[state=checked]:border-primary has-data-[state=checked]:bg-primary-100 has-data-[state=checked]:text-primary',
+    'dark:has-data-[state=checked]:bg-primary/20',
+  ].join(' '),
+  base: 'not-sr-only absolute inset-0 z-[3] size-auto cursor-pointer rounded-none opacity-0 ring-0',
+  label: 'text-xs font-medium text-current',
+};
 
 const searchModeLabelKeys = {
   title: 'remoteIssuePicker.modeTitle',
@@ -106,12 +144,6 @@ function linkedTooltip(ref: RemoteIssueRefDto): string {
   return ref.cachedRemoteProjectTitle ? `${base} · ${ref.cachedRemoteProjectTitle}` : base;
 }
 
-function resultMeta(result: RemoteIssueSearchResult): string {
-  return result.remoteProjectTitle
-    ? `#${result.remoteIssueId} · ${result.remoteProjectTitle}`
-    : `#${result.remoteIssueId}`;
-}
-
 function resultAccessibleName(result: RemoteIssueSearchResult): string {
   const base = result.remoteProjectTitle
     ? `#${result.remoteIssueId} ${result.title} ${result.remoteProjectTitle}`
@@ -121,8 +153,44 @@ function resultAccessibleName(result: RemoteIssueSearchResult): string {
     : base;
 }
 
-function focusQueryInput() {
-  rootEl.value?.querySelector('input')?.focus();
+/** The Tracker the link goes to, after the day whose entries it moves when that is known. */
+const destinationLabel = computed(() =>
+  dayLabel
+    ? t('remoteIssuePicker.dayContext', { day: dayLabel, tracker: config.name })
+    : config.name,
+);
+
+/** A result title split around the searched text, so the match can be marked. */
+function titleParts(title: string): { text: string; match: boolean }[] {
+  const query = highlightQuery.value;
+  const at = query ? title.toLowerCase().indexOf(query.toLowerCase()) : -1;
+  if (at < 0) return [{ text: title, match: false }];
+  return [
+    { text: title.slice(0, at), match: false },
+    { text: title.slice(at, at + query.length), match: true },
+    { text: title.slice(at + query.length), match: false },
+  ].filter((part) => part.text);
+}
+
+/**
+ * A result's remote project, shown unless it is the scope the search ran in: there every row
+ * would repeat it, so only subprojects are named. It stays in the accessible name either way.
+ */
+function visibleProjectTitle(result: RemoteIssueSearchResult): string | undefined {
+  return result.remoteProjectTitle === searchedScopeTitle.value
+    ? undefined
+    : result.remoteProjectTitle;
+}
+
+/** The query keeps the initial focus (REQ-460), though the mode control comes first. */
+function focusQueryInput(event?: Event) {
+  event?.preventDefault();
+  // The input by its id: the popover content is teleported, and the component ref's exposed
+  // `inputRef` is not reliably an element by the time this runs.
+  const exposed = queryInput.value?.inputRef;
+  const input =
+    exposed instanceof HTMLElement ? exposed : document.getElementById('remote-issue-query');
+  input?.focus();
 }
 
 // Shared by every path that opens the popover (the unlinked icon, the Edit
@@ -136,7 +204,54 @@ async function resetForOpen() {
   focusQueryInput();
 }
 
+/** Room the popover needs below its row: header, mode, query and a full results list. */
+const POPOVER_ROOM_PX = 440;
+
+/** The nearest ancestor that scrolls vertically, or the page. */
+function scrollParent(element: HTMLElement): HTMLElement | null {
+  for (let node = element.parentElement; node; node = node.parentElement) {
+    const { overflowY } = getComputedStyle(node);
+    if ((overflowY === 'auto' || overflowY === 'scroll') && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+  }
+  return document.scrollingElement instanceof HTMLElement ? document.scrollingElement : null;
+}
+
+/**
+ * Scrolls the trigger's row up until the popover fits below it, so it opens below rather than
+ * flipping over the rows above (the running row, a day's total). Flipping stays the last resort,
+ * when the page cannot scroll that far.
+ */
+function makeRoomBelow() {
+  const element = rootEl.value;
+  if (!element) return;
+  const missing = POPOVER_ROOM_PX - (window.innerHeight - element.getBoundingClientRect().bottom);
+  if (missing > 0) scrollParent(element)?.scrollBy({ top: missing, behavior: 'instant' });
+}
+
+/** The gap between the popover and the row it belongs to, the same 4px as the start editor's. */
+const POPOVER_GAP_PX = 4;
+/**
+ * The popover's distance from its reference: 4px, or with `alignTo` (a cell inside the row) the
+ * distance from that cell's edge to the row's edge plus 4px, so the popover starts just past the
+ * row and the row keeps its divider.
+ */
+const sideOffset = shallowRef(POPOVER_GAP_PX);
+
+function measureSideOffset() {
+  const row = alignTo?.closest('[role="row"]');
+  if (!alignTo || !row) {
+    sideOffset.value = POPOVER_GAP_PX;
+    return;
+  }
+  const inset = row.getBoundingClientRect().bottom - alignTo.getBoundingClientRect().bottom;
+  sideOffset.value = Math.max(0, inset) + POPOVER_GAP_PX;
+}
+
 async function onTriggerClick() {
+  makeRoomBelow();
+  measureSideOffset();
   open.value = true;
   await resetForOpen();
 }
@@ -155,9 +270,52 @@ function onClose() {
   hasSearched.value = false;
 }
 
-async function submit() {
+/** What the shown results answer, so Enter on an unchanged query picks instead of re-searching. */
+const searchedKey = shallowRef('');
+const currentKey = computed(() => `${state.mode}\n${applyScope.value}\n${state.query}`);
+/** The result Enter picks: the first after every search, moved by the arrow keys. */
+const activeIndex = shallowRef(0);
+const resultsList = useTemplateRef<HTMLElement>('resultsList');
+
+/**
+ * Not awaited by the form: an awaited submit makes UForm disable its fields until the search
+ * ends, which drops the query's focus. The search's own loading state shows progress instead.
+ */
+function submit() {
+  const active = results.value[activeIndex.value];
+  if (hasSearched.value && !loading.value && active && searchedKey.value === currentKey.value) {
+    selectResult(active);
+    return;
+  }
   hasSearched.value = true;
-  await search({ mode: state.mode, query: state.query }, applyScope.value);
+  activeIndex.value = 0;
+  searchedKey.value = currentKey.value;
+  highlightQuery.value = state.mode === 'title' ? state.query.trim() : '';
+  searchedScopeTitle.value = scope && applyScope.value ? scope.remoteProjectTitle : '';
+  void search({ mode: state.mode, query: state.query }, applyScope.value);
+}
+
+// Typing goes on in the query (its focus ring shows where), also after a click on the search
+// icon: focus returns to it as soon as a search's results or error render.
+watch(
+  [results, errorKey],
+  () => {
+    if (open.value && hasSearched.value) focusQueryInput();
+  },
+  { flush: 'post' },
+);
+
+/** Arrow keys move between the query and the results; the focused result becomes the active one. */
+function moveActive(step: 1 | -1) {
+  const buttons = resultsList.value?.querySelectorAll('button') ?? [];
+  const focusedIndex = Array.from(buttons).findIndex((button) => button === document.activeElement);
+  const next = focusedIndex < 0 ? (step === 1 ? activeIndex.value : -1) : focusedIndex + step;
+  if (next < 0) {
+    focusQueryInput();
+    return;
+  }
+  const target = buttons[Math.min(next, buttons.length - 1)];
+  target?.focus();
 }
 
 function selectResult(result: RemoteIssueSearchResult) {
@@ -183,7 +341,7 @@ onBeforeUnmount(() => {
   <span
     ref="rootEl"
     v-bind="$attrs"
-    class="group/ri relative inline-flex h-6 min-w-6 items-center justify-start"
+    class="group/ri relative inline-flex h-7 min-w-7 items-center justify-start"
   >
     <UTooltip
       v-if="currentRef && currentRef.url"
@@ -240,10 +398,12 @@ onBeforeUnmount(() => {
     <UButton
       v-else-if="!currentRef && linkLabel"
       icon="i-lucide-link"
-      color="neutral"
-      variant="ghost"
+      color="primary"
+      variant="soft"
       size="xs"
-      class="-ms-2 text-sm font-normal text-muted"
+      :active="open"
+      active-variant="subtle"
+      class="text-sm font-normal"
       :label="linkLabel"
       :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
       @click.stop="onTriggerClick"
@@ -253,14 +413,19 @@ onBeforeUnmount(() => {
       :text="t('timerView.remoteIssue.unlinked')"
       :content="{ side: 'top' }"
     >
+      <!-- A 28px cyan tile like the row actions, pressed (ringed) while its picker is open. -->
       <UButton
         icon="i-lucide-link"
-        color="neutral"
-        variant="ghost"
+        color="primary"
+        variant="soft"
+        :active="open"
+        active-variant="subtle"
         square
-        size="xs"
-        class="-ms-1 h-6 w-6 shrink-0 justify-center text-toned hover:bg-primary/10 hover:text-primary focus-visible:text-primary"
+        size="sm"
+        class="size-7 shrink-0 justify-center"
+        :ui="{ leadingIcon: 'size-4' }"
         :aria-label="t('timerView.remoteIssue.unlinked')"
+        :aria-expanded="open"
         :data-testid="unlinkedTestid ?? 'remote-issue-picker-trigger'"
         @click.stop="onTriggerClick"
       />
@@ -269,84 +434,188 @@ onBeforeUnmount(() => {
     <UPopover
       :open="open"
       :modal="false"
-      :reference="rootEl ?? undefined"
-      :content="{ side: 'bottom', align: 'end', sideOffset: 4 }"
+      :reference="alignTo ?? rootEl ?? undefined"
+      :content="{
+        side: 'bottom',
+        align: alignTo ? 'end' : 'start',
+        sideOffset,
+        collisionPadding: 16,
+        onOpenAutoFocus: focusQueryInput,
+      }"
       @update:open="onOpenChange"
     >
       <template #content>
-        <div class="grid w-80 max-w-[min(20rem,calc(100vw-2rem))] gap-2 p-3">
+        <!--
+          448px wide. With `alignTo` (the Timer's duration cell) its end edge lines up with that
+          column's end, below the row, flipping above only when there is no room: it stays inside
+          the list, covers the Project, Issue and Time columns whole and leaves the Task column and
+          the row tiles (the running row's stop) in view. Otherwise it opens from the trigger.
+        -->
+        <div
+          role="group"
+          :aria-labelledby="headingId"
+          class="grid w-112 max-w-[calc(100vw-2rem)] gap-3 p-3"
+        >
+          <!--
+            Two lines: a heading naming what gets linked (with the Task title, when the caller
+            knows it), then where it goes: the day whose entries move and the Tracker.
+          -->
+          <div class="grid min-w-0 gap-0.5">
+            <h3 :id="headingId" class="m-0 truncate text-sm font-semibold text-highlighted">
+              <i18n-t v-if="contextLabel" keypath="remoteIssuePicker.headingFor" scope="global">
+                <template #task>
+                  <span class="font-medium text-default" data-testid="remote-issue-picker-context">
+                    {{ contextLabel }}
+                  </span>
+                </template>
+              </i18n-t>
+              <template v-else>{{ t('remoteIssuePicker.heading') }}</template>
+            </h3>
+            <p
+              class="m-0 truncate text-xs text-muted"
+              data-testid="remote-issue-picker-destination"
+            >
+              {{ destinationLabel }}
+            </p>
+          </div>
+
           <UForm
             :schema="remoteIssuePickerFormSchema"
             :state="state"
             class="grid gap-2"
             @submit="submit"
           >
-            <div class="flex items-center gap-1">
-              <UInput
-                id="remote-issue-query"
-                v-model="state.query"
-                class="min-w-0 flex-1"
-                :aria-label="t('remoteIssuePicker.queryLabel')"
-                :placeholder="t(queryPlaceholderKey)"
-                data-testid="remote-issue-picker-query"
+            <!--
+              The search mode first, as a compact segmented control (still a radio group), since
+              it decides what the query means; the search status sits beside it. The query still
+              takes the popover's initial focus (REQ-460).
+            -->
+            <div class="flex min-w-0 items-center gap-3">
+              <URadioGroup
+                id="remote-issue-mode"
+                v-model="state.mode"
+                :items="modeItems"
+                :aria-label="t('remoteIssuePicker.modeLabel')"
+                orientation="horizontal"
+                variant="table"
+                indicator="hidden"
+                size="xs"
+                value-key="value"
+                label-key="label"
+                :ui="MODE_UI"
+                class="shrink-0"
+                data-testid="remote-issue-picker-mode"
               />
-              <UTooltip :text="t('remoteIssuePicker.submitButton')" :content="{ side: 'top' }">
-                <UButton
-                  type="submit"
-                  icon="i-lucide-search"
-                  color="neutral"
-                  variant="ghost"
-                  square
-                  :loading="loading"
-                  :aria-label="t('remoteIssuePicker.submitButton')"
-                  data-testid="remote-issue-picker-submit"
-                />
-              </UTooltip>
+              <p
+                class="m-0 ms-auto min-w-0 text-end text-xs text-muted"
+                role="status"
+                aria-live="polite"
+              >
+                {{ statusMessage }}
+              </p>
             </div>
-            <URadioGroup
-              id="remote-issue-mode"
-              v-model="state.mode"
-              :items="modeItems"
-              :aria-label="t('remoteIssuePicker.modeLabel')"
-              orientation="horizontal"
-              value-key="value"
-              label-key="label"
-              data-testid="remote-issue-picker-mode"
-            />
+            <!--
+              The search submit is the input's own quiet trailing icon. Enter searches, and on an
+              unchanged query picks the active result; the down arrow moves into the results. Its
+              cyan ring shows on any focus, also when a search hands focus back to it.
+            -->
+            <UInput
+              id="remote-issue-query"
+              ref="queryInput"
+              v-model="state.query"
+              class="w-full"
+              :ui="{ trailing: 'pe-1', base: 'focus:ring-2 focus:ring-primary' }"
+              :aria-label="t('remoteIssuePicker.queryLabel')"
+              :placeholder="t(queryPlaceholderKey)"
+              data-testid="remote-issue-picker-query"
+              @keydown.down.prevent="moveActive(1)"
+            >
+              <template #trailing>
+                <UTooltip :text="t('remoteIssuePicker.submitButton')" :content="{ side: 'top' }">
+                  <UButton
+                    type="submit"
+                    icon="i-lucide-search"
+                    color="neutral"
+                    variant="link"
+                    size="xs"
+                    square
+                    class="text-dimmed hover:text-default"
+                    :loading="loading"
+                    :aria-label="t('remoteIssuePicker.submitButton')"
+                    data-testid="remote-issue-picker-submit"
+                  />
+                </UTooltip>
+              </template>
+            </UInput>
           </UForm>
 
           <UCheckbox
             v-if="scope"
             id="remote-issue-picker-scope-toggle"
             v-model="applyScope"
+            size="sm"
             :label="scopeToggleLabel"
             data-testid="remote-issue-picker-scope-toggle"
           />
 
-          <p v-if="statusMessage" class="m-0 text-sm text-muted" role="status" aria-live="polite">
-            {{ statusMessage }}
-          </p>
-
+          <!--
+            Full-width option rows, aligned with the input: its edges and its text inset. The
+            active row (the first after a search) carries a neutral 3:1 outline rather than only a
+            wash, quieter than the query's cyan focus ring: Enter in the query picks it.
+          -->
           <ul
             v-if="hasSearched && results.length > 0"
-            class="m-0 max-h-48 list-none overflow-auto p-0"
+            ref="resultsList"
+            class="m-0 -mt-1 grid max-h-60 list-none gap-0.5 overflow-auto p-0"
             :aria-label="t('remoteIssuePicker.resultsLabel')"
             data-testid="remote-issue-picker-results"
           >
-            <li v-for="result in results" :key="result.remoteIssueId">
+            <li v-for="(result, index) in results" :key="result.remoteIssueId">
               <UButton
                 type="button"
                 color="neutral"
                 variant="ghost"
                 block
-                class="h-auto justify-start py-1.5 text-left"
+                class="h-auto justify-start rounded-md px-2.5 py-1 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
+                :class="
+                  index === activeIndex &&
+                  'bg-elevated ring-1 ring-accented ring-inset dark:bg-accented/60'
+                "
+                :data-active="index === activeIndex || undefined"
                 :aria-label="resultAccessibleName(result)"
                 :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
                 @click="selectResult(result)"
+                @focus="activeIndex = index"
+                @keydown.down.prevent="moveActive(1)"
+                @keydown.up.prevent="moveActive(-1)"
               >
                 <span class="flex min-w-0 flex-col items-start gap-0.5">
-                  <span class="truncate">{{ result.title }}</span>
-                  <span class="truncate text-xs text-muted">{{ resultMeta(result) }}</span>
+                  <span class="w-full truncate text-sm font-medium text-default">
+                    <template
+                      v-for="(part, partIndex) in titleParts(result.title)"
+                      :key="partIndex"
+                    >
+                      <mark
+                        v-if="part.match"
+                        class="rounded-[3px] bg-primary-100 text-highlighted dark:bg-primary/20"
+                      >
+                        {{ part.text }}
+                      </mark>
+                      <template v-else>{{ part.text }}</template>
+                    </template>
+                  </span>
+                  <!-- The id in the table's mono face; one separator glyph (·) across the app. -->
+                  <span class="flex w-full min-w-0 items-baseline gap-1.5 text-xs text-muted">
+                    <span class="shrink-0 font-mono text-toned tabular-nums">
+                      #{{ result.remoteIssueId }}
+                    </span>
+                    <span
+                      v-if="visibleProjectTitle(result)"
+                      class="truncate before:me-1.5 before:content-['·']"
+                    >
+                      {{ visibleProjectTitle(result) }}
+                    </span>
+                  </span>
                   <span
                     v-if="result.remoteIssueId === outOfScopeId"
                     class="truncate text-xs text-warning"

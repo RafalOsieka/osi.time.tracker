@@ -11,6 +11,7 @@ import { resolveDefaultExportComment, resolveExportComment } from '~~/shared/uti
 import { computeInTrackerSummary } from '~~/shared/utils/compute-in-tracker-summary';
 import type { ColumnDefinition } from '~/components/ColumnList.vue';
 import type { SyncRowKind } from '~/components/sync/SyncDayRow.vue';
+import type { ExportDialogIncludedRow } from '~/components/sync/SyncExportDialog.vue';
 import type { ActivityByTask, ExportCommentsByTask, IssueRefByTask } from '~/types/sync-ui-maps';
 
 const route = useRoute();
@@ -32,12 +33,16 @@ const {
   pending,
   error: fetchError,
   refresh,
-} = useAsyncData<RemoteSyncDayDto>(
+} = useAsyncData<RemoteSyncDayDto & { fetchedAt: number }>(
   () => `sync-day-${date.value}`,
-  () =>
-    requestFetch<RemoteSyncDayDto>('/api/sync/day', {
+  async () => ({
+    ...(await requestFetch<RemoteSyncDayDto>('/api/sync/day', {
       query: { date: date.value },
-    }),
+    })),
+    // When the server measured a running entry, so its part of the untitled bucket can be told
+    // apart from the completed time there.
+    fetchedAt: Date.now(),
+  }),
   { watch: [date] },
 );
 
@@ -48,21 +53,55 @@ const isEmpty = computed(
 );
 
 /**
- * Locale-aware day heading. SSR and hydration keep the ISO date so Node vs
- * browser `toLocaleDateString` cannot mismatch; format after mount.
+ * The day in the Timer view's day-heading format (`formatDayHeading`, "sobota, 7 listopada 2026"),
+ * a short form for phones, and the plain date the export review names ("7 listopada 2026").
+ * SSR and hydration keep the ISO date so Node vs browser `toLocaleDateString` cannot mismatch;
+ * format after mount.
  */
-const dayHeadingText = ref(date.value);
-function refreshDayHeading() {
-  dayHeadingText.value = new Date(`${date.value}T12:00:00Z`).toLocaleDateString(locale.value, {
-    weekday: 'short',
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: effective.value.timeZone,
-  });
+const dayLabels = ref({ long: date.value, short: date.value, plain: date.value });
+function refreshDayLabels() {
+  dayLabels.value = {
+    long: formatDayHeading(date.value, locale.value),
+    short: new Date(`${date.value}T12:00:00Z`).toLocaleDateString(locale.value, {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: 'UTC',
+    }),
+    plain: formatDayHeading(date.value, locale.value, { weekday: false }),
+  };
 }
-watch([date, locale, () => effective.value.timeZone], refreshDayHeading);
-onMounted(refreshDayHeading);
+watch([date, locale], refreshDayLabels);
+onMounted(refreshDayLabels);
+
+// The running Time entry counts in the day total while it runs, as in the Timer view's total.
+const { running, elapsedSeconds } = useTimer();
+const runningInDay = computed(
+  () =>
+    !!running.value &&
+    localDayKeyFromInstant(running.value.startedAt, effective.value.timeZone) === date.value,
+);
+// The running entry is not part of the loaded rows' completed time: reload once it stops or
+// another one starts, so the rows and totals follow.
+watch(
+  () => running.value?.id ?? null,
+  (id, previousId) => {
+    if (id !== previousId) void refresh();
+  },
+);
+
+/**
+ * Completed untitled time. The server counts a running untitled entry into the bucket up to the
+ * moment it answered; that part is taken back out, since the running time is shown live.
+ */
+const untitledCompleted = computed(() => {
+  const entry = running.value;
+  if (!entry || entry.taskId || !runningInDay.value || !data.value) return untitledTotal.value;
+  const runningAtFetch = Math.floor((data.value.fetchedAt - Date.parse(entry.startedAt)) / 1000);
+  return Math.max(0, untitledTotal.value - Math.max(0, runningAtFetch));
+});
+const runningSeconds = computed(() => (runningInDay.value ? elapsedSeconds.value : 0));
 
 function toPickerConfig(config: RemoteSyncConfigSurfaceDto): TrackerDto {
   return {
@@ -89,20 +128,31 @@ const exportDialogOpen = ref(false);
 const reconciling = ref(false);
 
 /** Narrow layout (D5): expand, state, text, durations, actions. */
-const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.5rem';
+const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.75rem';
 const columns = computed(
   () =>
     [
       { key: 'expand', track: '1.5rem' },
       { key: 'state', track: '1.5rem', header: t('remoteSync.columns.state'), headerSrOnly: true },
-      // Title, issue and activity share the flexible width so issue titles and the activity
-      // select (about 150px at desktop) are not cut while the title has room to spare.
-      { key: 'title', track: { fr: 1.4, min: '8rem' }, header: t('remoteSync.columns.title') },
-      { key: 'issue', track: { fr: 1.5, min: '6rem' }, header: t('remoteSync.columns.issue') },
-      { key: 'activity', track: { fr: 1, min: '6rem' }, header: t('remoteSync.columns.activity') },
-      { key: 'tracked', track: '6rem', header: t('remoteSync.columns.tracked'), align: 'end' },
-      { key: 'toSend', track: '6rem', header: t('remoteSync.columns.toSend'), align: 'end' },
-      { key: 'actions', track: '1.5rem' },
+      // Title, issue and activity share the flexible width, sized to what each holds at desktop
+      // width: the activity column fits its "Wybierz czynność" select (160px) and no more, and
+      // the title and issue split the rest almost evenly: a long Task title (about 220px) fits
+      // in both themes and a typical issue title shows in full; longer ones give way with an
+      // ellipsis (the issue number never truncates).
+      { key: 'title', track: { fr: 1.15, min: '8rem' }, header: t('remoteSync.columns.title') },
+      { key: 'issue', track: { fr: 1, min: '6rem' }, header: t('remoteSync.columns.issue') },
+      {
+        key: 'activity',
+        track: { fr: 0.5, min: '10rem' },
+        header: t('remoteSync.columns.activity'),
+      },
+      // The duration columns fit an HH:MM:SS value (the to-send frame hangs into the gap) and
+      // their 12px headers, no wider, so the text columns keep the room.
+      { key: 'tracked', track: '4.75rem', header: t('remoteSync.columns.tracked'), align: 'end' },
+      { key: 'toSend', track: '5rem', header: t('remoteSync.columns.toSend'), align: 'end' },
+      // One 28px action tile (the expanded block's reconcile action, REQ-505) plus the band's
+      // 8px end inset, so the tile never sits flush on the inset's edge.
+      { key: 'actions', track: '2.25rem' },
     ] satisfies ColumnDefinition[],
 );
 
@@ -217,35 +267,82 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
     case 'sent':
       return t('remoteSync.state.sent');
     default:
-      return t('remoteSync.state.manageable');
+      return awaitsActivity(row)
+        ? t('remoteSync.state.needsActivity')
+        : t('remoteSync.state.manageable');
   }
 }
 
-/** The row's state indicator kind (REQ-504); every not-exportable reason is one blocked kind. */
+/**
+ * A short read-only reason for a row that has no issue and cannot be linked, shown quietly in
+ * its issue cell; the full reason stays on the state indicator (REQ-112, REQ-504).
+ */
+function issueReasonFor(row: RemoteSyncDayRowDto): string | null {
+  switch (stateFor(row)) {
+    case 'no_project':
+      return t('remoteSync.shortReason.noProject');
+    case 'no_tracker':
+      return t(
+        row.trackerName
+          ? 'remoteSync.shortReason.noTracker'
+          : 'remoteSync.shortReason.localProject',
+      );
+    case 'system_not_implemented':
+      return t('remoteSync.shortReason.systemNotImplemented');
+    default:
+      return null;
+  }
+}
+
+/**
+ * Rows that are not exportable by design, with nothing to fix on this page: a local Project (no
+ * Tracker at all), an unsupported system, or an issue whose tracker offers no activity.
+ */
+function isExcluded(row: RemoteSyncDayRowDto): boolean {
+  const state = stateFor(row);
+  return (
+    state === 'system_not_implemented' ||
+    state === 'no_activity' ||
+    (state === 'no_tracker' && !row.trackerName)
+  );
+}
+
+/**
+ * The row's state indicator kind (REQ-504). A row the user can fix (no Project, a missing Tracker,
+ * no issue, a failed load) is blocked, in amber; a deliberate exclusion is neutral.
+ */
 function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   switch (stateFor(row)) {
     case 'manageable':
-      return 'ready';
+      return awaitsActivity(row) ? 'blocked' : 'ready';
     case 'sent':
       return 'sent';
     case 'activity_loading':
       return 'loading';
     default:
-      return 'blocked';
+      return isExcluded(row) ? 'excluded' : 'blocked';
   }
 }
 
 function kindLabelFor(row: RemoteSyncDayRowDto): string | null {
   const state = stateFor(row);
   if (state === 'unlinked') return null;
-  if (state === 'manageable') return t('remoteSync.kind.ready');
+  if (state === 'manageable' && !awaitsActivity(row)) return t('remoteSync.kind.ready');
   if (state === 'sent') return t('remoteSync.kind.sent');
   if (state === 'activity_loading') return t('remoteSync.kind.loading');
-  return t('remoteSync.kind.blocked');
+  return t(isExcluded(row) ? 'remoteSync.kind.excluded' : 'remoteSync.kind.blocked');
 }
 
 function canEditRow(row: RemoteSyncDayRowDto): boolean {
   return stateFor(row) === 'manageable';
+}
+
+/**
+ * A Ready row with time to send but no activity chosen yet: a fixable gap, so its state icon is
+ * the amber needs-attention kind, like a row without an issue.
+ */
+function awaitsActivity(row: RemoteSyncDayRowDto): boolean {
+  return canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row);
 }
 
 function showEditorsFor(row: RemoteSyncDayRowDto): boolean {
@@ -429,14 +526,15 @@ function pushableRows(): RemoteSyncDayRowDto[] {
   return rows.value.filter((row) => isPushable(row));
 }
 
+/** `dayTotal` here is the completed time only; the running entry is added on top for display. */
 const dayTotalsSafe = computed(() =>
   computeRemoteSyncDayTotals(
     rows.value.map((row) => ({
-      totalSeconds: row.totalSeconds,
+      totalSeconds: selectedSecondsFor(row),
       toSendSeconds: toSendSecondsFor(row),
       isSent: stateFor(row) === 'sent',
     })),
-    untitledTotal.value,
+    untitledCompleted.value,
   ),
 );
 
@@ -460,22 +558,76 @@ const inTrackerSummary = computed(() =>
 );
 
 /**
- * Why Export is disabled, for its tooltip: no Ready row has time to send, or the Ready rows
- * with time still need an activity. Null while exporting or when Export is available.
+ * Whether a Tracker (by its shown name, as the in-tracker summary names it) also failed to load
+ * activities for one of the day's rows.
+ */
+/** A message continuing after "Trackers:", lower-case as a sentence continues after a colon. */
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLocaleLowerCase(locale.value) + text.slice(1);
+}
+
+function activitiesFailedFor(trackerName: string): boolean {
+  return rows.value.some(
+    (row) =>
+      !!row.config &&
+      (row.trackerName ?? row.config.baseUrl) === trackerName &&
+      stateFor(row) === 'activity_error',
+  );
+}
+
+/**
+ * The failed Trackers grouped by reason, so the page alert states each reason once. The generic
+ * fetch failure says "try again"; beside the alert's own retry button the page's wording says it
+ * without the repetition, and names the activities too when they failed for the same Tracker.
+ */
+const inTrackerFailures = computed(() => {
+  const summary = inTrackerSummary.value;
+  if (summary.status !== 'unavailable') return [];
+  const byReason = new Map<string, string[]>();
+  for (const tracker of summary.trackers) {
+    let messageKey = tracker.messageKey;
+    if (messageKey === 'error.remoteTimeLogsFetchFailed') {
+      messageKey = activitiesFailedFor(tracker.name)
+        ? 'remoteSync.remoteLogsAndActivitiesError'
+        : 'remoteSync.remoteLogsError';
+    }
+    byReason.set(messageKey, [...(byReason.get(messageKey) ?? []), tracker.name]);
+  }
+  return [...byReason].map(([messageKey, names]) => ({ messageKey, names: names.join(', ') }));
+});
+
+/**
+ * Why Export is disabled, shown under it and in its tooltip: the Trackers cannot be reached (their
+ * activities failed to load), the Ready rows with time still need an activity, or nothing is
+ * ready. Null while exporting or when Export is available.
  */
 const exportDisabledReason = computed(() => {
   if (exporting.value || pushableRows().length > 0) return null;
-  const waitingForActivity = rows.value.some(
-    (row) => canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row),
+  if (rows.value.some((row) => stateFor(row) === 'activity_error')) {
+    return t('remoteSync.exportTrackersUnreachable');
+  }
+  return t(
+    rows.value.some(awaitsActivity)
+      ? 'remoteSync.exportNeedsActivity'
+      : 'remoteSync.exportNothingReady',
   );
-  return t(waitingForActivity ? 'remoteSync.exportNeedsActivity' : 'remoteSync.exportNothingReady');
 });
 
-function retryFailedLogs() {
+/**
+ * The alert's one retry: every failed remote log load and every failed activity load. A retried
+ * activity scope turns to loading at once, so rows sharing it are retried only once.
+ */
+function retryFailedLoads() {
   for (const row of rows.value) {
     if (remoteLogsFor(row).errorKey) void retryRemoteLogs(row);
   }
+  for (const row of rows.value) {
+    if (activitiesFor(row).errorKey) void retryActivities(row);
+  }
 }
+
+/** Ready rows whose to-send time waits for an activity, which the forecast still counts. */
+const awaitingActivityCount = computed(() => rows.value.filter(awaitsActivity).length);
 
 function trackedSecondsFor(row: RemoteSyncDayRowDto): number {
   return selectedSecondsFor(row);
@@ -564,12 +716,75 @@ function setComment(row: RemoteSyncDayRowDto, value: string | undefined) {
 }
 
 const exportIncludedRows = computed(() =>
-  pushableRows().map((row) => ({
+  pushableRows().map((row): ExportDialogIncludedRow => ({
     taskId: row.taskId,
     comment: resolveExportComment(commentFor(row), row.taskName),
     toSendSeconds: toSendSecondsFor(row),
+    trackerName: row.trackerName ?? row.config?.baseUrl ?? null,
+    issueId: issueRefFor(row)?.remoteIssueId ?? null,
+    activityName:
+      activitiesFor(row).options.find((option) => option.id === selectedActivity(row))?.name ??
+      null,
   })),
 );
+
+/** The counted phrase for each reason a Task stays out of the export, in the order they are told. */
+const EXCLUSION_I18N = {
+  noActivityChosen: 'remoteSync.exportDialog.excluded.noActivityChosen',
+  zeroDuration: 'remoteSync.exportDialog.excluded.zeroDuration',
+  unlinked: 'remoteSync.exportDialog.excluded.unlinked',
+  activityUnavailable: 'remoteSync.exportDialog.excluded.activityUnavailable',
+  noProject: 'remoteSync.exportDialog.excluded.noProject',
+  noTracker: 'remoteSync.exportDialog.excluded.noTracker',
+  localProject: 'remoteSync.exportDialog.excluded.localProject',
+  unsupported: 'remoteSync.exportDialog.excluded.unsupported',
+  noActivityAvailable: 'remoteSync.exportDialog.excluded.noActivityAvailable',
+} as const;
+type ExclusionReason = keyof typeof EXCLUSION_I18N;
+
+/** Why a Task of the day is neither in this export nor Sent; null when it is one of those. */
+function exclusionReasonFor(row: RemoteSyncDayRowDto): ExclusionReason | null {
+  switch (stateFor(row)) {
+    case 'sent':
+      return null;
+    case 'manageable':
+      if (isPushable(row)) return null;
+      return isZeroDuration(row) ? 'zeroDuration' : 'noActivityChosen';
+    case 'no_project':
+      return 'noProject';
+    case 'no_tracker':
+      return row.trackerName ? 'noTracker' : 'localProject';
+    case 'system_not_implemented':
+      return 'unsupported';
+    case 'unlinked':
+      return 'unlinked';
+    case 'no_activity':
+      return 'noActivityAvailable';
+    default:
+      return 'activityUnavailable';
+  }
+}
+
+/**
+ * The review's one line about the Tasks left out (REQ-229), counted by reason without listing
+ * them: "3 bez czynności, 1 projekt lokalny, 1 bez zgłoszenia". Empty when none is left out.
+ */
+const exportExcludedSummary = computed(() => {
+  const counts = new Map<ExclusionReason, number>();
+  for (const row of rows.value) {
+    const reason = exclusionReasonFor(row);
+    if (reason) counts.set(reason, (counts.get(reason) ?? 0) + 1);
+  }
+  // SAFETY: EXCLUSION_I18N is a literal object, so its keys are exactly ExclusionReason.
+  return (Object.keys(EXCLUSION_I18N) as ExclusionReason[])
+    .flatMap((reason) => {
+      const count = counts.get(reason);
+      // Each counted phrase stays on one line ("1 z projektu lokalnego"); lines break only
+      // between phrases.
+      return count ? [t(EXCLUSION_I18N[reason], { count }, count).replaceAll(' ', ' ')] : [];
+    })
+    .join(', ');
+});
 
 const exportIncludedTotalSeconds = computed(() =>
   exportIncludedRows.value.reduce((sum, row) => sum + row.toSendSeconds, 0),
@@ -741,13 +956,15 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
 </script>
 
 <template>
-  <section class="grid gap-5" data-testid="remote-sync-page">
+  <section class="grid gap-6" data-testid="remote-sync-page">
     <SyncDayHeader
       :date="date"
-      :date-label="capitalizeFirst(dayHeadingText, locale)"
+      :date-label="dayLabels.long"
+      :date-label-short="dayLabels.short"
       :export-label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
       :export-disabled="exporting || pushableRows().length === 0"
       :export-disabled-reason="exportDisabledReason"
+      :export-open="exportDialogOpen"
       @navigate="navigateToDate"
       @export="openExportDialog"
     />
@@ -759,16 +976,34 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         icon="i-lucide-clock"
         data-testid="remote-sync-total-day"
       >
-        {{ formatDuration(dayTotalsSafe.dayTotal) }}
-        <template #caption>{{ t('remoteSync.dayTotalHint') }}</template>
+        {{ formatDuration(dayTotalsSafe.dayTotal + runningSeconds) }}
+        <template #caption>
+          <!-- While a Time entry runs, the total (like the Timer's) includes it: the caption splits
+               it into the completed part, which the rows add up to, and the running part, in the
+               in-tracker card's "value word + value word" form. -->
+          <span v-if="runningInDay" data-testid="remote-sync-total-day-parts">
+            <span class="tabular-nums">
+              {{ formatDuration(dayTotalsSafe.dayTotal) }}
+            </span>
+            {{ t('remoteSync.dayTotalCompleted') }}
+            <span class="me-1 text-dimmed">+</span>
+            <span class="tabular-nums">
+              {{ formatDuration(runningSeconds) }}
+            </span>
+            {{ t('remoteSync.dayTotalRunning') }}
+          </span>
+          <template v-else>{{ t('remoteSync.dayTotalHint') }}</template>
+        </template>
       </StatCard>
       <StatCard
         :label="t('remoteSync.inTrackerLabel')"
         icon="i-lucide-cloud-upload"
         data-testid="remote-sync-total-in-tracker"
       >
+        <!-- No number yet (or none to trust): a dimmed duration-shaped placeholder keeps the
+             figure's width and weight, so the card does not read as broken. -->
         <template v-if="inTrackerSummary.status === 'loading'">
-          <span class="text-dimmed">{{ t('remoteSync.emptyCell') }}</span>
+          <span class="text-dimmed">{{ t('remoteSync.unknownDuration') }}</span>
           <UIcon
             name="i-lucide-loader-circle"
             class="size-4 animate-spin text-dimmed"
@@ -776,7 +1011,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           />
         </template>
         <span v-else-if="inTrackerSummary.status === 'unavailable'" class="text-dimmed">
-          {{ t('remoteSync.emptyCell') }}
+          {{ t('remoteSync.unknownDuration') }}
         </span>
         <template v-else>{{ formatDuration(inTrackerSummary.totalSeconds) }}</template>
         <template #caption>
@@ -787,51 +1022,67 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           >
             {{ t('remoteSync.inTrackerLoading') }}
           </span>
-          <span
-            v-else-if="inTrackerSummary.status === 'unavailable'"
-            class="flex flex-wrap items-center gap-x-2 gap-y-1"
-            role="alert"
-            data-testid="remote-sync-total-in-tracker-unavailable"
-          >
-            <span
-              v-for="tracker in inTrackerSummary.trackers"
-              :key="tracker.name"
-              class="inline-flex items-center gap-1.5"
-            >
-              <UIcon name="i-lucide-circle-alert" class="size-3.5 text-error" aria-hidden="true" />
-              {{ tracker.name }}: {{ t(tracker.messageKey) }}
-            </span>
-            <UButton
-              v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)"
-              size="xs"
-              variant="link"
-              icon="i-lucide-refresh-cw"
-              class="p-0"
-              :label="t('remoteSync.remoteLogsRetry')"
-              @click="retryFailedLogs"
-            />
+          <!-- The card keeps its one-line rhythm; the named failures are the alert below. -->
+          <span v-else-if="inTrackerSummary.status === 'unavailable'">
+            {{ t('remoteSync.inTrackerUnavailable') }}
           </span>
-          <!-- One line, value before its word: "03:00:00 in trackers + 06:00:00 to send", the
-               durations in the mono face like the figure. The to-send part, the time not in the
-               trackers yet, is set apart by its number's weight and contrast, not the accent (it
-               would read as a link). -->
+          <!-- One line at desktop width, value before its word: "03:00:00 w trackerach +
+               06:00:00 do wysłania (w tym bez czynności)". The figures are caption text (sans,
+               tabular, 400, the caption's colour), never heavier than the words around them;
+               the "+" joins them quietly. -->
           <span v-else data-testid="remote-sync-total-in-tracker-parts">
-            <span class="font-mono tabular-nums">
+            <span class="tabular-nums">
               {{ formatDuration(inTrackerSummary.logsSeconds) }}
             </span>
             {{ t('remoteSync.inTrackersLogs') }}
             <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
             <span class="me-1 text-dimmed">+</span>
-            <span class="text-default">
-              <span class="font-mono font-medium tabular-nums text-highlighted">
-                {{ formatDuration(inTrackerSummary.toSendSeconds) }}
-              </span>
-              {{ t('remoteSync.inTrackerToSend') }}
+            <span class="tabular-nums">
+              {{ formatDuration(inTrackerSummary.toSendSeconds) }}
             </span>
+            {{ t('remoteSync.inTrackerToSend') }}
+            <!-- A forecast: the to-send part still counts Ready time whose activity is not
+                 chosen yet, and says how many Tasks that is ("4 bez czynności", the export
+                 review's wording). -->
+            <template v-if="awaitingActivityCount > 0">
+              {{ t('remoteSync.inTrackerAwaitingActivity', { count: awaitingActivityCount }) }}
+            </template>
           </span>
         </template>
       </StatCard>
     </div>
+
+    <!-- REQ-510: why the in-tracker total is missing, told once for the page: the failed
+         Trackers grouped by reason, and one retry for all of them. -->
+    <UAlert
+      v-if="inTrackerSummary.status === 'unavailable'"
+      color="warning"
+      variant="subtle"
+      icon="i-lucide-unplug"
+      orientation="horizontal"
+      role="alert"
+      :ui="{ root: 'py-3', description: 'grid gap-0.5 opacity-100' }"
+      data-testid="remote-sync-total-in-tracker-unavailable"
+    >
+      <template #description>
+        <p v-for="failure in inTrackerFailures" :key="failure.messageKey" class="m-0">
+          <span class="font-medium">{{ failure.names }}:</span>
+          {{ lowerFirst(t(failure.messageKey)) }}
+        </p>
+      </template>
+      <template v-if="inTrackerSummary.trackers.some((tracker) => tracker.retryable)" #actions>
+        <!-- The page's one retry style: a neutral outline control (the rows use its icon-only
+             tile). It reloads every failed load, remote time entries and activities. -->
+        <UButton
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-refresh-cw"
+          :label="t('remoteSync.retryLoading')"
+          data-testid="remote-sync-retry-failed"
+          @click="retryFailedLoads"
+        />
+      </template>
+    </UAlert>
 
     <p v-if="isEmpty" class="text-muted" data-testid="remote-sync-empty-state">
       {{ t('remoteSync.emptyState') }}
@@ -851,6 +1102,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
         :reason="reasonKeyFor(row)"
         :issue-title="issueRefFor(row)?.cachedTitle ?? null"
         :issue-id="issueRefFor(row)?.remoteIssueId ?? null"
+        :issue-reason="issueReasonFor(row)"
         :show-link-picker="stateFor(row) === 'unlinked' && !!row.config"
         :picker-config="row.config ? toPickerConfig(row.config) : null"
         :picker-scope="
@@ -858,6 +1110,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
             ? { remoteProjectId: row.remoteProjectId, remoteProjectTitle: row.remoteProjectTitle }
             : null
         "
+        :day-label="dayLabels.plain"
         :comment="commentFor(row)"
         :editing-title="editingTitleTaskId === row.taskId"
         :tracked-label="formatDuration(trackedSecondsFor(row))"
@@ -926,15 +1179,17 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           class="font-mono text-sm tabular-nums text-muted"
           data-testid="remote-sync-untitled-duration"
         >
-          {{ formatDuration(untitledTotal) }}
+          {{ formatDuration(untitledCompleted) }}
         </ColumnCell>
       </ColumnRow>
     </ColumnList>
 
     <SyncExportDialog
       v-model:open="exportDialogOpen"
+      :date-label="dayLabels.plain"
       :included="exportIncludedRows"
       :to-send-seconds="exportIncludedTotalSeconds"
+      :excluded-summary="exportExcludedSummary"
       :completed-count="exportCompletedCount"
       :total-count="exportTotalCount"
       :is-running="exporting"

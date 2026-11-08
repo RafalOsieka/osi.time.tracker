@@ -7,8 +7,9 @@ import {
 
 interface StatusPresentation {
   label: string;
-  icon: string;
-  iconClass: string;
+  /** A status mark, only where the state matters; a plain statement goes without one. */
+  icon?: string;
+  iconClass?: string;
 }
 
 const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
@@ -43,7 +44,8 @@ const statusColor = computed(() => {
 
 const statusIcon = computed(() => {
   const icons = {
-    neutral: 'i-lucide-circle-minus',
+    // Not required is not a problem, so it shows the extension glyph rather than a status mark.
+    neutral: 'i-lucide-puzzle',
     checking: 'i-lucide-loader-circle',
     red: 'i-lucide-circle-alert',
     orange: 'i-lucide-triangle-alert',
@@ -67,14 +69,9 @@ const hasRequiredTracker = computed(() =>
   orderedTrackers.value.some((tracker) => !tracker.directBrowserAccess),
 );
 
-const notRequiredStatus = computed((): StatusPresentation => ({
-  label: t('layout.extensionStatus.notRequired'),
-  icon: 'i-lucide-circle-minus',
-  iconClass: 'text-muted',
-}));
-
 const websiteStatus = computed((): StatusPresentation => {
-  if (!hasRequiredTracker.value) return notRequiredStatus.value;
+  // The one plain statement when no Tracker needs the extension; each Tracker row adds its mode.
+  if (!hasRequiredTracker.value) return { label: t('layout.extensionStatus.notRequiredSummary') };
   const presentations = {
     checking: {
       label: t('layout.extensionStatus.checking'),
@@ -107,6 +104,9 @@ const websiteStatus = computed((): StatusPresentation => {
 
 const destinationRows = computed(() =>
   orderedTrackers.value.map((tracker) => ({
+    // When no Tracker needs the extension the statement above already says they all connect
+    // directly, so the rows show only their mark and name.
+    showStatus: hasRequiredTracker.value,
     id: tracker.id,
     name: tracker.name,
     required: !tracker.directBrowserAccess,
@@ -124,7 +124,8 @@ function destinationStatus(tracker: {
   directBrowserAccess: boolean;
   destinationApproved: boolean | null;
 }): StatusPresentation {
-  if (tracker.directBrowserAccess) return notRequiredStatus.value;
+  // A direct connection is not a state to watch, so it reads as plain text without a mark.
+  if (tracker.directBrowserAccess) return { label: t('layout.extensionStatus.destinationDirect') };
   if (tracker.destinationApproved === true) {
     return {
       label: t('layout.extensionStatus.destinationApproved'),
@@ -148,7 +149,7 @@ function destinationStatus(tracker: {
   }
   return {
     label: t('layout.extensionStatus.websiteUnknown'),
-    icon: 'i-lucide-circle-minus',
+    icon: 'i-lucide-circle-help',
     iconClass: 'text-muted',
   };
 }
@@ -167,25 +168,30 @@ function openDetails() {
       :open-delay="50"
       :close-delay="200"
       class="w-full min-w-0"
-      :content="{ side: 'top', align: collapsed ? 'center' : 'start', sideOffset: 4 }"
-      :ui="{ content: 'max-w-80 p-3' }"
+      :content="{ side: 'right', align: 'end', sideOffset: 24 }"
+      :ui="{ content: 'w-80 p-3' }"
     >
       <UButton
         color="neutral"
         variant="ghost"
         size="xs"
         block
-        class="w-full min-w-0 justify-start gap-1.5 font-normal text-muted"
-        :class="collapsed ? 'px-1.5' : 'px-2.5'"
+        class="h-8 w-full min-w-0 gap-2 font-normal text-muted"
+        :class="[
+          collapsed ? 'justify-center px-1' : 'justify-start px-1',
+          SIDEBAR_FOOTER_PRESSED_CLASS,
+        ]"
         :aria-label="t('layout.extensionStatus.rowAria', { status: statusLabel })"
         data-testid="extension-status-trigger"
         @focus="openDetails"
       >
         <template #leading>
-          <span class="inline-flex size-5 shrink-0 items-center justify-center">
+          <!-- As wide as the account avatar above, so icon and label line up with it; the
+               trigger is a 32px control like the rest of the app's buttons. -->
+          <span class="inline-flex h-5 w-8 shrink-0 items-center justify-center">
             <UIcon
               :name="statusIcon"
-              class="size-3"
+              class="size-4"
               :class="statusIconClass"
               data-testid="extension-status-icon"
             />
@@ -219,17 +225,28 @@ function openDetails() {
             class="m-0 flex items-center gap-2 text-sm font-semibold"
             data-testid="extension-status-title"
           >
-            <UIcon name="i-lucide-puzzle" class="size-4 shrink-0 text-primary" />
+            <!-- The extension's cyan icon chip, as on its own pages. -->
+            <span
+              class="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/12"
+              aria-hidden="true"
+            >
+              <UIcon name="i-lucide-puzzle" class="size-3.5" />
+            </span>
             <span class="min-w-0">{{ t('layout.extensionStatus.title') }}</span>
           </h2>
 
-          <p class="m-0 flex items-center gap-2 text-sm" data-testid="extension-status-website">
-            <span class="inline-flex size-4 shrink-0 items-center justify-center overflow-hidden">
+          <p
+            class="m-0 flex items-start gap-2 text-sm whitespace-pre-line"
+            :class="websiteStatus.icon ? undefined : 'text-muted'"
+            data-testid="extension-status-website"
+          >
+            <span
+              v-if="websiteStatus.icon"
+              class="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
+            >
               <UIcon :name="websiteStatus.icon" class="size-4" :class="websiteStatus.iconClass" />
             </span>
-            <span class="min-w-0">
-              {{ t('layout.extensionStatus.statusLabel') }}: {{ websiteStatus.label }}
-            </span>
+            <span class="min-w-0">{{ websiteStatus.label }}</span>
           </p>
 
           <ul
@@ -241,22 +258,30 @@ function openDetails() {
             <li
               v-for="tracker in destinationRows"
               :key="tracker.id"
-              class="flex items-start gap-2"
+              class="flex gap-2"
+              :class="tracker.showStatus ? 'items-start' : 'items-center'"
               :data-testid="`extension-status-destination-${tracker.id}`"
               :data-required="tracker.required ? 'required' : 'optional'"
             >
-              <span
-                class="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
-              >
-                <UIcon
-                  :name="tracker.status.icon"
-                  class="size-4"
-                  :class="tracker.status.iconClass"
-                />
-              </span>
+              <!-- The Tracker's type mark gives each row its identity; status marks sit by the text. -->
+              <TrackerTypeMark
+                :system-type="tracker.destination.provider"
+                :class="tracker.showStatus && 'mt-px'"
+              />
               <div class="grid min-w-0 gap-0.5">
                 <p class="m-0 truncate text-sm">{{ tracker.name }}</p>
-                <p class="m-0 text-sm text-muted">{{ tracker.status.label }}</p>
+                <p
+                  v-if="tracker.showStatus"
+                  class="m-0 flex items-start gap-1.5 text-sm text-muted"
+                >
+                  <UIcon
+                    v-if="tracker.status.icon"
+                    :name="tracker.status.icon"
+                    class="mt-0.5 size-4 shrink-0"
+                    :class="tracker.status.iconClass"
+                  />
+                  <span class="min-w-0">{{ tracker.status.label }}</span>
+                </p>
                 <ExtensionApprovalRequest
                   v-if="tracker.canRequest"
                   :state="suggestion.states.value[suggestionKey(tracker.destination)]"

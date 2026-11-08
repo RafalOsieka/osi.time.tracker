@@ -13,7 +13,7 @@ import {
 } from './harness/fake-trackers.js';
 import { startWebsiteFixture, type WebsiteFixture } from './harness/website-fixture.js';
 import { requireChromium } from './harness/skip.js';
-import { toasts, waitUntilIdle } from './harness/setup-page.js';
+import { openAddForm, toasts, waitUntilIdle } from './harness/setup-page.js';
 import { chooseOption, optionNames } from './harness/choose-option.js';
 import { EXTENSION_PROTOCOL_VERSION } from '@osi/time-tracker-extension-protocol';
 import type { JsonValue } from '@osi/time-tracker-remote-trackers/contracts';
@@ -46,10 +46,12 @@ async function approveSite(
 ): Promise<void> {
   const page = await harness.context.newPage();
   await page.goto(optionsUrl(harness));
+  await openAddForm(page, 'website');
   await page.getByTestId('website-origin').fill(websiteOrigin);
   await page.getByTestId('add-website').click();
   await page.getByTestId(`revoke-website-${websiteOrigin}`).waitFor();
   await waitUntilIdle(page);
+  await openAddForm(page, 'destination');
   await chooseOption(page, 'destination-provider', optionNames[provider]);
   await page.getByTestId('destination-url').fill(destinationUrl);
   const trackerRows = page.locator('[data-testid^="revoke-destination-"]');
@@ -146,7 +148,7 @@ describeChromium('website/content/worker bridge', () => {
       .poll(async () =>
         (await popup.getByTestId('popup-tracker-activity').allTextContents()).join('|'),
       )
-      .toMatch(/Issue search · OK|Wyszukiwanie zadań · OK/);
+      .toMatch(/(Succeeded|Powodzenie)\s*(Issue search|Wyszukiwanie zgłoszeń)/);
     const storageKeys = await popup.evaluate(async () => ({
       local: Object.keys(await chrome.storage.local.get(null)),
       session: Object.keys(await chrome.storage.session.get(null)),
@@ -499,7 +501,7 @@ describeChromium('website/content/worker bridge', () => {
     await options.goto(optionsUrl(harness!));
     await options.locator(`[data-testid="revoke-website-${website.origin}"]`).click();
     await options.getByTestId('revoke-website-confirm-action').click();
-    await expect.poll(() => toasts(options).textContent()).toMatch(/cofni|revoked/i);
+    await expect.poll(() => toasts(options).textContent()).toMatch(/usunięto|removed/i);
     await options.close();
 
     const afterRevoke = await runOnPage(page, {

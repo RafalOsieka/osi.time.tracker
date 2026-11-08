@@ -185,14 +185,6 @@ const remoteSummaryText = computed(() => {
   return formatReportDuration(summary.seconds);
 });
 
-// Day keys are calendar dates, so they format in UTC to stay on the same day.
-function formatDay(date: string, options: Intl.DateTimeFormatOptions): string {
-  return new Date(`${date}T00:00:00Z`).toLocaleDateString(locale.value, {
-    ...options,
-    timeZone: 'UTC',
-  });
-}
-
 /**
  * Duration cells share the report's numeric face. Plain values sit at 400 so a flagged value
  * (600, warning) differs by weight as well as colour (REQ-472); the totals row is 600.
@@ -202,15 +194,61 @@ function durationTd(isTotal: boolean, extra = ''): string {
   return `text-end font-mono tabular-nums ${weight} ${extra}`;
 }
 
+/**
+ * A legend entry's key: a sample duration in the flag's look, in miniature (12px mono, the
+ * dotted amber underline), so the legend shows the mark it explains without reading as an
+ * ellipsis or as a row of data.
+ */
+const LEGEND_SAMPLE =
+  'me-1.5 font-mono text-xs font-semibold text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-[3px]';
+const LEGEND_SAMPLES = { local: formatReportDuration(26_100), direct: formatReportDuration(8100) };
+
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
 const GROUP_DIVIDER = 'border-s border-default';
 
-// The totals row closes the table with a heavier rule and a faint band.
+// The totals row closes the table with a divider-weight rule and its semibold figures, on the
+// same untinted ground as every other table.
 const tableMeta: TableProps<TimesheetRow>['meta'] = {
   class: {
-    tr: (row) => (row.original.isTotal ? 'border-t-2 border-accented bg-elevated/50' : ''),
+    tr: (row) => (row.original.isTotal ? 'border-t border-default' : ''),
   },
 };
+
+/**
+ * The day as "czw., 5 lis" (locale order): the weekday muted and right before the date it names,
+ * so a month scans by week without a floating weekday column. Day keys are calendar dates, so
+ * they format in UTC to stay on the same day.
+ */
+function dayParts(date: string) {
+  const parts = new Intl.DateTimeFormat(locale.value, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  }).formatToParts(new Date(`${date}T00:00:00Z`));
+  const weekdayAt = parts.findIndex((part) => part.type === 'weekday');
+  // The weekday and the literal right after it ("czw., ") form the muted lead, when it leads.
+  if (weekdayAt !== 0) return { weekday: '', rest: parts.map((part) => part.value).join('') };
+  const leadEnd = parts[1]?.type === 'literal' ? 2 : 1;
+  return {
+    weekday: parts
+      .slice(0, leadEnd)
+      .map((part) => part.value)
+      .join(''),
+    rest: parts
+      .slice(leadEnd)
+      .map((part) => part.value)
+      .join(''),
+  };
+}
+
+/**
+ * Date and Local have no group above them, so their headings sit in the lower header row under
+ * an empty cell. Lifting the label by half a header row centres it across both rows.
+ */
+function spanningHeader(label: string) {
+  return () => h('span', { class: 'relative -top-[1.125rem]' }, label);
+}
 
 function flaggedDuration(input: {
   text: string;
@@ -222,12 +260,15 @@ function flaggedDuration(input: {
 }) {
   if (input.warning) {
     const reason = t(ATTENTION_I18N[input.warning]);
+    // Colour, weight and a dotted underline: the underline is the cue that survives without
+    // colour (WCAG 1.4.1), and it is the usual sign that a value explains itself on hover.
     return h(resolveComponent('UTooltip'), { text: reason, content: { side: 'bottom' } }, () =>
       h(
         'span',
         {
           tabindex: 0,
-          class: 'text-warning font-semibold',
+          class:
+            'rounded-sm font-semibold text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-4 focus-visible:outline-2 focus-visible:outline-primary',
           'data-testid': input.warningTestId ?? input.testId,
           'aria-label': `${input.text}. ${reason}`,
         },
@@ -238,7 +279,13 @@ function flaggedDuration(input: {
   return h(
     'span',
     {
-      class: input.dimZero && input.zero ? 'font-normal text-dimmed' : undefined,
+      // Zeros recede by weight and by a quiet neutral grey one step below the dimmed tone (about
+      // 4.7:1 in both themes, still AA), so the grid stops reading as a sea of zeros. Dark mode
+      // uses a near-neutral slate: the ramp's bluer grey read as accent at this size.
+      class:
+        input.dimZero && input.zero
+          ? 'font-light text-neutral-500 dark:font-[270] dark:text-[oklch(64%_0.012_262)]'
+          : undefined,
       'data-testid': input.testId,
     },
     input.text,
@@ -298,10 +345,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
   const trackers = report?.trackers ?? [];
   const dateCol: TableColumn<TimesheetRow> = {
     accessorKey: 'date',
-    header: t('reports.monthly.columnDate'),
+    header: spanningHeader(t('reports.monthly.columnDate')),
     meta: {
       class: {
-        th: 'w-36 align-bottom',
+        th: 'w-28 align-bottom',
         td: ({ row }) =>
           `text-highlighted ${row.original.isTotal ? 'font-semibold' : 'font-medium'}`,
       },
@@ -311,24 +358,16 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       if (row.original.isTotal) {
         return h('span', { 'data-testid': testId }, t('reports.monthly.totals'));
       }
-      // A muted weekday in a fixed slot after the date, so a month scans by week.
-      return h('span', { class: 'inline-flex items-baseline gap-2' }, [
-        h(
-          'span',
-          { class: 'w-12', 'data-testid': testId },
-          formatDay(row.original.date, { day: 'numeric', month: 'short' }),
-        ),
-        h(
-          'span',
-          { class: 'text-xs font-normal text-muted' },
-          formatDay(row.original.date, { weekday: 'short' }),
-        ),
+      const { weekday, rest } = dayParts(row.original.date);
+      return h('span', { 'data-testid': testId }, [
+        h('span', { class: 'font-normal text-muted' }, weekday),
+        rest,
       ]);
     },
   };
   const localCol: TableColumn<TimesheetRow> = {
     accessorKey: 'localSeconds',
-    header: t('reports.monthly.columnLocal'),
+    header: spanningHeader(t('reports.monthly.columnLocal')),
     meta: {
       class: {
         th: 'w-24 text-end align-bottom',
@@ -363,10 +402,10 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
     enableSorting: false,
     meta: {
       class: {
-        // Centred over its three columns; the header band itself spans the whole table. The
-        // table is fixed-layout (Date and Local fixed, every Tracker column an equal share of
-        // the rest), so numbers hold their place whatever the translated headings.
-        th: `py-2 text-center text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
+        // Aligned to its group's start, after the group divider, like a section label over its
+        // three columns. The table is fixed-layout (Date and Local fixed, every Tracker column
+        // an equal share of the rest), so numbers hold their place whatever the headings.
+        th: `py-2 ps-2 text-start text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
     },
     columns: [
@@ -376,7 +415,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         enableSorting: false,
         meta: {
           class: {
-            th: `text-end ${GROUP_DIVIDER}`,
+            th: `ps-2 text-end whitespace-nowrap ${GROUP_DIVIDER}`,
             td: ({ row }) => durationTd(row.original.isTotal, GROUP_DIVIDER),
           },
         },
@@ -387,7 +426,12 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         id: `${tracker.id}-direct`,
         header: t('reports.monthly.columnDirect'),
         enableSorting: false,
-        meta: { class: { th: 'text-end', td: ({ row }) => durationTd(row.original.isTotal) } },
+        meta: {
+          class: {
+            th: 'ps-2 text-end whitespace-nowrap',
+            td: ({ row }) => durationTd(row.original.isTotal),
+          },
+        },
         cell: ({ row }) =>
           durationCell(row.original, row.original.trackerCells[tracker.id], 'direct', tracker.id),
       },
@@ -397,7 +441,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         enableSorting: false,
         meta: {
           class: {
-            th: 'text-end',
+            th: 'ps-2 text-end whitespace-nowrap',
             td: ({ row }) => durationTd(row.original.isTotal),
           },
         },
@@ -422,7 +466,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         @next="goMonth(1)"
       >
         <PeriodLabel data-testid="reports-month-label">
-          {{ capitalizeFirst(monthLabel, locale) }}
+          {{ monthLabel }}
         </PeriodLabel>
       </PeriodStepper>
     </PageHeader>
@@ -438,7 +482,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       data-testid="reports-monthly-summaries"
       aria-live="polite"
     >
-      <StatCard :label="t('reports.monthly.summaryLocal')" icon="i-lucide-hard-drive">
+      <StatCard :label="t('reports.monthly.summaryLocal')" icon="i-lucide-laptop">
         <span
           :class="localSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
           data-testid="reports-summary-local"
@@ -493,7 +537,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       {{ t('reports.monthly.empty') }}
     </p>
 
-    <!-- The shared 44px rows; one faint band runs under both header rows, edge to edge. -->
+    <!-- The shared table style: 44px rows, quiet headers on the card's own ground. -->
     <UTable
       v-if="!reportErrorKey && !showEmpty"
       :data="rows"
@@ -503,18 +547,29 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :ui="{
         root: 'rounded-xl bg-default ring ring-default dark:bg-muted',
         base: 'w-full table-fixed',
-        thead: 'bg-elevated/50',
       }"
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
-    <p
+    <!-- The legend (REQ-472): what an underlined value means in each column (a flag meaning, never
+         a column definition), read at a glance, then how to see each value's own reason. Helper
+         text, so 14px. -->
+    <div
       v-if="!reportErrorKey && !showEmpty"
-      class="m-0 -mt-1 flex items-center gap-1.5 px-4 text-xs text-muted"
+      class="-mt-1 flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 text-sm text-muted"
       data-testid="reports-monthly-legend"
     >
-      <UIcon name="i-lucide-info" class="size-3.5 shrink-0 text-dimmed" aria-hidden="true" />
-      {{ t('reports.monthly.legend') }}
-    </p>
+      <span>
+        <span :class="LEGEND_SAMPLE" aria-hidden="true">{{ LEGEND_SAMPLES.local }}</span>
+        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnLocal') }) }}
+        {{ t('reports.monthly.legendLocal') }}
+      </span>
+      <span>
+        <span :class="LEGEND_SAMPLE" aria-hidden="true">{{ LEGEND_SAMPLES.direct }}</span>
+        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnDirect') }) }}
+        {{ t('reports.monthly.legendDirect') }}
+      </span>
+      <span class="w-full">{{ t('reports.monthly.legend') }}</span>
+    </div>
   </div>
 </template>

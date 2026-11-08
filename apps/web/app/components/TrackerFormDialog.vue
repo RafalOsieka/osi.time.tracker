@@ -52,6 +52,11 @@ const state = reactive<{
   roundingRule: TRACKER_ROUNDING_RULE_ORDER[0],
 });
 const secret = ref('');
+/** Whether the API key shows as plain text (the trailing eye toggle); hidden on every open. */
+const secretVisible = ref(false);
+
+/** Help lines sit tight under their control (4px), not a field gap away. */
+const FIELD_UI = { help: 'mt-1' };
 const nameServerError = ref('');
 const baseUrlServerError = ref('');
 const systemTypeServerError = ref('');
@@ -65,6 +70,7 @@ function seedForm(tracker: TrackerDto | null) {
   state.directBrowserAccess = tracker?.directBrowserAccess ?? true;
   state.roundingRule = tracker?.roundingRule ?? TRACKER_ROUNDING_RULE_ORDER[0];
   secret.value = tracker ? (getSecret(tracker.id) ?? '') : '';
+  secretVisible.value = false;
   nameServerError.value = '';
   baseUrlServerError.value = '';
   systemTypeServerError.value = '';
@@ -77,6 +83,12 @@ watch(
     seedForm(tracker);
   },
 );
+
+/** The dialog opens on its first field, the name, rather than on the header's close button. */
+function focusNameField(event: Event) {
+  event.preventDefault();
+  document.getElementById('tracker-name')?.focus();
+}
 
 function closeDialog() {
   dialogOpen.value = false;
@@ -177,6 +189,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
     v-model:open="dialogOpen"
     :title="tracker ? t('trackers.dialogTitleEdit') : t('trackers.dialogTitleCreate')"
     :ui="{ content: 'sm:max-w-lg' }"
+    :content="{ onOpenAutoFocus: focusNameField }"
     @update:open="(value: boolean) => !value && closeDialog()"
   >
     <template #body>
@@ -188,6 +201,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
           class="grid gap-3"
           @submit="onSave"
         >
+          <!-- Optional fields say so in their hint; required ones carry aria-required only. -->
           <UFormField
             :label="t('trackers.nameLabel')"
             name="name"
@@ -196,8 +210,8 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             <UInput
               id="tracker-name"
               v-model="state.name"
+              aria-required="true"
               :maxlength="TRACKER_NAME_MAX_LENGTH"
-              :placeholder="t('trackers.namePlaceholder')"
               class="w-full"
               data-testid="tracker-name-input"
             />
@@ -220,8 +234,17 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
               value-key="value"
               label-key="label"
               class="w-full"
+              :ui="{ base: 'ps-11' }"
               data-testid="tracker-system-type-select"
-            />
+            >
+              <!-- The same OP/RM marks as the Tracker select in the Project dialog. -->
+              <template #leading>
+                <TrackerTypeMark :system-type="state.systemType" />
+              </template>
+              <template #item-leading="{ item }">
+                <TrackerTypeMark :system-type="item.value" />
+              </template>
+            </USelect>
             <template v-if="systemTypeServerError" #error>
               <span
                 id="tracker-system-type-error"
@@ -241,6 +264,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             <UInput
               id="tracker-base-url"
               v-model="state.baseUrl"
+              aria-required="true"
               :placeholder="t('trackers.baseUrlPlaceholder')"
               class="w-full"
               data-testid="tracker-base-url-input"
@@ -252,39 +276,63 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             </template>
           </UFormField>
 
-          <UFormField name="directBrowserAccess">
-            <div class="flex items-center gap-1">
-              <UCheckbox
-                id="tracker-direct-browser-access"
-                v-model="state.directBrowserAccess"
-                :label="t('trackers.directBrowserAccessLabel')"
-                data-testid="tracker-direct-browser-access"
-              />
-              <UTooltip
-                :text="t('trackers.directBrowserAccessHelp')"
-                :delay-duration="0"
-                :ui="{
-                  content: 'h-auto max-w-xs whitespace-normal',
-                  text: 'whitespace-normal',
-                }"
-              >
+          <!-- The browser-only promise is help text, so it stays visible while typing. -->
+          <UFormField
+            :label="t('trackers.secretLabel')"
+            :hint="t('trackers.optionalHint')"
+            :help="t('trackers.secretHelp')"
+            :ui="{ help: 'mt-1 whitespace-pre-line' }"
+            name="secret"
+          >
+            <UInput
+              id="tracker-secret"
+              v-model="secret"
+              :type="secretVisible ? 'text' : 'password'"
+              autocomplete="off"
+              class="w-full"
+              :ui="{ trailing: 'pe-1' }"
+              data-testid="tracker-secret-input"
+            >
+              <!-- The same show/hide toggle as the sign-in password, to check a pasted key. -->
+              <template #trailing>
                 <UButton
-                  type="button"
                   color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  square
-                  icon="i-lucide-circle-help"
-                  class="text-muted"
-                  :ui="{ leadingIcon: 'size-3.5' }"
-                  :aria-label="t('trackers.directBrowserAccessHelpAria')"
-                  data-testid="tracker-direct-browser-access-help"
+                  variant="link"
+                  size="sm"
+                  :icon="secretVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+                  :aria-label="t('trackers.showSecret')"
+                  :aria-pressed="secretVisible"
+                  aria-controls="tracker-secret"
+                  data-testid="tracker-secret-visibility-toggle"
+                  @click="secretVisible = !secretVisible"
                 />
-              </UTooltip>
-            </div>
+              </template>
+            </UInput>
           </UFormField>
 
-          <UFormField :label="t('trackers.roundingRuleLabel')" name="roundingRule">
+          <!--
+            Its help is a visible line like the API key's, indented under the checkbox label and
+            linked to the checkbox by the form field (aria-describedby).
+          -->
+          <UFormField
+            name="directBrowserAccess"
+            :help="t('trackers.directBrowserAccessHelp')"
+            :ui="{ help: 'mt-1 ps-6' }"
+          >
+            <UCheckbox
+              id="tracker-direct-browser-access"
+              v-model="state.directBrowserAccess"
+              :label="t('trackers.directBrowserAccessLabel')"
+              data-testid="tracker-direct-browser-access"
+            />
+          </UFormField>
+
+          <UFormField
+            :label="t('trackers.roundingRuleLabel')"
+            :help="t('trackers.roundingRuleHelp')"
+            :ui="FIELD_UI"
+            name="roundingRule"
+          >
             <USelect
               id="tracker-rounding-rule"
               v-model="state.roundingRule"
@@ -296,20 +344,9 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             />
           </UFormField>
 
-          <UFormField :label="t('trackers.secretLabel')" name="secret">
-            <UInput
-              id="tracker-secret"
-              v-model="secret"
-              type="password"
-              :placeholder="t('trackers.secretPlaceholder')"
-              class="w-full"
-              data-testid="tracker-secret-input"
-            />
-          </UFormField>
-
           <FormDialogFooter
             :cancel-label="t('trackers.cancelButton')"
-            :save-label="t('trackers.saveButton')"
+            :save-label="tracker ? t('trackers.saveButton') : t('trackers.createButton')"
             :saving="saving"
             @cancel="closeDialog"
           />

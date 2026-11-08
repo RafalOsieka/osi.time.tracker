@@ -34,22 +34,33 @@ describe('suggestion list', () => {
       highlightId: suggestionId(plain),
     });
     expect(html).toContain(`data-testid="approve-suggestion-${suggestionId(plain)}"`);
-    expect(html).toContain('requested by time.example.com');
-    expect(html.match(/HTTP destinations send tracker credentials/g)).toHaveLength(1);
-    expect(html).toMatch(/class="[^"]*ring-primary[^"]*" data-testid="suggestion-/);
+    // Both come from one website, so the section names it once instead of every row.
+    expect(html).toContain('data-testid="suggestions-website"');
+    expect(html).toMatch(/time\.example\.com<\/span>\s*asks for access to these trackers/);
+    expect(html.match(/API key travels unencrypted/g)).toHaveLength(1);
+    expect(html).toContain('Approve despite HTTP');
+    expect(html).toContain('data-testid="suggestion-reviewed"');
+    expect(html).toContain(
+      `data-highlighted="true" data-testid="suggestion-${suggestionId(plain)}"`,
+    );
+    expect(html).toMatch(/data-testid="suggestions-count".*?class="truncate">2<\/span>/);
   });
 
-  it('only dismisses or hands over to setup in the popup', async () => {
+  it('only dismisses or hands over to setup in the popup, flagging plain HTTP', async () => {
     useExtensionI18n().setLocale('pl');
     const item = suggestion('https://rm.example.com');
+    const plain = suggestion('http://rm.internal');
     const html = await renderWithUi(SuggestionList, {
-      suggestions: [item],
+      suggestions: [item, plain],
       disabled: false,
       mode: 'popup',
     });
     expect(html).not.toContain('data-testid="approve-suggestion-');
     expect(html).toContain(`data-testid="review-suggestion-${suggestionId(item)}"`);
-    expect(html).toContain('Zatwierdź w konfiguracji');
+    expect(html).toContain('Przejrzyj');
+    expect(html).toContain(`data-testid="http-suggestion-${suggestionId(plain)}"`);
+    expect(html).not.toContain(`data-testid="http-suggestion-${suggestionId(item)}"`);
+    expect(html).toContain('Nieszyfrowane');
   });
 
   it('renders nothing without suggestions', async () => {

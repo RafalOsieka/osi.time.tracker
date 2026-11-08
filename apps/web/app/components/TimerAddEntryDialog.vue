@@ -70,6 +70,35 @@ const timesValue = computed<{ start: Time | undefined; end: Time | undefined }>(
   },
 });
 
+const HH_MM = /^\d{2}:\d{2}$/;
+
+/** The entry's length for a complete, non-inverted range (wall clock on the chosen day), else null. */
+const previewDuration = computed(() => {
+  if (!state.date || !HH_MM.test(state.startTime) || !HH_MM.test(state.endTime)) return null;
+  const startedAt = Date.parse(wallClockToInstant(state.date, state.startTime, timeZone));
+  const stoppedAt = Date.parse(wallClockToInstant(state.date, state.endTime, timeZone));
+  if (!(stoppedAt >= startedAt)) return null;
+  // A preview inside a form reads as words ("1 godz. 30 min"); tables keep their mono formats.
+  const totalMinutes = Math.floor((stoppedAt - startedAt) / 60_000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [
+    hours > 0 ? t('timerView.addEntry.durationHours', { count: hours }) : '',
+    minutes > 0 || hours === 0 ? t('timerView.addEntry.durationMinutes', { count: minutes }) : '',
+  ];
+  return parts.filter(Boolean).join(' ');
+});
+
+/** Whether the title came from the create-new-task option, for the "new Task" cue. */
+const isNewTask = ref(false);
+
+/** The timezone with its offset on the chosen date and start (DST applies), e.g. UTC+01:00. */
+const zoneWithOffset = computed(() => {
+  const time = HH_MM.test(state.startTime) ? state.startTime : '12:00';
+  const at = state.date ? wallClockToInstant(state.date, time, timeZone) : new Date().toISOString();
+  return timeZoneLabel(timeZone, at);
+});
+
 watch(
   () => visible,
   (visible) => {
@@ -141,83 +170,125 @@ async function onSave() {
         :schema="timerAddEntryFormSchema"
         :state="state"
         data-testid="add-entry-dialog"
-        class="grid min-w-80 gap-3"
+        class="grid min-w-80 gap-4"
         @submit="onSave"
         @error="onError"
       >
-        <div class="grid gap-1">
-          <label for="add-entry-title">{{ t('timerView.addEntry.titleLabel') }}</label>
+        <!--
+          The help line says a new title is as welcome as an existing Task; once the create option
+          is picked it says so ("Nowe zadanie") and names the entry's Project, or that it has none.
+        -->
+        <UFormField
+          :label="t('timerView.addEntry.titleLabel')"
+          :hint="t('timerView.addEntry.optionalHint')"
+          :ui="{ help: 'mt-1.5 text-sm text-muted' }"
+        >
+          <template #help>
+            <span
+              v-if="isNewTask"
+              class="flex flex-wrap items-center gap-x-2 gap-y-1"
+              data-testid="add-entry-new-task"
+            >
+              <UBadge
+                color="primary"
+                variant="soft"
+                size="md"
+                class="rounded-full"
+                :label="t('timerView.addEntry.newTaskBadge')"
+              />
+              <span>
+                {{
+                  chipProject
+                    ? t('timerView.addEntry.newTaskProject', { project: chipProject.name })
+                    : t('timerView.addEntry.newTaskNoProject')
+                }}
+              </span>
+            </span>
+            <template v-else>{{ t('timerView.addEntry.titleHelp') }}</template>
+          </template>
           <TaskTitleInput
-            id="add-entry-title"
             ref="titleInput"
             v-model:text="state.title"
             v-model:project="chipProject"
             v-model:task="pickedTask"
+            v-model:new-task="isNewTask"
+            class="w-full"
             eager
-            :placeholder="t('timerView.addEntry.titlePlaceholder')"
             chip-testid="add-entry-project"
             data-testid="add-entry-title-input"
           />
-        </div>
+        </UFormField>
 
-        <div class="grid gap-1">
-          <label for="add-entry-date">{{ t('timerView.addEntry.dateLabel') }}</label>
-          <UInputDate
-            id="add-entry-date"
-            v-model="dateValue"
-            :aria-label="t('timerView.addEntry.dateLabel')"
-            data-testid="add-entry-date-input"
+        <!--
+          Date and range share one row, like the top bar's start editor, so neither field runs
+          long for its short value. Under them: the entry's length in words (a mistyped range is
+          caught before saving), then, quieter as metadata, the timezone the times are in.
+        -->
+        <div class="grid grid-cols-[minmax(0,11fr)_minmax(0,9fr)] gap-3">
+          <UFormField :label="t('timerView.addEntry.dateLabel')">
+            <UInputDate
+              v-model="dateValue"
+              class="w-full"
+              :ui="{ segment: 'data-[segment=literal]:text-current' }"
+              :aria-label="t('timerView.addEntry.dateLabel')"
+              data-testid="add-entry-date-input"
+            >
+              <template #trailing>
+                <UPopover v-model:open="calendarOpen">
+                  <UButton
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    icon="i-lucide-calendar"
+                    class="px-0"
+                    :aria-label="t('common.openCalendar')"
+                    data-testid="add-entry-calendar-button"
+                  />
+                  <template #content>
+                    <div data-testid="add-entry-calendar">
+                      <UCalendar
+                        class="p-2"
+                        :model-value="dateValue"
+                        :aria-label="t('timerView.addEntry.dateLabel')"
+                        @update:model-value="
+                          (value) => onSelectDate(value instanceof CalendarDate ? value : null)
+                        "
+                      />
+                    </div>
+                  </template>
+                </UPopover>
+              </template>
+            </UInputDate>
+          </UFormField>
+          <UFormField :label="t('timerView.addEntry.timesLabel')">
+            <TimeField
+              v-model="timesValue"
+              range
+              :label="t('timerView.addEntry.timesLabel')"
+              :invalid="!!rangeError"
+              :describedby="rangeError ? 'add-entry-range-error' : undefined"
+              testid="add-entry-time-input"
+            />
+          </UFormField>
+        </div>
+        <div class="-mt-2 grid gap-1">
+          <p
+            v-if="rangeError"
+            id="add-entry-range-error"
+            class="m-0 text-sm text-error"
+            role="alert"
+            data-testid="add-entry-range-error"
           >
-            <template #trailing>
-              <UPopover v-model:open="calendarOpen">
-                <UButton
-                  color="neutral"
-                  variant="link"
-                  size="sm"
-                  icon="i-lucide-calendar"
-                  class="px-0"
-                  :aria-label="t('common.openCalendar')"
-                  data-testid="add-entry-calendar-button"
-                />
-                <template #content>
-                  <div data-testid="add-entry-calendar">
-                    <UCalendar
-                      class="p-2"
-                      :model-value="dateValue"
-                      :aria-label="t('timerView.addEntry.dateLabel')"
-                      @update:model-value="
-                        (value) => onSelectDate(value instanceof CalendarDate ? value : null)
-                      "
-                    />
-                  </div>
-                </template>
-              </UPopover>
-            </template>
-          </UInputDate>
+            {{ rangeError }}
+          </p>
+          <p v-if="previewDuration" class="m-0 text-sm text-muted">
+            {{ t('timerView.addEntry.durationHint') }}
+            <span class="ms-1 font-medium text-toned" data-testid="add-entry-duration">
+              {{ previewDuration }}
+            </span>
+          </p>
+          <TimeZoneNote :zone="zoneWithOffset" testid="add-entry-time-zone" />
         </div>
-
-        <div class="grid gap-1">
-          <label for="add-entry-times">{{ t('timerView.addEntry.timesLabel') }}</label>
-          <TimeField
-            id="add-entry-times"
-            v-model="timesValue"
-            range
-            :label="t('timerView.addEntry.timesLabel')"
-            :invalid="!!rangeError"
-            :describedby="rangeError ? 'add-entry-range-error' : undefined"
-            testid="add-entry-time-input"
-          />
-        </div>
-
-        <p
-          v-if="rangeError"
-          id="add-entry-range-error"
-          class="m-0 text-sm text-error"
-          role="alert"
-          data-testid="add-entry-range-error"
-        >
-          {{ rangeError }}
-        </p>
 
         <FormDialogFooter
           :cancel-label="t('timerView.addEntry.cancelButton')"

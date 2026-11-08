@@ -200,8 +200,13 @@ const hasUnsavedChanges = computed(() => {
   );
 });
 
-const trackerItems = computed(() =>
-  (trackers.value ?? []).map((tracker) => ({ label: tracker.name, value: tracker.id })),
+type TrackerItem = { label: string; value: string; systemType: TrackerDto['systemType'] };
+const trackerItems = computed((): TrackerItem[] =>
+  (trackers.value ?? []).map((tracker) => ({
+    label: tracker.name,
+    value: tracker.id,
+    systemType: tracker.systemType,
+  })),
 );
 const hoursFormatItems = computed(
   () =>
@@ -217,6 +222,52 @@ const localeItems = computed(
       { label: t('locale.pl'), value: 'pl' },
     ] satisfies { label: string; value: ReportLocale }[],
 );
+
+/** The report as the form stands, for the summary beside it; an empty fact reads "not set". */
+/** One summary value; a Tracker carries its OP/RM mark, as in the checkbox list. */
+type SummaryValue = { text: string; systemType?: TrackerItem['systemType'] };
+
+const summaryFacts = computed(() => {
+  const trackersById = new Map(trackerItems.value.map((item) => [item.value, item]));
+  const clientName = state.clientName.trim();
+  const plain = (texts: string[]): SummaryValue[] => texts.map((text) => ({ text }));
+  return [
+    {
+      key: 'client',
+      label: t('clientReport.summaryClient'),
+      values: plain(clientName ? [clientName] : []),
+    },
+    {
+      key: 'month',
+      label: t('clientReport.summaryMonth'),
+      values: plain(monthLabel.value ? [monthLabel.value] : []),
+    },
+    {
+      key: 'trackers',
+      label: t('clientReport.trackersLabel'),
+      values: state.trackerIds.flatMap((id): SummaryValue[] => {
+        const tracker = trackersById.get(id);
+        return tracker ? [{ text: tracker.label, systemType: tracker.systemType }] : [];
+      }),
+    },
+    {
+      key: 'hours-format',
+      label: t('clientReport.hoursFormatLabel'),
+      values: plain(
+        hoursFormatItems.value
+          .filter((item) => item.value === state.hoursFormat)
+          .map((item) => item.label),
+      ),
+    },
+    {
+      key: 'locale',
+      label: t('clientReport.localeLabel'),
+      values: plain(
+        localeItems.value.filter((item) => item.value === state.locale).map((item) => item.label),
+      ),
+    },
+  ];
+});
 
 function validate(formState: PresetFormState): Promise<FormError[]> {
   return validateSchemaWithI18n(formState, reportPresetInputSchema, t);
@@ -293,7 +344,7 @@ async function onExport() {
         @next="goMonth(1)"
       >
         <PeriodLabel data-testid="client-report-month-label">
-          {{ capitalizeFirst(monthLabel, locale) }}
+          {{ monthLabel }}
         </PeriodLabel>
       </PeriodStepper>
     </PageHeader>
@@ -302,8 +353,9 @@ async function onExport() {
       {{ t('clientReport.invalidMonth') }}
     </p>
 
-    <!-- Desktop split: configuration on the left, the preview beside it; stacked below lg. -->
-    <div class="grid gap-6 lg:grid-cols-[420px_minmax(0,1fr)]">
+    <!-- Desktop split: configuration and the summary in two equal columns (the form never the
+         narrower one), on the stat-card grids' 16px gutter; stacked below lg. -->
+    <div class="grid gap-4 lg:grid-cols-2">
       <div
         v-if="!formReady"
         class="grid content-start gap-5 rounded-lg border border-default p-6"
@@ -395,11 +447,12 @@ async function onExport() {
               />
             </UFormField>
 
-            <!-- The help button sits in the hint slot, beside (not inside) the field's <label>. -->
+            <!-- The help button sits in the hint slot, beside (not inside) the field's <label>;
+                 the optional note follows on the hint's usual right edge. -->
             <UFormField
               :label="t('clientReport.contractorDetailsLabel')"
               name="contractorDetails"
-              :ui="{ labelWrapper: 'justify-start' }"
+              :ui="{ labelWrapper: 'justify-start', hint: 'flex flex-1 items-center' }"
             >
               <template #hint>
                 <UTooltip
@@ -423,6 +476,9 @@ async function onExport() {
                     data-testid="client-report-contractor-details-help"
                   />
                 </UTooltip>
+                <span class="ms-auto" data-testid="client-report-contractor-details-optional">
+                  {{ t('clientReport.optionalHint') }}
+                </span>
               </template>
               <UTextarea
                 id="client-report-contractor-details"
@@ -445,9 +501,15 @@ async function onExport() {
                 v-if="trackerItems.length > 0"
                 v-model="state.trackerIds"
                 :items="trackerItems"
-                :ui="{ fieldset: 'gap-y-2', label: 'font-normal' }"
+                :ui="{ fieldset: 'gap-y-2', label: 'flex items-center gap-2 font-normal' }"
                 data-testid="client-report-trackers"
-              />
+              >
+                <!-- Each Tracker with its OP/RM mark, as on Projects and Trackers. -->
+                <template #label="{ item }">
+                  <TrackerTypeMark :system-type="item.systemType" />
+                  {{ item.label }}
+                </template>
+              </UCheckboxGroup>
               <p v-else class="text-sm text-muted" data-testid="client-report-no-trackers">
                 {{ t('clientReport.noTrackers') }}
               </p>
@@ -502,23 +564,30 @@ async function onExport() {
       </UForm>
 
       <!--
-        A page-on-desk placeholder (REQ-384): the sheet always sits lighter than its pane, white
-        on light grey and a raised grey in dark. The faint lines only suggest a document.
+        The report summary (REQ-384): what the PDF will hold, read live from the form, so the
+        user checks the output before downloading. A card beside the form with the shared cyan
+        icon chip, a title and one line, then the report's facts as a definition list.
       -->
-      <div
-        class="flex min-h-80 items-center justify-center rounded-lg border border-default bg-muted p-8"
+      <section
+        class="grid content-start gap-5 self-start rounded-lg border border-default bg-default p-6 dark:bg-muted"
+        aria-labelledby="client-report-preview-title"
         data-testid="client-report-preview"
       >
-        <div
-          class="flex aspect-[210/297] w-full max-w-64 flex-col gap-5 rounded-md bg-default p-6 shadow-sm ring-1 ring-default dark:bg-elevated dark:shadow-md"
-        >
-          <div class="grid gap-2" aria-hidden="true">
-            <div class="h-2 w-1/2 rounded-full bg-accented" />
-            <div class="h-1.5 w-1/3 rounded-full bg-accented/60" />
-          </div>
-          <div class="flex flex-1 flex-col items-center justify-center gap-3 text-center">
-            <UIcon name="i-lucide-file-down" class="size-6 text-dimmed" aria-hidden="true" />
-            <p class="max-w-[200px] text-sm text-balance text-muted">
+        <div class="flex items-start gap-3">
+          <span
+            class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 ring-inset"
+            aria-hidden="true"
+          >
+            <UIcon name="i-lucide-file-text" class="size-5" />
+          </span>
+          <div class="grid gap-0.5">
+            <h2
+              id="client-report-preview-title"
+              class="m-0 text-base font-semibold text-highlighted"
+            >
+              {{ t('clientReport.previewTitle') }}
+            </h2>
+            <p class="m-0 text-sm text-muted">
               {{
                 monthLabel
                   ? t('clientReport.previewPlaceholder', { month: monthLabel })
@@ -526,14 +595,34 @@ async function onExport() {
               }}
             </p>
           </div>
-          <div class="grid gap-2.5" aria-hidden="true">
-            <div v-for="row in 4" :key="row" class="flex items-center justify-between gap-6">
-              <div class="h-1.5 flex-1 rounded-full bg-accented/60" />
-              <div class="h-1.5 w-6 rounded-full bg-accented/60" />
-            </div>
-          </div>
         </div>
-      </div>
+        <USeparator />
+        <dl
+          class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-8 gap-y-3 text-sm"
+          data-testid="client-report-summary"
+        >
+          <template v-for="fact in summaryFacts" :key="fact.key">
+            <dt class="text-muted">{{ fact.label }}</dt>
+            <dd
+              class="m-0 grid min-w-0 gap-1"
+              :class="fact.values.length ? 'font-medium text-highlighted' : 'text-dimmed'"
+              :data-testid="`client-report-summary-${fact.key}`"
+            >
+              <template v-if="fact.values.length">
+                <span
+                  v-for="value in fact.values"
+                  :key="value.text"
+                  class="flex items-center gap-2 break-words"
+                >
+                  <TrackerTypeMark v-if="value.systemType" :system-type="value.systemType" />
+                  {{ value.text }}
+                </span>
+              </template>
+              <template v-else>{{ t('clientReport.summaryNone') }}</template>
+            </dd>
+          </template>
+        </dl>
+      </section>
     </div>
   </div>
 </template>

@@ -124,7 +124,7 @@ function testI18n() {
   return createI18n({
     legacy: false,
     locale: 'en',
-    messages: { en: {}, pl: {} },
+    messages: { en: { remoteIssuePicker: { headingFor: 'Link an issue: {task}' } }, pl: {} },
     missingWarn: false,
     fallbackWarn: false,
   });
@@ -148,6 +148,8 @@ type PickerMountProps = {
   cachedTestid?: string;
   unlinkedTestid?: string;
   config?: TrackerDto;
+  contextLabel?: string;
+  dayLabel?: string;
 };
 
 function mount(props: PickerMountProps = {}) {
@@ -188,7 +190,7 @@ describe('RemoteIssuePicker', () => {
     expect(link.classes()).toContain('h-6');
     expect(link.classes()).toContain('px-0');
     expect(link.classes()).toContain('justify-start');
-    expect(wrapper.find('.group\\/ri').classes()).toContain('h-6');
+    expect(wrapper.find('.group\\/ri').classes()).toContain('h-7');
     expect(wrapper.find('.group\\/ri').classes()).not.toContain('-ms-1');
     const menu = wrapper.find('[data-testid="remote-issue-picker-edit-menu"]');
     expect(menu.exists()).toBe(true);
@@ -204,13 +206,12 @@ describe('RemoteIssuePicker', () => {
     const wrapper = await mount();
     const trigger = wrapper.find('[data-testid="remote-issue-picker-trigger"]');
     expect(trigger.classes()).toContain('shrink-0');
-    expect(trigger.classes()).toContain('w-6');
-    expect(trigger.classes()).toContain('h-6');
-    expect(wrapper.find('.group\\/ri').classes()).toContain('h-6');
+    expect(trigger.classes()).toContain('size-7');
+    expect(wrapper.find('.group\\/ri').classes()).toContain('h-7');
     expect(wrapper.find('.group\\/ri').classes()).toContain('justify-start');
     expect(trigger.classes()).not.toContain('absolute');
     expect(trigger.attributes('data-icon')).toBe('i-lucide-link');
-    expect(trigger.attributes('data-size')).toBe('xs');
+    expect(trigger.attributes('data-size')).toBe('sm');
     expect(trigger.attributes('title')).toBeUndefined();
     expect(hintFor(wrapper, 'remote-issue-picker-trigger')).toBe('timerView.remoteIssue.unlinked');
 
@@ -219,6 +220,40 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
     await flushPromises();
     expect(wrapper.find('[data-testid="remote-issue-picker-query"]').exists()).toBe(true);
+  });
+
+  it('names what it links: the heading, then the Task title in it when given', async () => {
+    const wrapper = await mount({ contextLabel: 'Release 2.4 smoke test' });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+
+    const group = wrapper.find('[role="group"]');
+    const heading = wrapper.find(`#${group.attributes('aria-labelledby')}`);
+    expect(heading.text()).toBe('Link an issue: Release 2.4 smoke test');
+    expect(heading.find('[data-testid="remote-issue-picker-context"]').text()).toBe(
+      'Release 2.4 smoke test',
+    );
+    // Without a day it still names the Tracker the link goes to.
+    expect(wrapper.find('[data-testid="remote-issue-picker-destination"]').text()).toBe(
+      'Tracker 1',
+    );
+  });
+
+  it('names the day whose entries a link moves, and shows the open trigger as pressed', async () => {
+    const wrapper = await mount({ dayLabel: '7 listopada 2026' });
+    const trigger = wrapper.find('[data-testid="remote-issue-picker-trigger"]');
+    expect(trigger.attributes('aria-expanded')).toBe('false');
+    await trigger.trigger('click');
+    await flushPromises();
+
+    expect(trigger.attributes('aria-expanded')).toBe('true');
+    expect(wrapper.find('[data-testid="remote-issue-picker-destination"]').text()).toBe(
+      'remoteIssuePicker.dayContext',
+    );
+    // The mode control now comes before the query field.
+    const mode = wrapper.find('[data-testid="remote-issue-picker-mode"]').element;
+    const query = wrapper.find('[data-testid="remote-issue-picker-query"]').element;
+    expect(mode.compareDocumentPosition(query) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('defaults to issue-ID search and hides empty results until a search', async () => {
@@ -262,6 +297,8 @@ describe('RemoteIssuePicker', () => {
     const result = wrapper.find('[data-testid="remote-issue-picker-result-42"]');
     expect(result.text()).toContain('Fix login bug');
     expect(result.text()).toContain('Acme Intranet');
+    // The searched text is marked inside the title.
+    expect(result.find('mark').text()).toBe('login bug');
 
     await result.trigger('click');
     expect(wrapper.emitted('link')).toEqual([
@@ -293,6 +330,37 @@ describe('RemoteIssuePicker', () => {
     expect(wrapper.emitted('link')).toEqual([
       [{ remoteIssueId: '7', cachedTitle: 'Closed issue', cachedRemoteProjectTitle: undefined }],
     ]);
+  });
+
+  it('marks the first result active and picks it on Enter for the unchanged query', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ id: 7, subject: 'Closed issue' }),
+    });
+    const wrapper = await mount();
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('7');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(
+      wrapper.find('[data-testid="remote-issue-picker-result-7"]').attributes('data-active'),
+    ).toBe('true');
+
+    // Enter again (the form submits) on the same query picks it instead of searching again.
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(wrapper.emitted('link')?.[0]?.[0]).toMatchObject({ remoteIssueId: '7' });
+
+    // An edited query searches again.
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('8');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not call fetch for a too-short title query and shows a validation message', async () => {
@@ -403,6 +471,38 @@ describe('RemoteIssuePicker', () => {
 
     const [requestUrl] = fetchMock.mock.calls[0]!;
     expect(String(requestUrl)).toContain('/api/v3/projects/3/work_packages');
+  });
+
+  it('names only subprojects in a scoped search, keeping the scope in the accessible name', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        _embedded: {
+          elements: [
+            { id: 1, subject: 'Root issue', _links: { project: { title: 'Spike Root' } } },
+            { id: 2, subject: 'Child issue', _links: { project: { title: 'Spike Child' } } },
+          ],
+        },
+      }),
+    });
+    const wrapper = await mount({
+      scope: { remoteProjectId: '3', remoteProjectTitle: 'Spike Root' },
+    });
+    await wrapper.find('[data-testid="remote-issue-picker-trigger"]').trigger('click');
+    await flushPromises();
+    const modeButtons = wrapper.find('[data-testid="remote-issue-picker-mode"]').findAll('button');
+    await modeButtons[1]?.trigger('click');
+    await wrapper.find('[data-testid="remote-issue-picker-query"]').setValue('issue');
+    await wrapper.find('form').trigger('submit');
+    await flushPromises();
+
+    const root = wrapper.find('[data-testid="remote-issue-picker-result-1"]');
+    expect(root.text()).not.toContain('Spike Root');
+    expect(root.attributes('aria-label')).toContain('Spike Root');
+    expect(wrapper.find('[data-testid="remote-issue-picker-result-2"]').text()).toContain(
+      'Spike Child',
+    );
   });
 
   it('resets the scope toggle to on when the popover reopens after being turned off', async () => {

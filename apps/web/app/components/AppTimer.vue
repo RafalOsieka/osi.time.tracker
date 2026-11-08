@@ -178,6 +178,15 @@ function combineStartedAt(): string | null {
   return combined.toDate().toISOString();
 }
 
+/**
+ * The effective timezone with its offset at the chosen start, so the wall-clock values are
+ * unambiguous: shown as the zone after a globe glyph, read out with its "Time zone:" prefix.
+ */
+const startTimeZone = computed(() => {
+  const at = combineStartedAt() ?? running.value?.startedAt;
+  return at ? timeZoneLabel(effective.value.timeZone, at) : '';
+});
+
 async function onSaveStartedAt() {
   const combined = combineStartedAt();
   if (!combined) return;
@@ -199,51 +208,77 @@ async function onSaveStartedAt() {
 
 <template>
   <div
-    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
+    class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-1.5 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
       isRunning
-        ? 'bg-primary-50 ring-primary-200 dark:bg-primary-950/50 dark:ring-primary-800/70'
+        ? 'bg-primary-50/55 ring-primary-200 dark:bg-primary-950/30 dark:ring-primary-800/70'
         : 'bg-default ring-accented'
     "
     data-testid="app-timer"
   >
     <!--
       One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
-      live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
+      live dot (solid, with a soft borderless glow, not a radio-like ring), the Task, its Project
+      as a cyan pill after it, cyan time and a round red stop.
+      The running fill stays a quiet wash: the card sits in view all day.
     -->
     <span
       v-if="isRunning"
-      class="size-2 shrink-0 rounded-full bg-primary ring-4 ring-primary/20"
+      class="size-2 shrink-0 rounded-full bg-primary shadow-[0_0_6px_2px] shadow-primary/45"
       aria-hidden="true"
     />
-    <TaskTitleInput
-      ref="titleInput"
-      v-model:text="inputText"
-      v-model:project="chipProject"
-      v-model:task="boundTask"
-      :disabled="isLoading"
-      :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
-      :aria-label="t('timer.titleLabel')"
-      bare
-      chip-testid="timer-project"
-      data-testid="timer-title-input"
-      @pick-project="onPickProject"
-      @remove-project="onRemoveProject"
-      @pick-task="onPickTask"
-      @blur="onBlur"
-      @enter="onEnter"
-    />
+    <!--
+      While the start editor is open the title area stops short of it (the editor's width plus a
+      gap), so the editor covers no part of the Task or its Project pill, and the title text is
+      capped at a fixed 12rem, so it ends in the same ellipsis in both themes.
+    -->
+    <div class="flex min-w-0 flex-1 self-stretch" :class="startEditorOpen && 'me-[22.5rem]'">
+      <TaskTitleInput
+        ref="titleInput"
+        v-model:text="inputText"
+        v-model:project="chipProject"
+        v-model:task="boundTask"
+        :disabled="isLoading"
+        :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
+        :aria-label="t('timer.titleLabel')"
+        bare
+        :text-max-width="startEditorOpen ? '12rem' : undefined"
+        chip-testid="timer-project"
+        data-testid="timer-title-input"
+        @pick-project="onPickProject"
+        @remove-project="onRemoveProject"
+        @pick-task="onPickTask"
+        @blur="onBlur"
+        @enter="onEnter"
+      />
+    </div>
 
     <!--
       Always UButton for consistent mono size. Idle: disabled (no popover).
-      Running: opens start-time editor.
+      Running: opens the start-time editor 4px to its left (the picker's gap too), its top 4px
+      inside the timer card's top edge (the 28px time chip sits 6px inside it), so it floats over
+      the card without its edge running into the card's border. Kept short (the timezone shares
+      the actions' row), it ends above the list's column headers: it hides no header, no day total
+      and no header button.
     -->
-    <UPopover v-model:open="startEditorOpen">
+    <UPopover
+      v-model:open="startEditorOpen"
+      :content="{
+        side: 'left',
+        align: 'start',
+        sideOffset: 4,
+        alignOffset: -2,
+        collisionPadding: { top: 8, right: 16, bottom: 16, left: 16 },
+      }"
+    >
       <UButton
         color="neutral"
         variant="link"
-        class="min-w-[5.5rem] justify-center font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
-        :class="isRunning ? 'text-primary' : 'text-dimmed'"
+        class="h-7 min-w-[5.5rem] justify-center rounded-md font-mono text-[0.9375rem] font-semibold tabular-nums disabled:opacity-100"
+        :class="[
+          isRunning ? 'text-primary hover:text-primary active:text-primary' : 'text-dimmed',
+          startEditorOpen && 'bg-primary-100 dark:bg-primary/20',
+        ]"
         role="timer"
         :label="elapsedLabel"
         :aria-label="isRunning ? t('timer.editStartLabel') : t('timer.elapsedLabel')"
@@ -252,12 +287,24 @@ async function onSaveStartedAt() {
         @click="openStartEditor"
       />
       <template #content>
-        <div class="grid min-w-64 gap-3 p-3" data-testid="timer-start-editor-popover">
-          <div class="grid gap-1">
-            <label for="timer-start-editor-date">{{ t('timer.startEditor.dateLabel') }}</label>
+        <div
+          role="group"
+          aria-labelledby="timer-start-editor-heading"
+          class="grid w-[22rem] grid-cols-[minmax(0,1fr)_6.5rem] gap-3 p-3"
+          data-testid="timer-start-editor-popover"
+        >
+          <!-- Date and time share one row, so the editor stays short over the page below. -->
+          <h3
+            id="timer-start-editor-heading"
+            class="col-span-full m-0 text-sm font-semibold text-highlighted"
+          >
+            {{ t('timer.startEditor.heading') }}
+          </h3>
+          <UFormField :label="t('timer.startEditor.dateLabel')" name="startDate">
             <UInputDate
-              id="timer-start-editor-date"
               v-model="startDate"
+              class="w-full"
+              :ui="{ segment: 'data-[segment=literal]:text-current' }"
               :aria-label="t('timer.startEditor.dateLabel')"
               data-testid="timer-start-editor-date-input"
             >
@@ -287,28 +334,30 @@ async function onSaveStartedAt() {
                 </UPopover>
               </template>
             </UInputDate>
-          </div>
-          <div class="grid gap-1">
-            <label for="timer-start-editor-time">{{ t('timer.startEditor.timeLabel') }}</label>
+          </UFormField>
+          <UFormField :label="t('timer.startEditor.timeLabel')" name="startTime">
             <TimeField
-              id="timer-start-editor-time"
               v-model="startTime"
+              class="w-full"
               :label="t('timer.startEditor.timeLabel')"
               testid="timer-start-editor-time-input"
             />
-          </div>
+          </UFormField>
           <p
             v-if="startEditorError"
-            class="m-0 text-error"
+            class="col-span-full m-0 text-sm text-error"
             role="alert"
             data-testid="timer-start-editor-error"
           >
             {{ startEditorError }}
           </p>
-          <div class="flex justify-end gap-2">
+          <div class="col-span-full flex items-center gap-2">
+            <div class="me-auto min-w-0">
+              <TimeZoneNote :zone="startTimeZone" testid="timer-start-editor-time-zone" />
+            </div>
             <UButton
               color="neutral"
-              variant="ghost"
+              variant="outline"
               :label="t('timer.startEditor.cancelButton')"
               data-testid="timer-start-editor-cancel-button"
               @click="startEditorOpen = false"
@@ -325,14 +374,20 @@ async function onSaveStartedAt() {
       </template>
     </UPopover>
 
+    <!--
+      A 28px round control in the 40px card: the same 6px inset from the card's top, bottom and
+      right edges, running (red stop) or idle (play).
+    -->
     <UTooltip :text="isRunning ? t('timer.stop') : t('timer.start')" :content="{ side: 'top' }">
       <UButton
         square
         size="sm"
         variant="solid"
-        class="rounded-full"
+        class="size-7 justify-center rounded-full"
+        :ui="{ leadingIcon: 'size-4' }"
         :class="
-          isRunning && 'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-error'
+          isRunning &&
+          'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-(--ui-color-error-600) dark:hover:bg-(--ui-color-error-500)'
         "
         :icon="isRunning ? undefined : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"
@@ -344,7 +399,7 @@ async function onSaveStartedAt() {
         @click="onToggle"
       >
         <template v-if="isRunning && !starting && !stopping" #leading>
-          <StopGlyph />
+          <StopGlyph size="sm" />
         </template>
       </UButton>
     </UTooltip>

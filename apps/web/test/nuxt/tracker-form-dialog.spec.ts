@@ -68,7 +68,12 @@ const stubs = {
     inheritAttrs: false,
     template: '<form @submit.prevent="$emit(\'submit\')"><slot /></form>',
   },
-  UFormField: { template: '<div><slot /><slot name="error" /></div>' },
+  // Renders the help line, so a test can find a field's visible help next to its control.
+  UFormField: {
+    props: ['help'],
+    template:
+      '<div><slot /><p v-if="help" data-testid="field-help">{{ help }}</p><slot name="error" /></div>',
+  },
   USelect: SelectStub,
   UCheckbox: {
     props: ['modelValue', 'label'],
@@ -92,11 +97,13 @@ const stubs = {
   UButton: {
     template: '<button type="button" v-bind="$attrs"><slot /></button>',
   },
+  // Renders the trailing slot too, where the API key keeps its show/hide toggle.
   UInput: {
-    props: ['modelValue'],
+    inheritAttrs: false,
+    props: ['modelValue', 'type'],
     emits: ['update:modelValue'],
     template:
-      '<input v-bind="$attrs" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" />',
+      '<span><input v-bind="$attrs" :type="type" :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="trailing" /></span>',
   },
   FormDialogFooter: {
     template: '<button type="submit" data-testid="save-button">Save</button>',
@@ -134,19 +141,32 @@ describe('TrackerFormDialog direct browser access', () => {
     }
   });
 
-  it('seeds create with the checkbox enabled and focusable help', async () => {
+  it('seeds create with the checkbox enabled and its help visible beside it', async () => {
     const wrapper = await openDialog(null);
     const checkbox = wrapper.find('[data-testid="tracker-direct-browser-access"] input');
     expect(checkbox.element).toBeInstanceOf(HTMLInputElement);
     if (!(checkbox.element instanceof HTMLInputElement)) throw new Error('checkbox');
     expect(checkbox.element.checked).toBe(true);
-    const help = wrapper.find('[data-testid="tracker-direct-browser-access-help"]');
-    expect(help.exists()).toBe(true);
-    expect(help.attributes('aria-label')).toBe('trackers.directBrowserAccessHelpAria');
-    expect(help.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+    // The explanation is a visible help line in the checkbox's own field, not a tooltip.
+    const field = checkbox.element.closest('div');
+    expect(field?.querySelector('[data-testid="field-help"]')?.textContent).toBe(
       'trackers.directBrowserAccessHelp',
     );
     expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);
+  });
+
+  it('shows the API key as text while its toggle is pressed', async () => {
+    const wrapper = await openDialog(null);
+    const secret = () => wrapper.get('[data-testid="tracker-secret-input"]');
+    const toggle = wrapper.get('[data-testid="tracker-secret-visibility-toggle"]');
+
+    expect(secret().attributes('type')).toBe('password');
+    expect(toggle.attributes('aria-label')).toBe('trackers.showSecret');
+    expect(toggle.attributes('aria-pressed')).toBe('false');
+
+    await toggle.trigger('click');
+    expect(secret().attributes('type')).toBe('text');
+    expect(toggle.attributes('aria-pressed')).toBe('true');
   });
 
   it('seeds edit with persisted false and no extension readiness panel', async () => {

@@ -7,6 +7,7 @@
   "description": "The app's screenshot set for design reviews: seeds a user into a running app and captures every page at desktop and phone size, light and dark, with screens.json describing each",
   "scripts": {
     "capture": "tsx src/capture.ts",
+    "capture:extension": "pnpm --filter @osi/time-tracker-extension build && tsx src/capture-extension.ts",
     "type-check": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

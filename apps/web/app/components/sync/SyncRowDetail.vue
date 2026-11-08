@@ -102,6 +102,11 @@ function emitDelete(log: RemoteTimeLogDto) {
 
 const hasFinalizedExport = computed(() => exportRecords.length > 0);
 
+/** Latest first, the order the Timer view's expanded Task lists its entries in. */
+const entriesLatestFirst = computed(() =>
+  entries.toSorted((a, b) => b.startedAt.localeCompare(a.startedAt)),
+);
+
 function logFromProvenance(record: RemoteSyncExportProvenanceDto): RemoteTimeLogDto {
   return {
     remoteLogId: record.remoteLogId,
@@ -144,19 +149,20 @@ const displayedRemoteLogs = computed(() => {
       </ColumnCell>
     </ColumnRow>
     <ColumnRow
-      v-for="entry in entries"
+      v-for="entry in entriesLatestFirst"
       :key="entry.id"
       kind="sub"
       :data-testid="`remote-sync-entry-${entry.id}`"
     >
-      <!-- Placed like the Timer's entry times: right-aligned in the column before the duration,
-           small tabular figures with a spaced separator. -->
+      <!-- The entry's clock range leads on the title edge, under its section label, set like the
+           Timer's ranges (12px, medium, tabular) in the secondary tone; its duration sits in the
+           tracked column in the mono face, in the same muted tone as the row's own tracked value
+           above it, so a child never reads stronger than its parent. -->
       <ColumnCell
         :columns="columns"
-        col="activity"
+        col="title"
         :narrow="{ col: [3, 4], row: 1 }"
-        align="end"
-        class="text-xs font-medium tabular-nums text-default dark:font-normal"
+        class="text-xs font-medium tabular-nums text-muted"
       >
         {{ formatEntryStart(entry.startedAt) }}
         <span class="px-0.5">{{ t('timerView.entryRow.separator') }}</span>
@@ -167,7 +173,7 @@ const displayedRemoteLogs = computed(() => {
         col="tracked"
         :narrow="{ col: [4, 5], row: 1 }"
         align="end"
-        class="font-mono tabular-nums"
+        class="font-mono tabular-nums text-muted"
       >
         {{ formatDuration(entry.durationSeconds) }}
       </ColumnCell>
@@ -219,16 +225,14 @@ const displayedRemoteLogs = computed(() => {
           </span>
           <span v-if="extensionLogsErrorKey">{{ t('trackers.extensionSetupGuidance') }}</span>
           <UButton
-            variant="link"
+            color="neutral"
+            variant="outline"
             size="xs"
-            class="p-0"
+            icon="i-lucide-refresh-cw"
             :label="
-              t(
-                extensionLogsErrorKey
-                  ? 'trackers.extensionRecheckButton'
-                  : 'remoteSync.remoteLogsRetry',
-              )
+              t(extensionLogsErrorKey ? 'trackers.extensionRecheckButton' : 'remoteSync.retry')
             "
+            :aria-label="extensionLogsErrorKey ? undefined : t('remoteSync.remoteLogsRetry')"
             :data-testid="`remote-sync-remote-logs-retry-${taskId}`"
             @click="emit('retryRemoteLogs')"
           />
@@ -259,8 +263,9 @@ const displayedRemoteLogs = computed(() => {
         :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
       >
         <ColumnCell :columns="columns" col="state" :narrow="{ col: [2, 3], row: 1 }">
-          <!-- Linked: a check on the tracker's time. Unlinked: an open circle, so it never
-               reads as the opposite of the Link action at the row's end. -->
+          <!-- The one "already in the tracker" mark: a cloud. Linked, the cloud carries a check
+               in green (counted as this Task's export); unlinked, a plain neutral cloud (in the
+               tracker, not counted yet). Neither reads as pending or loading. -->
           <UTooltip :text="linkStateText(log)" :content="{ side: 'top' }">
             <span
               tabindex="0"
@@ -268,23 +273,25 @@ const displayedRemoteLogs = computed(() => {
               :data-testid="`remote-sync-remote-log-state-${log.remoteLogId}`"
             >
               <UIcon
-                :name="isLinked(log) ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'"
+                :name="isLinked(log) ? 'i-lucide-cloud-check' : 'i-lucide-cloud'"
                 class="size-4"
-                :class="isLinked(log) ? 'text-success' : 'text-dimmed'"
+                :class="isLinked(log) ? 'text-success' : 'text-muted'"
                 aria-hidden="true"
               />
               <span class="sr-only">{{ linkStateText(log) }}</span>
             </span>
           </UTooltip>
         </ColumnCell>
-        <!-- The log's ref sits in the Issue column, under the issue it was logged on. -->
+        <!-- The log's comment is the same kind of text as a title to send, so it sits on the
+             title edge, after the log's own number; the issue it was logged on is the row's. -->
         <ColumnCell
           :columns="columns"
-          col="issue"
+          col="title"
+          to="issue"
           :narrow="{ col: [3, 4], row: 1 }"
           class="flex min-w-0 items-baseline gap-1.5"
         >
-          <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">
+          <span class="shrink-0 font-mono text-xs tabular-nums">
             {{ `#${log.remoteLogId}` }}
           </span>
           <OverflowTooltip :text="commentText(log)">
@@ -305,30 +312,32 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507). A readable scope label
-             on the value's baseline (it may run into the empty Tracked cell), and the muted body
-             weight, keep it from reading as time still to send. The cell's accessible name
-             carries the scope. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507) in the row's one muted
+             tone, labelled in place ("w trackerze") so it never reads as time to send; the label
+             runs into the empty local-time column. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
-          col="toSend"
+          col="tracked"
+          to="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="flex items-baseline justify-end gap-1.5 whitespace-nowrap"
+          class="whitespace-nowrap"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
+          :data-testid="`remote-sync-remote-log-duration-${log.remoteLogId}`"
         >
-          <span
-            class="text-xs text-dimmed"
-            aria-hidden="true"
-            :data-testid="`remote-sync-remote-log-scope-${log.remoteLogId}`"
-          >
-            {{ t('remoteSync.inTrackerLogs') }}
+          <span class="me-2 text-xs text-dimmed" aria-hidden="true">
+            {{ t('remoteSync.remoteLogValueLabel') }}
           </span>
-          <span class="font-mono text-sm font-normal tabular-nums text-muted">
-            {{ formatDuration(log.durationSeconds) }}
-          </span>
+          <span class="font-mono tabular-nums">{{ formatDuration(log.durationSeconds) }}</span>
         </ColumnCell>
-        <ColumnCell :columns="columns" col="actions" :narrow="{ col: [5, 6], row: 1 }">
+        <!-- The denser rows' 28px tinted tile, square like every row action, inset from the
+             band's edge like the row content on its start side. -->
+        <ColumnCell
+          :columns="columns"
+          col="actions"
+          :narrow="{ col: [5, 6], row: 1 }"
+          class="flex justify-end pe-2"
+        >
           <UTooltip
             v-if="canReconcile && !isLinked(log) && !hasFinalizedExport"
             :text="t('remoteSync.linkRemoteEntry')"
@@ -339,8 +348,9 @@ const displayedRemoteLogs = computed(() => {
               color="primary"
               variant="soft"
               square
-              size="xs"
-              class="size-6 justify-center"
+              size="sm"
+              class="size-7 justify-center rounded-md"
+              :ui="{ leadingIcon: 'size-4' }"
               :disabled="busy"
               :aria-label="t('remoteSync.linkRemoteEntry')"
               :data-testid="`remote-sync-link-entry-${log.remoteLogId}`"
@@ -357,8 +367,9 @@ const displayedRemoteLogs = computed(() => {
               color="error"
               variant="soft"
               square
-              size="xs"
-              class="size-6 justify-center"
+              size="sm"
+              class="size-7 justify-center rounded-md"
+              :ui="{ leadingIcon: 'size-4' }"
               :disabled="busy"
               :aria-label="t('remoteSync.deleteRemoteEntry')"
               :data-testid="`remote-sync-delete-entry-${log.remoteLogId}`"

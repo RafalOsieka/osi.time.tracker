@@ -164,3 +164,37 @@ describe('REQ-013: login submission', () => {
     expect(wrapper.get('[data-testid="login-error"]').text()).toBe('auth.emailInvalid');
   });
 });
+
+describe('REQ-013: password visibility', () => {
+  it('shows the password as text while the toggle is pressed', async () => {
+    const wrapper = await mountSuspended(LoginPage, {
+      global: {
+        stubs: {
+          UCard: CardStub,
+          UForm: FormStub,
+          UFormField: FormFieldStub,
+          // Renders the trailing slot, where the page puts its toggle.
+          UInput: {
+            inheritAttrs: false,
+            props: ['modelValue', 'type'],
+            template: '<span><input v-bind="$attrs" :type="type" /><slot name="trailing" /></span>',
+          },
+          UButton: ButtonStub,
+        },
+      },
+    });
+    const password = () => wrapper.get('[data-testid="password"]');
+    const toggle = wrapper.get('[data-testid="password-visibility-toggle"]');
+
+    expect(password().attributes('type')).toBe('password');
+    expect(toggle.attributes('aria-pressed')).toBe('false');
+    expect(toggle.attributes('aria-label')).toBe('auth.showPassword');
+
+    await toggle.trigger('click');
+    expect(password().attributes('type')).toBe('text');
+    expect(toggle.attributes('aria-pressed')).toBe('true');
+
+    await toggle.trigger('click');
+    expect(password().attributes('type')).toBe('password');
+  });
+});

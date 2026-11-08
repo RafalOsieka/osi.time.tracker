@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import UAlert from '@nuxt/ui/components/Alert.vue';
-import UAvatar from '@nuxt/ui/components/Avatar.vue';
+import { computed, nextTick } from 'vue';
 import UBadge from '@nuxt/ui/components/Badge.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
@@ -14,24 +12,33 @@ import USelect from '@nuxt/ui/components/Select.vue';
 import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contracts';
 import type { ActivityMap } from '../activity/activity-store.js';
-import { formatActivity } from '../activity/format-activity.js';
 import {
   destinationKey,
   type DestinationApproval,
   type WebsiteApproval,
 } from '../approvals/approvals.js';
+import { displayDestination, displayUrl, isPlainHttp } from '../approvals/display.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
+import ActivityLine from './ActivityLine.vue';
+import TrackerMark from './TrackerMark.vue';
 
+/**
+ * The setup page's approved trackers: the list first, each row leading with its address and
+ * last activity, and the approve form behind "Add tracker" once something is listed. Without an
+ * approved website there is no form, only what to do first (REQ-420).
+ */
 const {
   websites,
   destinations,
   website,
   provider,
   destinationUrl,
+  open,
   httpWarning,
   disabled,
   errorKey,
   missingOrigins,
+  rowRestore,
   activity,
   now,
 } = defineProps<{
@@ -40,10 +47,14 @@ const {
   website: string;
   provider: TrackerSystemType;
   destinationUrl: string;
+  /** The approve form is expanded although trackers are listed. */
+  open: boolean;
   httpWarning: boolean;
   disabled: boolean;
   errorKey: string | null;
   missingOrigins: readonly string[];
+  /** Rows offer their own restore; off while the page's alert restores the only lost one. */
+  rowRestore: boolean;
   /** Latest operation per destination key, shown on each tracker row. */
   activity: Readonly<ActivityMap>;
   now: number;
@@ -53,18 +64,23 @@ const emit = defineEmits<{
   'update:website': [value: string];
   'update:provider': [value: TrackerSystemType];
   'update:destinationUrl': [value: string];
+  'update:open': [value: boolean];
   add: [];
   revoke: [approval: DestinationApproval];
   restore: [approval: DestinationApproval];
 }>();
 
-const { t, locale } = useExtensionI18n();
+const { t } = useExtensionI18n();
 const empty = computed(() => destinations.length === 0);
+const hasWebsite = computed(() => websites.length > 0);
+const formShown = computed(() => hasWebsite.value && (empty.value || open));
 /** With one approved website there is nothing to choose: the tracker is approved for it. */
 const singleWebsite = computed(() => {
   const [only, ...others] = websites;
   return only && others.length === 0 ? only.origin : null;
 });
+/** Rows name their website only when there is more than one to tell apart. */
+const showsWebsite = computed(() => websites.length > 1);
 const canAdd = computed(() => !disabled && websites.some((item) => item.origin === website));
 const formState = computed(() => ({ website, provider, destinationUrl }));
 const websiteItems = computed(() => websites.map((item) => item.origin));
@@ -72,141 +88,125 @@ const providerItems = computed(() => [
   { label: t.value('approvals.openproject'), value: 'openproject' as const },
   { label: t.value('approvals.redmine'), value: 'redmine' as const },
 ]);
-const providerInitials = { openproject: 'OP', redmine: 'RM' } as const;
+/** An example address in the shape each tracker type usually has. */
+const PLACEHOLDERS = {
+  openproject: 'https://openproject.example.com',
+  redmine: 'https://example.com/redmine',
+} as const satisfies Record<TrackerSystemType, string>;
 
+/** The tracker as its actions name it: type, address and the website it is approved for. */
 function destinationLabel(item: DestinationApproval): string {
-  return `${t.value('approvals.website')}: ${item.websiteOrigin} — ${t.value(`approvals.${item.provider}`)} ${item.origin}${item.basePath}`;
+  return `${t.value(`approvals.${item.provider}`)} ${item.origin}${item.basePath} (${t.value('approvals.forWebsite', { website: item.websiteOrigin })})`;
+}
+
+async function openForm(): Promise<void> {
+  emit('update:open', true);
+  await nextTick();
+  document.querySelector<HTMLElement>('[data-testid="destination-url"]')?.focus();
+}
+
+function closeForm(): void {
+  emit('update:destinationUrl', '');
+  emit('update:open', false);
 }
 </script>
 
 <template>
-  <UCard as="section" aria-labelledby="destinations-title" :ui="{ body: 'flex flex-col gap-4' }">
+  <UCard
+    as="section"
+    aria-labelledby="destinations-title"
+    :ui="{ header: 'sm:py-5', body: 'p-0 sm:p-0' }"
+  >
     <template #header>
-      <h2 id="destinations-title" class="text-base font-semibold text-highlighted">
-        {{ t('approvals.destinationsTitle') }}
-      </h2>
-      <p id="destination-url-help" class="mt-1 text-[13px] text-muted">
-        {{ t('approvals.destinationHelp') }}
-      </p>
+      <div class="flex items-center justify-between gap-4">
+        <div class="min-w-0">
+          <h2 id="destinations-title" class="text-base font-semibold text-highlighted">
+            {{ t(empty ? 'approvals.destinationsEmptyTitle' : 'approvals.destinationsTitle') }}
+          </h2>
+          <p class="mt-0.5 text-sm text-muted">
+            {{ t(empty ? 'approvals.destinationsEmptyHelp' : 'approvals.destinationsHelp') }}
+          </p>
+        </div>
+        <UButton
+          v-if="hasWebsite && !formShown"
+          color="neutral"
+          variant="outline"
+          icon="i-lucide-plus"
+          class="shrink-0"
+          data-testid="new-destination"
+          :disabled="disabled"
+          :label="t('approvals.newDestination')"
+          @click="openForm"
+        />
+      </div>
     </template>
 
-    <UForm :state="formState" class="flex flex-col gap-3" @submit="emit('add')">
-      <p
-        v-if="singleWebsite"
-        class="flex items-center gap-1.5 text-[13px] text-muted"
-        data-testid="destination-website-single"
-      >
-        <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
-        {{ t('approvals.forWebsite', { website: singleWebsite }) }}
-      </p>
-      <div class="grid grid-cols-2 gap-3">
-        <UFormField v-if="!singleWebsite" :label="t('approvals.website')" name="website">
-          <USelect
-            id="destination-website"
-            class="w-full"
-            data-testid="destination-website"
-            :model-value="website"
-            :items="websiteItems"
-            :disabled="disabled || websites.length === 0"
-            aria-describedby="destination-website-help"
-            @update:model-value="emit('update:website', $event)"
-          />
-        </UFormField>
-        <UFormField :label="t('approvals.provider')" name="provider">
-          <USelect
-            id="destination-provider"
-            class="w-full"
-            data-testid="destination-provider"
-            value-key="value"
-            :model-value="provider"
-            :items="providerItems"
-            :disabled="disabled"
-            @update:model-value="emit('update:provider', $event)"
-          />
-        </UFormField>
-      </div>
-      <p v-if="websites.length === 0" id="destination-website-help" class="text-[13px] text-muted">
-        {{ t('approvals.websiteRequired') }}
-      </p>
-      <!-- A plain label: UFormField would replace the input's aria-invalid/aria-describedby. -->
-      <div class="flex flex-col gap-1">
-        <label for="destination-url" class="text-sm font-medium text-default">
-          {{ t('approvals.destinationUrl') }}
-        </label>
-        <UInput
-          id="destination-url"
-          class="w-full"
-          data-testid="destination-url"
-          placeholder="https://tracker.example.com/redmine"
-          autocomplete="off"
-          :model-value="destinationUrl"
-          :disabled="disabled"
-          :aria-invalid="!!errorKey"
-          aria-describedby="destination-url-help destination-url-error"
-          @update:model-value="emit('update:destinationUrl', String($event))"
-        />
-      </div>
-      <p id="destination-url-error" class="text-[13px] text-error" role="alert">
-        <span v-if="errorKey">{{ t(errorKey) }}</span>
-      </p>
-      <UAlert
-        v-if="httpWarning"
-        data-testid="http-warning"
-        role="status"
-        color="warning"
-        variant="subtle"
-        icon="i-lucide-triangle-alert"
-        :description="t('approvals.httpWarning')"
-      />
-      <div>
-        <UButton
-          type="submit"
-          icon="i-lucide-plus"
-          data-testid="add-destination"
-          :disabled="!canAdd"
-          :label="t('approvals.addDestination')"
-        />
-      </div>
-    </UForm>
-
-    <p v-if="empty" class="text-muted">{{ t('approvals.noDestinations') }}</p>
-    <ul v-else class="divide-y divide-default rounded-md ring ring-default ring-inset">
+    <ul v-if="!empty" class="divide-y divide-default">
       <li
         v-for="item in destinations"
         :key="destinationKey(item)"
-        class="flex items-center gap-2.5 py-2 ps-3 pe-2"
+        class="flex min-h-14 items-center gap-3 px-4 py-2.5 sm:px-6"
       >
-        <UAvatar :text="providerInitials[item.provider]" class="rounded-md" aria-hidden="true" />
-        <span class="flex min-w-0 grow flex-col">
-          <ULink
-            :to="`${item.origin}${item.basePath}`"
-            target="_blank"
-            class="break-all text-highlighted hover:underline focus-visible:underline"
-            :data-testid="`open-destination-${destinationKey(item)}`"
-          >
-            {{ item.origin }}{{ item.basePath }}
-            <span class="sr-only">({{ t('app.opensInNewTab') }})</span>
-          </ULink>
-          <span class="text-xs break-all text-muted">
-            {{ t(`approvals.${item.provider}`) }}
-            <span class="before:me-1 before:content-['·']">
-              {{ t('approvals.website') }}: {{ item.websiteOrigin }}
+        <TrackerMark :provider="item.provider" />
+        <span class="flex min-w-0 grow flex-col gap-0.5">
+          <span class="flex min-w-0 items-center gap-2">
+            <ULink
+              :to="`${item.origin}${item.basePath}`"
+              target="_blank"
+              class="group inline-flex min-w-0 items-center gap-1 font-medium text-highlighted hover:text-primary focus-visible:text-primary"
+              :data-testid="`open-destination-${destinationKey(item)}`"
+            >
+              <span class="truncate group-hover:underline">{{ displayDestination(item) }}</span>
+              <UIcon
+                name="i-lucide-arrow-up-right"
+                class="size-3.5 shrink-0 text-dimmed group-hover:text-primary"
+                aria-hidden="true"
+              />
+              <span class="sr-only">
+                {{ t(`approvals.${item.provider}`) }} ({{ t('app.opensInNewTab') }})
+              </span>
+            </ULink>
+            <span
+              v-if="isPlainHttp(item)"
+              class="inline-flex shrink-0 items-center gap-1 text-[13px] text-warning"
+              :data-testid="`http-destination-${destinationKey(item)}`"
+            >
+              <UIcon name="i-lucide-lock-open" class="size-3.5" aria-hidden="true" />
+              {{ t('approvals.httpShort') }}
             </span>
+            <UBadge
+              v-if="missingOrigins.includes(item.origin)"
+              color="warning"
+              variant="soft"
+              size="sm"
+              class="shrink-0"
+              icon="i-lucide-shield-alert"
+              :label="t('approvals.noAccess')"
+            />
           </span>
-          <span v-if="missingOrigins.includes(item.websiteOrigin)" class="text-xs text-warning">
+          <span v-if="showsWebsite" class="truncate text-sm text-muted">
+            {{ t('approvals.websiteLine', { website: displayUrl(item.websiteOrigin) }) }}
+          </span>
+          <span
+            v-if="missingOrigins.includes(item.websiteOrigin)"
+            class="text-sm text-warning"
+            :data-testid="`website-access-${destinationKey(item)}`"
+          >
             {{ t('approvals.websitePermissionMissing') }}
           </span>
-          <span class="text-xs text-muted" :data-testid="`activity-${destinationKey(item)}`">
-            <span class="sr-only">{{ t('activity.label') }}:</span>
-            {{ formatActivity(activity[destinationKey(item)], now, locale, t) }}
-          </span>
+          <ActivityLine
+            class="text-sm"
+            :record="activity[destinationKey(item)]"
+            :now="now"
+            :access-missing="missingOrigins.includes(item.origin)"
+            :data-testid="`activity-${destinationKey(item)}`"
+          />
         </span>
-        <template v-if="missingOrigins.includes(item.origin)">
-          <UBadge color="warning" variant="soft" :label="t('approvals.noAccess')" />
+        <div class="flex shrink-0 items-center gap-2">
           <UButton
-            color="warning"
-            variant="soft"
-            size="xs"
+            v-if="rowRestore && missingOrigins.includes(item.origin)"
+            color="neutral"
+            variant="outline"
             icon="i-lucide-shield-check"
             :disabled="disabled"
             :label="t('approvals.restorePermission')"
@@ -214,19 +214,170 @@ function destinationLabel(item: DestinationApproval): string {
             :data-testid="`restore-destination-${destinationKey(item)}`"
             @click="emit('restore', item)"
           />
-        </template>
-        <UTooltip :text="t('approvals.revokeDestination')">
-          <UButton
-            color="error"
-            variant="ghost"
-            icon="i-lucide-trash-2"
-            :disabled="disabled"
-            :data-testid="`revoke-destination-${destinationKey(item)}`"
-            :aria-label="`${t('approvals.revokeDestination')} ${destinationLabel(item)}`"
-            @click="emit('revoke', item)"
-          />
-        </UTooltip>
+          <UTooltip :text="t('approvals.revokeDestination')">
+            <UButton
+              color="error"
+              variant="soft"
+              square
+              icon="i-lucide-trash-2"
+              :ui="{ base: 'size-8 justify-center', leadingIcon: 'size-4' }"
+              :disabled="disabled"
+              :data-testid="`revoke-destination-${destinationKey(item)}`"
+              :aria-label="`${t('approvals.revokeDestination')} ${destinationLabel(item)}`"
+              @click="emit('revoke', item)"
+            />
+          </UTooltip>
+        </div>
       </li>
     </ul>
+
+    <div
+      v-if="!hasWebsite"
+      class="flex items-start gap-3 px-4 py-4 sm:px-6 sm:py-5"
+      data-testid="destination-website-required"
+    >
+      <span
+        class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
+        aria-hidden="true"
+      >
+        <UIcon name="i-lucide-lock" class="size-4" />
+      </span>
+      <p class="pt-1.5 text-sm text-muted">{{ t('approvals.websiteRequired') }}</p>
+    </div>
+
+    <div
+      v-else-if="formShown"
+      class="px-4 py-4 sm:px-6"
+      :class="{ 'border-t border-default': !empty }"
+    >
+      <UForm :state="formState" class="flex flex-col gap-4" @submit="emit('add')">
+        <h3 v-if="!empty" class="text-sm font-semibold text-highlighted">
+          {{ t('approvals.destinationFormTitle') }}
+        </h3>
+        <p
+          v-if="singleWebsite"
+          class="flex items-center gap-1.5 text-sm text-muted"
+          data-testid="destination-website-single"
+        >
+          <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
+          <span>
+            {{ t('approvals.forWebsiteLinePrefix') }}
+            <span
+              class="font-medium text-highlighted after:font-normal after:text-muted after:content-['.']"
+            >
+              {{ displayUrl(singleWebsite) }}
+            </span>
+          </span>
+        </p>
+        <UFormField v-else :label="t('approvals.website')" name="website">
+          <USelect
+            id="destination-website"
+            class="w-full"
+            data-testid="destination-website"
+            :placeholder="t('approvals.websitePlaceholder')"
+            :model-value="website"
+            :items="websiteItems"
+            :disabled="disabled"
+            @update:model-value="emit('update:website', $event)"
+          />
+        </UFormField>
+        <div class="grid grid-cols-[11rem_1fr] items-start gap-3">
+          <UFormField :label="t('approvals.provider')" name="provider">
+            <USelect
+              id="destination-provider"
+              class="w-full"
+              data-testid="destination-provider"
+              value-key="value"
+              :ui="{ base: 'ps-11' }"
+              :model-value="provider"
+              :items="providerItems"
+              :disabled="disabled"
+              @update:model-value="emit('update:provider', $event)"
+            >
+              <template #leading><TrackerMark :provider="provider" /></template>
+              <template #item-leading="{ item }"><TrackerMark :provider="item.value" /></template>
+            </USelect>
+          </UFormField>
+          <UFormField
+            :label="t('approvals.destinationUrl')"
+            name="destinationUrl"
+            :help="t('approvals.destinationHelp')"
+            :error="errorKey ? t(errorKey) : undefined"
+            :ui="{ help: 'text-sm', error: 'text-sm' }"
+          >
+            <UInput
+              id="destination-url"
+              class="w-full"
+              data-testid="destination-url"
+              autocomplete="off"
+              :placeholder="PLACEHOLDERS[provider]"
+              :model-value="destinationUrl"
+              :disabled="disabled"
+              @update:model-value="emit('update:destinationUrl', String($event))"
+            />
+            <template v-if="errorKey" #error="{ error }">
+              <span
+                role="alert"
+                class="flex items-start gap-1.5"
+                data-testid="destination-url-error"
+              >
+                <UIcon
+                  name="i-lucide-circle-alert"
+                  class="mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                {{ error }}
+              </span>
+            </template>
+          </UFormField>
+        </div>
+        <!-- The risk concerns the whole approval, so it spans the form under the fields. -->
+        <p
+          v-if="httpWarning"
+          class="flex items-start gap-2 text-sm text-toned"
+          role="status"
+          data-testid="http-warning"
+        >
+          <UIcon
+            name="i-lucide-lock-open"
+            class="mt-0.5 size-4 shrink-0 text-warning"
+            aria-hidden="true"
+          />
+          <span>
+            <span class="font-medium text-warning">
+              {{ t('approvals.httpTitle') }}
+            </span>
+            {{ t('approvals.httpWarning') }}
+          </span>
+        </p>
+        <div class="flex justify-end gap-2">
+          <UButton
+            v-if="!empty"
+            color="neutral"
+            variant="outline"
+            data-testid="close-destination-form"
+            :label="t('approvals.cancel')"
+            @click="closeForm"
+          />
+          <UButton
+            type="submit"
+            icon="i-lucide-check"
+            data-testid="add-destination"
+            :color="httpWarning ? 'warning' : 'primary'"
+            :variant="httpWarning ? 'outline' : 'solid'"
+            :disabled="!canAdd"
+            :label="t(httpWarning ? 'approvals.approveDespiteHttp' : 'approvals.addDestination')"
+          />
+        </div>
+      </UForm>
+    </div>
+    <!-- The caveat about activity is a footnote under the rows it explains, hidden while the add
+      form is open below them; the subtitle says what trackers are for. -->
+    <template v-if="!empty && !formShown" #footer>
+      <p class="flex items-center gap-2 text-[13px] text-muted" data-testid="destinations-note">
+        <UIcon name="i-lucide-info" class="size-4 shrink-0 text-dimmed" aria-hidden="true" />
+        {{ t('approvals.destinationsActivityNote') }}
+      </p>
+    </template>
   </UCard>
 </template>

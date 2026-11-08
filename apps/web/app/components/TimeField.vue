@@ -51,12 +51,23 @@ const {
   id?: string;
   /** Accessible label for the whole field (both segments in range mode). */
   label?: string;
-  /** Text shown between the start and end segment groups (range mode only). */
+  /** Text shown between the start and end segment groups (range mode only); the shared dash by default. */
   separator?: string;
   invalid?: boolean;
   describedby?: string;
   testid?: string;
 }>();
+
+/**
+ * The ":" between hour and minute takes the digits' colour, so a time reads as one value
+ * ("09:00"), not as tinted segments; callers' slot classes come after it.
+ */
+const fieldUi = computed(() => ({
+  ...ui,
+  segment: ['data-[segment=literal]:text-current', ui?.segment].filter(Boolean).join(' '),
+}));
+
+const { t } = useI18n();
 
 const emit = defineEmits<{
   'update:modelValue': [TimeValue | TimeFieldRange | null];
@@ -245,7 +256,7 @@ function onFocusOut(event: FocusEvent) {
     granularity="minute"
     :size="size"
     :variant="variant"
-    :ui="ui"
+    :ui="fieldUi"
     :disabled="disabled"
     :aria-label="label"
     :aria-invalid="invalid || undefined"
@@ -258,7 +269,9 @@ function onFocusOut(event: FocusEvent) {
     @keydown.esc.prevent="cancel"
   >
     <template v-if="range" #separator>
-      <span class="px-1.5">{{ separator }}</span>
+      <span class="px-1.5 text-muted" aria-hidden="true">
+        {{ separator ?? t('timerView.entryRow.separator') }}
+      </span>
     </template>
   </UInputTime>
 </template>

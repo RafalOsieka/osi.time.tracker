@@ -52,7 +52,8 @@ const SelectMenuStub = {
   props: ['modelValue', 'items'],
   emits: ['update:modelValue'],
   template: `<button type="button" data-testid="profile-timezone-trigger"
-    @click="$emit('update:modelValue', 'Europe/Warsaw')">{{ modelValue }}|{{ items[0] }}</button>`,
+    :data-warsaw="items.find((item) => item.value === 'Europe/Warsaw')?.label"
+    @click="$emit('update:modelValue', 'Europe/Warsaw')">{{ modelValue }}|{{ items[0].label }}</button>`,
 };
 
 async function mountProfile() {
@@ -95,6 +96,10 @@ describe('profile page', () => {
     expect(email.element.value).toBe('jan@example.com');
     expect(email.element.readOnly).toBe(true);
     expect(wrapper.get('[data-testid="profile-timezone-trigger"]').text()).toBe('UTC|UTC');
+    // Every other zone is labelled with today's UTC offset (REQ-494).
+    expect(
+      wrapper.get('[data-testid="profile-timezone-trigger"]').attributes('data-warsaw'),
+    ).toMatch(/^Europe\/Warsaw \(UTC[+-]\d{2}:\d{2}\)$/);
     expect(wrapper.text()).toContain('profile.languageHint');
     expect(wrapper.text()).not.toMatch(/detected|theme|save/i);
   });

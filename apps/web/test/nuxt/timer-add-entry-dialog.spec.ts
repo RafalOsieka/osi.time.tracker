@@ -89,6 +89,8 @@ function mount() {
         UInputDate: InputDateStub,
         UInputTime: InputTimeStub,
         UAlert: { template: '<div v-bind="$attrs"><slot /></div>' },
+        // The timezone note's tooltip needs the app's TooltipProvider, absent in this mount.
+        UTooltip: { template: '<span><slot /></span>' },
         FormDialogFooter: {
           template: '<div><button type="submit" data-testid="save-button">save</button></div>',
         },
@@ -214,6 +216,7 @@ describe('TimerAddEntryDialog', () => {
             UInput: InputStub,
             UInputDate: InputDateStub,
             UInputTime: InputTimeStub,
+            UTooltip: { template: '<span><slot /></span>' },
             FormDialogFooter: {
               template: '<div><button type="submit" data-testid="save-button">save</button></div>',
             },
@@ -377,5 +380,37 @@ describe('TimerAddEntryDialog', () => {
     expect(wrapper.find('[data-testid="add-entry-range-error"]').text()).toBe(
       'error.timeEntryStartedAtInvalid',
     );
+  });
+
+  it('previews the duration of a complete range and hides it for an inverted one', async () => {
+    const wrapper = await mount();
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:15'),
+      end: parseTime('10:45'),
+    });
+    // In words: hours and minutes ("1 godz. 30 min"), dropping a zero part.
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe(
+      'timerView.addEntry.durationHours timerView.addEntry.durationMinutes',
+    );
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:00'),
+      end: parseTime('10:00'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe(
+      'timerView.addEntry.durationHours',
+    );
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('09:00'),
+      end: parseTime('09:45'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe(
+      'timerView.addEntry.durationMinutes',
+    );
+
+    await findTimesStub(wrapper).vm.$emit('update:modelValue', {
+      start: parseTime('11:00'),
+      end: parseTime('10:00'),
+    });
+    expect(wrapper.find('[data-testid="add-entry-duration"]').exists()).toBe(false);
   });
 });

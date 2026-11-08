@@ -84,8 +84,8 @@
     var(--ui-color-neutral-400) 50%,
     var(--ui-color-neutral-500)
   );
-  --app-canvas: var(--ui-color-neutral-50);
-  --app-surface-sidebar: oklch(96.3% 0.008 255);
+  --app-canvas: oklch(97.1% 0.007 255);
+  --app-surface-sidebar: oklch(94.9% 0.011 255);
 }
 
 .dark {
@@ -103,15 +103,15 @@
   --ui-text-toned: var(--ui-color-neutral-300);
   --ui-text: color-mix(in oklab, var(--ui-color-neutral-200) 50%, var(--ui-color-neutral-300));
   --ui-text-highlighted: var(--ui-color-neutral-200);
-  --ui-bg: oklch(21% 0.018 262);
-  --ui-bg-muted: oklch(24% 0.02 262);
-  --ui-bg-elevated: oklch(27.5% 0.022 262);
-  --ui-bg-accented: oklch(34% 0.026 262);
-  --ui-border: oklch(30.5% 0.022 262);
-  --ui-border-muted: oklch(27.5% 0.022 262);
+  --ui-bg: oklch(22% 0.018 262);
+  --ui-bg-muted: oklch(25% 0.02 262);
+  --ui-bg-elevated: oklch(28.5% 0.022 262);
+  --ui-bg-accented: oklch(35% 0.026 262);
+  --ui-border: oklch(31.5% 0.022 262);
+  --ui-border-muted: oklch(28.5% 0.022 262);
   --ui-border-accented: var(--ui-color-neutral-500);
   --app-canvas: var(--ui-bg);
-  --app-surface-sidebar: oklch(19% 0.017 262);
+  --app-surface-sidebar: oklch(19.2% 0.017 262);
 }
 
 html,

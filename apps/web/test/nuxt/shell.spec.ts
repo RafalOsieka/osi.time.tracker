@@ -233,6 +233,36 @@ describe('REQ-404: sidebar nav skeleton', () => {
   });
 });
 
+describe('REQ-071: Reports disclosure on the icon-only rail', () => {
+  // Renders each item's own leading slot, so the Reports badge is exercised as on the rail.
+  const NavStub = {
+    props: ['items'],
+    template: `
+      <div>
+        <span v-for="item in items" :key="item.label" :data-item="item.label">
+          <slot
+            v-if="item.slot"
+            :name="item.slot + '-leading'"
+            :active="false"
+            :ui="{ linkLeadingIcon: () => '' }"
+          />
+        </span>
+      </div>
+    `,
+  };
+
+  it.each([
+    [true, true],
+    [false, false],
+  ])('collapsed %s shows the disclosure badge: %s', async (collapsed, shown) => {
+    const wrapper = await mountSuspended(AppSidebar, {
+      props: { collapsed },
+      global: { stubs: { UNavigationMenu: NavStub, UIcon: true } },
+    });
+    expect(wrapper.find('[data-testid="nav-reports-disclosure"]').exists()).toBe(shown);
+  });
+});
+
 describe('REQ-066: desktop rail toggle', () => {
   it('rail renders and is present in the DOM', async () => {
     const wrapper = await mountShell();

@@ -14,6 +14,7 @@ const {
   projectOptions = [],
   tracker = null,
   scope = null,
+  dayLabel = undefined,
   columns,
 } = defineProps<{
   columns: readonly ColumnDefinition<
@@ -30,6 +31,8 @@ const {
   tracker?: TrackerDto | null;
   /** The owning project's remote project scope (REQ-328), if any. */
   scope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
+  /** The group's day in words, named by the issue picker as the day a link applies to. */
+  dayLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -46,6 +49,8 @@ const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
 const entriesId = computed(() => `timer-group-entries-${group.key}`);
+/** The duration cell: the issue picker lines its popover up with this column's end. */
+const durationCell = useTemplateRef<HTMLElement>('durationCell');
 const editingTitle = ref(false);
 const titleValue = ref('');
 const projectSelectOpen = ref(false);
@@ -234,7 +239,7 @@ async function unlinkRemoteIssue() {
         color="neutral"
         variant="soft"
         size="sm"
-        class="w-5 shrink-0 justify-center px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
+        class="w-5 shrink-0 justify-center rounded-full px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
         :class="isLive && 'bg-primary/10 text-primary'"
         :aria-label="countLabel"
         :data-testid="`timer-group-count-${group.key}`"
@@ -251,7 +256,7 @@ async function unlinkRemoteIssue() {
         :display-testid="`timer-group-title-${group.key}`"
         :input-testid="`timer-group-title-input-${group.key}`"
         :placeholder="t('timerView.noTask')"
-        :display-class="group.taskName ? 'font-medium text-default' : 'text-dimmed'"
+        :display-class="group.taskName ? 'font-medium text-highlighted' : 'text-dimmed'"
         @edit="beginTitleEdit"
         @commit="commitTitle"
         @cancel="cancelTitleEdit"
@@ -335,6 +340,9 @@ async function unlinkRemoteIssue() {
         :config="tracker!"
         :current-ref="remoteIssueRef"
         :scope="scope"
+        :context-label="group.taskName ?? undefined"
+        :day-label="dayLabel"
+        :align-to="durationCell"
         class="min-w-0"
         :link-testid="`timer-group-remote-issue-link-${group.key}`"
         :cached-testid="`timer-group-remote-issue-cached-${group.key}`"
@@ -343,6 +351,10 @@ async function unlinkRemoteIssue() {
         @link="linkRemoteIssue"
         @unlink="unlinkRemoteIssue"
       />
+      <!--
+        Untinted in the link tile's 28px box, so it shares the slot yet recedes; with no tile edge
+        to show, its glyph starts on the column edge like the issue ids do.
+      -->
       <UTooltip v-else :text="remoteIssueUnavailableLabel" :content="{ side: 'top' }">
         <span tabindex="0" class="inline-flex">
           <UButton
@@ -350,9 +362,10 @@ async function unlinkRemoteIssue() {
             color="neutral"
             variant="ghost"
             square
-            size="xs"
+            size="sm"
             disabled
-            class="-ms-1 h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-30"
+            class="size-7 shrink-0 justify-start px-0 text-dimmed disabled:opacity-30"
+            :ui="{ leadingIcon: 'size-4' }"
             :aria-label="remoteIssueUnavailableLabel"
             :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
           />
@@ -362,6 +375,7 @@ async function unlinkRemoteIssue() {
 
     <ColumnCell :columns="columns" col="duration" align="end" :narrow="{ col: [5, 6], row: 1 }">
       <span
+        ref="durationCell"
         class="block text-right font-mono text-sm tabular-nums"
         :class="isLive ? 'font-medium text-primary' : 'text-default'"
         :data-testid="`timer-group-total-${group.key}`"
@@ -371,21 +385,31 @@ async function unlinkRemoteIssue() {
     </ColumnCell>
 
     <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
+      <!--
+        The row-action tile: a 32px cyan soft tile to continue, or on the running group a 32px
+        solid red tile with the shell timer's animated stop glyph (REQ-501); in dark mode the fill
+        is a deeper red under a white glyph, like the top bar's stop, not a bright salmon block.
+      -->
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
           :icon="isLive ? undefined : 'i-lucide-play'"
           :variant="isLive ? 'solid' : 'soft'"
           square
-          size="xs"
+          size="md"
           :color="isLive ? 'error' : 'primary'"
-          class="size-6 justify-center rounded-full"
+          class="size-8 justify-center"
+          :class="
+            isLive &&
+            'dark:bg-(--ui-color-error-600) dark:hover:bg-(--ui-color-error-500) dark:active:bg-(--ui-color-error-500)'
+          "
+          :ui="{ leadingIcon: 'size-4' }"
           :aria-label="actionLabel"
           :aria-pressed="isLive"
           :data-testid="`timer-group-continue-${group.key}`"
           @click="onActionClick"
         >
           <template v-if="isLive" #leading>
-            <StopGlyph size="sm" />
+            <StopGlyph />
           </template>
         </UButton>
       </UTooltip>

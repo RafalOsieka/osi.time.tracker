@@ -98,4 +98,36 @@ describe('count-sensitive catalogs', () => {
       }),
     ).toBe('5 z 5 zadań ukończonych');
   });
+
+  it('declines the export review title, its introduction and the left-out counts', () => {
+    const review = pl.remoteSync.exportDialog;
+    expect(applyPipePlural(review.titleReview, polishPluralRule(1, 3), { count: 1 })).toBe(
+      'Wyeksportować 1 zadanie?',
+    );
+    expect(applyPipePlural(review.titleReview, polishPluralRule(3, 3), { count: 3 })).toBe(
+      'Wyeksportować 3 zadania?',
+    );
+    expect(applyPipePlural(review.titleReview, polishPluralRule(5, 3), { count: 5 })).toBe(
+      'Wyeksportować 5 zadań?',
+    );
+    expect(applyPipePlural(review.introHint, polishPluralRule(1, 3), {})).toBe(
+      'W trackerze powstanie 1 wpis czasu.',
+    );
+    expect(applyPipePlural(review.introHint, polishPluralRule(3, 3), {})).toBe(
+      'W trackerach powstanie po 1 wpisie czasu na zadanie.',
+    );
+    const local = review.excluded.localProject;
+    expect(applyPipePlural(local, polishPluralRule(1, 3), { count: 1 })).toBe(
+      '1 z projektu lokalnego',
+    );
+    expect(applyPipePlural(local, polishPluralRule(2, 3), { count: 2 })).toBe(
+      '2 z projektów lokalnych',
+    );
+    expect(applyPipePlural(local, polishPluralRule(5, 3), { count: 5 })).toBe(
+      '5 z projektów lokalnych',
+    );
+    expect(applyPipePlural(en.remoteSync.exportDialog.titleReview, 0, { count: 1 })).toBe(
+      'Export 1 task?',
+    );
+  });
 });
