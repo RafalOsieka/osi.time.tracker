@@ -667,6 +667,7 @@
     "reportPresetHoursFormatInvalid": "Choose an hours format.",
     "reportPresetLocaleInvalid": "Choose a PDF language.",
     "unknown": "An unexpected error occurred.",
+    "databaseUnavailable": "The database is unavailable.",
     "remoteIssueSearchModeRequired": "Choose a search mode.",
     "taskNameRequired": "Name is required.",
     "taskNameTooLong": "Name must be 100 characters or fewer.",

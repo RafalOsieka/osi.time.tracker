@@ -672,6 +672,7 @@
     "reportPresetHoursFormatInvalid": "Wybierz format godzin.",
     "reportPresetLocaleInvalid": "Wybierz język PDF.",
     "unknown": "Wystąpił nieoczekiwany błąd.",
+    "databaseUnavailable": "Baza danych jest niedostępna.",
     "remoteIssueSearchModeRequired": "Wybierz tryb wyszukiwania.",
     "taskNameRequired": "Nazwa jest wymagana.",
     "taskNameTooLong": "Nazwa może mieć maksymalnie 100 znaków.",
