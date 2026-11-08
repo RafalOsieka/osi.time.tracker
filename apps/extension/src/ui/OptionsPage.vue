@@ -169,10 +169,10 @@ onMounted(async () => {
 
 <template>
   <main
-    class="mx-auto flex max-w-2xl flex-col gap-5 px-4 pt-6 pb-12 text-sm text-default"
+    class="mx-auto flex max-w-2xl flex-col gap-4 px-4 pt-4 pb-12 text-sm text-default"
     :aria-busy="busy"
   >
-    <div class="flex items-center justify-between gap-4 border-b border-default pb-4">
+    <div class="flex items-center justify-between gap-4 border-b border-default pb-3">
       <div class="flex items-center gap-2.5">
         <BrandMark :size="24" />
         <span class="text-sm font-semibold text-highlighted">OSI Time Tracker</span>
@@ -211,13 +211,13 @@ onMounted(async () => {
       <p class="text-sm text-muted">{{ t('app.purpose') }}</p>
     </header>
 
+    <!-- The action sits under the message, so a two-line body keeps the full measure. -->
     <UAlert
       v-if="errorKey"
       role="alert"
       color="warning"
       variant="subtle"
       icon="i-lucide-circle-alert"
-      orientation="horizontal"
       :title="t(errorTitleKey(errorKey))"
     >
       <template #description>

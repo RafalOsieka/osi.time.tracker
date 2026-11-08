@@ -247,7 +247,7 @@ function closeForm(): void {
 
     <div
       v-else-if="formShown"
-      class="px-4 py-4 sm:px-6 sm:py-5"
+      class="px-4 py-4 sm:px-6"
       :class="{ 'border-t border-default': !empty }"
     >
       <UForm :state="formState" class="flex flex-col gap-4" @submit="emit('add')">

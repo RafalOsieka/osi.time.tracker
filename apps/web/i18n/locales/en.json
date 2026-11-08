@@ -174,7 +174,7 @@
     "unscopedHint": "Not linked",
     "unscopedHelp": "Projects without a link get no logs automatically. Pick them in the Linking step or on the Projects page.",
     "allUnscopedWarning": "No project is linked yet",
-    "allUnscopedHelp": "Logs will not reach them automatically.\nYou can pick them by hand in the Linking step.",
+    "allUnscopedHelp": "Logs will not reach them automatically.\nYou can pick the projects by hand in the Linking step.",
     "setLinksButton": "Set links",
     "unknownRemoteProject": "Unknown remote project",
     "scanButton": "Scan history",

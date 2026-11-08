@@ -26,6 +26,7 @@ const {
   disabled = false,
   bare = false,
   chipTestid,
+  textMaxWidth = undefined,
 } = defineProps<{
   /** Load the mention project list on mount instead of on first focus. */
   eager?: boolean;
@@ -38,6 +39,12 @@ const {
   bare?: boolean;
   /** Prefix for the chip's test ids: `${chipTestid}-chip` and `${chipTestid}-chip-remove`. */
   chipTestid: string;
+  /**
+   * Caps the bare field's text at a fixed CSS width (the top bar while its start editor is open),
+   * so a title truncates at the same point in both themes instead of where each theme's glyph
+   * widths happen to run out of room.
+   */
+  textMaxWidth?: string;
 }>();
 
 /**
@@ -288,7 +295,10 @@ defineExpose({ resolveCommit });
       copy of the text sizes the shared grid cell, shrinking when space runs out), so the chip
       sits right after the title, and the free space after both still focuses the field.
     -->
-    <div :class="bare ? 'grid min-w-0 grid-cols-[minmax(0,auto)]' : 'contents'">
+    <div
+      :class="bare ? 'grid min-w-0 grid-cols-[minmax(0,auto)]' : 'contents'"
+      :style="bare && textMaxWidth ? { maxWidth: textMaxWidth } : undefined"
+    >
       <span
         v-if="bare"
         class="invisible col-start-1 row-start-1 min-w-12 overflow-hidden ps-2.5 pe-1 text-base/5 whitespace-pre md:text-sm/5"

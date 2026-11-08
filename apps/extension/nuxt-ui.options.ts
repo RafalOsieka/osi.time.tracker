@@ -103,11 +103,6 @@ export const nuxtUiOptions = {
           variant: 'soft',
           class: 'bg-amber-50 text-amber-700 dark:bg-amber-400/12 dark:text-amber-300',
         },
-        {
-          color: 'neutral',
-          variant: 'outline',
-          class: 'ring-accented',
-        },
       ],
     },
     tooltip: { slots: { content: 'dark:bg-elevated' } },

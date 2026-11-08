@@ -3,9 +3,14 @@ import type { ActivityRecord } from './activity-store.js';
 
 type Translate = (key: string, params?: MessageParams) => string;
 
-/** "now", "3 minutes ago", "yesterday"… in the extension's language. */
-export function relativeTime(at: string, now: number, locale: ExtensionLocale): string {
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
+/** "now", "3 minutes ago" (or "3 min ago" when short), "yesterday"… in the extension's language. */
+export function relativeTime(
+  at: string,
+  now: number,
+  locale: ExtensionLocale,
+  style: Intl.RelativeTimeFormatStyle = 'long',
+): string {
+  const format = new Intl.RelativeTimeFormat(locale, { numeric: 'auto', style });
   const seconds = Math.round((Date.parse(at) - now) / 1000);
   if (Math.abs(seconds) < 45) return format.format(0, 'second');
   const minutes = Math.round(seconds / 60);
@@ -28,17 +33,22 @@ export interface ActivitySummary {
   when: string;
 }
 
+/**
+ * Summarizes a record for a row. `compact` (the narrow popup) takes the short time and the short
+ * failure phrase, so a failure keeps the same one-line layout as a success.
+ */
 export function summarizeActivity(
   record: ActivityRecord,
   now: number,
   locale: ExtensionLocale,
   t: Translate,
+  compact = false,
 ): ActivitySummary {
   return {
     ok: record.outcome === 'ok',
     outcome: t(`activity.outcome_${record.outcome}`),
     operation: t(`activity.operation_${record.operation}`),
-    failure: t(`activity.failed_${record.operation}`),
-    when: relativeTime(record.at, now, locale).replaceAll(' ', '\u00a0'),
+    failure: t(`activity.${compact ? 'failedShort' : 'failed'}_${record.operation}`),
+    when: relativeTime(record.at, now, locale, compact ? 'short' : 'long').replaceAll(' ', ' '),
   };
 }

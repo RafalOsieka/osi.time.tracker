@@ -174,7 +174,7 @@
     "unscopedHint": "Bez powiązania",
     "unscopedHelp": "Projekty bez powiązania nie dostaną wpisów automatycznie. Wskaż je w kroku Powiązanie albo na stronie Projekty.",
     "allUnscopedWarning": "Żaden projekt nie ma jeszcze powiązania",
-    "allUnscopedHelp": "Wpisy nie trafią do nich automatycznie.\nWybierzesz je ręcznie w kroku Powiązanie.",
+    "allUnscopedHelp": "Wpisy nie trafią do nich automatycznie.\nProjekty wybierzesz ręcznie w kroku Powiązanie.",
     "setLinksButton": "Ustaw powiązania",
     "unknownRemoteProject": "Nieznany zdalny projekt",
     "scanButton": "Skanuj historię",

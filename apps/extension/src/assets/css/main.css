@@ -81,6 +81,11 @@ body {
   color: var(--ui-text);
 }
 
+/* The popup is sized to its content; any sub-pixel rest under the footer matches the footer. */
+body[data-surface='popup'] {
+  background: var(--ui-bg);
+}
+
 /*
  * One 400/500/600 ramp that reads the same in both themes. Light text on dark renders thinner in
  * the browser's grayscale antialiasing at the extension's small sizes, so dark mode keeps body

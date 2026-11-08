@@ -37,7 +37,7 @@ const reasonId = useId();
  * dialog's scrim.
  */
 const PRESSED =
-  'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-800) dark:text-white dark:ring-(--ui-color-primary-300) dark:hover:bg-(--ui-color-primary-800)';
+  'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-600) dark:ring-(--ui-color-primary-900) dark:hover:bg-(--ui-color-primary-600)';
 const calendarOpen = ref(false);
 const calendarValue = computed(() => parseDate(date));
 

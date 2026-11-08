@@ -16,14 +16,14 @@ const {
   record,
   now,
   accessMissing = false,
-  stacked = false,
+  compact = false,
 } = defineProps<{
   record: ActivityRecord | undefined;
   now: number;
   /** The row already shows a current "No access" badge, so a denied attempt is told quietly. */
   accessMissing?: boolean;
-  /** Narrow rows (the popup) put a failure's time on its own line instead of after a dot. */
-  stacked?: boolean;
+  /** Narrow rows (the popup) use the short time and failure phrase, keeping one line. */
+  compact?: boolean;
 }>();
 
 /** A denied attempt on a row that has lost access repeats nothing the badge already says. */
@@ -34,7 +34,7 @@ const SEPARATOR = "before:me-1 before:content-['·']";
 
 const { t, locale } = useExtensionI18n();
 const summary = computed(() =>
-  record ? summarizeActivity(record, now, locale.value, t.value) : null,
+  record ? summarizeActivity(record, now, locale.value, t.value, compact) : null,
 );
 </script>
 <template>
@@ -52,11 +52,8 @@ const summary = computed(() =>
         <span>
           <span v-if="summary.ok" class="sr-only">{{ summary.outcome }}</span>
           {{ summary.ok ? summary.operation : summary.failure }}
-          <span v-if="summary.ok || !stacked" class="whitespace-nowrap" :class="SEPARATOR">
-            {{ summary.when }}
-          </span>
+          <span class="whitespace-nowrap" :class="SEPARATOR">{{ summary.when }}</span>
         </span>
-        <span v-if="!summary.ok && stacked">{{ summary.when }}</span>
         <span v-if="!summary.ok && !quiet" data-testid="activity-failure">
           {{ summary.outcome }}
         </span>

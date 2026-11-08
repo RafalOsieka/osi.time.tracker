@@ -323,12 +323,17 @@ const STEPPER_UI = {
                 class="grid gap-2"
                 data-testid="tracker-import-project-scopes"
               >
-                <!-- Each target Project with the remote project it is linked to, as two columns. -->
-                <p class="m-0 flex items-baseline justify-between gap-3 px-3 text-sm">
-                  <span class="font-medium text-highlighted">
+                <!--
+                  Each target Project with the remote project it is linked to, as two columns
+                  under one header row in the table-header style (12px medium, muted).
+                -->
+                <p
+                  class="m-0 flex items-baseline justify-between gap-3 px-3 text-xs font-medium text-muted"
+                >
+                  <span>
                     {{ t('trackerImport.scopedProjectsHeading') }}
                   </span>
-                  <span class="text-xs text-muted">
+                  <span>
                     {{ t('trackerImport.columnRemoteProject') }}
                   </span>
                 </p>

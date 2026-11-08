@@ -229,8 +229,8 @@ async function onSaveStartedAt() {
     />
     <!--
       While the start editor is open the title area stops short of it (the editor's width plus a
-      gap), so the editor covers no part of the Task or its Project pill: the input clips at its
-      own edge instead.
+      gap), so the editor covers no part of the Task or its Project pill, and the title text is
+      capped at a fixed 12rem, so it ends in the same ellipsis in both themes.
     -->
     <div class="flex min-w-0 flex-1 self-stretch" :class="startEditorOpen && 'me-[22.5rem]'">
       <TaskTitleInput
@@ -242,6 +242,7 @@ async function onSaveStartedAt() {
         :placeholder="isRunning ? undefined : t('timer.titlePlaceholder')"
         :aria-label="t('timer.titleLabel')"
         bare
+        :text-max-width="startEditorOpen ? '12rem' : undefined"
         chip-testid="timer-project"
         data-testid="timer-title-input"
         @pick-project="onPickProject"

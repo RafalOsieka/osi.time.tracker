@@ -40,3 +40,18 @@ describe('activity formatting', () => {
     ).toMatchObject({ ok: true, outcome: 'Powodzenie' });
   });
 });
+
+describe('compact activity', () => {
+  it('keeps a failure on one line in the popup: the short phrase and the short time', () => {
+    const t = (key: string) => translate('pl', key);
+    const summary = summarizeActivity(
+      { at: '2026-10-05T11:40:00.000Z', operation: 'createTimeEntry', outcome: 'timeout' },
+      now,
+      'pl',
+      t,
+      true,
+    );
+    expect(summary.failure).toBe('Nieudany eksport');
+    expect(summary.when).toBe('20\u00a0min\u00a0temu');
+  });
+});

@@ -108,12 +108,18 @@ onMounted(() =>
         />
       </div>
       <!-- One sentence names the asking website (in medium weight) when every item shares it. -->
-      <p v-if="helpFrom" class="mt-0.5 text-sm text-muted" data-testid="suggestions-website">
+      <p
+        v-if="helpFrom"
+        class="mt-0.5 text-sm whitespace-pre-line text-muted"
+        data-testid="suggestions-website"
+      >
         {{ helpFrom.before }}
         <span class="font-medium text-highlighted">{{ helpFrom.website }}</span>
         {{ helpFrom.after }}
       </p>
-      <p v-else class="mt-0.5 text-sm text-muted">{{ t('approvals.suggestionsHelp') }}</p>
+      <p v-else class="mt-0.5 text-sm whitespace-pre-line text-muted">
+        {{ t('approvals.suggestionsHelp') }}
+      </p>
     </template>
     <!-- In the popup every section is a label above a list, as for the approved ones; the
       header status badge already carries the count. -->
@@ -146,22 +152,26 @@ onMounted(() =>
         :data-testid="`suggestion-${suggestionId(item)}`"
       >
         <div class="flex min-w-0 items-start gap-3" :class="mode === 'setup' ? 'flex-1' : ''">
-          <TrackerMark :provider="item.provider" class="mt-0.5" />
+          <TrackerMark :provider="item.provider" :class="mode === 'popup' ? '' : 'mt-0.5'" />
           <div
             class="flex min-w-0 flex-col gap-0.5"
             :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'"
           >
             <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-              <span class="min-w-0 truncate text-sm font-medium text-highlighted">
+              <span
+                class="min-w-0 truncate text-sm font-medium text-highlighted"
+                :class="mode === 'popup' ? 'leading-6' : ''"
+              >
                 {{ displayDestination(item) }}
                 <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
               </span>
+              <!-- A soft slate pill like the other badges, one surface step above the raised row. -->
               <UBadge
                 v-if="suggestionId(item) === highlightId"
                 color="neutral"
-                variant="outline"
+                variant="soft"
                 size="sm"
-                class="shrink-0"
+                class="shrink-0 bg-accented"
                 :label="t('approvals.reviewedTag')"
                 data-testid="suggestion-reviewed"
               />

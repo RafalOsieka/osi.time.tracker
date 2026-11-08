@@ -194,7 +194,7 @@ function openOptions(): void {
       />
     </header>
 
-    <div class="min-h-0 grow overflow-y-auto [scrollbar-width:thin]">
+    <div class="min-h-0 grow overflow-y-auto bg-(--app-canvas) [scrollbar-width:thin]">
       <div class="flex flex-col gap-3 p-4">
         <UAlert
           v-if="errorKey"
@@ -397,7 +397,7 @@ function openOptions(): void {
                     :record="activity[destinationKey(destination)]"
                     :now="now"
                     :access-missing="missingOrigins.includes(destination.origin)"
-                    stacked
+                    compact
                     data-testid="popup-tracker-activity"
                   />
                 </span>

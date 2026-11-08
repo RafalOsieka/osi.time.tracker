@@ -17,14 +17,15 @@ const emit = defineEmits<{ create: [] }>();
 
 /**
  * Pressed looks like the button held down, and stays clear under a dialog's scrim: the solid fill
- * deeper (cyan-900 light, cyan-800 with white text dark) with a lighter inset ring, the outline
- * one filled with a cyan inset ring.
+ * deeper (cyan-900 with a lighter cyan-300 inset ring in light; cyan-600 with a dark cyan-900
+ * inset ring in dark, so it stays a filled button under the scrim), the outline one filled with a
+ * cyan inset ring.
  */
 const pressedClass = computed(() => {
   if (!pressed) return undefined;
   return quiet
     ? 'bg-accented ring-2 ring-inset ring-primary'
-    : 'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-800) dark:text-white dark:ring-(--ui-color-primary-300) dark:hover:bg-(--ui-color-primary-800)';
+    : 'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-600) dark:ring-(--ui-color-primary-900) dark:hover:bg-(--ui-color-primary-600)';
 });
 </script>
 
