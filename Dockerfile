@@ -7,7 +7,7 @@
 # ── migrator-build ────────────────────────────────────────────────────────────
 # Bundles the migrator CLI (`vp pack`) into a single file with its dependencies
 # inlined. Keep the tag in sync with the `vite-plus` catalog entry.
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS migrator-build
+FROM ghcr.io/voidzero-dev/vite-plus:1.5.0 AS migrator-build
 WORKDIR /app
 
 COPY --chown=vp:vp package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -20,7 +20,7 @@ RUN vp run --filter @osi/time-tracker-migrator build
 # ── migrator ──────────────────────────────────────────────────────────────────
 # Node, the bundled CLI and the committed SQL — no package manager, toolchain or
 # node_modules. Applies pending migrations, seeds the bootstrap user, then exits.
-FROM node:24-alpine AS migrator
+FROM node:26-alpine AS migrator
 WORKDIR /app
 
 # The official image ships npm, corepack and yarn; the migrator needs only `node`.
@@ -39,7 +39,7 @@ CMD ["node", "dist/cli.mjs"]
 # The official Vite+ image ships the `vp` CLI and resolves Node.js and pnpm from
 # `devEngines` in package.json. Keep the tag in sync with the `vite-plus` catalog
 # entry in pnpm-workspace.yaml.
-FROM ghcr.io/voidzero-dev/vite-plus:1.3.0 AS build
+FROM ghcr.io/voidzero-dev/vite-plus:1.5.0 AS build
 WORKDIR /app
 
 # Copy package manifests first for better layer caching. The image runs as the
@@ -68,7 +68,7 @@ RUN vp run build:packages \
 # ── runtime ───────────────────────────────────────────────────────────────────
 # The Nitro output is self-contained (no native modules), so a slim Node image
 # on the same major as `devEngines.runtime` is enough.
-FROM node:24-alpine AS runtime
+FROM node:26-alpine AS runtime
 WORKDIR /app
 
 # Fix production environment
@@ -77,7 +77,7 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 # Runtime secrets/config — must be supplied at container start, never baked in
-# DATABASE_URL and NUXT_SESSION_PASSWORD are required at runtime
+# DATABASE_URL and NUXT_APP_SECRET are required at runtime
 
 # Copy only the Nitro server output from the build stage
 COPY --from=build /app/apps/web/.output .

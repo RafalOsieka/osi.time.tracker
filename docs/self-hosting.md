@@ -19,12 +19,12 @@ cp .env.example .env
 Then edit `.env`:
 
 1. In the **Production compose** section, uncomment and set `POSTGRES_PASSWORD` and `PGADMIN_DEFAULT_PASSWORD` (e.g. `openssl rand -base64 32`).
-2. Replace `NUXT_SESSION_PASSWORD` with a fresh secret of 32+ characters. The value in `.env.example` is for development only.
+2. Replace `NUXT_APP_SECRET` with a fresh secret of 32+ characters. The value in `.env.example` is for development only.
 3. Set `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` to the account you will log in with. Optionally set `BOOTSTRAP_USER_DISPLAY_NAME` and `BOOTSTRAP_USER_TIMEZONE` (an IANA id such as `Europe/Warsaw`); both can be changed later on the Profile page.
 
 | Variable                                                  | Required | Default                        | Purpose                                                                    |
 | --------------------------------------------------------- | -------- | ------------------------------ | -------------------------------------------------------------------------- |
-| `NUXT_SESSION_PASSWORD`                                   | yes      | —                              | Seals the session cookie (32+ characters).                                 |
+| `NUXT_APP_SECRET`                                         | yes      | —                              | App secret; seals the session cookie (32+ characters).                     |
 | `POSTGRES_PASSWORD`                                       | yes      | —                              | Database password.                                                         |
 | `PGADMIN_DEFAULT_PASSWORD`                                | yes      | —                              | pgAdmin login password.                                                    |
 | `BOOTSTRAP_USER_EMAIL` / `BOOTSTRAP_USER_PASSWORD`        | no       | —                              | The migrator creates this user if it does not exist yet.                   |
@@ -59,6 +59,7 @@ Migrations run automatically before the new app starts. Read the release-specifi
 
 ### Release notes that need action
 
+- **`NUXT_SESSION_PASSWORD` is now `NUXT_APP_SECRET`:** rename the variable in `.env` (a fresh `openssl rand -base64 32` value is fine). The stack refuses to start until it is set. Existing sessions end with the upgrade; log in again.
 - **Profile page:** every user now has a required display name and timezone. The migration fills missing values with the email local part and `UTC`, so set your timezone once on the Profile page (account menu in the sidebar footer). Existing sessions end with the upgrade; log in again.
 - **From `docker-compose.standalone.yml`:** the stack now uses the fixed project name `osi-time-tracker-prod`, so its volumes are `osi-time-tracker-prod_pg-osi-time-tracker-standalone` and `osi-time-tracker-prod_pgadmin-osi-time-tracker-standalone`. Your existing data lives under `<clone-directory>_pg-osi-time-tracker-standalone`; copy it across once before the first `up`:
 

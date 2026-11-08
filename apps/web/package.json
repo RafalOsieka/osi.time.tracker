@@ -30,25 +30,25 @@
     "@osi/time-tracker-remote-trackers": "workspace:*",
     "consola": "3.4.2",
     "drizzle-orm": "^0.45.4",
-    "nuxt": "^4.6.2",
-    "nuxt-auth-utils": "^0.5.32",
+    "nuxt": "4.6.4",
+    "nuxt-auth-utils": "^0.6.2",
     "nuxt-security": "^2.7.0",
     "pdfmake": "^0.3.13",
     "postgres": "^3.4.9",
-    "tailwindcss": "^4.3.3",
-    "temporal-polyfill": "^1.0.6",
-    "vue": "^3.5.44",
+    "tailwindcss": "^4.3.5",
+    "temporal-polyfill": "^1.0.8",
+    "vue": "^3.5.45",
     "vue-router": "^5.4.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@iconify-json/lucide": "^1.2.147",
+    "@iconify-json/lucide": "^1.2.152",
     "@nuxt/eslint": "^1.17.0",
-    "@nuxt/schema": "^4.6.2",
+    "@nuxt/schema": "4.6.4",
     "@nuxt/test-utils": "^4.3.4",
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/time-tracker-migrator": "workspace:*",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@types/pdfmake": "^0.3.3",
     "@vitest/coverage-v8": "catalog:",
     "@vue/test-utils": "^2.5.1",
@@ -56,17 +56,17 @@
     "cross-env": "^10.1.0",
     "dotenv": "^18.0.9",
     "drizzle-kit": "^0.31.11",
-    "happy-dom": "^20.14.5",
-    "playwright": "^1.64.1",
-    "playwright-core": "^1.64.1",
+    "happy-dom": "^21.0.4",
+    "playwright": "^1.65.0",
+    "playwright-core": "^1.65.0",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vite-doctor": "^0.0.12",
+    "vite-doctor": "^0.1.2",
     "vite-plus": "catalog:",
     "vitest": "catalog:",
-    "vue-tsc": "^3.3.13"
+    "vue-tsc": "^3.3.14"
   },
   "engines": {
-    "node": ">=24.11"
+    "node": ">=26"
   }
 }

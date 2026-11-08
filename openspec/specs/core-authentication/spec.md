@@ -6,14 +6,14 @@ How users sign in and how private resources are protected: email and password lo
 ## Requirements
 
 ### Requirement: REQ-006 Session-cookie authentication
-The application SHALL authenticate users with a server-side session represented by a sealed cookie. The session cookie MUST be `HttpOnly`, MUST be `Secure` in production, and MUST use `SameSite=Lax`. The cookie sealing password SHALL be provided via the `NUXT_SESSION_PASSWORD` environment variable (32+ characters), and startup SHALL fail fast if it is missing in production.
+The application SHALL authenticate users with a server-side session represented by a sealed cookie. The session cookie MUST be `HttpOnly`, MUST be `Secure` in production, and MUST use `SameSite=Lax`. The cookie SHALL be sealed with a key derived from the application secret, provided via the `NUXT_APP_SECRET` environment variable (32+ characters), and startup SHALL fail fast if it is missing in production.
 
 #### Scenario: Authenticated request is recognized
 - **WHEN** a request arrives carrying a valid, unexpired session cookie
 - **THEN** the server SHALL treat the request as authenticated and expose its session user to the request
 
-#### Scenario: Missing session password in production
-- **WHEN** the application starts in production and `NUXT_SESSION_PASSWORD` is not set
+#### Scenario: Missing application secret in production
+- **WHEN** the application starts in production and `NUXT_APP_SECRET` is not set
 - **THEN** startup SHALL fail fast with a clear error rather than issuing unsealed or insecure sessions
 
 #### Scenario: Tampered or invalid cookie

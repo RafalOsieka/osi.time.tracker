@@ -70,7 +70,8 @@ export default defineNuxtConfig({
     // Server-only. Override at runtime with NUXT_DATABASE_URL or DATABASE_URL.
     databaseUrl: process.env.DATABASE_URL ?? '',
     // Server-side session settings consumed by nuxt-auth-utils.
-    // The sealing secret is provided via NUXT_SESSION_PASSWORD (32+ chars).
+    // The cookie is sealed with a key derived from Nuxt's `appSecret`, which
+    // arrives at runtime via NUXT_APP_SECRET (32+ chars) and is never baked in.
     session: {
       // Renamed from the default `nuxt-session` so sessions sealed before the
       // display name and timezone became required no longer authenticate.
