@@ -4,7 +4,7 @@ How to set up a local development environment. Day-to-day commands (lint, tests,
 
 ## Prerequisites
 
-- Node.js `^24.21` and pnpm `^12.8` (pinned in `devEngines` in the root `package.json`). Use `pnpm`, never `npm` or `yarn`.
+- Node.js `^26.13` and pnpm `^12.8` (pinned in `devEngines` in the root `package.json`). Use `pnpm`, never `npm` or `yarn`.
 - Docker with Compose v2, for PostgreSQL and the optional local trackers.
 - Chromium for the UI e2e and extension browser tests only: `pnpm --filter @osi/time-tracker-web exec playwright install chromium`.
 
