@@ -72,7 +72,7 @@ services:
       - osi-time-tracker-standalone
 
   pgadmin:
-    image: dpage/pgadmin4:9.16
+    image: dpage/pgadmin4:9.19
     restart: unless-stopped
     environment:
       PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.com}
