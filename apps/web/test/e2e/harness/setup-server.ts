@@ -1,5 +1,6 @@
-import { setup } from '@nuxt/test-utils/e2e';
+import { createTest, type TestOptions } from '@nuxt/test-utils/e2e';
 import type { NuxtConfig } from '@nuxt/schema';
+import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { OUTPUT_DIR } from './skip-build';
 import { bindTestOrigin } from '../helpers/url';
 
@@ -53,10 +54,21 @@ export async function setupServer({
     ? { type: 'chromium' as const, launch: { channel, headless: true, args: ['--lang=en-US'] } }
     : undefined;
   const options = { browser, dev: isDev, env: setupEnv, browserOptions };
-  if (isDev) {
-    await setup(options);
-  } else {
-    await setup({ ...options, build: false, nuxtConfig });
-  }
+  registerNuxtTest(isDev ? options : { ...options, build: false, nuxtConfig });
   bindTestOrigin();
+}
+
+/**
+ * `setup()` from `@nuxt/test-utils/e2e`, but with the hooks registered through this
+ * file's own `vitest` import. `setup()` does `await import('vitest')` from the
+ * package's location; pnpm keeps one vitest copy per set of optional peers, so that
+ * import can return a different instance than the one running the spec, which then
+ * fails with "Vitest failed to find the current suite".
+ */
+function registerNuxtTest(options: Partial<TestOptions>): void {
+  const hooks = createTest(options);
+  beforeAll(hooks.beforeAll, hooks.ctx.options.setupTimeout);
+  beforeEach(hooks.beforeEach);
+  afterEach(hooks.afterEach);
+  afterAll(hooks.afterAll, hooks.ctx.options.teardownTimeout);
 }
