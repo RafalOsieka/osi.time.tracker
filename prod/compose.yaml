@@ -33,7 +33,7 @@ services:
 
   # Runs to completion before `app` starts; a failed migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:393b9deca3eb084b4136762373207ec5e9190d123ac8a266b1114ba1a1ff3acf
+    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:2867d013ec6234bfd03f27f0004f92c6029e4154438969415f8e01b75f0002c5
     restart: 'no'
     logging: *logging
     environment:
@@ -48,7 +48,7 @@ services:
         condition: service_healthy
 
   app:
-    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:8f63d428e5330b7fd094701cfb691b110e7e074e84af1da7e5d27ccbe9078b8d
+    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:7093ef350700455e5483e2f52485057cd5995a344ab0c94db2c7f7c9c54dac38
     restart: unless-stopped
     logging: *logging
     environment:
