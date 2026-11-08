@@ -328,13 +328,16 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
   {
     id: 'e16-setup-saved-toast',
     title: 'Setup page, change saved',
-    shows: 'The notification after a change, here dismissing a suggested tracker.',
+    shows:
+      "The notification after a change, here dismissing a suggested tracker from the keyboard: focus moves on to the next suggestion's dismiss action.",
     surface: 'setup',
     state: withSuggestions,
     ready: ['[data-testid="suggestions"]', SETUP_ACTIVITY, SETUP_IDLE],
     overlay: true,
     prepare: async (page) => {
-      await page.getByTestId(`dismiss-suggestion-${destinationKey(INITECH_OPENPROJECT)}`).click();
+      // From the keyboard, as a keyboard user dismisses: the next "Odrzuć" then shows its ring.
+      await page.getByTestId(`dismiss-suggestion-${destinationKey(INITECH_OPENPROJECT)}`).focus();
+      await page.keyboard.press('Enter');
       await page.locator('ol[data-slot="viewport"] li').waitFor();
       await page.locator(SETUP_IDLE).waitFor();
     },

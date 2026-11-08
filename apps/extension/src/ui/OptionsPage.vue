@@ -15,6 +15,7 @@ import { useExtensionTheme } from '../composables/use-extension-theme.js';
 import { useTrackerActivity } from '../composables/use-tracker-activity.js';
 import { reconcileWebsiteContentScripts } from '../content/registration.js';
 import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
+import AlertBody from './AlertBody.vue';
 import BrandMark from './BrandMark.vue';
 import DestinationApprovals from './DestinationApprovals.vue';
 import { errorTitleKey, missingAccessAlert } from './alerts.js';
@@ -221,7 +222,7 @@ onMounted(async () => {
       :title="t(errorTitleKey(errorKey))"
     >
       <template #description>
-        <span data-testid="setup-error">{{ t(errorKey) }}</span>
+        <AlertBody :text="t(errorKey)" data-testid="setup-error" />
       </template>
       <template #actions>
         <UButton
@@ -254,10 +255,11 @@ onMounted(async () => {
         color="warning"
         variant="subtle"
         icon="i-lucide-shield-alert"
-        orientation="horizontal"
         :title="accessAlert.title"
-        :description="accessAlert.description"
       >
+        <template #description>
+          <AlertBody :text="accessAlert.description" />
+        </template>
         <template v-if="restorable" #actions>
           <UButton
             data-testid="missing-access-restore"

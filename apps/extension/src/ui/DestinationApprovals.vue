@@ -371,8 +371,9 @@ function closeForm(): void {
         </div>
       </UForm>
     </div>
-    <!-- The caveat about activity is a footnote; the subtitle says what trackers are for. -->
-    <template v-if="!empty" #footer>
+    <!-- The caveat about activity is a footnote under the rows it explains, hidden while the add
+      form is open below them; the subtitle says what trackers are for. -->
+    <template v-if="!empty && !formShown" #footer>
       <p class="flex items-center gap-2 text-[13px] text-muted" data-testid="destinations-note">
         <UIcon name="i-lucide-info" class="size-4 shrink-0 text-dimmed" aria-hidden="true" />
         {{ t('approvals.destinationsActivityNote') }}

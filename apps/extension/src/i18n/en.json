@@ -89,7 +89,7 @@
     "denied": "Permission was denied, so nothing was saved. Approve again to retry.",
     "deniedTitle": "Permission denied",
     "retry": "Try again",
-    "loadFailed": "The extension could not read its approved websites and trackers.\nNothing was deleted. If retrying does not help, restart the browser.",
+    "loadFailed": "The extension could not read its approved websites and trackers.\nNothing was deleted. If this does not help, restart the browser.",
     "loadFailedTitle": "Settings could not be read",
     "changeFailed": "The change could not be fully completed. The list shows the latest saved approvals. Try again to finish cleaning up permissions.",
     "changeFailedTitle": "The change did not finish",
@@ -127,7 +127,9 @@
     "retryLoad": "Retry loading",
     "forWebsiteLinePrefix": "The tracker is approved for",
     "suggestedByAll": "All from {website}",
-    "suggestionsHelpFrom": "{website} asks for access to these trackers.\nApprove only the ones you know."
+    "suggestionsHelpFrom": "{website} asks for access to these trackers.\nApprove only the ones you know.",
+    "suggestionsHelpOne": "Your OSI website asks for access to this tracker.\nApprove it only if you know it.",
+    "suggestionsHelpFromOne": "{website} asks for access to this tracker.\nApprove it only if you know it."
   },
   "activity": {
     "none": "No activity this session",
@@ -158,16 +160,7 @@
     "failed_fetchTimeLogs": "Time log fetch failed",
     "failed_fetchTimeLogsInRange": "Time log fetch failed",
     "failed_createTimeEntry": "Time entry export failed",
-    "failed_deleteTimeEntry": "Time entry deletion failed",
-    "failedShort_searchIssues": "Search failed",
-    "failedShort_getIssueById": "Lookup failed",
-    "failedShort_listProjects": "Project list failed",
-    "failedShort_getActivityOptions": "Activity types failed",
-    "failedShort_getCurrentAccount": "Account check failed",
-    "failedShort_fetchTimeLogs": "Log fetch failed",
-    "failedShort_fetchTimeLogsInRange": "Log fetch failed",
-    "failedShort_createTimeEntry": "Export failed",
-    "failedShort_deleteTimeEntry": "Deletion failed"
+    "failed_deleteTimeEntry": "Time entry deletion failed"
   },
   "error": {
     "extensionUnavailable": "The OSI extension is not available in this browser.",

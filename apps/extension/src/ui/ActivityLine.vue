@@ -7,7 +7,7 @@ import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 
 /**
  * A tracker row's last activity (REQ-419): a mark, then what ran and how long ago. A failure says
- * so in words ("Wyszukiwanie zgłoszeń nie powiodło się", worded per operation for Polish
+ * so in words ("Nieudane wyszukiwanie zgłoszeń", worded per operation for Polish
  * agreement) under its own glyph; the "!" circle stays for live problems. A failure the row's
  * current badge does not explain gets an amber mark and its reason on a second line; a denied
  * attempt the "No access" badge already explains stays one quiet line under a muted mark.

@@ -200,7 +200,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 
 #### Scenario: Failed operation
 - **WHEN** the latest operation on a destination failed
-- **THEN** the row SHALL say in words that the operation failed, with its time on the same line as for a success (the popup uses a short phrase and short time), beside an amber failure mark distinct from the live-problem glyph, and a line below SHALL give the reason, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the history SHALL be that one line under a muted failure mark
+- **THEN** the row SHALL say in words that the operation failed, with its time on the same line as for a success (both pages use one failure phrase; the narrow popup uses the short time form), beside an amber failure mark distinct from the live-problem glyph, and a line below SHALL give the reason, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the history SHALL be that one line under a muted failure mark
 
 #### Scenario: Timeout
 - **WHEN** the latest operation on a destination timed out

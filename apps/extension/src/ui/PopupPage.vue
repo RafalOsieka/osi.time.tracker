@@ -17,6 +17,7 @@ import { useApprovalsEditor } from '../composables/use-approvals-editor.js';
 import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
 import { useTrackerActivity } from '../composables/use-tracker-activity.js';
 import ActivityLine from './ActivityLine.vue';
+import AlertBody from './AlertBody.vue';
 import { errorTitleKey, missingAccessAlert } from './alerts.js';
 import BrandMark from './BrandMark.vue';
 import { extensionStatus, missingAccessItems, type ExtensionStatus } from './extension-status.js';
@@ -206,7 +207,7 @@ function openOptions(): void {
           :actions="errorActions"
         >
           <template #description>
-            {{ t(errorKey) }}
+            <AlertBody :text="t(errorKey)" />
           </template>
         </UAlert>
         <UAlert

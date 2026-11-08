@@ -27,15 +27,16 @@ export interface ActivitySummary {
   outcome: string;
   /** "Time entry export" */
   operation: string;
-  /** "Time entry export failed", worded per operation so Polish agrees in gender */
+  /** "Nieudany eksport wpisu czasu", worded per operation so Polish agrees in gender */
   failure: string;
   /** "4 minutes ago", with non-breaking spaces so it never splits across lines. */
   when: string;
 }
 
 /**
- * Summarizes a record for a row. `compact` (the narrow popup) takes the short time and the short
- * failure phrase, so a failure keeps the same one-line layout as a success.
+ * Summarizes a record for a row. Both pages use one failure phrase per operation ("Nieudane
+ * wyszukiwanie zgłoszeń"); `compact` (the narrow popup only) takes the short time ("20 min
+ * temu"), so a failure keeps the same one-line layout as a success there.
  */
 export function summarizeActivity(
   record: ActivityRecord,
@@ -48,7 +49,7 @@ export function summarizeActivity(
     ok: record.outcome === 'ok',
     outcome: t(`activity.outcome_${record.outcome}`),
     operation: t(`activity.operation_${record.operation}`),
-    failure: t(`activity.${compact ? 'failedShort' : 'failed'}_${record.operation}`),
+    failure: t(`activity.failed_${record.operation}`),
     when: relativeTime(record.at, now, locale, compact ? 'short' : 'long').replaceAll(' ', ' '),
   };
 }

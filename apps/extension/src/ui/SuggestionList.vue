@@ -52,7 +52,12 @@ const helpFrom = computed(() => {
   if (!commonWebsite.value) return null;
   const marker = '\u0000';
   const [before = '', after = ''] = t
-    .value('approvals.suggestionsHelpFrom', { website: marker })
+    .value(
+      suggestions.length === 1
+        ? 'approvals.suggestionsHelpFromOne'
+        : 'approvals.suggestionsHelpFrom',
+      { website: marker },
+    )
     .split(marker);
   return { before, website: displayUrl(commonWebsite.value), after };
 });
@@ -118,7 +123,9 @@ onMounted(() =>
         {{ helpFrom.after }}
       </p>
       <p v-else class="mt-0.5 text-sm whitespace-pre-line text-muted">
-        {{ t('approvals.suggestionsHelp') }}
+        {{
+          t(suggestions.length === 1 ? 'approvals.suggestionsHelpOne' : 'approvals.suggestionsHelp')
+        }}
       </p>
     </template>
     <!-- In the popup every section is a label above a list, as for the approved ones; the
@@ -132,12 +139,14 @@ onMounted(() =>
       </p>
     </div>
 
+    <!-- On the setup page the rows sit 8px inside the card, so the raised reviewed row keeps an
+      inset from the card edges instead of running flush into them. -->
     <ul
       class="divide-y divide-default"
       :class="
         mode === 'popup'
           ? 'overflow-hidden rounded-lg bg-default ring ring-default dark:bg-muted'
-          : ''
+          : 'p-2'
       "
     >
       <li
@@ -145,7 +154,7 @@ onMounted(() =>
         :key="suggestionId(item)"
         class="flex gap-3"
         :class="[
-          mode === 'popup' ? 'flex-col px-4 py-3' : 'flex-wrap items-center px-4 py-3 sm:px-6',
+          mode === 'popup' ? 'flex-col px-4 py-3' : 'flex-wrap items-center rounded-md px-4 py-3',
           suggestionId(item) === highlightId ? 'bg-elevated' : '',
         ]"
         :data-highlighted="suggestionId(item) === highlightId || undefined"

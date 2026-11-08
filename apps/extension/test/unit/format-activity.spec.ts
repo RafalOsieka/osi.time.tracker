@@ -27,7 +27,7 @@ describe('activity formatting', () => {
       ok: false,
       outcome: 'Przekroczony czas',
       operation: 'Pobranie wpisów czasu',
-      failure: 'Pobranie wpisów czasu nie powiodło się',
+      failure: 'Nieudane pobranie wpisów czasu',
       when: '1 godzinę temu',
     });
     expect(
@@ -42,7 +42,7 @@ describe('activity formatting', () => {
 });
 
 describe('compact activity', () => {
-  it('keeps a failure on one line in the popup: the short phrase and the short time', () => {
+  it('keeps the shared failure phrase and takes the short time in the popup', () => {
     const t = (key: string) => translate('pl', key);
     const summary = summarizeActivity(
       { at: '2026-10-05T11:40:00.000Z', operation: 'createTimeEntry', outcome: 'timeout' },
@@ -51,7 +51,7 @@ describe('compact activity', () => {
       t,
       true,
     );
-    expect(summary.failure).toBe('Nieudany eksport');
+    expect(summary.failure).toBe('Nieudany eksport wpisu czasu');
     expect(summary.when).toBe('20\u00a0min\u00a0temu');
   });
 });
