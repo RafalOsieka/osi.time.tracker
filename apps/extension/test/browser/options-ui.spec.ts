@@ -457,9 +457,7 @@ describeChromium('extension options UI', () => {
     await handoff.addInitScript(() => {
       const contains = chrome.permissions.contains.bind(chrome.permissions);
       chrome.permissions.contains = async (request) =>
-        request.origins.some((origin) => origin.includes('restore.example.com'))
-          ? false
-          : contains(request);
+        request.origins.includes('https://restore.example.com/*') ? false : contains(request);
     });
     const query = new URLSearchParams({ restore: `destination-${key}` });
     await handoff.goto(`${optionsUrl(harness!)}?${query}`);
