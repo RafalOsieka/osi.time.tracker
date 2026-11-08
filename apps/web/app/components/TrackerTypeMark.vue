@@ -4,7 +4,7 @@ import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contra
 /**
  * The short type mark ("OP", "RM") shown before a Tracker's name in lists and selects, so every
  * system has an identity without leaving the palette. `null` is a local Project: the same chip in
- * neutral slate with a drive glyph. Decorative: the text beside it names it.
+ * neutral slate with a laptop glyph. Decorative: the text beside it names it.
  */
 const { systemType } = defineProps<{ systemType: TrackerSystemType | null }>();
 
@@ -26,6 +26,6 @@ const MARKS = {
     data-testid="tracker-type-mark"
   >
     <template v-if="systemType">{{ MARKS[systemType] }}</template>
-    <UIcon v-else name="i-lucide-hard-drive" class="size-3.5" />
+    <UIcon v-else name="i-lucide-laptop" class="size-3.5" />
   </span>
 </template>

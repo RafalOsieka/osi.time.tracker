@@ -158,7 +158,7 @@ Each tracker's "Import history" action SHALL open a dialog moving through range,
 
 #### Scenario: No project is linked
 - **WHEN** the range phase opens and none of the tracker's Projects has a remote project
-- **THEN** the list SHALL show the Projects without a per-row warning, and one warning with the same hint SHALL say that no Project is linked
+- **THEN** the list SHALL show the Projects without a per-row warning, and one warning SHALL say that no Project is linked, with the same hint and an action that opens the Projects page to set the links
 
 #### Scenario: Scanning is presented as read-only
 - **WHEN** the range phase is shown

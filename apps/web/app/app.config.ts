@@ -70,7 +70,9 @@ export default defineAppConfig({
       slots: { overlay: 'bg-neutral-900/35 dark:bg-black/55', content: 'dark:bg-elevated' },
     },
     // Tinted tiles and chips (soft buttons) carry real colour in both themes: a cyan-100 wash in
-    // light mode, a stronger tint in dark mode, where 10% reads as grey.
+    // light mode, a stronger tint in dark mode, where 10% reads as grey. In dark mode red tiles
+    // use a saturated red-500 wash (a red-400 wash over slate read maroon), and solid red is a
+    // deeper red-600 with white text (red-400 read salmon).
     button: {
       compoundVariants: [
         {
@@ -83,20 +85,29 @@ export default defineAppConfig({
           color: 'error',
           variant: 'soft',
           class:
-            'dark:bg-error/22 dark:hover:bg-error/30 dark:active:bg-error/30 dark:disabled:bg-error/10 dark:aria-disabled:bg-error/10',
+            'dark:bg-red-500/22 dark:hover:bg-red-500/30 dark:active:bg-red-500/30 dark:disabled:bg-red-500/12 dark:aria-disabled:bg-red-500/12',
+        },
+        {
+          color: 'error',
+          variant: 'solid',
+          class:
+            'dark:bg-red-600 dark:text-white dark:hover:bg-red-700 dark:active:bg-red-700 dark:disabled:bg-red-600 dark:aria-disabled:bg-red-600',
         },
       ],
     },
-    // Warning and error alerts use their own warm ramps, not a 10% tint of the status colour
-    // (amber over white read beige, amber over slate read olive). In dark mode a warning is a
-    // raised neutral surface with an amber edge and icon: any amber wash over slate reads brown.
+    // Warning and error alerts share one recipe in both themes: a neutral surface and body text,
+    // with the status colour only on the edge and the icon (an amber wash read beige over white
+    // and brown over slate).
     alert: {
+      // Pretty wrapping keeps a single word from ending a short help or alert text alone.
+      slots: { description: 'text-pretty' },
       compoundVariants: [
         {
           color: 'warning',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-amber-50 text-amber-800 ring-amber-200 dark:bg-elevated dark:text-default dark:ring-amber-400/40',
+            root: 'bg-default text-default ring-amber-400/70 dark:bg-elevated dark:ring-amber-400/40',
+            title: 'text-highlighted',
             icon: 'text-amber-600 dark:text-amber-400',
           },
         },
@@ -104,12 +115,14 @@ export default defineAppConfig({
           color: 'error',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-red-50 text-red-800 ring-red-200 dark:bg-red-500/10 dark:text-red-200 dark:ring-red-400/25',
+            root: 'bg-default text-default ring-red-400/60 dark:bg-elevated dark:ring-red-400/40',
+            title: 'text-highlighted',
             icon: 'text-red-600 dark:text-red-400',
           },
         },
       ],
     },
+    formField: { slots: { help: 'text-pretty', description: 'text-pretty' } },
     popover: { slots: { content: 'dark:bg-elevated' } },
     tooltip: { slots: { content: 'dark:bg-elevated' } },
     dropdownMenu: {

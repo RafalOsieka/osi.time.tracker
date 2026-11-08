@@ -153,6 +153,7 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => {
       :new-label="t('projects.newButton')"
       new-testid="new-project-button"
       :quiet="isEmpty"
+      :pressed="dialogOpen && !editingProject"
       @create="openCreate"
     />
 

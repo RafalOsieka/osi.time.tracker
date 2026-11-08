@@ -45,7 +45,7 @@ const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate
  * editing.
  */
 const FRAME =
-  'w-full rounded-md bg-default ring ring-inset ring-accented transition-shadow dark:bg-muted';
+  'w-full rounded-md bg-default py-1.5 ring ring-inset ring-accented transition-shadow dark:bg-muted';
 const editUi = computed(() =>
   framed ? { ...slotInputUi, base: `${slotInputUi.base} ${FRAME} ring-primary` } : slotInputUi,
 );

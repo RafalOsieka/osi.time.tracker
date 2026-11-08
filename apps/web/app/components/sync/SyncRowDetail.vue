@@ -311,14 +311,14 @@ const displayedRemoteLogs = computed(() => {
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
         <!-- Time already in the tracker sits on the to-send edge (REQ-507), marked in place as
-             already there: a cloud-check glyph and the muted tone, never the to-send column's
+             already there: a cloud-check glyph and the dimmed tone, two steps below the to-send column's
              highlighted value. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="inline-flex items-center justify-end gap-1.5 font-mono tabular-nums whitespace-nowrap text-muted"
+          class="inline-flex items-center justify-end gap-1.5 font-mono tabular-nums whitespace-nowrap text-dimmed"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
           :data-testid="`remote-sync-remote-log-duration-${log.remoteLogId}`"
         >

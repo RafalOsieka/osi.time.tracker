@@ -83,6 +83,7 @@ const UserStub = {
       :data-avatar-text="avatar?.text"
       type="button"
     >
+      <slot name="avatar" />
       <slot name="name">{{ name }}</slot>
       <slot v-if="description" name="description">{{ description }}</slot>
     </component>
@@ -131,6 +132,8 @@ describe('AppUserFooter', () => {
 
     expect(wrapper.find('[data-testid="app-user-footer-primary"]').text()).toBe('Alice Liddell');
     expect(wrapper.find('[data-testid="app-user-footer-email"]').text()).toBe('alice@example.com');
+    // A quiet chevron tells at rest that the identity block opens a menu.
+    expect(wrapper.find('[data-testid="app-user-footer-disclosure"]').exists()).toBe(true);
     expect(
       wrapper.find('[data-testid="app-user-footer-trigger"]').attributes('data-avatar-text'),
     ).toBe('A');

@@ -194,9 +194,9 @@ function durationTd(isTotal: boolean, extra = ''): string {
   return `text-end font-mono tabular-nums ${weight} ${extra}`;
 }
 
-/** A legend entry's sample: the flagged look (warning, semibold, dotted underline) on a word. */
+/** A legend entry's meaning, in the flagged look (warning, dotted underline) it explains. */
 const LEGEND_MARK =
-  'me-1 font-semibold text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-4';
+  'font-medium text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-4';
 
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
 const GROUP_DIVIDER = 'border-s border-default';
@@ -400,7 +400,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         // Aligned to its group's start, after the group divider, like a section label over its
         // three columns. The table is fixed-layout (Date and Local fixed, every Tracker column
         // an equal share of the rest), so numbers hold their place whatever the headings.
-        th: `py-2 text-start text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
+        th: `py-2 ps-2 text-start text-[0.8125rem] text-highlighted border-b ${GROUP_DIVIDER}`,
       },
     },
     columns: [
@@ -546,22 +546,23 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
-    <!-- The legend (REQ-472): what the underlined values usually mean, read at a glance, then how
-         to see each value's own reason. Helper text, so 14px. -->
+    <!-- The legend (REQ-472): what an underlined value means in each column (a flag meaning, never
+         a column definition), read at a glance, then how to see each value's own reason. Helper
+         text, so 14px. -->
     <div
       v-if="!reportErrorKey && !showEmpty"
       class="-mt-1 flex flex-wrap items-baseline gap-x-6 gap-y-1 px-4 text-sm text-muted"
       data-testid="reports-monthly-legend"
     >
       <span>
-        <span :class="LEGEND_MARK">{{ t('reports.monthly.columnLocal') }}</span>
-        {{ t('reports.monthly.legendLocal') }}
+        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnLocal') }) }}
+        <span :class="LEGEND_MARK">{{ t('reports.monthly.legendLocal') }}</span>
       </span>
       <span>
-        <span :class="LEGEND_MARK">{{ t('reports.monthly.columnDirect') }}</span>
-        {{ t('reports.monthly.legendDirect') }}
+        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnDirect') }) }}
+        <span :class="LEGEND_MARK">{{ t('reports.monthly.legendDirect') }}</span>
       </span>
-      <span class="text-dimmed">{{ t('reports.monthly.legend') }}</span>
+      <span class="w-full">{{ t('reports.monthly.legend') }}</span>
     </div>
   </div>
 </template>

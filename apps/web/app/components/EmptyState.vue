@@ -27,7 +27,7 @@ const emit = defineEmits<{ create: [] }>();
   <UCard :data-testid="testid" :ui="{ body: 'sm:p-12 p-8' }">
     <div class="mx-auto flex max-w-sm flex-col items-center text-center">
       <span
-        class="mb-4 flex size-12 items-center justify-center rounded-lg bg-primary/10 text-primary ring-1 ring-primary/15 ring-inset"
+        class="mb-4 flex size-12 items-center justify-center rounded-lg bg-primary-100/80 text-primary dark:bg-primary/12"
         aria-hidden="true"
       >
         <UIcon :name="icon" class="size-6" />

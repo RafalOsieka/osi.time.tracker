@@ -408,7 +408,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
             </template>
           </UFormField>
 
-          <!-- The remote project belongs to the chosen Tracker, so it sits indented under it. -->
+          <!-- The remote project belongs to the chosen Tracker; its label and help say so. -->
           <UFormField
             v-if="state.trackerId"
             :label="t('projects.remoteProjectLabel')"
@@ -417,7 +417,6 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
             :ui="FIELD_UI"
             name="remoteProjectId"
             :error="remoteProjectServerError || undefined"
-            class="ms-2 border-s-2 border-default ps-4"
             data-testid="project-remote-project-field"
           >
             <template v-if="canBrowseCatalog">

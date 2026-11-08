@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { formatDayHeading } from '../../app/utils/format-day-heading';
 
 describe('formatDayHeading', () => {
-  it('writes the full Polish day with a capital first letter', () => {
-    expect(formatDayHeading('2026-11-07', 'pl')).toBe('Sobota, 7 listopada 2026');
+  it('writes the full Polish day with the weekday lower-case, as Polish does', () => {
+    expect(formatDayHeading('2026-11-07', 'pl')).toBe('sobota, 7 listopada 2026');
     expect(formatDayHeading('2026-11-07', 'pl', { weekday: false })).toBe('7 listopada 2026');
   });
 

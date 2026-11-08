@@ -329,6 +329,7 @@ async function onEntryDeleted() {
       :new-label="t('timerView.addEntry.buttonLabel')"
       new-testid="timer-view-add-entry"
       :quiet="isNeverTracked"
+      :pressed="addEntryVisible"
       @create="openAddEntry"
     />
 
@@ -361,7 +362,10 @@ async function onEntryDeleted() {
               <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">
                 {{ formatDayHeading(day.dayKey, locale) }}
               </h2>
-              <!-- A quiet link-style action, not a chip: chips only display. -->
+              <!--
+                A quiet link-style action, not a chip (chips only display), at 14px and at the end of
+                the cell, so every day puts it in the same place, right before the day total.
+              -->
               <UButton
                 :to="`/sync/${day.dayKey}`"
                 :label="t('timerView.remoteSyncAction')"
@@ -369,7 +373,7 @@ async function onEntryDeleted() {
                 color="neutral"
                 variant="ghost"
                 size="xs"
-                class="shrink-0 self-center rounded-md font-normal text-muted hover:text-primary focus-visible:text-primary"
+                class="ms-auto shrink-0 self-center rounded-md text-sm font-normal text-muted hover:text-primary focus-visible:text-primary"
                 :data-testid="`timer-day-remote-sync-${day.dayKey}`"
               />
             </ColumnCell>

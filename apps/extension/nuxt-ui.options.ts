@@ -23,7 +23,8 @@ export const nuxtUiOptions = {
       slots: { content: 'dark:bg-elevated', title: 'text-base', footer: 'justify-end gap-2' },
       variants: { overlay: { true: { overlay: 'bg-neutral-900/35 dark:bg-black/55' } } },
     },
-    // Tinted tiles and chips (soft buttons) carry real colour in both themes.
+    // Tinted tiles and chips (soft buttons) carry real colour in both themes; the destructive
+    // solid stays a true red with white text in dark mode too.
     button: {
       compoundVariants: [
         {
@@ -36,14 +37,18 @@ export const nuxtUiOptions = {
           color: 'error',
           variant: 'soft',
           class:
-            'dark:bg-error/16 dark:hover:bg-error/24 dark:active:bg-error/24 dark:disabled:bg-error/10 dark:aria-disabled:bg-error/10',
+            'dark:bg-red-500/22 dark:hover:bg-red-500/30 dark:active:bg-red-500/30 dark:disabled:bg-red-500/12 dark:aria-disabled:bg-red-500/12',
+        },
+        {
+          color: 'error',
+          variant: 'solid',
+          class:
+            'dark:bg-red-600 dark:text-white dark:hover:bg-red-700 dark:active:bg-red-700 dark:disabled:bg-red-600 dark:aria-disabled:bg-red-600',
         },
       ],
     },
-    // Warning and error alerts use their own warm ramps, not a 10% tint of the status colour.
-    // Only the title and icon carry the colour; the explanation stays neutral and readable. The
-    // icon sits on the title line. In dark mode a warning sits on the elevated surface with an amber
-    // ring (as in the web app): any amber wash over slate reads brown.
+    // One alert recipe in both themes, as in the web app: a neutral surface and body, with the
+    // colour only on the edge and the icon. The icon sits on the title line.
     alert: {
       slots: { description: 'opacity-100 text-pretty' },
       variants: {
@@ -54,9 +59,8 @@ export const nuxtUiOptions = {
           color: 'warning',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-amber-50 ring-amber-200 dark:bg-elevated dark:ring-amber-400/40',
-            title: 'text-amber-800 dark:text-amber-300',
-            description: 'text-toned',
+            root: 'bg-default text-default ring-amber-400/70 dark:bg-elevated dark:ring-amber-400/40',
+            title: 'text-highlighted',
             icon: 'text-amber-600 dark:text-amber-400',
           },
         },
@@ -64,11 +68,36 @@ export const nuxtUiOptions = {
           color: 'error',
           variant: ['soft', 'subtle'],
           class: {
-            root: 'bg-red-50 ring-red-200 dark:bg-red-400/6 dark:ring-red-400/30',
-            title: 'text-red-800 dark:text-red-300',
-            description: 'text-toned',
+            root: 'bg-default text-default ring-red-400/60 dark:bg-elevated dark:ring-red-400/40',
+            title: 'text-highlighted',
             icon: 'text-red-600 dark:text-red-400',
           },
+        },
+      ],
+    },
+    formField: { slots: { help: 'text-pretty', description: 'text-pretty' } },
+    // Badges and count chips are fully rounded pills, so a status never looks like a button.
+    // Warning badges use the same amber ramp as warning alerts.
+    badge: {
+      variants: {
+        size: {
+          xs: { base: 'rounded-full' },
+          sm: { base: 'rounded-full px-2' },
+          md: { base: 'rounded-full px-2.5' },
+          lg: { base: 'rounded-full px-3' },
+          xl: { base: 'rounded-full px-3' },
+        },
+      },
+      compoundVariants: [
+        {
+          color: 'warning',
+          variant: 'soft',
+          class: 'bg-amber-50 text-amber-800 dark:bg-amber-400/12 dark:text-amber-300',
+        },
+        {
+          color: 'neutral',
+          variant: 'outline',
+          class: 'ring-accented',
         },
       ],
     },

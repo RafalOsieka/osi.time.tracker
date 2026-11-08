@@ -265,6 +265,8 @@ const STEPPER_UI = {
 
               <UFormField
                 :label="t('trackerImport.rangeLabel')"
+                :help="t('trackerImport.scanNote')"
+                :ui="{ help: 'mt-1' }"
                 name="range"
                 :error="rangeError || undefined"
               >
@@ -322,8 +324,14 @@ const STEPPER_UI = {
                 class="grid gap-2"
                 data-testid="tracker-import-project-scopes"
               >
-                <p class="m-0 text-sm font-medium text-highlighted">
-                  {{ t('trackerImport.scopedProjectsHeading') }}
+                <!-- Each target Project with the remote project it is linked to, as two columns. -->
+                <p class="m-0 flex items-baseline justify-between gap-3 text-sm">
+                  <span class="font-medium text-highlighted">
+                    {{ t('trackerImport.scopedProjectsHeading') }}
+                  </span>
+                  <span class="text-xs text-muted">
+                    {{ t('trackerImport.columnRemoteProject') }}
+                  </span>
                 </p>
                 <ul
                   class="m-0 list-none divide-y divide-default rounded-md p-0 text-sm ring ring-default"
@@ -343,11 +351,17 @@ const STEPPER_UI = {
                     :data-testid="`tracker-import-unscoped-${project.id}`"
                   >
                     <span class="truncate font-medium">{{ project.name }}</span>
+                    <!-- With every row unlinked the one warning below says it; rows stay quiet. -->
                     <span
-                      v-if="!allUnscoped"
-                      class="flex shrink-0 items-center gap-1.5 text-warning"
+                      class="flex shrink-0 items-center gap-1.5"
+                      :class="allUnscoped ? 'text-muted' : 'text-warning'"
                     >
-                      <UIcon name="i-lucide-triangle-alert" class="size-4" aria-hidden="true" />
+                      <UIcon
+                        v-if="!allUnscoped"
+                        name="i-lucide-triangle-alert"
+                        class="size-4"
+                        aria-hidden="true"
+                      />
                       {{ t('trackerImport.unscopedHint') }}
                     </span>
                   </li>
@@ -358,7 +372,16 @@ const STEPPER_UI = {
                   variant="subtle"
                   icon="i-lucide-triangle-alert"
                   :title="t('trackerImport.allUnscopedWarning')"
-                  :description="t('trackerImport.unscopedHelp')"
+                  :description="t('trackerImport.allUnscopedHelp')"
+                  :actions="[
+                    {
+                      label: t('trackerImport.setLinksButton'),
+                      to: '/projects',
+                      color: 'neutral',
+                      variant: 'outline',
+                      size: 'sm',
+                    },
+                  ]"
                   data-testid="tracker-import-unscoped-help"
                 />
                 <p
@@ -369,14 +392,6 @@ const STEPPER_UI = {
                   {{ t('trackerImport.unscopedHelp') }}
                 </p>
               </div>
-
-              <p
-                class="m-0 flex items-start gap-2 text-sm text-muted"
-                data-testid="tracker-import-scan-note"
-              >
-                <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                {{ t('trackerImport.scanNote') }}
-              </p>
             </div>
 
             <!-- Scanning phase -->

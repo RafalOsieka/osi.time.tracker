@@ -156,8 +156,9 @@ const stubs = {
   },
   UProgress: { props: ['modelValue', 'max'], template: '<div role="progressbar" />' },
   UAlert: {
-    props: ['title', 'description'],
-    template: '<div v-bind="$attrs" :data-title="title">{{ description }}</div>',
+    props: ['title', 'description', 'actions'],
+    template:
+      '<div v-bind="$attrs" :data-title="title">{{ description }}<a v-for="action in actions" :key="action.label" :href="action.to" data-testid="alert-action">{{ action.label }}</a></div>',
   },
   UIcon: { props: ['name'], template: '<i />' },
 };
@@ -245,11 +246,16 @@ describe('TrackerImportDialog', () => {
     ]);
     const wrapper = await mount();
 
-    expect(wrapper.find('[data-testid="tracker-import-unscoped-proj-1"]').exists()).toBe(true);
-    expect(wrapper.text()).not.toContain('trackerImport.unscopedHint');
+    // Rows still name their (missing) link, but quietly: only the one warning is amber.
+    const row = wrapper.get('[data-testid="tracker-import-unscoped-proj-1"]');
+    expect(row.text()).toContain('trackerImport.unscopedHint');
+    expect(row.find('.text-warning').exists()).toBe(false);
     expect(
       wrapper.get('[data-testid="tracker-import-unscoped-help"]').attributes('data-title'),
     ).toBe('trackerImport.allUnscopedWarning');
+    const action = wrapper.get('[data-testid="alert-action"]');
+    expect(action.text()).toBe('trackerImport.setLinksButton');
+    expect(action.attributes('href')).toBe('/projects');
   });
 
   it('rejects an inverted range inline without starting a scan', async () => {

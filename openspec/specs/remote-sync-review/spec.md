@@ -158,6 +158,12 @@ For each otherwise manageable row the page SHALL fetch activities once per activ
 - **THEN** affected rows SHALL show an accessible retry action and SHALL NOT be classified as having
   no activities
 
+#### Scenario: The activity menu is keyboard ready
+- **WHEN** the user opens a row's activity select
+- **THEN** the chosen activity, else the first, SHALL be the active option, marked with a visible
+  3:1 outline, Enter SHALL pick it and the arrow keys SHALL move it, and the menu SHALL align to the
+  select's end edge so it never covers the duration columns
+
 #### Scenario: Retrying a shared scope updates all its rows
 - **WHEN** the user retries a failed activity fetch from one row whose scope is shared
 - **THEN** one request SHALL be made and every row sharing that scope SHALL leave the error state together
@@ -205,9 +211,16 @@ The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the c
 
 #### Scenario: Ready editors look editable at rest
 - **WHEN** a Ready row is shown
-- **THEN** its title to send and to-send duration SHALL each sit in a field frame with the control
-  outline (the same at-rest editable cue as the Timer view's time editors) that fills its column,
-  so the frames line up down the list, with the values at the row-value weight
+- **THEN** its title to send, activity select and to-send duration SHALL share one control
+  language: rounded field frames with the control outline at rest (the Timer view's time editors'
+  cue), one control height, lined up down the list (the title and activity frames fill their
+  columns, the to-send frame holds the fixed width of an `HH:MM:SS` value on the column's end edge),
+  values at the row-value weight, and an unchosen activity shown as a muted placeholder
+
+#### Scenario: Read-only rows keep their data's emphasis
+- **WHEN** a Sent or not-exportable row is shown
+- **THEN** its Task name, issue and local time SHALL keep the normal text emphasis of valid data; only
+  the export values that cannot apply (a `0` to send, an empty activity) SHALL recede
 
 #### Scenario: Expanding a row reveals its detail
 
@@ -249,7 +262,8 @@ The header SHALL hold a stable translated title, a day switcher (previous and ne
 
 - **WHEN** Export becomes available or unavailable
 - **THEN** the day switcher and Export SHALL keep their positions, the unavailable reason taking a
-  place of its own under Export
+  line of its own under the header, reserved whether or not a reason shows, so the content below
+  keeps the page's standard gap
 
 #### Scenario: Jump to an arbitrary date
 
@@ -362,7 +376,8 @@ Each collapsed row SHALL show its state as an icon in its own column, with a dis
 
 #### Scenario: Warning colour only for what the user can fix
 - **WHEN** a row is not exportable because of something the user can act on (no Project, a missing
-  Tracker, no linked issue, activities that failed to load)
+  Tracker, no linked issue, activities that failed to load, or a Ready row with time to send and no
+  activity chosen yet)
 - **THEN** it SHALL use the needs-attention kind in the warning colour, while a row excluded by design
   (a local Project, an unsupported system, no activity offered by the tracker) SHALL use the neutral
   not-exportable kind
@@ -387,7 +402,7 @@ When a row's activities fail to load (REQ-114), its activity cell SHALL show an 
 
 #### Scenario: Failure shows a compact error
 - **WHEN** a row's activity fetch fails
-- **THEN** its activity cell SHALL show an error icon with the translated message as its accessible name and tooltip, plus a compact icon-only retry control whose accessible name and tooltip say it reloads the activities, and no column SHALL change its width
+- **THEN** its activity cell SHALL show an error icon with the translated message as its accessible name and tooltip, plus an icon-only retry in the row-action tile style whose accessible name and tooltip say it reloads the activities, and no column SHALL change its width
 
 #### Scenario: Extension guidance gets its own row
 - **WHEN** the failure needs browser-extension setup or approval

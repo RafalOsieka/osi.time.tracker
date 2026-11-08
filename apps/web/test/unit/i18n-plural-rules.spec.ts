@@ -111,16 +111,20 @@ describe('count-sensitive catalogs', () => {
       'Wyeksportować 5 zadań?',
     );
     expect(applyPipePlural(review.introHint, polishPluralRule(1, 3), {})).toBe(
-      'Zadanie utworzy jeden zdalny wpis czasu.',
+      'W trackerze powstanie jeden wpis czasu.',
     );
     expect(applyPipePlural(review.introHint, polishPluralRule(3, 3), {})).toBe(
-      'Każde zadanie utworzy jeden zdalny wpis czasu.',
+      'W trackerach powstanie po jednym wpisie czasu na zadanie.',
     );
     const local = review.excluded.localProject;
-    expect(applyPipePlural(local, polishPluralRule(1, 3), { count: 1 })).toBe('1 projekt lokalny');
-    expect(applyPipePlural(local, polishPluralRule(2, 3), { count: 2 })).toBe('2 projekty lokalne');
+    expect(applyPipePlural(local, polishPluralRule(1, 3), { count: 1 })).toBe(
+      '1 z projektu lokalnego',
+    );
+    expect(applyPipePlural(local, polishPluralRule(2, 3), { count: 2 })).toBe(
+      '2 z projektów lokalnych',
+    );
     expect(applyPipePlural(local, polishPluralRule(5, 3), { count: 5 })).toBe(
-      '5 projektów lokalnych',
+      '5 z projektów lokalnych',
     );
     expect(applyPipePlural(en.remoteSync.exportDialog.titleReview, 0, { count: 1 })).toBe(
       'Export 1 task?',

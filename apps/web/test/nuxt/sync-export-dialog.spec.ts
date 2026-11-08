@@ -62,7 +62,7 @@ describe('SyncExportDialog', () => {
       'Development',
     );
     expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
-      'Each task creates one remote time entry.',
+      'One time entry per task will be created in its tracker.',
     );
     expect(wrapper.find('[data-testid="remote-sync-export-destination-b"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="remote-sync-export-dialog-to-send"]').text()).toContain(
@@ -80,7 +80,7 @@ describe('SyncExportDialog', () => {
         dateLabel: 'November 7, 2026',
         included: [item('a', 'Alpha', 1800)],
         toSendSeconds: 1800,
-        excludedSummary: '3 without an activity, 1 local project',
+        excludedSummary: '3 without an activity, 1 from a local project',
         isRunning: false,
         completedCount: 0,
         totalCount: 1,
@@ -90,11 +90,11 @@ describe('SyncExportDialog', () => {
       },
     });
     expect(wrapper.get('[data-testid="remote-sync-export-not-ready"]').text()).toBe(
-      'Not in this export: 3 without an activity, 1 local project.',
+      'Not in this export: 3 without an activity, 1 from a local project.',
     );
     // One Task: the introduction speaks of it in the singular.
     expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
-      'The task creates one remote time entry.',
+      'One time entry will be created in the tracker.',
     );
     expect(wrapper.findAll('[data-testid^="remote-sync-export-row-"]')).toHaveLength(1);
     // One Task: its row already shows the duration, so no separate total repeats it.

@@ -19,8 +19,6 @@ const boundTask = ref<TitleTask | null>(null);
 /** Project chip (REQ-374). */
 const chipProject = ref<TitleProject | null>(null);
 const titleInput = useTemplateRef('titleInput');
-/** The timer card; the start editor aligns to its right edge, flush with the page column. */
-const card = useTemplateRef<HTMLElement>('card');
 const starting = ref(false);
 const stopping = ref(false);
 
@@ -210,7 +208,6 @@ async function onSaveStartedAt() {
 
 <template>
   <div
-    ref="card"
     class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
       isRunning
@@ -221,12 +218,13 @@ async function onSaveStartedAt() {
   >
     <!--
       One card frames the whole timer. Idle: a neutral field. Running: a light cyan card with a
-      live dot, the Task, its Project as a cyan pill after it, cyan time and a round red stop.
+      live dot (solid, with a soft borderless glow, not a radio-like ring), the Task, its Project
+      as a cyan pill after it, cyan time and a round red stop.
       The running fill stays a quiet wash: the card sits in view all day.
     -->
     <span
       v-if="isRunning"
-      class="size-2 shrink-0 rounded-full bg-primary ring-4 ring-primary/20"
+      class="size-2 shrink-0 rounded-full bg-primary shadow-[0_0_6px_2px] shadow-primary/45"
       aria-hidden="true"
     />
     <TaskTitleInput
@@ -249,13 +247,13 @@ async function onSaveStartedAt() {
 
     <!--
       Always UButton for consistent mono size. Idle: disabled (no popover).
-      Running: opens start-time editor, right-aligned with the card so it covers whole controls
-      of the page header below rather than slicing through one.
+      Running: opens the start-time editor to its left, top-aligned with it, so the editor sits
+      over the top bar and page header and ends above the list: it hides no day total and no
+      header button.
     -->
     <UPopover
       v-model:open="startEditorOpen"
-      :reference="card ?? undefined"
-      :content="{ side: 'bottom', align: 'end', sideOffset: 8, collisionPadding: 16 }"
+      :content="{ side: 'left', align: 'start', sideOffset: 8, collisionPadding: 16 }"
     >
       <UButton
         color="neutral"
@@ -369,7 +367,8 @@ async function onSaveStartedAt() {
         variant="solid"
         class="rounded-full"
         :class="
-          isRunning && 'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-error'
+          isRunning &&
+          'bg-(--ui-color-error-500) hover:bg-(--ui-color-error-600) dark:bg-(--ui-color-error-600) dark:hover:bg-(--ui-color-error-500)'
         "
         :icon="isRunning ? undefined : 'i-lucide-play'"
         :aria-label="isRunning ? t('timer.stop') : t('timer.start')"

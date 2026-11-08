@@ -34,7 +34,8 @@ const editor = useApprovalsEditor(service, {
   suggestions: suggestionService,
   onOutcome: (messageKey, params) =>
     toast.add({
-      title: t.value(messageKey, params),
+      title: t.value(messageKey),
+      description: params.name ? String(params.name) : undefined,
       color: 'success',
       icon: 'i-lucide-circle-check',
       duration: 4000,
@@ -198,7 +199,7 @@ onMounted(async () => {
     <UAlert
       v-if="errorKey"
       role="alert"
-      color="error"
+      color="warning"
       variant="subtle"
       icon="i-lucide-circle-alert"
       orientation="horizontal"
@@ -206,9 +207,6 @@ onMounted(async () => {
     >
       <template #description>
         <span data-testid="setup-error">{{ t(errorKey) }}</span>
-        <span v-if="errorKey === 'approvals.loadFailed'" class="mt-1 block">
-          {{ t('approvals.loadFailedSafe') }}
-        </span>
       </template>
       <template #actions>
         <UButton
@@ -226,7 +224,7 @@ onMounted(async () => {
     <UAlert
       v-if="localeErrorKey"
       role="alert"
-      color="error"
+      color="warning"
       variant="subtle"
       icon="i-lucide-languages"
       :description="t(localeErrorKey)"
@@ -248,6 +246,7 @@ onMounted(async () => {
           <UButton
             data-testid="missing-access-restore"
             color="warning"
+            variant="outline"
             size="sm"
             icon="i-lucide-shield-check"
             :disabled="disabled"

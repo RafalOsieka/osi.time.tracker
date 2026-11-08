@@ -249,7 +249,7 @@ Edit, or the unlinked icon, SHALL open a reusable search popover naming its day 
 
 #### Scenario: Enter picks the active result
 - **WHEN** a search has listed results and the query, mode and scope toggle are unchanged since
-- **THEN** the first result SHALL be visibly active, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again
+- **THEN** the first result SHALL be visibly active, marked by a 3:1 outline rather than only a background tint, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again
 
 #### Scenario: Mode control precedes the query
 - **WHEN** the picker is open
@@ -311,7 +311,7 @@ The timer view at `/` SHALL group entries by the local day of `startedAt` in the
 
 #### Scenario: Day heading spells out the date
 - **WHEN** a day section is rendered
-- **THEN** its heading SHALL show the full weekday, day, month name and year in the active locale with a capital first letter (for example "Sobota, 7 listopada 2026"), the same form the Remote Sync day uses
+- **THEN** its heading SHALL show the full weekday, day, month name and year in the active locale, the weekday cased as the locale writes it (lower-case in Polish, for example "sobota, 7 listopada 2026"), the same form the Remote Sync day uses
 
 #### Scenario: Timezone change regroups without refetch
 - **WHEN** the user changes their timezone setting while entries are displayed
@@ -366,6 +366,10 @@ The page header's primary action SHALL open a manual-entry dialog: an optional t
 #### Scenario: Manual form explains its title and timezone
 - **WHEN** the manual-entry dialog is open
 - **THEN** the title field SHALL say that a new title may be typed or an existing Task picked, with `@` picking a Project, and the times SHALL show the effective timezone with its UTC offset on the chosen date
+
+#### Scenario: Header action looks pressed while its dialog is open
+- **WHEN** the manual-entry dialog is open
+- **THEN** the page header action that opened it SHALL show a pressed state and expose its expanded state, until the dialog closes
 
 #### Scenario: Manual form marks a new Task
 - **WHEN** the user picks the create-new-task option (REQ-467) in the dialog's title field

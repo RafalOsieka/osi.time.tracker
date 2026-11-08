@@ -35,8 +35,9 @@ describe('suggestion list', () => {
     });
     expect(html).toContain(`data-testid="approve-suggestion-${suggestionId(plain)}"`);
     expect(html).toContain('from time.example.com');
-    expect(html.match(/API key is sent without encryption/g)).toHaveLength(1);
+    expect(html.match(/API key travels unencrypted/g)).toHaveLength(1);
     expect(html).toContain('Approve despite HTTP');
+    expect(html).toContain('data-testid="suggestion-reviewed"');
     expect(html).toContain(
       `data-highlighted="true" data-testid="suggestion-${suggestionId(plain)}"`,
     );

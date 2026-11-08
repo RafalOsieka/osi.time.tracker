@@ -30,7 +30,7 @@
       "websiteUnapproved": "Ta strona nie jest zatwierdzona w rozszerzeniu.",
       "websiteUnknown": "Przez rozszerzenie, status nieznany",
       "destinationsLabel": "Połączenia trackerów",
-      "destinationDirect": "Bezpośrednio",
+      "destinationDirect": "Z przeglądarki",
       "destinationApproved": "Przez rozszerzenie, zatwierdzony",
       "destinationUnapproved": "Przez rozszerzenie, niezatwierdzony",
       "requestApproval": "Poproś o zatwierdzenie w rozszerzeniu",
@@ -54,9 +54,10 @@
   "reports": {
     "monthly": {
       "pageTitle": "Zestawienie miesięczne",
-      "legend": "Powód każdej podkreślonej wartości pokazuje podpowiedź (kursor lub klawisz Tab).",
-      "legendLocal": "– czas, który nie trafił do żadnego trackera",
-      "legendDirect": "– czas wpisany w trackerze poza tą aplikacją",
+      "legend": "Najedź na podkreśloną wartość lub przejdź do niej klawiszem Tab, aby zobaczyć powód.",
+      "legendInColumn": "{column}:",
+      "legendLocal": "czas, który nie trafił do żadnego trackera",
+      "legendDirect": "czas wpisany w trackerze poza tą aplikacją",
       "previousMonth": "Poprzedni miesiąc",
       "nextMonth": "Następny miesiąc",
       "columnDate": "Data",
@@ -112,7 +113,7 @@
     "columnSystemType": "Typ trackera",
     "columnBaseUrl": "Adres URL",
     "columnConnection": "Połączenie",
-    "connectionDirect": "Bezpośrednie",
+    "connectionDirect": "Z przeglądarki",
     "connectionExtension": "Przez rozszerzenie",
     "emptyStateTitle": "Brak trackerów",
     "emptyState": "Połącz OpenProject lub Redmine, aby wysyłać do nich czas.",
@@ -130,7 +131,7 @@
     "roundingRuleHelp": "Dotyczy tylko eksportu. Nie zmienia lokalnych wpisów czasu.",
     "secretLabel": "Klucz API",
     "showSecret": "Pokaż klucz API",
-    "secretHelp": "Zostaje tylko w tej przeglądarce i nigdy nie trafia na serwer OSI. Możesz go dodać później.",
+    "secretHelp": "Zostaje tylko w tej przeglądarce, nie trafia na serwer OSI. Możesz dodać go później.",
     "optionalHint": "opcjonalnie",
     "saveButton": "Zapisz",
     "createButton": "Utwórz tracker",
@@ -161,7 +162,7 @@
   },
   "trackerImport": {
     "dialogTitle": "Import historii z {name}",
-    "description": "Importuje Twoje wpisy czasu do projektów w OSI według powiązań ze zdalnymi projektami. Pomija wcześniej zaimportowane wpisy.",
+    "description": "Importuje twoje wpisy czasu do projektów w OSI według powiązań ze zdalnymi projektami. Pomija wcześniej zaimportowane wpisy.",
     "stepRangeTitle": "Okres",
     "stepMappingTitle": "Powiązanie",
     "stepPreviewTitle": "Podgląd",
@@ -173,6 +174,8 @@
     "unscopedHint": "Bez powiązania",
     "unscopedHelp": "Projekty bez powiązania nie dostaną wpisów automatycznie. Wskaż je w kroku Powiązanie albo na stronie Projekty.",
     "allUnscopedWarning": "Żaden projekt nie ma powiązania ze zdalnym projektem",
+    "allUnscopedHelp": "Wpisy nie trafią do nich automatycznie. Wskaż projekty w kroku Powiązanie albo ustaw powiązania na stronie Projekty.",
+    "setLinksButton": "Ustaw powiązania",
     "unknownRemoteProject": "Nieznany zdalny projekt",
     "scanButton": "Skanuj historię",
     "scanNote": "Skanowanie tylko odczytuje historię. Nic nie zostanie zaimportowane przed podglądem.",
@@ -263,7 +266,7 @@
     },
     "pageTitle": "Stoper",
     "neverTrackedTitle": "Brak wpisów czasu",
-    "neverTrackedMessage": "Zacznij od pola stopera u góry. Wpisy z przeszłości dodasz przez „Nowy wpis”.",
+    "neverTrackedMessage": "Zacznij od pola stopera u góry. Wpisy z przeszłości dodasz przez „Nowy wpis”.",
     "neverTrackedCta": "Wpisz, nad czym pracujesz",
     "loadMore": "Wczytaj więcej",
     "loading": "Wczytywanie wpisów",
@@ -363,7 +366,7 @@
     "inTrackerLoading": "Wczytywanie zdalnych wpisów czasu…",
     "inTrackersLogs": "w trackerach",
     "inTrackerToSend": "do wysłania",
-    "inTrackerAwaitingActivity": "(też bez czynności)",
+    "inTrackerAwaitingActivity": "(w tym zadania bez czynności)",
     "inTrackerUnavailable": "Suma niedostępna – nie udało się wczytać zdalnych wpisów czasu.",
     "unknownDuration": "--:--:--",
     "retry": "Ponów",
@@ -374,8 +377,8 @@
       "noTracker": "Brak trackera",
       "systemNotImplemented": "System nieobsługiwany"
     },
-    "dayTotalHint": "Ukończone wpisy czasu z tego dnia (zgodnie ze Stoperem)",
-    "dayTotalCompleted": "ukończone",
+    "dayTotalHint": "Zakończone wpisy czasu z tego dnia (zgodnie ze Stoperem)",
+    "dayTotalCompleted": "zakończone",
     "dayTotalRunning": "trwający wpis czasu",
     "dayTotalTooltip": "Cały ukończony czas tego dnia, w tym wysłany, zablokowany i bez tytułu. Zgodny z sumą dnia w widoku Timera.",
     "trackedLabel": "Zarejestrowane",
@@ -485,7 +488,7 @@
     "exportDialog": {
       "titleReview": "Wyeksportować {count} zadanie? | Wyeksportować {count} zadania? | Wyeksportować {count} zadań?",
       "intro": "Eksport czasu z {date}",
-      "introHint": "Zadanie utworzy jeden zdalny wpis czasu. | Każde zadanie utworzy jeden zdalny wpis czasu. | Każde zadanie utworzy jeden zdalny wpis czasu.",
+      "introHint": "W trackerze powstanie jeden wpis czasu. | W trackerach powstanie po jednym wpisie czasu na zadanie. | W trackerach powstanie po jednym wpisie czasu na zadanie.",
       "excludedLine": "Poza eksportem: {list}.",
       "excluded": {
         "noActivityChosen": "{count} bez czynności",
@@ -494,7 +497,7 @@
         "activityUnavailable": "{count} bez wczytanych czynności",
         "noProject": "{count} bez projektu",
         "noTracker": "{count} bez trackera",
-        "localProject": "{count} projekt lokalny | {count} projekty lokalne | {count} projektów lokalnych",
+        "localProject": "{count} z projektu lokalnego | {count} z projektów lokalnych | {count} z projektów lokalnych",
         "unsupported": "{count} w nieobsługiwanym systemie",
         "noActivityAvailable": "{count} bez dostępnej czynności"
       },
@@ -549,6 +552,7 @@
       "activityError": "Nie udało się wczytać wymaganych pól zdalnych.",
       "noActivity": "Brak dostępnej czynności; to zadanie nie zostanie wysłane.",
       "manageable": "Gotowe do eksportu.",
+      "needsActivity": "Wybierz czynność, aby wyeksportować to zadanie.",
       "sent": "Już wyeksportowane w tym dniu."
     },
     "kind": {
@@ -561,8 +565,8 @@
     "linkAction": "Połącz zgłoszenie"
   },
   "remoteIssuePicker": {
-    "heading": "Powiąż zgłoszenie",
-    "headingFor": "Powiąż zgłoszenie: {task}",
+    "heading": "Połącz zgłoszenie",
+    "headingFor": "Połącz zgłoszenie: {task}",
     "modeLabel": "Szukaj według",
     "modeTitle": "Tytuł",
     "modeId": "Numer",
@@ -579,7 +583,7 @@
     "unlinkConfirmMessage": "Usunąć połączenie z tym zdalnym zgłoszeniem?",
     "scopeToggleLabel": "Tylko w {title}",
     "outOfScopeHint": "Poza zakresem tego projektu",
-    "dayContext": "Wpisy z {day} · {tracker}"
+    "dayContext": "Wpisy z {day} · {tracker}"
   },
   "clientReport": {
     "pageTitle": "Raport dla klienta",
@@ -610,7 +614,7 @@
     "noTrackers": "Najpierw dodaj tracker, aby utworzyć raport dla klienta.",
     "hoursFormatLabel": "Format godzin",
     "hoursFormatHm": "Godziny i minuty (7:30)",
-    "hoursFormatDecimal": "Dziesiętny (7,50)",
+    "hoursFormatDecimal": "Godziny dziesiętne (7,50)",
     "localeLabel": "Język PDF",
     "exportButton": "Pobierz PDF",
     "saveAndExportButton": "Zapisz szablon i pobierz PDF",

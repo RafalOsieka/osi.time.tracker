@@ -6,11 +6,7 @@ import UButton from '@nuxt/ui/components/Button.vue';
 import UCard from '@nuxt/ui/components/Card.vue';
 import UIcon from '@nuxt/ui/components/Icon.vue';
 import ULink from '@nuxt/ui/components/Link.vue';
-import {
-  ApprovalService,
-  destinationKey,
-  type DestinationApproval,
-} from '../approvals/approvals.js';
+import { ApprovalService, destinationKey } from '../approvals/approvals.js';
 import {
   createChromeApprovalStore,
   createChromeHostPermissions,
@@ -68,12 +64,40 @@ const status = computed(() =>
  * this file because the icon bundler only scans components for icon names.
  */
 const STATUS_BADGES = {
-  error: { labelKey: 'app.statusError', color: 'error', icon: 'i-lucide-circle-alert' },
-  access: { labelKey: 'app.statusAccess', color: 'warning', icon: 'i-lucide-shield-alert' },
-  review: { labelKey: 'app.statusReview', color: 'primary', icon: 'i-lucide-inbox' },
-  setup: { labelKey: 'app.statusSetup', color: 'neutral', icon: 'i-lucide-circle-dashed' },
-  ready: { labelKey: 'app.statusReady', color: 'success', icon: 'i-lucide-circle-check' },
-} as const satisfies Record<ExtensionStatus, { labelKey: string; color: string; icon: string }>;
+  error: {
+    labelKey: 'app.statusError',
+    color: 'warning',
+    variant: 'soft',
+    icon: 'i-lucide-circle-alert',
+  },
+  access: {
+    labelKey: 'app.statusAccess',
+    color: 'warning',
+    variant: 'soft',
+    icon: 'i-lucide-shield-alert',
+  },
+  review: {
+    labelKey: 'app.statusReview',
+    color: 'primary',
+    variant: 'soft',
+    icon: 'i-lucide-inbox',
+  },
+  setup: {
+    labelKey: 'app.statusSetup',
+    color: 'neutral',
+    variant: 'outline',
+    icon: 'i-lucide-circle-dashed',
+  },
+  ready: {
+    labelKey: 'app.statusReady',
+    color: 'success',
+    variant: 'soft',
+    icon: 'i-lucide-circle-check',
+  },
+} as const satisfies Record<
+  ExtensionStatus,
+  { labelKey: string; color: string; variant: string; icon: string }
+>;
 const badge = computed(() => STATUS_BADGES[status.value]);
 /** Trackers name their website only when there is more than one to tell apart. */
 const showsWebsite = computed(() => websites.value.length > 1);
@@ -101,20 +125,13 @@ function actOnStep(step: SetupStep): void {
   else void openSetupPage({ step });
 }
 
-/** A lost tracker's badge gives way to its last activity when that already says access failed. */
-function showsNoAccessBadge(destination: DestinationApproval): boolean {
-  return (
-    missingOrigins.value.includes(destination.origin) &&
-    activity.value[destinationKey(destination)]?.outcome !== 'permission'
-  );
-}
-
 const errorActions = computed(() => [
   {
     label: t.value('approvals.retry'),
     icon: 'i-lucide-rotate-cw',
     color: 'neutral' as const,
     variant: 'outline' as const,
+    size: 'sm' as const,
     disabled: busy.value,
     onClick: () => refresh(),
   },
@@ -129,6 +146,8 @@ const accessActions = computed(() => {
       label: t.value('approvals.restorePermission'),
       trailingIcon: 'i-lucide-arrow-up-right',
       color: 'warning' as const,
+      variant: 'outline' as const,
+      size: 'sm' as const,
       onClick: () => openSetupPage({ restore: first.focus }),
     },
   ];
@@ -167,7 +186,7 @@ function openOptions(): void {
         :data-status="status"
         class="shrink-0"
         :color="badge.color"
-        variant="soft"
+        :variant="badge.variant"
         :icon="badge.icon"
         :label="t(badge.labelKey, { count: suggestions.length })"
       />
@@ -178,7 +197,7 @@ function openOptions(): void {
         <UAlert
           v-if="errorKey"
           role="alert"
-          color="error"
+          color="warning"
           variant="subtle"
           icon="i-lucide-circle-alert"
           :title="t(errorTitleKey(errorKey))"
@@ -186,15 +205,12 @@ function openOptions(): void {
         >
           <template #description>
             {{ t(errorKey) }}
-            <span v-if="errorKey === 'approvals.loadFailed'" class="mt-1 block">
-              {{ t('approvals.loadFailedSafe') }}
-            </span>
           </template>
         </UAlert>
         <UAlert
           v-if="localeErrorKey"
           role="alert"
-          color="error"
+          color="warning"
           variant="subtle"
           icon="i-lucide-languages"
           :description="t(localeErrorKey)"
@@ -330,7 +346,7 @@ function openOptions(): void {
               >
                 <TrackerMark :provider="destination.provider" class="mt-px" />
                 <span class="flex min-w-0 grow flex-col gap-0.5">
-                  <span class="flex min-w-0 items-center gap-2">
+                  <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                     <ULink
                       :to="`${destination.origin}${destination.basePath}`"
                       target="_blank"
@@ -349,8 +365,8 @@ function openOptions(): void {
                       </span>
                     </ULink>
                     <UBadge
-                      v-if="showsNoAccessBadge(destination)"
-                      class="ms-auto shrink-0"
+                      v-if="missingOrigins.includes(destination.origin)"
+                      class="shrink-0"
                       color="warning"
                       variant="soft"
                       size="sm"
@@ -392,12 +408,13 @@ function openOptions(): void {
       />
     </div>
 
-    <footer v-if="!onboarding" class="shrink-0 border-t border-default bg-default px-4 py-3">
+    <footer class="shrink-0 border-t border-default bg-default px-4 py-3">
       <UButton
         block
         size="sm"
         color="neutral"
         variant="soft"
+        :ui="{ trailingIcon: 'ms-0' }"
         icon="i-lucide-settings-2"
         trailing-icon="i-lucide-arrow-up-right"
         data-testid="open-options"

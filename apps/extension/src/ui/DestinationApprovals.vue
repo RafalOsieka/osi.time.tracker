@@ -99,16 +99,6 @@ function destinationLabel(item: DestinationApproval): string {
   return `${t.value(`approvals.${item.provider}`)} ${item.origin}${item.basePath} (${t.value('approvals.forWebsite', { website: item.websiteOrigin })})`;
 }
 
-/**
- * The "No access" badge marks a tracker that lost browser access, unless its last activity
- * already says that access was denied: one fact, said once.
- */
-function showsNoAccessBadge(item: DestinationApproval): boolean {
-  return (
-    missingOrigins.includes(item.origin) && activity[destinationKey(item)]?.outcome !== 'permission'
-  );
-}
-
 async function openForm(): Promise<void> {
   emit('update:open', true);
   await nextTick();
@@ -133,7 +123,7 @@ function closeForm(): void {
           <h2 id="destinations-title" class="text-base font-semibold text-highlighted">
             {{ t(empty ? 'approvals.destinationsEmptyTitle' : 'approvals.destinationsTitle') }}
           </h2>
-          <p class="mt-0.5 text-[13px] text-muted">
+          <p class="mt-0.5 text-sm text-muted">
             {{ t(empty ? 'approvals.destinationsEmptyHelp' : 'approvals.destinationsHelp') }}
           </p>
         </div>
@@ -186,7 +176,7 @@ function closeForm(): void {
               {{ t('approvals.httpShort') }}
             </span>
             <UBadge
-              v-if="showsNoAccessBadge(item)"
+              v-if="missingOrigins.includes(item.origin)"
               color="warning"
               variant="soft"
               size="sm"
@@ -263,11 +253,11 @@ function closeForm(): void {
     >
       <UForm :state="formState" class="flex flex-col gap-4" @submit="emit('add')">
         <h3 v-if="!empty" class="text-sm font-semibold text-highlighted">
-          {{ t('approvals.newDestination') }}
+          {{ t('approvals.destinationFormTitle') }}
         </h3>
         <p
           v-if="singleWebsite"
-          class="flex items-center gap-1.5 text-[13px] text-muted"
+          class="flex items-center gap-1.5 text-sm text-muted"
           data-testid="destination-website-single"
         >
           <UIcon name="i-lucide-globe" class="size-4 shrink-0" aria-hidden="true" />
@@ -296,14 +286,17 @@ function closeForm(): void {
               :items="providerItems"
               :disabled="disabled"
               @update:model-value="emit('update:provider', $event)"
-            />
+            >
+              <template #leading><TrackerMark :provider="provider" /></template>
+              <template #item-leading="{ item }"><TrackerMark :provider="item.value" /></template>
+            </USelect>
           </UFormField>
           <UFormField
             :label="t('approvals.destinationUrl')"
             name="destinationUrl"
             :help="t('approvals.destinationHelp')"
             :error="errorKey ? t(errorKey) : undefined"
-            :ui="{ help: 'text-[13px]', error: 'text-[13px]' }"
+            :ui="{ help: 'text-sm', error: 'text-sm' }"
           >
             <UInput
               id="destination-url"
@@ -313,19 +306,28 @@ function closeForm(): void {
               :placeholder="PLACEHOLDERS[provider]"
               :model-value="destinationUrl"
               :disabled="disabled"
-              :color="httpWarning ? 'warning' : undefined"
-              :highlight="httpWarning || undefined"
               @update:model-value="emit('update:destinationUrl', String($event))"
             />
             <template v-if="errorKey" #error="{ error }">
-              <span role="alert" data-testid="destination-url-error">{{ error }}</span>
+              <span
+                role="alert"
+                class="flex items-start gap-1.5"
+                data-testid="destination-url-error"
+              >
+                <UIcon
+                  name="i-lucide-circle-alert"
+                  class="mt-0.5 size-4 shrink-0"
+                  aria-hidden="true"
+                />
+                {{ error }}
+              </span>
             </template>
           </UFormField>
         </div>
         <!-- The risk concerns the whole approval, so it spans the form under the fields. -->
         <p
           v-if="httpWarning"
-          class="flex items-start gap-2 rounded-md bg-amber-50 p-3 text-sm text-toned ring-1 ring-amber-200 ring-inset dark:bg-elevated dark:ring-amber-400/40"
+          class="flex items-start gap-2 text-sm text-toned"
           role="status"
           data-testid="http-warning"
         >
@@ -355,7 +357,7 @@ function closeForm(): void {
             icon="i-lucide-check"
             data-testid="add-destination"
             :color="httpWarning ? 'warning' : 'primary'"
-            :variant="httpWarning ? 'soft' : 'solid'"
+            :variant="httpWarning ? 'outline' : 'solid'"
             :disabled="!canAdd"
             :label="t(httpWarning ? 'approvals.approveDespiteHttp' : 'approvals.addDestination')"
           />

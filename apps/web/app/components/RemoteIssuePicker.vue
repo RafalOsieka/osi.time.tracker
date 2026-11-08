@@ -364,21 +364,23 @@ onBeforeUnmount(() => {
       :reference="rootEl ?? undefined"
       :content="{
         side: 'bottom',
-        align: 'end',
+        align: 'start',
         sideOffset: 4,
+        collisionPadding: 16,
         onOpenAutoFocus: focusQueryInput,
       }"
       @update:open="onOpenChange"
     >
       <template #content>
         <!--
-          320px wide and right-aligned with the trigger: over the Timer list it covers the Project
-          and Issue columns whole and ends clear of the day headings' Remote sync links.
+          448px wide, opening from the trigger towards the right edge (the collision shift brings
+          it back into view): over the Timer list it covers the Project, Issue, Time and action
+          columns whole, never slicing a value, and leaves the Task column readable.
         -->
         <div
           role="group"
           :aria-labelledby="headingId"
-          class="grid w-80 max-w-[calc(100vw-2rem)] gap-3 p-3"
+          class="grid w-112 max-w-[calc(100vw-2rem)] gap-3 p-3"
         >
           <!--
             Two lines: a heading naming what gets linked (with the Task title, when the caller
@@ -483,7 +485,8 @@ onBeforeUnmount(() => {
 
           <!--
             Full-width option rows, aligned with the input: its edges and its text inset. The
-            active row (the first after a search) is highlighted: Enter in the query picks it.
+            active row (the first after a search) carries a cyan outline, a 3:1 marker rather than
+            only a wash: Enter in the query picks it.
           -->
           <ul
             v-if="hasSearched && results.length > 0"
@@ -499,7 +502,10 @@ onBeforeUnmount(() => {
                 variant="ghost"
                 block
                 class="h-auto justify-start rounded-md px-2.5 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
-                :class="index === activeIndex && 'bg-elevated dark:bg-accented/60'"
+                :class="
+                  index === activeIndex &&
+                  'bg-elevated ring-1 ring-primary ring-inset dark:bg-accented/60'
+                "
                 :data-active="index === activeIndex || undefined"
                 :aria-label="resultAccessibleName(result)"
                 :data-testid="`remote-issue-picker-result-${result.remoteIssueId}`"
@@ -525,7 +531,9 @@ onBeforeUnmount(() => {
                   </span>
                   <!-- The id in the table's mono face; one separator glyph (·) across the app. -->
                   <span class="flex w-full min-w-0 items-baseline gap-1.5 text-xs text-muted">
-                    <span class="shrink-0 font-mono tabular-nums">#{{ result.remoteIssueId }}</span>
+                    <span class="shrink-0 font-mono text-toned tabular-nums">
+                      #{{ result.remoteIssueId }}
+                    </span>
                     <span
                       v-if="visibleProjectTitle(result)"
                       class="truncate before:me-1.5 before:content-['·']"

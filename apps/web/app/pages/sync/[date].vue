@@ -53,7 +53,7 @@ const isEmpty = computed(
 );
 
 /**
- * The day in the Timer view's day-heading format (`formatDayHeading`, "Sobota, 7 listopada 2026"),
+ * The day in the Timer view's day-heading format (`formatDayHeading`, "sobota, 7 listopada 2026"),
  * a short form for phones, and the plain date the export review names ("7 listopada 2026").
  * SSR and hydration keep the ISO date so Node vs browser `toLocaleDateString` cannot mismatch;
  * format after mount.
@@ -262,7 +262,9 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
     case 'sent':
       return t('remoteSync.state.sent');
     default:
-      return t('remoteSync.state.manageable');
+      return awaitsActivity(row)
+        ? t('remoteSync.state.needsActivity')
+        : t('remoteSync.state.manageable');
   }
 }
 
@@ -307,7 +309,7 @@ function isExcluded(row: RemoteSyncDayRowDto): boolean {
 function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   switch (stateFor(row)) {
     case 'manageable':
-      return 'ready';
+      return awaitsActivity(row) ? 'blocked' : 'ready';
     case 'sent':
       return 'sent';
     case 'activity_loading':
@@ -320,7 +322,7 @@ function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
 function kindLabelFor(row: RemoteSyncDayRowDto): string | null {
   const state = stateFor(row);
   if (state === 'unlinked') return null;
-  if (state === 'manageable') return t('remoteSync.kind.ready');
+  if (state === 'manageable' && !awaitsActivity(row)) return t('remoteSync.kind.ready');
   if (state === 'sent') return t('remoteSync.kind.sent');
   if (state === 'activity_loading') return t('remoteSync.kind.loading');
   return t(isExcluded(row) ? 'remoteSync.kind.excluded' : 'remoteSync.kind.blocked');
@@ -328,6 +330,14 @@ function kindLabelFor(row: RemoteSyncDayRowDto): string | null {
 
 function canEditRow(row: RemoteSyncDayRowDto): boolean {
   return stateFor(row) === 'manageable';
+}
+
+/**
+ * A Ready row with time to send but no activity chosen yet: a fixable gap, so its state icon is
+ * the amber needs-attention kind, like a row without an issue.
+ */
+function awaitsActivity(row: RemoteSyncDayRowDto): boolean {
+  return canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row);
 }
 
 function showEditorsFor(row: RemoteSyncDayRowDto): boolean {
@@ -586,10 +596,11 @@ const exportDisabledReason = computed(() => {
   if (rows.value.some((row) => stateFor(row) === 'activity_error')) {
     return t('remoteSync.exportTrackersUnreachable');
   }
-  const waitingForActivity = rows.value.some(
-    (row) => canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row),
+  return t(
+    rows.value.some(awaitsActivity)
+      ? 'remoteSync.exportNeedsActivity'
+      : 'remoteSync.exportNothingReady',
   );
-  return t(waitingForActivity ? 'remoteSync.exportNeedsActivity' : 'remoteSync.exportNothingReady');
 });
 
 /**
@@ -606,9 +617,7 @@ function retryFailedLoads() {
 }
 
 /** Ready rows whose to-send time waits for an activity, which the forecast still counts. */
-const forecastAwaitsActivity = computed(() =>
-  rows.value.some((row) => canEditRow(row) && !isZeroDuration(row) && !selectedActivity(row)),
-);
+const forecastAwaitsActivity = computed(() => rows.value.some(awaitsActivity));
 
 function trackedSecondsFor(row: RemoteSyncDayRowDto): number {
   return selectedSecondsFor(row);
@@ -943,6 +952,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       :export-label="exporting ? t('remoteSync.exporting') : t('remoteSync.exportButton')"
       :export-disabled="exporting || pushableRows().length === 0"
       :export-disabled-reason="exportDisabledReason"
+      :export-open="exportDialogOpen"
       @navigate="navigateToDate"
       @export="openExportDialog"
     />
@@ -960,12 +970,12 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
                it into the completed part, which the rows add up to, and the running part, in the
                in-tracker card's "value word + value word" form. -->
           <span v-if="runningInDay" data-testid="remote-sync-total-day-parts">
-            <span class="font-mono tabular-nums text-default">
+            <span class="font-mono font-normal tabular-nums text-default">
               {{ formatDuration(dayTotalsSafe.dayTotal) }}
             </span>
             {{ t('remoteSync.dayTotalCompleted') }}
             <span class="me-1 text-dimmed">+</span>
-            <span class="font-mono tabular-nums text-default">
+            <span class="font-mono font-normal tabular-nums text-default">
               {{ formatDuration(runningSeconds) }}
             </span>
             {{ t('remoteSync.dayTotalRunning') }}
@@ -1008,13 +1018,13 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
                durations share the figure's mono face and the caption's colour and weight; the
                "+" joins them quietly. -->
           <span v-else data-testid="remote-sync-total-in-tracker-parts">
-            <span class="font-mono tabular-nums text-default">
+            <span class="font-mono font-normal tabular-nums text-default">
               {{ formatDuration(inTrackerSummary.logsSeconds) }}
             </span>
             {{ t('remoteSync.inTrackersLogs') }}
             <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
             <span class="me-1 text-dimmed">+</span>
-            <span class="font-mono tabular-nums text-default">
+            <span class="font-mono font-normal tabular-nums text-default">
               {{ formatDuration(inTrackerSummary.toSendSeconds) }}
             </span>
             {{ t('remoteSync.inTrackerToSend') }}
@@ -1034,7 +1044,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       v-if="inTrackerSummary.status === 'unavailable'"
       color="warning"
       variant="subtle"
-      icon="i-lucide-cloud-off"
+      icon="i-lucide-unplug"
       orientation="horizontal"
       role="alert"
       :ui="{ root: 'py-3', description: 'grid gap-0.5 opacity-100' }"

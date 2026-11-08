@@ -62,20 +62,17 @@ onMounted(() =>
 </script>
 
 <template>
-  <UCard
+  <component
+    :is="mode === 'setup' ? UCard : 'section'"
     v-if="suggestions.length"
-    as="section"
     aria-labelledby="suggestions-title"
     data-testid="suggestions"
-    :ui="{ header: mode === 'popup' ? 'px-4 py-3 sm:px-4' : undefined, body: 'p-0 sm:p-0' }"
+    v-bind="mode === 'setup' ? { as: 'section', ui: { body: 'p-0 sm:p-0' } } : {}"
+    :class="mode === 'popup' ? 'flex flex-col gap-2' : ''"
   >
-    <template #header>
+    <template v-if="mode === 'setup'" #header>
       <div class="flex items-center gap-2">
-        <h2
-          id="suggestions-title"
-          class="font-semibold text-highlighted"
-          :class="mode === 'popup' ? 'text-sm' : 'text-base'"
-        >
+        <h2 id="suggestions-title" class="text-base font-semibold text-highlighted">
           {{ t('approvals.suggestionsTitle') }}
         </h2>
         <UBadge
@@ -87,19 +84,38 @@ onMounted(() =>
           data-testid="suggestions-count"
         />
       </div>
-      <p v-if="mode === 'setup'" class="mt-1 text-[13px] text-muted">
-        {{ t('approvals.suggestionsHelp') }}
-      </p>
+      <p class="mt-0.5 text-sm text-muted">{{ t('approvals.suggestionsHelp') }}</p>
     </template>
+    <!-- In the popup every section is a label above a list, as for the approved ones. -->
+    <div v-if="mode === 'popup'" class="flex items-center gap-2 px-1">
+      <h2 id="suggestions-title" class="text-xs font-medium text-muted">
+        {{ t('approvals.suggestionsTitle') }}
+      </h2>
+      <UBadge
+        color="primary"
+        variant="soft"
+        size="sm"
+        class="tabular-nums"
+        :label="String(suggestions.length)"
+        data-testid="suggestions-count"
+      />
+    </div>
 
-    <ul class="divide-y divide-default">
+    <ul
+      class="divide-y divide-default"
+      :class="
+        mode === 'popup'
+          ? 'overflow-hidden rounded-lg bg-default ring ring-default dark:bg-muted'
+          : ''
+      "
+    >
       <li
         v-for="item in suggestions"
         :key="suggestionId(item)"
         class="flex gap-3"
         :class="[
           mode === 'popup' ? 'flex-col px-4 py-3' : 'flex-wrap items-center px-4 py-3 sm:px-6',
-          suggestionId(item) === highlightId ? 'shadow-[inset_3px_0_0_0_var(--ui-primary)]' : '',
+          suggestionId(item) === highlightId ? 'bg-elevated/60' : '',
         ]"
         :data-highlighted="suggestionId(item) === highlightId || undefined"
         :data-testid="`suggestion-${suggestionId(item)}`"
@@ -110,9 +126,20 @@ onMounted(() =>
             class="flex min-w-0 flex-col gap-0.5"
             :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'"
           >
-            <span class="truncate text-sm font-medium text-highlighted">
-              {{ displayDestination(item) }}
-              <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
+            <span class="flex min-w-0 items-center gap-2">
+              <span class="truncate text-sm font-medium text-highlighted">
+                {{ displayDestination(item) }}
+                <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
+              </span>
+              <UBadge
+                v-if="suggestionId(item) === highlightId"
+                color="neutral"
+                variant="outline"
+                size="sm"
+                class="shrink-0"
+                :label="t('approvals.reviewedTag')"
+                data-testid="suggestion-reviewed"
+              />
             </span>
             <span class="truncate text-muted">
               {{ t('approvals.suggestedBy', { website: displayUrl(item.websiteOrigin) }) }}
@@ -127,23 +154,13 @@ onMounted(() =>
             </p>
           </div>
         </div>
-        <div class="flex shrink-0 justify-end gap-2">
-          <UButton
-            color="neutral"
-            variant="outline"
-            size="sm"
-            :disabled="disabled"
-            :label="t('approvals.dismissSuggestion')"
-            :aria-label="`${t('approvals.dismissSuggestion')} ${displayDestination(item)}`"
-            :data-testid="`dismiss-suggestion-${suggestionId(item)}`"
-            @click="emit('dismiss', suggestionId(item))"
-          />
+        <!-- Popup actions start at the text column, like every other popup action. -->
+        <div class="flex shrink-0 gap-2" :class="mode === 'popup' ? 'ps-10' : ''">
           <UButton
             v-if="mode === 'setup'"
             size="sm"
-            class="w-44 justify-center"
             :color="sendsCredentialsInClear(item) ? 'warning' : 'primary'"
-            :variant="sendsCredentialsInClear(item) ? 'soft' : 'solid'"
+            :variant="sendsCredentialsInClear(item) ? 'outline' : 'solid'"
             icon="i-lucide-check"
             :disabled="disabled"
             :label="
@@ -169,6 +186,16 @@ onMounted(() =>
             :data-testid="`review-suggestion-${suggestionId(item)}`"
             @click="emit('review', suggestionId(item))"
           />
+          <UButton
+            color="neutral"
+            variant="soft"
+            size="sm"
+            :disabled="disabled"
+            :label="t('approvals.dismissSuggestion')"
+            :aria-label="`${t('approvals.dismissSuggestion')} ${displayDestination(item)}`"
+            :data-testid="`dismiss-suggestion-${suggestionId(item)}`"
+            @click="emit('dismiss', suggestionId(item))"
+          />
         </div>
         <!-- On the setup page the risk spans the row, under the address and its actions. -->
         <p
@@ -190,5 +217,5 @@ onMounted(() =>
         </p>
       </li>
     </ul>
-  </UCard>
+  </component>
 </template>

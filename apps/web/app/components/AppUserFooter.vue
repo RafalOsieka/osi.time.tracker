@@ -138,7 +138,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         :description="secondaryEmail || undefined"
         :avatar="avatar"
         size="md"
-        class="w-full min-w-0 cursor-pointer rounded-md px-1 py-1 text-start hover:bg-elevated"
+        class="relative w-full min-w-0 cursor-pointer rounded-md py-1 ps-1 pe-7 text-start hover:bg-elevated"
         :class="[PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
         data-testid="app-user-footer-trigger"
         :ui="{
@@ -148,6 +148,19 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
           description: 'truncate',
         }"
       >
+        <!--
+          The avatar slot also carries the quiet up-down chevron at the trigger's end, so at rest it
+          reads as a menu, not a static identity block.
+        -->
+        <template #avatar>
+          <UAvatar v-bind="avatar" size="md" />
+          <UIcon
+            name="i-lucide-chevrons-up-down"
+            class="absolute end-2 top-1/2 size-4 -translate-y-1/2 text-dimmed"
+            aria-hidden="true"
+            data-testid="app-user-footer-disclosure"
+          />
+        </template>
         <template #name>
           <span data-testid="app-user-footer-primary">{{ primaryLabel }}</span>
         </template>

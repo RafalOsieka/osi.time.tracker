@@ -130,19 +130,20 @@ const titleDisplayClass = computed(() =>
   canEdit ? 'font-medium text-highlighted' : 'font-medium text-default',
 );
 /**
- * An editable to send is a row value (500, highlighted); read-only to send and tracked sit at
- * the body weight in muted text, so neither reads like a total. Zero recedes.
+ * An editable to send is a row value (500, highlighted); a Sent row's exported value and the
+ * local time sit at the body weight and tone (valid data, never disabled-looking), so neither
+ * reads like a total. Only a zero, an export that cannot happen, recedes.
  */
 const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
-  return showEditors ? 'font-medium text-highlighted' : 'font-normal text-muted';
+  return showEditors ? 'font-medium text-highlighted' : 'font-normal text-default';
 });
 /**
  * The to-send editor at rest: the same frame as the title to send (card tone, 3:1 outline),
  * sized like the duration field it turns into, so the value does not move when editing starts.
  */
 const TO_SEND_FRAME =
-  'rounded-md bg-default px-1.5 py-1 ring ring-inset ring-accented transition-colors dark:bg-muted';
+  'w-[calc(8ch+1rem)] rounded-md bg-muted px-2 py-1.5 ring ring-inset ring-accented transition-colors';
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 /**
@@ -173,11 +174,15 @@ const activityDisplayValue = computed(() => {
   return selectedActivityName.value ?? t('remoteSync.activityEmptyOption');
 });
 
+/** The option the keyboard is on: marked with a 3:1 outline, picked by Enter. */
+const activeOptionId = ref<string | null>(null);
+
 function onActivityOpen(open: boolean) {
   if (open && (!canEdit || activityLoading)) {
     activityOpen.value = false;
     return;
   }
+  if (open) activeOptionId.value = selectedActivityId ?? activityOptions[0]?.id ?? null;
   activityOpen.value = open;
 }
 
@@ -290,7 +295,7 @@ function onEditToSend() {
       />
       <span
         v-else
-        class="block truncate text-sm font-medium text-muted"
+        class="block truncate text-sm font-medium text-default"
         :data-testid="`remote-sync-task-name-${row.taskId}`"
       >
         {{ row.taskName }}
@@ -308,7 +313,7 @@ function onEditToSend() {
             :data-testid="`remote-sync-issue-${row.taskId}`"
           >
             <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">#{{ issueId }}</span>
-            <span class="truncate" :class="showEditors ? 'text-default' : 'text-muted'">
+            <span class="truncate text-default">
               {{ issueTitle }}
             </span>
           </span>
@@ -351,7 +356,7 @@ function onEditToSend() {
           <div class="-ms-1 flex min-w-0 items-center gap-0.5">
             <UPopover mode="hover" enable-touch :content="{ side: 'top' }">
               <UButton
-                icon="i-lucide-cloud-off"
+                icon="i-lucide-unplug"
                 color="neutral"
                 variant="ghost"
                 size="xs"
@@ -370,9 +375,9 @@ function onEditToSend() {
                 </p>
               </template>
             </UPopover>
-            <!-- The page's retry style (a neutral outline control). The extension check keeps its
-                 label; the plain retry is a quiet icon-only tile named by its tooltip, so a day of
-                 failed rows does not repeat "Ponów" down the column. -->
+            <!-- The extension check keeps its labelled button; the plain retry is the agreed row
+                 action, a 32px cyan tinted tile named by its tooltip, so a day of failed rows does
+                 not repeat "Ponów" down the column. -->
             <UButton
               v-if="extensionActivityErrorKey"
               color="neutral"
@@ -387,13 +392,12 @@ function onEditToSend() {
             />
             <UTooltip v-else :text="t('remoteSync.activityRetry')" :content="{ side: 'top' }">
               <UButton
-                color="neutral"
-                variant="outline"
-                size="xs"
+                color="primary"
+                variant="soft"
                 square
                 icon="i-lucide-refresh-cw"
-                class="size-7 justify-center"
-                :ui="{ leadingIcon: 'size-3.5' }"
+                class="size-8 justify-center rounded-md"
+                :ui="{ leadingIcon: 'size-4' }"
                 :aria-label="t('remoteSync.activityRetry')"
                 :data-testid="`remote-sync-activity-retry-${row.taskId}`"
                 @click="emit('retry-activity')"
@@ -409,13 +413,15 @@ function onEditToSend() {
           {{ t('remoteSync.noActivityReason') }}
         </span>
         <UTooltip v-else-if="showEditors && !canEdit" :text="reason" :content="{ side: 'top' }">
-          <span tabindex="0" class="inline-flex min-w-0">
+          <span tabindex="0" class="-ms-2 flex w-[calc(100%+0.5rem)] min-w-0">
             <UButton
-              variant="ghost"
+              variant="outline"
               color="neutral"
               size="xs"
               disabled
-              class="-ms-2 justify-start truncate text-sm font-normal text-dimmed disabled:opacity-100"
+              trailing-icon="i-lucide-chevron-down"
+              class="w-full justify-between text-sm font-normal text-dimmed disabled:opacity-100"
+              :ui="{ label: 'truncate', trailingIcon: 'size-3.5 text-dimmed' }"
               :label="activityDisplayValue"
               :loading="activityLoading"
               :aria-label="t('remoteSync.activityLabel')"
@@ -434,31 +440,30 @@ function onEditToSend() {
           :modal="false"
           :content="{
             side: 'bottom',
-            align: 'start',
+            align: 'end',
             sideOffset: 4,
             onOpenAutoFocus: onActivityMenuAutoFocus,
           }"
           @update:open="onActivityOpen"
         >
           <OverflowTooltip :text="activityDisplayValue">
-            <!-- Still empty, the required activity is the row's one "needs input" control: a
-                 cyan tint, like the other things on the page you act on, so the row shows what
-                 Export waits for. Once chosen it reads as plain row text on the column's edge.
-                 Open, either shape takes a cyan ring, tying the menu below to its row. -->
+            <!-- The outlined control language of the row's other editors: a rounded-md select
+                 with the 3:1 outline at rest, filling its column at their 28px height, a muted
+                 placeholder until an activity is chosen, and a cyan ring while its menu is open.
+                 The row's amber state, not a loud fill, says the activity is still missing. -->
             <UButton
-              :variant="selectedActivityName ? 'ghost' : 'soft'"
-              :color="selectedActivityName ? 'neutral' : 'primary'"
+              variant="outline"
+              color="neutral"
               size="xs"
               trailing-icon="i-lucide-chevron-down"
-              class="max-w-full justify-start text-sm font-normal"
+              class="-ms-2 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)] justify-between text-sm font-normal"
               :class="[
-                selectedActivityName ? '-ms-2 max-w-[calc(100%+0.5rem)] text-default' : '',
-                activityOpen && 'ring ring-primary/60 ring-inset',
-                activityOpen && !selectedActivityName && 'bg-primary/15',
+                selectedActivityName ? 'text-default' : 'text-dimmed',
+                activityOpen && 'ring-primary',
               ]"
               :ui="{
                 label: 'truncate',
-                trailingIcon: `size-3.5 transition-transform ${activityOpen ? 'rotate-180' : ''}`,
+                trailingIcon: `size-3.5 text-dimmed transition-transform ${activityOpen ? 'rotate-180' : ''}`,
               }"
               :label="activityDisplayValue"
               :aria-label="t('remoteSync.activityLabel')"
@@ -469,7 +474,7 @@ function onEditToSend() {
             <div
               ref="activityList"
               tabindex="-1"
-              class="flex max-h-60 min-w-48 flex-col overflow-auto p-1 outline-none"
+              class="flex max-h-60 min-w-[max(12rem,var(--reka-popover-trigger-width))] flex-col overflow-auto p-1 outline-none"
               role="listbox"
               :aria-label="t('remoteSync.activityLabel')"
               :data-testid="`remote-sync-activity-list-${row.taskId}`"
@@ -488,14 +493,20 @@ function onEditToSend() {
                 :key="option.id"
                 variant="ghost"
                 color="neutral"
-                class="w-full justify-start focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
-                :class="option.id === selectedActivityId && 'font-medium text-highlighted'"
+                class="w-full justify-start hover:bg-elevated dark:hover:bg-accented/60"
+                :class="[
+                  option.id === selectedActivityId && 'font-medium text-highlighted',
+                  option.id === activeOptionId &&
+                    'bg-elevated ring-1 ring-accented ring-inset dark:bg-accented/60',
+                ]"
                 :ui="{ trailingIcon: 'ms-auto size-4 text-primary' }"
                 role="option"
                 :aria-selected="option.id === selectedActivityId"
                 :trailing-icon="option.id === selectedActivityId ? 'i-lucide-check' : undefined"
                 :label="option.name"
+                :data-active="option.id === activeOptionId || undefined"
                 :data-testid="`remote-sync-activity-option-${row.taskId}-${option.id}`"
+                @focus="activeOptionId = option.id"
                 @click.stop="commitActivity(option.id)"
               />
             </div>
@@ -513,8 +524,10 @@ function onEditToSend() {
     </ColumnCell>
 
     <ColumnCell :columns="columns" col="tracked" align="end" :narrow="{ col: [4, 5], row: 2 }">
+      <!-- Local time is valid local data on every row, never shown as disabled: the body tone,
+           a step below the editable to-send value. -->
       <span
-        class="font-mono text-sm tabular-nums text-muted"
+        class="font-mono text-sm tabular-nums text-default"
         :data-testid="`remote-sync-tracked-${row.taskId}`"
       >
         {{ trackedLabel }}
@@ -532,7 +545,7 @@ function onEditToSend() {
           </span>
           <DurationInput
             v-if="showEditors && editingToSend"
-            class="-me-1.5 min-w-0 flex-1"
+            class="-me-2"
             :model-value="toSendInput"
             :label="t('remoteSync.roundedDurationLabel')"
             :testid="`remote-sync-to-send-input-${row.taskId}`"
@@ -540,12 +553,14 @@ function onEditToSend() {
             @commit="emit('commit-to-send')"
             @cancel="emit('cancel-to-send')"
           />
-          <!-- The frame fills the column (no ragged column of chips); its padding hangs past the
-               column edge, so the digits keep the edge the other rows' values sit on. -->
+          <!-- The frame holds the value's own fixed width (every to-send value is HH:MM:SS, so
+               the frames still line up), on the card's quietest fill: the 3:1 edge stays, the
+               column no longer stacks into a dark block. Its padding hangs past the column
+               edge, so the digits keep the edge the other rows' values sit on. -->
           <button
             v-else-if="showEditors"
             type="button"
-            class="-me-1.5 min-w-0 flex-1 text-end font-[inherit] text-[length:inherit] leading-4"
+            class="-me-2 shrink-0 text-end font-[inherit] text-[length:inherit] leading-4"
             :class="[
               TO_SEND_FRAME,
               canEdit ? 'cursor-pointer hover:bg-elevated' : 'cursor-default',

@@ -6,9 +6,9 @@ import { summarizeActivity } from '../activity/format-activity.js';
 import { useExtensionI18n } from '../composables/use-extension-i18n.js';
 
 /**
- * A tracker row's last activity (REQ-419). A success is one line: a check, the operation and how
- * long ago it ran. A failure names itself beside a red mark on the first line, with the
- * operation and its time on the second.
+ * A tracker row's last activity (REQ-419): a mark, the operation and how long ago it ran. A
+ * failure is a recoverable problem, so its mark is amber, and a second line says what went
+ * wrong; the row's current state (such as a "No access" badge) is shown apart from this history.
  */
 const { record, now } = defineProps<{ record: ActivityRecord | undefined; now: number }>();
 
@@ -28,19 +28,17 @@ const summary = computed(() =>
       <UIcon
         :name="summary.ok ? 'i-lucide-circle-check' : 'i-lucide-circle-alert'"
         class="mt-[0.2em] size-[1.1em] shrink-0"
-        :class="summary.ok ? 'text-success' : 'text-error'"
+        :class="summary.ok ? 'text-success' : 'text-warning'"
         aria-hidden="true"
       />
-      <span v-if="summary.ok" class="min-w-0">
-        <span class="sr-only">{{ summary.outcome }}</span>
-        {{ summary.operation }}
-        <span :class="SEPARATOR">{{ summary.when }}</span>
-      </span>
-      <span v-else class="flex min-w-0 flex-col">
-        <span class="font-medium text-highlighted">{{ summary.outcome }}</span>
+      <span class="flex min-w-0 flex-col">
         <span>
+          <span v-if="summary.ok" class="sr-only">{{ summary.outcome }}</span>
           {{ summary.operation }}
           <span :class="SEPARATOR">{{ summary.when }}</span>
+        </span>
+        <span v-if="!summary.ok" data-testid="activity-failure">
+          {{ t('activity.failedWith', { outcome: summary.outcome.toLocaleLowerCase(locale) }) }}
         </span>
       </span>
     </template>

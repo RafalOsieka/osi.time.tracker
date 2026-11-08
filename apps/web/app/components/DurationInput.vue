@@ -58,8 +58,8 @@ const DEFAULT_UI = {
   base: 'w-full px-0 py-0 font-mono text-sm font-medium tabular-nums text-muted',
 };
 const COMPACT_UI = {
-  root: 'inline-flex w-[calc(8ch+0.75rem)] font-mono text-sm',
-  base: 'w-full rounded-md bg-default px-1.5 py-1 text-end font-mono text-sm/4 font-medium tabular-nums text-highlighted ring ring-inset ring-primary dark:bg-muted',
+  root: 'inline-flex w-[calc(8ch+1rem)] shrink-0 font-mono text-sm',
+  base: 'w-full rounded-md bg-muted px-2 py-1.5 text-end font-mono text-sm/4 font-medium tabular-nums text-highlighted ring ring-inset ring-primary',
 };
 </script>
 

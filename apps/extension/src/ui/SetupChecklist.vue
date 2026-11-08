@@ -104,13 +104,10 @@ const stateKeys = {
       <h2 id="setup-checklist-title" class="text-sm font-semibold text-highlighted">
         {{ t('app.checklistTitle') }}
       </h2>
-      <p class="text-[13px] text-muted">{{ t('app.purpose') }}</p>
+      <p class="text-[13px] text-balance text-muted">{{ t('app.purpose') }}</p>
     </div>
 
-    <ol
-      class="flex gap-3"
-      :class="mode === 'popup' ? 'flex-col' : 'flex-wrap items-center gap-x-6 gap-y-2'"
-    >
+    <ol class="flex flex-col" :class="mode === 'popup' ? 'gap-3' : 'gap-2.5'">
       <li
         v-for="(step, index) in steps"
         :key="step.id"
@@ -129,17 +126,17 @@ const stateKeys = {
         </span>
         <div class="flex min-w-0 flex-col items-start gap-2 pt-0.5">
           <span class="sr-only">{{ t(stateKeys[step.state]) }}:</span>
-          <!-- On the setup page the current step is the way to its form. -->
-          <button
+          <!-- On the setup page the current step is a link to its form. -->
+          <UButton
             v-if="mode === 'setup' && step.state === 'current'"
-            type="button"
-            class="inline-flex items-center gap-1 rounded-sm font-medium text-highlighted hover:text-primary focus-visible:text-primary focus-visible:outline-2 focus-visible:outline-primary"
+            variant="link"
+            color="primary"
+            class="-my-0.5 p-0 text-sm font-medium"
+            trailing-icon="i-lucide-arrow-down"
+            :label="t(step.labelKey)"
             :data-testid="`checklist-action-${step.id}`"
             @click="emit('act', step.id)"
-          >
-            {{ t(step.labelKey) }}
-            <UIcon name="i-lucide-arrow-down" class="size-3.5 text-dimmed" aria-hidden="true" />
-          </button>
+          />
           <span v-else :class="labelClasses[step.state]">
             {{ t(step.labelKey) }}
             <span
@@ -148,30 +145,33 @@ const stateKeys = {
             >
               <ULink
                 :to="website"
-                class="font-medium text-highlighted hover:text-primary hover:underline"
+                class="group inline-flex items-center gap-1 font-medium text-highlighted hover:text-primary"
                 data-testid="checklist-website-link"
                 @click.prevent="openWebsite(website)"
               >
-                {{ displayUrl(website) }}
+                <span class="group-hover:underline">{{ displayUrl(website) }}</span>
+                <UIcon
+                  name="i-lucide-arrow-up-right"
+                  class="size-3.5 shrink-0 text-dimmed group-hover:text-primary"
+                  aria-hidden="true"
+                />
               </ULink>
             </span>
           </span>
 
+          <!-- The popup's step action hands over to the setup page, and says so. -->
           <template v-if="mode === 'popup' && step.state === 'current'">
-            <div
+            <p class="text-[13px] text-muted">
+              {{ t(step.id === 'website' ? 'app.checklistOfferHelp' : 'app.checklistActionHelp') }}
+            </p>
+            <UButton
               v-if="step.id === 'website' && offer"
-              class="flex flex-col items-start gap-2"
+              size="sm"
+              trailing-icon="i-lucide-arrow-up-right"
               data-testid="current-website-offer"
-            >
-              <p class="text-[13px] text-muted">{{ t('app.checklistOfferHelp') }}</p>
-              <UButton
-                size="sm"
-                trailing-icon="i-lucide-arrow-up-right"
-                data-testid="current-website-approve"
-                :label="t('app.checklistOfferAction', { website: displayUrl(offer) })"
-                @click="emit('act', 'website')"
-              />
-            </div>
+              :label="t('app.checklistOfferAction', { website: displayUrl(offer) })"
+              @click="emit('act', 'website')"
+            />
             <UButton
               v-else
               size="sm"
@@ -197,7 +197,7 @@ const stateKeys = {
       >
         <UIcon name="i-lucide-settings-2" class="size-3.5" />
       </span>
-      <p class="pt-0.5 text-[13px] text-muted">
+      <p class="pt-0.5 text-muted" :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'">
         <span class="font-medium text-toned">{{ t('app.checklistDirectLabel') }}</span>
         {{ t('app.checklistDirect') }}
       </p>

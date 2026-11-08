@@ -82,16 +82,16 @@ body {
 }
 
 /*
- * Light text on a dark surface renders heavier, so dark mode steps the weights down. The extension
- * is mostly small supporting text, where the web app's full 100-step reads thin and disabled, so
- * it steps down by about 40 and keeps the 400/500/600 hierarchy readable.
+ * One 400/500/600 ramp that reads the same in both themes. Light text on dark renders thinner in
+ * the browser's grayscale antialiasing at the extension's small sizes, so dark mode keeps body
+ * text a touch lighter but holds primary text at a full medium.
  */
 .dark {
-  font-weight: 360;
-  --font-weight-normal: 360;
-  --font-weight-medium: 460;
-  --font-weight-semibold: 560;
-  --font-weight-bold: 650;
+  font-weight: 380;
+  --font-weight-normal: 380;
+  --font-weight-medium: 520;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 680;
 }
 
 /* Text on a solid fill: dark text on the bright dark-mode fill keeps the regular weights. */

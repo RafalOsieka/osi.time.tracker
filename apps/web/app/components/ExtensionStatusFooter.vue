@@ -221,7 +221,13 @@ function openDetails() {
             class="m-0 flex items-center gap-2 text-sm font-semibold"
             data-testid="extension-status-title"
           >
-            <UIcon name="i-lucide-puzzle" class="size-4 shrink-0 text-primary" />
+            <!-- The extension's cyan icon chip, as on its own pages. -->
+            <span
+              class="inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/12"
+              aria-hidden="true"
+            >
+              <UIcon name="i-lucide-puzzle" class="size-3.5" />
+            </span>
             <span class="min-w-0">{{ t('layout.extensionStatus.title') }}</span>
           </h2>
 

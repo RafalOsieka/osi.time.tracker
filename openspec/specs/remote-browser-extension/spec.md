@@ -278,7 +278,11 @@ The extension popup and options page SHALL use the web app's component library, 
 
 #### Scenario: Status never depends on colour alone
 - **WHEN** the popup shows any status badge
-- **THEN** the badge SHALL carry its label and an icon, and SHALL NOT share the look of an action button
+- **THEN** the badge SHALL be a fully rounded pill carrying its label and an icon, and SHALL NOT share the look of an action button
+
+#### Scenario: Recoverable problems are amber
+- **WHEN** the popup or the setup page shows a problem the user can fix, such as lost browser access, settings that could not be read, or a denied tracker operation
+- **THEN** it SHALL use the amber warning colour and one term per problem; red SHALL be reserved for destructive actions
 
 #### Scenario: Popup height stays within the browser's popup
 - **WHEN** the popup's content is taller than the browser allows for a popup (600 pixels)
@@ -286,7 +290,7 @@ The extension popup and options page SHALL use the web app's component library, 
 
 #### Scenario: Approval lists show access state per row
 - **WHEN** the options page lists an approved website or tracker whose origin lacks browser site access
-- **THEN** an alert above the lists SHALL name it, and that row SHALL show a "No access" badge beside its address unless its last activity already shows the denied access; when it is the only affected approval, the alert's action SHALL restore it and the row SHALL offer no second restore button, otherwise each affected row SHALL show its own restore button next to the revoke action
+- **THEN** an alert above the lists SHALL name it, and that row SHALL show a "No access" badge beside its address, apart from its last activity, which is history; when it is the only affected approval, the alert's action SHALL restore it and the row SHALL offer no second restore button, otherwise each affected row SHALL show its own restore button next to the revoke action
 - **WHEN** a row's origin has site access
 - **THEN** the row SHALL show only the revoke action
 

@@ -238,7 +238,7 @@ The sidebar footer SHALL present one account control on every authenticated rout
 - **THEN** the account control SHALL show the new display name and its initial without a page reload
 
 ### Requirement: REQ-428 Account control trigger per sidebar state
-On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, and the email as a secondary line. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
+On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, the email as a secondary line, and a quiet disclosure chevron at its end. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
 
 #### Scenario: Expanded footer shows name and email
 - **WHEN** the sidebar is expanded (or the mobile drawer is open)

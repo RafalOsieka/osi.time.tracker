@@ -144,7 +144,7 @@ it('makes approving a plain-HTTP tracker a visibly deliberate choice', async () 
     httpWarning: true,
   });
   expect(html).toContain('data-testid="http-warning"');
-  expect(html).toContain('API key is sent without encryption');
+  expect(html).toContain('API key travels unencrypted');
   expect(html).toContain('Approve despite HTTP');
 });
 

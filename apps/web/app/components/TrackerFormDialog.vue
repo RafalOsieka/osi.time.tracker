@@ -234,8 +234,17 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
               value-key="value"
               label-key="label"
               class="w-full"
+              :ui="{ base: 'ps-11' }"
               data-testid="tracker-system-type-select"
-            />
+            >
+              <!-- The same OP/RM marks as the Tracker select in the Project dialog. -->
+              <template #leading>
+                <TrackerTypeMark :system-type="state.systemType" />
+              </template>
+              <template #item-leading="{ item }">
+                <TrackerTypeMark :system-type="item.value" />
+              </template>
+            </USelect>
             <template v-if="systemTypeServerError" #error>
               <span
                 id="tracker-system-type-error"

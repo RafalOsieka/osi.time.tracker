@@ -151,9 +151,10 @@ A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with a 
 
 #### Scenario: The legend explains the flags at a glance
 - **WHEN** the timesheet is shown
-- **THEN** the legend under it SHALL show the flagged style on the Local and Direct column names,
-  each with its meaning (local time that reached no tracker; time logged in the tracker outside the
-  app), and SHALL say the tooltip gives each value's reason
+- **THEN** the legend under it SHALL name, for the Local and Direct columns, what an underlined value
+  there means (time that reached no tracker; time logged in the tracker outside the app), shown in
+  the flagged style, without redefining the columns themselves, and SHALL say how to see each
+  value's reason with the pointer or Tab
 
 #### Scenario: Zero durations recede
 - **WHEN** a cell is `0:00` and is not flagged

@@ -74,6 +74,8 @@ const pendingTrackers = computed(() =>
   destinations.filter((item) => item.websiteOrigin === pendingRevoke.value),
 );
 const confirmOpen = shallowRef(false);
+/** The remove tile stays pressed while its confirmation is open, like the web app's tiles. */
+const PRESSED = 'bg-error/20 ring-1 ring-error/40 ring-inset dark:bg-red-500/30';
 
 function requestRevoke(website: string): void {
   if (!destinations.some((item) => item.websiteOrigin === website)) {
@@ -113,7 +115,7 @@ function closeForm(): void {
           <h2 id="websites-title" class="text-base font-semibold text-highlighted">
             {{ t(empty ? 'approvals.websitesEmptyTitle' : 'approvals.websitesTitle') }}
           </h2>
-          <p class="mt-0.5 text-[13px] text-muted">
+          <p class="mt-0.5 text-sm text-muted">
             {{ t(empty ? 'approvals.websitesEmptyHelp' : 'approvals.websitesHelp') }}
           </p>
         </div>
@@ -139,7 +141,7 @@ function closeForm(): void {
         class="flex min-h-11 items-center gap-3 px-4 py-1.5 sm:px-6"
       >
         <span
-          class="inline-flex h-5 w-7 shrink-0 items-center justify-center rounded bg-primary-100/80 text-primary dark:bg-primary/16"
+          class="mx-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
           aria-hidden="true"
         >
           <UIcon name="i-lucide-globe" class="size-3.5" />
@@ -190,6 +192,8 @@ function closeForm(): void {
               icon="i-lucide-trash-2"
               :ui="{ base: 'size-8 justify-center', leadingIcon: 'size-4' }"
               :disabled="disabled"
+              :class="{ [PRESSED]: confirmOpen && pendingRevoke === website.origin }"
+              :aria-expanded="confirmOpen && pendingRevoke === website.origin"
               :data-testid="`revoke-website-${website.origin}`"
               :aria-label="`${t('approvals.revokeWebsite')} ${website.origin}`"
               @click="requestRevoke(website.origin)"
@@ -205,7 +209,7 @@ function closeForm(): void {
       :class="{ 'border-t border-default': !empty }"
     >
       <h3 v-if="!empty" class="text-sm font-semibold text-highlighted">
-        {{ t('approvals.newWebsite') }}
+        {{ t('approvals.websiteFormTitle') }}
       </h3>
       <p
         v-if="handedOff"
@@ -223,9 +227,9 @@ function closeForm(): void {
         <UFormField
           :label="t('approvals.websiteOrigin')"
           name="origin"
-          :help="help"
+          :help="handedOff ? undefined : help"
           :error="errorKey ? t(errorKey) : undefined"
-          :ui="{ help: 'text-[13px]', error: 'text-[13px]' }"
+          :ui="{ help: 'text-sm', error: 'text-sm' }"
         >
           <UInput
             id="website-origin"
@@ -238,7 +242,14 @@ function closeForm(): void {
             @update:model-value="emit('update:origin', String($event))"
           />
           <template v-if="errorKey" #error="{ error }">
-            <span role="alert" data-testid="website-origin-error">{{ error }}</span>
+            <span role="alert" class="flex items-start gap-1.5" data-testid="website-origin-error">
+              <UIcon
+                name="i-lucide-circle-alert"
+                class="mt-0.5 size-4 shrink-0"
+                aria-hidden="true"
+              />
+              {{ error }}
+            </span>
           </template>
         </UFormField>
         <div class="flex justify-end gap-2">
@@ -277,7 +288,11 @@ function closeForm(): void {
         </span>
         <div class="flex min-w-0 flex-col gap-3 pt-1.5 text-sm text-toned">
           <p class="m-0" data-testid="revoke-website-description">
-            {{ t('approvals.revokeWebsiteConfirmBody', { count: pendingTrackers.length }) }}
+            {{
+              pendingTrackers.length === 1
+                ? t('approvals.revokeWebsiteConfirmBodyOne')
+                : t('approvals.revokeWebsiteConfirmBody', { count: pendingTrackers.length })
+            }}
           </p>
           <ul class="m-0 flex flex-col gap-1.5 p-0" data-testid="revoke-website-trackers">
             <li

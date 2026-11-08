@@ -578,7 +578,7 @@ async function onExport() {
         </div>
         <USeparator />
         <dl
-          class="m-0 grid grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-6 gap-y-3 text-sm"
+          class="m-0 grid grid-cols-[auto_minmax(0,1fr)] gap-x-8 gap-y-3 text-sm"
           data-testid="client-report-summary"
         >
           <template v-for="fact in summaryFacts" :key="fact.key">

@@ -186,11 +186,15 @@ selected activity. No remote request SHALL occur before confirmation. Cancelling
 - **WHEN** the day contains ineligible tasks
 - **THEN** their durable row states SHALL state why they are excluded, and the dialog SHALL count the
   tasks neither included nor Sent by reason, in one line at helper-text size ("Not in this export: 3
-  without an activity, 1 local project, 1 without an issue"), without listing them
+  without an activity, 1 without an issue, 1 from a local project"), without listing them
 
 #### Scenario: The introduction matches the count
 - **WHEN** exactly one task is included
 - **THEN** the introduction SHALL speak of that one task in the singular
+
+#### Scenario: Export shows it is pressed while its review is open
+- **WHEN** the review dialog is open
+- **THEN** the Export action SHALL show its pressed state and expose that its dialog is expanded
 
 #### Scenario: Export is unavailable with a stated reason
 - **WHEN** Export is disabled

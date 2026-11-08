@@ -16,7 +16,7 @@ While setup is incomplete, the setup page and the popup SHALL show a checklist: 
 
 #### Scenario: First use in the popup
 - **WHEN** the popup opens before setup is complete
-- **THEN** it SHALL say in one sentence that the extension connects OSI to trackers through this browser, SHALL NOT show the approval lists, and the current step's action SHALL open the setup page with that step's form focused
+- **THEN** it SHALL say in one sentence that the extension connects OSI to trackers through this browser, SHALL NOT show the approval lists, and the current step SHALL say that the approval continues on the setup page, which its action SHALL open with that step's form focused; the OSI instruction SHALL say that turning the setting off makes OSI connect through the extension
 
 #### Scenario: Current step on the setup page
 - **WHEN** the setup page shows the checklist
@@ -48,7 +48,7 @@ The setup page SHALL announce the outcome of an approve, revoke, restore or dism
 
 #### Scenario: Approval saved
 - **WHEN** the user approves a tracker destination successfully
-- **THEN** a notification SHALL announce that this tracker was approved, naming its address, and SHALL disappear without user action
+- **THEN** a notification SHALL announce that a tracker was approved, naming its address on a second line, and SHALL disappear without user action
 
 #### Scenario: Suggestion dismissed
 - **WHEN** the user dismisses a suggested tracker
@@ -68,7 +68,7 @@ Revoking (removing) a website that still has approved tracker destinations SHALL
 
 #### Scenario: Website with trackers
 - **WHEN** the user activates remove on a website that has three approved trackers
-- **THEN** a confirmation SHALL state that the website and its three tracker approvals will be removed, listing the three trackers with their type marks, and nothing SHALL change until the user confirms
+- **THEN** a confirmation SHALL state that the approval of the website and of its three trackers will be removed, listing the three trackers with their type marks, and nothing SHALL change until the user confirms; the remove control SHALL look pressed while the confirmation is open
 
 #### Scenario: Cancel
 - **WHEN** the user cancels the confirmation, by its button or the Escape key
@@ -140,7 +140,7 @@ The extension SHALL keep suggestions received from approved websites (REQ-421 in
 
 #### Scenario: Approve from the popup
 - **WHEN** the user chooses to review a suggestion in the popup
-- **THEN** the popup SHALL open the setup page with that suggestion highlighted and its approve action focused, and SHALL NOT request permissions itself
+- **THEN** the popup SHALL open the setup page with that suggestion marked by a "To review" tag on a neutral surface and its approve action focused, and SHALL NOT request permissions itself
 
 #### Scenario: Permission denied
 - **WHEN** the user denies the browser permission for a suggestion
@@ -148,7 +148,7 @@ The extension SHALL keep suggestions received from approved websites (REQ-421 in
 
 #### Scenario: HTTP destination
 - **WHEN** a pending suggestion targets an `http://` tracker
-- **THEN** the popup item SHALL be marked as unencrypted under its address, and the setup page item SHALL show the API-key risk warning across the row, without exempting local networks, and an approve action that says it approves despite HTTP
+- **THEN** the popup item SHALL be marked as unencrypted under its address, and the setup page item SHALL warn across the row that the API key travels unencrypted whenever OSI connects to the tracker, without exempting local networks, and an approve action that says it approves despite HTTP
 
 #### Scenario: Website revoked
 - **WHEN** the suggesting website's approval is revoked
@@ -200,7 +200,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 
 #### Scenario: Failed operation
 - **WHEN** the latest operation on a destination failed
-- **THEN** the row SHALL name the failure beside an error mark, with the operation and its time on the line below
+- **THEN** the row SHALL show the operation and its time beside an amber mark, with a line below saying what went wrong, kept apart from the row's current-state badge
 
 #### Scenario: Timeout
 - **WHEN** the latest operation on a destination timed out

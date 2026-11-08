@@ -246,7 +246,9 @@ describeChromium('extension options UI', () => {
       .toMatch(/without a path/);
     await page.getByTestId('website-origin').fill('http://localhost:3000');
     await page.getByTestId('add-website').press('Enter');
-    await expect.poll(() => toasts(page).textContent()).toMatch(/Website localhost:3000 approved/);
+    await expect
+      .poll(() => toasts(page).textContent())
+      .toMatch(/Website approved\..*localhost:3000/);
 
     await page.reload();
     await expect
@@ -254,7 +256,9 @@ describeChromium('extension options UI', () => {
       .toBe(true);
 
     await chooseOption(page, 'language', optionNames.pl);
-    await expect.poll(() => page.getByTestId('new-website').textContent()).toMatch(/Dodaj witrynę/);
+    await expect
+      .poll(() => page.getByTestId('new-website').textContent())
+      .toMatch(/Zatwierdź witrynę/);
     await expect
       .poll(() => page.getByTestId('add-destination').textContent())
       .toMatch(/Zatwierdź tracker/i);
@@ -302,7 +306,7 @@ describeChromium('extension options UI', () => {
     await revokeLocalhost.press('Enter');
     await expect
       .poll(() => page.getByRole('dialog').textContent())
-      .toMatch(/trackerów \(1\):[\s\S]*tracker\.example\.com\/team/);
+      .toMatch(/oraz 1\s+trackera:[\s\S]*tracker\.example\.com\/team/);
     // Escape belongs to the dialog only once its focus trap has taken focus from the trigger.
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null))
@@ -315,7 +319,9 @@ describeChromium('extension options UI', () => {
       .toBe(true);
     await revokeLocalhost.press('Enter');
     await confirmRevoke(page);
-    await expect.poll(() => toasts(page).textContent()).toMatch(/Usunięto witrynę localhost:3000/);
+    await expect
+      .poll(() => toasts(page).textContent())
+      .toMatch(/Usunięto witrynę\s*localhost:3000/);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
     await expect
       .poll(() => page.getByTestId('destination-website-required').isVisible())

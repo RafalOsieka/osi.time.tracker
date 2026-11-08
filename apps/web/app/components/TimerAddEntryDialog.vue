@@ -193,6 +193,7 @@ async function onSave() {
                 color="primary"
                 variant="soft"
                 size="sm"
+                class="rounded-full"
                 :label="t('timerView.addEntry.newTaskBadge')"
               />
               <span>
@@ -218,77 +219,77 @@ async function onSave() {
           />
         </UFormField>
 
-        <UFormField :label="t('timerView.addEntry.dateLabel')">
-          <UInputDate
-            v-model="dateValue"
-            class="w-full"
-            :aria-label="t('timerView.addEntry.dateLabel')"
-            data-testid="add-entry-date-input"
-          >
-            <template #trailing>
-              <UPopover v-model:open="calendarOpen">
-                <UButton
-                  color="neutral"
-                  variant="link"
-                  size="sm"
-                  icon="i-lucide-calendar"
-                  class="px-0"
-                  :aria-label="t('common.openCalendar')"
-                  data-testid="add-entry-calendar-button"
-                />
-                <template #content>
-                  <div data-testid="add-entry-calendar">
-                    <UCalendar
-                      class="p-2"
-                      :model-value="dateValue"
-                      :aria-label="t('timerView.addEntry.dateLabel')"
-                      @update:model-value="
-                        (value) => onSelectDate(value instanceof CalendarDate ? value : null)
-                      "
-                    />
-                  </div>
-                </template>
-              </UPopover>
-            </template>
-          </UInputDate>
-        </UFormField>
-
         <!--
-          Under the field: the entry's length in words, so a mistyped range is caught before
-          saving, and (quieter, as metadata) the timezone the times are in.
+          Date and range share one row, like the top bar's start editor, so neither field runs
+          long for its short value. Under them: the entry's length in words (a mistyped range is
+          caught before saving), then, quieter as metadata, the timezone the times are in.
         -->
-        <UFormField :label="t('timerView.addEntry.timesLabel')" :ui="{ help: 'mt-1.5 text-muted' }">
-          <template #help>
-            <span class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-              <span v-if="previewDuration" class="text-sm">
-                {{ t('timerView.addEntry.durationHint') }}
-                <span class="ms-1 font-medium text-default" data-testid="add-entry-duration">
-                  {{ previewDuration }}
-                </span>
-              </span>
-              <span class="ms-auto text-xs" data-testid="add-entry-time-zone">
-                {{ timeZoneHint }}
-              </span>
-            </span>
-          </template>
-          <TimeField
-            v-model="timesValue"
-            range
-            :label="t('timerView.addEntry.timesLabel')"
-            :invalid="!!rangeError"
-            :describedby="rangeError ? 'add-entry-range-error' : undefined"
-            testid="add-entry-time-input"
-          />
+        <div class="grid grid-cols-[minmax(0,11fr)_minmax(0,9fr)] gap-3">
+          <UFormField :label="t('timerView.addEntry.dateLabel')">
+            <UInputDate
+              v-model="dateValue"
+              class="w-full"
+              :aria-label="t('timerView.addEntry.dateLabel')"
+              data-testid="add-entry-date-input"
+            >
+              <template #trailing>
+                <UPopover v-model:open="calendarOpen">
+                  <UButton
+                    color="neutral"
+                    variant="link"
+                    size="sm"
+                    icon="i-lucide-calendar"
+                    class="px-0"
+                    :aria-label="t('common.openCalendar')"
+                    data-testid="add-entry-calendar-button"
+                  />
+                  <template #content>
+                    <div data-testid="add-entry-calendar">
+                      <UCalendar
+                        class="p-2"
+                        :model-value="dateValue"
+                        :aria-label="t('timerView.addEntry.dateLabel')"
+                        @update:model-value="
+                          (value) => onSelectDate(value instanceof CalendarDate ? value : null)
+                        "
+                      />
+                    </div>
+                  </template>
+                </UPopover>
+              </template>
+            </UInputDate>
+          </UFormField>
+          <UFormField :label="t('timerView.addEntry.timesLabel')">
+            <TimeField
+              v-model="timesValue"
+              range
+              :label="t('timerView.addEntry.timesLabel')"
+              :invalid="!!rangeError"
+              :describedby="rangeError ? 'add-entry-range-error' : undefined"
+              testid="add-entry-time-input"
+            />
+          </UFormField>
+        </div>
+        <div class="-mt-2 grid gap-1">
           <p
             v-if="rangeError"
             id="add-entry-range-error"
-            class="m-0 mt-2 text-sm text-error"
+            class="m-0 text-sm text-error"
             role="alert"
             data-testid="add-entry-range-error"
           >
             {{ rangeError }}
           </p>
-        </UFormField>
+          <p v-if="previewDuration" class="m-0 text-sm text-muted">
+            {{ t('timerView.addEntry.durationHint') }}
+            <span class="ms-1 font-medium text-default" data-testid="add-entry-duration">
+              {{ previewDuration }}
+            </span>
+          </p>
+          <p class="m-0 text-xs text-muted" data-testid="add-entry-time-zone">
+            {{ timeZoneHint }}
+          </p>
+        </div>
 
         <FormDialogFooter
           :cancel-label="t('timerView.addEntry.cancelButton')"

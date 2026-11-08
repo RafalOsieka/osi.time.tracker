@@ -195,6 +195,7 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
       :new-label="t('trackers.newButton')"
       new-testid="new-tracker-button"
       :quiet="isEmpty"
+      :pressed="dialogOpen && !editingTracker"
       @create="openCreate"
     />
 

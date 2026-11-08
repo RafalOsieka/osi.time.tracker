@@ -237,7 +237,7 @@ async function unlinkRemoteIssue() {
         color="neutral"
         variant="soft"
         size="sm"
-        class="w-5 shrink-0 justify-center px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
+        class="w-5 shrink-0 justify-center rounded-full px-0 text-[0.6875rem] font-semibold text-muted tabular-nums"
         :class="isLive && 'bg-primary/10 text-primary'"
         :aria-label="countLabel"
         :data-testid="`timer-group-count-${group.key}`"
@@ -380,7 +380,8 @@ async function unlinkRemoteIssue() {
     <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
       <!--
         The row-action tile: a 32px cyan soft tile to continue, or on the running group a 32px
-        solid red tile with the shell timer's animated stop glyph (REQ-501).
+        solid red tile with the shell timer's animated stop glyph (REQ-501); in dark mode the fill
+        is a deeper red under a white glyph, like the top bar's stop, not a bright salmon block.
       -->
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">
         <UButton
@@ -390,6 +391,10 @@ async function unlinkRemoteIssue() {
           size="md"
           :color="isLive ? 'error' : 'primary'"
           class="size-8 justify-center"
+          :class="
+            isLive &&
+            'dark:bg-(--ui-color-error-600) dark:hover:bg-(--ui-color-error-500) dark:active:bg-(--ui-color-error-500)'
+          "
           :ui="{ leadingIcon: 'size-4' }"
           :aria-label="actionLabel"
           :aria-pressed="isLive"

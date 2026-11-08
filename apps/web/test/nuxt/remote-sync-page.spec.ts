@@ -924,9 +924,10 @@ describe('RemoteSync page', () => {
         cachedTitle: 'Stub Issue',
       },
     });
-    expect(wrapper.find('[data-testid="remote-sync-state-task-5-linked"]').text()).toBe(
-      'remoteSync.kind.ready',
-    );
+    // Manageable now, but its activity is still to choose: the fixable needs-attention kind.
+    const linkedState = wrapper.get('[data-testid="remote-sync-state-task-5-linked"]');
+    expect(linkedState.text()).toBe('remoteSync.kind.blocked');
+    expect(linkedState.attributes('aria-label')).toContain('remoteSync.state.needsActivity');
   });
 
   it('fetches same-day remote logs for a linked Redmine row', async () => {
@@ -1133,6 +1134,13 @@ describe('RemoteSync page', () => {
     );
     expect(wrapper.get('[data-testid="remote-sync-state-task-local"]').text()).toBe(
       'remoteSync.kind.excluded',
+    );
+    // A missing activity is fixable: amber like a missing issue; the chosen one is Ready.
+    expect(wrapper.get('[data-testid="remote-sync-state-task-no-activity"]').text()).toBe(
+      'remoteSync.kind.blocked',
+    );
+    expect(wrapper.get('[data-testid="remote-sync-state-task-going"]').text()).toBe(
+      'remoteSync.kind.ready',
     );
     expect(
       wrapper.get('[data-testid="remote-sync-state-task-unlinked"]').attributes('aria-label'),

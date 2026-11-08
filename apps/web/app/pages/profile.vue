@@ -99,7 +99,7 @@ function onTimezoneChange(value: string | undefined) {
           <h2 id="profile-account-heading" class="m-0 text-base font-semibold text-highlighted">
             {{ t('profile.account') }}
           </h2>
-          <p class="m-0 text-sm text-muted">{{ t('profile.accountDescription') }}</p>
+          <p class="m-0 text-sm text-balance text-muted">{{ t('profile.accountDescription') }}</p>
         </div>
         <UCard :ui="{ body: 'grid gap-5 p-6 sm:p-6' }">
           <UFormField
@@ -144,7 +144,9 @@ function onTimezoneChange(value: string | undefined) {
           <h2 id="profile-preferences-heading" class="m-0 text-base font-semibold text-highlighted">
             {{ t('profile.preferences') }}
           </h2>
-          <p class="m-0 text-sm text-muted">{{ t('profile.preferencesDescription') }}</p>
+          <p class="m-0 text-sm text-balance text-muted">
+            {{ t('profile.preferencesDescription') }}
+          </p>
         </div>
         <UCard :ui="{ body: 'grid gap-5 p-6 sm:p-6' }">
           <UFormField
