@@ -79,7 +79,7 @@ export default defineNuxtConfig({
       // Fixed lifetime (no sliding expiry for the MVP): 1 week.
       maxAge: 60 * 60 * 24 * 7,
       cookie: {
-        sameSite: 'strict',
+        sameSite: 'lax',
         httpOnly: true,
         // HTTPS-only cookie in production; relaxed for local HTTP dev.
         secure: process.env.NODE_ENV === 'production',
