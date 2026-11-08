@@ -14,7 +14,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const parsedBody = await readZodBody(event, createProjectSchema);
 
   const trackerId = parsedBody.trackerId ?? null;
-  let trackerName: string | null = null;
+  let tracker: Pick<typeof trackers.$inferSelect, 'name' | 'systemType'> | null = null;
 
   // A local project (no tracker) cannot carry a remote project scope (REQ-439).
   if (!trackerId && parsedBody.remoteProjectId) {
@@ -25,21 +25,21 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   }
 
   if (trackerId) {
-    const [tracker] = await db
-      .select({ id: trackers.id, name: trackers.name })
+    const [owned] = await db
+      .select({ name: trackers.name, systemType: trackers.systemType })
       .from(trackers)
       .where(
         and(eq(trackers.id, trackerId), eq(trackers.userId, user.id), isNull(trackers.deletedAt)),
       )
       .limit(1);
 
-    if (!tracker) {
+    if (!owned) {
       throw createError({
         status: 404,
         data: { messageKey: 'error.notFound' } satisfies ApiMessage,
       });
     }
-    trackerName = tracker.name;
+    tracker = owned;
   }
 
   const existing = await db
@@ -85,7 +85,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       id: created.id,
       name: created.name,
       trackerId: created.trackerId,
-      trackerName,
+      trackerName: tracker?.name ?? null,
+      trackerSystemType: tracker?.systemType ?? null,
       remoteProjectId: created.remoteProjectId,
       remoteProjectTitle: created.remoteProjectTitle,
       recentTrackedSeconds: 0,

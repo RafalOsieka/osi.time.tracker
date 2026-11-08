@@ -6,15 +6,19 @@ How users manage their projects: list, create, edit and soft-delete them, each p
 ## Requirements
 
 ### Requirement: REQ-084 List own projects
-`GET /api/projects` SHALL return the user's own non-deleted projects ordered by name. An optional `trackerId` filter SHALL narrow it to one tracker, and a dedicated filter value to local projects (no tracker). Each project SHALL carry nullable `trackerId` and `trackerName`; the name SHALL be present even when the tracker is soft-deleted, and both SHALL be null for local projects. The `/projects` page SHALL show the full unfiltered list and SHALL NOT offer a tracker filter.
+`GET /api/projects` SHALL return the user's own non-deleted projects ordered by name. An optional `trackerId` filter SHALL narrow it to one tracker, and a dedicated filter value to local projects (no tracker). Each project SHALL carry nullable `trackerId`, `trackerName` and `trackerSystemType`; name and system SHALL be present even when the tracker is soft-deleted, and all three SHALL be null for local projects. The `/projects` page SHALL show the full list, with no tracker filter.
 
-#### Scenario: Response includes optional tracker name
+#### Scenario: Response includes optional tracker name and system
 - **WHEN** an authenticated user lists their projects
-- **THEN** each returned project SHALL include `trackerId` and `trackerName` (both null when the project is local)
+- **THEN** each returned project SHALL include `trackerId`, `trackerName` and `trackerSystemType` (all null when the project is local)
 
 #### Scenario: Tracker name persists after the tracker is soft-deleted
 - **WHEN** a project's tracker has been soft-deleted
-- **THEN** the project SHALL still appear in the list (when not itself deleted) with its `trackerName` populated from the soft-deleted tracker
+- **THEN** the project SHALL still appear in the list (when not itself deleted) with its `trackerName` and `trackerSystemType` populated from the soft-deleted tracker
+
+#### Scenario: Projects page shows each Project's Tracker and scope
+- **WHEN** the user views the Projects page
+- **THEN** a tracker-bound row SHALL show the Tracker's system type mark and name, followed by its remote project title or, when unscoped, a translated "whole tracker" label; a local row SHALL show a translated local label
 
 #### Scenario: User sees only their own projects
 - **WHEN** an authenticated user requests their projects

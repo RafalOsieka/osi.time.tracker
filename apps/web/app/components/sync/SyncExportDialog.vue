@@ -12,6 +12,7 @@ export interface ExportDialogIncludedRow {
 
 const {
   open,
+  dateLabel,
   included,
   toSendSeconds,
   notReadyCount = 0,
@@ -20,6 +21,8 @@ const {
   totalCount,
 } = defineProps<{
   open: boolean;
+  /** The exported day, written out ("7 listopada 2026"), so the review names what it sends. */
+  dateLabel: string;
   included: ExportDialogIncludedRow[];
   toSendSeconds: number;
   /** The day's other Tasks that are not ready (Sent ones aside), stated as a count only. */
@@ -84,6 +87,22 @@ function destinationOf(item: ExportDialogIncludedRow): string {
             )
           }}
         </div>
+        <!-- The confirmation anatomy: what this is (the day being exported) beside the cyan icon
+             chip, then exactly what goes out. -->
+        <div v-else class="flex items-start gap-3" data-testid="remote-sync-export-intro">
+          <span
+            class="flex size-9 shrink-0 items-center justify-center rounded-md bg-primary/10 text-primary"
+            aria-hidden="true"
+          >
+            <UIcon name="i-lucide-upload" class="size-5" />
+          </span>
+          <div class="grid gap-0.5 pt-px">
+            <p class="m-0 text-sm font-medium text-highlighted">
+              {{ t('remoteSync.exportDialog.intro', { date: dateLabel }) }}
+            </p>
+            <p class="m-0 text-sm text-muted">{{ t('remoteSync.exportDialog.introHint') }}</p>
+          </div>
+        </div>
 
         <!-- Each task: the title to send with its duration, the destination quietly below. -->
         <ul class="m-0 grid gap-3 p-0" data-testid="remote-sync-export-included">
@@ -109,7 +128,9 @@ function destinationOf(item: ExportDialogIncludedRow): string {
           </li>
         </ul>
 
+        <!-- REQ-229: a total only adds something when more than one Task goes out. -->
         <div
+          v-if="included.length > 1"
           class="flex items-baseline justify-between border-t border-default pt-3 text-highlighted"
           data-testid="remote-sync-export-dialog-to-send"
         >
@@ -119,13 +140,18 @@ function destinationOf(item: ExportDialogIncludedRow): string {
           </span>
         </div>
 
-        <!-- REQ-229: the rows themselves say why; the review only counts them. -->
+        <!-- REQ-229: each row states its own reason; the review only counts them and names the
+             kinds of reason in a few words. -->
         <p
           v-if="notReadyCount > 0 && !isRunning"
-          class="m-0 flex items-center gap-1.5 text-xs text-muted"
+          class="m-0 flex items-start gap-1.5 text-xs text-muted"
           data-testid="remote-sync-export-not-ready"
         >
-          <UIcon name="i-lucide-info" class="size-3.5 shrink-0 text-dimmed" aria-hidden="true" />
+          <UIcon
+            name="i-lucide-info"
+            class="mt-px size-3.5 shrink-0 text-dimmed"
+            aria-hidden="true"
+          />
           {{ t('remoteSync.exportDialog.notReady', { count: notReadyCount }, notReadyCount) }}
         </p>
       </div>

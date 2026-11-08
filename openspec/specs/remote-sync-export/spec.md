@@ -167,24 +167,31 @@ The browser SHALL orchestrate remote reads, at most one remote creation per incl
 
 ### Requirement: REQ-229 Export runs through a review, running and report dialog
 
-Activating Export SHALL open a confirmation titled with the included task count, listing only the included
-tasks, each with its title to send, duration and destination (Tracker, issue, activity), then the total.
-Export SHALL include every Ready row with non-zero duration and a selected activity. No remote request SHALL
-occur before confirmation. Cancelling SHALL close the dialog without changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
+Activating Export SHALL open a confirmation titled with the included task count, naming the exported day,
+then listing only the included tasks, each with its title to send, duration and destination (Tracker,
+issue, activity), and their total when there is more than one. Export SHALL include every Ready row with non-zero duration and a
+selected activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
 
 #### Scenario: Review lists exactly what will be sent
 - **WHEN** Export is activated with eligible rows
-- **THEN** the dialog SHALL list each included title, destination and duration plus their total
+- **THEN** the dialog SHALL open with an introduction naming the day ("Time export for November 7,
+  2026") beside an icon chip, then list each included title, destination and duration, plus their
+  total when more than one task is included
+
+#### Scenario: One included task shows no separate total
+- **WHEN** exactly one task is included
+- **THEN** the dialog SHALL show its duration once, on its row, without a separate total
 
 #### Scenario: Skipped tasks are stated with reasons
 - **WHEN** the day contains ineligible tasks
 - **THEN** their durable row states SHALL state why they are excluded, and the dialog SHALL only count the
-  tasks neither included nor Sent ("3 other tasks of this day are not ready to export") without listing them
+  tasks neither included nor Sent, naming the kinds of reason briefly ("3 other tasks of this day are
+  not ready to export: they have no activity chosen or cannot be sent"), without listing them
 
 #### Scenario: Export is unavailable with a stated reason
 - **WHEN** Export is disabled
-- **THEN** it SHALL remain the dimmed primary action with a short translated reason beside it and on its
-  focusable host
+- **THEN** it SHALL stay in place in a neutral disabled style (not the primary colour), so it reads as
+  unavailable in both themes, with a short translated reason under it and on its focusable host
 
 #### Scenario: Nothing is sent before confirmation
 - **WHEN** the confirmation is open

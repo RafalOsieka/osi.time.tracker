@@ -302,9 +302,12 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
     state: setUp,
     ready: [SETUP_ACTIVITY, SETUP_IDLE],
     prepare: async (page) => {
+      // Once set up, the add forms sit behind their "Add" buttons.
+      await page.getByTestId('new-website').click();
       await page.getByTestId('website-origin').fill('http://time.kowalska.example');
       await page.getByTestId('add-website').click();
-      await page.locator('#website-origin-error span').waitFor();
+      await page.getByTestId('website-origin-error').waitFor();
+      await page.getByTestId('new-destination').click();
       await page.getByTestId('destination-url').fill('http://op.initech.example');
       await page.getByTestId('http-warning').waitFor();
     },

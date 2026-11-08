@@ -26,6 +26,7 @@ describe('SyncExportDialog', () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
+        dateLabel: 'November 7, 2026',
         included: [
           item('a', 'Override for Alpha', 1800, {
             trackerName: 'Acme OpenProject',
@@ -43,6 +44,9 @@ describe('SyncExportDialog', () => {
         stubs: { UModal: { template: '<div><slot name="body" /><slot name="footer" /></div>' } },
       },
     });
+    expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
+      'Time export for November 7, 2026',
+    );
     expect(wrapper.get('[data-testid="remote-sync-export-row-a"]').text()).toContain(
       'Override for Alpha',
     );
@@ -63,6 +67,7 @@ describe('SyncExportDialog', () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
+        dateLabel: 'November 7, 2026',
         included: [item('a', 'Alpha', 1800)],
         toSendSeconds: 1800,
         notReadyCount: 3,
@@ -75,9 +80,11 @@ describe('SyncExportDialog', () => {
       },
     });
     expect(wrapper.get('[data-testid="remote-sync-export-not-ready"]').text()).toBe(
-      '3 other tasks of this day are not ready to export.',
+      '3 other tasks of this day are not ready to export: they have no activity chosen or cannot be sent.',
     );
     expect(wrapper.findAll('[data-testid^="remote-sync-export-row-"]')).toHaveLength(1);
+    // One Task: its row already shows the duration, so no separate total repeats it.
+    expect(wrapper.find('[data-testid="remote-sync-export-dialog-to-send"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -85,6 +92,7 @@ describe('SyncExportDialog', () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
+        dateLabel: 'November 7, 2026',
         included: [item('a', 'Alpha', 1800)],
         toSendSeconds: 1800,
         isRunning: true,

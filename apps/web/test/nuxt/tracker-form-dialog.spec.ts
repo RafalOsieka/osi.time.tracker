@@ -68,7 +68,12 @@ const stubs = {
     inheritAttrs: false,
     template: '<form @submit.prevent="$emit(\'submit\')"><slot /></form>',
   },
-  UFormField: { template: '<div><slot /><slot name="error" /></div>' },
+  // Renders the help line, so a test can find a field's visible help next to its control.
+  UFormField: {
+    props: ['help'],
+    template:
+      '<div><slot /><p v-if="help" data-testid="field-help">{{ help }}</p><slot name="error" /></div>',
+  },
   USelect: SelectStub,
   UCheckbox: {
     props: ['modelValue', 'label'],
@@ -134,16 +139,15 @@ describe('TrackerFormDialog direct browser access', () => {
     }
   });
 
-  it('seeds create with the checkbox enabled and focusable help', async () => {
+  it('seeds create with the checkbox enabled and its help visible beside it', async () => {
     const wrapper = await openDialog(null);
     const checkbox = wrapper.find('[data-testid="tracker-direct-browser-access"] input');
     expect(checkbox.element).toBeInstanceOf(HTMLInputElement);
     if (!(checkbox.element instanceof HTMLInputElement)) throw new Error('checkbox');
     expect(checkbox.element.checked).toBe(true);
-    const help = wrapper.find('[data-testid="tracker-direct-browser-access-help"]');
-    expect(help.exists()).toBe(true);
-    expect(help.attributes('aria-label')).toBe('trackers.directBrowserAccessHelpAria');
-    expect(help.element.closest('[data-tooltip-text]')?.getAttribute('data-tooltip-text')).toBe(
+    // The explanation is a visible help line in the checkbox's own field, not a tooltip.
+    const field = checkbox.element.closest('div');
+    expect(field?.querySelector('[data-testid="field-help"]')?.textContent).toBe(
       'trackers.directBrowserAccessHelp',
     );
     expect(wrapper.find('[data-testid="tracker-extension-status"]').exists()).toBe(false);

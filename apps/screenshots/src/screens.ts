@@ -209,6 +209,9 @@ const FEATURES: Screen[] = [
       await page.fill('[data-testid="remote-issue-picker-query"]', 'release');
       await page.click('[data-testid="remote-issue-picker-submit"]');
       await page.waitForSelector('[data-testid="remote-issue-picker-results"]');
+      // The popover may flip once results arrive, leaving the pointer over another row's issue
+      // menu; park it on the empty canvas below the sidebar's navigation.
+      await page.mouse.move(130, 700);
     },
   },
   {

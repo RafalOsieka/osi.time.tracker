@@ -63,26 +63,29 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
     id: 'tracker',
     header: t('projects.columnTracker'),
     cell: ({ row }) => {
-      const { trackerName, remoteProjectTitle } = row.original;
-      // Local Projects get their own icon in the same slot, so every label starts on one edge.
-      // A remote project scope (REQ-325) follows the tracker name in a quieter tone.
-      return h(
-        'span',
-        { class: ['flex min-w-0 items-center gap-2', trackerName ? 'text-default' : 'text-muted'] },
-        [
-          h(resolveComponent('UIcon'), {
-            name: trackerName ? 'i-lucide-cable' : 'i-lucide-hard-drive',
-            class: 'size-4 shrink-0 text-dimmed',
-            'aria-hidden': 'true',
-          }),
-          h('span', { class: 'truncate' }, [
-            trackerName ?? t('projects.localTrackerLabel'),
-            trackerName && remoteProjectTitle
-              ? h('span', { class: 'text-muted' }, ` · ${remoteProjectTitle}`)
-              : null,
+      const { trackerName, trackerSystemType, remoteProjectTitle } = row.original;
+      // Local Projects get their own icon in the mark's slot, so every label starts on one edge.
+      if (!trackerName || !trackerSystemType) {
+        return h('span', { class: 'flex min-w-0 items-center gap-2 text-muted' }, [
+          h('span', { class: 'inline-flex w-7 shrink-0 justify-center', 'aria-hidden': 'true' }, [
+            h(resolveComponent('UIcon'), { name: 'i-lucide-hard-drive', class: 'size-4' }),
           ]),
-        ],
-      );
+          h('span', { class: 'truncate' }, t('projects.localTrackerLabel')),
+        ]);
+      }
+      // The Tracker's type mark, as on Trackers, then its remote scope (REQ-325) in a quieter
+      // tone, or "whole tracker" when unscoped, so a missing scope never looks like missing data.
+      return h('span', { class: 'flex min-w-0 items-center gap-2' }, [
+        h(resolveComponent('TrackerTypeMark'), { systemType: trackerSystemType }),
+        h('span', { class: 'truncate', 'data-testid': `project-tracker-${row.original.id}` }, [
+          trackerName,
+          h(
+            'span',
+            { class: 'text-muted' },
+            ` · ${remoteProjectTitle ?? t('projects.remoteProjectPlaceholder')}`,
+          ),
+        ]),
+      ]);
     },
   },
   {
@@ -126,7 +129,10 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
 
 <template>
   <div data-testid="projects-page" class="grid gap-6">
-    <!-- In the empty state the card's call to action is the page's one primary button. -->
+    <!--
+      In the empty state the card's call to action is the page's one primary button; it names the
+      action exactly as the quiet header button does. The chip reuses the navigation's glyph.
+    -->
     <TableHeader
       :title="t('projects.pageTitle')"
       :new-label="t('projects.newButton')"
@@ -137,10 +143,10 @@ const columns = computed<TableColumn<ProjectDto>[]>(() => [
 
     <EmptyState
       v-if="isEmpty"
-      icon="i-lucide-folder-kanban"
+      icon="i-lucide-briefcase"
       :title="t('projects.emptyStateTitle')"
       :message="t('projects.emptyState')"
-      :cta-label="t('projects.emptyStateCta')"
+      :cta-label="t('projects.newButton')"
       testid="projects-empty-state"
       @create="openCreate"
     />

@@ -26,13 +26,14 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
       name: projects.name,
       trackerId: projects.trackerId,
       trackerName: trackers.name,
+      trackerSystemType: trackers.systemType,
       remoteProjectId: projects.remoteProjectId,
       remoteProjectTitle: projects.remoteProjectTitle,
       recentSeconds: recent.seconds,
       createdAt: projects.createdAt,
     })
     .from(projects)
-    // Keep trackerName even when the tracker is soft-deleted (REQ-084).
+    // Keep the tracker's name and system even when the tracker is soft-deleted (REQ-084).
     .leftJoin(trackers, eq(trackers.id, projects.trackerId))
     .leftJoin(recent, eq(recent.projectId, projects.id))
     .where(and(...conditions))
@@ -43,6 +44,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
     name: row.name,
     trackerId: row.trackerId,
     trackerName: row.trackerName ?? null,
+    trackerSystemType: row.trackerSystemType ?? null,
     remoteProjectId: row.remoteProjectId,
     remoteProjectTitle: row.remoteProjectTitle,
     recentTrackedSeconds: Number(row.recentSeconds ?? 0),

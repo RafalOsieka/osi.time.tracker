@@ -78,7 +78,7 @@ Matching SHALL compare **normalized** forms: lowercased, without diacritics (Pol
 - **THEN** they SHALL be ordered by name ascending
 
 ### Requirement: REQ-374 Picking a project sets the project chip
-Picking a project SHALL remove the `@` and query from the text, collapse leftover whitespace, and set the input's **project chip**: one project, named inside the input before the text, with a remove control; a new pick replaces it. A set chip SHALL limit suggestions to its project (`GET /api/tasks?projectId=`) and make the create option read "{title} (new task in {project})". Picking a task suggestion SHALL set the chip to its project, or clear it. Editing the text SHALL keep the chip.
+Picking a project SHALL remove the `@` and query from the text, collapse leftover whitespace, and set the input's **project chip**: one project, named inside the input before the text (in the top-bar timer, right after it), with a remove control; a new pick replaces it. A set chip SHALL limit suggestions to its project (`GET /api/tasks?projectId=`) and make the create option read "{title} (new task in {project})". Picking a task suggestion SHALL set the chip to its project, or clear it. Editing the text SHALL keep the chip.
 
 #### Scenario: Picked token is removed
 - **WHEN** the user types `fix login @hel` and picks "Helios"

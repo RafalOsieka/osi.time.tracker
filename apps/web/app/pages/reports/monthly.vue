@@ -249,9 +249,13 @@ function flaggedDuration(input: {
   return h(
     'span',
     {
-      // Zeros recede by weight as well as the dimmed tone, so the grid stops reading as a sea of
-      // zeros while staying legible.
-      class: input.dimZero && input.zero ? 'font-light text-dimmed dark:font-[250]' : undefined,
+      // Zeros recede by weight and by a quiet neutral grey one step below the dimmed tone (about
+      // 4.7:1 in both themes, still AA), so the grid stops reading as a sea of zeros. Dark mode
+      // uses a near-neutral slate: the ramp's bluer grey read as accent at this size.
+      class:
+        input.dimZero && input.zero
+          ? 'font-light text-neutral-500 dark:font-[270] dark:text-[oklch(64%_0.012_262)]'
+          : undefined,
       'data-testid': input.testId,
     },
     input.text,

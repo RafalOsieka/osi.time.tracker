@@ -126,6 +126,7 @@ function scopedProject(overrides: Partial<ProjectDto> = {}): ProjectDto {
     name: 'Scoped Project',
     trackerId: tracker.id,
     trackerName: tracker.name,
+    trackerSystemType: 'redmine',
     remoteProjectId: '3',
     remoteProjectTitle: 'Spike Root',
     recentTrackedSeconds: 0,

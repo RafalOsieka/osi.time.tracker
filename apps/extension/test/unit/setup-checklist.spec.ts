@@ -18,21 +18,56 @@ function stepState(html: string, step: string): string | undefined {
 }
 
 describe('setup checklist', () => {
-  it('starts at the website step on a fresh install', async () => {
+  it('starts at the website step on a fresh install, with the action for that step', async () => {
     useExtensionI18n().setLocale('en');
-    const html = await renderWithUi(SetupChecklist, { websiteDone: false, trackerDone: false });
+    const html = await renderWithUi(SetupChecklist, {
+      websiteDone: false,
+      trackerDone: false,
+      mode: 'popup',
+    });
     expect(stepState(html, 'website')).toBe('current');
     expect(stepState(html, 'tracker')).toBe('todo');
     expect(stepState(html, 'direct')).toBe('info');
-    expect(html).toMatch(/Current step:<\/span>\s*1\. Approve your OSI website address\./);
+    expect(html).toMatch(/Current step:<\/span>\s*Approve your OSI website address/);
+    expect(html).toContain('data-testid="checklist-action-website"');
+    expect(html).not.toContain('data-testid="checklist-action-tracker"');
+    expect(html).toContain('connects OSI to your trackers through this browser');
   });
 
   it('moves to the tracker step once a website is approved', async () => {
     useExtensionI18n().setLocale('pl');
-    const html = await renderWithUi(SetupChecklist, { websiteDone: true, trackerDone: false });
+    const html = await renderWithUi(SetupChecklist, {
+      websiteDone: true,
+      trackerDone: false,
+      mode: 'setup',
+    });
     expect(stepState(html, 'website')).toBe('done');
     expect(stepState(html, 'tracker')).toBe('current');
     expect(html).toMatch(/data-testid="checklist-tracker"[^>]*aria-current="step"/);
-    expect(html).toContain('Zatwierdź tracker dla tej witryny.');
+    expect(html).toContain('Zatwierdź tracker dla tej witryny');
+    expect(html).toContain('data-testid="checklist-action-tracker"');
+  });
+
+  it('leaves the website step to the popup offer when one is shown', async () => {
+    useExtensionI18n().setLocale('en');
+    const html = await renderWithUi(SetupChecklist, {
+      websiteDone: false,
+      trackerDone: false,
+      mode: 'popup',
+      websiteActionHidden: true,
+    });
+    expect(html).not.toContain('data-testid="checklist-action-website"');
+  });
+
+  it('quotes the OSI setting exactly as the web app labels it', async () => {
+    useExtensionI18n().setLocale('pl');
+    const html = await renderWithUi(SetupChecklist, {
+      websiteDone: false,
+      trackerDone: false,
+      mode: 'setup',
+    });
+    expect(html.replaceAll(' ', ' ')).toContain(
+      '„Zezwalaj na bezpośrednie połączenie z przeglądarki”',
+    );
   });
 });

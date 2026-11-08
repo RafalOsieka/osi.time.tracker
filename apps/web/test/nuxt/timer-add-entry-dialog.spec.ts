@@ -385,7 +385,7 @@ describe('TimerAddEntryDialog', () => {
       start: parseTime('09:15'),
       end: parseTime('10:45'),
     });
-    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe('01:30:00');
+    expect(wrapper.find('[data-testid="add-entry-duration"]').text()).toBe('1:30');
 
     await findTimesStub(wrapper).vm.$emit('update:modelValue', {
       start: parseTime('11:00'),

@@ -30,6 +30,7 @@ type Project = {
   name: string;
   trackerId: string | null;
   trackerName: string | null;
+  trackerSystemType: 'openproject' | 'redmine' | null;
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   recentTrackedSeconds: number;
@@ -209,7 +210,7 @@ describe('projects page', () => {
     expect(wrapper.find('[data-testid="new-project-button"]').exists()).toBe(true);
   });
 
-  it('shows the cached remote project title next to the tracker name, and omits it when unscoped', async () => {
+  it('shows the tracker type mark and name, then the remote scope or the whole tracker', async () => {
     mockTrackers = [{ id: 't1', name: 'Acme', createdAt: new Date().toISOString() }];
     mockProjects = [
       {
@@ -217,6 +218,7 @@ describe('projects page', () => {
         name: 'Scoped',
         trackerId: 't1',
         trackerName: 'Acme',
+        trackerSystemType: 'openproject',
         remoteProjectId: '3',
         remoteProjectTitle: 'Spike Root',
         recentTrackedSeconds: 0,
@@ -227,6 +229,7 @@ describe('projects page', () => {
         name: 'Unscoped',
         trackerId: 't1',
         trackerName: 'Acme',
+        trackerSystemType: 'openproject',
         remoteProjectId: null,
         remoteProjectTitle: null,
         recentTrackedSeconds: 0,
@@ -241,8 +244,11 @@ describe('projects page', () => {
     await flushPromises();
 
     const rows = wrapper.findAll('[data-testid="projects-row"]');
-    expect(rows[0]?.text()).toBe('Scoped Acme · Spike Root');
-    expect(rows[1]?.text()).toBe('Unscoped Acme');
+    expect(rows[0]?.find('[data-testid="tracker-type-mark"]').text()).toBe('OP');
+    expect(rows[0]?.find('[data-testid="project-tracker-1"]').text()).toBe('Acme · Spike Root');
+    expect(rows[1]?.find('[data-testid="project-tracker-2"]').text()).toBe(
+      'Acme · projects.remoteProjectPlaceholder',
+    );
   });
 
   it('does not show empty state while the projects list is still loading', async () => {
@@ -266,6 +272,7 @@ describe('projects page', () => {
         name: 'Alpha',
         trackerId: 't1',
         trackerName: 'Acme',
+        trackerSystemType: 'openproject',
         remoteProjectId: null,
         remoteProjectTitle: null,
         recentTrackedSeconds: 0,
@@ -276,6 +283,7 @@ describe('projects page', () => {
         name: 'Beta',
         trackerId: 't1',
         trackerName: 'Acme',
+        trackerSystemType: 'openproject',
         remoteProjectId: null,
         remoteProjectTitle: null,
         recentTrackedSeconds: 0,
@@ -301,6 +309,7 @@ describe('projects page', () => {
         name: 'Alpha',
         trackerId: null,
         trackerName: null,
+        trackerSystemType: null,
         remoteProjectId: null,
         remoteProjectTitle: null,
         recentTrackedSeconds: 0,
@@ -331,6 +340,7 @@ describe('projects page', () => {
         name: 'Orphaned',
         trackerId: 'deleted-tracker',
         trackerName: 'Deleted Tracker',
+        trackerSystemType: 'redmine',
         remoteProjectId: null,
         remoteProjectTitle: null,
         recentTrackedSeconds: 0,
@@ -355,6 +365,7 @@ describe('projects page', () => {
         name: 'Orphaned',
         trackerId: 'deleted-tracker',
         trackerName: 'Deleted Tracker',
+        trackerSystemType: 'redmine',
         remoteProjectId: null,
         remoteProjectTitle: null,
         recentTrackedSeconds: 0,
@@ -492,6 +503,7 @@ describe('projects page delete', () => {
     name: 'Alpha',
     trackerId: null,
     trackerName: null,
+    trackerSystemType: null,
     remoteProjectId: null,
     remoteProjectTitle: null,
     recentTrackedSeconds: 0,

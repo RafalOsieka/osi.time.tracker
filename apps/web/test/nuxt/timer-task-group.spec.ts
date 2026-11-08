@@ -247,6 +247,7 @@ describe('TimerTaskGroup', () => {
           name: 'Current project',
           trackerId: 'c',
           trackerName: null,
+          trackerSystemType: null,
           remoteProjectId: null,
           remoteProjectTitle: null,
           recentTrackedSeconds: 0,
@@ -333,7 +334,7 @@ describe('TimerTaskGroup', () => {
     const wrapper = await mount({ tracker: null });
     const disabled = wrapper.find('[data-testid="timer-group-remote-issue-disabled-task-1"]');
     expect(disabled.exists()).toBe(true);
-    expect(disabled.classes()).toContain('w-6');
+    expect(disabled.classes()).toContain('size-7');
     expect(disabled.classes()).toContain('text-dimmed');
     expect(disabled.attributes('disabled')).toBeDefined();
     expect(disabled.attributes('aria-label')).toBe('timerView.remoteIssue.unavailableNoTracker');

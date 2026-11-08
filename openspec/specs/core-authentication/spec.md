@@ -133,7 +133,7 @@ When seeding is enabled and `BOOTSTRAP_USER_TIMEZONE` is neither `UTC` nor a sup
 - **THEN** the system SHALL skip seeding without error, even if `BOOTSTRAP_USER_TIMEZONE` is invalid
 
 ### Requirement: REQ-013 Client-side validation of the login form
-The login form SHALL validate credentials client-side with the same schema the server uses before submitting, so an empty email or password is caught without a request, showing the `errors.auth.credentialsRequired` key the server returns. The server SHALL stay authoritative. A failed server login SHALL render a translated form-level error announced to assistive technology, with both inputs marked `aria-invalid` and associated via `aria-describedby`.
+The login form SHALL validate credentials client-side with the same schema the server uses before submitting, so an empty email or password is caught without a request, showing the `errors.auth.credentialsRequired` key the server returns. The server SHALL stay authoritative. A failed server login SHALL render a translated form-level error announced to assistive technology, with both inputs marked `aria-invalid` and associated via `aria-describedby`. The password SHALL have a show/hide toggle.
 
 #### Scenario: Empty credentials blocked client-side
 - **WHEN** the user submits the login form with an empty email or password
@@ -142,3 +142,7 @@ The login form SHALL validate credentials client-side with the same schema the s
 #### Scenario: Failed server login shown as form-level error
 - **WHEN** submitted credentials pass client-side validation but the server rejects them
 - **THEN** the translated server error SHALL render as an announced form-level error and no session SHALL be established
+
+#### Scenario: Password can be shown before submitting
+- **WHEN** the user activates the toggle button in the password field
+- **THEN** the password SHALL show as plain text until the user activates it again, and the toggle SHALL carry a translated accessible name and expose its state through `aria-pressed`

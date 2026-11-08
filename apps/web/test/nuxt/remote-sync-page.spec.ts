@@ -12,6 +12,7 @@ import type {
   RemoteSyncExportProvenanceDto,
 } from '../../shared/types/remote-sync-day';
 import type { AppConfirmOptions } from '../../app/composables/use-app-confirm';
+import type { TimeEntryDto } from '../../shared/types/time-entry';
 
 const csrfFetchMock = vi.hoisted(() => vi.fn());
 const dollarFetchMock = vi.hoisted(() => vi.fn());
@@ -1350,6 +1351,54 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-total-in-tracker"]').exists()).toBe(true);
   });
 
+  it('adds the running entry to the day total and splits the caption into completed and running', async () => {
+    dayData = makeDay({
+      rows: [
+        {
+          taskId: 'task-running',
+          taskName: 'Running',
+          projectName: 'Local Project',
+          trackerName: null,
+          remoteProjectId: null,
+          remoteProjectTitle: null,
+          // The server counts the running entry into the task's total; only completed entries
+          // are listed.
+          totalSeconds: 3600 + 1800,
+          config: null,
+          issueRef: null,
+          entries: [entry({ id: 'e-running-done', durationSeconds: 3600 })],
+          exports: [],
+        },
+      ],
+    });
+    dollarFetchMock.mockResolvedValue(dayData);
+    const running = useState<TimeEntryDto | null>('timer-running-entry');
+    const elapsed = useState<number>('timer-elapsed-seconds');
+    running.value = {
+      id: 'e-running-now',
+      taskId: 'task-running',
+      taskName: 'Running',
+      projectId: null,
+      projectName: null,
+      startedAt: '2026-03-15T10:00:00.000Z',
+      stoppedAt: null,
+    };
+    elapsed.value = 1800;
+    try {
+      const wrapper = await mount();
+      expect(wrapper.find('[data-testid="remote-sync-total-day"]').text()).toContain('01:30:00');
+      const parts = wrapper.get('[data-testid="remote-sync-total-day-parts"]').text();
+      expect(parts).toContain('01:00:00');
+      expect(parts).toContain('00:30:00');
+      expect(wrapper.get('[data-testid="remote-sync-tracked-task-running"]').text()).toBe(
+        '01:00:00',
+      );
+    } finally {
+      running.value = null;
+      elapsed.value = 0;
+    }
+  });
+
   it('counts a Ready row in the in-tracker estimate before its activity is chosen', async () => {
     dayData = makeDay({
       rows: [
@@ -1427,7 +1476,8 @@ describe('SyncDayHeader', () => {
     return mountSuspended(SyncDayHeader, {
       props: {
         date: '2026-03-15',
-        dateLabel: 'March 15, 2026',
+        dateLabel: 'Sunday, March 15, 2026',
+        dateLabelShort: 'Sun, Mar 15, 2026',
         exportLabel: 'Export',
         exportDisabled: false,
       },

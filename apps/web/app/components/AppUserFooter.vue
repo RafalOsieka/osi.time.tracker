@@ -26,6 +26,13 @@ const avatarInitial = computed(() => {
 const route = useRoute();
 const onProfile = computed(() => route.path === '/profile');
 
+/**
+ * While the menu is open the trigger stays pressed: in light mode it rises to a white tile with a
+ * control outline over the slate sidebar (the menu's own surface), in dark mode the accented layer.
+ */
+const PRESSED_CLASS =
+  'data-[state=open]:bg-default data-[state=open]:ring data-[state=open]:ring-accented dark:data-[state=open]:bg-accented/70 dark:data-[state=open]:ring-0';
+
 const avatar = computed<AvatarProps>(() => ({
   alt: primaryLabel.value || undefined,
   text: avatarInitial.value,
@@ -131,8 +138,8 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         :description="secondaryEmail || undefined"
         :avatar="avatar"
         size="md"
-        class="w-full min-w-0 cursor-pointer rounded-md px-1 py-1 text-start hover:bg-elevated data-[state=open]:bg-accented/70"
-        :class="onProfile && 'bg-primary-100/80 dark:bg-primary/12'"
+        class="w-full min-w-0 cursor-pointer rounded-md px-1 py-1 text-start hover:bg-elevated"
+        :class="[PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
         data-testid="app-user-footer-trigger"
         :ui="{
           root: 'w-full min-w-0',
@@ -156,8 +163,8 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         variant="ghost"
         square
         :avatar="avatar"
-        class="p-1 data-[state=open]:bg-accented/70"
-        :class="onProfile && 'bg-primary-100/80 dark:bg-primary/12'"
+        class="p-1"
+        :class="[PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
         :ui="{ leadingAvatarSize: 'sm' }"
         :aria-label="primaryLabel || t('layout.logoutButton')"
         data-testid="app-user-footer-trigger"

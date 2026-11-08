@@ -13,6 +13,8 @@ const state = reactive<LoginDto>({ email: '', password: '' });
 const error = ref('');
 const pending = ref(false);
 const clientErrorKey = ref('');
+/** Whether the password shows as plain text (the trailing eye toggle). */
+const passwordVisible = ref(false);
 
 async function onSubmit(event: FormSubmitEvent<LoginDto>) {
   error.value = '';
@@ -79,14 +81,29 @@ const errorText = computed(
         <UInput
           id="password"
           v-model="state.password"
-          type="password"
+          :type="passwordVisible ? 'text' : 'password'"
           autocomplete="current-password"
           size="lg"
           class="w-full"
+          :ui="{ trailing: 'pe-1' }"
           data-testid="password"
           :aria-invalid="showError || undefined"
           :aria-describedby="showError ? 'login-error' : undefined"
-        />
+        >
+          <template #trailing>
+            <UButton
+              color="neutral"
+              variant="link"
+              size="sm"
+              :icon="passwordVisible ? 'i-lucide-eye-off' : 'i-lucide-eye'"
+              :aria-label="t('auth.showPassword')"
+              :aria-pressed="passwordVisible"
+              aria-controls="password"
+              data-testid="password-visibility-toggle"
+              @click="passwordVisible = !passwordVisible"
+            />
+          </template>
+        </UInput>
       </UFormField>
 
       <UButton

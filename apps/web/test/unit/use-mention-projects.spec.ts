@@ -13,6 +13,7 @@ function project(id: string, name: string): ProjectDto {
     name,
     trackerId: null,
     trackerName: null,
+    trackerSystemType: null,
     remoteProjectId: null,
     remoteProjectTitle: null,
     recentTrackedSeconds: 0,

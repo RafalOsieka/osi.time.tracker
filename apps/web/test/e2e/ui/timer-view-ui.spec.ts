@@ -851,14 +851,14 @@ describeTimerViewUI('timer view UI flow', async () => {
       await page.waitForSelector(`[data-testid="timer-entry-${running.id}"]`, { timeout: 10000 });
 
       // The reserved slot is the fixed-width wrapper the field sits in, not
-      // the field's own box — a running row's field shares that wrapper with
+      // the field's own box: a running row's field shares that wrapper with
       // a separator and the "now" label, so it is narrower on its own.
       const stoppedSlotWidth = await page
         .locator(`[data-testid="timer-entry-times-${seeded.id}"]`)
-        .evaluate((el) => el.parentElement?.getBoundingClientRect().width);
+        .evaluate((el) => el.closest('[data-entry-times-slot]')?.getBoundingClientRect().width);
       const runningSlotWidth = await page
         .locator(`[data-testid="timer-entry-times-${running.id}"]`)
-        .evaluate((el) => el.parentElement?.getBoundingClientRect().width);
+        .evaluate((el) => el.closest('[data-entry-times-slot]')?.getBoundingClientRect().width);
       expect(runningSlotWidth).toBeCloseTo(stoppedSlotWidth ?? -1, 0);
     } finally {
       // Never leak a running entry into a later test, even if an assertion above throws.

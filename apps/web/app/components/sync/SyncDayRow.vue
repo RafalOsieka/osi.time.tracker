@@ -35,6 +35,7 @@ const {
   showLinkPicker,
   pickerConfig,
   pickerScope = null,
+  dayLabel = undefined,
   comment,
   editingTitle,
   trackedLabel,
@@ -65,6 +66,8 @@ const {
   pickerConfig: TrackerDto | null;
   /** The owning project's remote project scope (REQ-328), if any. */
   pickerScope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
+  /** The reviewed day without its weekday ("7 listopada 2026"), named by the picker's context. */
+  dayLabel?: string;
   comment: string;
   editingTitle: boolean;
   trackedLabel: string;
@@ -117,13 +120,11 @@ const suggestion = useExtensionSuggestion(() => emit('retry-activity'));
 const hasGuidance = computed(() => activityError && !!extensionActivityErrorKey.value);
 
 /**
- * Ready titles read as primary text and show a ghost input on hover, so they look editable
- * without chrome at rest. While activities load they keep that shape, inactive.
+ * Ready titles read as primary text in the quiet editable frame the Timer's time editors use, so
+ * they look editable at rest. While activities load they keep that shape, inactive.
  */
 const titleDisplayClass = computed(() =>
-  canEdit
-    ? 'font-medium text-highlighted rounded-md transition-colors hover:bg-elevated hover:ring hover:ring-inset hover:ring-accented'
-    : 'font-medium text-default',
+  canEdit ? 'font-medium text-highlighted' : 'font-medium text-default',
 );
 /**
  * To send and tracked share the body weight; colour carries the difference (to send in
@@ -133,6 +134,12 @@ const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
   return showEditors ? 'font-normal text-highlighted' : 'font-normal text-muted';
 });
+/**
+ * The to-send editor at rest: the same frame as the title to send (card tone, 3:1 outline),
+ * sized like the duration field it turns into, so the value does not move when editing starts.
+ */
+const TO_SEND_FRAME =
+  'rounded-md bg-default px-1.5 py-1 ring ring-inset ring-accented transition-colors dark:bg-muted';
 
 const rowDeltaTooltip = computed(() => t('remoteSync.rowDeltaTooltip', { delta: deltaLabel }));
 /**
@@ -167,6 +174,48 @@ function onActivityOpen(open: boolean) {
     return;
   }
   activityOpen.value = open;
+}
+
+const activityList = useTemplateRef<HTMLElement>('activityList');
+
+function activityOptionElements(): HTMLElement[] {
+  return [...(activityList.value?.querySelectorAll<HTMLElement>('[role="option"]') ?? [])];
+}
+
+/** Opening the menu focuses the chosen activity (else the first), as a native select does. */
+function onActivityMenuAutoFocus(event: Event) {
+  event.preventDefault();
+  const options = activityOptionElements();
+  (
+    options.find((option) => option.getAttribute('aria-selected') === 'true') ?? options[0]
+  )?.focus();
+}
+
+/** The listbox keys: arrows, Home and End move between options; Enter and Space pick one. */
+function onActivityListKeydown(event: KeyboardEvent) {
+  const options = activityOptionElements();
+  if (options.length === 0) return;
+  const current = options.findIndex((option) => option === document.activeElement);
+  const last = options.length - 1;
+  let next: number;
+  switch (event.key) {
+    case 'ArrowDown':
+      next = current < 0 ? 0 : Math.min(current + 1, last);
+      break;
+    case 'ArrowUp':
+      next = current < 0 ? last : Math.max(current - 1, 0);
+      break;
+    case 'Home':
+      next = 0;
+      break;
+    case 'End':
+      next = last;
+      break;
+    default:
+      return;
+  }
+  event.preventDefault();
+  options[next]?.focus();
 }
 
 function commitActivity(id: string) {
@@ -228,6 +277,7 @@ function onEditToSend() {
         :display-testid="`remote-sync-task-name-${row.taskId}`"
         :input-testid="`remote-sync-comment-${row.taskId}`"
         :display-class="titleDisplayClass"
+        framed
         @edit="emit('edit-title')"
         @update:model-value="(value) => emit('update:comment', value)"
         @commit="emit('commit-title')"
@@ -243,27 +293,35 @@ function onEditToSend() {
     </ColumnCell>
 
     <ColumnCell :columns="columns" col="issue" :narrow="{ col: [3, 4], row: 2 }">
-      <UTooltip
-        v-if="issueTitle && issueId"
-        :text="`#${issueId} ${issueTitle}`"
-        :content="{ side: 'top', align: 'start' }"
-      >
-        <!-- The number leads and never truncates; the title gives way. -->
-        <span
-          class="flex min-w-0 items-baseline gap-1.5 text-sm"
-          :data-testid="`remote-sync-issue-${row.taskId}`"
-        >
-          <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">#{{ issueId }}</span>
-          <span class="truncate" :class="showEditors ? 'text-default' : 'text-muted'">
-            {{ issueTitle }}
+      <!-- The issue, then the Tracker it lives in as a quiet second line: two connections of
+           one type stay distinguishable, and the two lines fit the 44px row. -->
+      <div v-if="issueTitle && issueId" class="grid min-w-0">
+        <UTooltip :text="`#${issueId} ${issueTitle}`" :content="{ side: 'top', align: 'start' }">
+          <!-- The number leads and never truncates; the title gives way. -->
+          <span
+            class="flex min-w-0 items-baseline gap-1.5 text-sm/5"
+            :data-testid="`remote-sync-issue-${row.taskId}`"
+          >
+            <span class="shrink-0 font-mono text-xs tabular-nums text-dimmed">#{{ issueId }}</span>
+            <span class="truncate" :class="showEditors ? 'text-default' : 'text-muted'">
+              {{ issueTitle }}
+            </span>
           </span>
+        </UTooltip>
+        <span
+          v-if="row.trackerName"
+          class="truncate text-xs/4 text-muted"
+          :data-testid="`remote-sync-destination-${row.taskId}`"
+        >
+          {{ row.trackerName }}
         </span>
-      </UTooltip>
+      </div>
       <!-- A flex host, so the inline trigger centres on the row like the issue text does. -->
       <div v-else-if="showLinkPicker && pickerConfig" class="flex items-center">
         <RemoteIssuePicker
           :config="pickerConfig"
           :scope="pickerScope"
+          :day-label="dayLabel"
           :link-label="t('remoteSync.linkAction')"
           :data-testid="`remote-sync-link-${row.taskId}`"
           @link="(payload) => emit('link', payload)"
@@ -307,11 +365,14 @@ function onEditToSend() {
                 </p>
               </template>
             </UPopover>
+            <!-- A small outline button, so the retry reads as a control, not as link text. -->
             <UButton
-              variant="ghost"
+              color="neutral"
+              variant="outline"
               size="xs"
+              icon="i-lucide-refresh-cw"
               class="min-w-0"
-              :ui="{ label: 'truncate' }"
+              :ui="{ label: 'truncate', leadingIcon: 'size-3.5' }"
               :label="
                 t(
                   extensionActivityErrorKey
@@ -356,7 +417,12 @@ function onEditToSend() {
           v-else-if="showEditors"
           :open="activityOpen"
           :modal="false"
-          :content="{ side: 'bottom', align: 'start', sideOffset: 4 }"
+          :content="{
+            side: 'bottom',
+            align: 'start',
+            sideOffset: 4,
+            onOpenAutoFocus: onActivityMenuAutoFocus,
+          }"
           @update:open="onActivityOpen"
         >
           <OverflowTooltip :text="activityDisplayValue">
@@ -386,10 +452,13 @@ function onEditToSend() {
           </OverflowTooltip>
           <template #content>
             <div
-              class="flex max-h-60 min-w-48 flex-col overflow-auto p-1"
+              ref="activityList"
+              tabindex="-1"
+              class="flex max-h-60 min-w-48 flex-col overflow-auto p-1 outline-none"
               role="listbox"
               :aria-label="t('remoteSync.activityLabel')"
               :data-testid="`remote-sync-activity-list-${row.taskId}`"
+              @keydown="onActivityListKeydown"
             >
               <!-- Which tracker the activities come from, so the menu names its source. -->
               <p
@@ -404,7 +473,7 @@ function onEditToSend() {
                 :key="option.id"
                 variant="ghost"
                 color="neutral"
-                class="w-full justify-start"
+                class="w-full justify-start focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
                 :class="option.id === selectedActivityId && 'font-medium text-highlighted'"
                 :ui="{ trailingIcon: 'ms-auto size-4 text-primary' }"
                 role="option"
@@ -448,6 +517,7 @@ function onEditToSend() {
           </span>
           <DurationInput
             v-if="showEditors && editingToSend"
+            class="-me-1.5"
             :model-value="toSendInput"
             :label="t('remoteSync.roundedDurationLabel')"
             :testid="`remote-sync-to-send-input-${row.taskId}`"
@@ -455,11 +525,15 @@ function onEditToSend() {
             @commit="emit('commit-to-send')"
             @cancel="emit('cancel-to-send')"
           />
+          <!-- The frame's padding hangs past the column edge, so the digits keep the edge. -->
           <button
             v-else-if="showEditors"
             type="button"
-            class="-me-1 rounded-sm bg-transparent px-1 font-[inherit] text-[length:inherit] leading-[inherit] transition-colors"
-            :class="canEdit ? 'cursor-pointer hover:bg-elevated' : 'cursor-default'"
+            class="-me-1.5 font-[inherit] text-[length:inherit] leading-4"
+            :class="[
+              TO_SEND_FRAME,
+              canEdit ? 'cursor-pointer hover:bg-elevated' : 'cursor-default',
+            ]"
             :disabled="!canEdit"
             :aria-label="t('remoteSync.roundedDurationLabel')"
             :data-testid="`remote-sync-to-send-${row.taskId}`"

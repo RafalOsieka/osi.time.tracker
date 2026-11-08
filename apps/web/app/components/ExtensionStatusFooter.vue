@@ -7,8 +7,9 @@ import {
 
 interface StatusPresentation {
   label: string;
-  icon: string;
-  iconClass: string;
+  /** A status mark, only where the state matters; a plain statement goes without one. */
+  icon?: string;
+  iconClass?: string;
 }
 
 const { collapsed = false } = defineProps<{ collapsed?: boolean }>();
@@ -68,15 +69,9 @@ const hasRequiredTracker = computed(() =>
   orderedTrackers.value.some((tracker) => !tracker.directBrowserAccess),
 );
 
-/** The one global statement when no Tracker needs the extension; each Tracker row adds its mode. */
-const notRequiredSummary = computed((): StatusPresentation => ({
-  label: t('layout.extensionStatus.notRequiredSummary'),
-  icon: 'i-lucide-globe',
-  iconClass: 'text-muted',
-}));
-
 const websiteStatus = computed((): StatusPresentation => {
-  if (!hasRequiredTracker.value) return notRequiredSummary.value;
+  // The one plain statement when no Tracker needs the extension; each Tracker row adds its mode.
+  if (!hasRequiredTracker.value) return { label: t('layout.extensionStatus.notRequiredSummary') };
   const presentations = {
     checking: {
       label: t('layout.extensionStatus.checking'),
@@ -126,13 +121,8 @@ function destinationStatus(tracker: {
   directBrowserAccess: boolean;
   destinationApproved: boolean | null;
 }): StatusPresentation {
-  if (tracker.directBrowserAccess) {
-    return {
-      label: t('layout.extensionStatus.destinationDirect'),
-      icon: 'i-lucide-globe',
-      iconClass: 'text-muted',
-    };
-  }
+  // A direct connection is not a state to watch, so it reads as plain text without a mark.
+  if (tracker.directBrowserAccess) return { label: t('layout.extensionStatus.destinationDirect') };
   if (tracker.destinationApproved === true) {
     return {
       label: t('layout.extensionStatus.destinationApproved'),
@@ -175,7 +165,7 @@ function openDetails() {
       :open-delay="50"
       :close-delay="200"
       class="w-full min-w-0"
-      :content="{ side: 'right', align: 'end', sideOffset: 12 }"
+      :content="{ side: 'right', align: 'end', sideOffset: 24 }"
       :ui="{ content: 'max-w-80 p-3' }"
     >
       <UButton
@@ -232,8 +222,13 @@ function openDetails() {
             <span class="min-w-0">{{ t('layout.extensionStatus.title') }}</span>
           </h2>
 
-          <p class="m-0 flex items-start gap-2 text-sm" data-testid="extension-status-website">
+          <p
+            class="m-0 flex items-start gap-2 text-sm"
+            :class="websiteStatus.icon ? undefined : 'text-muted'"
+            data-testid="extension-status-website"
+          >
             <span
+              v-if="websiteStatus.icon"
               class="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
             >
               <UIcon :name="websiteStatus.icon" class="size-4" :class="websiteStatus.iconClass" />
@@ -254,18 +249,19 @@ function openDetails() {
               :data-testid="`extension-status-destination-${tracker.id}`"
               :data-required="tracker.required ? 'required' : 'optional'"
             >
-              <span
-                class="mt-0.5 inline-flex size-4 shrink-0 items-center justify-center overflow-hidden"
-              >
-                <UIcon
-                  :name="tracker.status.icon"
-                  class="size-4"
-                  :class="tracker.status.iconClass"
-                />
-              </span>
+              <!-- The Tracker's type mark gives each row its identity; status marks sit by the text. -->
+              <TrackerTypeMark :system-type="tracker.destination.provider" class="mt-px" />
               <div class="grid min-w-0 gap-0.5">
                 <p class="m-0 truncate text-sm">{{ tracker.name }}</p>
-                <p class="m-0 text-sm text-muted">{{ tracker.status.label }}</p>
+                <p class="m-0 flex items-start gap-1.5 text-sm text-muted">
+                  <UIcon
+                    v-if="tracker.status.icon"
+                    :name="tracker.status.icon"
+                    class="mt-0.5 size-4 shrink-0"
+                    :class="tracker.status.iconClass"
+                  />
+                  <span class="min-w-0">{{ tracker.status.label }}</span>
+                </p>
                 <ExtensionApprovalRequest
                   v-if="tracker.canRequest"
                   :state="suggestion.states.value[suggestionKey(tracker.destination)]"

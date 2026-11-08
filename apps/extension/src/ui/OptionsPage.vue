@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted } from 'vue';
+import { computed, nextTick, onMounted, shallowRef } from 'vue';
 import UAlert from '@nuxt/ui/components/Alert.vue';
 import UButton from '@nuxt/ui/components/Button.vue';
-import UFormField from '@nuxt/ui/components/FormField.vue';
 import USelect from '@nuxt/ui/components/Select.vue';
 import { useToast } from '@nuxt/ui/composables/useToast';
 import { ApprovalService } from '../approvals/approvals.js';
@@ -18,25 +17,28 @@ import { reconcileWebsiteContentScripts } from '../content/registration.js';
 import { SuggestionService, createChromeSuggestionStore } from '../suggestions/suggestions.js';
 import BrandMark from './BrandMark.vue';
 import DestinationApprovals from './DestinationApprovals.vue';
+import { errorTitleKey, missingAccessAlert } from './alerts.js';
+import { missingAccessItems } from './extension-status.js';
 import SetupChecklist from './SetupChecklist.vue';
 import SuggestionList from './SuggestionList.vue';
-import { readSetupFocus } from './open-setup.js';
+import { readSetupFocus, type SetupStep } from './open-setup.js';
 import WebsiteApprovals from './WebsiteApprovals.vue';
 
 const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const toast = useToast();
 const suggestionService = new SuggestionService(createChromeSuggestionStore(), service);
-/** A website or suggestion the popup handed over for approval (design D1). */
+/** What the popup handed over: a website, a suggestion, a step's form or a restore (design D1). */
 const focus = readSetupFocus(location.search);
 const editor = useApprovalsEditor(service, {
   suggestions: suggestionService,
-  onOutcome: (messageKey) =>
+  onOutcome: (messageKey, params) =>
     toast.add({
-      title: t.value(messageKey),
+      title: t.value(messageKey, params),
       color: 'success',
       icon: 'i-lucide-circle-check',
       duration: 4000,
+      progress: false,
     }),
   // Read inside the shared lock so another setup tab cannot apply an older script list last.
   reconcile: () =>
@@ -90,61 +92,107 @@ const version = chrome.runtime.getManifest().version;
 const themeIcon = computed(() => (theme.value === 'dark' ? 'i-lucide-moon' : 'i-lucide-sun'));
 const setupComplete = computed(() => websites.value.length > 0 && destinations.value.length > 0);
 const disabled = computed(() => busy.value || !loaded.value);
+/** Saved settings could not be read: nothing below may pose as an empty configuration. */
+const unreadable = computed(() => errorKey.value === 'approvals.loadFailed' && !loaded.value);
+
+/** Add forms expanded on request; each one is always open while its list is empty. */
+const websiteFormOpen = shallowRef(focus.website !== undefined);
+const destinationFormOpen = shallowRef(focus.step === 'tracker');
+
+// A completed approval folds its form away again; the editor clears the field once it saved.
+async function submitWebsite(): Promise<void> {
+  await addWebsite();
+  if (websiteOrigin.value === '' && !websiteErrorKey.value && !errorKey.value) {
+    websiteFormOpen.value = false;
+  }
+}
+
+async function submitDestination(): Promise<void> {
+  await addDestination();
+  if (destinationUrl.value === '' && !destinationErrorKey.value && !errorKey.value) {
+    destinationFormOpen.value = false;
+  }
+}
+
+const lostAccess = computed(() =>
+  missingAccessItems(websites.value, destinations.value, missingOrigins.value),
+);
+const accessAlert = computed(() => missingAccessAlert(lostAccess.value, 'setup', t.value));
+/** One lost approval is restored right from the alert; several are restored row by row. */
+const restorable = computed(() => lostAccess.value.length === 1);
+
+async function restoreOnly(): Promise<void> {
+  const [only] = lostAccess.value;
+  if (!only) return;
+  if (only.kind === 'website') await restoreWebsite(only.origin);
+  else await restoreDestination(only.approval);
+}
+
+/** Moves focus to a field or control once it is on the page. */
+async function focusTestId(testId: string): Promise<void> {
+  await nextTick();
+  document.querySelector<HTMLElement>(`[data-testid="${CSS.escape(testId)}"]`)?.focus();
+}
+
+function goToStep(step: SetupStep): void {
+  if (step === 'tracker') destinationFormOpen.value = true;
+  void focusTestId(step === 'website' ? 'website-origin' : 'destination-url');
+}
 
 onMounted(async () => {
   if (focus.website) websiteOrigin.value = focus.website;
   await refresh();
-  if (!focus.website) return;
-  // The popup handed this website over: the approve click here runs the permission prompt.
-  await nextTick();
-  document.querySelector<HTMLElement>('[data-testid="add-website"]')?.focus();
+  // The popup handed this over: the click here runs the permission prompt.
+  if (focus.website) await focusTestId('add-website');
+  else if (focus.step) goToStep(focus.step);
+  else if (focus.restore) await focusTestId(`restore-${focus.restore}`);
 });
 </script>
 
 <template>
   <main
-    class="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 text-sm text-default"
+    class="mx-auto flex max-w-2xl flex-col gap-6 px-4 pt-6 pb-12 text-sm text-default"
     :aria-busy="busy"
   >
-    <header class="flex flex-wrap items-end justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <BrandMark :size="40" />
-        <div class="flex flex-col">
-          <h1 class="text-xl font-semibold text-highlighted">{{ t('app.optionsTitle') }}</h1>
-          <span class="text-[13px] text-muted">
-            OSI Time Tracker
-            <span class="before:me-1 before:content-['·']">{{ `v${version}` }}</span>
-          </span>
-        </div>
+    <div class="flex items-center justify-between gap-4 border-b border-default pb-4">
+      <div class="flex items-center gap-2.5">
+        <BrandMark :size="24" />
+        <span class="text-sm font-semibold text-highlighted">OSI Time Tracker</span>
+        <span class="text-xs text-muted tabular-nums">{{ `v${version}` }}</span>
       </div>
       <div class="flex gap-2">
-        <UFormField :label="t('app.language')" name="language" size="sm">
-          <USelect
-            id="language"
-            :model-value="locale"
-            :items="languageItems"
-            value-key="value"
-            icon="i-lucide-languages"
-            size="sm"
-            class="w-36"
-            data-testid="language"
-            @update:model-value="setLocale"
-          />
-        </UFormField>
-        <UFormField :label="t('app.theme')" name="theme" size="sm">
-          <USelect
-            id="theme"
-            :model-value="theme"
-            :items="themeItems"
-            value-key="value"
-            :icon="themeIcon"
-            size="sm"
-            class="w-36"
-            data-testid="theme"
-            @update:model-value="setTheme"
-          />
-        </UFormField>
+        <USelect
+          id="language"
+          :model-value="locale"
+          :items="languageItems"
+          value-key="value"
+          icon="i-lucide-languages"
+          size="sm"
+          class="w-32"
+          :aria-label="t('app.language')"
+          data-testid="language"
+          @update:model-value="setLocale"
+        />
+        <USelect
+          id="theme"
+          :model-value="theme"
+          :items="themeItems"
+          value-key="value"
+          :icon="themeIcon"
+          size="sm"
+          class="w-32"
+          :aria-label="t('app.theme')"
+          data-testid="theme"
+          @update:model-value="setTheme"
+        />
       </div>
+    </div>
+
+    <header class="flex flex-col gap-1">
+      <h1 class="m-0 text-[1.375rem]/8 font-semibold tracking-tight text-highlighted">
+        {{ t('app.optionsTitle') }}
+      </h1>
+      <p class="text-sm text-muted">{{ t('app.purpose') }}</p>
     </header>
 
     <UAlert
@@ -154,6 +202,7 @@ onMounted(async () => {
       variant="subtle"
       icon="i-lucide-circle-alert"
       orientation="horizontal"
+      :title="t(errorTitleKey(errorKey))"
     >
       <template #description>
         <span data-testid="setup-error">{{ t(errorKey) }}</span>
@@ -162,74 +211,96 @@ onMounted(async () => {
         <UButton
           data-testid="retry-setup"
           color="error"
-          variant="outline"
           size="sm"
+          icon="i-lucide-rotate-cw"
           :disabled="busy"
           :label="t('approvals.retry')"
           @click="retry()"
         />
       </template>
     </UAlert>
-    <SetupChecklist
-      v-else-if="loaded && !setupComplete"
-      :website-done="websites.length > 0"
-      :tracker-done="destinations.length > 0"
-    />
     <UAlert
       v-if="localeErrorKey"
       role="alert"
       color="error"
       variant="subtle"
+      icon="i-lucide-languages"
       :description="t(localeErrorKey)"
     />
-    <UAlert
-      v-if="missingOrigins.length"
-      role="status"
-      data-testid="missing-access"
-      color="warning"
-      variant="subtle"
-      icon="i-lucide-triangle-alert"
-      :title="t('approvals.permissionMissing')"
-      :description="t('approvals.missingPermission')"
-    />
-    <SuggestionList
-      :suggestions="suggestions"
-      :disabled="disabled"
-      mode="setup"
-      :highlight-id="focus.suggestion"
-      @approve="approveSuggestion($event)"
-      @dismiss="dismissSuggestion($event)"
-    />
-    <WebsiteApprovals
-      :websites="websites"
-      :destinations="destinations"
-      :origin="websiteOrigin"
-      :disabled="disabled"
-      :error-key="websiteErrorKey"
-      :missing-origins="missingOrigins"
-      @update:origin="websiteOrigin = $event"
-      @add="addWebsite()"
-      @revoke="revokeWebsite($event)"
-      @restore="restoreWebsite($event)"
-    />
-    <DestinationApprovals
-      :websites="websites"
-      :destinations="destinations"
-      :website="destinationWebsite"
-      :provider="destinationProvider"
-      :destination-url="destinationUrl"
-      :http-warning="httpWarning"
-      :disabled="disabled"
-      :error-key="destinationErrorKey"
-      :missing-origins="missingOrigins"
-      :activity="activity"
-      :now="now"
-      @update:website="destinationWebsite = $event"
-      @update:provider="destinationProvider = $event"
-      @update:destination-url="destinationUrl = $event"
-      @add="addDestination()"
-      @revoke="revokeDestination($event)"
-      @restore="restoreDestination($event)"
-    />
+
+    <template v-if="!unreadable && loaded">
+      <UAlert
+        v-if="accessAlert"
+        role="status"
+        data-testid="missing-access"
+        color="warning"
+        variant="subtle"
+        icon="i-lucide-shield-alert"
+        orientation="horizontal"
+        :title="accessAlert.title"
+        :description="accessAlert.description"
+      >
+        <template v-if="restorable" #actions>
+          <UButton
+            data-testid="missing-access-restore"
+            color="warning"
+            size="sm"
+            icon="i-lucide-shield-check"
+            :disabled="disabled"
+            :label="t('approvals.restorePermission')"
+            @click="restoreOnly()"
+          />
+        </template>
+      </UAlert>
+      <SetupChecklist
+        v-if="!setupComplete"
+        mode="setup"
+        :website-done="websites.length > 0"
+        :tracker-done="destinations.length > 0"
+        @act="goToStep"
+      />
+      <SuggestionList
+        :suggestions="suggestions"
+        :disabled="disabled"
+        mode="setup"
+        :highlight-id="focus.suggestion"
+        @approve="approveSuggestion($event)"
+        @dismiss="dismissSuggestion($event)"
+      />
+      <WebsiteApprovals
+        v-model:open="websiteFormOpen"
+        :websites="websites"
+        :destinations="destinations"
+        :origin="websiteOrigin"
+        :handed-off="focus.website !== undefined && websiteOrigin === focus.website"
+        :disabled="disabled"
+        :error-key="websiteErrorKey"
+        :missing-origins="missingOrigins"
+        @update:origin="websiteOrigin = $event"
+        @add="submitWebsite()"
+        @revoke="revokeWebsite($event)"
+        @restore="restoreWebsite($event)"
+      />
+      <DestinationApprovals
+        v-model:open="destinationFormOpen"
+        :websites="websites"
+        :destinations="destinations"
+        :website="destinationWebsite"
+        :provider="destinationProvider"
+        :destination-url="destinationUrl"
+        :http-warning="httpWarning"
+        :disabled="disabled"
+        :error-key="destinationErrorKey"
+        :missing-origins="missingOrigins"
+        :activity="activity"
+        :now="now"
+        @update:website="destinationWebsite = $event"
+        @update:provider="destinationProvider = $event"
+        @update:destination-url="destinationUrl = $event"
+        @add="submitDestination()"
+        @revoke="revokeDestination($event)"
+        @restore="restoreDestination($event)"
+      />
+    </template>
   </main>
 </template>

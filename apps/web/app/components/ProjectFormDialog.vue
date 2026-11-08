@@ -161,6 +161,18 @@ async function loadRemoteProjectCatalog() {
   }
 }
 
+/** Help that fits the current choice: what a Tracker gives, or what a local Project is. */
+const trackerHelp = computed(() =>
+  state.trackerId ? t('projects.trackerHelpConnected') : t('projects.trackerHelpLocal'),
+);
+
+/** What the chosen scope means for issue search (and, once scoped, for history import). */
+const remoteProjectHelp = computed(() =>
+  state.remoteProjectId
+    ? t('projects.remoteProjectHelpScoped')
+    : t('projects.remoteProjectHelpWhole'),
+);
+
 function onRemoteProjectSelected(value: string | undefined) {
   const scopeId = value && value !== WHOLE_TRACKER_VALUE ? value : undefined;
   state.remoteProjectId = scopeId;
@@ -220,6 +232,12 @@ watch(
     void fetchTrackerOptions().then(() => void loadRemoteProjectCatalog());
   },
 );
+
+/** The dialog opens on its first field, the name, rather than on the header's close button. */
+function focusNameField(event: Event) {
+  event.preventDefault();
+  document.getElementById('project-name')?.focus();
+}
 
 function closeDialog() {
   dialogOpen.value = false;
@@ -317,6 +335,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
     v-model:open="dialogOpen"
     :title="project ? t('projects.dialogTitleEdit') : t('projects.dialogTitleCreate')"
     :ui="{ content: 'sm:max-w-lg' }"
+    :content="{ onOpenAutoFocus: focusNameField }"
     @update:open="(value: boolean) => !value && closeDialog()"
   >
     <template #body>
@@ -325,11 +344,13 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
           <UFormField
             :label="t('projects.nameLabel')"
             name="name"
+            required
             :error="nameServerError || undefined"
           >
             <UInput
               id="project-name"
               v-model="state.name"
+              aria-required="true"
               :maxlength="PROJECT_NAME_MAX_LENGTH"
               class="w-full"
               data-testid="project-name-input"
@@ -344,7 +365,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
           <UFormField
             :label="t('projects.trackerLabel')"
             :hint="t('projects.optionalHint')"
-            :help="t('projects.trackerHelp')"
+            :help="trackerHelp"
             name="trackerId"
             :error="trackerServerError || undefined"
           >
@@ -371,9 +392,7 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
             v-if="state.trackerId"
             :label="t('projects.remoteProjectLabel')"
             :hint="t('projects.optionalHint')"
-            :help="
-              canBrowseCatalog && !catalogErrorKey ? t('projects.remoteProjectHelp') : undefined
-            "
+            :help="canBrowseCatalog && !catalogErrorKey ? remoteProjectHelp : undefined"
             name="remoteProjectId"
             :error="remoteProjectServerError || undefined"
             class="ms-2 border-s-2 border-default ps-4"

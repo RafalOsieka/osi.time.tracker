@@ -179,7 +179,7 @@ The status row SHALL open a localized popover on hover, focus, click or tap, sep
 
 #### Scenario: Extension not needed is said once
 - **WHEN** no active tracker requires the extension and the popover opens
-- **THEN** it SHALL state once that the extension is not needed, each tracker row SHALL say it connects directly without the extension, and the neutral row SHALL use the extension glyph rather than an error-like mark
+- **THEN** it SHALL state once, as plain text, that the extension is not needed, each tracker row SHALL say only that it connects directly, and the neutral row SHALL use the extension glyph rather than an error-like mark
 
 #### Scenario: Inspect status on touch
 - **WHEN** a touch user taps the status row
@@ -254,7 +254,7 @@ The bridge SHALL carry time logs with the required, nullable issue title (REQ-34
 
 ### Requirement: REQ-408 Extension pages share the application's visual language
 
-The extension popup and options page SHALL use the same component library, brand `primary` (cyan) and `neutral` (slate) palette, and default font stack as the web application. Each page header SHALL show the brand mark tinted with the `primary` color, next to the product name. Every icon on these pages SHALL ship inside the extension build. The pages SHALL NOT fetch icons, fonts, or styles over the network, and the extension's content security policy SHALL NOT be relaxed to allow it.
+The extension popup and options page SHALL use the web app's component library, cyan `primary` and slate `neutral` palette, design tokens and typefaces (Geist, Geist Mono). Each page header SHALL show the `primary`-tinted brand mark next to the product name. Icons and fonts SHALL ship inside the extension build: the pages SHALL NOT fetch icons, fonts or styles over the network, and the content security policy SHALL NOT be relaxed to allow it.
 
 #### Scenario: Header shows the brand mark
 - **WHEN** the popup or the options page opens in light or dark theme
@@ -262,17 +262,31 @@ The extension popup and options page SHALL use the same component library, brand
 
 #### Scenario: Pages render offline
 - **WHEN** an extension page opens while the browser has no network access
-- **THEN** every icon and style SHALL render, and the page SHALL make no network request to load them
+- **THEN** every icon, font and style SHALL render, and the page SHALL make no network request to load them
 
 #### Scenario: Popup status is a labelled badge
+- **WHEN** the popup cannot read the approvals
+- **THEN** the header SHALL show an "Error" badge
 - **WHEN** the popup has loaded the approvals and some approved origin lacks browser site access
-- **THEN** the header SHALL show a "Needs attention" badge, an alert SHALL explain the missing access, and the affected tracker row SHALL carry a "No access" badge
-- **WHEN** every approval has site access
+- **THEN** the header SHALL show a "No access" badge, an alert SHALL name the affected website or tracker with a restore action that opens the setup page focused on its restore control, and the affected row SHALL carry a "No access" badge
+- **WHEN** every approval has access and tracker suggestions are pending
+- **THEN** the badge SHALL show the count to review, for example "2 to review"
+- **WHEN** nothing is pending and no website or no tracker is approved yet
+- **THEN** the badge SHALL read "Setup needed"
+- **WHEN** a website and a tracker are approved, nothing is pending and every approval has access
 - **THEN** the badge SHALL read "Ready"
+
+#### Scenario: Status never depends on colour alone
+- **WHEN** the popup shows any status badge
+- **THEN** the badge SHALL carry its label and an icon, and SHALL NOT share the look of an action button
+
+#### Scenario: Popup height stays within the browser's popup
+- **WHEN** the popup's content is taller than the browser allows for a popup (600 pixels)
+- **THEN** the popup SHALL keep its header and footer in place and scroll the content between them
 
 #### Scenario: Approval lists show access state per row
 - **WHEN** the options page lists an approved website or tracker whose origin lacks browser site access
-- **THEN** that row SHALL show a "No access" badge and a restore action, next to the revoke action
+- **THEN** that row SHALL show a "No access" badge beside its address and a restore button, next to the revoke action, and an alert above the lists SHALL name it; when it is the only affected approval, the alert SHALL restore it directly
 - **WHEN** a row's origin has site access
 - **THEN** the row SHALL show only the revoke action
 
@@ -282,7 +296,7 @@ The extension popup and options page SHALL use the same component library, brand
 
 #### Scenario: Loading failure keeps the retry path
 - **WHEN** reading approvals or permissions fails on either page
-- **THEN** the page SHALL show the translated error in an alert, together with the existing retry action
+- **THEN** the page SHALL show the translated error in a titled alert, together with a "Try again" action that reads them again
 
 ### Requirement: REQ-409 Extension theme control
 

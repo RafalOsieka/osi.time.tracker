@@ -1,7 +1,10 @@
 <script setup lang="ts">
 /**
- * Click-to-edit text: plain `UInput` until focused, then ghost variant.
- * Parent owns the value and when editing is active.
+ * Click-to-edit text: a read-only `UInput` until focused, then an editable one.
+ * Parent owns the value and when editing is active. Unframed (the Timer's titles) it shows no
+ * chrome at rest; `framed` (Remote sync's title to send) gives it the quiet editable frame of the
+ * Timer's time editors at rest, hugging the text, and the same frame with a cyan ring while
+ * editing, so the value never jumps between the two states.
  */
 const {
   modelValue,
@@ -13,6 +16,7 @@ const {
   displayClass = '',
   displayValue = undefined,
   disabled = false,
+  framed = false,
 } = defineProps<{
   modelValue: string;
   editing: boolean;
@@ -23,6 +27,7 @@ const {
   displayClass?: string;
   displayValue?: string;
   disabled?: boolean;
+  framed?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -34,8 +39,20 @@ const emit = defineEmits<{
 
 const rootClass = '-ms-2 min-w-0 w-[calc(100%+0.5rem)] max-w-[calc(100%+0.5rem)]';
 const slotInputUi = { root: 'min-w-0 w-full max-w-full', base: 'min-w-0 truncate md:text-sm/4' };
+/**
+ * The frame: a card-tone field with the 3:1 control outline, sized to its text (never past the
+ * cell), tinted on hover and ringed in cyan while editing.
+ */
+const FRAME =
+  'w-auto min-w-16 max-w-full field-sizing-content rounded-md bg-default ring ring-inset ring-accented transition-shadow dark:bg-muted';
+const editUi = computed(() =>
+  framed ? { ...slotInputUi, base: `${slotInputUi.base} ${FRAME} ring-primary` } : slotInputUi,
+);
 // `displayClass` goes on the input itself: UInput sets its own text color there.
-const displayUi = computed(() => ({ ...slotInputUi, base: `${slotInputUi.base} ${displayClass}` }));
+const displayUi = computed(() => ({
+  ...slotInputUi,
+  base: `${slotInputUi.base} ${framed ? `${FRAME} hover:bg-elevated dark:hover:bg-elevated` : ''} ${displayClass}`,
+}));
 const shownValue = computed(() => displayValue ?? modelValue);
 
 function onInput(value: string | undefined) {
@@ -53,10 +70,10 @@ function onEdit() {
     <UInput
       v-if="editing"
       :model-value="modelValue"
-      variant="ghost"
+      :variant="framed ? 'none' : 'ghost'"
       size="xs"
       class="w-full min-w-0 max-w-full"
-      :ui="slotInputUi"
+      :ui="editUi"
       :placeholder="placeholder"
       :aria-label="fieldLabel"
       :data-testid="inputTestid"

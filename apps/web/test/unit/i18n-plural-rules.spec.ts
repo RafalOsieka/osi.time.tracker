@@ -111,13 +111,13 @@ describe('count-sensitive catalogs', () => {
       'Wyeksportować 5 zadań?',
     );
     expect(applyPipePlural(review.notReady, polishPluralRule(1, 3), { count: 1 })).toBe(
-      '1 inne zadanie z tego dnia nie jest gotowe do eksportu.',
+      '1 inne zadanie z tego dnia nie jest gotowe do eksportu: nie ma wybranej czynności lub nie da się go wysłać.',
     );
     expect(applyPipePlural(review.notReady, polishPluralRule(2, 3), { count: 2 })).toBe(
-      '2 inne zadania z tego dnia nie są gotowe do eksportu.',
+      '2 inne zadania z tego dnia nie są gotowe do eksportu: nie mają wybranej czynności lub nie da się ich wysłać.',
     );
     expect(applyPipePlural(review.notReady, polishPluralRule(5, 3), { count: 5 })).toBe(
-      '5 innych zadań z tego dnia nie jest gotowych do eksportu.',
+      '5 innych zadań z tego dnia nie jest gotowych do eksportu: nie mają wybranej czynności lub nie da się ich wysłać.',
     );
     expect(applyPipePlural(en.remoteSync.exportDialog.titleReview, 0, { count: 1 })).toBe(
       'Export 1 task?',

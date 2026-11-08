@@ -215,18 +215,6 @@ const hasEntries = computed(() => days.value.length > 0);
 /** Skeleton while the first feed is pending with nothing to show yet (REQ-391). */
 const feedLoading = computed(() => !feedSettled.value && entries.value.length === 0);
 
-/** The day's full date as a heading, capitalised (Polish weekdays are lower-case). */
-function dayHeading(dayKey: string): string {
-  const heading = new Date(`${dayKey}T12:00:00Z`).toLocaleDateString(locale.value, {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-    timeZone: effective.value.timeZone,
-  });
-  return capitalizeFirst(heading, locale.value);
-}
-
 function isGroupLive(group: { entries: TimeEntryDto[] }): boolean {
   return !!running.value && group.entries.some((e) => e.id === running.value!.id);
 }
@@ -370,7 +358,9 @@ async function onEntryDeleted() {
               :narrow="{ col: [1, 5], row: 1 }"
               class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1"
             >
-              <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">{{ dayHeading(day.dayKey) }}</h2>
+              <h2 class="m-0 min-w-0 truncate text-[0.9375rem]">
+                {{ formatDayHeading(day.dayKey, locale) }}
+              </h2>
               <UButton
                 :to="`/sync/${day.dayKey}`"
                 :label="t('timerView.remoteSyncAction')"
@@ -410,6 +400,7 @@ async function onEntryDeleted() {
             :project-options="projectOptions"
             :tracker="trackerForGroup(group)"
             :scope="scopeForGroup(group)"
+            :day-label="formatDayHeading(day.dayKey, locale, { weekday: false })"
             @editing-started="startGroupEditing(`${day.dayKey}:${group.key}`)"
             @continue="onContinue(group)"
             @stop="onStop"

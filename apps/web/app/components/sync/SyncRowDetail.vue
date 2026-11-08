@@ -219,16 +219,14 @@ const displayedRemoteLogs = computed(() => {
           </span>
           <span v-if="extensionLogsErrorKey">{{ t('trackers.extensionSetupGuidance') }}</span>
           <UButton
-            variant="link"
+            color="neutral"
+            variant="outline"
             size="xs"
-            class="p-0"
+            icon="i-lucide-refresh-cw"
             :label="
-              t(
-                extensionLogsErrorKey
-                  ? 'trackers.extensionRecheckButton'
-                  : 'remoteSync.remoteLogsRetry',
-              )
+              t(extensionLogsErrorKey ? 'trackers.extensionRecheckButton' : 'remoteSync.retry')
             "
+            :aria-label="extensionLogsErrorKey ? undefined : t('remoteSync.remoteLogsRetry')"
             :data-testid="`remote-sync-remote-logs-retry-${taskId}`"
             @click="emit('retryRemoteLogs')"
           />
@@ -307,17 +305,23 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507), under the section's
-             "Already in the tracker" label, in the entries' tone and body weight, so it never
-             reads as time still to send. The cell's accessible name carries the scope. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507), marked in place as
+             already there: a cloud-check glyph and the muted tone, never the to-send column's
+             highlighted value. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="font-mono tabular-nums whitespace-nowrap text-toned"
+          class="inline-flex items-center justify-end gap-1.5 font-mono tabular-nums whitespace-nowrap text-muted"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
+          :data-testid="`remote-sync-remote-log-duration-${log.remoteLogId}`"
         >
+          <UIcon
+            name="i-lucide-cloud-check"
+            class="size-4 shrink-0 text-dimmed"
+            aria-hidden="true"
+          />
           {{ formatDuration(log.durationSeconds) }}
         </ColumnCell>
         <!-- The denser rows' 28px tinted tile, square like every row action. -->

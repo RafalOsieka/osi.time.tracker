@@ -75,6 +75,11 @@ The inline preset form (REQ-385) SHALL hold a multiline contractor details field
 - **WHEN** a saved preset is selected unchanged and the user adds a line to its contractor details
 - **THEN** the export action SHALL read "save preset and download PDF"
 
+#### Scenario: Label says the field is optional
+- **WHEN** the preset form is shown
+- **THEN** the contractor details label SHALL carry a translated "optional" hint, unlike the required
+  client name
+
 #### Scenario: Tooltip from the keyboard
 - **WHEN** the user moves keyboard focus to the help control next to the contractor details label
 - **THEN** the translated tooltip SHALL be shown and the control SHALL have a translated accessible name

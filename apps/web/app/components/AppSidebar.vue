@@ -19,9 +19,15 @@ const isCollapsed = computed(() => collapsed || iconOnly);
 const onRemoteSync = computed(() => route.path.startsWith('/sync/'));
 const PARENT_ACTIVE_CLASS = 'text-primary before:bg-primary-100/80 dark:before:bg-primary/12';
 
-/** On the icon-only rail a small corner mark tells that Reports opens a menu, not a page. */
+/**
+ * On the icon-only rail a small chevron just right of the Reports tile tells that it opens a menu
+ * (to the right), not a page. Drawn with two borders of a rotated square, in the item's colour.
+ */
 const DISCLOSURE_CUE_CLASS =
-  "after:absolute after:end-1 after:bottom-1 after:size-0 after:border-[3px] after:border-transparent after:border-e-current after:border-b-current after:opacity-60 after:content-['']";
+  "after:absolute after:start-full after:top-1/2 after:ms-0.5 after:size-1.5 after:-translate-y-1/2 after:-rotate-45 after:border-e-[1.5px] after:border-b-[1.5px] after:border-current after:opacity-70 after:content-['']";
+
+/** A small, even gap between items, so a selected tile never touches its neighbour. */
+const NAV_UI = { list: 'flex flex-col gap-1', childList: 'flex flex-col gap-1' };
 
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
@@ -72,7 +78,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
 </script>
 
 <template>
-  <nav aria-label="Main navigation" class="w-full">
+  <nav :aria-label="t('nav.main')" class="w-full">
     <UNavigationMenu
       :collapsed="isCollapsed"
       :tooltip="isCollapsed"
@@ -80,6 +86,7 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       :items="navItems"
       orientation="vertical"
       class="w-full"
+      :ui="NAV_UI"
     />
   </nav>
 </template>

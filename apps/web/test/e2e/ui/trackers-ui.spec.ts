@@ -94,7 +94,9 @@ describeTrackersUI('trackers UI flow', async () => {
     await renamedRow.locator('[data-testid^="delete-tracker-"]').click();
     await page.locator('[data-testid="confirm-accept"]').click();
     await page.waitForFunction((name) => !document.body.textContent?.includes(name), renamed);
-    expect(await page.textContent('[data-testid="trackers-table"]')).not.toContain(renamed);
+    // Deleting the user's only tracker leaves the dedicated empty state, not an empty table.
+    await page.waitForSelector('[data-testid="trackers-empty-state"]');
+    expect(await page.textContent('[data-testid="trackers-page"]')).not.toContain(renamed);
 
     await page.close();
   });
@@ -179,8 +181,10 @@ describeTrackersUI('trackers UI flow', async () => {
     expect(await checkbox.getAttribute('aria-checked')).toBe('true');
     expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
 
-    await page.locator('[data-testid="tracker-direct-browser-access-help"]').focus();
-    await page.waitForFunction(() => /CORS|cors/.test(document.body.textContent ?? ''));
+    // The explanation is a visible help line the checkbox references, not a hover tooltip.
+    const helpId = await checkbox.getAttribute('aria-describedby');
+    expect(helpId).toBeTruthy();
+    expect(await page.locator(`[id="${helpId}"]`).textContent()).toMatch(/CORS/);
 
     await page
       .locator('[data-testid="tracker-name-input"] input, [data-testid="tracker-name-input"]')

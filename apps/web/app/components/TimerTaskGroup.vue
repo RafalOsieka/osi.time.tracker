@@ -14,6 +14,7 @@ const {
   projectOptions = [],
   tracker = null,
   scope = null,
+  dayLabel = undefined,
   columns,
 } = defineProps<{
   columns: readonly ColumnDefinition<
@@ -30,6 +31,8 @@ const {
   tracker?: TrackerDto | null;
   /** The owning project's remote project scope (REQ-328), if any. */
   scope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
+  /** The group's day in words, named by the issue picker as the day a link applies to. */
+  dayLabel?: string;
 }>();
 
 const emit = defineEmits<{
@@ -336,6 +339,7 @@ async function unlinkRemoteIssue() {
         :current-ref="remoteIssueRef"
         :scope="scope"
         :context-label="group.taskName ?? undefined"
+        :day-label="dayLabel"
         class="min-w-0"
         :link-testid="`timer-group-remote-issue-link-${group.key}`"
         :cached-testid="`timer-group-remote-issue-cached-${group.key}`"
@@ -344,6 +348,7 @@ async function unlinkRemoteIssue() {
         @link="linkRemoteIssue"
         @unlink="unlinkRemoteIssue"
       />
+      <!-- Untinted in the link tile's 28px box, so it shares the slot yet recedes. -->
       <UTooltip v-else :text="remoteIssueUnavailableLabel" :content="{ side: 'top' }">
         <span tabindex="0" class="inline-flex">
           <UButton
@@ -351,9 +356,10 @@ async function unlinkRemoteIssue() {
             color="neutral"
             variant="ghost"
             square
-            size="xs"
+            size="sm"
             disabled
-            class="-ms-1 h-6 w-6 shrink-0 justify-center text-dimmed disabled:opacity-30"
+            class="size-7 shrink-0 justify-center text-dimmed disabled:opacity-30"
+            :ui="{ leadingIcon: 'size-4' }"
             :aria-label="remoteIssueUnavailableLabel"
             :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
           />

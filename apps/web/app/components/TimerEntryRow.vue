@@ -54,12 +54,12 @@ const titleDisplayValue = computed(() => entry.taskName ?? t('timerView.noTask')
 const TIME_SIZER = '00:00';
 
 /**
- * The times sit in a quiet field frame at rest (a card-tone pill with a light ring), so they read
- * as editable; the ring strengthens on hover and turns cyan while a segment has focus. A stopped
+ * The times sit in a field frame at rest (a card-tone pill with the 3:1 control outline), so they
+ * read as editable; the ring darkens on hover and turns cyan while a segment has focus. A stopped
  * entry's range field is the frame; a running entry's frame holds its start field and "now".
  */
 const TIME_FRAME =
-  'rounded-md bg-default px-1.5 py-0.5 ring ring-inset ring-default transition-shadow hover:ring-accented focus-within:ring-primary dark:bg-muted';
+  'rounded-md bg-default px-1.5 py-0.5 ring ring-inset ring-accented transition-shadow hover:ring-(--ui-text-dimmed) focus-within:ring-primary dark:bg-muted';
 const TIME_TEXT = 'text-xs font-medium text-default tabular-nums dark:font-normal';
 /** Tight segments like a plain "08:00 – 08:30" label; each keeps a small hover/focus pad. */
 const TIME_SEGMENT = 'px-px data-[segment=literal]:px-0 not-data-[segment=literal]:w-auto';
@@ -203,6 +203,7 @@ async function onDelete() {
       -->
       <div
         v-if="entry.stoppedAt"
+        data-entry-times-slot
         class="flex w-28 shrink-0 justify-end @max-[40rem]/list:justify-start"
       >
         <TimeField
@@ -219,7 +220,11 @@ async function onDelete() {
           @commit="commitTimes"
         />
       </div>
-      <div v-else class="flex w-28 shrink-0 justify-end @max-[40rem]/list:justify-start">
+      <div
+        v-else
+        data-entry-times-slot
+        class="flex w-28 shrink-0 justify-end @max-[40rem]/list:justify-start"
+      >
         <div class="inline-flex items-center" :class="[TIME_FRAME, TIME_TEXT]">
           <TimeField
             v-model="timesModel.start"

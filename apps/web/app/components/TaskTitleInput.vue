@@ -202,6 +202,17 @@ function removeChip() {
   emit('removeProject');
 }
 
+/**
+ * The bare field's padding matches its sizing copy (`ps-2.5 pe-1`, no room for the hidden
+ * chevron), and its overlay keeps a usable width however short the title is.
+ */
+const BARE_UI = { trailing: 'hidden', base: 'w-full pe-1', content: 'min-w-80' };
+
+/** The free space after a bare field's text and chip still belongs to the field. */
+function focusInput() {
+  menuRef.value?.inputRef?.focus();
+}
+
 export interface TitleCommit {
   /** Trimmed title with a resolved typed mention removed; empty for an untitled entry. */
   title: string;
@@ -242,7 +253,7 @@ defineExpose({ resolveCommit });
     so the chip is ordinary flow content: no widths to guess or measure, nothing shifts.
   -->
   <div
-    class="flex min-w-0 flex-1 items-center"
+    class="flex min-w-0 flex-1 items-center self-stretch"
     :class="
       project &&
       !bare &&
@@ -256,37 +267,56 @@ defineExpose({ resolveCommit });
       :testid="chipTestid"
       @remove="removeChip"
     />
-    <UInputMenu
-      v-bind="$attrs"
-      ref="menuRef"
-      v-model:open="overlayOpen"
-      :model-value="text"
-      :search-term="text"
-      :items="menuItems"
-      value-key="name"
-      label-key="label"
-      :variant="project || bare ? 'none' : 'outline'"
-      :disabled="disabled"
-      :placeholder="placeholder"
-      mode="autocomplete"
-      ignore-filter
-      class="min-w-0 flex-1"
-      :ui="bare ? { trailing: 'hidden' } : undefined"
-      @update:model-value="onModelUpdate"
-      @update:search-term="onSearchTerm"
-      @focus="loadMentionProjects"
-      @blur="emit('blur')"
-      @keydown.enter="onEnter"
-      @keyup="syncCaret"
-      @click="syncCaret"
-    />
-    <!-- The top-bar timer reads "Task, then its Project", so its chip follows the text. -->
+    <!--
+      The top-bar timer reads "Task, then its Project": the bare field hugs its text (an invisible
+      copy of the text sizes the shared grid cell, shrinking when space runs out), so the chip
+      sits right after the title, and the free space after both still focuses the field.
+    -->
+    <div :class="bare ? 'grid min-w-0 grid-cols-[minmax(0,auto)]' : 'contents'">
+      <span
+        v-if="bare"
+        class="invisible col-start-1 row-start-1 min-w-12 overflow-hidden ps-2.5 pe-1 text-base/5 whitespace-pre"
+        aria-hidden="true"
+      >
+        {{ text || placeholder }}
+      </span>
+      <UInputMenu
+        v-bind="$attrs"
+        ref="menuRef"
+        v-model:open="overlayOpen"
+        :model-value="text"
+        :search-term="text"
+        :items="menuItems"
+        value-key="name"
+        label-key="label"
+        :variant="project || bare ? 'none' : 'outline'"
+        :disabled="disabled"
+        :placeholder="placeholder"
+        mode="autocomplete"
+        ignore-filter
+        :class="bare ? 'col-start-1 row-start-1 min-w-0' : 'min-w-0 flex-1'"
+        :ui="bare ? BARE_UI : undefined"
+        @update:model-value="onModelUpdate"
+        @update:search-term="onSearchTerm"
+        @focus="loadMentionProjects"
+        @blur="emit('blur')"
+        @keydown.enter="onEnter"
+        @keyup="syncCaret"
+        @click="syncCaret"
+      />
+    </div>
     <TaskProjectChip
       v-if="project && bare"
-      class="ms-1"
+      class="ms-1 shrink-0"
       :name="project.name"
       :testid="chipTestid"
       @remove="removeChip"
+    />
+    <div
+      v-if="bare"
+      class="min-w-4 flex-1 self-stretch cursor-text"
+      aria-hidden="true"
+      @click="focusInput"
     />
   </div>
 </template>

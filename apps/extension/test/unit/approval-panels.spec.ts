@@ -29,33 +29,39 @@ function isDisabled(html: string, testId: string): boolean {
   return /\sdisabled[\s>=]/.test(tag);
 }
 
+const website = { origin: 'https://time.example.com' };
+const tracker = (basePath: string, websiteOrigin = website.origin) => ({
+  websiteOrigin,
+  provider: 'redmine' as const,
+  origin: 'https://tracker.example.com',
+  basePath,
+});
+const destinationProps = {
+  website: website.origin,
+  provider: 'redmine' as const,
+  destinationUrl: '',
+  open: false,
+  httpWarning: false,
+  activity: {},
+  now: 0,
+  disabled: false,
+  errorKey: null,
+  missingOrigins: [],
+};
+
 it('renders unambiguous tracker identities and permission restoration labels', async () => {
   useExtensionI18n().setLocale('en');
-  const websites = [
-    { origin: 'https://time.example.com' },
-    { origin: 'https://other.example.com' },
-  ];
+  const websites = [website, { origin: 'https://other.example.com' }];
   const html = await renderWithUi(DestinationApprovals, {
+    ...destinationProps,
     websites,
-    destinations: websites.map((item) => ({
-      websiteOrigin: item.origin,
-      provider: 'redmine',
-      origin: 'https://tracker.example.com',
-      basePath: '/team',
-    })),
-    website: websites[0]!.origin,
-    provider: 'redmine',
-    destinationUrl: '',
-    httpWarning: false,
-    activity: {},
-    now: 0,
-    disabled: false,
-    errorKey: null,
+    destinations: websites.map((item) => tracker('/team', item.origin)),
+    open: true,
     missingOrigins: ['https://tracker.example.com'],
   });
-  for (const website of websites) {
-    const identity = `Website: ${website.origin} — Redmine https://tracker.example.com/team`;
-    expect(html).toContain(`aria-label="Revoke tracker ${identity}"`);
+  for (const item of websites) {
+    const identity = `Redmine https://tracker.example.com/team (for ${item.origin})`;
+    expect(html).toContain(`aria-label="Remove tracker ${identity}"`);
     expect(html).toContain(`aria-label="Restore access ${identity}"`);
   }
   expect(html).toContain('No access');
@@ -64,79 +70,87 @@ it('renders unambiguous tracker identities and permission restoration labels', a
   expect(trackerLink).toContain('target="_blank"');
 });
 
-it('renders localized field errors and disabled controls while an action is pending', async () => {
+it('names the one rule a website address breaks and disables controls while busy', async () => {
   useExtensionI18n().setLocale('pl');
   const html = await renderWithUi(WebsiteApprovals, {
-    websites: [{ origin: 'https://time.example.com' }],
+    websites: [],
     destinations: [],
     origin: 'https://time.example.com/reports',
+    open: false,
+    handedOff: false,
     disabled: true,
-    errorKey: 'approvals.invalidWebsite',
+    errorKey: 'approvals.invalidWebsitePath',
     missingOrigins: [],
   });
   expect(html).toContain('Zatwierdź witrynę');
-  expect(html).toContain('Podaj origin z https://');
-  expect(html).toContain('aria-invalid="true"');
-  expect(html).toContain('aria-describedby="website-origin-help website-origin-error"');
+  expect(html).toContain('Podaj sam adres witryny, bez ścieżki');
+  const input = /<input[^>]*data-testid="website-origin"[^>]*>/.exec(html)?.[0];
+  expect(input).toContain('aria-invalid="true"');
+  expect(input).toMatch(/aria-describedby="[^"]*-error[\s"]/);
   expect(isDisabled(html, 'add-website')).toBe(true);
-  expect(isDisabled(html, 'revoke-website-https://time.example.com')).toBe(true);
 });
 
-it('disables tracker submission and explains why when no website exists', async () => {
+it('lists approved websites first and keeps the add form behind its button', async () => {
   useExtensionI18n().setLocale('en');
-  const html = await renderWithUi(DestinationApprovals, {
-    websites: [],
+  const html = await renderWithUi(WebsiteApprovals, {
+    websites: [website],
     destinations: [],
-    website: '',
-    provider: 'openproject',
-    destinationUrl: '',
-    httpWarning: false,
-    activity: {},
-    now: 0,
+    origin: '',
+    open: false,
+    handedOff: false,
     disabled: false,
     errorKey: null,
     missingOrigins: [],
   });
-  expect(isDisabled(html, 'add-destination')).toBe(true);
-  expect(html).toContain('Approve a website before adding a tracker.');
+  expect(html).toContain('data-testid="new-website"');
+  expect(html).not.toContain('data-testid="website-origin"');
+  expect(html).toContain('time.example.com');
+});
+
+it('offers no tracker form, only what to do first, while no website is approved', async () => {
+  useExtensionI18n().setLocale('en');
+  const html = await renderWithUi(DestinationApprovals, {
+    ...destinationProps,
+    websites: [],
+    destinations: [],
+    website: '',
+  });
+  expect(html).not.toContain('data-testid="add-destination"');
+  expect(html).toContain('Approve an OSI website first.');
 });
 
 it('approves trackers for the only website without asking which one', async () => {
   useExtensionI18n().setLocale('en');
   const html = await renderWithUi(DestinationApprovals, {
-    websites: [{ origin: 'https://time.example.com' }],
+    ...destinationProps,
+    websites: [website],
     destinations: [],
-    website: 'https://time.example.com',
-    provider: 'redmine',
-    destinationUrl: '',
-    httpWarning: false,
-    activity: {},
-    now: 0,
-    disabled: false,
-    errorKey: null,
-    missingOrigins: [],
   });
   expect(html).not.toContain('data-testid="destination-website"');
-  expect(html).toContain('For https://time.example.com');
+  expect(html).toContain('The tracker is approved for time.example.com.');
   expect(isDisabled(html, 'add-destination')).toBe(false);
 });
 
-it('shows the latest activity on each tracker row, or that there was none', async () => {
+it('makes approving a plain-HTTP tracker a visibly deliberate choice', async () => {
   useExtensionI18n().setLocale('en');
-  const website = { origin: 'https://time.example.com' };
-  const tracker = (basePath: string) => ({
-    websiteOrigin: website.origin,
-    provider: 'redmine' as const,
-    origin: 'https://tracker.example.com',
-    basePath,
-  });
   const html = await renderWithUi(DestinationApprovals, {
+    ...destinationProps,
+    websites: [website],
+    destinations: [],
+    destinationUrl: 'http://tracker.internal',
+    httpWarning: true,
+  });
+  expect(html).toContain('data-testid="http-warning"');
+  expect(html).toContain('Tracker credentials are sent without encryption');
+  expect(html).toContain('Approve despite HTTP');
+});
+
+it('lists trackers with their latest activity, the add form folded away', async () => {
+  useExtensionI18n().setLocale('en');
+  const html = await renderWithUi(DestinationApprovals, {
+    ...destinationProps,
     websites: [website],
     destinations: [tracker('/active'), tracker('/idle')],
-    website: website.origin,
-    provider: 'redmine',
-    destinationUrl: '',
-    httpWarning: false,
     activity: {
       [destinationKey(tracker('/active'))]: {
         at: '2026-10-05T10:00:00.000Z',
@@ -145,10 +159,10 @@ it('shows the latest activity on each tracker row, or that there was none', asyn
       },
     },
     now: Date.parse('2026-10-05T10:02:00.000Z'),
-    disabled: false,
-    errorKey: null,
-    missingOrigins: [],
   });
-  expect(html).toMatch(/2 minutes ago · Time entry export · OK/);
-  expect(html).toContain('No activity yet');
+  expect(html).toContain('Succeeded');
+  expect(html).toContain('Time entry export · 2 minutes ago');
+  expect(html).toContain('No activity this session');
+  expect(html).toContain('data-testid="new-destination"');
+  expect(html).not.toContain('data-testid="destination-url"');
 });

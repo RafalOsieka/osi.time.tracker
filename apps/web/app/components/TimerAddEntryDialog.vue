@@ -78,7 +78,15 @@ const previewDuration = computed(() => {
   const startedAt = Date.parse(wallClockToInstant(state.date, state.startTime, timeZone));
   const stoppedAt = Date.parse(wallClockToInstant(state.date, state.endTime, timeZone));
   if (!(stoppedAt >= startedAt)) return null;
-  return formatDuration((stoppedAt - startedAt) / 1000);
+  // The range is entered in minutes, so its length is shown in minutes too ("1:30").
+  return formatReportDuration((stoppedAt - startedAt) / 1000);
+});
+
+/** The timezone with its offset on the chosen date and start (DST applies), e.g. UTC+01:00. */
+const timeZoneHint = computed(() => {
+  const time = HH_MM.test(state.startTime) ? state.startTime : '12:00';
+  const at = state.date ? wallClockToInstant(state.date, time, timeZone) : new Date().toISOString();
+  return t('timerView.addEntry.timeZoneHint', { zone: timeZoneLabel(timeZone, at) });
 });
 
 watch(
@@ -156,9 +164,12 @@ async function onSave() {
         @submit="onSave"
         @error="onError"
       >
+        <!-- The help line says a new title is as welcome as an existing Task. -->
         <UFormField
           :label="t('timerView.addEntry.titleLabel')"
           :hint="t('timerView.addEntry.optionalHint')"
+          :help="t('timerView.addEntry.titleHelp')"
+          :ui="{ help: 'text-xs text-muted' }"
         >
           <TaskTitleInput
             ref="titleInput"
@@ -167,7 +178,6 @@ async function onSave() {
             v-model:task="pickedTask"
             class="w-full"
             eager
-            :placeholder="t('timerView.addEntry.titlePlaceholder')"
             chip-testid="add-entry-project"
             data-testid="add-entry-title-input"
           />
@@ -208,8 +218,15 @@ async function onSave() {
           </UInputDate>
         </UFormField>
 
-        <!-- The hint previews the entry's length, so a mistyped range is caught before saving. -->
-        <UFormField :label="t('timerView.addEntry.timesLabel')">
+        <!--
+          The hint previews the entry's length, so a mistyped range is caught before saving; the
+          help line names the timezone the times are in.
+        -->
+        <UFormField
+          :label="t('timerView.addEntry.timesLabel')"
+          :help="timeZoneHint"
+          :ui="{ help: 'text-xs text-muted' }"
+        >
           <template v-if="previewDuration" #hint>
             {{ t('timerView.addEntry.durationHint') }}
             <span class="ms-1 font-mono tabular-nums" data-testid="add-entry-duration">

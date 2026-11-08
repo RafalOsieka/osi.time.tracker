@@ -196,6 +196,16 @@ The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the c
 - **WHEN** the user opens the Remote Sync page for a day with several tasks
 - **THEN** each task SHALL be one collapsed row showing state, title, issue, activity, tracked, to send, and an empty actions cell
 
+#### Scenario: Issue cell names the destination Tracker
+- **WHEN** a row has a linked issue
+- **THEN** its issue cell SHALL show the Tracker's name as secondary text under the issue, keeping
+  the row's height, so two Trackers of the same type can be told apart
+
+#### Scenario: Ready editors look editable at rest
+- **WHEN** a Ready row is shown
+- **THEN** its title to send and to-send duration SHALL each sit in a quiet field frame with the
+  control outline, the same at-rest editable cue as the Timer view's time editors
+
 #### Scenario: Expanding a row reveals its detail
 
 - **WHEN** the user activates the expansion control of a task row
@@ -223,13 +233,20 @@ The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the c
 
 ### Requirement: REQ-224 On-page day navigation
 
-The header SHALL hold a stable translated title and a compact day switcher — previous and next day around a short localized date that opens the shared calendar grid (REQ-359) in a popover, showing the displayed day's month with that day selected — followed by Export. Picking a day SHALL navigate and close the popover; picking the displayed day SHALL only close it. Controls SHALL be labelled and keyboard operable, the grid navigable with arrows and confirmed with Enter or Space.
+The header SHALL hold a stable translated title, a day switcher (previous and next day around the localized date, which opens the shared calendar grid (REQ-359) in a popover on the displayed day's month with that day selected) and then Export. Picking a day SHALL navigate and close the popover; picking the displayed day SHALL only close it. Controls SHALL be labelled and keyboard operable, the grid navigable with arrows and confirmed with Enter or Space.
 
 #### Scenario: Header presents the compact day switcher and primary action
 
 - **WHEN** the user opens the Remote Sync page
-- **THEN** the header SHALL show the stable page title, previous-day action, short localized date
-  label, next-day action, and Export action without a long date in the title
+- **THEN** the header SHALL show the stable page title, previous-day action, the date label in the
+  Timer view's day-heading format (for example "Saturday, November 7, 2026"), next-day action, and
+  Export action, without a date in the title
+
+#### Scenario: Export availability does not move the header
+
+- **WHEN** Export becomes available or unavailable
+- **THEN** the day switcher and Export SHALL keep their positions, the unavailable reason taking a
+  place of its own under Export
 
 #### Scenario: Jump to an arbitrary date
 
@@ -253,8 +270,8 @@ The header SHALL hold a stable translated title and a compact day switcher — p
 #### Scenario: Date label remains usable in narrow layouts
 
 - **WHEN** the page is viewed at a supported narrow viewport
-- **THEN** the short localized date and adjacent navigation and Export controls SHALL remain legible
-  and operable without restoring the long date heading
+- **THEN** the date label SHALL shorten (abbreviated weekday and month) and it and the adjacent
+  navigation and Export controls SHALL remain legible and operable
 
 ### Requirement: REQ-490 Navigating to another day
 Navigating SHALL change the page's date route, recompute the day boundary in the user's timezone and reload the day review for the new date. Unfinalized review state belongs to the day being left and SHALL NOT carry over. A date without entries SHALL show the translated empty state.
@@ -379,7 +396,10 @@ Expanding a row SHALL reveal information only, as rows of the same list: the tas
 
 #### Scenario: Remote logs line up under to send
 - **WHEN** a linked task row is expanded and its remote logs are loaded
-- **THEN** each log's duration SHALL share the to-send column's end edge, its Linked or Unlinked state SHALL sit in the state column and its action in the actions column
+- **THEN** each log's duration SHALL share the to-send column's end edge, marked in place as already
+  in the tracker (an icon and a quieter tone than to send) so it never reads as time still to send,
+  its Linked or Unlinked state SHALL sit in the state column, explained by its tooltip and
+  accessible name, and its action in the actions column
 
 #### Scenario: Unlinked row has no remote-logs section
 - **WHEN** an unlinked or not-exportable task row is expanded
@@ -394,7 +414,7 @@ Expanding a row SHALL reveal information only, as rows of the same list: the tas
 - **THEN** the detail SHALL NOT offer duration, comment, rounding, or entry-selection controls
 
 ### Requirement: REQ-508 Day total summary
-Once above the list, the page SHALL show the labelled **day total**: every completed entry of the day, untitled, Sent and blocked time included, equal to the Timer view's total for that day. It SHALL update at once when the day's entries change.
+Once above the list, the page SHALL show the labelled **day total**: every completed entry of the day, untitled, Sent and blocked time included, plus a Time entry of that day while it runs, equal to the Timer view's total for that day. Its caption SHALL say what it counts. It SHALL update at once when the day's entries change or the running entry stops.
 
 #### Scenario: Day total matches the Timer view
 - **WHEN** the user compares the Remote Sync day total with the Timer view's total for the same day
@@ -403,6 +423,15 @@ Once above the list, the page SHALL show the labelled **day total**: every compl
 #### Scenario: Day total includes every completed entry
 - **WHEN** a day contains Ready, Sent, blocked and untitled time
 - **THEN** the day total SHALL include all of it
+
+#### Scenario: A running entry is shown apart
+- **WHEN** a Time entry that started on the displayed day is running
+- **THEN** the day total SHALL include its elapsed time, live, and the caption SHALL show the
+  completed part (what the rows' tracked durations add up to) and the running part separately
+
+#### Scenario: Caption without a running entry
+- **WHEN** no Time entry of the displayed day is running
+- **THEN** the caption SHALL say the total covers all completed Time entries, as in the Timer view
 
 ### Requirement: REQ-509 In-tracker-after-export summary
 Next to the day total the page SHALL show **in tracker after export**: the current account's same-day logs on the issues linked to the day's tasks (REQ-118), each log counted once, plus the shown to-send durations of the rows not sent yet, whether or not their activity is chosen, with both parts labelled and the to-send part set apart from the logs part. It SHALL update at once when a to-send duration changes and after Export or a log refresh.

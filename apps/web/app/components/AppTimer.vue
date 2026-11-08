@@ -19,6 +19,8 @@ const boundTask = ref<TitleTask | null>(null);
 /** Project chip (REQ-374). */
 const chipProject = ref<TitleProject | null>(null);
 const titleInput = useTemplateRef('titleInput');
+/** The timer card; the start editor aligns to its right edge, flush with the page column. */
+const card = useTemplateRef<HTMLElement>('card');
 const starting = ref(false);
 const stopping = ref(false);
 
@@ -178,6 +180,15 @@ function combineStartedAt(): string | null {
   return combined.toDate().toISOString();
 }
 
+/** The effective timezone with its offset at the chosen start, so the wall-clock values are unambiguous. */
+const startTimeZoneLabel = computed(() => {
+  const at = combineStartedAt() ?? running.value?.startedAt;
+  if (!at) return '';
+  return t('timer.startEditor.timeZoneHint', {
+    zone: timeZoneLabel(effective.value.timeZone, at),
+  });
+});
+
 async function onSaveStartedAt() {
   const combined = combineStartedAt();
   if (!combined) return;
@@ -199,6 +210,7 @@ async function onSaveStartedAt() {
 
 <template>
   <div
+    ref="card"
     class="flex h-10 w-full min-w-0 items-center gap-2.5 rounded-[0.625rem] ps-3 pe-2 ring ring-inset transition-colors focus-within:ring-2 focus-within:ring-primary"
     :class="
       isRunning
@@ -236,11 +248,13 @@ async function onSaveStartedAt() {
 
     <!--
       Always UButton for consistent mono size. Idle: disabled (no popover).
-      Running: opens start-time editor.
+      Running: opens start-time editor, right-aligned with the card so it covers whole controls
+      of the page header below rather than slicing through one.
     -->
     <UPopover
       v-model:open="startEditorOpen"
-      :content="{ side: 'bottom', align: 'end', sideOffset: 10, collisionPadding: 16 }"
+      :reference="card ?? undefined"
+      :content="{ side: 'bottom', align: 'end', sideOffset: 8, collisionPadding: 16 }"
     >
       <UButton
         color="neutral"
@@ -298,7 +312,12 @@ async function onSaveStartedAt() {
               </template>
             </UInputDate>
           </UFormField>
-          <UFormField :label="t('timer.startEditor.timeLabel')" name="startTime">
+          <UFormField
+            :label="t('timer.startEditor.timeLabel')"
+            :help="startTimeZoneLabel"
+            name="startTime"
+            :ui="{ help: 'text-xs text-muted' }"
+          >
             <TimeField
               v-model="startTime"
               :label="t('timer.startEditor.timeLabel')"

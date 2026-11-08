@@ -112,22 +112,21 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       });
     }
 
-    // Name lookup must include soft-deleted trackers so the DTO keeps trackerName (REQ-084).
-    let trackerName: string | null = null;
-    if (updated.trackerId) {
-      const [tracker] = await db
-        .select({ name: trackers.name })
-        .from(trackers)
-        .where(eq(trackers.id, updated.trackerId))
-        .limit(1);
-      trackerName = tracker?.name ?? null;
-    }
+    // The lookup includes soft-deleted trackers so the DTO keeps their name and system (REQ-084).
+    const [tracker] = updated.trackerId
+      ? await db
+          .select({ name: trackers.name, systemType: trackers.systemType })
+          .from(trackers)
+          .where(eq(trackers.id, updated.trackerId))
+          .limit(1)
+      : [];
 
     return {
       id: updated.id,
       name: updated.name,
       trackerId: updated.trackerId,
-      trackerName,
+      trackerName: tracker?.name ?? null,
+      trackerSystemType: tracker?.systemType ?? null,
       remoteProjectId: updated.remoteProjectId,
       remoteProjectTitle: updated.remoteProjectTitle,
       recentTrackedSeconds: await getRecentTrackedSeconds(user.id, updated.id),

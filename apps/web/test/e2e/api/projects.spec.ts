@@ -55,6 +55,7 @@ describeProjects('projects API integration', async () => {
     expect(filteredRows).toHaveLength(1);
     expect(filteredRows[0].name).toBe('Zebra Project');
     expect(filteredRows[0].trackerName).toBe(trackerA.name);
+    expect(filteredRows[0].trackerSystemType).toBe('openproject');
 
     const foreignFiltered = await fetch(url(`/api/projects?trackerId=${UNKNOWN_ID}`), {
       headers: { cookie: jar.header() },
@@ -96,6 +97,7 @@ describeProjects('projects API integration', async () => {
     expect(local.name).toBe('Local Only');
     expect(local.trackerId).toBeNull();
     expect(local.trackerName).toBeNull();
+    expect(local.trackerSystemType).toBeNull();
 
     const res = await fetch(url('/api/projects'), {
       method: 'POST',
@@ -107,6 +109,7 @@ describeProjects('projects API integration', async () => {
     expect(created.name).toBe('New Project');
     expect(created.trackerId).toBe(trackerA.id);
     expect(created.trackerName).toBe(trackerA.name);
+    expect(created.trackerSystemType).toBe('openproject');
     expect(created.id).toBeDefined();
 
     const emptyRes = await fetch(url('/api/projects'), {
@@ -218,7 +221,9 @@ describeProjects('projects API integration', async () => {
   it('patch happy path (name + tracker change + detach) + foreign project id → 404', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const trackerA = await createTracker(jar, token, 'Patch Tracker A ' + Date.now());
-    const trackerC = await createTracker(jar, token, 'Patch Tracker C ' + Date.now());
+    const trackerC = await createTracker(jar, token, 'Patch Tracker C ' + Date.now(), {
+      systemType: 'redmine',
+    });
 
     const createRes = await fetch(url('/api/projects'), {
       method: 'POST',
@@ -237,6 +242,7 @@ describeProjects('projects API integration', async () => {
     expect(patched.name).toBe('Patched Name');
     expect(patched.trackerId).toBe(trackerC.id);
     expect(patched.trackerName).toBe(trackerC.name);
+    expect(patched.trackerSystemType).toBe('redmine');
 
     const detachRes = await fetch(url(`/api/projects/${project.id}`), {
       method: 'PATCH',
@@ -247,6 +253,7 @@ describeProjects('projects API integration', async () => {
     const detached = await detachRes.json();
     expect(detached.trackerId).toBeNull();
     expect(detached.trackerName).toBeNull();
+    expect(detached.trackerSystemType).toBeNull();
 
     const notFound = await fetch(url(`/api/projects/${UNKNOWN_ID}`), {
       method: 'PATCH',
@@ -314,7 +321,7 @@ describeProjects('projects API integration', async () => {
     expect(patched.trackerName).toBe(tracker.name);
   });
 
-  it('list keeps trackerName for a project whose tracker is soft-deleted', async () => {
+  it('list keeps trackerName and trackerSystemType for a project whose tracker is soft-deleted', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const tracker = await createTracker(jar, token, 'Soft Delete List Tracker ' + Date.now());
 
@@ -340,6 +347,7 @@ describeProjects('projects API integration', async () => {
     expect(found).toBeDefined();
     expect(found.trackerId).toBe(tracker.id);
     expect(found.trackerName).toBe(tracker.name);
+    expect(found.trackerSystemType).toBe('openproject');
   });
 
   it('patch with name only keeps the current trackerId', async () => {

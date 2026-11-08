@@ -15,17 +15,28 @@ export function relativeTime(at: string, now: number, locale: ExtensionLocale): 
   return format.format(Math.round(hours / 24), 'day');
 }
 
-/** One-line summary of a destination's latest operation, or the "no activity" text. */
-export function formatActivity(
-  record: ActivityRecord | undefined,
+/** A destination's latest operation, split for a row: its outcome, then what ran and when. */
+export interface ActivitySummary {
+  ok: boolean;
+  /** "Succeeded", "Timed out"… */
+  outcome: string;
+  /** "Time entry export · 4 minutes ago" */
+  detail: string;
+}
+
+export function summarizeActivity(
+  record: ActivityRecord,
   now: number,
   locale: ExtensionLocale,
   t: Translate,
-): string {
-  if (!record) return t('activity.none');
-  return [
-    relativeTime(record.at, now, locale),
-    t(`activity.operation_${record.operation}`),
-    t(`activity.outcome_${record.outcome}`),
-  ].join(' · ');
+): ActivitySummary {
+  return {
+    ok: record.outcome === 'ok',
+    outcome: t(`activity.outcome_${record.outcome}`),
+    detail: [
+      t(`activity.operation_${record.operation}`),
+      // "20 minutes ago" never breaks across lines.
+      relativeTime(record.at, now, locale).replaceAll(' ', ' '),
+    ].join(' · '),
+  };
 }

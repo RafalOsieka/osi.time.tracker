@@ -28,6 +28,8 @@ function mountPanel(destinations: DestinationApproval[]) {
             websites: [{ origin: website }, { origin: 'https://other.example.com' }],
             destinations,
             origin: '',
+            open: false,
+            handedOff: false,
             disabled: false,
             errorKey: null,
             missingOrigins: [],
@@ -58,7 +60,7 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 
-it('asks before revoking a website that still has trackers and names how many go with it', async () => {
+it('asks before removing a website that still has trackers and names the trackers', async () => {
   mountPanel([
     tracker(website, '/a'),
     tracker(website, '/b'),
@@ -67,8 +69,10 @@ it('asks before revoking a website that still has trackers and names how many go
   await click(`revoke-website-${website}`);
 
   expect(revoked).toEqual([]);
-  expect(document.body.textContent).toContain(`Revoke ${website}?`);
-  expect(document.body.textContent).toContain('Trackers affected: 2.');
+  expect(document.body.textContent).toContain('Remove website “time.example.com”?');
+  expect(document.body.textContent).toContain(
+    'Its tracker approvals (2) are removed too: tracker.example.com/a, tracker.example.com/b.',
+  );
 
   await click('revoke-website-confirm-action');
   expect(revoked).toEqual([website]);
@@ -84,7 +88,7 @@ it('keeps everything when the confirmation is cancelled', async () => {
   expect(byTestId('revoke-website-confirm')).toBeNull();
 });
 
-it('revokes a website without trackers directly', async () => {
+it('removes a website without trackers directly', async () => {
   mountPanel([tracker('https://other.example.com', '')]);
   await click(`revoke-website-${website}`);
 

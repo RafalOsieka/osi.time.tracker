@@ -432,11 +432,12 @@ async function onExport() {
               />
             </UFormField>
 
-            <!-- The help button sits in the hint slot, beside (not inside) the field's <label>. -->
+            <!-- The help button sits in the hint slot, beside (not inside) the field's <label>;
+                 the optional note follows on the hint's usual right edge. -->
             <UFormField
               :label="t('clientReport.contractorDetailsLabel')"
               name="contractorDetails"
-              :ui="{ labelWrapper: 'justify-start' }"
+              :ui="{ labelWrapper: 'justify-start', hint: 'flex flex-1 items-center' }"
             >
               <template #hint>
                 <UTooltip
@@ -460,6 +461,9 @@ async function onExport() {
                     data-testid="client-report-contractor-details-help"
                   />
                 </UTooltip>
+                <span class="ms-auto" data-testid="client-report-contractor-details-optional">
+                  {{ t('clientReport.optionalHint') }}
+                </span>
               </template>
               <UTextarea
                 id="client-report-contractor-details"
@@ -544,7 +548,7 @@ async function onExport() {
         icon chip, a title and one line, then the report's facts as a definition list.
       -->
       <section
-        class="grid content-start gap-5 rounded-lg border border-default bg-default p-6 dark:bg-muted"
+        class="grid content-start gap-5 self-start rounded-lg border border-default bg-default p-6 dark:bg-muted"
         aria-labelledby="client-report-preview-title"
         data-testid="client-report-preview"
       >

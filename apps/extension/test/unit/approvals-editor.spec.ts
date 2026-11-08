@@ -143,21 +143,20 @@ describe('approvals editor', () => {
     expect(editor.errorKey.value).toBe('approvals.changeFailed');
   });
 
-  it.each(['example.com', 'https://example.com/reports', 'http://example.com'])(
-    'explains invalid website input: %s',
-    async (input) => {
-      const service = new ApprovalService(
-        createMemoryApprovalStore(),
-        createMemoryHostPermissions(),
-      );
-      const editor = useApprovalsEditor(service);
-      editor.websiteOrigin.value = input;
-      await editor.addWebsite();
-      expect(editor.websiteErrorKey.value).toBe('approvals.invalidWebsite');
-      expect(editor.websites.value).toHaveLength(0);
-    },
-  );
-  it('approves and revokes a website and destination', async () => {
+  it.each([
+    ['example.com', 'approvals.invalidWebsiteFormat'],
+    ['https://example.com/reports', 'approvals.invalidWebsitePath'],
+    ['http://example.com', 'approvals.invalidWebsiteHttp'],
+    ['https://ada:secret@example.com', 'approvals.invalidWebsiteCredentials'],
+  ])('explains the rule invalid website input breaks: %s', async (input, expected) => {
+    const service = new ApprovalService(createMemoryApprovalStore(), createMemoryHostPermissions());
+    const editor = useApprovalsEditor(service);
+    editor.websiteOrigin.value = input;
+    await editor.addWebsite();
+    expect(editor.websiteErrorKey.value).toBe(expected);
+    expect(editor.websites.value).toHaveLength(0);
+  });
+  it('approves and removes a website and destination, naming each in its outcome', async () => {
     const service = new ApprovalService(createMemoryApprovalStore(), createMemoryHostPermissions());
     let registered: readonly string[] = [];
     const outcomes: string[] = [];
@@ -165,12 +164,12 @@ describe('approvals editor', () => {
       reconcile: async (origins) => {
         registered = origins;
       },
-      onOutcome: (messageKey) => outcomes.push(messageKey),
+      onOutcome: (messageKey, params) => outcomes.push(`${messageKey} ${params.name}`),
     });
     editor.websiteOrigin.value = 'http://localhost:3000';
     await editor.addWebsite();
     expect(editor.websites.value).toEqual([{ origin: 'http://localhost:3000' }]);
-    expect(outcomes).toEqual(['approvals.saved']);
+    expect(outcomes).toEqual(['approvals.websiteApproved http://localhost:3000']);
     expect(registered).toContain('http://localhost:3000');
 
     editor.destinationWebsite.value = 'http://localhost:3000';
@@ -184,10 +183,10 @@ describe('approvals editor', () => {
     expect(editor.websites.value).toHaveLength(0);
     expect(registered).toEqual([]);
     expect(outcomes).toEqual([
-      'approvals.saved',
-      'approvals.saved',
-      'approvals.revoked',
-      'approvals.revoked',
+      'approvals.websiteApproved http://localhost:3000',
+      'approvals.trackerApproved http://127.0.0.1:8080',
+      'approvals.trackerRemoved http://127.0.0.1:8080',
+      'approvals.websiteRemoved http://localhost:3000',
     ]);
   });
 
@@ -213,9 +212,13 @@ describe('approvals editor', () => {
     const suggestions = new SuggestionService(createMemorySuggestionStore(), service);
     await suggestions.suggest('http://localhost:3000', 'redmine', 'https://rm.example.com');
     const outcomes: string[] = [];
+    const names: unknown[] = [];
     const editor = useApprovalsEditor(service, {
       suggestions,
-      onOutcome: (messageKey) => outcomes.push(messageKey),
+      onOutcome: (messageKey, params) => {
+        outcomes.push(messageKey);
+        names.push(params.name);
+      },
     });
     await editor.refresh();
     const id = suggestionId(editor.suggestions.value[0]!);
@@ -229,5 +232,6 @@ describe('approvals editor', () => {
     expect(editor.suggestions.value).toEqual([]);
     expect(editor.destinations.value).toEqual([]);
     expect(outcomes).toEqual(['approvals.suggestionDismissed']);
+    expect(names).toEqual(['rm.example.com']);
   });
 });

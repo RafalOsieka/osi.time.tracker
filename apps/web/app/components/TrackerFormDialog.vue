@@ -78,6 +78,12 @@ watch(
   },
 );
 
+/** The dialog opens on its first field, the name, rather than on the header's close button. */
+function focusNameField(event: Event) {
+  event.preventDefault();
+  document.getElementById('tracker-name')?.focus();
+}
+
 function closeDialog() {
   dialogOpen.value = false;
 }
@@ -177,6 +183,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
     v-model:open="dialogOpen"
     :title="tracker ? t('trackers.dialogTitleEdit') : t('trackers.dialogTitleCreate')"
     :ui="{ content: 'sm:max-w-lg' }"
+    :content="{ onOpenAutoFocus: focusNameField }"
     @update:open="(value: boolean) => !value && closeDialog()"
   >
     <template #body>
@@ -188,14 +195,17 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
           class="grid gap-3"
           @submit="onSave"
         >
+          <!-- Fields the user must fill are marked required; the API key says it is optional. -->
           <UFormField
             :label="t('trackers.nameLabel')"
             name="name"
+            required
             :error="nameServerError || undefined"
           >
             <UInput
               id="tracker-name"
               v-model="state.name"
+              aria-required="true"
               :maxlength="TRACKER_NAME_MAX_LENGTH"
               class="w-full"
               data-testid="tracker-name-input"
@@ -235,11 +245,13 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
           <UFormField
             :label="t('trackers.baseUrlLabel')"
             name="baseUrl"
+            required
             :error="baseUrlServerError || undefined"
           >
             <UInput
               id="tracker-base-url"
               v-model="state.baseUrl"
+              aria-required="true"
               :placeholder="t('trackers.baseUrlPlaceholder')"
               class="w-full"
               data-testid="tracker-base-url-input"
@@ -268,36 +280,21 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             />
           </UFormField>
 
-          <UFormField name="directBrowserAccess">
-            <div class="flex items-center gap-1">
-              <UCheckbox
-                id="tracker-direct-browser-access"
-                v-model="state.directBrowserAccess"
-                :label="t('trackers.directBrowserAccessLabel')"
-                data-testid="tracker-direct-browser-access"
-              />
-              <UTooltip
-                :text="t('trackers.directBrowserAccessHelp')"
-                :delay-duration="0"
-                :ui="{
-                  content: 'h-auto max-w-xs whitespace-normal',
-                  text: 'whitespace-normal',
-                }"
-              >
-                <UButton
-                  type="button"
-                  color="neutral"
-                  variant="ghost"
-                  size="xs"
-                  square
-                  icon="i-lucide-circle-help"
-                  class="text-muted"
-                  :ui="{ leadingIcon: 'size-3.5' }"
-                  :aria-label="t('trackers.directBrowserAccessHelpAria')"
-                  data-testid="tracker-direct-browser-access-help"
-                />
-              </UTooltip>
-            </div>
+          <!--
+            Its help is a visible line like the API key's, indented under the checkbox label and
+            linked to the checkbox by the form field (aria-describedby).
+          -->
+          <UFormField
+            name="directBrowserAccess"
+            :help="t('trackers.directBrowserAccessHelp')"
+            :ui="{ help: 'mt-1 ps-6' }"
+          >
+            <UCheckbox
+              id="tracker-direct-browser-access"
+              v-model="state.directBrowserAccess"
+              :label="t('trackers.directBrowserAccessLabel')"
+              data-testid="tracker-direct-browser-access"
+            />
           </UFormField>
 
           <UFormField :label="t('trackers.roundingRuleLabel')" name="roundingRule">

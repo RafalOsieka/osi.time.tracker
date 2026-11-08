@@ -34,7 +34,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
 ### Requirement: REQ-492 Create a tracker
-`POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with accessible help (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
+`POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with visible help text (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
 
 #### Scenario: Direct browser access defaults to true
 - **WHEN** a user submits a tracker without `directBrowserAccess`
@@ -85,8 +85,8 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **THEN** the user SHALL be able to save and use `directBrowserAccess: true`
 
 #### Scenario: Help is available without a pointer
-- **WHEN** a keyboard user focuses the help control beside the checkbox
-- **THEN** the localized explanation SHALL become available without changing the field value
+- **WHEN** the tracker form shows the direct-browser checkbox
+- **THEN** the localized explanation SHALL be visible as help text under it, not only in a tooltip, and the checkbox SHALL reference it through `aria-describedby`
 
 ### Requirement: REQ-246 Edit a tracker
 `PATCH /api/trackers/[id]` SHALL update the user's own tracker, validating provided fields as on creation. Changing any field, including `systemType`, `baseUrl` or `directBrowserAccess`, SHALL keep the tracker's identity and its tasks' remote issue references, with no remote validation, cleanup or migration; a capability change affects only future remote requests. The updated tracker SHALL be returned and its row SHALL reflect the change.

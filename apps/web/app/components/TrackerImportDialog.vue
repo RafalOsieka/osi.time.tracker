@@ -205,6 +205,12 @@ function backToRange() {
 function closeDialog() {
   dialogOpen.value = false;
 }
+
+/**
+ * Upcoming step circles sit on the elevated layer, which is the dialog's own surface in dark
+ * mode; the accented layer gives them the same filled look there as in light mode.
+ */
+const STEPPER_UI = { trigger: 'dark:bg-accented' };
 </script>
 
 <template>
@@ -231,6 +237,7 @@ function closeDialog() {
         :items="stepItems"
         :model-value="stepIndex"
         class="mb-2"
+        :ui="STEPPER_UI"
       >
         <template #content>
           <!--
@@ -334,7 +341,7 @@ function closeDialog() {
                 </ul>
                 <p
                   v-if="unscopedProjects.length > 0"
-                  class="m-0 text-xs text-muted"
+                  class="m-0 text-sm text-muted"
                   data-testid="tracker-import-unscoped-help"
                 >
                   {{ t('trackerImport.unscopedHelp') }}

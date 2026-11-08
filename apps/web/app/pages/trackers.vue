@@ -1,15 +1,6 @@
 <script setup lang="ts">
 import type { TableColumn } from '@nuxt/ui';
-import {
-  TRACKER_SYSTEM_TYPE_LABELS,
-  type TrackerSystemType,
-} from '@osi/time-tracker-remote-trackers/contracts';
-
-/** Short type marks shown before each system's name in the list. */
-const SYSTEM_TYPE_MARKS = {
-  openproject: 'OP',
-  redmine: 'RM',
-} as const satisfies Record<TrackerSystemType, string>;
+import { TRACKER_SYSTEM_TYPE_LABELS } from '@osi/time-tracker-remote-trackers/contracts';
 
 const { t } = useI18n();
 usePageTitle(() => t('trackers.pageTitle'));
@@ -101,18 +92,9 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
     {
       accessorKey: 'systemType',
       header: t('trackers.columnSystemType'),
-      // A small type mark gives each system an identity without leaving the palette.
       cell: ({ row }) =>
         h('span', { class: 'flex min-w-0 items-center gap-2' }, [
-          h(
-            'span',
-            {
-              class:
-                'inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded px-1 text-[10px]/none font-semibold tracking-wide bg-primary-100/80 text-primary dark:bg-primary/12',
-              'aria-hidden': 'true',
-            },
-            SYSTEM_TYPE_MARKS[row.original.systemType],
-          ),
+          h(resolveComponent('TrackerTypeMark'), { systemType: row.original.systemType }),
           h('span', { class: 'truncate' }, TRACKER_SYSTEM_TYPE_LABELS[row.original.systemType]),
         ]),
       meta: { class: { th: 'w-40' } },
@@ -153,7 +135,8 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           ),
         ]);
       },
-      meta: { class: { th: 'w-48' } },
+      // As wide as its longest label ("Przez rozszerzenie"), so no dead band opens before the tiles.
+      meta: { class: { th: 'w-44' } },
     },
     {
       id: 'actions',
@@ -174,7 +157,8 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
           deleteLabel: t('trackers.deleteButton'),
           editTestid: `edit-tracker-${row.original.id}`,
           deleteTestid: `delete-tracker-${row.original.id}`,
-          extraIcon: 'i-lucide-import',
+          // A clock-with-arrow glyph (history) reads apart from the edit pencil beside it.
+          extraIcon: 'i-lucide-history',
           extraLabel: hasSecret ? t('trackers.importButton') : t('trackers.importNoSecretHint'),
           extraTestid: `import-tracker-${row.original.id}`,
           extraDisabled: !hasSecret,
@@ -190,7 +174,10 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
 
 <template>
   <div data-testid="trackers-page" class="grid gap-6">
-    <!-- In the empty state the card's call to action is the page's one primary button. -->
+    <!--
+      In the empty state the card's call to action is the page's one primary button; it names the
+      action exactly as the quiet header button does. The chip reuses the navigation's glyph.
+    -->
     <TableHeader
       :title="t('trackers.pageTitle')"
       :new-label="t('trackers.newButton')"
@@ -201,10 +188,10 @@ const columns = computed<TableColumn<TrackerDto>[]>(() => {
 
     <EmptyState
       v-if="isEmpty"
-      icon="i-lucide-plug"
+      icon="i-lucide-cable"
       :title="t('trackers.emptyStateTitle')"
       :message="t('trackers.emptyState')"
-      :cta-label="t('trackers.emptyStateCta')"
+      :cta-label="t('trackers.newButton')"
       testid="trackers-empty-state"
       @create="openCreate"
     />

@@ -7,13 +7,6 @@ import {
 
 type AppLocale = 'en' | 'pl';
 
-/** Settings rows: the label on the left, the control (capped width) and its help on the right. */
-const settingsFieldUi = {
-  root: 'grid grid-cols-[11rem_minmax(0,24rem)] items-start justify-start gap-x-8',
-  wrapper: 'pt-1.5',
-  container: 'mt-0 w-full',
-};
-
 const { t, locale, setLocale } = useI18n();
 usePageTitle(() => t('profile.title'));
 const toast = useAppToast();
@@ -25,24 +18,13 @@ const storedTimezone = computed(() => profile.value?.timezone ?? 'UTC');
 
 const displayNameDraft = ref(storedDisplayName.value);
 const timezone = ref(storedTimezone.value);
-/** The zone's current UTC offset, e.g. `UTC+01:00` (DST applies, so it is today's offset). */
-function utcOffset(timeZone: string, now: Date): string {
-  const name = new Intl.DateTimeFormat('en-US', { timeZone, timeZoneName: 'longOffset' })
-    .formatToParts(now)
-    .find((part) => part.type === 'timeZoneName')?.value;
-  // `longOffset` writes `GMT+01:00`, or a bare `GMT` for a zero offset.
-  return !name || name === 'GMT' ? 'UTC+00:00' : name.replace('GMT', 'UTC');
-}
 
 /**
  * Each option is its IANA id with today's UTC offset, e.g. "Europe/Warsaw (UTC+01:00)", so the
  * list says what a zone means without a lookup; filtering still matches the id (REQ-494).
  */
-const now = new Date();
-const timezones = TIME_ZONES.map((zone) => ({
-  value: zone,
-  label: zone === 'UTC' ? zone : `${zone} (${utcOffset(zone, now)})`,
-}));
+const now = new Date().toISOString();
+const timezones = TIME_ZONES.map((zone) => ({ value: zone, label: timeZoneLabel(zone, now) }));
 
 const localeItems = computed(
   () =>
@@ -101,114 +83,109 @@ function onTimezoneChange(value: string | undefined) {
 </script>
 
 <template>
-  <!-- The shared header (a bare title) and the same 24px gap to the content as every page; the
-       one autosave note is the display name's help, the only field that saves on leave. -->
+  <!-- The shared header (a bare title) and the same 24px gap to the content as every page. Each
+       section is a row across the content width: its title and a one-line description on the
+       left, its fields in a card on the right (stacked on narrow screens). The one autosave note
+       is the display name's help, the only field that saves on leave. -->
   <div data-testid="page-profile" class="grid gap-6">
     <PageHeader :title="t('profile.title')" />
 
-    <div class="grid max-w-[40rem] gap-6">
-      <UCard
-        as="section"
+    <div class="grid gap-8">
+      <section
+        class="grid gap-x-10 gap-y-4 lg:grid-cols-[16rem_minmax(0,1fr)]"
         aria-labelledby="profile-account-heading"
-        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-6 p-6 sm:p-6' }"
       >
-        <template #header>
+        <div class="grid content-start gap-1">
           <h2 id="profile-account-heading" class="m-0 text-base font-semibold text-highlighted">
             {{ t('profile.account') }}
           </h2>
-        </template>
+          <p class="m-0 text-sm text-muted">{{ t('profile.accountDescription') }}</p>
+        </div>
+        <UCard :ui="{ body: 'grid gap-5 p-6 sm:p-6' }">
+          <UFormField
+            :label="t('profile.displayName')"
+            :help="t('profile.displayNameHelp')"
+            name="displayName"
+            data-testid="profile-display-name-field"
+          >
+            <UInput
+              id="profile-display-name"
+              v-model="displayNameDraft"
+              :maxlength="DISPLAY_NAME_MAX_LENGTH"
+              autocomplete="name"
+              class="w-full"
+              data-testid="profile-display-name"
+              @blur="commitDisplayName"
+              @keydown.enter="commitDisplayName"
+              @keydown.esc.prevent="cancelDisplayName"
+            />
+          </UFormField>
 
-        <UFormField
-          :label="t('profile.displayName')"
-          :help="t('profile.displayNameHelp')"
-          name="displayName"
-          orientation="horizontal"
-          :ui="settingsFieldUi"
-          data-testid="profile-display-name-field"
-        >
-          <UInput
-            id="profile-display-name"
-            v-model="displayNameDraft"
-            :maxlength="DISPLAY_NAME_MAX_LENGTH"
-            autocomplete="name"
-            class="w-full"
-            data-testid="profile-display-name"
-            @blur="commitDisplayName"
-            @keydown.enter="commitDisplayName"
-            @keydown.esc.prevent="cancelDisplayName"
-          />
-        </UFormField>
+          <UFormField :label="t('profile.email')" name="email" data-testid="profile-email-field">
+            <UInput
+              id="profile-email"
+              :model-value="user?.email ?? ''"
+              readonly
+              variant="soft"
+              trailing-icon="i-lucide-lock"
+              class="w-full"
+              :ui="{ base: 'text-muted cursor-default', trailingIcon: 'size-4 text-dimmed' }"
+              data-testid="profile-email"
+            />
+          </UFormField>
+        </UCard>
+      </section>
 
-        <UFormField
-          :label="t('profile.email')"
-          name="email"
-          orientation="horizontal"
-          :ui="settingsFieldUi"
-          data-testid="profile-email-field"
-        >
-          <UInput
-            id="profile-email"
-            :model-value="user?.email ?? ''"
-            readonly
-            variant="soft"
-            trailing-icon="i-lucide-lock"
-            class="w-full"
-            :ui="{ base: 'text-muted cursor-default', trailingIcon: 'size-4 text-dimmed' }"
-            data-testid="profile-email"
-          />
-        </UFormField>
+      <USeparator />
 
-        <UFormField
-          :label="t('profile.timezone')"
-          name="timezone"
-          orientation="horizontal"
-          :ui="settingsFieldUi"
-          data-testid="profile-timezone-field"
-        >
-          <USelectMenu
-            id="profile-timezone"
-            :model-value="timezone"
-            :items="timezones"
-            value-key="value"
-            label-key="label"
-            searchable
-            class="w-full"
-            data-testid="profile-timezone"
-            @update:model-value="onTimezoneChange"
-          />
-        </UFormField>
-      </UCard>
-
-      <UCard
-        as="section"
+      <section
+        class="grid gap-x-10 gap-y-4 lg:grid-cols-[16rem_minmax(0,1fr)]"
         aria-labelledby="profile-preferences-heading"
-        :ui="{ header: 'px-6 py-4 sm:px-6', body: 'grid gap-6 p-6 sm:p-6' }"
       >
-        <template #header>
+        <div class="grid content-start gap-1">
           <h2 id="profile-preferences-heading" class="m-0 text-base font-semibold text-highlighted">
             {{ t('profile.preferences') }}
           </h2>
-        </template>
+          <p class="m-0 text-sm text-muted">{{ t('profile.preferencesDescription') }}</p>
+        </div>
+        <UCard :ui="{ body: 'grid gap-5 p-6 sm:p-6' }">
+          <UFormField
+            :label="t('profile.timezone')"
+            :help="t('profile.timezoneHelp')"
+            name="timezone"
+            data-testid="profile-timezone-field"
+          >
+            <USelectMenu
+              id="profile-timezone"
+              :model-value="timezone"
+              :items="timezones"
+              value-key="value"
+              label-key="label"
+              searchable
+              class="w-full"
+              data-testid="profile-timezone"
+              @update:model-value="onTimezoneChange"
+            />
+          </UFormField>
 
-        <UFormField
-          :label="t('profile.language')"
-          :help="t('profile.languageHint')"
-          name="language"
-          orientation="horizontal"
-          :ui="settingsFieldUi"
-          data-testid="profile-language-field"
-        >
-          <USelect
-            id="profile-language"
-            v-model="selectedLocale"
-            :items="localeItems"
-            value-key="value"
-            label-key="label"
-            class="w-full"
-            data-testid="profile-language"
-          />
-        </UFormField>
-      </UCard>
+          <UFormField
+            :label="t('profile.language')"
+            :help="t('profile.languageHint')"
+            name="language"
+            data-testid="profile-language-field"
+          >
+            <USelect
+              id="profile-language"
+              v-model="selectedLocale"
+              :items="localeItems"
+              value-key="value"
+              label-key="label"
+              class="w-full"
+              data-testid="profile-language"
+            />
+          </UFormField>
+        </UCard>
+      </section>
     </div>
   </div>
 </template>
