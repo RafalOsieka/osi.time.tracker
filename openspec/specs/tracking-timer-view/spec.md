@@ -249,7 +249,7 @@ Edit, or the unlinked icon, SHALL open a reusable search popover naming its day 
 
 #### Scenario: Enter picks the active result
 - **WHEN** a search has listed results and the query, mode and scope toggle are unchanged since
-- **THEN** the first result SHALL be visibly active, marked by a 3:1 outline rather than only a background tint, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again
+- **THEN** the first result SHALL be visibly active, marked by a 3:1 outline rather than only a background tint, the arrow keys SHALL move between the query and the results, and Enter in the query SHALL link the active result instead of searching again; an edited query SHALL search again, and focus SHALL return to the query input after each search
 
 #### Scenario: Mode control precedes the query
 - **WHEN** the picker is open

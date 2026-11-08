@@ -26,13 +26,6 @@ const avatarInitial = computed(() => {
 const route = useRoute();
 const onProfile = computed(() => route.path === '/profile');
 
-/**
- * While the menu is open the trigger stays pressed, the same way in both themes: it rises to the
- * page surface with a control outline, above the sidebar's deeper layer.
- */
-const PRESSED_CLASS =
-  'data-[state=open]:bg-default data-[state=open]:ring data-[state=open]:ring-accented';
-
 const avatar = computed<AvatarProps>(() => ({
   alt: primaryLabel.value || undefined,
   text: avatarInitial.value,
@@ -139,7 +132,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         :avatar="avatar"
         size="md"
         class="relative w-full min-w-0 cursor-pointer rounded-md py-1 ps-1 pe-7 text-start hover:bg-elevated"
-        :class="[PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
+        :class="[SIDEBAR_FOOTER_PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
         data-testid="app-user-footer-trigger"
         :ui="{
           root: 'w-full min-w-0',
@@ -177,7 +170,7 @@ const menuItems = computed<DropdownMenuItem[][]>(() => [
         square
         :avatar="avatar"
         class="p-1"
-        :class="[PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
+        :class="[SIDEBAR_FOOTER_PRESSED_CLASS, onProfile && 'bg-primary-100/80 dark:bg-primary/12']"
         :ui="{ leadingAvatarSize: 'sm' }"
         :aria-label="primaryLabel || t('layout.logoutButton')"
         data-testid="app-user-footer-trigger"

@@ -130,13 +130,14 @@ const titleDisplayClass = computed(() =>
   canEdit ? 'font-medium text-highlighted' : 'font-medium text-default',
 );
 /**
- * An editable to send is a row value (500, highlighted); a Sent row's exported value and the
+ * An editable to send is a row value (500, the body tone: in the mono face the darkest tone read
+ * heavier than 500); a Sent row's exported value and the
  * local time sit at the body weight and tone (valid data, never disabled-looking), so neither
  * reads like a total. Only a zero, an export that cannot happen, recedes.
  */
 const toSendClass = computed(() => {
   if (toSendLabel === formatDuration(0)) return 'font-normal text-dimmed';
-  return showEditors ? 'font-medium text-highlighted' : 'font-normal text-default';
+  return showEditors ? 'font-medium text-default' : 'font-normal text-default';
 });
 /**
  * The to-send editor at rest: the same frame as the title to send (card tone, 3:1 outline),
@@ -376,7 +377,7 @@ function onEditToSend() {
               </template>
             </UPopover>
             <!-- The extension check keeps its labelled button; the plain retry is the agreed row
-                 action, a 32px cyan tinted tile named by its tooltip, so a day of failed rows does
+                 action, a cyan tinted tile at the row controls' 28px, named by its tooltip, so a day of failed rows does
                  not repeat "Ponów" down the column. -->
             <UButton
               v-if="extensionActivityErrorKey"
@@ -396,7 +397,7 @@ function onEditToSend() {
                 variant="soft"
                 square
                 icon="i-lucide-refresh-cw"
-                class="size-8 justify-center rounded-md"
+                class="size-7 justify-center rounded-md"
                 :ui="{ leadingIcon: 'size-4' }"
                 :aria-label="t('remoteSync.activityRetry')"
                 :data-testid="`remote-sync-activity-retry-${row.taskId}`"
@@ -474,16 +475,17 @@ function onEditToSend() {
             <div
               ref="activityList"
               tabindex="-1"
-              class="flex max-h-60 min-w-[max(12rem,var(--reka-popover-trigger-width))] flex-col overflow-auto p-1 outline-none"
+              class="flex max-h-60 w-(--reka-popover-trigger-width) flex-col overflow-auto p-1 outline-none"
               role="listbox"
               :aria-label="t('remoteSync.activityLabel')"
               :data-testid="`remote-sync-activity-list-${row.taskId}`"
               @keydown="onActivityListKeydown"
             >
-              <!-- Which tracker the activities come from, so the menu names its source. -->
+              <!-- Which tracker the activities come from, so the menu names its source; at the
+                   trigger's width it wraps rather than cut the Tracker name. -->
               <p
                 v-if="row.trackerName"
-                class="m-0 truncate px-2.5 pt-1 pb-1.5 text-xs font-medium text-muted"
+                class="m-0 px-2.5 pt-1 pb-1.5 text-xs font-medium text-balance text-muted"
                 aria-hidden="true"
               >
                 {{ t('remoteSync.activityMenuHeading', { tracker: row.trackerName }) }}
@@ -497,7 +499,7 @@ function onEditToSend() {
                 :class="[
                   option.id === selectedActivityId && 'font-medium text-highlighted',
                   option.id === activeOptionId &&
-                    'bg-elevated ring-1 ring-accented ring-inset dark:bg-accented/60',
+                    'bg-elevated ring-1 ring-primary ring-inset dark:bg-accented/60',
                 ]"
                 :ui="{ trailingIcon: 'ms-auto size-4 text-primary' }"
                 role="option"

@@ -37,6 +37,15 @@ const emit = defineEmits<{ act: [step: SetupStep] }>();
 type StepState = 'done' | 'current' | 'todo';
 
 const { t } = useExtensionI18n();
+/**
+ * Step titles. The popup names each step by what it concerns ("Witryna OSI") and keeps the verb
+ * for its button; the setup page's steps are themselves links, so they carry the verb.
+ */
+function websiteLabel(): string {
+  if (websiteDone) return 'app.checklistWebsiteDone';
+  if (mode === 'setup') return 'app.checklistWebsite';
+  return offer ? 'app.checklistStepWebsiteOffer' : 'app.checklistStepWebsite';
+}
 
 const steps = computed(() => {
   const websiteState: StepState = websiteDone ? 'done' : 'current';
@@ -44,13 +53,13 @@ const steps = computed(() => {
   return [
     {
       id: 'website',
-      labelKey: websiteDone ? 'app.checklistWebsiteDone' : 'app.checklistWebsite',
+      labelKey: websiteLabel(),
       actionKey: 'app.checklistWebsiteAction',
       state: websiteState,
     },
     {
       id: 'tracker',
-      labelKey: 'app.checklistTracker',
+      labelKey: mode === 'setup' ? 'app.checklistTracker' : 'app.checklistStepTracker',
       actionKey: 'app.checklistTrackerAction',
       state: tracker,
     },
@@ -101,7 +110,7 @@ const stateKeys = {
       </h2>
     </template>
     <div v-if="mode === 'popup'" class="flex flex-col gap-1">
-      <h2 id="setup-checklist-title" class="text-sm font-semibold text-highlighted">
+      <h2 id="setup-checklist-title" class="text-base font-semibold text-highlighted">
         {{ t('app.checklistTitle') }}
       </h2>
       <p class="text-[13px] text-balance text-muted">{{ t('app.purpose') }}</p>
@@ -166,7 +175,6 @@ const stateKeys = {
             </p>
             <UButton
               v-if="step.id === 'website' && offer"
-              size="sm"
               trailing-icon="i-lucide-arrow-up-right"
               data-testid="current-website-offer"
               :label="t('app.checklistOfferAction', { website: displayUrl(offer) })"
@@ -174,7 +182,6 @@ const stateKeys = {
             />
             <UButton
               v-else
-              size="sm"
               trailing-icon="i-lucide-arrow-up-right"
               :label="t(step.actionKey)"
               :data-testid="`checklist-action-${step.id}`"
@@ -184,20 +191,14 @@ const stateKeys = {
         </div>
       </li>
     </ol>
-
+    <!-- An instruction for OSI itself, set apart from the steps: a quiet icon, no step chip. -->
     <div
-      class="flex items-start gap-3"
-      :class="mode === 'popup' ? 'border-t border-default pt-4' : ''"
+      class="flex items-start gap-2 border-t border-default pt-3"
       data-testid="checklist-direct"
       data-state="info"
     >
-      <span
-        class="flex size-6 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
-        aria-hidden="true"
-      >
-        <UIcon name="i-lucide-settings-2" class="size-3.5" />
-      </span>
-      <p class="pt-0.5 text-muted" :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'">
+      <UIcon name="i-lucide-info" class="mt-0.5 size-4 shrink-0 text-dimmed" aria-hidden="true" />
+      <p class="text-muted" :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'">
         <span class="font-medium text-toned">{{ t('app.checklistDirectLabel') }}</span>
         {{ t('app.checklistDirect') }}
       </p>

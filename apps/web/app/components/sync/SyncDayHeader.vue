@@ -111,7 +111,7 @@ function onCalendarSelect(value: CalendarDate | null) {
             aria-haspopup="dialog"
             :aria-expanded="exportOpen"
             class="disabled:bg-accented/70 disabled:text-dimmed disabled:opacity-100 dark:disabled:bg-accented/70"
-            :class="exportOpen && 'bg-primary/75 dark:bg-primary/75'"
+            :class="exportOpen && 'bg-primary/75 shadow-inner'"
             data-testid="remote-sync-export-button"
             @click="emit('export')"
           />

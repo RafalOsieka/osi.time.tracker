@@ -194,9 +194,11 @@ function durationTd(isTotal: boolean, extra = ''): string {
   return `text-end font-mono tabular-nums ${weight} ${extra}`;
 }
 
-/** A legend entry's meaning, in the flagged look (warning, dotted underline) it explains. */
-const LEGEND_MARK =
-  'font-medium text-warning underline decoration-warning/70 decoration-dotted decoration-2 underline-offset-4';
+/**
+ * A legend entry's key: a short swatch of the flag's dotted amber underline, with no text, so the
+ * legend explains the mark without looking like a flagged value itself.
+ */
+const LEGEND_SWATCH = 'me-2 inline-block w-5 border-b-2 border-dotted border-warning/80';
 
 /** Each tracker group opens with the same quiet divider, in both header rows and the body. */
 const GROUP_DIVIDER = 'border-s border-default';
@@ -461,7 +463,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
         @next="goMonth(1)"
       >
         <PeriodLabel data-testid="reports-month-label">
-          {{ capitalizeFirst(monthLabel, locale) }}
+          {{ monthLabel }}
         </PeriodLabel>
       </PeriodStepper>
     </PageHeader>
@@ -477,7 +479,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       data-testid="reports-monthly-summaries"
       aria-live="polite"
     >
-      <StatCard :label="t('reports.monthly.summaryLocal')" icon="i-lucide-hard-drive">
+      <StatCard :label="t('reports.monthly.summaryLocal')" icon="i-lucide-laptop">
         <span
           :class="localSummaryText === SUMMARY_PENDING ? 'text-dimmed' : undefined"
           data-testid="reports-summary-local"
@@ -555,12 +557,18 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       data-testid="reports-monthly-legend"
     >
       <span>
-        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnLocal') }) }}
-        <span :class="LEGEND_MARK">{{ t('reports.monthly.legendLocal') }}</span>
+        <span :class="LEGEND_SWATCH" aria-hidden="true" />
+        <span class="font-medium text-default">
+          {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnLocal') }) }}
+        </span>
+        {{ t('reports.monthly.legendLocal') }}
       </span>
       <span>
-        {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnDirect') }) }}
-        <span :class="LEGEND_MARK">{{ t('reports.monthly.legendDirect') }}</span>
+        <span :class="LEGEND_SWATCH" aria-hidden="true" />
+        <span class="font-medium text-default">
+          {{ t('reports.monthly.legendInColumn', { column: t('reports.monthly.columnDirect') }) }}
+        </span>
+        {{ t('reports.monthly.legendDirect') }}
       </span>
       <span class="w-full">{{ t('reports.monthly.legend') }}</span>
     </div>

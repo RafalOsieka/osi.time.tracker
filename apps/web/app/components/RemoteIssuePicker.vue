@@ -20,6 +20,7 @@ const {
   linkLabel = undefined,
   contextLabel = undefined,
   dayLabel = undefined,
+  alignTo = null,
 } = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
@@ -37,6 +38,12 @@ const {
    * Tracker in the popover's context line.
    */
   dayLabel?: string;
+  /**
+   * An element the popover's end edge lines up with, below its row, instead of opening from the
+   * trigger: the Timer passes its duration cell, so the popover stays inside the list and clear
+   * of the row-action column (the running row's stop).
+   */
+  alignTo?: HTMLElement | null;
 }>();
 
 const emit = defineEmits<{
@@ -178,7 +185,12 @@ function visibleProjectTitle(result: RemoteIssueSearchResult): string | undefine
 /** The query keeps the initial focus (REQ-460), though the mode control comes first. */
 function focusQueryInput(event?: Event) {
   event?.preventDefault();
-  queryInput.value?.inputRef?.focus();
+  // The input by its id: the popover content is teleported, and the component ref's exposed
+  // `inputRef` is not reliably an element by the time this runs.
+  const exposed = queryInput.value?.inputRef;
+  const input =
+    exposed instanceof HTMLElement ? exposed : document.getElementById('remote-issue-query');
+  input?.focus();
 }
 
 // Shared by every path that opens the popover (the unlinked icon, the Edit
@@ -218,7 +230,11 @@ const currentKey = computed(() => `${state.mode}\n${applyScope.value}\n${state.q
 const activeIndex = shallowRef(0);
 const resultsList = useTemplateRef<HTMLElement>('resultsList');
 
-async function submit() {
+/**
+ * Not awaited by the form: an awaited submit makes UForm disable its fields until the search
+ * ends, which drops the query's focus. The search's own loading state shows progress instead.
+ */
+function submit() {
   const active = results.value[activeIndex.value];
   if (hasSearched.value && !loading.value && active && searchedKey.value === currentKey.value) {
     selectResult(active);
@@ -229,8 +245,18 @@ async function submit() {
   searchedKey.value = currentKey.value;
   highlightQuery.value = state.mode === 'title' ? state.query.trim() : '';
   searchedScopeTitle.value = scope && applyScope.value ? scope.remoteProjectTitle : '';
-  await search({ mode: state.mode, query: state.query }, applyScope.value);
+  void search({ mode: state.mode, query: state.query }, applyScope.value);
 }
+
+// Typing goes on in the query (its focus ring shows where), also after a click on the search
+// icon: focus returns to it as soon as a search's results or error render.
+watch(
+  [results, errorKey],
+  () => {
+    if (open.value && hasSearched.value) focusQueryInput();
+  },
+  { flush: 'post' },
+);
 
 /** Arrow keys move between the query and the results; the focused result becomes the active one. */
 function moveActive(step: 1 | -1) {
@@ -361,10 +387,10 @@ onBeforeUnmount(() => {
     <UPopover
       :open="open"
       :modal="false"
-      :reference="rootEl ?? undefined"
+      :reference="alignTo ?? rootEl ?? undefined"
       :content="{
         side: 'bottom',
-        align: 'start',
+        align: alignTo ? 'end' : 'start',
         sideOffset: 4,
         collisionPadding: 16,
         onOpenAutoFocus: focusQueryInput,
@@ -373,9 +399,10 @@ onBeforeUnmount(() => {
     >
       <template #content>
         <!--
-          448px wide, opening from the trigger towards the right edge (the collision shift brings
-          it back into view): over the Timer list it covers the Project, Issue, Time and action
-          columns whole, never slicing a value, and leaves the Task column readable.
+          448px wide. With `alignTo` (the Timer's duration cell) its end edge lines up with that
+          column's end, below the row, flipping above only when there is no room: it stays inside
+          the list, covers the Project, Issue and Time columns whole and leaves the Task column and
+          the row tiles (the running row's stop) in view. Otherwise it opens from the trigger.
         -->
         <div
           role="group"
@@ -442,14 +469,15 @@ onBeforeUnmount(() => {
             </div>
             <!--
               The search submit is the input's own quiet trailing icon. Enter searches, and on an
-              unchanged query picks the active result; the down arrow moves into the results.
+              unchanged query picks the active result; the down arrow moves into the results. Its
+              cyan ring shows on any focus, also when a search hands focus back to it.
             -->
             <UInput
               id="remote-issue-query"
               ref="queryInput"
               v-model="state.query"
               class="w-full"
-              :ui="{ trailing: 'pe-1' }"
+              :ui="{ trailing: 'pe-1', base: 'focus:ring-2 focus:ring-primary' }"
               :aria-label="t('remoteIssuePicker.queryLabel')"
               :placeholder="t(queryPlaceholderKey)"
               data-testid="remote-issue-picker-query"
@@ -501,7 +529,7 @@ onBeforeUnmount(() => {
                 color="neutral"
                 variant="ghost"
                 block
-                class="h-auto justify-start rounded-md px-2.5 py-1.5 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
+                class="h-auto justify-start rounded-md px-2.5 py-2 text-left hover:bg-elevated focus-visible:bg-elevated dark:hover:bg-accented/60 dark:focus-visible:bg-accented/60"
                 :class="
                   index === activeIndex &&
                   'bg-elevated ring-1 ring-primary ring-inset dark:bg-accented/60'

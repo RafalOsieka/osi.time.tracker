@@ -138,7 +138,7 @@ function destinationOf(item: ExportDialogIncludedRow) {
                   aria-hidden="true"
                 />
                 <span
-                  :class="part.mono && 'font-mono text-[0.8125rem] tabular-nums text-default'"
+                  :class="part.mono && 'font-mono text-xs tabular-nums text-dimmed'"
                   :data-testid="`remote-sync-export-destination-${part.key}-${item.taskId}`"
                 >
                   {{ part.text }}
@@ -164,7 +164,7 @@ function destinationOf(item: ExportDialogIncludedRow) {
              the page), at helper-text size since it qualifies what the export does. -->
         <p
           v-if="excludedSummary && !isRunning"
-          class="m-0 flex items-start gap-2 text-sm text-muted"
+          class="m-0 flex items-start gap-2 text-sm text-pretty text-muted"
           data-testid="remote-sync-export-not-ready"
         >
           <UIcon

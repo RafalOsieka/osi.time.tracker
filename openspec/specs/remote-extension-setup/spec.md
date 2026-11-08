@@ -40,7 +40,7 @@ While setup is incomplete, the setup page and the popup SHALL show a checklist: 
 
 #### Scenario: Approvals cannot be read
 - **WHEN** reading approvals fails
-- **THEN** the page SHALL show a titled error alert with a "Try again" action instead of the checklist, and SHALL NOT show approval lists or forms that would present the unread settings as empty
+- **THEN** the page SHALL show a titled alert with a "Retry loading" action instead of the checklist, and SHALL NOT show approval lists or forms that would present the unread settings as empty
 
 ### Requirement: REQ-412 Action outcomes are announced transiently
 
@@ -128,11 +128,11 @@ When the popup opens on a tab whose origin is a valid website origin (REQ-308) a
 
 ### Requirement: REQ-416 Tracker suggestions are queued for review
 
-The extension SHALL keep suggestions received from approved websites (REQ-421 in remote-browser-extension) as pending items until the user handles them. Pages SHALL list them in a titled section with their count. Each pending item SHALL show the requesting website, provider and tracker URL, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, including the browser permission prompt and the HTTP warning. Dismissing SHALL remove the item without approving it.
+The extension SHALL keep suggestions received from approved websites (REQ-421 in remote-browser-extension) as pending items until the user handles them. Pages SHALL list them in a titled section and show their count once. Each pending item SHALL show the requesting website, provider and tracker URL, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, including the browser permission prompt and the HTTP warning. Dismissing SHALL remove the item without approving it.
 
 #### Scenario: Review a suggestion
 - **WHEN** an approved website suggests a Redmine destination
-- **THEN** the popup and the setup page SHALL list it as pending under a section that names trackers to approve and shows the count, naming the website, the provider and the tracker URL
+- **THEN** the popup and the setup page SHALL list it as pending under a section that names trackers to approve, naming the website, the provider and the tracker URL; the setup page SHALL show the count beside the section title and the popup in its status badge
 
 #### Scenario: Approve from the setup page
 - **WHEN** the user approves a pending suggestion on the setup page and grants the browser permission
@@ -140,7 +140,7 @@ The extension SHALL keep suggestions received from approved websites (REQ-421 in
 
 #### Scenario: Approve from the popup
 - **WHEN** the user chooses to review a suggestion in the popup
-- **THEN** the popup SHALL open the setup page with that suggestion marked by a "To review" tag on a neutral surface and its approve action focused, and SHALL NOT request permissions itself
+- **THEN** the popup SHALL open the setup page with that suggestion marked by a "To review" tag on a raised neutral surface and its approve action focused, or its dismiss action when the tracker uses plain HTTP (focus never lands on a risky approval), and SHALL NOT request permissions itself
 
 #### Scenario: Permission denied
 - **WHEN** the user denies the browser permission for a suggestion
@@ -200,7 +200,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 
 #### Scenario: Failed operation
 - **WHEN** the latest operation on a destination failed
-- **THEN** the row SHALL show the operation and its time beside an amber mark, with a line below saying what went wrong, kept apart from the row's current-state badge
+- **THEN** the row SHALL show the operation and its time beside an amber mark, with a line below saying what went wrong, kept apart from the row's current-state badge; when that badge already explains a denied attempt, the mark SHALL be muted and the line SHALL only say that it failed
 
 #### Scenario: Timeout
 - **WHEN** the latest operation on a destination timed out

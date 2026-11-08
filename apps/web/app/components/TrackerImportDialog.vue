@@ -266,7 +266,7 @@ const STEPPER_UI = {
               <UFormField
                 :label="t('trackerImport.rangeLabel')"
                 :help="t('trackerImport.scanNote')"
-                :ui="{ help: 'mt-1' }"
+                :ui="{ help: 'mt-1 whitespace-pre-line' }"
                 name="range"
                 :error="rangeError || undefined"
               >
@@ -325,7 +325,7 @@ const STEPPER_UI = {
                 data-testid="tracker-import-project-scopes"
               >
                 <!-- Each target Project with the remote project it is linked to, as two columns. -->
-                <p class="m-0 flex items-baseline justify-between gap-3 text-sm">
+                <p class="m-0 flex items-baseline justify-between gap-3 px-3 text-sm">
                   <span class="font-medium text-highlighted">
                     {{ t('trackerImport.scopedProjectsHeading') }}
                   </span>
@@ -373,6 +373,7 @@ const STEPPER_UI = {
                   icon="i-lucide-triangle-alert"
                   :title="t('trackerImport.allUnscopedWarning')"
                   :description="t('trackerImport.allUnscopedHelp')"
+                  :ui="{ description: 'whitespace-pre-line' }"
                   :actions="[
                     {
                       label: t('trackerImport.setLinksButton'),

@@ -192,7 +192,7 @@ async function onSave() {
               <UBadge
                 color="primary"
                 variant="soft"
-                size="sm"
+                size="md"
                 class="rounded-full"
                 :label="t('timerView.addEntry.newTaskBadge')"
               />
@@ -229,6 +229,7 @@ async function onSave() {
             <UInputDate
               v-model="dateValue"
               class="w-full"
+              :ui="{ segment: 'data-[segment=literal]:text-current' }"
               :aria-label="t('timerView.addEntry.dateLabel')"
               data-testid="add-entry-date-input"
             >

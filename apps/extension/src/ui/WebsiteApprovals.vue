@@ -75,7 +75,8 @@ const pendingTrackers = computed(() =>
 );
 const confirmOpen = shallowRef(false);
 /** The remove tile stays pressed while its confirmation is open, like the web app's tiles. */
-const PRESSED = 'bg-error/20 ring-1 ring-error/40 ring-inset dark:bg-red-500/30';
+const PRESSED =
+  'bg-error/20 ring-1 ring-error/40 ring-inset dark:bg-red-900/85 dark:ring-red-400/60';
 
 function requestRevoke(website: string): void {
   if (!destinations.some((item) => item.websiteOrigin === website)) {
@@ -123,7 +124,6 @@ function closeForm(): void {
           v-if="!formShown"
           color="neutral"
           variant="outline"
-          size="sm"
           icon="i-lucide-plus"
           class="shrink-0"
           data-testid="new-website"
@@ -141,7 +141,7 @@ function closeForm(): void {
         class="flex min-h-11 items-center gap-3 px-4 py-1.5 sm:px-6"
       >
         <span
-          class="mx-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md bg-primary-100/80 text-primary dark:bg-primary/16"
+          class="inline-flex size-6 shrink-0 items-center justify-center rounded-sm bg-primary-100/50 text-primary dark:bg-primary/10"
           aria-hidden="true"
         >
           <UIcon name="i-lucide-globe" class="size-3.5" />
@@ -176,7 +176,6 @@ function closeForm(): void {
             v-if="rowRestore && missingOrigins.includes(website.origin)"
             color="neutral"
             variant="outline"
-            size="sm"
             icon="i-lucide-shield-check"
             :disabled="disabled"
             :label="t('approvals.restorePermission')"
@@ -213,7 +212,7 @@ function closeForm(): void {
       </h3>
       <p
         v-if="handedOff"
-        class="flex items-start gap-2.5 rounded-md bg-primary-50 p-3 text-sm text-toned ring-1 ring-primary/20 ring-inset dark:bg-primary/8"
+        class="flex items-start gap-2.5 rounded-md bg-default p-3 text-sm text-toned ring-1 ring-primary/60 ring-inset dark:bg-elevated dark:ring-primary/40"
         data-testid="website-handoff"
       >
         <UIcon

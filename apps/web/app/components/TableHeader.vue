@@ -15,10 +15,15 @@ const { quiet = false, pressed = false } = defineProps<{
 
 const emit = defineEmits<{ create: [] }>();
 
-/** Pressed looks like the button held down: the solid fill a step deeper, the outline one filled. */
+/**
+ * Pressed looks like the button held down, and stays clear under a dialog's scrim: the solid fill
+ * two steps deeper with a lighter inset ring, the outline one filled with a cyan inset ring.
+ */
 const pressedClass = computed(() => {
   if (!pressed) return undefined;
-  return quiet ? 'bg-elevated' : 'bg-primary/75 shadow-inner';
+  return quiet
+    ? 'bg-accented ring-2 ring-inset ring-primary'
+    : 'bg-(--ui-color-primary-900) ring-2 ring-inset ring-(--ui-color-primary-300) hover:bg-(--ui-color-primary-900) dark:bg-(--ui-color-primary-600) dark:ring-(--ui-color-primary-200) dark:hover:bg-(--ui-color-primary-600)';
 });
 </script>
 

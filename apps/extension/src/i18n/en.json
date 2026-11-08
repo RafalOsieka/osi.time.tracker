@@ -36,7 +36,10 @@
     "badgeAttention": "OSI Time Tracker: setup needs attention",
     "currentWebsiteTitle": "Another OSI website?",
     "currentWebsiteHelp": "You approve it on the setup page, and its trackers separately.",
-    "checklistActionHelp": "You approve it on the setup page."
+    "checklistActionHelp": "You approve it on the setup page.",
+    "checklistStepWebsite": "OSI website",
+    "checklistStepWebsiteOffer": "The OSI website in this tab",
+    "checklistStepTracker": "A tracker for that website"
   },
   "approvals": {
     "websitesTitle": "Approved websites",
@@ -52,11 +55,11 @@
     "openWebsite": "Open website",
     "revokeWebsite": "Remove website",
     "revokeWebsiteConfirmTitle": "Remove website “{website}”?",
-    "revokeWebsiteConfirmBody": "This removes the approval of this website and of {count} trackers:",
+    "revokeWebsiteConfirmBody": "This removes the approval of this website and the approvals of {count} trackers:",
     "revokeWebsiteConfirmSafe": "Nothing changes in the trackers themselves.",
     "cancel": "Cancel",
     "destinationsTitle": "Approved trackers",
-    "destinationsHelp": "Last activity covers the current browser session.",
+    "destinationsHelp": "Trackers your OSI websites may reach through the extension.",
     "destinationsEmptyTitle": "Approve a tracker",
     "destinationsEmptyHelp": "Each tracker is approved separately for an OSI website.",
     "newDestination": "Approve tracker",
@@ -118,8 +121,10 @@
     "reviewSuggestion": "Review",
     "websiteFormTitle": "Approve another website",
     "destinationFormTitle": "Approve another tracker",
-    "revokeWebsiteConfirmBodyOne": "This removes the approval of this website and of 1 tracker:",
-    "reviewedTag": "To review"
+    "revokeWebsiteConfirmBodyOne": "This removes the approval of this website and the approval of 1 tracker:",
+    "reviewedTag": "To review",
+    "destinationsActivityNote": "Last activity covers the current browser session.",
+    "retryLoad": "Retry loading"
   },
   "activity": {
     "none": "No activity this session",
@@ -142,7 +147,8 @@
     "outcome_timeout": "Timed out",
     "outcome_limit": "Limit reached",
     "label": "Last activity",
-    "failedWith": "Failed: {outcome}"
+    "failedWith": "Failed: {outcome}",
+    "failed": "Failed"
   },
   "error": {
     "extensionUnavailable": "The OSI extension is not available in this browser.",

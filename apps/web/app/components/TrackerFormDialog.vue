@@ -281,7 +281,7 @@ async function onSave(_event: FormSubmitEvent<TrackerFormState>) {
             :label="t('trackers.secretLabel')"
             :hint="t('trackers.optionalHint')"
             :help="t('trackers.secretHelp')"
-            :ui="FIELD_UI"
+            :ui="{ help: 'mt-1 whitespace-pre-line' }"
             name="secret"
           >
             <UInput

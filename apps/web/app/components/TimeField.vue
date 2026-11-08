@@ -58,6 +58,15 @@ const {
   testid?: string;
 }>();
 
+/**
+ * The ":" between hour and minute takes the digits' colour, so a time reads as one value
+ * ("09:00"), not as tinted segments; callers' slot classes come after it.
+ */
+const fieldUi = computed(() => ({
+  ...ui,
+  segment: ['data-[segment=literal]:text-current', ui?.segment].filter(Boolean).join(' '),
+}));
+
 const { t } = useI18n();
 
 const emit = defineEmits<{
@@ -247,7 +256,7 @@ function onFocusOut(event: FocusEvent) {
     granularity="minute"
     :size="size"
     :variant="variant"
-    :ui="ui"
+    :ui="fieldUi"
     :disabled="disabled"
     :aria-label="label"
     :aria-invalid="invalid || undefined"

@@ -3,7 +3,8 @@ import type { TrackerSystemType } from '@osi/time-tracker-remote-trackers/contra
 
 /**
  * The short type mark ("OP", "RM") shown before a Tracker's name in lists and selects, so every
- * system has an identity without leaving the palette. `null` is a local Project: the same chip in
+ * system has an identity without leaving the palette; a lighter tint and a smaller radius than
+ * the action tiles keep it from reading as a button. `null` is a local Project: the same chip in
  * neutral slate with a laptop glyph. Decorative: the text beside it names it.
  */
 const { systemType } = defineProps<{ systemType: TrackerSystemType | null }>();
@@ -16,10 +17,10 @@ const MARKS = {
 
 <template>
   <span
-    class="inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded px-1 text-[11px]/none font-semibold tracking-wide"
+    class="inline-flex h-5 min-w-7 shrink-0 items-center justify-center rounded-sm px-1 text-[11px]/none font-semibold tracking-wide"
     :class="
       systemType
-        ? 'bg-primary-100/80 text-primary dark:bg-primary/16'
+        ? 'bg-primary-100/50 text-primary dark:bg-primary/10'
         : 'bg-elevated text-muted ring-1 ring-default ring-inset dark:bg-accented/60'
     "
     aria-hidden="true"

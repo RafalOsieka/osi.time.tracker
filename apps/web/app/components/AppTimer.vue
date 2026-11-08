@@ -247,13 +247,20 @@ async function onSaveStartedAt() {
 
     <!--
       Always UButton for consistent mono size. Idle: disabled (no popover).
-      Running: opens the start-time editor to its left, top-aligned with it, so the editor sits
-      over the top bar and page header and ends above the list: it hides no day total and no
-      header button.
+      Running: opens the start-time editor 8px to its left, its top on the timer card's top edge
+      (the time chip sits 2px lower), so the editor reads as attached to the card. Kept short (the
+      timezone shares the actions' row), it ends above the list's column headers: it hides no
+      header, no day total and no header button.
     -->
     <UPopover
       v-model:open="startEditorOpen"
-      :content="{ side: 'left', align: 'start', sideOffset: 8, collisionPadding: 16 }"
+      :content="{
+        side: 'left',
+        align: 'start',
+        sideOffset: 8,
+        alignOffset: -2,
+        collisionPadding: { top: 8, right: 16, bottom: 16, left: 16 },
+      }"
     >
       <UButton
         color="neutral"
@@ -274,10 +281,10 @@ async function onSaveStartedAt() {
         <div
           role="group"
           aria-labelledby="timer-start-editor-heading"
-          class="grid w-80 grid-cols-[minmax(0,1fr)_6.5rem] gap-x-3 gap-y-4 p-4"
+          class="grid w-[26rem] grid-cols-[minmax(0,1fr)_6.5rem] gap-3 p-3"
           data-testid="timer-start-editor-popover"
         >
-          <!-- Date and time share one row, so the editor stays short over the list below. -->
+          <!-- Date and time share one row, so the editor stays short over the page below. -->
           <h3
             id="timer-start-editor-heading"
             class="col-span-full m-0 text-sm font-semibold text-highlighted"
@@ -288,6 +295,7 @@ async function onSaveStartedAt() {
             <UInputDate
               v-model="startDate"
               class="w-full"
+              :ui="{ segment: 'data-[segment=literal]:text-current' }"
               :aria-label="t('timer.startEditor.dateLabel')"
               data-testid="timer-start-editor-date-input"
             >
@@ -327,12 +335,6 @@ async function onSaveStartedAt() {
             />
           </UFormField>
           <p
-            class="col-span-full -mt-2 mb-0 text-xs text-muted"
-            data-testid="timer-start-editor-time-zone"
-          >
-            {{ startTimeZoneLabel }}
-          </p>
-          <p
             v-if="startEditorError"
             class="col-span-full m-0 text-sm text-error"
             role="alert"
@@ -340,7 +342,13 @@ async function onSaveStartedAt() {
           >
             {{ startEditorError }}
           </p>
-          <div class="col-span-full flex justify-end gap-2">
+          <div class="col-span-full flex items-center gap-2">
+            <p
+              class="m-0 me-auto min-w-0 text-xs text-muted"
+              data-testid="timer-start-editor-time-zone"
+            >
+              {{ startTimeZoneLabel }}
+            </p>
             <UButton
               color="neutral"
               variant="outline"

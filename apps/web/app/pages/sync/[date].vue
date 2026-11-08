@@ -137,15 +137,17 @@ const columns = computed(
       // Title, issue and activity share the flexible width, sized to what each holds at desktop
       // width: the activity column fits its "Wybierz czynność" chip (about 150px) and no more, so
       // the issue's number and title get the largest share and the title the rest.
-      { key: 'title', track: { fr: 1.35, min: '8rem' }, header: t('remoteSync.columns.title') },
-      { key: 'issue', track: { fr: 1.55, min: '6rem' }, header: t('remoteSync.columns.issue') },
+      { key: 'title', track: { fr: 1.5, min: '8rem' }, header: t('remoteSync.columns.title') },
+      { key: 'issue', track: { fr: 1.45, min: '6rem' }, header: t('remoteSync.columns.issue') },
       {
         key: 'activity',
-        track: { fr: 1, min: '9.5rem' },
+        track: { fr: 1, min: '9.25rem' },
         header: t('remoteSync.columns.activity'),
       },
-      { key: 'tracked', track: '5.5rem', header: t('remoteSync.columns.tracked'), align: 'end' },
-      { key: 'toSend', track: '6rem', header: t('remoteSync.columns.toSend'), align: 'end' },
+      // The duration columns fit an HH:MM:SS value (the to-send frame hangs into the gap) and
+      // their 12px headers, no wider, so the text columns keep the room.
+      { key: 'tracked', track: '5rem', header: t('remoteSync.columns.tracked'), align: 'end' },
+      { key: 'toSend', track: '5.5rem', header: t('remoteSync.columns.toSend'), align: 'end' },
       // Sized for one 28px action tile (the expanded block's reconcile action, REQ-505).
       { key: 'actions', track: '1.75rem' },
     ] satisfies ColumnDefinition[],
@@ -769,7 +771,9 @@ const exportExcludedSummary = computed(() => {
   return (Object.keys(EXCLUSION_I18N) as ExclusionReason[])
     .flatMap((reason) => {
       const count = counts.get(reason);
-      return count ? [t(EXCLUSION_I18N[reason], { count }, count)] : [];
+      // Each counted phrase stays on one line ("1 z projektu lokalnego"); lines break only
+      // between phrases.
+      return count ? [t(EXCLUSION_I18N[reason], { count }, count).replaceAll(' ', ' ')] : [];
     })
     .join(', ');
 });
@@ -970,12 +974,12 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
                it into the completed part, which the rows add up to, and the running part, in the
                in-tracker card's "value word + value word" form. -->
           <span v-if="runningInDay" data-testid="remote-sync-total-day-parts">
-            <span class="font-mono font-normal tabular-nums text-default">
+            <span class="tabular-nums">
               {{ formatDuration(dayTotalsSafe.dayTotal) }}
             </span>
             {{ t('remoteSync.dayTotalCompleted') }}
             <span class="me-1 text-dimmed">+</span>
-            <span class="font-mono font-normal tabular-nums text-default">
+            <span class="tabular-nums">
               {{ formatDuration(runningSeconds) }}
             </span>
             {{ t('remoteSync.dayTotalRunning') }}
@@ -1014,17 +1018,18 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
           <span v-else-if="inTrackerSummary.status === 'unavailable'">
             {{ t('remoteSync.inTrackerUnavailable') }}
           </span>
-          <!-- One line, value before its word: "03:00:00 in trackers + 06:00:00 to send". Both
-               durations share the figure's mono face and the caption's colour and weight; the
-               "+" joins them quietly. -->
+          <!-- One line at desktop width, value before its word: "03:00:00 w trackerach +
+               06:00:00 do wysłania (w tym bez czynności)". The figures are caption text (sans,
+               tabular, 400, the caption's colour), never heavier than the words around them;
+               the "+" joins them quietly. -->
           <span v-else data-testid="remote-sync-total-in-tracker-parts">
-            <span class="font-mono font-normal tabular-nums text-default">
+            <span class="tabular-nums">
               {{ formatDuration(inTrackerSummary.logsSeconds) }}
             </span>
             {{ t('remoteSync.inTrackersLogs') }}
             <!-- The space after "+" is a margin: the template drops whitespace between tags. -->
             <span class="me-1 text-dimmed">+</span>
-            <span class="font-mono font-normal tabular-nums text-default">
+            <span class="tabular-nums">
               {{ formatDuration(inTrackerSummary.toSendSeconds) }}
             </span>
             {{ t('remoteSync.inTrackerToSend') }}

@@ -201,7 +201,11 @@ const hasUnsavedChanges = computed(() => {
 });
 
 const trackerItems = computed(() =>
-  (trackers.value ?? []).map((tracker) => ({ label: tracker.name, value: tracker.id })),
+  (trackers.value ?? []).map((tracker) => ({
+    label: tracker.name,
+    value: tracker.id,
+    systemType: tracker.systemType,
+  })),
 );
 const hoursFormatItems = computed(
   () =>
@@ -231,7 +235,7 @@ const summaryFacts = computed(() => {
     {
       key: 'month',
       label: t('clientReport.summaryMonth'),
-      values: monthLabel.value ? [capitalizeFirst(monthLabel.value, locale.value)] : [],
+      values: monthLabel.value ? [monthLabel.value] : [],
     },
     {
       key: 'trackers',
@@ -330,7 +334,7 @@ async function onExport() {
         @next="goMonth(1)"
       >
         <PeriodLabel data-testid="client-report-month-label">
-          {{ capitalizeFirst(monthLabel, locale) }}
+          {{ monthLabel }}
         </PeriodLabel>
       </PeriodStepper>
     </PageHeader>
@@ -487,9 +491,15 @@ async function onExport() {
                 v-if="trackerItems.length > 0"
                 v-model="state.trackerIds"
                 :items="trackerItems"
-                :ui="{ fieldset: 'gap-y-2', label: 'font-normal' }"
+                :ui="{ fieldset: 'gap-y-2', label: 'flex items-center gap-2 font-normal' }"
                 data-testid="client-report-trackers"
-              />
+              >
+                <!-- Each Tracker with its OP/RM mark, as on Projects and Trackers. -->
+                <template #label="{ item }">
+                  <TrackerTypeMark :system-type="item.systemType" />
+                  {{ item.label }}
+                </template>
+              </UCheckboxGroup>
               <p v-else class="text-sm text-muted" data-testid="client-report-no-trackers">
                 {{ t('clientReport.noTrackers') }}
               </p>

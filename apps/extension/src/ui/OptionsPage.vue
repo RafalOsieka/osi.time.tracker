@@ -30,13 +30,19 @@ const toast = useToast();
 const suggestionService = new SuggestionService(createChromeSuggestionStore(), service);
 /** What the popup handed over: a website, a suggestion, a step's form or a restore (design D1). */
 const focus = readSetupFocus(location.search);
+/** Removals and dismissals are routine, so their notification is neutral rather than green. */
+const QUIET_OUTCOMES = new Set([
+  'approvals.websiteRemoved',
+  'approvals.trackerRemoved',
+  'approvals.suggestionDismissed',
+]);
 const editor = useApprovalsEditor(service, {
   suggestions: suggestionService,
   onOutcome: (messageKey, params) =>
     toast.add({
       title: t.value(messageKey),
       description: params.name ? String(params.name) : undefined,
-      color: 'success',
+      color: QUIET_OUTCOMES.has(messageKey) ? 'neutral' : 'success',
       icon: 'i-lucide-circle-check',
       duration: 4000,
       progress: false,
@@ -122,6 +128,12 @@ const accessAlert = computed(() => missingAccessAlert(lostAccess.value, 'setup',
 /** One lost approval is restored right from the alert; several are restored row by row. */
 const restorable = computed(() => lostAccess.value.length === 1);
 
+/** Dismisses a suggestion and keeps keyboard users in the list: focus moves to the next one. */
+async function dismissAndMoveOn(id: string): Promise<void> {
+  await dismissSuggestion(id);
+  await focusTestIdPrefix('dismiss-suggestion-');
+}
+
 async function restoreOnly(): Promise<void> {
   const [only] = lostAccess.value;
   if (!only) return;
@@ -133,6 +145,11 @@ async function restoreOnly(): Promise<void> {
 async function focusTestId(testId: string): Promise<void> {
   await nextTick();
   document.querySelector<HTMLElement>(`[data-testid="${CSS.escape(testId)}"]`)?.focus();
+}
+/** Moves focus to the first control whose test id starts with this prefix, if any is left. */
+async function focusTestIdPrefix(prefix: string): Promise<void> {
+  await nextTick();
+  document.querySelector<HTMLElement>(`[data-testid^="${CSS.escape(prefix)}"]`)?.focus();
 }
 
 function goToStep(step: SetupStep): void {
@@ -213,10 +230,11 @@ onMounted(async () => {
           data-testid="retry-setup"
           color="neutral"
           variant="outline"
-          size="sm"
           icon="i-lucide-rotate-cw"
           :disabled="busy"
-          :label="t('approvals.retry')"
+          :label="
+            t(errorKey === 'approvals.loadFailed' ? 'approvals.retryLoad' : 'approvals.retry')
+          "
           @click="retry()"
         />
       </template>
@@ -245,9 +263,8 @@ onMounted(async () => {
         <template v-if="restorable" #actions>
           <UButton
             data-testid="missing-access-restore"
-            color="warning"
+            color="neutral"
             variant="outline"
-            size="sm"
             icon="i-lucide-shield-check"
             :disabled="disabled"
             :label="t('approvals.restorePermission')"
@@ -269,7 +286,7 @@ onMounted(async () => {
         mode="setup"
         :highlight-id="focus.suggestion"
         @approve="approveSuggestion($event)"
-        @dismiss="dismissSuggestion($event)"
+        @dismiss="dismissAndMoveOn($event)"
       />
       <WebsiteApprovals
         v-model:open="websiteFormOpen"

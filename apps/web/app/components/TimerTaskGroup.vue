@@ -49,6 +49,8 @@ const { $csrfFetch } = useNuxtApp();
 
 const expanded = ref(false);
 const entriesId = computed(() => `timer-group-entries-${group.key}`);
+/** The duration cell: the issue picker lines its popover up with this column's end. */
+const durationCell = useTemplateRef<HTMLElement>('durationCell');
 const editingTitle = ref(false);
 const titleValue = ref('');
 const projectSelectOpen = ref(false);
@@ -340,6 +342,7 @@ async function unlinkRemoteIssue() {
         :scope="scope"
         :context-label="group.taskName ?? undefined"
         :day-label="dayLabel"
+        :align-to="durationCell"
         class="min-w-0"
         :link-testid="`timer-group-remote-issue-link-${group.key}`"
         :cached-testid="`timer-group-remote-issue-cached-${group.key}`"
@@ -348,7 +351,10 @@ async function unlinkRemoteIssue() {
         @link="linkRemoteIssue"
         @unlink="unlinkRemoteIssue"
       />
-      <!-- Untinted in the link tile's 28px box, so it shares the slot yet recedes. -->
+      <!--
+        Untinted in the link tile's 28px box, so it shares the slot yet recedes; with no tile edge
+        to show, its glyph starts on the column edge like the issue ids do.
+      -->
       <UTooltip v-else :text="remoteIssueUnavailableLabel" :content="{ side: 'top' }">
         <span tabindex="0" class="inline-flex">
           <UButton
@@ -358,7 +364,7 @@ async function unlinkRemoteIssue() {
             square
             size="sm"
             disabled
-            class="size-7 shrink-0 justify-center text-dimmed disabled:opacity-30"
+            class="size-7 shrink-0 justify-start px-0 text-dimmed disabled:opacity-30"
             :ui="{ leadingIcon: 'size-4' }"
             :aria-label="remoteIssueUnavailableLabel"
             :data-testid="`timer-group-remote-issue-disabled-${group.key}`"
@@ -369,6 +375,7 @@ async function unlinkRemoteIssue() {
 
     <ColumnCell :columns="columns" col="duration" align="end" :narrow="{ col: [5, 6], row: 1 }">
       <span
+        ref="durationCell"
         class="block text-right font-mono text-sm tabular-nums"
         :class="isLive ? 'font-medium text-primary' : 'text-default'"
         :data-testid="`timer-group-total-${group.key}`"

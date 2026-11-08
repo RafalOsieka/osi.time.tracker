@@ -306,7 +306,7 @@ describeChromium('extension options UI', () => {
     await revokeLocalhost.press('Enter');
     await expect
       .poll(() => page.getByRole('dialog').textContent())
-      .toMatch(/oraz 1\s+trackera:[\s\S]*tracker\.example\.com\/team/);
+      .toMatch(/zatwierdzenie 1\s+trackera:[\s\S]*tracker\.example\.com\/team/);
     // Escape belongs to the dialog only once its focus trap has taken focus from the trigger.
     await expect
       .poll(() => page.evaluate(() => document.activeElement?.closest('[role="dialog"]') !== null))

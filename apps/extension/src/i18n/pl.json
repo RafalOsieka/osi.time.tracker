@@ -36,7 +36,10 @@
     "badgeAttention": "OSI Time Tracker: konfiguracja wymaga uwagi",
     "currentWebsiteTitle": "Czy to inna witryna OSI?",
     "currentWebsiteHelp": "Zatwierdzisz ją na stronie konfiguracji, a jej trackery osobno.",
-    "checklistActionHelp": "Zatwierdzisz go na stronie konfiguracji."
+    "checklistActionHelp": "Zatwierdzisz go na stronie konfiguracji.",
+    "checklistStepWebsite": "Witryna OSI",
+    "checklistStepWebsiteOffer": "Witryna OSI z tej karty",
+    "checklistStepTracker": "Tracker dla tej witryny"
   },
   "approvals": {
     "websitesTitle": "Zatwierdzone witryny",
@@ -52,11 +55,11 @@
     "openWebsite": "Otwórz witrynę",
     "revokeWebsite": "Usuń witrynę",
     "revokeWebsiteConfirmTitle": "Usunąć witrynę „{website}”?",
-    "revokeWebsiteConfirmBody": "Usuniesz zatwierdzenie tej witryny oraz {count} trackerów:",
+    "revokeWebsiteConfirmBody": "Usuniesz zatwierdzenie tej witryny i zatwierdzenia {count} trackerów:",
     "revokeWebsiteConfirmSafe": "Dane w samych trackerach się nie zmienią.",
     "cancel": "Anuluj",
     "destinationsTitle": "Zatwierdzone trackery",
-    "destinationsHelp": "Ostatnia aktywność pochodzi z bieżącej sesji przeglądarki.",
+    "destinationsHelp": "Trackery, z którymi witryny OSI mogą się łączyć przez rozszerzenie.",
     "destinationsEmptyTitle": "Zatwierdź tracker",
     "destinationsEmptyHelp": "Każdy tracker zatwierdzasz osobno dla witryny OSI.",
     "newDestination": "Zatwierdź tracker",
@@ -118,8 +121,10 @@
     "reviewSuggestion": "Przejrzyj",
     "websiteFormTitle": "Zatwierdź kolejną witrynę",
     "destinationFormTitle": "Zatwierdź kolejny tracker",
-    "revokeWebsiteConfirmBodyOne": "Usuniesz zatwierdzenie tej witryny oraz 1 trackera:",
-    "reviewedTag": "Do przejrzenia"
+    "revokeWebsiteConfirmBodyOne": "Usuniesz zatwierdzenie tej witryny i zatwierdzenie 1 trackera:",
+    "reviewedTag": "Do przejrzenia",
+    "destinationsActivityNote": "Ostatnia aktywność pochodzi z bieżącej sesji przeglądarki.",
+    "retryLoad": "Ponów wczytywanie"
   },
   "activity": {
     "none": "Brak aktywności w tej sesji",
@@ -142,7 +147,8 @@
     "outcome_timeout": "Przekroczony czas",
     "outcome_limit": "Przekroczony limit",
     "label": "Ostatnia aktywność",
-    "failedWith": "Nie powiodło się: {outcome}"
+    "failedWith": "Nie powiodło się: {outcome}",
+    "failed": "Nie powiodło się"
   },
   "error": {
     "extensionUnavailable": "Rozszerzenie OSI jest niedostępne w tej przeglądarce.",

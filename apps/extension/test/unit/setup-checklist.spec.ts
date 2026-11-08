@@ -28,7 +28,8 @@ describe('setup checklist', () => {
     expect(stepState(html, 'website')).toBe('current');
     expect(stepState(html, 'tracker')).toBe('todo');
     expect(stepState(html, 'direct')).toBe('info');
-    expect(html).toMatch(/Current step:<\/span>[\s\S]*?Approve your OSI website address/);
+    // The popup names the step by its subject and keeps the verb for the button.
+    expect(html).toMatch(/Current step:<\/span>[\s\S]*?OSI website[\s\S]*?Approve website/);
     expect(html).toContain('data-testid="checklist-action-website"');
     expect(html).not.toContain('data-testid="checklist-action-tracker"');
     expect(html).toContain('connects OSI to your trackers through this browser');

@@ -71,7 +71,7 @@ it('asks before removing a website that still has trackers and names the tracker
 
   expect(revoked).toEqual([]);
   expect(document.body.textContent).toContain('Remove website “time.example.com”?');
-  expect(document.body.textContent).toContain('and of 2 trackers:');
+  expect(document.body.textContent).toContain('and the approvals of 2 trackers:');
   expect(
     [...byTestId('revoke-website-trackers')!.querySelectorAll('li')].map((item) =>
       item.textContent?.replace(/\s+/g, ''),

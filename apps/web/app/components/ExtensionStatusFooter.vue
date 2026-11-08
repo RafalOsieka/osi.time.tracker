@@ -169,7 +169,7 @@ function openDetails() {
       :close-delay="200"
       class="w-full min-w-0"
       :content="{ side: 'right', align: 'end', sideOffset: 24 }"
-      :ui="{ content: 'max-w-80 p-3' }"
+      :ui="{ content: 'w-80 p-3' }"
     >
       <UButton
         color="neutral"
@@ -177,7 +177,10 @@ function openDetails() {
         size="xs"
         block
         class="w-full min-w-0 gap-2 font-normal text-muted"
-        :class="collapsed ? 'justify-center px-1' : 'justify-start px-1'"
+        :class="[
+          collapsed ? 'justify-center px-1' : 'justify-start px-1',
+          SIDEBAR_FOOTER_PRESSED_CLASS,
+        ]"
         :aria-label="t('layout.extensionStatus.rowAria', { status: statusLabel })"
         data-testid="extension-status-trigger"
         @focus="openDetails"
@@ -232,7 +235,7 @@ function openDetails() {
           </h2>
 
           <p
-            class="m-0 flex items-start gap-2 text-sm"
+            class="m-0 flex items-start gap-2 text-sm whitespace-pre-line"
             :class="websiteStatus.icon ? undefined : 'text-muted'"
             data-testid="extension-status-website"
           >

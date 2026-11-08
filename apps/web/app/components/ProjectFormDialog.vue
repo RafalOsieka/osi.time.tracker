@@ -375,7 +375,6 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
 
           <UFormField
             :label="t('projects.trackerLabel')"
-            :hint="t('projects.optionalHint')"
             :help="trackerHelp"
             :ui="FIELD_UI"
             name="trackerId"
@@ -412,7 +411,6 @@ async function onSave(_event: FormSubmitEvent<ProjectFormState>) {
           <UFormField
             v-if="state.trackerId"
             :label="t('projects.remoteProjectLabel')"
-            :hint="t('projects.optionalHint')"
             :help="canBrowseCatalog && !catalogErrorKey ? remoteProjectHelp : undefined"
             :ui="FIELD_UI"
             name="remoteProjectId"

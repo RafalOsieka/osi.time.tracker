@@ -40,19 +40,21 @@ function sendsCredentialsInClear(item: DestinationSuggestion): boolean {
   return isHttpCredentialRisk(canonicalizeDestination(`${item.origin}${item.basePath}`));
 }
 
-// The popup handed this suggestion over: put focus on its approve action once it is listed.
-// Client only: focus means nothing while rendering on a server.
+// The popup handed this suggestion over: put focus on its approve action once it is listed, or
+// on its dismiss action when approving would accept an unencrypted tracker (focus never lands on
+// a risky action by default). Client only: focus means nothing while rendering on a server.
 let focusedHighlight = false;
 onMounted(() =>
   watch(
-    () => suggestions.some((item) => suggestionId(item) === highlightId),
-    async (listed) => {
-      if (!listed || mode !== 'setup' || focusedHighlight) return;
+    () => suggestions.find((item) => suggestionId(item) === highlightId),
+    async (item) => {
+      if (!item || mode !== 'setup' || focusedHighlight) return;
       focusedHighlight = true;
       await nextTick();
+      const action = sendsCredentialsInClear(item) ? 'dismiss' : 'approve';
       document
         .querySelector<HTMLElement>(
-          `[data-testid="approve-suggestion-${CSS.escape(highlightId ?? '')}"]`,
+          `[data-testid="${action}-suggestion-${CSS.escape(suggestionId(item))}"]`,
         )
         ?.focus();
     },
@@ -86,20 +88,11 @@ onMounted(() =>
       </div>
       <p class="mt-0.5 text-sm text-muted">{{ t('approvals.suggestionsHelp') }}</p>
     </template>
-    <!-- In the popup every section is a label above a list, as for the approved ones. -->
-    <div v-if="mode === 'popup'" class="flex items-center gap-2 px-1">
-      <h2 id="suggestions-title" class="text-xs font-medium text-muted">
-        {{ t('approvals.suggestionsTitle') }}
-      </h2>
-      <UBadge
-        color="primary"
-        variant="soft"
-        size="sm"
-        class="tabular-nums"
-        :label="String(suggestions.length)"
-        data-testid="suggestions-count"
-      />
-    </div>
+    <!-- In the popup every section is a label above a list, as for the approved ones; the
+      header status badge already carries the count. -->
+    <h2 v-if="mode === 'popup'" id="suggestions-title" class="px-1 text-xs font-medium text-muted">
+      {{ t('approvals.suggestionsTitle') }}
+    </h2>
 
     <ul
       class="divide-y divide-default"
@@ -115,7 +108,7 @@ onMounted(() =>
         class="flex gap-3"
         :class="[
           mode === 'popup' ? 'flex-col px-4 py-3' : 'flex-wrap items-center px-4 py-3 sm:px-6',
-          suggestionId(item) === highlightId ? 'bg-elevated/60' : '',
+          suggestionId(item) === highlightId ? 'bg-elevated' : '',
         ]"
         :data-highlighted="suggestionId(item) === highlightId || undefined"
         :data-testid="`suggestion-${suggestionId(item)}`"
@@ -126,11 +119,12 @@ onMounted(() =>
             class="flex min-w-0 flex-col gap-0.5"
             :class="mode === 'popup' ? 'text-[13px]' : 'text-sm'"
           >
-            <span class="flex min-w-0 items-center gap-2">
-              <span class="truncate text-sm font-medium text-highlighted">
-                {{ displayDestination(item) }}
-                <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
-              </span>
+            <span class="truncate text-sm font-medium text-highlighted">
+              {{ displayDestination(item) }}
+              <span class="sr-only">({{ t(`approvals.${item.provider}`) }})</span>
+            </span>
+            <!-- The reviewed tag shares the metadata line, so the address keeps its full width. -->
+            <span class="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
               <UBadge
                 v-if="suggestionId(item) === highlightId"
                 color="neutral"
@@ -140,9 +134,9 @@ onMounted(() =>
                 :label="t('approvals.reviewedTag')"
                 data-testid="suggestion-reviewed"
               />
-            </span>
-            <span class="truncate text-muted">
-              {{ t('approvals.suggestedBy', { website: displayUrl(item.websiteOrigin) }) }}
+              <span class="text-muted">
+                {{ t('approvals.suggestedBy', { website: displayUrl(item.websiteOrigin) }) }}
+              </span>
             </span>
             <p
               v-if="mode === 'popup' && sendsCredentialsInClear(item)"
@@ -155,10 +149,9 @@ onMounted(() =>
           </div>
         </div>
         <!-- Popup actions start at the text column, like every other popup action. -->
-        <div class="flex shrink-0 gap-2" :class="mode === 'popup' ? 'ps-10' : ''">
+        <div class="flex shrink-0 gap-2" :class="mode === 'popup' ? 'ps-9' : ''">
           <UButton
             v-if="mode === 'setup'"
-            size="sm"
             :color="sendsCredentialsInClear(item) ? 'warning' : 'primary'"
             :variant="sendsCredentialsInClear(item) ? 'outline' : 'solid'"
             icon="i-lucide-check"
@@ -176,7 +169,6 @@ onMounted(() =>
           />
           <UButton
             v-else
-            size="sm"
             color="primary"
             variant="soft"
             trailing-icon="i-lucide-arrow-up-right"
@@ -188,8 +180,7 @@ onMounted(() =>
           />
           <UButton
             color="neutral"
-            variant="soft"
-            size="sm"
+            variant="outline"
             :disabled="disabled"
             :label="t('approvals.dismissSuggestion')"
             :aria-label="`${t('approvals.dismissSuggestion')} ${displayDestination(item)}`"
@@ -200,16 +191,16 @@ onMounted(() =>
         <!-- On the setup page the risk spans the row, under the address and its actions. -->
         <p
           v-if="mode === 'setup' && sendsCredentialsInClear(item)"
-          class="flex basis-full items-start gap-2 ps-10 text-sm text-toned"
+          class="flex basis-full items-start gap-2 ps-9 text-sm text-toned"
           :data-testid="`http-suggestion-${suggestionId(item)}`"
         >
           <UIcon
             name="i-lucide-lock-open"
-            class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            class="mt-0.5 size-4 shrink-0 text-warning"
             aria-hidden="true"
           />
           <span>
-            <span class="font-medium text-amber-800 dark:text-amber-300">
+            <span class="font-medium text-warning">
               {{ t('approvals.httpTitle') }}
             </span>
             {{ t('approvals.httpWarning') }}

@@ -71,8 +71,8 @@ export default defineAppConfig({
     },
     // Tinted tiles and chips (soft buttons) carry real colour in both themes: a cyan-100 wash in
     // light mode, a stronger tint in dark mode, where 10% reads as grey. In dark mode red tiles
-    // use a saturated red-500 wash (a red-400 wash over slate read maroon), and solid red is a
-    // deeper red-600 with white text (red-400 read salmon).
+    // sit on a deep red-900 (a thin bright-red wash over blue slate mixes to maroon), and solid
+    // red is a deeper red-600 with white text (red-400 read salmon).
     button: {
       compoundVariants: [
         {
@@ -85,7 +85,7 @@ export default defineAppConfig({
           color: 'error',
           variant: 'soft',
           class:
-            'dark:bg-red-500/22 dark:hover:bg-red-500/30 dark:active:bg-red-500/30 dark:disabled:bg-red-500/12 dark:aria-disabled:bg-red-500/12',
+            'dark:bg-red-900/60 dark:hover:bg-red-900/85 dark:active:bg-red-900/85 dark:disabled:bg-red-900/30 dark:aria-disabled:bg-red-900/30',
         },
         {
           color: 'error',
@@ -156,12 +156,18 @@ export default defineAppConfig({
     // Date and time fields read as one value ("7.11.2026", "09:00"), not as boxes spread across
     // the field: segments take their own width with tabular figures and literals sit tight.
     inputDate: {
-      slots: { segment: 'px-0.5 tabular-nums data-[segment=literal]:px-0' },
+      slots: {
+        segment:
+          'px-0.5 tabular-nums data-[segment=literal]:px-0 data-[segment=literal]:text-current',
+      },
       variants: { size: tightSegments(DATE_SEGMENT) },
       compoundVariants: [FOCUSED_SEGMENT],
     },
     inputTime: {
-      slots: { segment: 'px-0.5 tabular-nums data-[segment=literal]:px-0' },
+      slots: {
+        segment:
+          'px-0.5 tabular-nums data-[segment=literal]:px-0 data-[segment=literal]:text-current',
+      },
       variants: { size: tightSegments(TIME_SEGMENT) },
       compoundVariants: [FOCUSED_SEGMENT],
     },

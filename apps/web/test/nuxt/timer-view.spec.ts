@@ -204,8 +204,8 @@ const commonStubs = {
   UButton: ButtonStub,
   TableHeader: {
     template:
-      '<div data-testid="timer-view-header"><button data-testid="timer-view-add-entry" @click="$emit(\'create\')" /></div>',
-    props: ['title', 'newLabel', 'newTestid'],
+      '<div data-testid="timer-view-header"><button data-testid="timer-view-add-entry" :data-pressed="pressed" @click="$emit(\'create\')" /></div>',
+    props: ['title', 'newLabel', 'newTestid', 'quiet', 'pressed'],
     emits: ['create'],
   },
   TimerAddEntryDialog: TimerAddEntryDialogStub,
@@ -485,6 +485,16 @@ describe('timer view page', () => {
     const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-view-add-entry"]').exists()).toBe(true);
+  });
+
+  it('shows the add entry control pressed while its dialog is open', async () => {
+    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    await flushPromises();
+    const button = wrapper.find('[data-testid="timer-view-add-entry"]');
+    expect(button.attributes('data-pressed')).toBe('false');
+    await button.trigger('click');
+    await flushPromises();
+    expect(button.attributes('data-pressed')).toBe('true');
   });
 
   it('smart-includes a manual entry on a day outside the loaded feed without load more', async () => {

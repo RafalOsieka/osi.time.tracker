@@ -131,7 +131,6 @@ function closeForm(): void {
           v-if="hasWebsite && !formShown"
           color="neutral"
           variant="outline"
-          size="sm"
           icon="i-lucide-plus"
           class="shrink-0"
           data-testid="new-destination"
@@ -199,6 +198,7 @@ function closeForm(): void {
             class="text-sm"
             :record="activity[destinationKey(item)]"
             :now="now"
+            :access-missing="missingOrigins.includes(item.origin)"
             :data-testid="`activity-${destinationKey(item)}`"
           />
         </span>
@@ -207,7 +207,6 @@ function closeForm(): void {
             v-if="rowRestore && missingOrigins.includes(item.origin)"
             color="neutral"
             variant="outline"
-            size="sm"
             icon="i-lucide-shield-check"
             :disabled="disabled"
             :label="t('approvals.restorePermission')"
@@ -282,6 +281,7 @@ function closeForm(): void {
               class="w-full"
               data-testid="destination-provider"
               value-key="value"
+              :ui="{ base: 'ps-11' }"
               :model-value="provider"
               :items="providerItems"
               :disabled="disabled"
@@ -333,11 +333,11 @@ function closeForm(): void {
         >
           <UIcon
             name="i-lucide-lock-open"
-            class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            class="mt-0.5 size-4 shrink-0 text-warning"
             aria-hidden="true"
           />
           <span>
-            <span class="font-medium text-amber-800 dark:text-amber-300">
+            <span class="font-medium text-warning">
               {{ t('approvals.httpTitle') }}
             </span>
             {{ t('approvals.httpWarning') }}
@@ -364,5 +364,12 @@ function closeForm(): void {
         </div>
       </UForm>
     </div>
+    <!-- The caveat about activity is a footnote; the subtitle says what trackers are for. -->
+    <template v-if="!empty" #footer>
+      <p class="flex items-center gap-2 text-[13px] text-muted" data-testid="destinations-note">
+        <UIcon name="i-lucide-info" class="size-4 shrink-0 text-dimmed" aria-hidden="true" />
+        {{ t('approvals.destinationsActivityNote') }}
+      </p>
+    </template>
   </UCard>
 </template>

@@ -23,7 +23,9 @@ export const nuxtUiOptions = {
       slots: { content: 'dark:bg-elevated', title: 'text-base', footer: 'justify-end gap-2' },
       variants: { overlay: { true: { overlay: 'bg-neutral-900/35 dark:bg-black/55' } } },
     },
-    // Tinted tiles and chips (soft buttons) carry real colour in both themes; the destructive
+    // Tinted tiles and chips (soft buttons) carry real colour in both themes (the dark delete
+    // tile a deep clean red, not maroon, as in the web app), a warning outline
+    // reaches the 3:1 control outline, and the destructive
     // solid stays a true red with white text in dark mode too.
     button: {
       compoundVariants: [
@@ -37,7 +39,12 @@ export const nuxtUiOptions = {
           color: 'error',
           variant: 'soft',
           class:
-            'dark:bg-red-500/22 dark:hover:bg-red-500/30 dark:active:bg-red-500/30 dark:disabled:bg-red-500/12 dark:aria-disabled:bg-red-500/12',
+            'dark:bg-red-900/60 dark:hover:bg-red-900/85 dark:active:bg-red-900/85 dark:disabled:bg-red-900/30 dark:aria-disabled:bg-red-900/30',
+        },
+        {
+          color: 'warning',
+          variant: 'outline',
+          class: 'ring-warning dark:ring-warning/70',
         },
         {
           color: 'error',
@@ -48,9 +55,10 @@ export const nuxtUiOptions = {
       ],
     },
     // One alert recipe in both themes, as in the web app: a neutral surface and body, with the
-    // colour only on the edge and the icon. The icon sits on the title line.
+    // colour only on the edge and the icon. The icon sits on the title line, and the explanation
+    // fills the measure beside the action instead of breaking early.
     alert: {
-      slots: { description: 'opacity-100 text-pretty' },
+      slots: { description: 'opacity-100' },
       variants: {
         orientation: { horizontal: { root: 'items-start', actions: 'self-center' } },
       },
@@ -61,7 +69,7 @@ export const nuxtUiOptions = {
           class: {
             root: 'bg-default text-default ring-amber-400/70 dark:bg-elevated dark:ring-amber-400/40',
             title: 'text-highlighted',
-            icon: 'text-amber-600 dark:text-amber-400',
+            icon: 'text-warning',
           },
         },
         {

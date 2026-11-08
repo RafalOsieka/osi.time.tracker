@@ -262,8 +262,9 @@ const displayedRemoteLogs = computed(() => {
         :data-testid="`remote-sync-remote-log-${log.remoteLogId}`"
       >
         <ColumnCell :columns="columns" col="state" :narrow="{ col: [2, 3], row: 1 }">
-          <!-- Linked: a check on the tracker's time. Unlinked: an open circle, so it never
-               reads as the opposite of the Link action at the row's end. -->
+          <!-- The one "already in the tracker" mark: a cloud. Linked, the cloud carries a check
+               in green (counted as this Task's export); unlinked, a plain neutral cloud (in the
+               tracker, not counted yet). Neither reads as pending or loading. -->
           <UTooltip :text="linkStateText(log)" :content="{ side: 'top' }">
             <span
               tabindex="0"
@@ -271,9 +272,9 @@ const displayedRemoteLogs = computed(() => {
               :data-testid="`remote-sync-remote-log-state-${log.remoteLogId}`"
             >
               <UIcon
-                :name="isLinked(log) ? 'i-lucide-circle-check' : 'i-lucide-circle-dashed'"
+                :name="isLinked(log) ? 'i-lucide-cloud-check' : 'i-lucide-cloud'"
                 class="size-4"
-                :class="isLinked(log) ? 'text-success' : 'text-dimmed'"
+                :class="isLinked(log) ? 'text-success' : 'text-muted'"
                 aria-hidden="true"
               />
               <span class="sr-only">{{ linkStateText(log) }}</span>
@@ -310,23 +311,18 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507), marked in place as
-             already there: a cloud-check glyph and the dimmed tone, two steps below the to-send column's
-             highlighted value. The cell's accessible name carries the scope. -->
+        <!-- Time already in the tracker sits on the to-send edge (REQ-507) in the dimmed tone, two
+             steps below a to-send value, marked as already there by the row's cloud in the state
+             column. The cell's accessible name carries the scope. -->
         <ColumnCell
           :columns="columns"
           col="toSend"
           :narrow="{ col: [4, 5], row: 1 }"
           align="end"
-          class="inline-flex items-center justify-end gap-1.5 font-mono tabular-nums whitespace-nowrap text-dimmed"
+          class="font-mono tabular-nums whitespace-nowrap text-dimmed"
           :aria-label="`${t('remoteSync.remoteLogDurationLabel')}: ${formatDuration(log.durationSeconds)}`"
           :data-testid="`remote-sync-remote-log-duration-${log.remoteLogId}`"
         >
-          <UIcon
-            name="i-lucide-cloud-check"
-            class="size-4 shrink-0 text-dimmed"
-            aria-hidden="true"
-          />
           {{ formatDuration(log.durationSeconds) }}
         </ColumnCell>
         <!-- The denser rows' 28px tinted tile, square like every row action. -->

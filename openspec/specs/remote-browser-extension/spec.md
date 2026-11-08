@@ -300,7 +300,7 @@ The extension popup and options page SHALL use the web app's component library, 
 
 #### Scenario: Loading failure keeps the retry path
 - **WHEN** reading approvals or permissions fails on either page
-- **THEN** the page SHALL show the translated error in a titled alert, saying nothing was deleted, together with a "Try again" action that reads them again and does not look destructive
+- **THEN** the page SHALL show the translated error in a titled alert, saying nothing was deleted, together with a "Retry loading" action that reads them again and, like every alert action, is a neutral outline button
 
 ### Requirement: REQ-409 Extension theme control
 

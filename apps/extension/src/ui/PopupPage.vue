@@ -127,11 +127,13 @@ function actOnStep(step: SetupStep): void {
 
 const errorActions = computed(() => [
   {
-    label: t.value('approvals.retry'),
+    label: t.value(
+      errorKey.value === 'approvals.loadFailed' ? 'approvals.retryLoad' : 'approvals.retry',
+    ),
     icon: 'i-lucide-rotate-cw',
     color: 'neutral' as const,
     variant: 'outline' as const,
-    size: 'sm' as const,
+    size: 'md' as const,
     disabled: busy.value,
     onClick: () => refresh(),
   },
@@ -145,9 +147,9 @@ const accessActions = computed(() => {
     {
       label: t.value('approvals.restorePermission'),
       trailingIcon: 'i-lucide-arrow-up-right',
-      color: 'warning' as const,
+      color: 'neutral' as const,
       variant: 'outline' as const,
-      size: 'sm' as const,
+      size: 'md' as const,
       onClick: () => openSetupPage({ restore: first.focus }),
     },
   ];
@@ -246,7 +248,6 @@ function openOptions(): void {
               <p class="text-[13px] text-muted">{{ t('app.currentWebsiteHelp') }}</p>
               <UButton
                 class="mt-2"
-                size="sm"
                 trailing-icon="i-lucide-arrow-up-right"
                 data-testid="current-website-approve"
                 :label="t('app.checklistOfferAction', { website: displayUrl(websiteOffer) })"
@@ -294,7 +295,7 @@ function openOptions(): void {
                 class="flex min-h-11 items-center gap-3 px-4 py-2"
               >
                 <span
-                  class="inline-flex h-5 w-7 shrink-0 items-center justify-center rounded bg-primary-100/80 text-primary dark:bg-primary/16"
+                  class="inline-flex size-6 shrink-0 items-center justify-center rounded-sm bg-primary-100/50 text-primary dark:bg-primary/10"
                   aria-hidden="true"
                 >
                   <UIcon name="i-lucide-globe" class="size-3.5" />
@@ -320,6 +321,7 @@ function openOptions(): void {
                   color="warning"
                   variant="soft"
                   size="sm"
+                  icon="i-lucide-shield-alert"
                   :label="t('approvals.noAccess')"
                 />
               </li>
@@ -370,6 +372,7 @@ function openOptions(): void {
                       color="warning"
                       variant="soft"
                       size="sm"
+                      icon="i-lucide-shield-alert"
                       :label="t('approvals.noAccess')"
                     />
                   </span>
@@ -393,6 +396,7 @@ function openOptions(): void {
                     class="text-[13px]"
                     :record="activity[destinationKey(destination)]"
                     :now="now"
+                    :access-missing="missingOrigins.includes(destination.origin)"
                     data-testid="popup-tracker-activity"
                   />
                 </span>
@@ -411,7 +415,6 @@ function openOptions(): void {
     <footer class="shrink-0 border-t border-default bg-default px-4 py-3">
       <UButton
         block
-        size="sm"
         color="neutral"
         variant="soft"
         :ui="{ trailingIcon: 'ms-0' }"

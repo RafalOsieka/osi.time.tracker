@@ -33,7 +33,8 @@ const emit = defineEmits<{ create: [] }>();
         <UIcon :name="icon" class="size-6" />
       </span>
       <h2 class="m-0 text-base font-semibold text-highlighted">{{ title }}</h2>
-      <p class="mt-1.5 mb-5 text-sm text-balance text-muted">{{ message }}</p>
+      <!-- A line break in the message keeps each sentence on its own line. -->
+      <p class="mt-1.5 mb-5 text-sm text-balance whitespace-pre-line text-muted">{{ message }}</p>
       <UButton
         :label="ctaLabel"
         :icon="ctaIcon"

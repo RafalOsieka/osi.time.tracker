@@ -19,14 +19,6 @@ const isCollapsed = computed(() => collapsed || iconOnly);
 const onRemoteSync = computed(() => route.path.startsWith('/sync/'));
 const PARENT_ACTIVE_CLASS = 'text-primary before:bg-primary-100/80 dark:before:bg-primary/12';
 
-/**
- * On the icon-only rail a small chevron inside the Reports tile, by its right edge, tells that it
- * opens a menu (to the right), not a page; the icon stays on the rail's centre axis. Drawn with two
- * borders of a rotated square, in the item's colour.
- */
-const DISCLOSURE_CUE_CLASS =
-  "after:absolute after:end-0 after:top-1/2 after:size-1.5 after:-translate-y-1/2 after:-rotate-45 after:border-e-[1.5px] after:border-b-[1.5px] after:border-current after:content-['']";
-
 /** A small, even gap between items, so a selected tile never touches its neighbour. */
 const NAV_UI = { list: 'flex flex-col gap-1', childList: 'flex flex-col gap-1' };
 
@@ -59,7 +51,8 @@ const navItems = computed<NavigationMenuItem[]>(() => [
     open: true,
     defaultOpen: true,
     active: false,
-    class: isCollapsed.value ? DISCLOSURE_CUE_CLASS : undefined,
+    // Its own leading slot adds the rail's disclosure badge (see the template).
+    slot: 'reports' as const,
     children: [
       {
         label: t('reports.monthly.pageTitle'),
@@ -88,6 +81,28 @@ const navItems = computed<NavigationMenuItem[]>(() => [
       orientation="vertical"
       class="w-full"
       :ui="NAV_UI"
-    />
+    >
+      <!--
+        On the icon-only rail a small round badge with a chevron sits on the Reports icon's corner,
+        like a toolbar button with a menu: it opens a menu, not a page. The icon stays centred.
+      -->
+      <template #reports-leading="{ active, ui }">
+        <span class="relative inline-flex shrink-0">
+          <UIcon
+            name="i-lucide-chart-column"
+            data-slot="linkLeadingIcon"
+            :class="ui.linkLeadingIcon({ active })"
+          />
+          <span
+            v-if="isCollapsed"
+            class="absolute -end-1.5 -bottom-1.5 flex size-3 items-center justify-center rounded-full bg-(--app-surface-sidebar) text-muted ring-1 ring-accented"
+            aria-hidden="true"
+            data-testid="nav-reports-disclosure"
+          >
+            <UIcon name="i-lucide-chevron-right" class="size-2.5" />
+          </span>
+        </span>
+      </template>
+    </UNavigationMenu>
   </nav>
 </template>

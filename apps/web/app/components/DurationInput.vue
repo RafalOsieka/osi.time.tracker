@@ -59,7 +59,7 @@ const DEFAULT_UI = {
 };
 const COMPACT_UI = {
   root: 'inline-flex w-[calc(8ch+1rem)] shrink-0 font-mono text-sm',
-  base: 'w-full rounded-md bg-muted px-2 py-1.5 text-end font-mono text-sm/4 font-medium tabular-nums text-highlighted ring ring-inset ring-primary',
+  base: 'w-full rounded-md bg-muted px-2 py-1.5 text-end font-mono text-sm/4 font-medium tabular-nums text-default ring ring-inset ring-primary',
 };
 </script>
 
