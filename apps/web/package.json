@@ -45,7 +45,7 @@
     "@iconify-json/lucide": "^1.2.152",
     "@nuxt/eslint": "^1.17.0",
     "@nuxt/schema": "4.6.4",
-    "@nuxt/test-utils": "^4.3.4",
+    "@nuxt/test-utils": "^4.4.0",
     "@nuxtjs/i18n": "^10.6.0",
     "@osi/time-tracker-migrator": "workspace:*",
     "@types/node": "^26.6.6",
