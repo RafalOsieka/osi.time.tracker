@@ -128,10 +128,13 @@ Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unles
 
 ## Pull requests and commits
 
+- Branch names: `<conventional type>/<kebab-case-summary>`, e.g. `feat/preset-contractor-details`.
 - PR titles follow Conventional Commits (checked in CI), with a scope when one fits: `feat(web): …`, `fix(remote-trackers): …`, `chore: …`.
+- Descriptions: in English, no template. Open with the problem, then how it is solved. Tickets are not required.
 - One logical change per commit. Tests and i18n catalogs change in the same commit as the code they cover.
 - Before opening a PR: `pnpm lint`, `pnpm format:check`, `pnpm type-check`, `pnpm test:unit`, `pnpm test:nuxt`, and `pnpm test:e2e` when server behavior changes. After moving files or changing imports, re-run `pnpm lint`.
 - Keep PRs focused and small.
+- Review replies: in English.
 
 ## Security
 
