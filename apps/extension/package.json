@@ -28,7 +28,7 @@
     "@vue/test-utils": "^2.5.1",
     "eslint-plugin-vue": "^10.12.0",
     "happy-dom": "^21.0.4",
-    "playwright": "^1.65.0",
+    "playwright": "^1.65.1",
     "tailwindcss": "^4.3.5",
     "typescript": "^6.0.3",
     "vite": "catalog:",
