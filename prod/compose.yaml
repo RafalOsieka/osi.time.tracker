@@ -33,7 +33,7 @@ services:
 
   # Runs to completion before `app` starts; a failed migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:2867d013ec6234bfd03f27f0004f92c6029e4154438969415f8e01b75f0002c5
+    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:c74f119c2de887e97d60d1efae84ae008a2682f59544426df2ca2bc47ce3f8be
     restart: 'no'
     logging: *logging
     environment:
@@ -48,7 +48,7 @@ services:
         condition: service_healthy
 
   app:
-    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:7093ef350700455e5483e2f52485057cd5995a344ab0c94db2c7f7c9c54dac38
+    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:dd363c93097c3c4846fa99326626e9832f7be3ebe22faf3b4a022587f93b979e
     restart: unless-stopped
     logging: *logging
     environment:
@@ -108,7 +108,7 @@ services:
   # Connects out to Cloudflare and forwards the tunnel's public hostname to `http://app:3000`
   # over the compose network. The tunnel is remotely managed: its routes live in Cloudflare.
   cloudflared:
-    image: cloudflare/cloudflared:2026.10.7
+    image: cloudflare/cloudflared:2026.11.1
     restart: unless-stopped
     logging: *logging
     command: ['tunnel', '--no-autoupdate', 'run']
