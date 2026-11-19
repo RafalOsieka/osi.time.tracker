@@ -58,7 +58,7 @@ Each browser then needs its tracker API keys entered once and, where used, the e
 ## Operating production
 
 - **Did the deploy land?** A failed `verify-deploy` job emails, as any failed run does. If `publish` passed but production still runs the old commit, look at the host's pulls first: once the bot's token expires, they fail as unauthorized.
-- **Logs:** the containers' logs on the host, rotated at 10 MB × 3 per container. To see more, set `CONSOLA_LEVEL=4` on the stack and restart `app`.
+- **Logs:** the stack sets no log driver, so the containers use the host's Docker default; the host sets where logs go and how long they are kept. To see more, set `CONSOLA_LEVEL=4` on the stack and restart `app`.
 - **Rollback:** revert the latest commit on `deploy`; the stack picks it up at its next poll. Migrations only go forward, so an older build can break on a newer schema. In that case restore the backup from before the deploy, or fix forward.
 - **Downtime:** the app is down for the length of a deploy's migration, and a failed migration keeps it down until the next good deploy.
 
