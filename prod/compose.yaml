@@ -6,19 +6,11 @@
 # setting the host supplies; the README next to this file lists them. POSTGRES_PASSWORD,
 # NUXT_APP_SECRET and TUNNEL_TOKEN are required: the stack refuses to start without them.
 
-# Every container's logs stay on the host, rotated at 10 MB x 3.
-x-logging: &logging
-  driver: json-file
-  options:
-    max-size: 10m
-    max-file: '3'
-
 services:
   # A new Postgres major can't open the old one's volume: it needs a dump and restore.
   db:
     image: postgres:18-alpine
     restart: unless-stopped
-    logging: *logging
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
@@ -33,9 +25,8 @@ services:
 
   # Runs to completion before `app` starts; a failed migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:c74f119c2de887e97d60d1efae84ae008a2682f59544426df2ca2bc47ce3f8be
+    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:3b2ae45e6657bef127a744d49529ebf22f71358c17094f6430643aa6a76b5eee
     restart: 'no'
-    logging: *logging
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/osi_time_tracker
       # Optional: seeds this user if it does not exist yet. Leave unset on a restored database.
@@ -48,9 +39,8 @@ services:
         condition: service_healthy
 
   app:
-    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:dd363c93097c3c4846fa99326626e9832f7be3ebe22faf3b4a022587f93b979e
+    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:0002ce80945c85d5d7d4145fa25f5ebd56e178999ccde9be699fc378a7c50344
     restart: unless-stopped
-    logging: *logging
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/osi_time_tracker
       NUXT_APP_SECRET: ${NUXT_APP_SECRET:?NUXT_APP_SECRET is required}
@@ -78,7 +68,6 @@ services:
   backup:
     image: postgres:18-alpine
     restart: unless-stopped
-    logging: *logging
     environment:
       PGHOST: db
       PGUSER: postgres
@@ -110,7 +99,6 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:2026.11.1
     restart: unless-stopped
-    logging: *logging
     command: ['tunnel', '--no-autoupdate', 'run']
     environment:
       # Read from the environment, so the token never shows in the process list.
