@@ -340,7 +340,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     const list = page.locator('[data-testid="remote-sync-list"]');
     const row = page.locator(`[data-testid="remote-sync-row-${entryA.taskId}"]`);
     for (const [header, index] of [
-      ['Title', 2],
+      ['Export comment', 2],
       ['Issue', 3],
       ['Activity', 4],
     ] as const) {
@@ -587,7 +587,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
     await page.waitForSelector('[data-testid="confirm-modal"]');
     await page.click('[data-testid="confirm-accept"]');
     await page.waitForFunction(() =>
-      /now linked|jest teraz powiązany/i.test(document.body.textContent ?? ''),
+      /now matched|jest teraz powiązany/i.test(document.body.textContent ?? ''),
     );
     // Refresh keeps the row expanded; toggling here would collapse details.
     await page.waitForSelector('[data-testid="remote-sync-delete-entry-11"]');
