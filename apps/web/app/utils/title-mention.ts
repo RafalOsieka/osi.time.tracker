@@ -1,9 +1,9 @@
 /**
- * Pure helpers for `@project` mentions in time-entry titles (REQ-372–REQ-375).
+ * Pure helpers for `@project` mentions in time-entry titles.
  * Shared by the top-bar timer and the add-entry dialog; no Vue dependency.
  */
 
-/** Maximum projects listed while the overlay is in project mode (REQ-372). */
+/** Maximum projects listed while the overlay is in project mode. */
 export const MENTION_MAX_RESULTS = 5;
 
 /** The fields of a project that mention matching and ranking depend on. */
@@ -21,7 +21,7 @@ export interface MentionToken {
   query: string;
 }
 
-/** Lowercase, strip diacritics, and drop whitespace, `-` and `_` (REQ-373). */
+/** Lowercase, strip diacritics, and drop whitespace, `-` and `_`. */
 export function normalizeMentionText(value: string): string {
   return (
     value
@@ -46,7 +46,7 @@ function lastMentionStart(text: string, limit: number): number {
   return -1;
 }
 
-/** Finds the mention token that ends at the caret, or `null` (REQ-372). */
+/** Finds the mention token that ends at the caret, or `null`. */
 export function findMentionAtCaret(text: string, caret: number): MentionToken | null {
   const start = lastMentionStart(text, caret);
   if (start === -1) return null;
@@ -64,7 +64,7 @@ function matchTier(name: string, query: string): number {
 
 /**
  * Projects matching `query`, ordered by match tier, recent tracked time
- * (descending), then name (REQ-373). An empty query matches everything.
+ * (descending), then name. An empty query matches everything.
  */
 export function rankMentionProjects<T extends MentionProject>(
   projects: readonly T[],
@@ -102,7 +102,7 @@ export interface ResolvedMention<T extends MentionProject> {
 
 /**
  * Resolves the last mention token of `text` when its longest word-prefix equals
- * exactly one project's normalized name (REQ-375). Partial or ambiguous names
+ * exactly one project's normalized name. Partial or ambiguous names
  * return `null` so the text stays literal.
  */
 export function resolveTypedMention<T extends MentionProject>(
@@ -129,13 +129,13 @@ export function resolveTypedMention<T extends MentionProject>(
   return null;
 }
 
-/** Project shown in the title input's chip (REQ-374). */
+/** Project shown in the title input's chip. */
 export interface TitleProject {
   id: string;
   name: string;
 }
 
-/** Suggestion bound to the title text by identity (REQ-180). */
+/** Suggestion bound to the title text by identity. */
 export interface TitleTask {
   id: string;
   name: string;

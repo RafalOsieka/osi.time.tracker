@@ -302,7 +302,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
     await page.close();
   });
 
-  it('loads a day with more linked tasks than the extension in-flight limit without any limit error (REQ-331)', async () => {
+  it('loads a day with more linked tasks than the extension in-flight limit without any limit error', async () => {
     const user = await seedUser(dbUrl, { displayName: 'extensionburstredmine' });
     const { jar, token } = await apiLogin(user.email, user.password);
     await setTimezone(jar, token);

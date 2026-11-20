@@ -1,7 +1,7 @@
 import type ui from '@nuxt/ui/vite';
 
 /**
- * Nuxt UI in plain Vue mode (design D1): explicit component imports, no router, and our own
+ * Nuxt UI in plain Vue mode: explicit component imports, no router, and our own
  * light/dark state instead of the system-aware color mode. Icons are bundled at build time so the
  * extension pages never fetch them. Shared by the build (`vite.config.ts`) and the unit tests.
  *

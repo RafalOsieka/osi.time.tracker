@@ -402,7 +402,7 @@ describeTrackersImport('tracker remote-log import API', async () => {
     expect(differentTask).toHaveLength(0);
   });
 
-  it('re-imports a log once its provenance is deleted, exactly like a deleted export (REQ-344)', async () => {
+  it('re-imports a log once its provenance is deleted, exactly like a deleted export', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     await setUtcTimezone(jar, token);
     const tracker = await createTracker(jar, token, `Import Deleted ${Date.now()}`);

@@ -248,7 +248,7 @@ describeChromium('extension options UI', () => {
     await page.getByTestId('add-website').press('Enter');
     await expect
       .poll(() => toasts(page).textContent())
-      .toMatch(/Website approved\..*localhost:3000/);
+      .toMatch(/Time Tracker App approved\..*localhost:3000/);
 
     await page.reload();
     await expect
@@ -258,7 +258,7 @@ describeChromium('extension options UI', () => {
     await chooseOption(page, 'language', optionNames.pl);
     await expect
       .poll(() => page.getByTestId('new-website').textContent())
-      .toMatch(/Zatwierdź witrynę/);
+      .toMatch(/Zatwierdź Time Tracker App/);
     await expect
       .poll(() => page.getByTestId('add-destination').textContent())
       .toMatch(/Zatwierdź tracker/i);
@@ -321,7 +321,7 @@ describeChromium('extension options UI', () => {
     await confirmRevoke(page);
     await expect
       .poll(() => toasts(page).textContent())
-      .toMatch(/Usunięto witrynę\s*localhost:3000/);
+      .toMatch(/Usunięto Time Tracker App\s*localhost:3000/);
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
     await expect
       .poll(() => page.getByTestId('destination-website-required').isVisible())
@@ -356,7 +356,7 @@ describeChromium('extension options UI', () => {
     await chooseOption(page, 'language', optionNames.en);
     await expect
       .poll(() => other.getByTestId('add-website').textContent())
-      .toMatch(/Approve website/);
+      .toMatch(/Approve Time Tracker App/);
     for (const [index, origin] of ['http://localhost:3100', 'http://localhost:3101'].entries()) {
       await openAddForm(page, 'website');
       await page.getByTestId('website-origin').fill(origin);
@@ -436,7 +436,7 @@ describeChromium('extension options UI', () => {
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
   });
 
-  it('focuses the alert restore when the popup hands over the only lost approval (REQ-408)', async () => {
+  it('focuses the alert restore when the popup hands over the only lost approval', async () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
     await chooseOption(page, 'language', optionNames.en);

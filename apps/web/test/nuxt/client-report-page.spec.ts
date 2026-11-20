@@ -212,7 +212,7 @@ beforeEach(() => {
   adapterReturning({ [openProject.id]: [remoteLog()] });
 });
 
-describe('client report page — month (REQ-384)', () => {
+describe('client report page — month', () => {
   it('writes the current month in the effective time zone to the URL when missing', async () => {
     harness.query = {};
     await mountPage();
@@ -271,7 +271,7 @@ describe('client report page — month (REQ-384)', () => {
   });
 });
 
-describe('client report page — presets (REQ-385)', () => {
+describe('client report page — presets', () => {
   it('preselects the most recently used preset', async () => {
     harness.presets = [
       preset({ id: '01900000-0000-7000-8000-0000000000b2', clientName: 'Nordwind' }),
@@ -414,7 +414,7 @@ describe('client report page — presets (REQ-385)', () => {
   });
 });
 
-describe('client report page — export (REQ-386)', () => {
+describe('client report page — export', () => {
   it('saves the preset, fetches every tracker, and downloads the PDF in the preset locale', async () => {
     adapterReturning({
       [openProject.id]: [remoteLog()],
@@ -513,7 +513,7 @@ describe('client report page — export (REQ-386)', () => {
   });
 });
 
-describe('client report page — loading (REQ-391)', () => {
+describe('client report page — loading', () => {
   it('shows the skeleton instead of the form while presets load', async () => {
     harness.presetsGate = new Promise(() => {});
     const wrapper = await mountSuspended(ClientReportPage, { global: globalOptions });

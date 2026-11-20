@@ -13,21 +13,15 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 
 ### Domain
 
-| Term            | Meaning                                                                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tracker**     | A connection to a remote OpenProject/Redmine instance: type, base URL, direct-browser flag, rounding. Its API secret lives only in the browser. |
-| **Project**     | A body of work; either bound to one Tracker (optionally scoped to a remote project) or local.                                                   |
-| **Task**        | Derived, never managed directly: an entry's title _is_ its task. Tasks are auto-created, matched, renamed, merged and deleted from entry titles. |
-| **Time entry**  | The object the user creates (timer or manual). A running timer is an entry without a stop time.                                               |
-| **Remote sync** | The per-day page where tasks are linked to remote issues and selected time is exported. Export provenance never locks local entries.           |
+[`GLOSSARY.md`](./GLOSSARY.md) defines the domain language (Tracker, Project, Task, Time entry, Remote log, Export, Remote Sync and the rest) with its Polish UI words. Name concepts with its terms in code, docs, tests and UI copy.
 
 ### Hard constraints
 
-- **Tracker API secrets never reach the OSI server.** All tracker calls run in the browser, directly or through the extension (`packages/extension-protocol`). Do not add server-side proxying or credential storage.
-- **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers.
+- **Tracker API keys never reach the server.** All tracker calls run in the browser, directly or through the extension (`packages/extension-protocol`). Do not add server-side proxying or credential storage (why: [ADR-0001](./docs/adr/0001-tracker-calls-never-pass-through-the-server.md)).
+- **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers (ADR-0001).
 - **Users are isolated.** Every query is scoped to the authenticated user.
 - **Deployment details stay private.** This repository and its workflow logs are public. Never write the production address, access credentials or specifics of the hosting infrastructure into files, issues, PRs, commits or logs; use placeholders and masked secrets (`deploy/osieka-dev/README.md`).
-- **Behavior is specified in `openspec/specs`.** Read the relevant spec before changing a feature, and keep spec and code aligned. Specs hold observable behavior only; tooling, build, CI and test-harness details live in `docs/` (`development.md`, `e2e-guideline.md`, `coding-standards.md`), and retired REQ codes in `docs/retired-requirements.md`.
+- **Behavior is described in `docs/behavior`**, one file per capability. Read the files a change touches and update them with the code, following [`docs/behavior/guideline.md`](./docs/behavior/guideline.md).
 
 ## Commands
 
@@ -117,9 +111,9 @@ apps/screenshots/             Screenshot set for design reviews (see docs/develo
 packages/remote-trackers/     Provider adapters behind a neutral contract
 packages/extension-protocol/  Message protocol shared by web app and extension
 tools/oxlint/anti-slop/       Vendored Oxlint plugin (frozen, see below)
-openspec/                     Specs (behavioral source of truth) and change proposals
 deploy/osieka-dev/            Compose template and runbook of the one private instance
 docs/                         Connecting trackers, development, coding standards, e2e guideline
+docs/behavior/                Observable behavior, one file per capability
 ```
 
 ## Anti-slop plugin is frozen
@@ -155,3 +149,7 @@ The five default triage labels: `needs-triage`, `needs-info`, `ready-for-agent`,
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repository root, created lazily. See `docs/agents/domain.md`.
+
+### Roadmap
+
+`ROADMAP.md` lists what is planned but not yet picked up. When a spec or a wayfinder map postpones a topic, add it there; remove it once the topic is picked up or ships.

@@ -4,21 +4,21 @@ export const REPORT_PRESET_CLIENT_NAME_MAX_LENGTH = 120;
 export const REPORT_PRESET_MAX_TRACKERS = 20;
 export const REPORT_PRESET_CONTRACTOR_DETAILS_MAX_LENGTH = 500;
 
-/** `hm` prints unpadded `H:MM`; `decimal` prints hours with two decimals (REQ-387). */
+/** `hm` prints unpadded `H:MM`; `decimal` prints hours with two decimals. */
 export const reportHoursFormatSchema = z.enum(['hm', 'decimal'], {
   error: 'error.reportPresetHoursFormatInvalid',
 });
 
 export type ReportHoursFormat = z.infer<typeof reportHoursFormatSchema>;
 
-/** Language of the generated PDF, independent of the UI locale (REQ-390). */
+/** Language of the generated PDF, independent of the UI locale. */
 export const reportLocaleSchema = z.enum(['en', 'pl'], {
   error: 'error.reportPresetLocaleInvalid',
 });
 
 export type ReportLocale = z.infer<typeof reportLocaleSchema>;
 
-/** Create and update body of a report preset (REQ-380); PATCH replaces every field. */
+/** Create and update body of a report preset; PATCH replaces every field. */
 export const reportPresetInputSchema = z.object({
   clientName: z
     .string({ error: 'error.reportPresetClientNameRequired' })
@@ -36,7 +36,7 @@ export const reportPresetInputSchema = z.object({
     }),
   hoursFormat: reportHoursFormatSchema,
   locale: reportLocaleSchema,
-  /** Free text printed below the contractor's email on the PDF title page (REQ-511, REQ-513). */
+  /** Free text printed below the contractor's email on the PDF title page. */
   contractorDetails: z
     .string()
     .trim()
@@ -50,7 +50,7 @@ export const reportPresetInputSchema = z.object({
 
 export type ReportPresetInput = z.infer<typeof reportPresetInputSchema>;
 
-/** A report preset as listed for its owner (REQ-381). */
+/** A report preset as listed for its owner. */
 export interface ReportPresetDto {
   id: string;
   clientName: string;

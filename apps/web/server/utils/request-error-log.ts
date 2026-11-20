@@ -13,11 +13,11 @@ const MESSAGE_KEY_PATTERN = /^[a-z0-9]+(?:\.[a-z0-9_]+)+$/i;
 
 /**
  * Narrows an error's `data` (typed `unknown` on `H3Error<DataT = unknown>`) to the
- * project's `{ messageKey, params }` contract (REQ-171) at this boundary. A `data`
+ * project's `{ messageKey, params }` contract at this boundary. A `data`
  * that doesn't fully match -- including one with a non-primitive `params` value --
  * is rejected as a whole, so a future call site that accidentally attaches a
  * request body or other object as `data` can never leak part of it into the log
- * line (REQ-356); the caller falls back to a bare `[METHOD] path -> status` line.
+ * line; the caller falls back to a bare `[METHOD] path -> status` line.
  */
 const apiMessageDataSchema = z.object({
   messageKey: z.string().regex(MESSAGE_KEY_PATTERN),
@@ -25,12 +25,12 @@ const apiMessageDataSchema = z.object({
 });
 
 /**
- * Formats one request-ending error for the server-logging error hook
- * (REQ-355). Returns `null` for an error already logged by h3/Nitro's own
+ * Formats one request-ending error for the server-logging error hook.
+ * Returns `null` for an error already logged by h3/Nitro's own
  * `[unhandled]`/`[fatal]` output, so a thrown non-`H3Error` is never logged
  * twice. Only the method, path, status and — when present — the error's
  * `{ messageKey, params }` contract are ever included; the request body,
- * headers, cookies and session are never read here (REQ-356).
+ * headers, cookies and session are never read here.
  */
 export function describeRequestError(
   error: H3Error,

@@ -15,7 +15,7 @@ import type { ApiMessage } from '../../types/api-message';
  * Finalizes a browser-orchestrated remote export after OpenProject (or the
  * proxy) returned a remote log id. Re-authorizes the task and selected
  * entries against the requested local day, then appends provenance
- * atomically (REQ-119 / REQ-120). Known remote log ids are replayed
+ * atomically. Known remote log ids are replayed
  * without creating another remote log or provenance row.
  */
 export default defineEventHandler(async (event): Promise<FinalizeRemoteExportResultDto> => {
@@ -61,7 +61,7 @@ export default defineEventHandler(async (event): Promise<FinalizeRemoteExportRes
     };
   }
 
-  // Key-based reconciliation: identical logical export already stored (REQ-233).
+  // Key-based reconciliation: identical logical export already stored.
   const [byKey] = await db
     .select()
     .from(remoteExports)

@@ -16,12 +16,12 @@ export interface RouteLogsByScopeGroup {
 
 /**
  * All of one remote project's logs from a scan, plus the scope-derived
- * default target Project (REQ-334) — `null` when no scope covers it. This is
- * only the mapping phase's starting suggestion (REQ-358): the final target is
+ * default target Project — `null` when no scope covers it. This is
+ * only the mapping phase's starting suggestion: the final target is
  * whatever the user selects, independent of `defaultProjectId`.
  */
 export interface RemoteProjectBucket {
-  /** `null` when the log carried no remote project id at all (REQ-478). */
+  /** `null` when the log carried no remote project id at all. */
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   logs: RemoteTimeLogDto[];
@@ -34,10 +34,10 @@ export function bucketKey(remoteProjectId: string | null): string {
 }
 
 /**
- * Buckets fetched remote logs by remote project (REQ-358): every remote
+ * Buckets fetched remote logs by remote project: every remote
  * project id encountered in `logs` gets exactly one bucket, including `null`
  * for logs with no remote project id at all. Each bucket also carries a
- * default target Project (REQ-334): the nearest scoped ancestor of the
+ * default target Project: the nearest scoped ancestor of the
  * remote project, walking parent links from the log's project upward — the
  * first match wins, so a scope on a descendant takes precedence over one on
  * its ancestor. A bucket whose walk reaches the root without a match, or
@@ -102,7 +102,7 @@ export function routeLogsByScope(
 }
 
 /**
- * Re-groups buckets by the caller's target selection (REQ-358), merging
+ * Re-groups buckets by the caller's target selection, merging
  * buckets assigned the same Project and dropping any bucket left unassigned
  * (`selection` missing the key, or explicitly `null`). Pure and synchronous.
  */

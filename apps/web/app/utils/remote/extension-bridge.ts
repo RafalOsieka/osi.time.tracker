@@ -221,7 +221,7 @@ export class ExtensionDocumentBridge {
   }
 
   /**
-   * Asks the extension to queue a tracker destination for the user's approval (REQ-421). Carries
+   * Asks the extension to queue a tracker destination for the user's approval. Carries
    * no secret; the extension takes the website from the sender, never from this page.
    */
   async suggestDestination(destination: DestinationSelector): Promise<SuggestDestinationStatus> {

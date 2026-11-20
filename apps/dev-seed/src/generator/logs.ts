@@ -55,7 +55,7 @@ interface Slot {
 const FIXTURE_SEED = 'osi-dev-seed-v1';
 
 /**
- * Generates every log for the run's calendar (design.md — D4). Weeks are
+ * Generates every log for the run's calendar. Weeks are
  * planned whole and seeded per `(tracker, week)`, so a given day yields the
  * same logs for every run in the same calendar week; the frame (and with it
  * each week's arc position) moves once a week, on Monday.

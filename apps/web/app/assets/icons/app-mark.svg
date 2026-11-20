@@ -1,5 +1,5 @@
 <!--
-  Canonical chrome glyph. Geometry source: openspec/changes/open-dial-brand-mark/design.md (D1).
+  Canonical chrome glyph: the source of the brand mark geometry.
   Single colour via currentColor; derived tiles substitute it for #fff.
 
   Derived assets (regenerate all of them when this file changes):

@@ -20,7 +20,7 @@ export interface TaskTitleMenuItem {
   onSelect: () => void;
 }
 
-/** A project row offered while the caret is in a `@mention` (REQ-372). */
+/** A project row offered while the caret is in a `@mention`. */
 export interface MentionMenuProject {
   id: string;
   name: string;
@@ -51,7 +51,7 @@ export interface BuildTaskTitleMenuItemsOptions {
   onSelectCreate: (title: string) => void;
   /** When false, omit the synthetic create row. Default true. */
   includeCreateRow?: boolean;
-  /** Project mode: when set, only the labelled project group is returned (REQ-372). */
+  /** Project mode: when set, only the labelled project group is returned. */
   mention?: MentionMenuOptions;
 }
 

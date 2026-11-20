@@ -65,12 +65,12 @@ export const remoteTimeLogSchema = z.object({
   activityName: z.string().nullable(),
   comment: z.string().nullable(),
   remoteUserId: z.string().nullable(),
-  // REQ-341: optional, present only when the provider's payload already
+  // Optional, present only when the provider's payload already
   // supplies it. Listed explicitly so the bridge's z.object does not strip
   // them when present.
   remoteProjectId: z.string().optional(),
   remoteProjectTitle: z.string().optional(),
-  // REQ-341/REQ-476: required for every provider; `null` only when the
+  // Required for every provider; `null` only when the
   // tracker does not disclose the issue to the account.
   remoteIssueTitle: z.string().nullable(),
 });

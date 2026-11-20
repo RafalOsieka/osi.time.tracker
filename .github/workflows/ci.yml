@@ -55,21 +55,6 @@ jobs:
       - name: Run format check
         run: vp run format:check
 
-  specs:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Setup Vite+
-        uses: voidzero-dev/setup-vp@cab1ab9eaff52d4857875f4f2c016e36af8f2c76 # v1.22.0
-        with:
-          cache: false
-          run-install: false
-
-      - name: Validate OpenSpec specs
-        run: vp dlx @fission-ai/openspec@1.16.1 validate --specs --strict
-
   type-check:
     runs-on: ubuntu-latest
     steps:
@@ -340,22 +325,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
-    needs:
-      [
-        lint,
-        format,
-        specs,
-        type-check,
-        package,
-        unit,
-        extension,
-        nuxt,
-        build,
-        coverage,
-        db,
-        api,
-        ui,
-      ]
+    needs: [lint, format, type-check, package, unit, extension, nuxt, build, coverage, db, api, ui]
     permissions:
       contents: write
       packages: write

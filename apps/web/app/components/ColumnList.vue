@@ -15,7 +15,7 @@ const {
   columns: readonly ColumnDefinition<Key>[];
   /**
    * `grid-template-columns` of every row below 40rem of list width, where rows leave the
-   * shared columns and each cell takes its `narrow` placement (REQ-500).
+   * shared columns and each cell takes its `narrow` placement.
    */
   narrow: string;
   stickyHeader?: boolean;

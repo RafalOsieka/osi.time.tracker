@@ -12,7 +12,7 @@ type ProfileRow = { email: string; displayName: string; timezone: string };
 /**
  * Seeds pre-0025 users with missing or blank profile fields, applies
  * 0025_require_user_profile, and asserts the backfill plus the NOT NULL
- * constraints (workspace-settings REQ-397 / REQ-398).
+ * constraints.
  */
 describeDb('require-user-profile migration', () => {
   it('backfills display name and timezone, then rejects users without them', async () => {

@@ -2,7 +2,7 @@ export type TrackerKey = 'redmine' | 'openproject';
 
 /**
  * Where an issue sits in the three-month story. Determines its final status
- * and which part of the range its logs fall into (design.md — D4):
+ * and which part of the range its logs fall into:
  * `closed-early` first ~40 %, `closed-mid` ~30–75 %, `in-progress` last ~40 %,
  * `open-unlogged` never logged so OSI can link it without prior history.
  */

@@ -138,12 +138,16 @@ Rules:
 - Prefer deterministic tests; seed any randomness.
 - A composable extracted from a page gets its own tests at its boundary (loading lifecycle, retry, derived selectors) without rendering the page; mock its collaborators, never the composable itself.
 - Assert against stable selectors (e.g. `data-testid`) rather than fragile markup.
+- Every API endpoint has an API e2e test covering its happy path and at least one error response.
+- A form or user flow has a UI e2e journey.
 - Anti-slop plugin tests live in `tools/oxlint/anti-slop/test/` (`*.test.ts`, Oxlint `RuleTester`). Do not edit plugin rules, shared helpers, or the plugin entry unless asked.
 
 ## 11. Commits & Reviews
 
 - One logical change per commit, with a short, clear summary line.
 - Update tests and i18n catalogs in the same change as the code they support.
+- A change to observable behavior updates its capability file in `docs/behavior/` in the same commit, as [`behavior/guideline.md`](./behavior/guideline.md) describes.
+- A change to tooling, build or CI updates [`development.md`](./development.md) in the same commit.
 - Run linting, format checks, and the relevant test projects before opening a pull request.
 - Keep pull requests focused and reasonably small; be constructive in review.
 

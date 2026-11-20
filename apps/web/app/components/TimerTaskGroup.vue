@@ -29,7 +29,7 @@ const {
   activeEditorKey?: string | null;
   projectOptions?: ProjectDto[];
   tracker?: TrackerDto | null;
-  /** The owning project's remote project scope (REQ-328), if any. */
+  /** The owning project's remote project scope, if any. */
   scope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
   /** The group's day in words, named by the issue picker as the day a link applies to. */
   dayLabel?: string;
@@ -387,7 +387,7 @@ async function unlinkRemoteIssue() {
     <ColumnCell :columns="columns" col="action" :narrow="{ col: [6, 7], row: 1 }">
       <!--
         The row-action tile: a 32px cyan soft tile to continue, or on the running group a 32px
-        solid red tile with the shell timer's animated stop glyph (REQ-501); in dark mode the fill
+        solid red tile with the shell timer's animated stop glyph; in dark mode the fill
         is a deeper red under a white glyph, like the top bar's stop, not a bright salmon block.
       -->
       <UTooltip :text="actionLabel" :content="{ side: 'top' }">

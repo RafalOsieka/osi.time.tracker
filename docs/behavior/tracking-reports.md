@@ -1,0 +1,226 @@
+# tracking-reports
+
+## Purpose
+
+Give the authenticated user a monthly timesheet that reconciles local logged hours with live remote tracker hours, split into app-exported versus logged-directly, so a consultant can see what actually landed on each tracker for a month. Reports are reached from the sidebar Reports group; there is no `/reports` hub.
+
+## Requirements
+
+### Requirement: No reports hub at `/reports`
+
+The application SHALL NOT expose a reports hub page at `/reports`. There SHALL be no redirect from `/reports` to `/reports/monthly`. An authenticated request for `/reports` SHALL be a not-found response (HTTP 404), not a hub, placeholder, or monthly timesheet. Unauthenticated requests remain subject to the private-by-default guard.
+
+#### Scenario: Authenticated `/reports` is not found
+
+- **WHEN** an authenticated user requests `/reports`
+- **THEN** the application SHALL respond with 404 and SHALL NOT render a reports hub or the monthly timesheet
+
+#### Scenario: Unauthenticated `/reports` is still gated
+
+- **WHEN** an unauthenticated visitor requests `/reports`
+- **THEN** the global guard SHALL redirect to `/login` with that path as the redirect target before any protected markup is sent
+
+### Requirement: Monthly timesheet month selection
+
+The application SHALL expose a private `/reports/monthly` page for one calendar month. The selected month SHALL default to the current month in the user's timezone (`workspace-settings`). The page SHALL offer previous-month and next-month controls and SHALL keep the selection in the `month=YYYY-MM` query string. Changing the month SHALL reload the timesheet for that month.
+
+#### Scenario: Default is the current month
+
+- **WHEN** an authenticated user opens `/reports/monthly` with no `month` query
+- **THEN** the page SHALL show the current calendar month in the effective timezone and SHALL write `month=YYYY-MM` for that month into the URL
+
+#### Scenario: Explicit month is honored
+
+- **WHEN** the user opens `/reports/monthly?month=2026-03`
+- **THEN** the page SHALL show March 2026
+
+#### Scenario: Previous and next change the month
+
+- **WHEN** the user activates next month while viewing `2026-08`
+- **THEN** the application SHALL navigate to `month=2026-09` and show September 2026
+
+#### Scenario: Invalid month is rejected
+
+- **WHEN** the query is `month=2026-13`, `month=13`, or another non-`YYYY-MM` calendar month
+- **THEN** the API SHALL reject the request with status 422 and a `{ messageKey, params }` body, and the page SHALL show a translated error rather than an empty fake month
+
+#### Scenario: Unauthenticated access is redirected
+
+- **WHEN** an unauthenticated visitor requests `/reports/monthly`
+- **THEN** the global guard SHALL redirect to `/login` with that path as the redirect target before any protected markup is sent
+
+### Requirement: Monthly table columns, days, and totals
+
+The monthly timesheet SHALL be a table with a Local column (OSI hours) and, for **every active** tracker the user owns, a group of Exported, Direct and Total columns, shown with `0:00` even when empty; soft-deleted trackers SHALL NOT appear. It SHALL list only days of the month with Local, Exported or Direct hours above zero, plus a totals row summing the visible days per column. Day rows SHALL NOT link to the Timer View or Remote Sync.
+
+#### Scenario: Active tracker with no hours still has columns
+
+- **WHEN** the user owns two active trackers and only one has remote hours in the month
+- **THEN** both tracker groups SHALL be shown and the unused tracker's cells SHALL display `0:00`
+
+#### Scenario: Empty days are omitted
+
+- **WHEN** August has local or remote hours only on the 3rd and the 12th
+- **THEN** the table SHALL contain those two day rows plus the totals row and SHALL NOT list the other days of August
+
+#### Scenario: Empty month
+
+- **WHEN** the selected month has no local hours, no matching exports that appear on a remote, and no remote hours
+- **THEN** the page SHALL show a translated empty state and SHALL NOT render a table of blank days
+
+#### Scenario: Soft-deleted tracker is omitted
+
+- **WHEN** the user has a soft-deleted tracker with historical exports
+- **THEN** that tracker SHALL NOT appear as a column group
+
+### Requirement: Combined remote-hours summary
+
+The timesheet SHALL show a month-level Remote summary, the sum of all fetched remote log durations across active trackers without an Exported/Direct split, in `H:MM`, beside a Local summary. A failed fetch SHALL NOT count as `0:00`: if every tracker fails, the summary SHALL show the failure state; if some succeed, it SHALL show their sum marked incomplete by color plus tooltip, not color alone.
+
+#### Scenario: Remote summary is all tracker hours combined
+
+- **WHEN** two trackers have 1:00 Exported and 2:00 Direct in the month
+- **THEN** the Remote summary SHALL display `3:00`
+
+#### Scenario: Failed fetches are not silent zeros
+
+- **WHEN** one tracker range fetch fails and another returns 2:00
+- **THEN** the Remote summary SHALL display `2:00` with an incomplete-total cue and SHALL NOT display `0:00` as if the failed tracker had no hours
+
+### Requirement: Server aggregation of local hours and export records
+
+`GET /api/reports/monthly?month=YYYY-MM` SHALL return, for the user: the resolved month; the timezone used for days; per-day Local totals (`stoppedAt − startedAt`) of stopped entries, each counted wholly on the local day of its `startedAt` as in the Timer View, running time entries excluded; the active trackers (id, name); and the month's finalized exports (at least `localDate`, `remoteLogId`, `exportDurationSeconds`). It follows `core-api-conventions`.
+
+#### Scenario: Stopped entries bucket by startedAt local day
+
+- **WHEN** the user has a stopped entry starting 2026-08-03 22:00 in their timezone and stopping the next calendar day
+- **THEN** the full duration SHALL appear in Local for 2026-08-03 and SHALL NOT appear on 2026-08-04
+
+#### Scenario: Running timer is excluded
+
+- **WHEN** the user has a running time entry during the selected month
+- **THEN** that entry SHALL NOT contribute to any Local day total
+
+#### Scenario: Foreign user data is excluded
+
+- **WHEN** another user has time entries or exports in the same month
+- **THEN** the response SHALL NOT include those rows
+
+#### Scenario: Missing month defaults on the server
+
+- **WHEN** `GET /api/reports/monthly` is called without `month`
+- **THEN** the server SHALL use the current month in the user's timezone and return that month in the payload
+
+### Requirement: Live remote hours split into Exported and Direct
+
+After the monthly data loads, the client SHALL fetch date-range logs once per active tracker. Exported hours SHALL be fetched logs whose tracker-scoped identity matches a finalized export record; Direct hours, those without. Matching a remote log SHALL move it from Direct to Exported on refresh; deleting the export record after a confirmed remote deletion SHALL drop the log from the totals and the Exported set. A failed fetch SHALL show as unavailable, never as zero.
+
+#### Scenario: Export id counts as Exported
+
+- **WHEN** a fetched log's tracker and remote log ID match a finalized export record
+- **THEN** its duration SHALL count as Exported and not Direct
+
+#### Scenario: Unrecognized remote log is Direct
+
+- **WHEN** a fetched log has no matching tracker-scoped export record
+- **THEN** its duration SHALL count as Direct
+
+#### Scenario: Matched remote log is reclassified
+
+- **WHEN** an Unmatched remote log is matched and the report refreshes
+- **THEN** that entry SHALL move from Direct to Exported without changing the remote total
+
+#### Scenario: One range fetch per tracker
+
+- **WHEN** the report loads for a month with active trackers
+- **THEN** the client SHALL perform at most one date-range log fetch per tracker
+
+#### Scenario: Remote-only day appears
+
+- **WHEN** a tracker has Exported or Direct hours on a day with no local hours
+- **THEN** that day SHALL appear in the report
+
+#### Scenario: Fetch failure is not zero
+
+- **WHEN** a tracker range fetch fails or lacks a secret
+- **THEN** its report group SHALL show an unavailable state rather than zero hours
+
+### Requirement: Attention indicators
+
+After successful fetches the table SHALL flag the duration itself, not via a status column or icon, when: a tracker has Direct hours > 0 (that Direct duration); Local > 0 while every fetched tracker has Exported + Direct = 0, or there are no trackers (the Local duration); Local = 0 while a tracker has Exported but no Direct hours (that Exported duration). A failed fetch SHALL mark that tracker's cells unknown, not unexported. A Local vs Exported difference caused only by export rounding SHALL NOT flag a cell.
+
+#### Scenario: Direct hours flag that duration
+
+- **WHEN** a tracker has Direct hours on a day
+- **THEN** that Direct duration SHALL be semibold warning text with a tooltip stating that remote hours were not exported from the app
+
+#### Scenario: Unexported local flags the Local duration
+
+- **WHEN** Local is 8:00, every tracker range fetch succeeded, and every tracker Exported and Direct are 0:00
+- **THEN** the Local duration SHALL be semibold warning text with a tooltip stating local hours did not land on any tracker
+
+#### Scenario: Fetch failure is not treated as unexported
+
+- **WHEN** Local is 8:00 and one tracker range fetch failed
+- **THEN** the page SHALL show the fetch-failure state for that tracker and SHALL NOT claim the day is unexported solely because remote totals are unknown
+
+#### Scenario: Rounding-only difference is info
+
+- **WHEN** Local is 7:50 and Exported is 8:00 with Direct 0:00 and no fetch failures
+- **THEN** the day SHALL NOT be marked as needing attention; a tooltip MAY mention the two durations as information
+
+### Requirement: Flagged and zero duration styling
+
+A flagged duration SHALL use warning-colored **semibold** text with an underline, a cue besides color (`ui-accessibility`), with a themed hover and focus tooltip giving the reason (`ui-accessibility`). An unflagged `0:00` SHALL use dimmed text. The table SHALL NOT have an attention column.
+
+#### Scenario: Zero durations recede
+
+- **WHEN** a cell is `0:00` and is not flagged
+- **THEN** that duration SHALL use dimmed text, still at least 4.5:1 against its background, and SHALL NOT use warning styling
+
+#### Scenario: Flagged durations have a non-color cue
+
+- **WHEN** a cell is flagged
+- **THEN** its duration SHALL be underlined as well as warning-colored and semibold, and its reason SHALL be available from its tooltip on hover and keyboard focus
+
+### Requirement: Report durations use unpadded `H:MM`
+
+All durations on the monthly timesheet SHALL be displayed as unpadded `H:MM` (examples: `0:00`, `8:00`, `10:05`), with seconds floored to minutes. This format applies to reports only; the Timer View and Remote Sync keep their own.
+
+#### Scenario: Hours are unpadded
+
+- **WHEN** a cell total is 8 hours
+- **THEN** the cell SHALL display `8:00` and SHALL NOT display `08:00` or `08:00:00`
+
+#### Scenario: Seconds are floored
+
+- **WHEN** a total is 7 hours, 50 minutes, and 59 seconds
+- **THEN** the cell SHALL display `7:50`
+
+### Requirement: Reports i18n and page chrome
+
+All user-visible reports copy SHALL come from the `en` and `pl` catalogs in parity. The monthly page SHALL use the shared authenticated page header pattern (title plus month controls). Flagged durations (so their tooltips open) and month controls SHALL be keyboard operable with visible focus and accessible names.
+
+#### Scenario: Polish catalog covers new strings
+
+- **WHEN** the UI locale is `pl`
+- **THEN** month picker, table headers, empty state, errors, and attention tooltips SHALL render Polish strings with no raw English keys
+
+#### Scenario: Month controls are keyboard operable
+
+- **WHEN** a keyboard user tabs to previous/next month
+- **THEN** both controls SHALL be reachable, show visible focus, and change the month on activation
+
+### Requirement: Timesheet legend explains flagged values
+
+Under the monthly timesheet a legend SHALL explain the flags at a glance: for the Local and Direct columns, what a flagged value there usually means, each keyed by a sample duration in the flag's look, and how to reveal each value's own reason with the pointer or the keyboard. The legend SHALL NOT redefine the columns and SHALL be translated.
+
+#### Scenario: Legend under the timesheet
+
+- **WHEN** the monthly timesheet is shown
+- **THEN** a legend under it SHALL say that a flagged Local value means nothing from that day reached a tracker, that a flagged Direct value means time logged in the tracker but not sent from the app, and that hovering a flagged value or moving to it with Tab shows its reason
+
+#### Scenario: Legend keys look like the flag
+
+- **WHEN** the legend is shown
+- **THEN** each explanation SHALL be keyed by a sample duration styled like a flagged value, followed by plain text

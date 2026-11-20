@@ -8,7 +8,7 @@ import type { MonthlyReportDto } from '../../shared/types/report';
 import type { TrackerDto } from '../../shared/types/tracker';
 
 /**
- * Wiring of the monthly report page: loading/empty/error states (REQ-391),
+ * Wiring of the monthly report page: loading/empty/error states,
  * per-tracker remote fetches and month navigation. Timesheet math is covered
  * by `test/unit/monthly-timesheet.spec.ts`.
  */
@@ -205,7 +205,7 @@ describe('monthly report page remote hours', () => {
     );
   });
 
-  it('sets a flagged duration semibold and a plain one at regular weight (REQ-472)', async () => {
+  it('sets a flagged duration semibold and a plain one at regular weight', async () => {
     harness.secrets = { [openProject.id]: 'op-key', [redmine.id]: 'rm-key' };
     adapterReturning({ [redmine.id]: [remoteLog('2026-09-01', 1800)] });
     const wrapper = await mountLoadedMonth();

@@ -29,7 +29,7 @@ const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const toast = useToast();
 const suggestionService = new SuggestionService(createChromeSuggestionStore(), service);
-/** What the popup handed over: a website, a suggestion, a step's form or a restore (design D1). */
+/** What the popup handed over: a website, a suggestion, a step's form or a restore. */
 const focus = readSetupFocus(location.search);
 /** Removals and dismissals are routine, so their notification is neutral rather than green. */
 const QUIET_OUTCOMES = new Set([
@@ -103,7 +103,7 @@ const disabled = computed(() => busy.value || !loaded.value);
 /** Saved settings could not be read: nothing below may pose as an empty configuration. */
 const unreadable = computed(() => errorKey.value === 'approvals.loadFailed' && !loaded.value);
 
-/** Add forms expanded on request; each one is always open while its list is empty (REQ-523). */
+/** Add forms expanded on request; each one is always open while its list is empty. */
 const websiteFormOpen = shallowRef(focus.website !== undefined);
 const destinationFormOpen = shallowRef(focus.step === 'tracker');
 

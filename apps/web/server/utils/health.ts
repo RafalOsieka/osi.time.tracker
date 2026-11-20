@@ -3,8 +3,8 @@ import type { HealthDto } from '../../shared/types/health';
 import type { ApiMessage } from '../types/api-message';
 
 /**
- * Reports the running build once `pingDatabase` resolves, and a 503 when it rejects
- * (platform-docker REQ-529). The ping is a parameter so the failure path needs no database.
+ * Reports the running build once `pingDatabase` resolves, and a 503 when it rejects.
+ * The ping is a parameter so the failure path needs no database.
  */
 export async function readHealth(
   pingDatabase: () => Promise<void>,

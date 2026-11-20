@@ -148,7 +148,7 @@ function destinationOf(item: ExportDialogIncludedRow) {
           </li>
         </ul>
 
-        <!-- REQ-229: a total only adds something when more than one Task goes out. -->
+        <!-- A total only adds something when more than one Task goes out. -->
         <div
           v-if="included.length > 1"
           class="flex items-baseline justify-between border-t border-default pt-3 text-highlighted"
@@ -160,7 +160,7 @@ function destinationOf(item: ExportDialogIncludedRow) {
           </span>
         </div>
 
-        <!-- REQ-229: the Tasks left out, counted by reason (each row states its own reason on
+        <!-- The Tasks left out, counted by reason (each row states its own reason on
              the page), at helper-text size since it qualifies what the export does. -->
         <p
           v-if="excludedSummary && !isRunning"

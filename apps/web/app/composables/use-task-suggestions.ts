@@ -6,13 +6,13 @@ const SUGGESTION_DEBOUNCE_MS = 200;
 
 /**
  * Debounced, stale-response-safe task-title suggestions shared by the
- * top-bar timer and the add-entry dialog (REQ-360). While the user keeps
+ * top-bar timer and the add-entry dialog. While the user keeps
  * typing, only one request is issued for the settled text once typing
  * pauses; a response for text that a newer request has since superseded is
  * discarded. A failed request leaves the previous suggestions untouched
  * rather than surfacing an error, so a transient failure never interrupts
  * typing a title. Relies on the server's own cap and most-recently-used
- * ranking (REQ-133) — never asks for more than it can show.
+ * ranking — never asks for more than it can show.
  */
 export function useTaskSuggestions() {
   const suggestions = ref<TaskDto[]>([]);
@@ -35,7 +35,7 @@ export function useTaskSuggestions() {
     }
   }
 
-  /** `projectId` restricts suggestions to one project (the project chip, REQ-374). */
+  /** `projectId` restricts suggestions to one project (the project chip). */
   function search(query: string, projectId?: string): void {
     if (debounceTimer !== undefined) {
       clearTimeout(debounceTimer);

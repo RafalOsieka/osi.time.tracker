@@ -3,7 +3,7 @@ import type { ProfileDto, UpdateProfileDto } from '../../shared/types/profile';
 /**
  * The signed-in user's profile from the session, plus a save helper.
  *
- * `effective.timeZone` is the stored timezone (workspace-settings REQ-398), so
+ * `effective.timeZone` is the stored timezone, so
  * SSR and the first client paint format times identically. `UTC` only covers the
  * logged-out case, where no session user exists.
  */

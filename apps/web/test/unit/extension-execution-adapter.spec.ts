@@ -643,7 +643,7 @@ describe('ExtensionExecutionAdapter', () => {
   });
 });
 
-describe('ExtensionExecutionAdapter admission gate (REQ-331)', () => {
+describe('ExtensionExecutionAdapter admission gate', () => {
   it('completes a page-load-sized burst without any operation seeing the extension limit error', async () => {
     const limit = EXTENSION_RESOURCE_LIMITS.maxInFlightOperationsPerDocument;
     const gate = new ExtensionOperationGate(limit);
@@ -757,7 +757,7 @@ describe('ExtensionExecutionAdapter admission gate (REQ-331)', () => {
 
     await flushMicrotasks();
     // Still queued: no bridge opened, so nothing has been dispatched that
-    // could later be mistaken for a lost create reply (REQ-312/unknown-create).
+    // could later be mistaken for a lost create reply (unknown-create).
     expect(host.connectMessages).toHaveLength(0);
     expect(
       host.portMessages.some((message) => operationRequestSchema.safeParse(message).success),

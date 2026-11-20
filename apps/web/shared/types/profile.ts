@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** Display name limit after trimming (workspace-settings REQ-397). */
+/** Display name limit after trimming. */
 export const DISPLAY_NAME_MAX_LENGTH = 100;
 
 /**
@@ -21,7 +21,7 @@ export const timezoneSchema = z
   .string({ error: 'errors.profile.invalidTimezone' })
   .refine((value) => supportedTimeZones.has(value), { error: 'errors.profile.invalidTimezone' });
 
-/** Partial `PATCH /api/user/profile` body (REQ-493); unknown keys such as `weekStart` are stripped. */
+/** Partial `PATCH /api/user/profile` body; unknown keys such as `weekStart` are stripped. */
 export const profileSchema = z
   .object({ displayName: displayNameSchema, timezone: timezoneSchema })
   .partial();

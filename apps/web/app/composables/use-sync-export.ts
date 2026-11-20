@@ -46,7 +46,7 @@ export interface FinalizeExportBody extends ExportRecoveryPayload {
 }
 
 /**
- * Batch export orchestration with per-task progress and outcomes (REQ-120 / REQ-229–233).
+ * Batch export orchestration with per-task progress and outcomes.
  */
 export function useSyncExport(options: {
   createTimeEntry: (

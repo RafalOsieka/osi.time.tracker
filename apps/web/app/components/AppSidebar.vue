@@ -14,7 +14,7 @@ const isCollapsed = computed(() => collapsed || iconOnly);
 /**
  * Remote sync (`/sync/*`) is the Timer's per-day companion and has no item of its own, so the
  * Timer item carries the selected wash there. Only the look: `aria-current` stays with the
- * current route's own link (REQ-071), which Remote sync does not have.
+ * current route's own link, which Remote sync does not have.
  */
 const onRemoteSync = computed(() => route.path.startsWith('/sync/'));
 const PARENT_ACTIVE_CLASS = 'text-primary before:bg-primary-100/80 dark:before:bg-primary/12';

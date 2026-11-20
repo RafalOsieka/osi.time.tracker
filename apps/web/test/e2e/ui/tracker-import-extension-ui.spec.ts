@@ -61,7 +61,7 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
     // document to run on. Create the page bare, install first, navigate second.
     const page = await createPage();
     // The extension only routes the request through the approved tracker
-    // destination; a browser-held secret is still required (REQ-203/REQ-345).
+    // destination; a browser-held secret is still required.
     await installExtension(page, {
       projects: [{ remoteProjectId: '12', title: 'Nordwind Web' }],
       timeLogsInRange: [

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * The title input's Project chip (REQ-374): the Project's name as a small cyan pill with a
+ * The title input's Project chip: the Project's name as a small cyan pill with a
  * keyboard-operable remove control that appears on hover or focus, and stays shown on a touch
  * screen, which cannot hover. `TaskTitleInput` places it
  * before the text, or after it in the top-bar timer.

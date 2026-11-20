@@ -16,7 +16,7 @@ export type RemoteIssuePickerFormDto = z.infer<typeof remoteIssuePickerFormSchem
  * Request body accepted by the link endpoint. Only the remote issue id and
  * cached title (from the search result) are accepted from the client; Task
  * ownership and the Project -> active tracker provenance are derived
- * server-side (REQ-106), never accepted from the request body.
+ * server-side, never accepted from the request body.
  */
 export const linkRemoteIssueSchema = z.object({
   remoteIssueId: z

@@ -6,10 +6,11 @@ How the engineering skills should consume this repo's domain documentation when 
 
 - **`GLOSSARY.md`** at the repo root.
 - **`docs/adr/`**: read ADRs that touch the area you're about to work in.
+- **`docs/behavior/`**: read the capability files of that area. They describe current observable behavior; [`guideline.md`](../behavior/guideline.md) says how they are written.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
-Until `GLOSSARY.md` exists, the Domain table in `AGENTS.md` is the vocabulary. Observable behavior is specified in `openspec/specs`, not in ADRs.
+Observable behavior is described in `docs/behavior`, not in ADRs.
 
 ## File structure
 
@@ -30,6 +31,8 @@ This is a single-context repo: one glossary and one ADR directory for every app 
 When your output names a domain concept (in an issue title, a refactor proposal, a hypothesis, a test name), use the term as defined in `GLOSSARY.md`. Don't drift to synonyms the glossary explicitly avoids.
 
 If the concept you need isn't in the glossary yet, that's a signal: either you're inventing language the project doesn't use (reconsider) or there's a real gap (note it for `/domain-modeling`).
+
+Polish user-facing text (`apps/web/i18n/locales/pl.json`, `apps/extension/src/i18n/pl.json`) names a concept with the term's `_Polish_` word, inflected as Polish grammar needs, and never with a word from its `_Polish avoid_` list.
 
 ## Flag ADR conflicts
 

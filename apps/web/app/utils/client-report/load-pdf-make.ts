@@ -9,7 +9,7 @@ type PdfMake = (typeof import('pdfmake/build/pdfmake.min.js'))['default'];
 let loading: Promise<PdfMake> | null = null;
 
 /**
- * Loads pdfmake on first use (design D1) and registers IBM Plex Sans (D4).
+ * Loads pdfmake on first use and registers IBM Plex Sans.
  * pdfmake fetches the absolute font URLs into its virtual file system when a
  * document is first rendered, so fonts are downloaded only on export.
  */

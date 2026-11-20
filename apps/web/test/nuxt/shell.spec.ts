@@ -124,7 +124,7 @@ async function mountShell(overrideStubs: StubMap = {}) {
   });
 }
 
-describe('REQ-064: shell regions', () => {
+describe('shell regions', () => {
   it('renders top bar, sidebar rail, and page content', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="app-topbar"]').exists()).toBe(true);
@@ -166,7 +166,7 @@ describe('REQ-064: shell regions', () => {
   });
 });
 
-describe('REQ-404: sidebar nav skeleton', () => {
+describe('sidebar nav skeleton', () => {
   it('sidebar lists every destination without Settings or Profile', async () => {
     const wrapper = await mountSuspended(AppSidebar, {
       global: {
@@ -233,7 +233,7 @@ describe('REQ-404: sidebar nav skeleton', () => {
   });
 });
 
-describe('REQ-071: Reports disclosure on the icon-only rail', () => {
+describe('Reports disclosure on the icon-only rail', () => {
   // Renders each item's own leading slot, so the Reports badge is exercised as on the rail.
   const NavStub = {
     props: ['items'],
@@ -263,7 +263,7 @@ describe('REQ-071: Reports disclosure on the icon-only rail', () => {
   });
 });
 
-describe('REQ-066: desktop rail toggle', () => {
+describe('desktop rail toggle', () => {
   it('rail renders and is present in the DOM', async () => {
     const wrapper = await mountShell();
     expect(wrapper.find('[data-testid="app-sidebar"]').exists()).toBe(true);
@@ -310,7 +310,7 @@ describe('REQ-066: desktop rail toggle', () => {
   });
 });
 
-describe('REQ-067: off-canvas drawer', () => {
+describe('off-canvas drawer', () => {
   it('sidebar open state starts closed', async () => {
     const wrapper = await mountShell();
     // Drawer is owned by UDashboardSidebar; open starts false via layout state.
@@ -318,7 +318,7 @@ describe('REQ-067: off-canvas drawer', () => {
   });
 });
 
-describe('REQ-068/070: timer lives in the navbar', () => {
+describe('timer lives in the navbar', () => {
   it('inline timer region is mounted inside the top bar', async () => {
     const wrapper = await mountShell();
     const topbar = wrapper.find('[data-testid="app-topbar"]');
@@ -335,7 +335,7 @@ describe('REQ-068/070: timer lives in the navbar', () => {
   });
 });
 
-describe('REQ-405: sidebar footer account menu', () => {
+describe('sidebar footer account menu', () => {
   it('user footer with account menu is rendered in the sidebar', async () => {
     const wrapper = await mountShell();
     const sidebar = wrapper.find('[data-testid="app-sidebar"]');
@@ -358,7 +358,7 @@ describe('REQ-405: sidebar footer account menu', () => {
   });
 });
 
-describe('REQ-071: accessible shell navigation', () => {
+describe('accessible shell navigation', () => {
   it('sidebar has an aria-label for navigation', async () => {
     const wrapper = await mountSuspended(AppSidebar, {
       global: {

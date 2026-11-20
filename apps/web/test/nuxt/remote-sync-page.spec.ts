@@ -676,7 +676,7 @@ describe('RemoteSync page', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shares one activity fetch across different work packages on a Redmine tracker (REQ-332)', async () => {
+  it('shares one activity fetch across different work packages on a Redmine tracker', async () => {
     const redmineConfig = {
       ...baseConfig,
       id: 'config-redmine-scope',
@@ -930,7 +930,7 @@ describe('RemoteSync page', () => {
     expect(linkedState.attributes('aria-label')).toContain('remoteSync.state.needsActivity');
   });
 
-  it('names the needs-attention kind on an unlinked row (REQ-520)', async () => {
+  it('names the needs-attention kind on an unlinked row', async () => {
     dayData = makeDay({
       rows: [
         {
@@ -1124,7 +1124,7 @@ describe('RemoteSync page', () => {
     expect(wrapper.find('[data-testid="remote-sync-delete-entry-11"]').exists()).toBe(true);
   });
 
-  it('counts the Tasks left out of the export by reason (REQ-229)', async () => {
+  it('counts the Tasks left out of the export by reason', async () => {
     const ready = (taskId: string, issueId: string) => ({
       taskId,
       taskName: taskId,
@@ -1238,7 +1238,7 @@ describe('RemoteSync page', () => {
     );
     expect(toastSuccessMock).toHaveBeenCalled();
     expect(wrapper.find('[data-testid="remote-sync-export-dialog"]').exists()).toBe(false);
-    // Post-finalize refresh (REQ-485) refetches that tracker's day logs and
+    // Post-finalize refresh refetches that tracker's day logs and
     // nothing else: the mocked client exposes no account-resolution call to
     // make in the first place.
     expect(fetchTimeLogsMock.mock.calls.length).toBeGreaterThanOrEqual(2);
@@ -1482,7 +1482,7 @@ describe('RemoteSync page', () => {
     }
   });
 
-  it('keeps the day total while the day reloads after its running entry stops (REQ-527)', async () => {
+  it('keeps the day total while the day reloads after its running entry stops', async () => {
     const runningRow = (completedSeconds: number, entries: RemoteSyncDayEntryDto[]) => ({
       taskId: 'task-running',
       taskName: 'Running',

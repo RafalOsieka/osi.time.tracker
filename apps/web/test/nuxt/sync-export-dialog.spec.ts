@@ -62,7 +62,7 @@ describe('SyncExportDialog', () => {
       'Development',
     );
     expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
-      '1 time entry per task will be created in its tracker.',
+      '1 remote log per task will be created in its tracker.',
     );
     expect(wrapper.find('[data-testid="remote-sync-export-destination-b"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="remote-sync-export-dialog-to-send"]').text()).toContain(
@@ -73,7 +73,7 @@ describe('SyncExportDialog', () => {
     wrapper.unmount();
   });
 
-  it('counts the tasks left out by reason without listing them (REQ-229)', async () => {
+  it('counts the tasks left out by reason without listing them', async () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,
@@ -94,7 +94,7 @@ describe('SyncExportDialog', () => {
     );
     // One Task: the introduction speaks of it in the singular.
     expect(wrapper.get('[data-testid="remote-sync-export-intro"]').text()).toContain(
-      '1 time entry will be created in the tracker.',
+      '1 remote log will be created in the tracker.',
     );
     expect(wrapper.findAll('[data-testid^="remote-sync-export-row-"]')).toHaveLength(1);
     // One Task: its row already shows the duration, so no separate total repeats it.

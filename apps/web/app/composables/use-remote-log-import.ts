@@ -41,20 +41,20 @@ export interface ImportProjectPreview {
   remoteProjectTitles: string[];
 }
 
-/** One remote project encountered during the scan, with its editable target selection (REQ-358). */
+/** One remote project encountered during the scan, with its editable target selection. */
 export interface MappingRow {
-  /** `null` for logs carrying no remote project id at all (REQ-478). */
+  /** `null` for logs carrying no remote project id at all. */
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   /** Total logs for this remote project across the whole scanned range. */
   logCount: number;
-  /** The scope-based suggestion (REQ-334) this row's selection starts from. */
+  /** The scope-based suggestion this row's selection starts from. */
   defaultProjectId: string | null;
 }
 
 export interface ImportPreview {
   matched: ImportProjectPreview[];
-  /** Logs left unassigned in the mapping phase, excluded from import (REQ-358). */
+  /** Logs left unassigned in the mapping phase, excluded from import. */
   unassignedCount: number;
 }
 
@@ -71,7 +71,7 @@ export interface ImportErrorState {
   stage: 'scan' | 'mapping' | 'import';
 }
 
-/** Aggregates each month's routing buckets into one row per remote project across the whole range (REQ-358). */
+/** Aggregates each month's routing buckets into one row per remote project across the whole range. */
 function buildMappingRows(bucketsByMonth: RemoteProjectBucket[][]): MappingRow[] {
   const byKey = new Map<string, MappingRow>();
   for (const buckets of bucketsByMonth) {
@@ -94,18 +94,18 @@ function buildMappingRows(bucketsByMonth: RemoteProjectBucket[][]): MappingRow[]
 }
 
 /**
- * Phase state machine for tracker-level remote-log import (REQ-334/REQ-340/
- * REQ-358): scans a date range month by month (catalog + range fetch,
+ * Phase state machine for tracker-level remote-log import:
+ * scans a date range month by month (catalog + range fetch,
  * bucketed by remote project with a scope-based default target), lets the
  * user confirm or override each remote project's target in the mapping
  * phase, then runs the dry run once against the finalized selection to build
  * the preview, and imports month by month on confirm. Both the preview and
  * the write reuse the same idempotent endpoint, so a failed month can simply
- * be retried — already-imported logs are skipped server-side (REQ-338).
+ * be retried — already-imported logs are skipped server-side.
  */
 /**
  * Builds one import request body from routed groups. A `null` issue title
- * (the tracker does not disclose the issue, REQ-476) is omitted, so the
+ * (the tracker does not disclose the issue) is omitted, so the
  * server keeps its id fallback; a resolved title is forwarded and cached.
  */
 function importBody(dryRun: boolean, groups: RouteLogsByScopeGroup[]): ImportRemoteLogsDto {
@@ -143,7 +143,7 @@ export function useRemoteLogImport(options: {
   let lastRange: DateRange | null = null;
   let cancelRequested = false;
   // Raw routing buckets per scanned month, kept so the mapping phase can be
-  // revisited and the dry run re-run without re-fetching (REQ-358).
+  // revisited and the dry run re-run without re-fetching.
   let bucketsByMonth: RemoteProjectBucket[][] = [];
   // Final per-month groups, built by advanceToPreview() from the current
   // selection, that startImport() replays unchanged.
@@ -189,7 +189,7 @@ export function useRemoteLogImport(options: {
 
   /**
    * Records which remote projects feed each Project's final group, straight
-   * from `mappingRows`' catalog-resolved titles (REQ-334) and the current
+   * from `mappingRows`' catalog-resolved titles and the current
    * selection — independent of the server's per-Project dry-run counts (the
    * write endpoint only reports totals per local Project, never per remote
    * project) and, unlike reading titles off individual logs, unaffected by
@@ -272,12 +272,12 @@ export function useRemoteLogImport(options: {
     phase.value = 'mapping';
   }
 
-  /** Reads the current target selection for a remote project row (REQ-358). */
+  /** Reads the current target selection for a remote project row. */
   function getMapping(remoteProjectId: string | null): string | null {
     return selection.value.get(bucketKey(remoteProjectId)) ?? null;
   }
 
-  /** Overrides a remote project row's target Project. Pure state, no network call (REQ-358). */
+  /** Overrides a remote project row's target Project. Pure state, no network call. */
   function setMapping(remoteProjectId: string | null, targetProjectId: string | null): void {
     selection.value.set(bucketKey(remoteProjectId), targetProjectId);
   }
@@ -285,7 +285,7 @@ export function useRemoteLogImport(options: {
   /**
    * Leaves the mapping phase: regroups every scanned month's buckets by the
    * current selection, runs the dry run once against the result, and builds
-   * the preview (REQ-358). Safe to call again after the user goes back and
+   * the preview. Safe to call again after the user goes back and
    * changes a selection — no re-fetch, just a fresh regroup + dry run.
    */
   async function advanceToPreview(): Promise<void> {
@@ -374,7 +374,7 @@ export function useRemoteLogImport(options: {
     phase.value = 'done';
   }
 
-  /** Re-runs the stage that failed. Safe to call repeatedly: mapping/preview is read-only and import skips what is already done (REQ-338). */
+  /** Re-runs the stage that failed. Safe to call repeatedly: mapping/preview is read-only and import skips what is already done. */
   async function retry(): Promise<void> {
     const failedStage = errorState.value?.stage;
     if (failedStage === 'import') {

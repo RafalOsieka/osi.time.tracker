@@ -9,7 +9,7 @@ const { t } = useI18n();
 const { logout, user } = useAuth();
 const colorMode = useColorMode();
 
-/** Primary identity line: the required display name (REQ-405). */
+/** Primary identity line: the required display name. */
 const primaryLabel = computed(() => user.value?.displayName ?? '');
 const secondaryEmail = computed(() => user.value?.email ?? '');
 
@@ -58,7 +58,7 @@ const currentThemeLabel = computed(() => {
 
 /**
  * Account menu opened from UUser (expanded) or avatar (collapsed): Profile and the
- * Theme submenu (ui-theming REQ-402), then Log out in its own group (REQ-405).
+ * Theme submenu, then Log out in its own group.
  * Theme items are checkboxes so the active preference is exposed as checked.
  */
 const menuItems = computed<DropdownMenuItem[][]>(() => [

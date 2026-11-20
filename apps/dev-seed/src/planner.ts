@@ -73,7 +73,7 @@ function isFixtureComment(issue: IssueFixture, comment: string | null): boolean 
  * Turns fixture + generated logs + current tracker state into ordered
  * operations. Existing projects, issues and logs are skipped, never updated;
  * with `reset`, the admin's logs on fixture issues carrying fixture comments
- * are deleted first so they can be recreated (design.md — D5).
+ * are deleted first so they can be recreated.
  */
 export function planTracker(
   fixture: ClientFixture,

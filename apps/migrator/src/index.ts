@@ -12,7 +12,7 @@ import postgres, { type Sql } from 'postgres';
  */
 export const MIGRATIONS_FOLDER = fileURLToPath(new URL('../migrations', import.meta.url));
 
-/** The initial user seeded during the migrate step (core-authentication REQ-012). */
+/** The initial user seeded during the migrate step. */
 export type BootstrapUser = {
   email: string;
   password: string;
@@ -20,7 +20,7 @@ export type BootstrapUser = {
   timezone: string;
 };
 
-/** Mirrors the app's display name limit (workspace-settings REQ-397). */
+/** Mirrors the app's display name limit. */
 const DISPLAY_NAME_MAX_LENGTH = 100;
 
 /**

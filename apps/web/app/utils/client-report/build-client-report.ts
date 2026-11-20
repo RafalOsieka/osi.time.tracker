@@ -23,14 +23,14 @@ export interface ClientReportDay {
   totalUnits: number;
 }
 
-/** Everything the PDF prints, with every total already summed from row values (REQ-387). */
+/** Everything the PDF prints, with every total already summed from row values. */
 export interface ClientReport {
   clientName: string;
   hoursFormat: ReportHoursFormat;
   /** `YYYY-MM` */
   month: string;
   range: MonthBounds;
-  /** `details` is the preset's contractor details, printed below the email (REQ-513). */
+  /** `details` is the preset's contractor details, printed below the email. */
   contractor: { displayName: string | null; email: string; details: string | null };
   /** Preset trackers in preset order with their month totals. */
   trackers: { tracker: ClientReportTracker; totalUnits: number }[];
@@ -79,9 +79,9 @@ function sumUnits(items: { units: number }[]): number {
 }
 
 /**
- * Builds the client report model from fetched remote logs (design D2):
+ * Builds the client report model from fetched remote logs:
  * days with logs in ascending order, rows ordered by tracker (preset order),
- * remote issue id, then remote log id (REQ-387).
+ * remote issue id, then remote log id.
  */
 export function buildClientReport(input: BuildClientReportInput): ClientReport {
   const { hoursFormat } = input.preset;

@@ -10,8 +10,7 @@ const { t } = useI18n();
 
 <template>
   <!--
-    Geometry matches app/assets/icons/app-mark.svg (source: openspec/changes/open-dial-brand-mark
-    design.md D1). The mark is stateless by contract: it never signals a running timer.
+    Geometry matches app/assets/icons/app-mark.svg. The mark is stateless by contract: it never signals a running timer.
   -->
   <svg
     xmlns="http://www.w3.org/2000/svg"

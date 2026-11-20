@@ -86,7 +86,7 @@ describe('useRemoteActivities', () => {
     expect(getActivityOptionsMock).toHaveBeenCalledTimes(2);
   });
 
-  it('shares one fetch across different issues on a tracker-wide activity scope (REQ-332)', async () => {
+  it('shares one fetch across different issues on a tracker-wide activity scope', async () => {
     getActivityOptionsMock.mockResolvedValue([{ id: 'a1', name: 'Development' }]);
     const redmineConfig: TrackerDto = { ...config, systemType: 'redmine' };
     const { ensureLoaded, stateFor } = useRemoteActivities();

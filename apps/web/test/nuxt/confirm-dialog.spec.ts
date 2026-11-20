@@ -11,7 +11,7 @@ vi.mock('../../app/composables/use-app-confirm', () => ({
   useAppConfirm: () => confirmMock,
 }));
 
-describe('REQ-129: shared confirm overlay', () => {
+describe('shared confirm overlay', () => {
   it('renders ConfirmModal accept/reject actions', async () => {
     const wrapper = await mountSuspended(ConfirmModal, {
       props: {

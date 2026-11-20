@@ -5,7 +5,7 @@
 @import '@fontsource-variable/geist-mono';
 
 /*
- * Theme additions: the typefaces (Geist for text, Geist Mono for durations, REQ-459), and
+ * Theme additions: the typefaces (Geist for text, Geist Mono for durations), and
  * running controls that pulse the icon (color + scale + glow), not the button chrome.
  */
 @theme {
@@ -51,7 +51,7 @@
 
 /*
  * Surface and accent tokens. Light mode takes the accent one step darker than the framework
- * default so white text on primary fills meets WCAG AA (REQ-160); dark mode keeps the lighter
+ * default so white text on primary fills meets WCAG AA; dark mode keeps the lighter
  * shade. Neutrals are cool slate. Light mode puts white cards and controls on a light slate
  * canvas; dark mode is layered blue-charcoal, never near-black and never the saturated navy of
  * the slate ramp's dark end: the sidebar a shade below the page, cards a shade above it,

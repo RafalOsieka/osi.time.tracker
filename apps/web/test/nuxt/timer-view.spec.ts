@@ -661,7 +661,7 @@ describe('timer view page', () => {
     expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
   });
 
-  it('ticks only the running group and its day total (REQ-394)', async () => {
+  it('ticks only the running group and its day total', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     try {
       vi.setSystemTime(new Date('2024-06-15T12:00:00.000Z'));
@@ -706,7 +706,7 @@ describe('timer view page', () => {
     }
   });
 
-  describe('automatic load more (REQ-392)', () => {
+  describe('automatic load more', () => {
     /**
      * Test double that lets a test report the sentinel entering or leaving range.
      * NuxtLink prefetching observes links too, so tests find the sentinel's observer

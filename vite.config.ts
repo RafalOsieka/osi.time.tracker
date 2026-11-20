@@ -29,7 +29,6 @@ export default defineConfig({
       '.agents/skills',
       '.claude/skills',
       'AGENTS.md',
-      'openspec',
       'pnpm-lock.yaml',
       'pnpm-workspace.yaml',
       'tools/oxlint/anti-slop/index.ts',

@@ -37,7 +37,7 @@ async function createEntry(jar: CookieJar, token: string, body: JsonObject) {
   return res.json();
 }
 
-/** Counts hits so REQ-333 (no account resolution before a log fetch) is verifiable. */
+/** Counts hits so the absence of an account resolution before a log fetch is verifiable. */
 interface AccountRequestCounter {
   count: number;
 }
@@ -268,7 +268,7 @@ describeReportsMonthlyUi('monthly timesheet UI', async () => {
     expect(await page.locator('[data-testid="reports-summary-remote"]').textContent()).toMatch(
       /3:00/,
     );
-    // REQ-333: the range fetch is scoped to the current account server-side;
+    // The range fetch is scoped to the current account server-side;
     // the report loader never resolves the account first.
     expect(accountRequests.count).toBe(0);
   });

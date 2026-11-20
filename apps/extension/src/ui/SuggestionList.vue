@@ -11,7 +11,7 @@ import { suggestionId, type DestinationSuggestion } from '../suggestions/suggest
 import TrackerMark from './TrackerMark.vue';
 
 /**
- * Trackers that approved websites asked the user to approve (REQ-416), as a titled section with
+ * Trackers that approved websites asked the user to approve, as a titled section with
  * its count. The setup page approves them in place (the click runs the permission prompt); the
  * popup only dismisses or hands over to setup. A plain-HTTP tracker says so under its address,
  * and its approval is worded as a deliberate exception.
@@ -38,7 +38,7 @@ const { t } = useExtensionI18n();
 
 /**
  * The website every pending suggestion comes from, when they all share one: the section then
- * names it once instead of on every row (REQ-416).
+ * names it once instead of on every row.
  */
 const commonWebsite = computed(() => {
   const [first, ...rest] = suggestions;
@@ -66,7 +66,7 @@ function sendsCredentialsInClear(item: DestinationSuggestion): boolean {
   return isHttpCredentialRisk(canonicalizeDestination(`${item.origin}${item.basePath}`));
 }
 
-/** The approve action's visible label, which its accessible name starts with (REQ-416). */
+/** The approve action's visible label, which its accessible name starts with. */
 function approveLabel(item: DestinationSuggestion): string {
   return t.value(
     sendsCredentialsInClear(item) ? 'approvals.approveDespiteHttp' : 'approvals.approveSuggestion',

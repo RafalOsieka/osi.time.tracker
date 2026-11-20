@@ -9,7 +9,7 @@ import type { TrackerDto } from '~~/shared/types/tracker';
 import type { ColumnDefinition } from '../ColumnList.vue';
 
 /**
- * A row's state kind (REQ-504): Ready, Sent, Loading while activities load, blocked by something
+ * A row's state kind: Ready, Sent, Loading while activities load, blocked by something
  * the user can fix (no issue, a failed load), or excluded by design (a local Project).
  */
 export type SyncRowKind = 'ready' | 'sent' | 'loading' | 'blocked' | 'excluded';
@@ -67,7 +67,7 @@ const {
   issueReason?: string | null;
   showLinkPicker: boolean;
   pickerConfig: TrackerDto | null;
-  /** The owning project's remote project scope (REQ-328), if any. */
+  /** The owning project's remote project scope, if any. */
   pickerScope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
   /** The reviewed day without its weekday ("7 listopada 2026"), named by the picker's context. */
   dayLabel?: string;
@@ -111,7 +111,7 @@ const { t } = useI18n();
 const extensionActivityErrorKey = computed(() =>
   Object.values(EXTENSION_ERROR_MESSAGE_KEYS).find((key) => key === activityErrorKey),
 );
-/** The tracker this row exports to, when the extension has not approved it yet (REQ-317). */
+/** The tracker this row exports to, when the extension has not approved it yet. */
 const unapprovedDestination = computed(() =>
   extensionActivityErrorKey.value === EXTENSION_ERROR_MESSAGE_KEYS.destinationUnapproved &&
   pickerConfig
@@ -355,7 +355,7 @@ function onEditToSend() {
 
     <ColumnCell :columns="columns" col="activity" :narrow="{ col: [3, 4], row: 3 }">
       <div class="min-w-0">
-        <!-- REQ-506: the failure stays inside the cell, an icon carrying the message (muted: the
+        <!-- The failure stays inside the cell, an icon carrying the message (muted: the
              row's state icon is its one amber mark) and a compact retry, so a day of failed rows
              stays calm. -->
         <template v-if="activityError">

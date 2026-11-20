@@ -118,7 +118,7 @@ const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const reconciling = ref(false);
 
-/** Narrow layout (D5): expand, state, text, durations, actions. */
+/** Narrow layout: expand, state, text, durations, actions. */
 const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.75rem';
 const columns = computed(
   () =>
@@ -141,7 +141,7 @@ const columns = computed(
       // their 12px headers, no wider, so the text columns keep the room.
       { key: 'tracked', track: '4.75rem', header: t('remoteSync.columns.tracked'), align: 'end' },
       { key: 'toSend', track: '5rem', header: t('remoteSync.columns.toSend'), align: 'end' },
-      // One 28px action tile (the expanded block's reconcile action, REQ-505) plus the band's
+      // One 28px action tile (the expanded block's reconcile action) plus the band's
       // 8px end inset, so the tile never sits flush on the inset's edge.
       { key: 'actions', track: '2.25rem' },
     ] satisfies ColumnDefinition[],
@@ -266,7 +266,7 @@ function reasonKeyFor(row: RemoteSyncDayRowDto): string {
 
 /**
  * A short read-only reason for a row that has no issue and cannot be linked, shown quietly in
- * its issue cell; the full reason stays on the state indicator (REQ-112, REQ-504).
+ * its issue cell; the full reason stays on the state indicator.
  */
 function issueReasonFor(row: RemoteSyncDayRowDto): string | null {
   switch (stateFor(row)) {
@@ -299,7 +299,7 @@ function isExcluded(row: RemoteSyncDayRowDto): boolean {
 }
 
 /**
- * The row's state indicator kind (REQ-504, REQ-520). A row the user can fix (no Project, a missing
+ * The row's state indicator kind. A row the user can fix (no Project, a missing
  * Tracker, no issue, a failed load) needs attention, in amber; a deliberate exclusion is neutral.
  */
 function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
@@ -315,7 +315,7 @@ function stateKindFor(row: RemoteSyncDayRowDto): SyncRowKind {
   }
 }
 
-/** The short label of the row's state kind (REQ-520), the first part of its tooltip and name. */
+/** The short label of the row's state kind, the first part of its tooltip and name. */
 function kindLabelFor(row: RemoteSyncDayRowDto): string {
   const state = stateFor(row);
   if (state === 'manageable' && !awaitsActivity(row)) return t('remoteSync.kind.ready');
@@ -529,7 +529,7 @@ const dayTotalsSafe = computed(() =>
   ),
 );
 
-/** The day total as shown: completed time plus the running entry of this day, live (REQ-527). */
+/** The day total as shown: completed time plus the running entry of this day, live. */
 const liveDayTotal = computed(() => dayTotalsSafe.value.dayTotal + runningSeconds.value);
 /**
  * The last live total, held while the day reloads after its running entry stopped or was
@@ -613,7 +613,7 @@ const inTrackerFailures = computed(() => {
 });
 
 /**
- * Why Export is disabled (REQ-521), under it and in its tooltip: the Trackers cannot be reached (their
+ * Why Export is disabled, under it and in its tooltip: the Trackers cannot be reached (their
  * activities failed to load), the Ready rows with time still need an activity, or nothing is
  * ready. Null while exporting or when Export is available.
  */
@@ -782,7 +782,7 @@ function exclusionReasonFor(row: RemoteSyncDayRowDto): ExclusionReason | null {
 }
 
 /**
- * The review's one line about the Tasks left out (REQ-229), counted by reason without listing
+ * The review's one line about the Tasks left out, counted by reason without listing
  * them: "3 bez czynności, 1 projekt lokalny, 1 bez zgłoszenia". Empty when none is left out.
  */
 const exportExcludedSummary = computed(() => {
@@ -1068,7 +1068,7 @@ function cancelEditTitle(row: RemoteSyncDayRowDto) {
       </StatCard>
     </div>
 
-    <!-- REQ-510: why the in-tracker total is missing, told once for the page: the failed
+    <!-- Why the in-tracker total is missing, told once for the page: the failed
          Trackers grouped by reason, and one retry for all of them. -->
     <UAlert
       v-if="inTrackerSummary.status === 'unavailable'"

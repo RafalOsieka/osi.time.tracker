@@ -4,7 +4,7 @@ import { Temporal } from 'temporal-polyfill';
  * Computes the `[from, to)` instant window for a single calendar day in a
  * given timezone, mirroring the browser-local day-boundary rule the Timer
  * view uses (`app/utils/timer-view-grouping.ts`). Every user has a stored
- * timezone (workspace-settings REQ-398).
+ * timezone.
  */
 export type DayBoundary = { from: Date; to: Date };
 

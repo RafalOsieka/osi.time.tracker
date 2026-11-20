@@ -45,7 +45,7 @@ function timeEntriesPage(elements: JsonObject[]): RemoteResponse {
   return { status: 200, payload: { _embedded: { elements } } };
 }
 
-/** Whether `request` targets the work-packages collection (never used for titles, REQ-342). */
+/** Whether `request` targets the work-packages collection (never used for titles). */
 function isWorkPackageLookup(request: RemoteRequest): boolean {
   return new URL(request.url).pathname === '/api/v3/work_packages';
 }

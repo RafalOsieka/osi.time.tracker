@@ -244,7 +244,7 @@ describe('worker dispatch', () => {
     expect(JSON.stringify(result).length).toBeLessThan(1000);
   });
 
-  it('passes the REQ-341 remote project id through a range fetch unchanged', async () => {
+  it('passes the remote project id through a range fetch unchanged', async () => {
     const fetchImpl = vi.fn(
       async () =>
         new Response(

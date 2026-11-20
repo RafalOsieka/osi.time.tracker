@@ -11,7 +11,7 @@ export interface ExportRequestKeyInput {
 
 /**
  * Builds a deterministic export request key from the task, local date,
- * selected entry identifiers and export duration (REQ-233).
+ * selected entry identifiers and export duration.
  *
  * Format: `er1|<taskId>|<localDate>|<sortedEntryIds>|<durationSeconds>`
  * (versioned prefix so future algorithms can coexist without collision).

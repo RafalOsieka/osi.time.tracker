@@ -21,7 +21,7 @@ export async function findUserByEmail(email: string) {
 
 /**
  * Creates a new user with a hashed password. Display name and timezone are
- * required on every user (workspace-settings REQ-397 / REQ-398).
+ * required on every user.
  */
 export async function createUser({
   email,

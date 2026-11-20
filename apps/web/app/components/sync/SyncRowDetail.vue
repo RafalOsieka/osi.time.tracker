@@ -312,7 +312,7 @@ const displayedRemoteLogs = computed(() => {
         >
           {{ log.activityName ?? t('remoteSync.emptyCell') }}
         </ColumnCell>
-        <!-- Time already in the tracker sits on the to-send edge (REQ-507) in the row's one muted
+        <!-- Time already in the tracker sits on the to-send edge in the row's one muted
              tone, labelled in place ("w trackerze") so it never reads as time to send; the label
              runs into the empty local-time column. The cell's accessible name carries the scope. -->
         <ColumnCell

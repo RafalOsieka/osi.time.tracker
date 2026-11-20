@@ -173,7 +173,7 @@ describeSyncDay('sync day-review API integration', async () => {
     expect(res.status).toBe(401);
   });
 
-  it('shows a backfilled (imported) day as Sent, matching an app-exported row (REQ-344)', async () => {
+  it('shows a backfilled (imported) day as Sent, matching an app-exported row', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     await setTimezone(jar, token, 'UTC');
     const tracker = await createTracker(jar, token, 'Import Sync Client ' + Date.now(), {

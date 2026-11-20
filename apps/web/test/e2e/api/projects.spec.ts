@@ -317,7 +317,7 @@ describeProjects('projects API integration', async () => {
     const patched = await patchRes.json();
     expect(patched.name).toBe('Renamed Name');
     expect(patched.trackerId).toBe(tracker.id);
-    // Soft-deleted tracker name remains populated for display/edit seed (REQ-084).
+    // Soft-deleted tracker name remains populated for display/edit seed.
     expect(patched.trackerName).toBe(tracker.name);
   });
 

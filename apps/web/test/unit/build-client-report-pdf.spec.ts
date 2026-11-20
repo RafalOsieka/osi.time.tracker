@@ -42,7 +42,7 @@ const catalogs = { en: new Map(flatten(en)), pl: new Map(flatten(pl)) };
 
 /**
  * Catalog lookup with vue-i18n named interpolation, bound to one locale like
- * the page's translator (design D5); every PDF string uses only `{name}` params.
+ * the page's translator; every PDF string uses only `{name}` params.
  */
 function translator(locale: ReportLocale): ClientReportTranslate {
   return (key, params = {}) => {
@@ -165,7 +165,7 @@ describe('buildClientReportPdf title page', () => {
     expect(two.match(/ h"/g)).toHaveLength(3);
   });
 
-  // REQ-368: the PDF mark is derived from the canonical glyph, never a pasted copy that drifts.
+  // The PDF mark is derived from the canonical glyph, never a pasted copy that drifts.
   it('draws the title-page logo from the canonical app mark', () => {
     const logo = contentText(pdf({ op: [log()] })).match(/"svg":"((?:[^"\\]|\\.)*)"/)?.[1];
     expect(logo).toBeDefined();
@@ -245,7 +245,7 @@ describe('buildClientReportPdf table pages', () => {
     });
     const text = contentText(doc);
 
-    expect(text).toContain('Zadanie niedostępne');
+    expect(text).toContain('Zgłoszenie niedostępne');
     expect(links(doc)).toContain('https://op.example/work_packages/1');
     expect(text).not.toContain('[null]');
     expect(text).toContain('"[Development] "');

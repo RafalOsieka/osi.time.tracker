@@ -4,8 +4,8 @@ import { safeWireErrorSchema } from './errors.js';
 import { requestIdSchema } from './operations.js';
 
 /**
- * An approved website asks the extension to queue a tracker destination for the user's review
- * (REQ-421). It carries no secret and no website: the extension takes the website from the
+ * An approved website asks the extension to queue a tracker destination for the user's review.
+ * It carries no secret and no website: the extension takes the website from the
  * verified sender. Strict, so a forged `websiteOrigin` or a stray secret fails validation.
  */
 export const suggestDestinationRequestSchema = z.strictObject({

@@ -21,8 +21,8 @@ Your clients each run their own tracker, OpenProject or Redmine, and each expect
 - **Timer and manual entries:** start a timer from the top bar or add an entry after the fact. Type `@` in the title to pick a project.
 - **Tasks without task management:** an entry's title _is_ its task. Tasks are created, matched, renamed, merged and cleaned up automatically from the titles you type.
 - **Trackers and projects:** connect OpenProject and Redmine instances, then organize work into projects that belong to a tracker or stay local.
-- **Remote sync:** review a day, link tasks to remote issues, apply rounding, and export the time logs in one action. Already-exported and directly-logged remote entries are shown side by side, and can be linked or deleted.
-- **History import:** pull existing time logs from a tracker into local entries, mapped to your projects.
+- **Remote Sync:** review a day, link tasks to remote issues, apply rounding, and export the day's time in one action. Already-exported and directly-logged remote logs are shown side by side, and can be matched or deleted.
+- **History import:** pull existing remote logs from a tracker into local entries, mapped to your projects.
 - **Reports:** a monthly timesheet comparing local hours with what landed on each tracker, and a per-client monthly PDF with saved presets.
 - **Your secrets stay in your browser:** tracker API keys never reach the server. Requests go straight from the browser, or through an optional Chrome/Edge extension when the tracker is only reachable from your desktop or blocks cross-origin calls.
 - **English and Polish**, light and dark themes, WCAG 2.1 AA as the accessibility target.
@@ -56,7 +56,7 @@ packages/remote-trackers/     OpenProject and Redmine adapters behind a neutral 
 packages/extension-protocol/  Messages shared by the web app and the extension
 deploy/osieka-dev/            Compose template and runbook of one private instance
 docs/                         Tracker connection, development and contributor guides
-openspec/                     Behavior specifications and change proposals
+docs/behavior/                How every feature behaves, one file per capability
 ```
 
 ## Documentation
@@ -68,5 +68,5 @@ openspec/                     Behavior specifications and change proposals
 | [Coding standards](./docs/coding-standards.md)       | Code style and conventions                         |
 | [E2E guideline](./docs/e2e-guideline.md)             | End-to-end test suites and troubleshooting         |
 | [Roadmap](./ROADMAP.md)                              | What is planned next                               |
-| [`openspec/specs`](./openspec/specs/)                | How every feature behaves, as specifications       |
+| [Behavior](./docs/behavior/)                         | How every feature behaves, one file per capability |
 | [`AGENTS.md`](./AGENTS.md)                           | Instructions for AI coding agents                  |

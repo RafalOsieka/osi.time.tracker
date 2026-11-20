@@ -14,7 +14,7 @@ export const projects = pgTable(
       .references(() => users.id),
     trackerId: uuid('trackerId').references(() => trackers.id),
     name: text('name').notNull(),
-    // Optional single remote-project scope (REQ-325): both null (unrestricted)
+    // Optional single remote-project scope: both null (unrestricted)
     // or both set. Enforced at the API boundary (createProjectSchema), not by
     // a DB constraint, matching the tasks.remoteIssueId/remoteIssueCachedTitle
     // pairing convention.

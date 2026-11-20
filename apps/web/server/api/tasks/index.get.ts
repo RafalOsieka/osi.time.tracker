@@ -22,7 +22,7 @@ export default defineEventHandler(async (event): Promise<TaskDto[]> => {
     conditions.push(ilike(tasks.name, `%${search}%`));
   }
 
-  // Ranked most-recently-used first (REQ-133/REQ-137 share this notion of
+  // Ranked most-recently-used first (task listing and title matching share this notion of
   // "recently used"), tasks with no entries last, then alphabetically; capped
   // so a large task history never renders unbounded suggestions.
   const lastUsed = taskLastUsedAt(db);

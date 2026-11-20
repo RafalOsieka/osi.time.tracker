@@ -5,7 +5,7 @@ import { tasks, timeEntries } from '../db/schema';
 const RECENT_WINDOW_DAYS = 30;
 
 /**
- * Grouped subquery: seconds the user tracked per project over the last 30 days (REQ-371).
+ * Grouped subquery: seconds the user tracked per project over the last 30 days.
  * A running entry counts up to now. Join it on `projectId`; absent projects mean 0.
  */
 export function recentTrackedSecondsSubquery(db: ReturnType<typeof getDb>, userId: string) {

@@ -51,7 +51,7 @@ export function liveSeconds(liveStartedAt: string | null, now: number): number {
 /**
  * Groups a flat list of time entries by local day, then by task within the day.
  * Independent of the clock: a running entry contributes no seconds and is exposed
- * as `liveStartedAt`, so a ticking timer never regroups the list (REQ-394).
+ * as `liveStartedAt`, so a ticking timer never regroups the list.
  */
 export function groupTimeEntriesByDay(
   entries: TimeEntryDto[],

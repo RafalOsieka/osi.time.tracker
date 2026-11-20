@@ -13,7 +13,7 @@ const state = reactive<LoginDto>({ email: '', password: '' });
 const error = ref('');
 const pending = ref(false);
 const clientErrorKey = ref('');
-/** Whether the password shows as plain text (the trailing eye toggle, REQ-515). */
+/** Whether the password shows as plain text (the trailing eye toggle). */
 const passwordVisible = ref(false);
 
 async function onSubmit(event: FormSubmitEvent<LoginDto>) {

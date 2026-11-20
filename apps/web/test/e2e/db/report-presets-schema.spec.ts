@@ -56,7 +56,7 @@ describeDb('report presets schema', () => {
         })
         .returning();
       if (!preset) throw new Error('preset not inserted');
-      // Contractor details are optional; a preset saved without them reads NULL (REQ-511).
+      // Contractor details are optional; a preset saved without them reads NULL.
       expect(preset.contractorDetails).toBeNull();
 
       const [withDetails] = await db

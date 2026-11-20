@@ -30,7 +30,7 @@ describe('timezone date utilities', () => {
   });
 });
 
-describe('ZonedDateTime conversion (REQ-361 segmented time field)', () => {
+describe('ZonedDateTime conversion (segmented time field)', () => {
   it('round-trips an instant preserving seconds and milliseconds', () => {
     const iso = '2024-03-15T10:42:31.812Z';
     const zoned = instantToZonedDateTime(iso, 'America/New_York');

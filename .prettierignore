@@ -13,6 +13,5 @@ apps/web/server/db/migrations
 AGENTS.md
 
 # other
-openspec
 pnpm-lock.yaml
 pnpm-workspace.yaml

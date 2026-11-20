@@ -46,7 +46,7 @@ describe('suggestion list', () => {
     expect(html).toMatch(/data-testid="suggestions-count".*?class="truncate">2<\/span>/);
   });
 
-  it('names the HTTP approve action by its visible label (REQ-416)', async () => {
+  it('names the HTTP approve action by its visible label', async () => {
     useExtensionI18n().setLocale('en');
     const plain = suggestion('http://rm.internal');
     const secure = suggestion('https://rm.example.com');

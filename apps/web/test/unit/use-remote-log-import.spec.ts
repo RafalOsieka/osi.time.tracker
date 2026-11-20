@@ -233,7 +233,7 @@ describe('useRemoteLogImport', () => {
     expect(composable.preview.value).toEqual({ matched: [], unassignedCount: 1 });
   });
 
-  it('picks up a previously unmatched remote project once scoped, purely from the new default (REQ-338)', async () => {
+  it('picks up a previously unmatched remote project once scoped, purely from the new default', async () => {
     fetchTimeLogsInRange.mockResolvedValue([log('a')]);
     const importLogs = makeImportLogs();
 

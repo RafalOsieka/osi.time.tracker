@@ -212,7 +212,7 @@ describe('extension protocol', () => {
     }
   });
 
-  it('accepts time logs with and without the REQ-341 optional project fields, without stripping them', () => {
+  it('accepts time logs with and without the optional project fields, without stripping them', () => {
     const withFields = parseMatchedOperationResult(
       'fetchTimeLogsInRange',
       asJson({

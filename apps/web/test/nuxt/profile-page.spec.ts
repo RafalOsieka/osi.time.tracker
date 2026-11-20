@@ -96,7 +96,7 @@ describe('profile page', () => {
     expect(email.element.value).toBe('jan@example.com');
     expect(email.element.readOnly).toBe(true);
     expect(wrapper.get('[data-testid="profile-timezone-trigger"]').text()).toBe('UTC|UTC');
-    // Every other zone is labelled with today's UTC offset (REQ-494).
+    // Every other zone is labelled with today's UTC offset.
     expect(
       wrapper.get('[data-testid="profile-timezone-trigger"]').attributes('data-warsaw'),
     ).toMatch(/^Europe\/Warsaw \(UTC[+-]\d{2}:\d{2}\)$/);

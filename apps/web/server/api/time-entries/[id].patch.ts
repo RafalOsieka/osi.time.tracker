@@ -131,7 +131,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto> => {
       .where(and(eq(timeEntries.id, id!), eq(timeEntries.userId, user.id)))
       .returning();
 
-    // Moving the entry away may leave its previous task empty (REQ-491).
+    // Moving the entry away may leave its previous task empty.
     if (existing.taskId !== taskId) {
       await deleteTaskIfEmpty(tx, user.id, existing.taskId);
     }

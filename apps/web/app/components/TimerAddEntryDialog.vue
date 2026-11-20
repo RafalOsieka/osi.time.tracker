@@ -74,7 +74,7 @@ const HH_MM = /^\d{2}:\d{2}$/;
 
 /**
  * The entry's length for a complete, non-inverted range (wall clock on the chosen day), else null.
- * One of the cues that say what the entry will be (REQ-517).
+ * One of the cues that say what the entry will be.
  */
 const previewDuration = computed(() => {
   if (!state.date || !HH_MM.test(state.startTime) || !HH_MM.test(state.endTime)) return null;

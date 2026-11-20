@@ -668,7 +668,7 @@ describeTimeEntries('time-entries API integration', async () => {
     expect(delRes.status).toBe(200);
   });
 
-  // REQ-491: an entry patch that empties its previous task garbage-collects it.
+  // An entry patch that empties its previous task garbage-collects it.
   it('patch: retitling the only entry of a running timer garbage-collects its previous task', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     const running = await (

@@ -32,7 +32,7 @@ const confirm = useAppConfirm();
 const toast = useAppToast();
 const { exporting, run } = useClientReportExport();
 
-// --- Month (REQ-384) ---
+// --- Month ---
 
 function firstQueryString(
   value: string | null | undefined | Array<string | null>,
@@ -73,9 +73,9 @@ function goMonth(delta: number) {
   });
 }
 
-// --- Presets and form (REQ-385) ---
+// --- Presets and form ---
 
-// Lazy: on the client the await resolves at once and the form fills in (REQ-391);
+// Lazy: on the client the await resolves at once and the form fills in;
 // on the server it still waits, so the first preset is selected before render.
 const {
   data: presets,
@@ -103,7 +103,7 @@ const formReady = ref(false);
 
 /**
  * The form edits contractor details as a string (empty for none) for `UTextarea`;
- * parsing with the shared schema on export turns blank back into `null` (design D4).
+ * parsing with the shared schema on export turns blank back into `null`.
  */
 type PresetFormState = Omit<ReportPresetInput, 'contractorDetails'> & {
   contractorDetails: string;
@@ -185,7 +185,7 @@ function onPresetSelected(id: string | null | undefined) {
   exportMessage.value = null;
 }
 
-/** Export saves the form first (REQ-473), so the label says so while there is something to save. */
+/** Export saves the form first, so the label says so while there is something to save. */
 const hasUnsavedChanges = computed(() => {
   const preset = selectedPreset.value;
   if (!preset) return true;
@@ -293,7 +293,7 @@ async function onDelete() {
   selectFirstPreset();
 }
 
-// --- Export (REQ-386) ---
+// --- Export ---
 
 async function onExport() {
   if (!month.value) return;
@@ -564,7 +564,7 @@ async function onExport() {
       </UForm>
 
       <!--
-        The report summary (REQ-384): what the PDF will hold, read live from the form, so the
+        The report summary: what the PDF will hold, read live from the form, so the
         user checks the output before downloading. A card beside the form with the shared cyan
         icon chip, a title and one line, then the report's facts as a definition list.
       -->
