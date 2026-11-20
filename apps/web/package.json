@@ -33,7 +33,7 @@
     "nuxt": "4.6.4",
     "nuxt-auth-utils": "^0.6.2",
     "nuxt-security": "^2.7.0",
-    "pdfmake": "^0.3.13",
+    "pdfmake": "^0.3.14",
     "postgres": "^3.4.9",
     "tailwindcss": "^4.3.5",
     "temporal-polyfill": "^1.0.8",
