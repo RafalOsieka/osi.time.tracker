@@ -141,3 +141,17 @@ Never edit `tools/oxlint/anti-slop/` (rules, shared helpers, plugin entry) unles
 - Never log or commit secrets (`.env`, session password, tracker API keys).
 - Mutating endpoints rely on CSRF protection and the session; do not bypass `nuxt-security` settings.
 - Optional `CONSOLA_LEVEL=4` logs every SQL statement when debugging the server.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repository's GitHub Issues, through the `gh` CLI. The repository is public, so the deployment-privacy constraint applies to every issue and comment. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default triage labels: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repository root, created lazily. See `docs/agents/domain.md`.

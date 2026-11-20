@@ -25,6 +25,9 @@ export default defineConfig({
       'pnpm-lock.yaml',
       'apps/migrator/migrations',
       '.junie',
+      // Agent skills are vendored; they stay byte-identical to their source (skills-lock.json).
+      '.agents/skills',
+      '.claude/skills',
       'AGENTS.md',
       'openspec',
       'pnpm-lock.yaml',
