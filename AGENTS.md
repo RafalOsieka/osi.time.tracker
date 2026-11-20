@@ -17,8 +17,8 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 
 ### Hard constraints
 
-- **Tracker API keys never reach the server.** All tracker calls run in the browser, directly or through the extension (`packages/extension-protocol`). Do not add server-side proxying or credential storage.
-- **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers.
+- **Tracker API keys never reach the server.** All tracker calls run in the browser, directly or through the extension (`packages/extension-protocol`). Do not add server-side proxying or credential storage (why: [ADR-0001](./docs/adr/0001-tracker-calls-never-pass-through-the-server.md)).
+- **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers (ADR-0001).
 - **Users are isolated.** Every query is scoped to the authenticated user.
 - **Deployment details stay private.** This repository and its workflow logs are public. Never write the production address, access credentials or specifics of the hosting infrastructure into files, issues, PRs, commits or logs; use placeholders and masked secrets (`deploy/osieka-dev/README.md`).
 - **Behavior is described in `docs/behavior`**, one file per capability. Read the files a change touches and update them with the code, following [`docs/behavior/guideline.md`](./docs/behavior/guideline.md).
