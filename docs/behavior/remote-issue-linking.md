@@ -2,7 +2,7 @@
 
 ## Purpose
 
-How a task gets linked to one remote issue: searching the tracker by title or exact issue id, directly or through the extension, within the project's remote scope; linking and unlinking as day-scoped moves of entries between tasks. The picker UI on the Timer view and Remote Sync is in `tracking-timer-view` (`tracking-timer-view`).
+How a task gets linked to one remote issue: searching the tracker by title or exact issue id, directly or through the extension, within the project's remote scope; linking and unlinking as day-scoped moves of entries between tasks. The picker UI on the Timer view and Remote Sync is in `tracking-timer-view`.
 
 ## Requirements
 

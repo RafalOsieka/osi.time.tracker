@@ -122,7 +122,7 @@ The running title SHALL be editable in place, committed with `PATCH /api/time-en
 
 ### Requirement: Running start-time editor
 
-While running, the elapsed control SHALL open a popover anchored to it with the shared date (`ui-shared-components`) and hour–minute (`ui-shared-components`) fields, seeded with the start in the user's timezone; Save SHALL be disabled while either is incomplete, and a calendar pick closes only the calendar. Saving SHALL convert to a UTC instant and PATCH `startedAt` (`tracking-api`); a future instant SHALL be blocked inline, a past one allowed even beyond 24 hours, and the ticker SHALL rebase. Dismissing SHALL change nothing.
+While running, the elapsed control SHALL open a popover anchored to it with the shared date and hour–minute fields (`ui-shared-components`), seeded with the start in the user's timezone; Save SHALL be disabled while either is incomplete, and a calendar pick closes only the calendar. Saving SHALL convert to a UTC instant and PATCH `startedAt` (`tracking-api`); a future instant SHALL be blocked inline, a past one allowed even beyond 24 hours, and the ticker SHALL rebase. Dismissing SHALL change nothing.
 
 #### Scenario: Elapsed time opens the start edit popover
 

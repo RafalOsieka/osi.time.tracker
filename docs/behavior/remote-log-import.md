@@ -8,7 +8,7 @@ Define how a user backfills local history from a tracker: fetching the current a
 
 ### Requirement: Tracker-level import routes logs by Project scope
 
-A user SHALL be able to import their own remote logs from one active tracker for an inclusive local-date range. The browser SHALL fetch the catalog (`remote-adapter-contract`) and range logs (`remote-adapter-contract`) with the browser-held secret, never sending it to OSI. A log's default target SHALL be the user's non-deleted Project on that tracker scoped (`workspace-projects`) to the log's remote project or its nearest scoped ancestor, so a descendant's scope wins. It is only the mapping phase's starting choice.
+A user SHALL be able to import their own remote logs from one active tracker for an inclusive local-date range. The browser SHALL fetch the catalog and range logs (`remote-adapter-contract`) with the browser-held secret, never sending it to OSI. A log's default target SHALL be the user's non-deleted Project on that tracker scoped (`workspace-projects`) to the log's remote project or its nearest scoped ancestor, so a descendant's scope wins. It is only the mapping phase's starting choice.
 
 #### Scenario: Log in a scoped descendant project
 
