@@ -24,7 +24,7 @@ _Polish avoid_: Trwający wpis, uruchomiony stoper
 What a Time entry's title names: a name within one Project or within none, optionally linked to one Remote issue. Never managed on its own: entry titles create, match, rename and merge it, and it is deleted once no entry is left.
 _Polish_: Zadanie
 _Avoid_: Ticket, activity, todo
-_Polish avoid_: Czynność, aktywność
+_Polish avoid_: Aktywność
 
 **Project**:
 A body of work that groups Tasks, either a Local project or bound to one Tracker and, optionally, to a Remote project scope within it.
@@ -41,7 +41,7 @@ _Polish_: Projekt lokalny
 The user's connection to one OpenProject or Redmine instance: its address, whether the browser may reach it directly, and its Rounding rule. Projects bind to it, and their time is exported to it.
 _Polish_: Tracker
 _Avoid_: Integration, connection, server, instance
-_Polish avoid_: Integracja, połączenie, serwer
+_Polish avoid_: Integracja, serwer
 
 **API key**:
 The user's secret for one Tracker. It lives only in the user's browser and never reaches the server; without it nothing can be read from or sent to the Tracker.
@@ -82,7 +82,7 @@ _Polish_: Reguła zaokrąglania
 An issue in a Tracker (an OpenProject work package, a Redmine issue) that a Task's time is exported against. A Task is linked to at most one; two Tasks with the same name and different Remote issues are different Tasks.
 _Polish_: Zgłoszenie
 _Avoid_: Work package, ticket
-_Polish avoid_: Zadanie, pakiet roboczy
+_Polish avoid_: Pakiet roboczy
 
 **Link**:
 Connecting a Task to a Remote issue for one day: that day's Time entries move to the Task with that issue, found or created. Unlinking moves them to the same-named Task without an issue.

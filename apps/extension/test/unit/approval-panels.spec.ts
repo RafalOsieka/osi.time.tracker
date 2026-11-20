@@ -164,7 +164,7 @@ it('lists trackers with their latest activity, the add form folded away', async 
     now: Date.parse('2026-10-05T10:02:00.000Z'),
   });
   expect(html).toContain('Succeeded');
-  expect(html).toContain('Time entry export');
+  expect(html).toContain('Remote log export');
   expect(html).toContain('2 minutes ago');
   expect(html).toContain('No activity this session');
   expect(html).toContain('data-testid="new-destination"');

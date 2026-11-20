@@ -161,7 +161,7 @@ If a creation's result is lost after dispatch, the outcome SHALL be unknown, not
 
 ### Requirement: Extension setup is localized and accessible
 
-Extension-owned setup/approval/revocation UI and web integration feedback SHALL support English and Polish with matching catalog keys, labeled controls, keyboard operation, and accessible error/status announcements. The extension SHALL persist only non-secret approvals, pending Tracker URL suggestions and preferences. It SHALL keep per-Tracker URL activity records only for the browser session, and SHALL NOT persist operation credentials or tracker response bodies.
+Extension-owned setup/approval/revocation UI and web integration feedback SHALL support English and Polish with matching catalog keys, labeled controls, keyboard operation, and accessible error/status announcements. The extension SHALL persist only non-secret approvals, pending Tracker URL suggestions and preferences. It SHALL keep activity records per Tracker URL only for the browser session, and SHALL NOT persist operation credentials or tracker response bodies.
 
 #### Scenario: Manage approvals using a keyboard
 

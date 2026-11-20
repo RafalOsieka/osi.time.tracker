@@ -219,7 +219,7 @@ When the exported preset has contractor details, the title page SHALL print them
 
 ### Requirement: Table pages content
 
-After the title page comes a Date, Task and Hours table. The Date cell SHALL span the day's rows with weekday and date. The Task cell SHALL show three lines: the tracker name and the remote issue id linked to its URL (from base URL and system type); the issue title, or a translated "issue not available" when `null`; the activity in brackets (omitted when `null`) and the comment, or a translated "(no comment)". Each day SHALL end with a total row, and the table with a month-total row.
+After the title page comes a Date, Issue and Hours table. The Date cell SHALL span the day's rows with weekday and date. The Issue cell SHALL show three lines: the tracker name and the remote issue id linked to its URL (from base URL and system type); the issue title, or a translated "issue not available" when `null`; the activity in brackets (omitted when `null`) and the comment, or a translated "(no comment)". Each day SHALL end with a total row, and the table with a month-total row.
 
 #### Scenario: Issue id is a link
 

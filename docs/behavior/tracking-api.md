@@ -358,7 +358,7 @@ The target scope SHALL start from the listed entries' current task. **Omitting**
 
 ### Requirement: Reassignment derives the issue's Tracker on the server
 
-When a `remoteIssueId` value is supplied, the server SHALL take the tracker from the target project's active tracker and SHALL NOT trust any client-supplied tracker identity. A project-less target, a local project, a missing or inactive tracker, or an unsupported `systemType` SHALL be rejected with `{ messageKey, params }`, moving nothing. A cached issue title from the client search MAY be stored for display, never as the issue's Tracker.
+When a `remoteIssueId` value is supplied, the server SHALL take the tracker from the target project's active tracker and SHALL NOT trust any client-supplied tracker identity. A project-less target, a local project, a missing or inactive tracker, or an unsupported `systemType` SHALL be rejected with `{ messageKey, params }`, moving nothing. A cached issue title from the client search MAY be stored for display, never trusted as the issue's identity.
 
 #### Scenario: Link rejected for local project
 

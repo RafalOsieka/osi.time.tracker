@@ -26,8 +26,8 @@ describe('activity formatting', () => {
     ).toEqual({
       ok: false,
       outcome: 'Przekroczony czas',
-      operation: 'Pobranie wpisów czasu',
-      failure: 'Nieudane pobranie wpisów czasu',
+      operation: 'Pobranie zdalnych wpisów',
+      failure: 'Nieudane pobranie zdalnych wpisów',
       when: '1 godzinę temu',
     });
     expect(
@@ -51,7 +51,7 @@ describe('compact activity', () => {
       t,
       true,
     );
-    expect(summary.failure).toBe('Nieudany eksport wpisu czasu');
+    expect(summary.failure).toBe('Nieudany eksport zdalnego wpisu');
     expect(summary.when).toBe('20\u00a0min\u00a0temu');
   });
 });

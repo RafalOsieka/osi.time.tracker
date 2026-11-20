@@ -182,7 +182,7 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
   },
   {
     id: 'e02-popup-website-offer',
-    title: 'Popup, on the OSI website',
+    title: 'Popup, on the Time Tracker App',
     shows:
       'The popup opened on the OSI Time Tracker website before it is approved: the offer to approve this website above the checklist.',
     surface: 'popup',
@@ -192,7 +192,7 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
   },
   {
     id: 'e03-popup-website-only',
-    title: 'Popup, website approved',
+    title: 'Popup, Time Tracker App approved',
     shows:
       'The popup with the website approved and no tracker yet: the checklist on its second step.',
     surface: 'popup',
@@ -247,7 +247,7 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
   },
   {
     id: 'e09-setup-website-handoff',
-    title: 'Setup page, website from the popup',
+    title: 'Setup page, Time Tracker App from the popup',
     shows:
       "The setup page as the popup's offer opens it: the website filled in and its approve button focused.",
     surface: 'setup',
@@ -257,7 +257,7 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
   },
   {
     id: 'e10-setup-website-only',
-    title: 'Setup page, website approved',
+    title: 'Setup page, Time Tracker App approved',
     shows:
       'The setup page with the website approved and no tracker yet: the checklist on its second step, the tracker form ready for the website.',
     surface: 'setup',
@@ -314,7 +314,7 @@ export const EXTENSION_SCREENS: ExtensionScreen[] = [
   },
   {
     id: 'e15-setup-revoke-website',
-    title: 'Setup page, remove website',
+    title: 'Setup page, remove Time Tracker App',
     shows: 'The confirmation before removing a website that still has trackers approved for it.',
     surface: 'setup',
     state: setUp,

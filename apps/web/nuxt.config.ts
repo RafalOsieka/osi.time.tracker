@@ -114,7 +114,7 @@ export default defineNuxtConfig({
         'img-src': ["'self'", 'data:'],
         // Remote-issue-linking performs a *browser-side* fetch
         // straight to each user's own configured OpenProject/Redmine base
-        // URL (never proxied through the OSI server), so the exact origin
+        // URL (never proxied through the server), so the exact origin
         // is not known at build time and cannot be enumerated per-request
         // with a static nuxt-security directive. As a pragmatic MVP
         // trade-off,

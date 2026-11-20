@@ -6,7 +6,8 @@ import webPl from '../../i18n/locales/pl.json';
 // The Polish UI names domain concepts only with GLOSSARY.md's `_Polish_` words, never with a
 // word from a term's `_Polish avoid_` list (docs/agents/domain.md). The glossary is the only
 // source: this test reads both lists from it. Entries with a parenthetical condition, such as
-// "Wpis (on its own)", need judgement and are left to review.
+// "Wpis (on its own)", need judgement and are left to review, as is a canonical word used for
+// the wrong concept ("Zadanie" for a Remote issue).
 
 type CatalogNode = string | { readonly [key: string]: CatalogNode };
 
@@ -93,6 +94,13 @@ describe('Polish catalogs against GLOSSARY.md', () => {
   it('reads both lists from the glossary', () => {
     expect(canonical).toContain('Aktywny wpis czasu');
     expect(avoided).toContain('witryna');
+  });
+
+  // Canonical names are blanked out before the check, so an avoided word that is also another
+  // term's canonical name could never be reported.
+  it('avoids no word that is another term’s canonical name', () => {
+    const names = new Set(canonical.map((name) => name.toLowerCase()));
+    expect(avoided.filter((word) => names.has(word))).toEqual([]);
   });
 
   it('the web app uses no avoided word for a domain concept', () => {

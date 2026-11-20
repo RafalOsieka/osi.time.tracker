@@ -187,7 +187,7 @@
     "retryButton": "Retry",
     "scanningProgress": "Scanning… ({completed} / {total})",
     "importingProgress": "Importing… ({completed} / {total})",
-    "mappingDescription": "Choose which project each remote project's logs go to. Scoped projects are pre-selected; you can change any choice.",
+    "mappingDescription": "Choose which project the remote logs of each remote project go to. Scoped projects are pre-selected; you can change any choice.",
     "mappingEmptyState": "No remote logs were found in this period.",
     "noRemoteProjectIdLabel": "Remote logs without remote project information",
     "doNotImportOption": "Do not import",
