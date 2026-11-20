@@ -628,7 +628,7 @@
       "generatedAt": "Generated {dateTime} ({timeZone})",
       "runningTitle": "Timesheet",
       "columnDate": "Date",
-      "columnTask": "Task",
+      "columnTask": "Issue",
       "columnHours": "Hours",
       "issueUnavailable": "Issue not available",
       "noComment": "(no comment)",

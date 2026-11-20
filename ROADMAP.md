@@ -26,6 +26,10 @@ What is planned for OSI Time Tracker. Items are grouped by area, not ordered by 
 - Two-factor authentication (TOTP).
 - Single sign-on (OAuth2 / OIDC).
 
+## Codebase
+
+- **Glossary names in code:** identifiers, test ids and test names still use words the [glossary](./GLOSSARY.md) replaced (`website` for Time Tracker App, `destination` for Tracker URL, `remoteEntry` for remote log, `provenance` for export record); rename them to its terms.
+
 ## Later
 
 - More tracker adapters (Jira, GitLab, …).

@@ -633,7 +633,7 @@
       "generatedAt": "Wygenerowano {dateTime} ({timeZone})",
       "runningTitle": "Zestawienie godzin",
       "columnDate": "Data",
-      "columnTask": "Zadanie",
+      "columnTask": "Zgłoszenie",
       "columnHours": "Godziny",
       "issueUnavailable": "Zgłoszenie niedostępne",
       "noComment": "(brak komentarza)",
