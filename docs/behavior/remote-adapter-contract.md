@@ -10,7 +10,7 @@ One provider-neutral contract that every tracker adapter (OpenProject, Redmine) 
 
 The system SHALL define one provider-neutral remote-tracker adapter contract implemented by every
 provider. It SHALL expose issue title search, exact issue-ID lookup, remote project catalog listing, activity options, current-account
-resolution, same-day time-log fetch, date-range time-log fetch, time-entry creation, and time-entry
+resolution, same-day remote-log fetch, date-range remote-log fetch, time-entry creation, and time-entry
 deletion. Operations SHALL use adapter-neutral DTOs and callers SHALL NOT branch on provider type.
 
 #### Scenario: Every provider adapter satisfies the operation set
@@ -20,7 +20,7 @@ deletion. Operations SHALL use adapter-neutral DTOs and callers SHALL NOT branch
 
 #### Scenario: Callers depend on the contract, not the provider
 
-- **WHEN** a caller creates, reads, or deletes a remote time entry
+- **WHEN** a caller creates, reads, or deletes a remote log
 - **THEN** it SHALL use the neutral contract without provider-specific branching
 
 ### Requirement: Remote project catalog listing
@@ -90,7 +90,7 @@ Exact issue-ID lookup SHALL return not-found or `{ result, inScope }` with the n
 - **WHEN** an exact lookup carries no scope
 - **THEN** the adapter SHALL return `inScope: true` for any found issue
 
-### Requirement: Date-range time-log fetch
+### Requirement: Date-range remote-log fetch
 
 The contract SHALL expose one bounded date-range operation for the current account's logs on an inclusive `from`/`to` local-date pair, without issue filtering. `client` SHALL send the secret only to the tracker origin; `extension` SHALL use it transiently only for the approved tracker request. Same-day issue-filtered fetch SHALL remain available for Remote Sync.
 
@@ -114,9 +114,9 @@ The contract SHALL expose one bounded date-range operation for the current accou
 - **WHEN** Remote Sync requests issue-filtered same-day logs
 - **THEN** it SHALL continue using the same-day operation
 
-### Requirement: Time logs carry optional remote project and issue title
+### Requirement: Remote logs carry optional remote project and issue title
 
-Same-day and date-range time logs SHALL carry an optional remote project id (opaque) and title, and a **required, nullable** remote issue title. Adapters SHALL fill the project fields only from the fetched payload, omitting unusable ones. The issue title SHALL be the issue's display title, from the payload when it carries titles, otherwise resolved by the bounded batched lookup. Callers SHALL NOT branch on provider type to get these fields, and the extension SHALL pass them through unchanged.
+Same-day and date-range remote logs SHALL carry an optional remote project id (opaque) and title, and a **required, nullable** remote issue title. Adapters SHALL fill the project fields only from the fetched payload, omitting unusable ones. The issue title SHALL be the issue's display title, from the payload when it carries titles, otherwise resolved by the bounded batched lookup. Callers SHALL NOT branch on provider type to get these fields, and the extension SHALL pass them through unchanged.
 
 #### Scenario: Provider supplies the project on the log
 
@@ -130,7 +130,7 @@ Same-day and date-range time logs SHALL carry an optional remote project id (opa
 
 #### Scenario: Payload lacks the issue title
 
-- **WHEN** the provider's time-log payload does not carry issue titles and the issue is visible to the account
+- **WHEN** the provider's remote-log payload does not carry issue titles and the issue is visible to the account
 - **THEN** the neutral log SHALL still carry the issue's display title
 
 #### Scenario: Provider omits a field
@@ -140,7 +140,7 @@ Same-day and date-range time logs SHALL carry an optional remote project id (opa
 
 #### Scenario: No extra requests
 
-- **WHEN** an adapter maps a page of time logs that all carry their issue title
+- **WHEN** an adapter maps a page of remote logs that all carry their issue title
 - **THEN** it SHALL NOT perform any request beyond the page fetch; requests for missing titles are bounded by the batched lookup
 
 #### Scenario: Extension mode preserves the fields
@@ -150,7 +150,7 @@ Same-day and date-range time logs SHALL carry an optional remote project id (opa
 
 ### Requirement: An issue title is null only when the tracker hides the issue
 
-A time log's remote issue title SHALL be `null` only when the tracker does not disclose the issue to the configured account (deleted, or not visible), never because of which provider produced the log. Generally, an optional or nullable field of a neutral DTO SHALL be empty only for a reason in the remote data, never because of the provider type.
+A remote log's remote issue title SHALL be `null` only when the tracker does not disclose the issue to the configured account (deleted, or not visible), never because of which provider produced the log. Generally, an optional or nullable field of a neutral DTO SHALL be empty only for a reason in the remote data, never because of the provider type.
 
 #### Scenario: Issue not disclosed to the account
 
@@ -181,7 +181,7 @@ Title search and exact lookup SHALL return the same neutral result: issue id, is
 The contract SHALL behave equivalently under authorized client and extension execution for every
 operation, except for extension-specific setup failures. Client mode SHALL call the tracker directly;
 extension mode SHALL delegate to the same provider implementation in the approved extension. Tracker
-requests and credentials SHALL NOT pass through the OSI server.
+requests and credentials SHALL NOT pass through the server.
 
 #### Scenario: Same operation yields identical results across modes
 
@@ -235,7 +235,7 @@ Transports SHALL be credential-scheme-agnostic: a transport SHALL attach only th
 
 ### Requirement: Credential hygiene across the contract
 
-For every operation the secret SHALL NOT be persisted, logged, serialized, returned, or included in an error. Under `client`, it SHALL travel only to the configured tracker origin. Under `extension`, it SHALL pass transiently through the approved extension solely for the approved destination and SHALL NOT enter OSI API traffic, extension storage, handshake messages, logs, or responses to the page.
+For every operation the secret SHALL NOT be persisted, logged, serialized, returned, or included in an error. Under `client`, it SHALL travel only to the configured tracker origin. Under `extension`, it SHALL pass transiently through the approved extension solely for the approved Tracker URL and SHALL NOT enter OSI API traffic, extension storage, handshake messages, logs, or responses to the page.
 
 #### Scenario: Client-mode secret stays browser-to-tracker only
 
@@ -332,9 +332,9 @@ A caller SHALL be able to derive, without a remote request, the activity scope o
 - **WHEN** a caller resolves activity scopes for a whole day of issues
 - **THEN** no remote request SHALL be made until the caller fetches options for a scope
 
-### Requirement: Time-log fetches default to the current account
+### Requirement: Remote-log fetches default to the current account
 
-Same-day and date-range time-log fetches SHALL return only the configured credential's own logs when the caller supplies no explicit account id, using the provider's current-user filter on the tracker side. Callers SHALL NOT be required to resolve the current account before fetching logs; the current-account operation SHALL remain available on the contract but SHALL NOT be a prerequisite for correct log scoping. When an explicit account id is supplied it SHALL take precedence.
+Same-day and date-range remote-log fetches SHALL return only the configured credential's own logs when the caller supplies no explicit account id, using the provider's current-user filter on the tracker side. Callers SHALL NOT be required to resolve the current account before fetching logs; the current-account operation SHALL remain available on the contract but SHALL NOT be a prerequisite for correct log scoping. When an explicit account id is supplied it SHALL take precedence.
 
 #### Scenario: Same-day fetch without an account id
 
@@ -382,9 +382,9 @@ When a provider's logs lack issue titles (Redmine), a fetch SHALL resolve its di
 
 ### Requirement: A failed title lookup fails the fetch
 
-A failed title lookup (rejected credentials, connection failure, timeout or an unparseable payload) SHALL fail the whole fetch with the same translated time-log fetch error as a failed log page, and SHALL NOT be reported as `null` titles.
+A failed title lookup (rejected credentials, connection failure, timeout or an unparseable payload) SHALL fail the whole fetch with the same translated remote-log fetch error as a failed log page, and SHALL NOT be reported as `null` titles.
 
 #### Scenario: Lookup failure fails the fetch
 
 - **WHEN** the Redmine log pages succeed but a title lookup request fails
-- **THEN** the fetch SHALL fail with the translated time-log fetch error and SHALL NOT return logs with `null` titles
+- **THEN** the fetch SHALL fail with the translated remote-log fetch error and SHALL NOT return logs with `null` titles

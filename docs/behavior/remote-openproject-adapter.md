@@ -37,7 +37,7 @@ For an active OpenProject tracker the adapter SHALL implement every contract ope
 
 ### Requirement: OpenProject remote project catalog
 
-The OpenProject adapter SHALL implement the catalog operation (`remote-adapter-contract`) by listing projects through the projects collection endpoint with page-size/offset pagination, following pages until the reported total is reached or the same fixed maximum page count used for time logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and the id extracted from its parent link when present. No hrefs SHALL cross the contract boundary.
+The OpenProject adapter SHALL implement the catalog operation (`remote-adapter-contract`) by listing projects through the projects collection endpoint with page-size/offset pagination, following pages until the reported total is reached or the same fixed maximum page count used for remote logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and the id extracted from its parent link when present. No hrefs SHALL cross the contract boundary.
 
 #### Scenario: Projects are listed across pages
 
@@ -73,9 +73,9 @@ When a scope is supplied, the OpenProject adapter SHALL query the project-scoped
 - **WHEN** OpenProject answers the scoped query with 404 or 403 for the project
 - **THEN** the adapter SHALL raise the shared translated search error
 
-### Requirement: OpenProject date-range time-log fetch
+### Requirement: OpenProject date-range remote-log fetch
 
-The OpenProject adapter SHALL implement the contract's date-range time-log operation (`remote-adapter-contract`) by querying OpenProject time entries for the current account with `spent_on` between the inclusive `from` and `to` dates, without an entity/work-package id filter, following OpenProject pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
+The OpenProject adapter SHALL implement the contract's date-range remote-log operation (`remote-adapter-contract`) by querying OpenProject time entries for the current account with `spent_on` between the inclusive `from` and `to` dates, without an entity/work-package id filter, following OpenProject pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
 
 #### Scenario: Month range is a single filtered query loop
 
@@ -84,7 +84,7 @@ The OpenProject adapter SHALL implement the contract's date-range time-log opera
 
 #### Scenario: Logs on unlinked work packages are included
 
-- **WHEN** the current account has a time log in range on a work package that is not linked in OSI
+- **WHEN** the current account has a remote log in range on a work package that is not linked in OSI
 - **THEN** that log SHALL be present in the adapter-neutral result
 
 #### Scenario: Upstream failure is classified
@@ -92,7 +92,7 @@ The OpenProject adapter SHALL implement the contract's date-range time-log opera
 - **WHEN** OpenProject rejects or fails the range fetch
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with `error.remoteTimeLogsFetchFailed` (or the shared logs-fetch key) and SHALL NOT return a silent empty list
 
-### Requirement: OpenProject time logs map project and issue title from HAL links
+### Requirement: OpenProject remote logs map project and issue title from HAL links
 
 For each time entry (`remote-adapter-contract`) the adapter SHALL take the project id from the last path segment of `_links.project.href` and its title from `_links.project.title` (each omitted when empty), and the issue title from `_links.entity.title`, else `_links.workPackage.title`. The entry SHALL be the only title source: with no usable link title the title SHALL be `null` and no work-package request made. Same-day and range fetches alike SHALL add no request beyond the time-entry pages.
 
@@ -155,16 +155,16 @@ OpenProject time entries SHALL be created from the already-rounded duration prod
 
 #### Scenario: Fetched logs convert back to seconds
 
-- **WHEN** the adapter fetches same-day OpenProject time logs
+- **WHEN** the adapter fetches same-day OpenProject remote logs
 - **THEN** each log's duration SHALL be converted to whole seconds such that re-exporting an unchanged value produces the same value
 
-### Requirement: Same-day time-log fetch with bounded pagination
+### Requirement: Same-day remote-log fetch with bounded pagination
 
-The OpenProject adapter SHALL resolve the current remote account and fetch that account's time logs for a given day, filtered to the linked work-package IDs and the resolved remote user, following OpenProject's pagination. The page loop SHALL be bounded by a fixed maximum page count so an inconsistent upstream total cannot cause unbounded requests. Fetched logs SHALL be returned as informational, adapter-neutral context only.
+The OpenProject adapter SHALL resolve the current remote account and fetch that account's remote logs for a given day, filtered to the linked work-package IDs and the resolved remote user, following OpenProject's pagination. The page loop SHALL be bounded by a fixed maximum page count so an inconsistent upstream total cannot cause unbounded requests. Fetched logs SHALL be returned as informational, adapter-neutral context only.
 
 #### Scenario: Day logs are fetched across pages
 
-- **WHEN** the day's matching time logs span multiple OpenProject result pages
+- **WHEN** the day's matching remote logs span multiple OpenProject result pages
 - **THEN** the adapter SHALL follow pagination and return the combined adapter-neutral log list for the current account
 
 #### Scenario: Pagination is bounded

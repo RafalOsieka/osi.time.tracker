@@ -8,12 +8,12 @@ Define the live timer widget in the authenticated shell's top bar: its layout an
 
 ### Requirement: Reserved timer region hosts the live timer widget
 
-The shell's timer region (`ui-shell`) SHALL host one live timer widget: a title field with task autocomplete that grows to fill the free width, an elapsed-time display, and a start/stop control on the right. While a timer runs, the widget SHALL show the running entry's title and live elapsed time. Its colors SHALL come from theme tokens, it SHALL meet WCAG 2.1 AA (labelled, keyboard-operable controls), and its strings SHALL have `en`/`pl` parity.
+The shell's timer region (`ui-shell`) SHALL host one live timer widget: a title field with task autocomplete that grows to fill the free width, an elapsed-time display, and a start/stop control on the right. While a timer runs, the widget SHALL show the running time entry's title and live elapsed time. Its colors SHALL come from theme tokens, it SHALL meet WCAG 2.1 AA (labelled, keyboard-operable controls), and its strings SHALL have `en`/`pl` parity.
 
 #### Scenario: Running indicator shown while a timer runs
 
-- **WHEN** the authenticated user has a running entry
-- **THEN** the widget SHALL display the running entry's title (or blank untitled title) and its live elapsed time
+- **WHEN** the authenticated user has a running time entry
+- **THEN** the widget SHALL display the running time entry's title (or blank untitled title) and its live elapsed time
 
 #### Scenario: Widget controls are accessible
 
@@ -50,11 +50,11 @@ The start/stop control SHALL be icon-only, with a play icon to start and a squar
 
 ### Requirement: Persistent running-timer indicator
 
-The shell SHALL show the running entry's title and live elapsed time while one exists, from `GET /api/time-entries/running` so it survives reloads and devices, resolved during SSR on a full load (`ui-shell`). The title input SHALL show the running entry's title, blank for an untitled entry (no placeholder, no "(no task)"). After a task edit that affects the running entry (rename, project change, merge, bulk assignment) the client SHALL refetch the running state.
+The shell SHALL show the running time entry's title and live elapsed time while one exists, from `GET /api/time-entries/running` so it survives reloads and devices, resolved during SSR on a full load (`ui-shell`). The title input SHALL show the running time entry's title, blank for an untitled entry (no placeholder, no "(no task)"). After a task edit that affects the running time entry (rename, project change, merge, bulk assignment) the client SHALL refetch the running state.
 
 #### Scenario: Indicator visible while running
 
-- **WHEN** the authenticated user has a running entry
+- **WHEN** the authenticated user has a running time entry
 - **THEN** the shell SHALL show a running indicator with the entry's title and a live elapsed time
 
 #### Scenario: Title stays visible after starting
@@ -64,17 +64,17 @@ The shell SHALL show the running entry's title and live elapsed time while one e
 
 #### Scenario: Running state survives reload
 
-- **WHEN** a user with a running entry reloads the app
-- **THEN** the shell SHALL display the running entry (including its title) from the server-resolved state on first paint of the authenticated shell, without requiring a client-only post-mount fetch to reveal the running mode
+- **WHEN** a user with a running time entry reloads the app
+- **THEN** the shell SHALL display the running time entry (including its title) from the server-resolved state on first paint of the authenticated shell, without requiring a client-only post-mount fetch to reveal the running mode
 
-#### Scenario: Untitled running entry shows blank
+#### Scenario: Untitled running time entry shows blank
 
-- **WHEN** the running entry has no title (`taskName` is `null`)
+- **WHEN** the running time entry has no title (`taskName` is `null`)
 - **THEN** the title input SHALL be blank, showing neither a placeholder nor a "(no task)" label
 
 #### Scenario: Task edit refreshes the indicator
 
-- **WHEN** the user renames or re-projects the task of the running entry (including via a merge or bulk assignment)
+- **WHEN** the user renames or re-projects the task of the running time entry (including via a merge or bulk assignment)
 - **THEN** the client SHALL re-fetch the running state and the indicator SHALL show the updated title
 
 #### Scenario: Strings localized in parity
@@ -93,21 +93,21 @@ While the running state is not yet known, the widget SHALL be in a loading state
 
 #### Scenario: Elapsed starts at zero until client ticker
 
-- **WHEN** a full document load completes for a user with a running entry
+- **WHEN** a full document load completes for a user with a running time entry
 - **THEN** the elapsed display SHALL show zero until the client-side ticker starts, after which it SHALL show live elapsed computed on the client from `startedAt`
 
-### Requirement: Retitling the running entry and Enter
+### Requirement: Retitling the running time entry and Enter
 
 The running title SHALL be editable in place, committed with `PATCH /api/time-entries/[id]` (`tracking-api`) on blur or Enter, never per keystroke. Committing a blank title SHALL send `title = null`, detaching the task. Enter in the title input SHALL start the timer when the suggestion overlay is closed; while it is open, Enter SHALL keep the autocomplete's select/close behavior and SHALL NOT start the timer.
 
 #### Scenario: Inline retitle committed on blur or Enter
 
-- **WHEN** the user edits the running entry's title and blurs the input or presses Enter
-- **THEN** the widget SHALL commit the new title via `PATCH /api/time-entries/[id]` and update the displayed running entry from the response
+- **WHEN** the user edits the running time entry's title and blurs the input or presses Enter
+- **THEN** the widget SHALL commit the new title via `PATCH /api/time-entries/[id]` and update the displayed running time entry from the response
 
 #### Scenario: Clearing the title detaches the task
 
-- **WHEN** the user clears the running entry's title to blank and commits (blur or Enter)
+- **WHEN** the user clears the running time entry's title to blank and commits (blur or Enter)
 - **THEN** the widget SHALL send `title = null` and the entry SHALL become untitled (`taskId = null`)
 
 #### Scenario: Enter starts the timer when no overlay is open
@@ -127,7 +127,7 @@ While running, the elapsed control SHALL open a popover anchored to it with the 
 #### Scenario: Elapsed time opens the start edit popover
 
 - **WHEN** the user activates the elapsed-time control while a timer is running
-- **THEN** a popover SHALL open with a segmented date field (with calendar affordance) and a segmented hour-and-minute time field seeded with the running entry's current start in the user's effective timezone
+- **THEN** a popover SHALL open with a segmented date field (with calendar affordance) and a segmented hour-and-minute time field seeded with the running time entry's current start in the user's effective timezone
 
 #### Scenario: Typed time is normalized in the popover
 
@@ -162,7 +162,7 @@ While running, the elapsed control SHALL open a popover anchored to it with the 
 #### Scenario: Committing a new start rebases the ticker
 
 - **WHEN** the user commits a valid past start date/time in the popover
-- **THEN** the running entry SHALL be patched with the new `startedAt` (converted from the effective timezone) and the elapsed time SHALL rebase from it, remaining running
+- **THEN** the running time entry SHALL be patched with the new `startedAt` (converted from the effective timezone) and the elapsed time SHALL rebase from it, remaining running
 
 #### Scenario: Future start blocked in the popover
 

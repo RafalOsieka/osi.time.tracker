@@ -222,16 +222,16 @@ The duration input SHALL take its accessible label and `data-testid` from its ow
 
 ### Requirement: Inline-edit affordance uses a Nuxt UI input
 
-Timer group and entry titles and the Remote Sync title-to-send SHALL share one inline editor: plain text at rest on the Timer, a field at rest on Remote Sync. It SHALL commit the normalized value on blur or Enter and revert on Escape or invalid input without a model update or request. Its width SHALL come from the layout slot; overflow SHALL be truncated; activating it SHALL fill the same slot without shifting neighbors. It SHALL keep its accessible label and `data-testid`.
+Timer group and entry titles and the Remote Sync export comment SHALL share one inline editor: plain text at rest on the Timer, a field at rest on Remote Sync. It SHALL commit the normalized value on blur or Enter and revert on Escape or invalid input without a model update or request. Its width SHALL come from the layout slot; overflow SHALL be truncated; activating it SHALL fill the same slot without shifting neighbors. It SHALL keep its accessible label and `data-testid`.
 
 #### Scenario: Text field reads as plain text until edited
 
 - **WHEN** a Timer group or entry title is displayed without focus
 - **THEN** it SHALL render as seamless plain text with no border, ring, or button chrome
 
-#### Scenario: Title to send reads as a field at rest
+#### Scenario: Export comment reads as a field at rest
 
-- **WHEN** a Ready row's title-to-send is displayed on Remote Sync without focus
+- **WHEN** a Ready row's export comment is displayed on Remote Sync without focus
 - **THEN** it SHALL show a field frame that fills its column, and activating it SHALL keep the value in the same place
 
 #### Scenario: Field becomes editable on activation and commits
@@ -256,7 +256,7 @@ Timer group and entry titles and the Remote Sync title-to-send SHALL share one i
 
 ### Requirement: Inline pickers, compact duration slot and permanent time fields
 
-The timer group's project control and the Remote Sync activity control SHALL open a non-modal listbox popover on a single activation, committing on option activation. The Remote Sync to-send duration SHALL sit in a compact slot that reads as text and becomes the compact outlined duration input on activation. Timer entry start/stop times SHALL be the segmented time field shown permanently as plain text, with segments highlighted only on focus, not a display/editor swap.
+The timer group's project control and the Remote Sync activity control SHALL open a non-modal listbox popover on a single activation, committing on option activation. The Remote Sync export duration SHALL sit in a compact slot that reads as text and becomes the compact outlined duration input on activation. Timer entry start/stop times SHALL be the segmented time field shown permanently as plain text, with segments highlighted only on focus, not a display/editor swap.
 
 #### Scenario: Project listbox opens on one click
 
@@ -270,12 +270,12 @@ The timer group's project control and the Remote Sync activity control SHALL ope
 
 #### Scenario: Compact time editor is an outlined input
 
-- **WHEN** the compact duration input is shown in the Remote Sync to-send slot
+- **WHEN** the compact duration input is shown in the Remote Sync export duration slot
 - **THEN** it SHALL render as an outlined input that still fits the reserved slot
 
 #### Scenario: Remote Sync duration uses the compact time-slot pattern
 
-- **WHEN** a Ready Remote Sync row's to-send value is displayed without focus
+- **WHEN** a Ready Remote Sync row's export duration value is displayed without focus
 - **THEN** it SHALL read as plain text in its slot and SHALL become the compact outlined duration input on activation
 
 #### Scenario: Entry time field needs no activation step

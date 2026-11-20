@@ -37,7 +37,7 @@ For adapter, sync and import work you can run real OpenProject and Redmine insta
 docker compose --profile trackers up -d   # OpenProject :8090 + Redmine :8091 (first boot ~2 min)
 pnpm trackers:seed                        # bootstrap accounts and seed the fixture (~30 s)
 pnpm trackers:seed --dry-run              # print the plan, write nothing
-pnpm trackers:seed --reset                # delete fixture time logs first, then re-seed
+pnpm trackers:seed --reset                # delete fixture remote logs first, then re-seed
 ```
 
 `pnpm trackers:seed` waits for both healthchecks, makes the `admin` accounts usable without any UI step (Redmine does this on boot; the OpenProject API token is installed through `rails runner`), removes OpenProject's demo projects and seeds the fixture. It is idempotent: a re-run creates only what is missing and never touches projects, issues or logs you made by hand. It ends by printing what to paste into the OSI tracker form:
@@ -56,7 +56,7 @@ One consultant, two clients:
 - **Nordwind Logistics** on Redmine: `fleet-platform` → `dispatch` / `telemetry` → four leaf projects, plus `warehouse-scanner` and `internal-it`.
 - **Helios Energy** on OpenProject: `solar-portal` → `customer-app` / `gateway` → four leaf projects, plus `grid-analytics` and `helios-internal`.
 
-Every leaf and sibling project has 6–8 issues (older ones closed, two never logged). The `admin` account has three months of weekday time logs: Monday and Tuesday on Nordwind, Wednesday and Thursday on Helios, Friday on both, with one holiday week. Runs in the same calendar week produce identical logs; in a new week the window slides.
+Every leaf and sibling project has 6–8 issues (older ones closed, two never logged). The `admin` account has three months of weekday remote logs: Monday and Tuesday on Nordwind, Wednesday and Thursday on Helios, Friday on both, with one holiday week. Runs in the same calendar week produce identical logs; in a new week the window slides.
 
 ### Trying import
 

@@ -245,12 +245,12 @@ Tasks SHALL be created and matched from time-entry titles by `tracking-api` on t
 
 ### Requirement: Remote issue reference stored on the task row
 
-The task row SHALL be the only store of its remote issue reference: tracker provenance, a nullable `remoteIssueId` (null = unlinked), cached issue title, optional cached remote project title, and timestamps. No separate record, issue URL (derived) or remote project id SHALL be stored. `TaskDto` and `TimeEntryDto` SHALL expose a nested `remoteIssueRef`, absent when unlinked, with the project title only when non-empty. Hard-deleting a task SHALL remove its reference.
+The task row SHALL be the only store of its remote issue reference: its Tracker, a nullable `remoteIssueId` (null = unlinked), cached issue title, optional cached remote project title, and timestamps. No separate record, issue URL (derived) or remote project id SHALL be stored. `TaskDto` and `TimeEntryDto` SHALL expose a nested `remoteIssueRef`, absent when unlinked, with the project title only when non-empty. Hard-deleting a task SHALL remove its reference.
 
 #### Scenario: Reference lives on the task row
 
 - **WHEN** a task is linked to a remote issue
-- **THEN** its configuration provenance, remote issue ID and cached title SHALL be persisted on the task row and no separate reference record SHALL exist
+- **THEN** its Tracker, remote issue ID and cached title SHALL be persisted on the task row and no separate reference record SHALL exist
 
 #### Scenario: Cached remote project title is stored when provided
 
@@ -267,11 +267,11 @@ The task row SHALL be the only store of its remote issue reference: tracker prov
 - **WHEN** a task has no remote issue
 - **THEN** its `remoteIssueId` SHALL be `NULL` and its DTO SHALL expose no `remoteIssueRef`
 
-### Requirement: Export provenance survives task garbage collection
+### Requirement: Export record survives task garbage collection
 
 When a task is hard-deleted because its last entry left it, its export records SHALL remain readable: the link from an export record to its task SHALL neither delete the export record nor block the task's deletion.
 
-#### Scenario: Export provenance survives garbage collection
+#### Scenario: Export record survives garbage collection
 
 - **WHEN** a task with an export record is garbage-collected because its last entry moved away
 - **THEN** the export record SHALL remain readable and the deletion SHALL NOT fail on the foreign key

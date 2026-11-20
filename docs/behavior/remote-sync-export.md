@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how a reviewed day is exported to the configured tracker from the Remote Sync page: the server-side day-review aggregate the page reads, the task/day selection rule with no local locking, same-day current-account remote logs as context, browser orchestration under `client` or `extension` transport, the confirm/run/report dialog, per-task outcome reporting, non-locking export provenance, and the deterministic export request key that makes retries reconcilable. The page layout, row states, durations and editors are specified in `remote-sync-review`.
+Define how a reviewed day is exported to the configured tracker from the Remote Sync page: the server-side day-review aggregate the page reads, the task/day selection rule with no local locking, same-day current-account remote logs as context, browser orchestration under `client` or `extension` transport, the confirm/run/report dialog, per-task outcome reporting, non-locking export records, and the deterministic export request key that makes retries reconcilable. The page layout, row states, durations and editors are specified in `remote-sync-review`.
 
 ## Requirements
 
@@ -28,7 +28,7 @@ An authenticated endpoint SHALL return a date's day review: per task with entrie
 #### Scenario: No credentials in the payload
 
 - **WHEN** the day review is returned for projects with trackers
-- **THEN** the payload SHALL include no API secret or credential material
+- **THEN** the payload SHALL include no API key or credential material
 
 #### Scenario: No required-field defaults in the payload
 
@@ -42,7 +42,7 @@ A Ready task's export SHALL include every completed local entry attributed to th
 #### Scenario: Every completed entry of the day is included
 
 - **WHEN** a Ready row is exported
-- **THEN** every completed entry of that task for the day SHALL be included in the remote log and local provenance
+- **THEN** every completed entry of that task for the day SHALL be included in the remote log and the export record
 
 #### Scenario: No subset of a day can be exported
 
@@ -56,12 +56,12 @@ A Ready task's export SHALL include every completed local entry attributed to th
 
 ### Requirement: Current-account remote logs provide same-day context
 
-The page SHALL fetch only the credential's own logs for the date and linked issues via the current-user filter (`remote-adapter-contract`) without an account request, one paginated fetch per tracker. Each log SHALL show by its task, Linked or Unlinked per tracker-scoped provenance, with eligible reconciliation actions, and SHALL NOT create provenance, change review values or block export. Refreshing follows "Refreshing the day's remote logs".
+The page SHALL fetch only the credential's own logs for the date and linked issues via the current-user filter (`remote-adapter-contract`) without an account request, one paginated fetch per tracker. Each log SHALL show by its task, Matched or Unmatched per tracker-scoped export records, with eligible reconciliation actions, and SHALL NOT create export records, change review values or block export. Refreshing follows "Refreshing the day's remote logs".
 
 #### Scenario: Same-day logs for the current account are displayed
 
 - **WHEN** the current remote account has logs on a linked issue for the selected date
-- **THEN** each log SHALL be displayed with stable details and an explicit Linked or Unlinked state
+- **THEN** each log SHALL be displayed with stable details and an explicit Matched or Unmatched state
 
 #### Scenario: No account request precedes the log fetch
 
@@ -81,7 +81,7 @@ The page SHALL fetch only the credential's own logs for the date and linked issu
 #### Scenario: Remote logs do not change export eligibility
 
 - **WHEN** one or more contextual remote logs are displayed
-- **THEN** review values and export eligibility SHALL remain controlled by local page state and provenance
+- **THEN** review values and export eligibility SHALL remain controlled by local page state and export records
 
 #### Scenario: Remote-log fetch fails
 
@@ -98,39 +98,39 @@ After a task's export finalizes, the page SHALL refetch that tracker's day logs 
 - **WHEN** a task's export finalizes successfully
 - **THEN** the page SHALL refetch that tracker's day logs and SHALL NOT issue any other remote request for the refresh
 
-### Requirement: Successful exports persist non-locking provenance
+### Requirement: Successful exports persist non-locking export records
 
-For every remote log created, linked and finalized, the application SHALL persist a user- and tracker-scoped export record: task, local date, remote issue and log ids, exact remote duration, required-field values, covered completed entry ids, and timestamps. With provenance for the task/date, the row SHALL be Sent and SHALL NOT create another remote log from that page. Removing provenance after confirmed remote deletion SHALL make the task/day exportable again.
+For every remote log created, matched and finalized, the application SHALL persist a user- and tracker-scoped export record: task, local date, remote issue and log ids, exact remote duration, required-field values, covered completed entry ids, and timestamps. With an export record for the task/date, the row SHALL be Sent and SHALL NOT create another remote log from that page. Removing the export record after confirmed remote deletion SHALL make the task/day exportable again.
 
-#### Scenario: Successful export records exact provenance
+#### Scenario: Successful export stores an exact export record
 
 - **WHEN** the tracker creates a log and local finalization succeeds
-- **THEN** provenance and covered-entry associations SHALL be persisted atomically with submitted values
+- **THEN** the export record and covered-entry associations SHALL be persisted atomically with submitted values
 
-#### Scenario: Existing provenance prevents another export
+#### Scenario: Existing export record prevents another export
 
-- **WHEN** a task/date already has finalized provenance
+- **WHEN** a task/date already has a finalized export record
 - **THEN** the row SHALL be Sent and Export SHALL NOT include it
 
 #### Scenario: Sent row offers no repeat export
 
-- **WHEN** a task/date already has finalized provenance
+- **WHEN** a task/date already has a finalized export record
 - **THEN** the row SHALL remain Sent and no repeat-export confirmation SHALL be offered
 
 #### Scenario: New entries can be exported later
 
 - **WHEN** entries are added after an earlier export and that export is subsequently deleted remotely
-- **THEN** removal of its provenance SHALL make all completed entries for the task/day exportable again
+- **THEN** removal of its export record SHALL make all completed entries for the task/day exportable again
 
-#### Scenario: Confirmed deletion clears provenance
+#### Scenario: Confirmed deletion clears the export record
 
-- **WHEN** a linked remote log is confirmed deleted or absent
-- **THEN** its provenance and covered-entry associations SHALL be removed atomically
+- **WHEN** a matched remote log is confirmed deleted or absent
+- **THEN** its export record and covered-entry associations SHALL be removed atomically
 
 #### Scenario: Stale or foreign finalization is rejected
 
 - **WHEN** finalization references data outside the authenticated user's matching task/day
-- **THEN** the endpoint SHALL reject it without persisting partial provenance
+- **THEN** the endpoint SHALL reject it without persisting a partial export record
 
 ### Requirement: Export reports per-task outcomes without claiming strict idempotency
 
@@ -192,7 +192,7 @@ The browser SHALL orchestrate remote reads, at most one remote creation per incl
 
 ### Requirement: Export runs through a review, running and report dialog
 
-Activating Export SHALL open a confirmation listing only the included tasks, each with its title, destination and to-send duration.
+Activating Export SHALL open a confirmation listing only the included tasks, each with its title, destination and export duration.
 Export SHALL include every Ready row with non-zero duration and a selected activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
 
 #### Scenario: Review lists exactly what will be sent
@@ -274,7 +274,7 @@ While Export is disabled because nothing can be exported, it SHALL stay in place
 
 #### Scenario: Activity still needed
 
-- **WHEN** the only Ready rows with time to send have no activity chosen
+- **WHEN** the only Ready rows with a non-zero export duration have no activity chosen
 - **THEN** Export SHALL be disabled and its reason SHALL say that the tasks to send need an activity
 
 #### Scenario: Trackers cannot be reached

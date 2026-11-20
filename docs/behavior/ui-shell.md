@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the authenticated application shell: a top bar and a left sidebar around the page, the navigation and account menu they offer, how they adapt between a collapsible desktop rail and a mobile drawer, their accessibility, and the running entry and document title they resolve on first paint. The live timer widget in the top bar is specified in `tracking-timer-widget`.
+Define the authenticated application shell: a top bar and a left sidebar around the page, the navigation and account menu they offer, how they adapt between a collapsible desktop rail and a mobile drawer, their accessibility, and the running time entry and document title they resolve on first paint. The live timer widget in the top bar is specified in `tracking-timer-widget`.
 
 ## Requirements
 
@@ -138,23 +138,23 @@ The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The 
 - **WHEN** the user is on `/sync/{date}`, which has no sidebar link of its own
 - **THEN** the Timer item SHALL show the selected style, and no sidebar link SHALL expose `aria-current="page"`
 
-### Requirement: Running entry resolved during authenticated shell SSR
+### Requirement: Running time entry resolved during authenticated shell SSR
 
-During SSR of any authenticated route, the `default` layout SHALL fetch the user's running entry (`GET /api/time-entries/running`) with the request's session cookie and seed the shared running-timer state before first paint, seeding idle (`null`) when there is none, so the widget never accepts start actions against an unresolved state. Client navigations MAY reuse that state and SHALL NOT need a reload to stay correct after start/stop.
+During SSR of any authenticated route, the `default` layout SHALL fetch the user's running time entry (`GET /api/time-entries/running`) with the request's session cookie and seed the shared running-timer state before first paint, seeding idle (`null`) when there is none, so the widget never accepts start actions against an unresolved state. Client navigations MAY reuse that state and SHALL NOT need a reload to stay correct after start/stop.
 
 #### Scenario: Hard reload shows running title without waiting for client mount
 
-- **WHEN** an authenticated user with a running entry performs a full document load of any private route that uses the `default` layout
-- **THEN** the initial HTML/payload for that response SHALL already include the running entry so the timer widget can render the running title (or blank untitled title) without depending solely on a post-mount client fetch
+- **WHEN** an authenticated user with a running time entry performs a full document load of any private route that uses the `default` layout
+- **THEN** the initial HTML/payload for that response SHALL already include the running time entry so the timer widget can render the running title (or blank untitled title) without depending solely on a post-mount client fetch
 
-#### Scenario: Hard reload with no running entry shows idle controls
+#### Scenario: Hard reload with no running time entry shows idle controls
 
-- **WHEN** an authenticated user with no running entry performs a full document load of a private route on the `default` layout
+- **WHEN** an authenticated user with no running time entry performs a full document load of a private route on the `default` layout
 - **THEN** the shell SHALL seed idle timer state for first paint and SHALL NOT leave the widget permanently disabled waiting for a client-only fetch that never started
 
 #### Scenario: SSR uses the session cookie
 
-- **WHEN** the shell resolves the running entry during SSR
+- **WHEN** the shell resolves the running time entry during SSR
 - **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request so the endpoint authorizes the same user as a browser navigation
 
 ### Requirement: Document title is page plus brand

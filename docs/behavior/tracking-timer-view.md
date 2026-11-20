@@ -8,27 +8,27 @@ Define the timer view, the home page at `/`: entries grouped by day and task fro
 
 ### Requirement: Continue a task from the timer view
 
-Each task group SHALL offer continue: a new running entry bound to the group's **task identity**, not its name, so it keeps the task's project and remote issue (`workspace-tasks`), stopping any running entry (`tracking-api`). The "(no task)" group SHALL offer the same continue/stop control (starting an untitled entry), a title editor that reassigns that day's untitled entries (`tracking-api`), a project control disabled until a title exists, no remote-issue control, and no bulk-assign button.
+Each task group SHALL offer continue: a new running time entry bound to the group's **task identity**, not its name, so it keeps the task's project and remote issue (`workspace-tasks`), stopping any running time entry (`tracking-api`). The "(no task)" group SHALL offer the same continue/stop control (starting an untitled entry), a title editor that reassigns that day's untitled entries (`tracking-api`), a project control disabled until a title exists, no remote-issue control, and no bulk-assign button.
 
 #### Scenario: Continue starts a timer for the task
 
 - **WHEN** the user activates continue on a task group
-- **THEN** a new running entry SHALL be started bound to that group's task, stopping any currently running entry first
+- **THEN** a new running time entry SHALL be started bound to that group's task, stopping any currently running time entry first
 
 #### Scenario: Continue inherits the remote issue
 
 - **WHEN** the user continues a task group that is linked to a remote issue
-- **THEN** the new running entry SHALL be bound to that same linked task and SHALL show the same remote issue
+- **THEN** the new running time entry SHALL be bound to that same linked task and SHALL show the same remote issue
 
 #### Scenario: Continue is unambiguous under duplicate names
 
 - **WHEN** the continued task shares its name and project with another task carrying a different remote issue
 - **THEN** the new entry SHALL bind to the continued task and SHALL NOT be re-resolved to the other one
 
-#### Scenario: Running entry reflected in the shell
+#### Scenario: Running time entry reflected in the shell
 
 - **WHEN** a continue action succeeds
-- **THEN** the shell timer widget SHALL show the new running entry's title and live elapsed time
+- **THEN** the shell timer widget SHALL show the new running time entry's title and live elapsed time
 
 #### Scenario: Titling the "(no task)" group assigns the day's untitled entries
 
@@ -211,7 +211,7 @@ Each group SHALL show its entry count as a compact, fixed-width numeric indicato
 
 ### Requirement: Durations and the entry time slot
 
-Group, entry and day durations SHALL use the shell timer's monospace, tabular-figure style and SHALL NOT be activating controls. An expanded entry's start and stop SHALL be one permanently shown segmented time-range field (`ui-shared-components`) in a fixed-width slot showing full `HH:mm` values; a running entry SHALL show its start plus a localized "now" in a slot of the same width, so durations align. It SHALL edit the wall-clock time on the entry's existing local day only.
+Group, entry and day durations SHALL use the shell timer's monospace, tabular-figure style and SHALL NOT be activating controls. An expanded entry's start and stop SHALL be one permanently shown segmented time-range field (`ui-shared-components`) in a fixed-width slot showing full `HH:mm` values; a running time entry SHALL show its start plus a localized "now" in a slot of the same width, so durations align. It SHALL edit the wall-clock time on the entry's existing local day only.
 
 #### Scenario: Durations match the shell elapsed presentation
 
@@ -225,7 +225,7 @@ Group, entry and day durations SHALL use the shell timer's monospace, tabular-fi
 
 #### Scenario: Running and stopped rows align
 
-- **WHEN** a group lists a running entry alongside stopped entries
+- **WHEN** a group lists a running time entry alongside stopped entries
 - **THEN** the running row's start field plus "now" label SHALL occupy the same slot width as a stopped row's range field, and the duration column SHALL align across the rows
 
 #### Scenario: Inline time edit stays on the same local day
@@ -434,7 +434,7 @@ The page header's primary action SHALL open a manual-entry dialog: an optional t
 
 ### Requirement: Inline entry edits
 
-Each entry SHALL be editable in place (start, stop, title) and deletable after confirmation (`tracking-api`). A time edit SHALL change only the edited hour and minute, keeping stored seconds and milliseconds; an unchanged value SHALL send nothing; the same-minute clamp (`ui-shared-components`) SHALL be on, saving zero length instead of an error. Retitling one entry SHALL move only that entry. A start moved across midnight SHALL regroup it. The list SHALL refresh when the running entry stops or is replaced.
+Each entry SHALL be editable in place (start, stop, title) and deletable after confirmation (`tracking-api`). A time edit SHALL change only the edited hour and minute, keeping stored seconds and milliseconds; an unchanged value SHALL send nothing; the same-minute clamp (`ui-shared-components`) SHALL be on, saving zero length instead of an error. Retitling one entry SHALL move only that entry. A start moved across midnight SHALL regroup it. The list SHALL refresh when the running time entry stops or is replaced.
 
 #### Scenario: Inline edit of an entry's times
 
@@ -473,7 +473,7 @@ Each entry SHALL be editable in place (start, stop, title) and deletable after c
 
 #### Scenario: Top-bar stop refreshes the list
 
-- **WHEN** the user stops the running timer from the top-bar widget while viewing the timer page
+- **WHEN** the user stops the running time entry from the top-bar widget while viewing the timer page
 - **THEN** the page SHALL refresh or merge its entries so the finished entry appears in its day/task group without a manual reload
 
 #### Scenario: Delete an entry with confirmation
@@ -507,7 +507,7 @@ While `hasMore` is true, the timer view SHALL request the next feed page automat
 
 ### Requirement: Single-request refresh of the loaded window
 
-When the timer view refreshes its list after a mutation (entry edit, delete, add within the loaded range, continue, or the running entry stopping or being replaced), it SHALL re-fetch the whole loaded window in **one** feed request using the range-refresh mode of the feed (`tracking-api`) (`from` = the local start of the oldest loaded day), replacing the held entries with the response. The refresh SHALL NOT shrink the loaded window, and `hasMore` / `nextBefore` SHALL be taken from the response.
+When the timer view refreshes its list after a mutation (entry edit, delete, add within the loaded range, continue, or the running time entry stopping or being replaced), it SHALL re-fetch the whole loaded window in **one** feed request using the range-refresh mode of the feed (`tracking-api`) (`from` = the local start of the oldest loaded day), replacing the held entries with the response. The refresh SHALL NOT shrink the loaded window, and `hasMore` / `nextBefore` SHALL be taken from the response.
 
 #### Scenario: Edit deep in loaded history refreshes in one request
 
@@ -524,28 +524,28 @@ When the timer view refreshes its list after a mutation (entry edit, delete, add
 - **WHEN** the refresh request fails
 - **THEN** the page SHALL keep showing the previously held entries rather than clearing the list
 
-### Requirement: Live duration updates scoped to the running entry
+### Requirement: Live duration updates scoped to the running time entry
 
-While a timer is running, the per-second live duration update SHALL change only the running entry's row duration, its task group's total, and its day's total. Stopped entries' groups and days SHALL NOT be recomputed or re-rendered by the tick. Displayed totals SHALL remain equal to the sum of their entries' durations, with the running entry measured up to the current second.
+While a timer is running, the per-second live duration update SHALL change only the running time entry's row duration, its task group's total, and its day's total. Stopped entries' groups and days SHALL NOT be recomputed or re-rendered by the tick. Displayed totals SHALL remain equal to the sum of their entries' durations, with the running time entry measured up to the current second.
 
 #### Scenario: Running group total ticks
 
 - **WHEN** a timer is running and one second elapses
-- **THEN** the running entry's row duration, its group total, and its day total SHALL each advance by one second
+- **THEN** the running time entry's row duration, its group total, and its day total SHALL each advance by one second
 
 #### Scenario: Other groups are unaffected by the tick
 
 - **WHEN** a timer is running and the page shows other task groups with only stopped entries
 - **THEN** those groups' displayed totals SHALL stay constant and the tick SHALL NOT re-render them
 
-#### Scenario: Totals include the running entry after it stops
+#### Scenario: Totals include the running time entry after it stops
 
-- **WHEN** the running entry is stopped
+- **WHEN** the running time entry is stopped
 - **THEN** its group and day totals SHALL show the stopped entry's final duration and SHALL stop advancing
 
 ### Requirement: Group row layout and live group
 
-Each task group SHALL be a row of the shared column list (`ui-shared-components`) with the columns expansion, entry count, title, project, remote issue, duration and continue/stop. In the narrow layout (`ui-shared-components`) its first line SHALL hold expansion, count, title, duration and continue/stop, and its second line project and remote issue. A group holding the running entry SHALL show the shell widget's animated stop control, which stops it, and no separate live-status phrase.
+Each task group SHALL be a row of the shared column list (`ui-shared-components`) with the columns expansion, entry count, title, project, remote issue, duration and continue/stop. In the narrow layout (`ui-shared-components`) its first line SHALL hold expansion, count, title, duration and continue/stop, and its second line project and remote issue. A group holding the running time entry SHALL show the shell widget's animated stop control, which stops it, and no separate live-status phrase.
 
 #### Scenario: Wide list keeps a single-row group
 
@@ -559,13 +559,13 @@ Each task group SHALL be a row of the shared column list (`ui-shared-components`
 
 #### Scenario: Live group uses the shell stop control
 
-- **WHEN** a group contains the running entry
+- **WHEN** a group contains the running time entry
 - **THEN** the group SHALL NOT show a separate live-status phrase, and the group action SHALL be the same animated stop control as the shell timer widget
 
-#### Scenario: Live group stop stops the running entry
+#### Scenario: Live group stop stops the running time entry
 
 - **WHEN** the user activates the stop control on a live group
-- **THEN** the running entry SHALL stop through the shared timer stop operation
+- **THEN** the running time entry SHALL stop through the shared timer stop operation
 
 ### Requirement: Entry rows use the group's columns
 

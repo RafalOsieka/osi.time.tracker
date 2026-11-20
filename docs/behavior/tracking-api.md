@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the HTTP contract for time entries: starting a live timer or creating a manual entry, the single-running-entry invariant, title-to-task resolution within project scope, stop/retitle/timestamp edits, reading the running entry, derived durations, the instant-range list and the timer-view feed, bulk assignment of untitled entries, deletion with task garbage collection, and day-scoped reassignment of entries to a task. All endpoints follow `core-api-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, boundary validation). The top-bar widget and the timer view page that drive these endpoints are specified in `tracking-timer-widget` and `tracking-timer-view`.
+Define the HTTP contract for time entries: starting a live timer or creating a manual entry, the single-running-entry invariant, title-to-task resolution within project scope, stop/retitle/timestamp edits, reading the running time entry, derived durations, the instant-range list and the timer-view feed, bulk assignment of untitled entries, deletion with task garbage collection, and day-scoped reassignment of entries to a task. All endpoints follow `core-api-conventions` (authentication, CSRF, the translated error contract, strict per-user isolation, boundary validation). The top-bar widget and the timer view page that drive these endpoints are specified in `tracking-timer-widget` and `tracking-timer-view`.
 
 ## Requirements
 
@@ -13,12 +13,12 @@ Define the HTTP contract for time entries: starting a live timer or creating a m
 #### Scenario: Start with a title and project
 
 - **WHEN** an authenticated user posts a start request with a non-empty title and an owned `projectId`
-- **THEN** the system SHALL create a running entry (`stoppedAt` null) bound to the resolved task and return the `TimeEntryDto`
+- **THEN** the system SHALL create a running time entry (`stoppedAt` null) bound to the resolved task and return the `TimeEntryDto`
 
 #### Scenario: Start bound to an explicit taskId
 
 - **WHEN** an authenticated user posts a start request with a `taskId` identifying one of their own tasks
-- **THEN** the system SHALL bind the running entry directly to that task (with its project and remote reference) and return the `TimeEntryDto`
+- **THEN** the system SHALL bind the running time entry directly to that task (with its project and remote reference) and return the `TimeEntryDto`
 
 #### Scenario: Start with a foreign or unknown taskId
 
@@ -28,7 +28,7 @@ Define the HTTP contract for time entries: starting a live timer or creating a m
 #### Scenario: Start untitled
 
 - **WHEN** an authenticated user posts a start request with no title and no taskId
-- **THEN** the system SHALL create a running entry with `taskId` `null` and return it
+- **THEN** the system SHALL create a running time entry with `taskId` `null` and return it
 
 #### Scenario: Invalid project value rejected
 
@@ -37,36 +37,36 @@ Define the HTTP contract for time entries: starting a live timer or creating a m
 
 ### Requirement: Create a manual time entry
 
-The same endpoint SHALL create an already-stopped entry when the request carries an explicit `startedAt`/`stoppedAt` pair of ISO 8601 instants. Sending only one of them SHALL be rejected, as SHALL `stoppedAt` before `startedAt` or a `startedAt` in the future beyond a small clock-skew tolerance, each with `{ messageKey, params }`. Task binding SHALL work as for a live start. A manual entry SHALL NOT stop the running entry.
+The same endpoint SHALL create an already-stopped entry when the request carries an explicit `startedAt`/`stoppedAt` pair of ISO 8601 instants. Sending only one of them SHALL be rejected, as SHALL `stoppedAt` before `startedAt` or a `startedAt` in the future beyond a small clock-skew tolerance, each with `{ messageKey, params }`. Task binding SHALL work as for a live start. A manual entry SHALL NOT stop the running time entry.
 
 #### Scenario: Manual entry created stopped
 
 - **WHEN** an authenticated user posts a request with a valid `startedAt`/`stoppedAt` pair and an optional title
 - **THEN** the system SHALL create a stopped entry with those timestamps, bound per the title-resolution rules, and return the `TimeEntryDto`
 
-#### Scenario: Manual creation does not stop the running timer
+#### Scenario: Manual creation does not stop the running time entry
 
-- **WHEN** a user with a running entry creates a manual entry with an explicit `startedAt`/`stoppedAt` pair
-- **THEN** the running entry SHALL remain running and the manual entry SHALL be created as stopped
+- **WHEN** a user with a running time entry creates a manual entry with an explicit `startedAt`/`stoppedAt` pair
+- **THEN** the running time entry SHALL remain running and the manual entry SHALL be created as stopped
 
 #### Scenario: Manual pair incomplete or inverted rejected
 
 - **WHEN** the request provides only one of `startedAt`/`stoppedAt`, or `stoppedAt` earlier than `startedAt`, or a `startedAt` in the future
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: At most one running entry per user
+### Requirement: At most one running time entry per user
 
-The system SHALL guarantee that an authenticated user has at most one running `TimeEntry` (`stoppedAt IS NULL`) at any time, enforced by the database. When a user starts a new timer while another entry is running, the system SHALL first stop the currently running entry (setting its `stoppedAt` to the new entry's `startedAt`) and then create the new running entry, within a single transaction (Toggl stop-on-new-start behavior).
+The system SHALL guarantee that an authenticated user has at most one running `TimeEntry` (`stoppedAt IS NULL`) at any time, enforced by the database. When a user starts a new timer while another entry is running, the system SHALL first stop the currently running time entry (setting its `stoppedAt` to the new entry's `startedAt`) and then create the new running time entry, within a single transaction (Toggl stop-on-new-start behavior).
 
 #### Scenario: Starting a new timer stops the running one
 
-- **WHEN** an authenticated user with a running entry starts a new timer
-- **THEN** the previously running entry SHALL be stopped and exactly one running entry (the new one) SHALL remain
+- **WHEN** an authenticated user with a running time entry starts a new timer
+- **THEN** the previously running time entry SHALL be stopped and exactly one running time entry (the new one) SHALL remain
 
-#### Scenario: Concurrent starts do not create two running entries
+#### Scenario: Concurrent starts do not create two running time entries
 
 - **WHEN** an authenticated user issues two start requests concurrently
-- **THEN** the database SHALL prevent two running entries and the system SHALL end with exactly one running entry
+- **THEN** the database SHALL prevent two running time entries and the system SHALL end with exactly one running time entry
 
 ### Requirement: Title binds an entry to a Task
 
@@ -102,13 +102,13 @@ An entry's title SHALL be its task's name; entries store no title. A title SHALL
 - **WHEN** an existing entry that has a task is patched with a new title and no `taskId`
 - **THEN** resolution SHALL find-or-create `(userId, name, projectId, remoteIssueId)` using the current task's remote issue and SHALL NOT apply the bare-title most-recently-used tie-break
 
-### Requirement: Stop or retitle a running entry
+### Requirement: Stop or retitle a running time entry
 
-`PATCH /api/time-entries/[id]` SHALL stop the user's entry (set or request `stoppedAt`), move its `startedAt`, or retitle it. Validation SHALL use the post-patch state: a stopped entry needs `stoppedAt` ≥ `startedAt`, and a still-running entry SHALL NOT start in the future beyond a small clock-skew tolerance. Overlap with the user's other entries SHALL be allowed. A foreign or unknown id SHALL get HTTP 404 without confirming existence. The updated `TimeEntryDto` SHALL be returned.
+`PATCH /api/time-entries/[id]` SHALL stop the user's entry (set or request `stoppedAt`), move its `startedAt`, or retitle it. Validation SHALL use the post-patch state: a stopped entry needs `stoppedAt` ≥ `startedAt`, and a still-running time entry SHALL NOT start in the future beyond a small clock-skew tolerance. Overlap with the user's other entries SHALL be allowed. A foreign or unknown id SHALL get HTTP 404 without confirming existence. The updated `TimeEntryDto` SHALL be returned.
 
-#### Scenario: Stop the running entry
+#### Scenario: Stop the running time entry
 
-- **WHEN** an authenticated user patches their running entry with a stop request
+- **WHEN** an authenticated user patches their running time entry with a stop request
 - **THEN** the system SHALL set `stoppedAt` and return the stopped `TimeEntryDto`
 
 #### Scenario: Edit the start of a stopped entry
@@ -116,14 +116,14 @@ An entry's title SHALL be its task's name; entries store no title. A title SHALL
 - **WHEN** an authenticated user patches a stopped entry's `startedAt` to an instant at or before its `stoppedAt`
 - **THEN** the system SHALL update `startedAt` and return the updated `TimeEntryDto`
 
-#### Scenario: Edit the start of the running entry
+#### Scenario: Edit the start of the running time entry
 
-- **WHEN** an authenticated user patches their running entry's `startedAt` to a past instant
+- **WHEN** an authenticated user patches their running time entry's `startedAt` to a past instant
 - **THEN** the system SHALL update `startedAt`, the entry SHALL remain running, and elapsed time SHALL derive from the new start
 
-#### Scenario: Future start on a running entry rejected
+#### Scenario: Future start on a running time entry rejected
 
-- **WHEN** a patch would set a running entry's `startedAt` to a future instant (beyond clock-skew tolerance)
+- **WHEN** a patch would set a running time entry's `startedAt` to a future instant (beyond clock-skew tolerance)
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
 #### Scenario: Start after stop rejected
@@ -216,30 +216,30 @@ When an entry that has a task is retitled without a `taskId`, the system SHALL f
 #### Scenario: Running free-form retitle preserves the remote issue
 
 - **WHEN** the user commits a free-form new title on the running top-bar widget (title-only PATCH, no `taskId`)
-- **THEN** the running entry SHALL keep its current project and remote issue on the re-resolved task
+- **THEN** the running time entry SHALL keep its current project and remote issue on the re-resolved task
 
 #### Scenario: Project-less move of a linked entry keeps the remote issue
 
 - **WHEN** an authenticated user patches a linked entry's `title` with an explicit `projectId` of `null` and no `taskId`
 - **THEN** the target SHALL be the project-less task of that name carrying the source remote issue
 
-### Requirement: Read the running entry
+### Requirement: Read the running time entry
 
-The system SHALL expose the authenticated user's current running entry via `GET /api/time-entries/running`, returning the single running `TimeEntryDto` (`stoppedAt` null) or `null` when none is running. The response SHALL be scoped strictly to the authenticated user.
+The system SHALL expose the authenticated user's current running time entry via `GET /api/time-entries/running`, returning the single running `TimeEntryDto` (`stoppedAt` null) or `null` when none is running. The response SHALL be scoped strictly to the authenticated user.
 
-#### Scenario: Running entry returned
+#### Scenario: Running time entry returned
 
-- **WHEN** an authenticated user with a running entry requests the running endpoint
+- **WHEN** an authenticated user with a running time entry requests the running endpoint
 - **THEN** the system SHALL return that entry's `TimeEntryDto`
 
-#### Scenario: No running entry
+#### Scenario: No running time entry
 
-- **WHEN** an authenticated user with no running entry requests the running endpoint
+- **WHEN** an authenticated user with no running time entry requests the running endpoint
 - **THEN** the system SHALL return `null`
 
 ### Requirement: Duration derived from timestamps
 
-The system SHALL always derive a time entry's duration from `stoppedAt − startedAt`; a running entry's elapsed time SHALL be computed against the current time. The system SHALL NOT store a separate duration column.
+The system SHALL always derive a time entry's duration from `stoppedAt − startedAt`; a running time entry's elapsed time SHALL be computed against the current time. The system SHALL NOT store a separate duration column.
 
 #### Scenario: Duration is computed, not stored
 
@@ -255,9 +255,9 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **WHEN** an authenticated user requests entries with a valid `from`/`to` window
 - **THEN** the system SHALL return only their entries with `startedAt` in `[from, to)`, ordered by `startedAt` descending, each with task/project context and without a client name field
 
-#### Scenario: Running entry included
+#### Scenario: Running time entry included
 
-- **WHEN** the user has a running entry whose `startedAt` is within the requested window
+- **WHEN** the user has a running time entry whose `startedAt` is within the requested window
 - **THEN** the response SHALL include it with `stoppedAt` `null`
 
 #### Scenario: Invalid range rejected
@@ -356,9 +356,9 @@ The target scope SHALL start from the listed entries' current task. **Omitting**
 - **WHEN** one day's entries are reassigned to remote issue `4711` and another day's entries of the same name and project to `4899`
 - **THEN** both target tasks SHALL exist and each day's group SHALL show its own remote issue
 
-### Requirement: Reassignment derives tracker provenance on the server
+### Requirement: Reassignment derives the issue's Tracker on the server
 
-When a `remoteIssueId` value is supplied, the server SHALL take the tracker from the target project's active tracker and SHALL NOT trust any client-supplied tracker identity. A project-less target, a local project, a missing or inactive tracker, or an unsupported `systemType` SHALL be rejected with `{ messageKey, params }`, moving nothing. A cached issue title from the client search MAY be stored for display, never as provenance.
+When a `remoteIssueId` value is supplied, the server SHALL take the tracker from the target project's active tracker and SHALL NOT trust any client-supplied tracker identity. A project-less target, a local project, a missing or inactive tracker, or an unsupported `systemType` SHALL be rejected with `{ messageKey, params }`, moving nothing. A cached issue title from the client search MAY be stored for display, never as the issue's Tracker.
 
 #### Scenario: Link rejected for local project
 
@@ -368,7 +368,7 @@ When a `remoteIssueId` value is supplied, the server SHALL take the tracker from
 #### Scenario: Day-scoped remote issue link
 
 - **WHEN** the user reassigns a day's entries with a `remoteIssueId` value while the same task has entries on other days
-- **THEN** only those entries SHALL move to the find-or-create task carrying that remote issue, with provenance and cached title derived server-side, and the other days' entries SHALL keep the previous remote issue
+- **THEN** only those entries SHALL move to the find-or-create task carrying that remote issue, with its Tracker and cached title derived server-side, and the other days' entries SHALL keep the previous remote issue
 
 ### Requirement: Timer view feed API
 

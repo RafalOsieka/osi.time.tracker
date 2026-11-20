@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define how a user backfills local history from a tracker: fetching the current account's remote time logs for a date range, routing each log to a local Project by remote project scope, previewing, and persisting each log as a task, a stopped time entry, and export provenance — idempotently and without writing to the tracker.
+Define how a user backfills local history from a tracker: fetching the current account's remote logs for a date range, routing each log to a local Project by remote project scope, previewing, and persisting each log as a task, a stopped time entry, and an export record — idempotently and without writing to the tracker.
 
 ## Requirements
 
@@ -44,14 +44,14 @@ A log SHALL be unmatched, with no default target, when its walk reaches the root
 - **WHEN** a fetched log carries no remote project id (for example from an older extension build)
 - **THEN** it SHALL be reported as unmatched, grouped with any other such logs, and the import SHALL surface a translated hint that default project routing is unavailable for them
 
-### Requirement: An imported log becomes a task, a stopped entry, and provenance
+### Requirement: An imported log becomes a task, a stopped entry, and an export record
 
-For each log, in one transaction per request, the system SHALL find or create a linked Task in its Project keyed by `(user, Project, task name, remote issue id)`, tracker as provenance, caching issue title (else id) and remote project title if present; create a stopped entry on the log's `spentOn` day; and record export provenance (tracker, Task, date, issue and log ids, exact duration, activity as required field when present) with its covered-entry link. Nothing SHALL be written to the tracker.
+For each log, in one transaction per request, the system SHALL find or create a linked Task in its Project keyed by `(user, Project, task name, remote issue id)` on the log's Tracker, caching issue title (else id) and remote project title if present; create a stopped entry on the log's `spentOn` day; and create an export record (tracker, Task, date, issue and log ids, exact duration, activity as required field when present) with its covered-entry link. Nothing SHALL be written to the tracker.
 
 #### Scenario: New task and entry are created
 
 - **WHEN** a routed log references an issue and comment for which no Task exists in the routed Project
-- **THEN** a linked Task, one stopped entry of the log's duration on the log's date, and one provenance record with its covered-entry association SHALL be created atomically
+- **THEN** a linked Task, one stopped entry of the log's duration on the log's date, and one export record with its covered-entry association SHALL be created atomically
 
 #### Scenario: Existing task is reused across days
 
@@ -63,15 +63,15 @@ For each log, in one transaction per request, the system SHALL find or create a 
 - **WHEN** two routed logs share a remote issue but have different comments
 - **THEN** two Tasks with the same remote issue reference and different names SHALL exist
 
-#### Scenario: Provenance mirrors the remote log
+#### Scenario: Export record mirrors the remote log
 
 - **WHEN** a log with duration 5400 seconds and activity `7` is imported
-- **THEN** the provenance SHALL record `exportDurationSeconds` 5400 and the activity `7` as its required-field value, and the entry SHALL be reported as Linked in Remote Sync and as App hours in the monthly report
+- **THEN** the export record SHALL record `exportDurationSeconds` 5400 and the activity `7` as its required-field value, and the entry SHALL be reported as Matched in Remote Sync and as Exported hours in the monthly report
 
 #### Scenario: Request fails mid-way
 
 - **WHEN** persisting any log in a request fails
-- **THEN** no task, entry, or provenance from that request SHALL remain
+- **THEN** no task, entry, or export record from that request SHALL remain
 
 ### Requirement: Task name is the remote log comment
 
@@ -89,7 +89,7 @@ The task name for an imported log SHALL be the log's comment, trimmed. When the 
 
 ### Requirement: Imported entries are placed after the day's last entry without overlap
 
-For each `(user, local date)`, with day bounds `[dayStart, dayEnd)` in the user's timezone, the system SHALL place that day's logs back to back in ascending numeric remote-log-id order, from a cursor at the later of `dayStart + 08:00` and the latest `stoppedAt` among the user's stopped entries starting that day (running entries ignored). Each entry starts at the cursor and lasts the log's duration, and the cursor advances.
+For each `(user, local date)`, with day bounds `[dayStart, dayEnd)` in the user's timezone, the system SHALL place that day's logs back to back in ascending numeric remote-log-id order, from a cursor at the later of `dayStart + 08:00` and the latest `stoppedAt` among the user's stopped entries starting that day (running time entries ignored). Each entry starts at the cursor and lasts the log's duration, and the cursor advances.
 
 #### Scenario: Empty day starts at 08:00
 
@@ -127,12 +127,12 @@ When placing a day's logs from the cursor would start the last one (by remote lo
 
 ### Requirement: Import is idempotent by tracker-scoped remote-log identity
 
-Before persisting, the system SHALL skip every submitted log whose `(user, tracker, remote log id)` already has export provenance (`remote-entry-reconciliation`), and SHALL report skipped counts separately from imported counts. Re-running an import over the same range SHALL create nothing new for previously imported or exported logs. A log previously unmatched SHALL be imported on a later run once a Project scope covers it. A scope change after import SHALL NOT move or re-import existing entries.
+Before persisting, the system SHALL skip every submitted log whose `(user, tracker, remote log id)` already has an export record (`remote-log-reconciliation`), and SHALL report skipped counts separately from imported counts. Re-running an import over the same range SHALL create nothing new for previously imported or exported logs. A log previously unmatched SHALL be imported on a later run once a Project scope covers it. A scope change after import SHALL NOT move or re-import existing entries.
 
 #### Scenario: Re-run skips everything
 
 - **WHEN** the user re-imports a range that was fully imported before
-- **THEN** the result SHALL report zero imported and all logs skipped, and no task, entry or provenance SHALL be created
+- **THEN** the result SHALL report zero imported and all logs skipped, and no task, entry or export record SHALL be created
 
 #### Scenario: App-exported logs are skipped
 
@@ -175,11 +175,11 @@ Before persisting, the system SHALL skip every submitted log whose `(user, track
 
 ### Requirement: Dry run and write responses
 
-With `dryRun: true` the endpoint SHALL validate and check existing identities, returning per-Project `wouldImport` and `skippedExisting` counts without persisting. With `dryRun: false` it SHALL persist as "An imported log becomes a task, a stopped entry, and provenance", "Imported entries are placed after the day's last entry without overlap" and "Import is idempotent by tracker-scoped remote-log identity" describe, and return per-Project `imported` and `skippedExisting` counts plus totals.
+With `dryRun: true` the endpoint SHALL validate and check existing identities, returning per-Project `wouldImport` and `skippedExisting` counts without persisting. With `dryRun: false` it SHALL persist as "An imported log becomes a task, a stopped entry, and an export record", "Imported entries are placed after the day's last entry without overlap" and "Import is idempotent by tracker-scoped remote-log identity" describe, and return per-Project `imported` and `skippedExisting` counts plus totals.
 
 #### Scenario: Dry run reports counts only
 
-- **WHEN** a valid request with `dryRun: true` includes two new logs and one already-linked log
+- **WHEN** a valid request with `dryRun: true` includes two new logs and one already-matched log
 - **THEN** the response SHALL report `wouldImport` 2 and `skippedExisting` 1 and no row SHALL be written
 
 #### Scenario: Write run persists and counts
@@ -194,12 +194,12 @@ Each tracker's "Import history" action SHALL open a dialog moving through range,
 #### Scenario: Unscoped project flagged before scanning
 
 - **WHEN** the range phase opens for a tracker with a bound Project that has no scope, and another Project that has one
-- **THEN** the project list SHALL show the unscoped Project with a warning that it is not linked, plus one line of help under the list, without any remote request
+- **THEN** the project list SHALL show the unscoped Project with a warning that it has no Remote project scope, plus one line of help under the list, without any remote request
 
-#### Scenario: No project is linked
+#### Scenario: No project has a scope
 
 - **WHEN** the range phase opens and none of the tracker's Projects has a remote project
-- **THEN** the rows SHALL mark each Project as not linked without a per-row warning, and one warning SHALL say that no Project is linked, with an action that opens the Projects page to set the links
+- **THEN** the rows SHALL mark each Project as unscoped without a per-row warning, and one warning SHALL say that no Project has a Remote project scope, with an action that opens the Projects page to set the scopes
 
 #### Scenario: Scanning is presented as read-only
 
@@ -242,7 +242,7 @@ Scanning SHALL walk the range month by month, fetching logs and computing each l
 
 ### Requirement: Preview, importing and done phases
 
-Each entry to preview SHALL run the dry run on the current mapping; the preview lists each assigned Project with counts to import and already linked, plus totals, leaving out unassigned ones. All assigned logs SHALL be sent; the skip yields the linked count. Importing SHALL go month by month, with progress, no cancel, each month atomic. Done SHALL show totals, unassigned counts, and that times are synthetic but durations exact. Preview's back keeps the scan; mapping's back drops it.
+Each entry to preview SHALL run the dry run on the current mapping; the preview lists each assigned Project with counts to import and already matched, plus totals, leaving out unassigned ones. All assigned logs SHALL be sent; the skip yields the matched count. Importing SHALL go month by month, with progress, no cancel, each month atomic. Done SHALL show totals, unassigned counts, and that times are synthetic but durations exact. Preview's back keeps the scan; mapping's back drops it.
 
 #### Scenario: Unmatched projects are visible
 

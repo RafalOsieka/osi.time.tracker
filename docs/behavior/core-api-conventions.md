@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the single, shared boundary contract every OSI server API route honors —
+Define the single, shared boundary contract every server API route honors —
 authentication, CSRF protection, the translated error contract, strict per-user
 isolation, and boundary validation with ISO serialization — so domain capabilities can
 reference these conventions instead of restating them per capability.

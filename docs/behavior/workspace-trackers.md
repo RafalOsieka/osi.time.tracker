@@ -2,13 +2,13 @@
 
 ## Purpose
 
-How users manage trackers — named connections to an OpenProject or Redmine instance — through list, create, edit and soft-delete: the API secret kept only in the browser, the direct-browser capability that decides whether the extension is needed, and the rounding rule used for export.
+How users manage trackers — named connections to an OpenProject or Redmine instance — through list, create, edit and soft-delete: the API key kept only in the browser, the direct-browser capability that decides whether the extension is needed, and the rounding rule used for export.
 
 ## Requirements
 
 ### Requirement: List own trackers
 
-The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `directBrowserAccess`, `roundingRule`, timestamps) and SHALL never include an API secret or required-field defaults.
+The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `directBrowserAccess`, `roundingRule`, timestamps) and SHALL never include an API key or required-field defaults.
 
 #### Scenario: User sees only their own trackers
 
@@ -164,12 +164,12 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 
 ### Requirement: Client-side credentials are never persisted server-side
 
-The API secret SHALL be entered and kept only in the user's browser, keyed by tracker id and available after reload, and SHALL never be stored on or sent to the OSI server. With direct browser access it SHALL go only to the tracker's origin; when the extension is required it SHALL pass transiently through the approved extension to the approved destination, which SHALL NOT persist it.
+The API key SHALL be entered and kept only in the user's browser, keyed by tracker id and available after reload, and SHALL never be stored on or sent to the server. With direct browser access it SHALL go only to the tracker's origin; when the extension is required it SHALL pass transiently through the approved extension to the approved Tracker URL, which SHALL NOT persist it.
 
 #### Scenario: Browser retains the secret across sessions
 
-- **WHEN** a user enters an API secret for a tracker
-- **THEN** it SHALL remain browser-held and SHALL NOT be persisted on the OSI server
+- **WHEN** a user enters an API key for a tracker
+- **THEN** it SHALL remain browser-held and SHALL NOT be persisted on the server
 
 #### Scenario: Changing direct browser access keeps the secret in the browser
 
@@ -193,7 +193,7 @@ The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboa
 #### Scenario: Form fields in order
 
 - **WHEN** the create or edit form opens
-- **THEN** its fields SHALL follow the order name, system type, base URL, API secret, direct-browser checkbox, rounding rule, in reading and tab order
+- **THEN** its fields SHALL follow the order name, system type, base URL, API key, direct-browser checkbox, rounding rule, in reading and tab order
 
 ### Requirement: Client-side validation of the tracker form
 
@@ -285,18 +285,18 @@ Each row of the Trackers page SHALL show the tracker's name, system type, base U
 - **WHEN** the user views a tracker with `directBrowserAccess: false`
 - **THEN** its row SHALL show a translated label saying that it connects through the extension
 
-### Requirement: The API secret field explains and reveals the secret
+### Requirement: The API key field explains and reveals the secret
 
-The tracker form's API secret field SHALL carry visible help text, not a placeholder, saying that the secret stays in this browser and never reaches the OSI server. A toggle button in the field SHALL show the secret as plain text and mask it again, with a translated accessible name and its state exposed through `aria-pressed`. The field SHALL be masked each time the form opens.
+The tracker form's API key field SHALL carry visible help text, not a placeholder, saying that the secret stays in this browser and never reaches the server. A toggle button in the field SHALL show the secret as plain text and mask it again, with a translated accessible name and its state exposed through `aria-pressed`. The field SHALL be masked each time the form opens.
 
 #### Scenario: The form states where the secret is kept
 
-- **WHEN** the tracker form shows the API secret field, empty or filled
-- **THEN** visible help text SHALL say that the secret stays in this browser and never reaches the OSI server
+- **WHEN** the tracker form shows the API key field, empty or filled
+- **THEN** visible help text SHALL say that the secret stays in this browser and never reaches the server
 
 #### Scenario: The secret can be shown to check it
 
-- **WHEN** the user activates the toggle button in the API secret field and later activates it again
+- **WHEN** the user activates the toggle button in the API key field and later activates it again
 - **THEN** the secret SHALL show as plain text after the first activation and be masked after the second, with `aria-pressed` following that state
 
 #### Scenario: Masked on every open

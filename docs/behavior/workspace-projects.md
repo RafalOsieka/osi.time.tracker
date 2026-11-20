@@ -335,7 +335,7 @@ When the catalog cannot be loaded, the remote project select SHALL degrade witho
 
 ### Requirement: Recent tracked time per project
 
-Each project from `GET /api/projects` SHALL include `recentTrackedSeconds`: the summed duration of the user's time entries belonging to it through their task and started within the 30 days before the request, a running entry counting up to now. Untitled entries, other projects and other users SHALL NOT count; no qualifying entries means `0`. It SHALL NOT change the list's order (by name) or filtering, and SHALL NOT need a query per project.
+Each project from `GET /api/projects` SHALL include `recentTrackedSeconds`: the summed duration of the user's time entries belonging to it through their task and started within the 30 days before the request, a running time entry counting up to now. Untitled entries, other projects and other users SHALL NOT count; no qualifying entries means `0`. It SHALL NOT change the list's order (by name) or filtering, and SHALL NOT need a query per project.
 
 #### Scenario: Recent time is summed per project
 
@@ -347,9 +347,9 @@ Each project from `GET /api/projects` SHALL include `recentTrackedSeconds`: the 
 - **WHEN** the user's only entry in "Nordwind" started 31 days ago
 - **THEN** "Nordwind" SHALL report `recentTrackedSeconds` of `0`
 
-#### Scenario: Running entry counts up to now
+#### Scenario: Running time entry counts up to now
 
-- **WHEN** the user's running entry in "Helios" started 10 minutes ago
+- **WHEN** the user's running time entry in "Helios" started 10 minutes ago
 - **THEN** "Helios" SHALL report at least `600` seconds for that entry
 
 #### Scenario: Other users' time is ignored

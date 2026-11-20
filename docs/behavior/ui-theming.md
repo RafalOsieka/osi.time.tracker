@@ -153,18 +153,18 @@ The favicon SHALL be the app icon — a rounded square with a white glyph on a s
 - **WHEN** the user is in dark mode
 - **THEN** the favicon SHALL remain the rounded-square app icon with a white glyph on the brand fill (the in-chrome glyph still follows `primary`)
 
-### Requirement: Favicon reflects idle vs running timer
+### Requirement: Favicon reflects whether a time entry is running
 
-The favicon SHALL follow the shared running-timer state (`tracking-timer-widget`, `ui-shell`). Without a running entry, including logged-out visits, it SHALL be the default app icon. With one, it SHALL be a **static** variant whose tile fill changes from brand cyan to a status green while the glyph, its geometry and its white color stay identical, with no badge, dot, ring, animation or play control, and at least the idle fill's contrast. The in-app mark SHALL NOT signal running state.
+The favicon SHALL follow the shared running-timer state (`tracking-timer-widget`, `ui-shell`). Without a running time entry, including logged-out visits, it SHALL be the default app icon. With one, it SHALL be a **static** variant whose tile fill changes from brand cyan to a status green while the glyph, its geometry and its white color stay identical, with no badge, dot, ring, animation or play control, and at least the idle fill's contrast. The in-app mark SHALL NOT signal running state.
 
 #### Scenario: Idle and logged-out use the default favicon
 
-- **WHEN** there is no running entry (logged-out visitor, or authenticated user with an idle timer)
+- **WHEN** there is no running time entry (logged-out visitor, or authenticated user with an idle timer)
 - **THEN** the document favicon SHALL be the default brand app icon on the cyan fill
 
-#### Scenario: Running entry turns the tile green
+#### Scenario: Running time entry turns the tile green
 
-- **WHEN** the authenticated user has a running entry
+- **WHEN** the authenticated user has a running time entry
 - **THEN** the document favicon SHALL be the same brand app icon with a green tile fill and an unchanged white glyph
 
 #### Scenario: Running variant adds no elements
@@ -184,16 +184,16 @@ The favicon SHALL follow the shared running-timer state (`tracking-timer-widget`
 
 ### Requirement: Running favicon timing
 
-The running favicon SHALL apply as soon as running state is known, including first paint of an authenticated page whose SSR seed already holds a running entry. Stopping or clearing the running entry SHALL restore the default favicon in that tab. Other open tabs need not update until they next resolve running state.
+The running favicon SHALL apply as soon as running state is known, including first paint of an authenticated page whose SSR seed already holds a running time entry. Stopping or clearing the running time entry SHALL restore the default favicon in that tab. Other open tabs need not update until they next resolve running state.
 
 #### Scenario: Stop restores the default favicon
 
-- **WHEN** the user stops the running timer in that tab
+- **WHEN** the user stops the running time entry in that tab
 - **THEN** the document favicon SHALL return to the default brand app icon
 
-#### Scenario: Reloading a running timer shows the running favicon on first paint
+#### Scenario: Reloading with a running time entry shows the running favicon on first paint
 
-- **WHEN** an authenticated user with a running entry performs a full document load
+- **WHEN** an authenticated user with a running time entry performs a full document load
 - **THEN** the initial document favicon SHALL be the running (green-tile) variant rather than flashing the idle icon until a client-only fetch
 
 ### Requirement: Accessible theme control in the account menu

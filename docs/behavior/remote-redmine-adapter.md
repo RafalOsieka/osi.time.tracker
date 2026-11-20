@@ -37,7 +37,7 @@ For an active Redmine tracker the adapter SHALL implement every contract operati
 
 ### Requirement: Redmine remote project catalog
 
-The Redmine adapter SHALL implement the catalog operation (`remote-adapter-contract`) by listing projects through the projects endpoint with offset/limit pagination, following pages until the reported total is reached or the same fixed maximum page count used for time logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and its parent id when present.
+The Redmine adapter SHALL implement the catalog operation (`remote-adapter-contract`) by listing projects through the projects endpoint with offset/limit pagination, following pages until the reported total is reached or the same fixed maximum page count used for remote logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and its parent id when present.
 
 #### Scenario: Projects are listed across pages
 
@@ -73,9 +73,9 @@ When a scope is supplied, the Redmine adapter SHALL scope the issues query to th
 - **WHEN** Redmine answers the scoped issues query with 404 or 403 for the project
 - **THEN** the adapter SHALL raise the shared translated search error
 
-### Requirement: Redmine date-range time-log fetch
+### Requirement: Redmine date-range remote-log fetch
 
-The Redmine adapter SHALL implement the contract's date-range time-log operation (`remote-adapter-contract`) by querying Redmine time entries for the current account with `from`/`to` (or equivalent) covering the inclusive date range, without an issue-id filter, following offset/limit pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
+The Redmine adapter SHALL implement the contract's date-range remote-log operation (`remote-adapter-contract`) by querying Redmine time entries for the current account with `from`/`to` (or equivalent) covering the inclusive date range, without an issue-id filter, following offset/limit pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
 
 #### Scenario: Month range is a single filtered query loop
 
@@ -84,7 +84,7 @@ The Redmine adapter SHALL implement the contract's date-range time-log operation
 
 #### Scenario: Logs on unlinked issues are included
 
-- **WHEN** the current account has a time log in range on an issue that is not linked in OSI
+- **WHEN** the current account has a remote log in range on an issue that is not linked in OSI
 - **THEN** that log SHALL be present in the adapter-neutral result
 
 #### Scenario: Upstream failure is classified
@@ -92,7 +92,7 @@ The Redmine adapter SHALL implement the contract's date-range time-log operation
 - **WHEN** Redmine rejects or fails the range fetch
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with the shared time-logs-fetch translation key and SHALL NOT return a silent empty list
 
-### Requirement: Redmine time logs map the project from the payload
+### Requirement: Redmine remote logs map the project from the payload
 
 For each time entry (`remote-adapter-contract`) the adapter SHALL take the project id from `project.id` and its title from `project.name`, each omitted when missing. Time entries carry no issue subject, so the issue title SHALL come from the issues endpoint filtered by the distinct issue ids with every status included (`remote-adapter-contract`), using `subject`; an id it does not return yields `null`. This applies to same-day and range fetches. Time entries without an issue are dropped and SHALL NOT trigger a lookup.
 
@@ -153,7 +153,7 @@ Redmine time entries SHALL be created with decimal `hours` derived from the alre
 - **WHEN** the adapter fetches same-day Redmine time entries
 - **THEN** each entry's decimal hours SHALL be converted to whole seconds such that re-exporting an unchanged value produces the same `hours`
 
-### Requirement: Same-day time-log fetch with bounded pagination
+### Requirement: Same-day remote-log fetch with bounded pagination
 
 The Redmine adapter SHALL fetch the current account's time entries for a given day, filtered to the linked issue IDs and the resolved remote user, following Redmine's offset/limit pagination. The page loop SHALL be bounded by a fixed maximum page count so an inconsistent upstream total cannot cause unbounded requests.
 

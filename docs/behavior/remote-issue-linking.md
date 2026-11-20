@@ -13,7 +13,7 @@ A task SHALL hold at most one remote issue reference, stored on the task row (`w
 #### Scenario: Link an issue
 
 - **WHEN** an authenticated user selects an issue for the Task of a given day's entries
-- **THEN** the system SHALL find or create the Task carrying that configuration provenance and remote issue ID with the same name and project, move that day's entries to it, and return the resulting reference
+- **THEN** the system SHALL find or create the Task carrying that Tracker and remote issue ID with the same name and project, move that day's entries to it, and return the resulting reference
 
 #### Scenario: Link persists the remote project title
 
@@ -76,7 +76,7 @@ Link and unlink follow `core-api-conventions` and run through the reassignment e
 #### Scenario: Link an eligible owned Task
 
 - **WHEN** an authenticated user submits a valid issue selection for a day's entries of their own Task under a Project with an active supported tracker (OpenProject or Redmine)
-- **THEN** the system SHALL link it using the server-derived tracker provenance
+- **THEN** the system SHALL link it using the Tracker derived on the server
 
 #### Scenario: Ineligible Task is rejected
 

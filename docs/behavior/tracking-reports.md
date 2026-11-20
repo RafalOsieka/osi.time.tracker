@@ -51,7 +51,7 @@ The application SHALL expose a private `/reports/monthly` page for one calendar 
 
 ### Requirement: Monthly table columns, days, and totals
 
-The monthly timesheet SHALL be a table with a Local column (OSI hours) and, for **every active** tracker the user owns, a group of App, Direct and Total columns, shown with `0:00` even when empty; soft-deleted trackers SHALL NOT appear. It SHALL list only days of the month with Local, App or Direct hours above zero, plus a totals row summing the visible days per column. Day rows SHALL NOT link to the Timer View or Remote Sync.
+The monthly timesheet SHALL be a table with a Local column (OSI hours) and, for **every active** tracker the user owns, a group of Exported, Direct and Total columns, shown with `0:00` even when empty; soft-deleted trackers SHALL NOT appear. It SHALL list only days of the month with Local, Exported or Direct hours above zero, plus a totals row summing the visible days per column. Day rows SHALL NOT link to the Timer View or Remote Sync.
 
 #### Scenario: Active tracker with no hours still has columns
 
@@ -75,11 +75,11 @@ The monthly timesheet SHALL be a table with a Local column (OSI hours) and, for 
 
 ### Requirement: Combined remote-hours summary
 
-The timesheet SHALL show a month-level Remote summary, the sum of all fetched remote log durations across active trackers without an App/Direct split, in `H:MM`, beside a Local summary. A failed fetch SHALL NOT count as `0:00`: if every tracker fails, the summary SHALL show the failure state; if some succeed, it SHALL show their sum marked incomplete by color plus tooltip, not color alone.
+The timesheet SHALL show a month-level Remote summary, the sum of all fetched remote log durations across active trackers without an Exported/Direct split, in `H:MM`, beside a Local summary. A failed fetch SHALL NOT count as `0:00`: if every tracker fails, the summary SHALL show the failure state; if some succeed, it SHALL show their sum marked incomplete by color plus tooltip, not color alone.
 
 #### Scenario: Remote summary is all tracker hours combined
 
-- **WHEN** two trackers have 1:00 App and 2:00 Direct in the month
+- **WHEN** two trackers have 1:00 Exported and 2:00 Direct in the month
 - **THEN** the Remote summary SHALL display `3:00`
 
 #### Scenario: Failed fetches are not silent zeros
@@ -87,9 +87,9 @@ The timesheet SHALL show a month-level Remote summary, the sum of all fetched re
 - **WHEN** one tracker range fetch fails and another returns 2:00
 - **THEN** the Remote summary SHALL display `2:00` with an incomplete-total cue and SHALL NOT display `0:00` as if the failed tracker had no hours
 
-### Requirement: Server aggregation of local hours and export provenance
+### Requirement: Server aggregation of local hours and export records
 
-`GET /api/reports/monthly?month=YYYY-MM` SHALL return, for the user: the resolved month; the timezone used for days; per-day Local totals (`stoppedAt − startedAt`) of stopped entries, each counted wholly on the local day of its `startedAt` as in the Timer View, running entries excluded; the active trackers (id, name); and the month's finalized exports (at least `localDate`, `remoteLogId`, `exportDurationSeconds`). It follows `core-api-conventions`.
+`GET /api/reports/monthly?month=YYYY-MM` SHALL return, for the user: the resolved month; the timezone used for days; per-day Local totals (`stoppedAt − startedAt`) of stopped entries, each counted wholly on the local day of its `startedAt` as in the Timer View, running time entries excluded; the active trackers (id, name); and the month's finalized exports (at least `localDate`, `remoteLogId`, `exportDurationSeconds`). It follows `core-api-conventions`.
 
 #### Scenario: Stopped entries bucket by startedAt local day
 
@@ -98,7 +98,7 @@ The timesheet SHALL show a month-level Remote summary, the sum of all fetched re
 
 #### Scenario: Running timer is excluded
 
-- **WHEN** the user has a running timer during the selected month
+- **WHEN** the user has a running time entry during the selected month
 - **THEN** that entry SHALL NOT contribute to any Local day total
 
 #### Scenario: Foreign user data is excluded
@@ -111,24 +111,24 @@ The timesheet SHALL show a month-level Remote summary, the sum of all fetched re
 - **WHEN** `GET /api/reports/monthly` is called without `month`
 - **THEN** the server SHALL use the current month in the user's timezone and return that month in the payload
 
-### Requirement: Live remote hours split into App and Direct
+### Requirement: Live remote hours split into Exported and Direct
 
-After the monthly data loads, the client SHALL fetch date-range logs once per active tracker. App hours SHALL be fetched logs whose tracker-scoped identity matches finalized provenance; Direct hours, those without. Linking an entry SHALL move it from Direct to App on refresh; deleting provenance after a confirmed remote deletion SHALL drop the log from the totals and the App set. A failed fetch SHALL show as unavailable, never as zero.
+After the monthly data loads, the client SHALL fetch date-range logs once per active tracker. Exported hours SHALL be fetched logs whose tracker-scoped identity matches a finalized export record; Direct hours, those without. Matching a remote log SHALL move it from Direct to Exported on refresh; deleting the export record after a confirmed remote deletion SHALL drop the log from the totals and the Exported set. A failed fetch SHALL show as unavailable, never as zero.
 
-#### Scenario: Export id matches App
+#### Scenario: Export id counts as Exported
 
-- **WHEN** a fetched log's tracker and remote log ID match finalized provenance
-- **THEN** its duration SHALL count as App and not Direct
+- **WHEN** a fetched log's tracker and remote log ID match a finalized export record
+- **THEN** its duration SHALL count as Exported and not Direct
 
 #### Scenario: Unrecognized remote log is Direct
 
-- **WHEN** a fetched log has no matching tracker-scoped provenance
+- **WHEN** a fetched log has no matching tracker-scoped export record
 - **THEN** its duration SHALL count as Direct
 
-#### Scenario: Linked entry is reclassified
+#### Scenario: Matched remote log is reclassified
 
-- **WHEN** an Unlinked remote entry is linked and the report refreshes
-- **THEN** that entry SHALL move from Direct to App without changing the remote total
+- **WHEN** an Unmatched remote log is matched and the report refreshes
+- **THEN** that entry SHALL move from Direct to Exported without changing the remote total
 
 #### Scenario: One range fetch per tracker
 
@@ -137,7 +137,7 @@ After the monthly data loads, the client SHALL fetch date-range logs once per ac
 
 #### Scenario: Remote-only day appears
 
-- **WHEN** a tracker has App or Direct hours on a day with no local hours
+- **WHEN** a tracker has Exported or Direct hours on a day with no local hours
 - **THEN** that day SHALL appear in the report
 
 #### Scenario: Fetch failure is not zero
@@ -147,7 +147,7 @@ After the monthly data loads, the client SHALL fetch date-range logs once per ac
 
 ### Requirement: Attention indicators
 
-After successful fetches the table SHALL flag the duration itself, not via a status column or icon, when: a tracker has Direct hours > 0 (that Direct duration); Local > 0 while every fetched tracker has App + Direct = 0, or there are no trackers (the Local duration); Local = 0 while a tracker has App but no Direct hours (that App duration). A failed fetch SHALL mark that tracker's cells unknown, not unexported. A Local vs App difference caused only by export rounding SHALL NOT flag a cell.
+After successful fetches the table SHALL flag the duration itself, not via a status column or icon, when: a tracker has Direct hours > 0 (that Direct duration); Local > 0 while every fetched tracker has Exported + Direct = 0, or there are no trackers (the Local duration); Local = 0 while a tracker has Exported but no Direct hours (that Exported duration). A failed fetch SHALL mark that tracker's cells unknown, not unexported. A Local vs Exported difference caused only by export rounding SHALL NOT flag a cell.
 
 #### Scenario: Direct hours flag that duration
 
@@ -156,7 +156,7 @@ After successful fetches the table SHALL flag the duration itself, not via a sta
 
 #### Scenario: Unexported local flags the Local duration
 
-- **WHEN** Local is 8:00, every tracker range fetch succeeded, and every tracker App and Direct are 0:00
+- **WHEN** Local is 8:00, every tracker range fetch succeeded, and every tracker Exported and Direct are 0:00
 - **THEN** the Local duration SHALL be semibold warning text with a tooltip stating local hours did not land on any tracker
 
 #### Scenario: Fetch failure is not treated as unexported
@@ -166,7 +166,7 @@ After successful fetches the table SHALL flag the duration itself, not via a sta
 
 #### Scenario: Rounding-only difference is info
 
-- **WHEN** Local is 7:50 and App is 8:00 with Direct 0:00 and no fetch failures
+- **WHEN** Local is 7:50 and Exported is 8:00 with Direct 0:00 and no fetch failures
 - **THEN** the day SHALL NOT be marked as needing attention; a tooltip MAY mention the two durations as information
 
 ### Requirement: Flagged and zero duration styling

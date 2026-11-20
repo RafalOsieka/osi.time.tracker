@@ -177,7 +177,7 @@ Starting the timer from a free-form title SHALL send `title` with the chip's `pr
 #### Scenario: Start in a picked project
 
 - **WHEN** the chip shows "Helios", the text is `fix login`, and the user starts the timer
-- **THEN** the request SHALL carry `title: "fix login"` and Helios's `projectId`, and the running entry SHALL be in "Helios"
+- **THEN** the request SHALL carry `title: "fix login"` and Helios's `projectId`, and the running time entry SHALL be in "Helios"
 
 #### Scenario: Start without a chip
 
@@ -194,23 +194,23 @@ Starting the timer from a free-form title SHALL send `title` with the chip's `pr
 - **WHEN** in the add-entry dialog the chip shows "Helios", the title is `review`, and the user saves
 - **THEN** the created entry SHALL carry title `review` in "Helios"
 
-### Requirement: The chip follows the running entry
+### Requirement: The chip follows the running time entry
 
-While a timer runs, the chip SHALL show the running entry's project and follow it on every refresh. Picking or removing a project SHALL immediately PATCH the entry with the current title and the explicit `projectId` (or `null`) — a discrete selection, not a per-keystroke edit — and a retitle on blur or Enter SHALL send the chip's `projectId` explicitly. For an untitled running entry the chip SHALL stay local, sending nothing until a non-empty title is committed.
+While a timer runs, the chip SHALL show the running time entry's project and follow it on every refresh. Picking or removing a project SHALL immediately PATCH the entry with the current title and the explicit `projectId` (or `null`) — a discrete selection, not a per-keystroke edit — and a retitle on blur or Enter SHALL send the chip's `projectId` explicitly. For an untitled running time entry the chip SHALL stay local, sending nothing until a non-empty title is committed.
 
-#### Scenario: Re-project the running entry
+#### Scenario: Re-project the running time entry
 
 - **WHEN** a timer is running in "Helios" and the user mentions and picks "Nordwind"
 - **THEN** the widget SHALL immediately send a PATCH with the current title and Nordwind's `projectId`, and the chip SHALL show "Nordwind"
 
-#### Scenario: Remove the project of the running entry
+#### Scenario: Remove the project of the running time entry
 
 - **WHEN** a timer is running in "Helios" and the user removes the chip
 - **THEN** the widget SHALL send a PATCH with the current title and `projectId: null`
 
-#### Scenario: Running entry shows its project
+#### Scenario: Running time entry shows its project
 
-- **WHEN** a running entry belongs to "Helios", including after a reload
+- **WHEN** a running time entry belongs to "Helios", including after a reload
 - **THEN** the chip SHALL show "Helios"
 
 ### Requirement: Accessible, localized mentions

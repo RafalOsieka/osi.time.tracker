@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Gives the user a per-client monthly timesheet PDF built only from the time logs recorded on the client's trackers, ready to hand to the client.
+Gives the user a per-client monthly timesheet PDF built only from the remote logs recorded on the client's trackers, ready to hand to the client.
 
 ## Requirements
 
@@ -117,9 +117,9 @@ The inline preset form SHALL hold a multiline contractor details field directly 
 - **WHEN** the preset form is shown
 - **THEN** the contractor details label SHALL carry a translated "optional" hint, unlike the required client name
 
-### Requirement: Export assembles the report only from remote time logs
+### Requirement: Export assembles the report only from remote logs
 
-Export SHALL save the form (`workspace-report-presets`), then fetch each preset tracker's own-account logs for the month with the browser secret, directly or via the extension. The report SHALL use only those logs, tracker name, type and URL, the preset, and the user's name and email — never OSI entries, tasks or provenance. While exporting, the action SHALL show a busy state and SHALL NOT start a second export.
+Export SHALL save the form (`workspace-report-presets`), then fetch each preset tracker's own-account logs for the month with the browser secret, directly or via the extension. The report SHALL use only those logs, tracker name, type and URL, the preset, and the user's name and email — never OSI entries, tasks or export records. While exporting, the action SHALL show a busy state and SHALL NOT start a second export.
 
 #### Scenario: Two trackers are combined
 
