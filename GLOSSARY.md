@@ -173,7 +173,7 @@ _Polish avoid_: Faktura
 A saved setup for a Client report: the client's name, its Trackers, the hours format, the PDF language and the Contractor details.
 _Polish_: Szablon raportu
 _Avoid_: Template, profile
-_Polish avoid_: Preset, profil
+_Polish avoid_: Preset
 
 **Contractor details**:
 The user's own details (such as company name and tax ID) printed on a Client report's title page.

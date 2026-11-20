@@ -245,7 +245,7 @@ describe('buildClientReportPdf table pages', () => {
     });
     const text = contentText(doc);
 
-    expect(text).toContain('Zadanie niedostępne');
+    expect(text).toContain('Zgłoszenie niedostępne');
     expect(links(doc)).toContain('https://op.example/work_packages/1');
     expect(text).not.toContain('[null]');
     expect(text).toContain('"[Development] "');

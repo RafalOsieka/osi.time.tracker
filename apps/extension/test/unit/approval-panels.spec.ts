@@ -84,8 +84,8 @@ it('names the one rule a website address breaks and disables controls while busy
     missingOrigins: [],
     rowRestore: false,
   });
-  expect(html).toContain('Zatwierdź witrynę');
-  expect(html).toContain('Podaj sam adres witryny, bez ścieżki');
+  expect(html).toContain('Zatwierdź Time Tracker App');
+  expect(html).toContain('Podaj sam adres Time Tracker App, bez ścieżki');
   const input = /<input[^>]*data-testid="website-origin"[^>]*>/.exec(html)?.[0];
   expect(input).toContain('aria-invalid="true"');
   expect(input).toMatch(/aria-describedby="[^"]*-error[\s"]/);
@@ -119,7 +119,7 @@ it('offers no tracker form, only what to do first, while no website is approved'
     website: '',
   });
   expect(html).not.toContain('data-testid="add-destination"');
-  expect(html).toContain('Approve an OSI website first.');
+  expect(html).toContain('Approve a Time Tracker App first.');
 });
 
 it('approves trackers for the only website without asking which one', async () => {

@@ -44,7 +44,7 @@ it('reports failed preference persistence without breaking translation', async (
   const { useExtensionI18n } = await import('../../src/composables/use-extension-i18n.js');
   const page = useExtensionI18n();
   page.setLocale('pl');
-  expect(page.t.value('approvals.addWebsite')).toBe('Zatwierdź witrynę');
+  expect(page.t.value('approvals.addWebsite')).toBe('Zatwierdź Time Tracker App');
   expect(page.localeErrorKey.value).toBe('app.languageStorageFailed');
 });
 
@@ -61,7 +61,7 @@ it('shares the chosen locale between components and retains it when reopened', a
   const header = useExtensionI18n();
   const form = useExtensionI18n();
   header.setLocale('pl');
-  expect(form.t.value('approvals.addWebsite')).toBe('Zatwierdź witrynę');
+  expect(form.t.value('approvals.addWebsite')).toBe('Zatwierdź Time Tracker App');
   vi.resetModules();
   const reopened = await import('../../src/composables/use-extension-i18n.js');
   expect(reopened.useExtensionI18n().locale.value).toBe('pl');
