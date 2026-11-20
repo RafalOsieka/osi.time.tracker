@@ -13,13 +13,7 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 
 ### Domain
 
-| Term            | Meaning                                                                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Tracker**     | A connection to a remote OpenProject/Redmine instance: type, base URL, direct-browser flag, rounding. Its API secret lives only in the browser. |
-| **Project**     | A body of work; either bound to one Tracker (optionally scoped to a remote project) or local.                                                   |
-| **Task**        | Derived, never managed directly: an entry's title _is_ its task. Tasks are auto-created, matched, renamed, merged and deleted from entry titles. |
-| **Time entry**  | The object the user creates (timer or manual). A running timer is an entry without a stop time.                                               |
-| **Remote sync** | The per-day page where tasks are linked to remote issues and selected time is exported. Export provenance never locks local entries.           |
+[`GLOSSARY.md`](./GLOSSARY.md) defines the domain language (Tracker, Project, Task, Time entry, Remote log, Export, Remote Sync and the rest) with its Polish UI words. Name concepts with its terms in code, docs, tests and UI copy.
 
 ### Hard constraints
 
