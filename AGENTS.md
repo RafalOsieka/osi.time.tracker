@@ -27,7 +27,7 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 - **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers.
 - **Users are isolated.** Every query is scoped to the authenticated user.
 - **Deployment details stay private.** This repository and its workflow logs are public. Never write the production address, access credentials or specifics of the hosting infrastructure into files, issues, PRs, commits or logs; use placeholders and masked secrets (`deploy/osieka-dev/README.md`).
-- **Behavior is specified in `openspec/specs`.** Read the relevant spec before changing a feature, and keep spec and code aligned. Specs hold observable behavior only; tooling, build, CI and test-harness details live in `docs/` (`development.md`, `e2e-guideline.md`, `coding-standards.md`), and retired REQ codes in `docs/retired-requirements.md`.
+- **Behavior is described in `docs/behavior`**, one file per capability. Read the files a change touches and update them with the code, following [`docs/behavior/guideline.md`](./docs/behavior/guideline.md). Retired REQ codes are in `docs/retired-requirements.md`.
 
 ## Commands
 
@@ -117,9 +117,10 @@ apps/screenshots/             Screenshot set for design reviews (see docs/develo
 packages/remote-trackers/     Provider adapters behind a neutral contract
 packages/extension-protocol/  Message protocol shared by web app and extension
 tools/oxlint/anti-slop/       Vendored Oxlint plugin (frozen, see below)
-openspec/                     Specs (behavioral source of truth) and change proposals
+openspec/                     OpenSpec config and archived change proposals
 deploy/osieka-dev/            Compose template and runbook of the one private instance
 docs/                         Connecting trackers, development, coding standards, e2e guideline
+docs/behavior/                Observable behavior, one file per capability
 ```
 
 ## Anti-slop plugin is frozen

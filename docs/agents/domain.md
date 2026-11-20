@@ -6,10 +6,11 @@ How the engineering skills should consume this repo's domain documentation when 
 
 - **`GLOSSARY.md`** at the repo root.
 - **`docs/adr/`**: read ADRs that touch the area you're about to work in.
+- **`docs/behavior/`**: read the capability files of that area. They describe current observable behavior; [`guideline.md`](../behavior/guideline.md) says how they are written.
 
 If any of these files don't exist, **proceed silently**. Don't flag their absence; don't suggest creating them upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates them lazily when terms or decisions actually get resolved.
 
-Until `GLOSSARY.md` exists, the Domain table in `AGENTS.md` is the vocabulary. Observable behavior is specified in `openspec/specs`, not in ADRs.
+Until `GLOSSARY.md` exists, the Domain table in `AGENTS.md` is the vocabulary. Observable behavior is described in `docs/behavior`, not in ADRs.
 
 ## File structure
 

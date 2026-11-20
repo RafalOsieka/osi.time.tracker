@@ -1,6 +1,6 @@
 # Roadmap
 
-What is planned for OSI Time Tracker. Items are grouped by area, not ordered by date; anything not listed here is not planned. Behavior that already exists is described in [`openspec/specs`](./openspec/specs/).
+What is planned for OSI Time Tracker. Items are grouped by area, not ordered by date; anything not listed here is not planned. Behavior that already exists is described in [`docs/behavior`](./docs/behavior/).
 
 ## Next
 

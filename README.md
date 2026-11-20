@@ -56,7 +56,8 @@ packages/remote-trackers/     OpenProject and Redmine adapters behind a neutral 
 packages/extension-protocol/  Messages shared by the web app and the extension
 deploy/osieka-dev/            Compose template and runbook of one private instance
 docs/                         Tracker connection, development and contributor guides
-openspec/                     Behavior specifications and change proposals
+docs/behavior/                How every feature behaves, one file per capability
+openspec/                     OpenSpec config and archived change proposals
 ```
 
 ## Documentation
@@ -68,5 +69,5 @@ openspec/                     Behavior specifications and change proposals
 | [Coding standards](./docs/coding-standards.md)       | Code style and conventions                         |
 | [E2E guideline](./docs/e2e-guideline.md)             | End-to-end test suites and troubleshooting         |
 | [Roadmap](./ROADMAP.md)                              | What is planned next                               |
-| [`openspec/specs`](./openspec/specs/)                | How every feature behaves, as specifications       |
+| [Behavior](./docs/behavior/)                         | How every feature behaves, one file per capability |
 | [`AGENTS.md`](./AGENTS.md)                           | Instructions for AI coding agents                  |

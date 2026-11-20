@@ -144,6 +144,7 @@ Rules:
 
 - One logical change per commit, with a short, clear summary line.
 - Update tests and i18n catalogs in the same change as the code they support.
+- A change to observable behavior updates its capability file in `docs/behavior/` in the same commit, as [`behavior/guideline.md`](./behavior/guideline.md) describes.
 - Run linting, format checks, and the relevant test projects before opening a pull request.
 - Keep pull requests focused and reasonably small; be constructive in review.
 
