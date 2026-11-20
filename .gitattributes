@@ -7,4 +7,3 @@
 # their diffs are hidden (collapsed) by default in PRs and they are excluded
 # from language statistics. Reviewers can still expand the diff on demand.
 .junie/** linguist-generated=true
-openspec/** linguist-generated=true

@@ -23,7 +23,7 @@ Unverified pull requests MUST be un-mergeable. A change SHALL reach `main` only 
 #### Scenario: Required checks match the CI jobs
 
 - **WHEN** the required checks are compared with the quality gates
-- **THEN** lint, format check, spec validation, type check, the standalone package checks, unit tests, the browser-extension checks, component tests, the coverage run, the production build, and the database, API and UI end-to-end suites as separate checks SHALL each be required
+- **THEN** lint, format check, type check, the standalone package checks, unit tests, the browser-extension checks, component tests, the coverage run, the production build, and the database, API and UI end-to-end suites as separate checks SHALL each be required
 
 #### Scenario: Coverage figures never block a merge
 

@@ -118,7 +118,7 @@ const editingToSendTaskId = ref<string | null>(null);
 const exportDialogOpen = ref(false);
 const reconciling = ref(false);
 
-/** Narrow layout (D5): expand, state, text, durations, actions. */
+/** Narrow layout: expand, state, text, durations, actions. */
 const narrowColumns = '1.5rem 1.5rem minmax(0,1fr) 6rem 1.75rem';
 const columns = computed(
   () =>

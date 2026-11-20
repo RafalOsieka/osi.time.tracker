@@ -43,7 +43,7 @@ export interface ClientReportExportResult {
 }
 
 /**
- * Exports the client report PDF: saves the preset first (design D7),
+ * Exports the client report PDF: saves the preset first,
  * fetches every preset tracker's logs for the month in parallel, and builds and
  * downloads the PDF only when every fetch succeeded and something was logged.
  * `exporting` guards against a second concurrent export.

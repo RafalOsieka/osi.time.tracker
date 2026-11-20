@@ -19,7 +19,7 @@ const SETUP_PAGE = 'src/options/index.html';
 /**
  * Opens the setup page in a new tab with a pre-filled website, a highlighted suggestion, a step's
  * form or a restore control in focus. Used by the popup, which must not request host permissions
- * itself (design D1): the user confirms on the setup page, and that click runs the prompt.
+ * itself: the user confirms on the setup page, and that click runs the prompt.
  */
 export async function openSetupPage(focus: SetupFocus): Promise<void> {
   const query = new URLSearchParams(focus);

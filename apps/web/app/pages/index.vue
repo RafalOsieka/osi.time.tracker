@@ -15,7 +15,7 @@ const columns = computed(
       { key: 'action', track: '2rem' },
     ] as const satisfies readonly ColumnDefinition[],
 );
-/** Narrow layout (D5): toggle, count, text, issue, duration, action. */
+/** Narrow layout: toggle, count, text, issue, duration, action. */
 const narrowColumns = '1.5rem 1.25rem minmax(0,1fr) 4.5rem 5rem 2rem';
 usePageTitle(() => t('timerView.pageTitle'));
 const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();

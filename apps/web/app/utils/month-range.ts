@@ -13,8 +13,8 @@ export interface DateRange {
 
 /**
  * Splits an inclusive `[from, to]` local-date range into calendar-month
- * chunks, so the import dialog can scan and import one month at a time
- * (design.md Decision 5). The first and last chunk may be partial months.
+ * chunks, so the import dialog can scan and import one month at a time.
+ * The first and last chunk may be partial months.
  */
 export function splitIntoMonthChunks(from: string, to: string): DateRange[] {
   const start = Temporal.PlainDate.from(from);

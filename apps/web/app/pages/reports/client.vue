@@ -103,7 +103,7 @@ const formReady = ref(false);
 
 /**
  * The form edits contractor details as a string (empty for none) for `UTextarea`;
- * parsing with the shared schema on export turns blank back into `null` (design D4).
+ * parsing with the shared schema on export turns blank back into `null`.
  */
 type PresetFormState = Omit<ReportPresetInput, 'contractorDetails'> & {
   contractorDetails: string;

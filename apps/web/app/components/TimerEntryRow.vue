@@ -140,7 +140,7 @@ async function commitTimes() {
     // single-value TimeFieldRoot, which is a properly controlled component).
     // So a stopped entry's row keeps showing the rejected value until it
     // remounts, even though `timesModel` (and the entry's stored instants)
-    // are correct. See design.md — Risks / Trade-offs.
+    // are correct.
     timesModel.value = deriveTimesFromEntry();
   }
 }

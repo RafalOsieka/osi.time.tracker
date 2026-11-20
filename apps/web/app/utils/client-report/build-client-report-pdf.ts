@@ -15,11 +15,11 @@ import appMark from '../../assets/icons/app-mark.svg?raw';
 /** Translates a catalog key in the report's locale, independent of the UI locale. */
 export type ClientReportTranslate = (key: string, params?: MessageParams) => string;
 
-/** Font families registered by `loadPdfMake` (IBM Plex Sans, design D4). */
+/** Font families registered by `loadPdfMake` (IBM Plex Sans). */
 export const PDF_FONT = 'PlexSans';
 export const PDF_FONT_SEMIBOLD = 'PlexSansSemiBold';
 
-/** A day with more rows than this cannot fit one page, so it is laid out breakable (design D3). */
+/** A day with more rows than this cannot fit one page, so it is laid out breakable. */
 export const MAX_UNBREAKABLE_DAY_ROWS = 14;
 
 // Palette and sizes follow mockups/*.html (CSS px × 0.75 = pt).
@@ -331,7 +331,7 @@ function dayRows(
 }
 
 /**
- * Outer table rows of one day (design D3): a day that fits a page is one
+ * Outer table rows of one day: a day that fits a page is one
  * row holding a nested table, which `dontBreakRows` keeps on one page; a
  * longer day is spread into plain rows so the table may break inside it.
  */
@@ -431,7 +431,7 @@ function timesheet(report: ClientReport, t: ClientReportTranslate, f: ClientRepo
 }
 
 /**
- * Lays out the client report as a pdfmake document (design D2): a title page,
+ * Lays out the client report as a pdfmake document: a title page,
  * then the timesheet table with running header and footer on every
  * table page. All strings come from `t` in the report locale.
  */

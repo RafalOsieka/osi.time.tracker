@@ -29,7 +29,7 @@ const { t, locale, setLocale, localeErrorKey } = useExtensionI18n();
 const service = new ApprovalService(createChromeApprovalStore(), createChromeHostPermissions());
 const toast = useToast();
 const suggestionService = new SuggestionService(createChromeSuggestionStore(), service);
-/** What the popup handed over: a website, a suggestion, a step's form or a restore (design D1). */
+/** What the popup handed over: a website, a suggestion, a step's form or a restore. */
 const focus = readSetupFocus(location.search);
 /** Removals and dismissals are routine, so their notification is neutral rather than green. */
 const QUIET_OUTCOMES = new Set([

@@ -79,7 +79,7 @@ function sumUnits(items: { units: number }[]): number {
 }
 
 /**
- * Builds the client report model from fetched remote logs (design D2):
+ * Builds the client report model from fetched remote logs:
  * days with logs in ascending order, rows ordered by tracker (preset order),
  * remote issue id, then remote log id.
  */

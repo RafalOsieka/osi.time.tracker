@@ -117,7 +117,6 @@ apps/screenshots/             Screenshot set for design reviews (see docs/develo
 packages/remote-trackers/     Provider adapters behind a neutral contract
 packages/extension-protocol/  Message protocol shared by web app and extension
 tools/oxlint/anti-slop/       Vendored Oxlint plugin (frozen, see below)
-openspec/                     OpenSpec config and archived change proposals
 deploy/osieka-dev/            Compose template and runbook of the one private instance
 docs/                         Connecting trackers, development, coding standards, e2e guideline
 docs/behavior/                Observable behavior, one file per capability
@@ -156,3 +155,7 @@ The five default triage labels: `needs-triage`, `needs-info`, `ready-for-agent`,
 ### Domain docs
 
 Single-context: one `GLOSSARY.md` and `docs/adr/` at the repository root, created lazily. See `docs/agents/domain.md`.
+
+### Roadmap
+
+`ROADMAP.md` lists what is planned but not yet picked up. When a spec or a wayfinder map postpones a topic, add it there; remove it once the topic is picked up or ships.

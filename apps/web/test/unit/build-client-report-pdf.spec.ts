@@ -42,7 +42,7 @@ const catalogs = { en: new Map(flatten(en)), pl: new Map(flatten(pl)) };
 
 /**
  * Catalog lookup with vue-i18n named interpolation, bound to one locale like
- * the page's translator (design D5); every PDF string uses only `{name}` params.
+ * the page's translator; every PDF string uses only `{name}` params.
  */
 function translator(locale: ReportLocale): ClientReportTranslate {
   return (key, params = {}) => {

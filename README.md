@@ -57,7 +57,6 @@ packages/extension-protocol/  Messages shared by the web app and the extension
 deploy/osieka-dev/            Compose template and runbook of one private instance
 docs/                         Tracker connection, development and contributor guides
 docs/behavior/                How every feature behaves, one file per capability
-openspec/                     OpenSpec config and archived change proposals
 ```
 
 ## Documentation

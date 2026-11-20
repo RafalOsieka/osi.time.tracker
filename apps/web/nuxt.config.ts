@@ -117,7 +117,7 @@ export default defineNuxtConfig({
         // URL (never proxied through the OSI server), so the exact origin
         // is not known at build time and cannot be enumerated per-request
         // with a static nuxt-security directive. As a pragmatic MVP
-        // trade-off (see design.md risk "CSP blocks configured origins"),
+        // trade-off,
         // connect-src is broadened to any HTTP(S) origin rather than
         // implementing per-session dynamic CSP; 'data:'/other schemes stay
         // blocked, and all other directives remain at their strict default.
