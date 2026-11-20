@@ -6,6 +6,7 @@
 
 - Before changing a feature, read the capability files it touches.
 - A change to observable behavior updates its capability file in the same commit as the code. Behavior that is removed is deleted from the file; git history keeps it.
+- Exception: a pull request with a `## Council review` section leaves the capability files alone and lists each behavior change under `## Spec changes not applied here` instead; a follow-up change applies them.
 
 ## What belongs here
 
