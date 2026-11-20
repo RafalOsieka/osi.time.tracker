@@ -165,7 +165,7 @@ describe('buildClientReportPdf title page', () => {
     expect(two.match(/ h"/g)).toHaveLength(3);
   });
 
-  // REQ-368: the PDF mark is derived from the canonical glyph, never a pasted copy that drifts.
+  // The PDF mark is derived from the canonical glyph, never a pasted copy that drifts.
   it('draws the title-page logo from the canonical app mark', () => {
     const logo = contentText(pdf({ op: [log()] })).match(/"svg":"((?:[^"\\]|\\.)*)"/)?.[1];
     expect(logo).toBeDefined();

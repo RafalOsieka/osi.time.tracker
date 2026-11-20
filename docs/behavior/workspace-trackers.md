@@ -1,4 +1,4 @@
-# workspace-trackers Specification
+# workspace-trackers
 
 ## Purpose
 
@@ -6,7 +6,7 @@ How users manage trackers — named connections to an OpenProject or Redmine ins
 
 ## Requirements
 
-### Requirement: REQ-244 List own trackers
+### Requirement: List own trackers
 
 The system SHALL show the authenticated user only their own non-deleted trackers, ordered by name, via `GET /api/trackers`. The list SHALL exclude any tracker whose `deletedAt` is set and any tracker belonging to another user. Each tracker DTO SHALL include non-secret connection fields (`id`, `name`, `systemType`, `baseUrl`, `directBrowserAccess`, `roundingRule`, timestamps) and SHALL never include an API secret or required-field defaults.
 
@@ -35,7 +35,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** a user lists or reads a tracker
 - **THEN** the response DTO SHALL contain no `requiredFieldDefaults` field
 
-### Requirement: REQ-492 Create a tracker
+### Requirement: Create a tracker
 
 `POST /api/trackers` SHALL create a tracker from a `name`, `systemType` (`redmine` or `openproject`), `baseUrl`, `roundingRule` and a boolean `directBrowserAccess` defaulting to `true`. The form SHALL show it as a **Direct browser connection allowed** checkbox with visible help (some installations block other websites; unchecking needs the OSI extension; the technical term is CORS). Saving `false` SHALL NOT require an installed extension. No secret SHALL ever be stored.
 
@@ -104,7 +104,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** the tracker form shows the direct-browser checkbox
 - **THEN** the localized explanation SHALL be visible as help text under it, not only in a tooltip, and the checkbox SHALL reference it through `aria-describedby`
 
-### Requirement: REQ-246 Edit a tracker
+### Requirement: Edit a tracker
 
 `PATCH /api/trackers/[id]` SHALL update the user's own tracker, validating provided fields as on creation. Changing any field, including `systemType`, `baseUrl` or `directBrowserAccess`, SHALL keep the tracker's identity and its tasks' remote issue references, with no remote validation, cleanup or migration; a capability change affects only future remote requests. The updated tracker SHALL be returned and its row SHALL reflect the change.
 
@@ -128,7 +128,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** a user changes `directBrowserAccess`
 - **THEN** projects, tasks, remote issue references, time entries, completed export records, and archived or deprecated records SHALL remain unchanged
 
-### Requirement: REQ-247 Soft-delete a tracker
+### Requirement: Soft-delete a tracker
 
 `DELETE /api/trackers/[id]` SHALL soft-delete the user's tracker (set `deletedAt`, never hard-delete) after a confirmation, even when projects still reference it. Those projects SHALL keep their `trackerId`, and linking and export SHALL treat the tracker as inactive. Task remote issue references SHALL stay as history with their cached ids and titles, and a later tracker SHALL NOT take them over. The client SHALL clear the browser-held secret for that tracker.
 
@@ -162,7 +162,7 @@ The system SHALL show the authenticated user only their own non-deleted trackers
 - **WHEN** the user creates a new active tracker after the prior tracker was removed
 - **THEN** the system SHALL NOT automatically rebind old Task references to the new tracker
 
-### Requirement: REQ-495 Client-side credentials are never persisted server-side
+### Requirement: Client-side credentials are never persisted server-side
 
 The API secret SHALL be entered and kept only in the user's browser, keyed by tracker id and available after reload, and SHALL never be stored on or sent to the OSI server. With direct browser access it SHALL go only to the tracker's origin; when the extension is required it SHALL pass transiently through the approved extension to the approved destination, which SHALL NOT persist it.
 
@@ -176,7 +176,7 @@ The API secret SHALL be entered and kept only in the user's browser, keyed by tr
 - **WHEN** a user changes `directBrowserAccess`
 - **THEN** the existing browser-held secret SHALL remain the credential source and SHALL NOT migrate to extension or server storage
 
-### Requirement: REQ-251 Accessible, tokenized Trackers UI
+### Requirement: Accessible, tokenized Trackers UI
 
 The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboard-operable create/edit and confirm dialogs, and invalid fields exposing `aria-invalid` with an associated error. Colors SHALL come from theme tokens, never inline colors, and all strings SHALL exist in `en` and `pl` in parity. One create/edit form SHALL hold the name, every connection field and the browser-only secret input.
 
@@ -195,7 +195,7 @@ The Trackers page SHALL meet WCAG 2.1 AA: labelled fields, accessible and keyboa
 - **WHEN** the create or edit form opens
 - **THEN** its fields SHALL follow the order name, system type, base URL, API secret, direct-browser checkbox, rounding rule, in reading and tab order
 
-### Requirement: REQ-252 Client-side validation of the tracker form
+### Requirement: Client-side validation of the tracker form
 
 The tracker create/edit form SHALL validate input client-side with the same schema the server uses before any request is sent. A validation failure SHALL show the translated `messageKey` inline under the field and SHALL prevent the request. The server SHALL stay authoritative; its field errors (e.g. `error.trackerNameDuplicate`) SHALL still render inline under the field.
 
@@ -209,7 +209,7 @@ The tracker create/edit form SHALL validate input client-side with the same sche
 - **WHEN** the submitted name passes client-side validation but the server rejects it as a duplicate
 - **THEN** the `error.trackerNameDuplicate` message SHALL render inline under the name field
 
-### Requirement: REQ-256 Nearest-increment rounding rules on trackers
+### Requirement: Nearest-increment rounding rules on trackers
 
 A tracker's `roundingRule` SHALL be one of `none`, `up_15m`, `up_30m`, `up_1h`, `nearest_15m`, `nearest_30m`, `nearest_1h`. `nearest_*` SHALL round a summed duration to the closest multiple of its increment, **up** at exactly half; `up_*` SHALL round up to the next multiple; `none` SHALL pass the total through. Rounding SHALL be a pure transformation applied once at export, never altering stored entries. The form SHALL offer every rule with an `en`/`pl` label.
 
@@ -233,7 +233,7 @@ A tracker's `roundingRule` SHALL be one of `none`, `up_15m`, `up_30m`, `up_1h`, 
 - **WHEN** the tracker form shows the rounding rule select
 - **THEN** visible help text SHALL say that the rule applies only to export and does not change local time entries
 
-### Requirement: REQ-257 Rounding never reduces a non-zero duration to zero
+### Requirement: Rounding never reduces a non-zero duration to zero
 
 For any increment-based rounding rule, a total greater than `0` SHALL never round to `0`; when the rounded result would be `0`, the system SHALL return exactly one increment instead. A total of exactly `0` SHALL still round to `0` so that a task with no selected entries remains excluded from export.
 
@@ -252,9 +252,9 @@ For any increment-based rounding rule, a total greater than `0` SHALL never roun
 - **WHEN** a total of 4 minutes is rounded under `none`
 - **THEN** the result SHALL be 4 minutes
 
-### Requirement: REQ-345 Trackers page exposes the import-history action
+### Requirement: Trackers page exposes the import-history action
 
-Each tracker row SHALL offer an "Import history" action beside edit and delete — a labelled, keyboard-operable control with a tooltip — opening the import dialog (REQ-340) for that tracker, for every supported `systemType`, with or without direct browser access. Without a stored browser secret it SHALL be disabled, its accessible name and tooltip a translated hint to enter the secret in the tracker form first. Strings SHALL have `en`/`pl` parity.
+Each tracker row SHALL offer an "Import history" action beside edit and delete — a labelled, keyboard-operable control with a tooltip — opening the import dialog (`remote-log-import`) for that tracker, for every supported `systemType`, with or without direct browser access. Without a stored browser secret it SHALL be disabled, its accessible name and tooltip a translated hint to enter the secret in the tracker form first. Strings SHALL have `en`/`pl` parity.
 
 #### Scenario: Action opens the dialog
 
@@ -271,7 +271,7 @@ Each tracker row SHALL offer an "Import history" action beside edit and delete �
 - **WHEN** a tracker row renders edit, import, and delete
 - **THEN** the three controls SHALL be sibling buttons, none nested inside another interactive element
 
-### Requirement: REQ-525 Trackers page rows show how each tracker connects
+### Requirement: Trackers page rows show how each tracker connects
 
 Each row of the Trackers page SHALL show the tracker's name, system type, base URL and connection mode: a tracker with `directBrowserAccess: true` connects directly from the browser, one with `false` connects through the extension. The mode SHALL be stated in text, not by color or icon alone.
 
@@ -285,9 +285,9 @@ Each row of the Trackers page SHALL show the tracker's name, system type, base U
 - **WHEN** the user views a tracker with `directBrowserAccess: false`
 - **THEN** its row SHALL show a translated label saying that it connects through the extension
 
-### Requirement: REQ-526 The API secret field explains and reveals the secret
+### Requirement: The API secret field explains and reveals the secret
 
-The tracker form's API secret field SHALL carry visible help text, not a placeholder, saying that the secret stays in this browser and never reaches the OSI server (REQ-495). A toggle button in the field SHALL show the secret as plain text and mask it again, with a translated accessible name and its state exposed through `aria-pressed`. The field SHALL be masked each time the form opens.
+The tracker form's API secret field SHALL carry visible help text, not a placeholder, saying that the secret stays in this browser and never reaches the OSI server. A toggle button in the field SHALL show the secret as plain text and mask it again, with a translated accessible name and its state exposed through `aria-pressed`. The field SHALL be masked each time the form opens.
 
 #### Scenario: The form states where the secret is kept
 

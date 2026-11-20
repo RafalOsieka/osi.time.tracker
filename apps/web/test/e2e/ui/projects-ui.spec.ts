@@ -88,7 +88,7 @@ describeProjectsUI('projects UI flow', async () => {
       .locator('[data-testid="project-name-input"] input, [data-testid="project-name-input"]')
       .first()
       .fill('UI Project Renamed');
-    // Detach: the Tracker select offers an explicit local choice (REQ-086).
+    // Detach: the Tracker select offers an explicit local choice.
     await page.click('[data-testid="project-tracker-select"]');
     await page.getByRole('option', { name: /local project|projekt lokalny/i }).click();
     await page.click('[data-testid="save-button"]');

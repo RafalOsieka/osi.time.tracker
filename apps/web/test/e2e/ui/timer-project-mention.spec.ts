@@ -90,7 +90,7 @@ describeProjectMention('top-bar @project mention journey', async () => {
     await page.close();
   });
 
-  it('removes the chip by touch, without a hover (REQ-374)', async () => {
+  it('removes the chip by touch, without a hover', async () => {
     const { jar, token } = await apiLogin(user.email, user.password);
     await createProject(jar, token, 'Touchstone');
 

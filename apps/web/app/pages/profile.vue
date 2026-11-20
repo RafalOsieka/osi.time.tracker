@@ -21,7 +21,7 @@ const timezone = ref(storedTimezone.value);
 
 /**
  * Each option is its IANA id with today's UTC offset, e.g. "Europe/Warsaw (UTC+01:00)", so the
- * list says what a zone means without a lookup; filtering still matches the id (REQ-494).
+ * list says what a zone means without a lookup; filtering still matches the id.
  */
 const now = new Date().toISOString();
 const timezones = TIME_ZONES.map((zone) => ({ value: zone, label: timeZoneLabel(zone, now) }));
@@ -56,7 +56,7 @@ async function persist(update: UpdateProfileDto, revert: () => void) {
   }
 }
 
-/** Blur/Enter commit (REQ-445): blank or unchanged values revert without a request. */
+/** Blur/Enter commit: blank or unchanged values revert without a request. */
 function commitDisplayName() {
   const next = displayNameDraft.value.trim();
   if (!next || next === storedDisplayName.value) {

@@ -1,4 +1,4 @@
-# ui-shell Specification
+# ui-shell
 
 ## Purpose
 
@@ -6,9 +6,9 @@ Define the authenticated application shell: a top bar and a left sidebar around 
 
 ## Requirements
 
-### Requirement: REQ-064 Authenticated shell regions and slots
+### Requirement: Authenticated shell regions and slots
 
-The `default` layout SHALL render an authenticated shell of a **top bar** and a **full-height left sidebar** around the page content, with regions for the brand, primary navigation, a sidebar footer **account control**, a running-timer region in the top bar, and the page. The shell SHALL NOT render a top-bar utility menu; Log out SHALL be reachable on every authenticated route from the account control. The account menu contents, and the absence of a locale control, are in REQ-405.
+The `default` layout SHALL render an authenticated shell of a **top bar** and a **full-height left sidebar** around the page content, with regions for the brand, primary navigation, a sidebar footer **account control**, a running-timer region in the top bar, and the page. The shell SHALL NOT render a top-bar utility menu; Log out SHALL be reachable on every authenticated route from the account control. The account menu contents, and the absence of a locale control, are in "Account menu".
 
 #### Scenario: Shell renders on an authenticated route
 
@@ -25,7 +25,7 @@ The `default` layout SHALL render an authenticated shell of a **top bar** and a 
 - **WHEN** the authenticated shell is rendered
 - **THEN** it SHALL NOT offer a locale control anywhere in the sidebar or top bar, and SHALL offer theme selection only inside the sidebar footer account menu (there is no top-bar utility menu)
 
-### Requirement: REQ-066 Desktop collapsible rail with persisted state
+### Requirement: Desktop collapsible rail with persisted state
 
 At or above the `lg` breakpoint the sidebar SHALL be a full-height rail that the user toggles between labelled and icon-only states with a control in the top bar's left region. The state SHALL persist in a cookie and be restored on first paint without a flash. Expanded, the brand region SHALL show the brand mark beside the full title (`layout.title`). Collapsed, it SHALL show only the brand mark, centered, never the title or a letter substitute, with the full title as its accessible name.
 
@@ -54,7 +54,7 @@ At or above the `lg` breakpoint the sidebar SHALL be a full-height rail that the
 - **WHEN** the desktop sidebar is collapsed to icon-only
 - **THEN** the brand mark SHALL expose the full application title as its accessible name
 
-### Requirement: REQ-067 Off-canvas drawer below the lg breakpoint
+### Requirement: Off-canvas drawer below the lg breakpoint
 
 Below the `lg` breakpoint the sidebar SHALL be hidden and open as an off-canvas drawer from a menu toggle in the top bar, with a scrim, focus trapped while open, and dismissal via `Escape` or the scrim. The timer region SHALL stay in the top bar. The menu toggle SHALL appear only below `lg`, and the desktop rail control only at `lg` and above.
 
@@ -73,7 +73,7 @@ Below the `lg` breakpoint the sidebar SHALL be hidden and open as an off-canvas 
 - **WHEN** the mobile drawer is open
 - **THEN** the sidebar footer SHALL show the expanded account control presentation (identity row as the menu trigger), not the desktop collapsed avatar-only trigger
 
-### Requirement: REQ-068 Top bar hosts the timer region and sidebar toggles
+### Requirement: Top bar hosts the timer region and sidebar toggles
 
 The top bar SHALL host a single timer region at every viewport width, never a separate row beneath it. The timer region SHALL fill the width left after the left control cluster, left-aligned rather than in a centered capped-width column. The left region SHALL hold the mobile sidebar open control below `lg` and the desktop rail control at `lg` and above. The right region SHALL NOT host a utility menu or logout control.
 
@@ -94,7 +94,7 @@ The top bar SHALL host a single timer region at every viewport width, never a se
 - **WHEN** the shell is rendered at `lg` or above
 - **THEN** the top bar left SHALL expose the desktop rail collapse control and SHALL NOT expose the mobile sidebar open control
 
-### Requirement: REQ-071 Accessible shell navigation
+### Requirement: Accessible shell navigation
 
 The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The sidebar SHALL be a named `<nav>` landmark whose items render as plain icon-plus-label links addressable by their `href`. The current route's link SHALL expose `aria-current="page"`; on `/reports/monthly` that is the Monthly child, not the Reports group. The menu toggle SHALL expose `aria-expanded`. On the icon-only rail each item SHALL show its label as a tooltip, and Reports SHALL expose its children in a popover.
 
@@ -138,7 +138,7 @@ The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The 
 - **WHEN** the user is on `/sync/{date}`, which has no sidebar link of its own
 - **THEN** the Timer item SHALL show the selected style, and no sidebar link SHALL expose `aria-current="page"`
 
-### Requirement: REQ-258 Running entry resolved during authenticated shell SSR
+### Requirement: Running entry resolved during authenticated shell SSR
 
 During SSR of any authenticated route, the `default` layout SHALL fetch the user's running entry (`GET /api/time-entries/running`) with the request's session cookie and seed the shared running-timer state before first paint, seeding idle (`null`) when there is none, so the widget never accepts start actions against an unresolved state. Client navigations MAY reuse that state and SHALL NOT need a reload to stay correct after start/stop.
 
@@ -157,7 +157,7 @@ During SSR of any authenticated route, the `default` layout SHALL fetch the user
 - **WHEN** the shell resolves the running entry during SSR
 - **THEN** the request SHALL carry the browser session cookie material available on the incoming HTTP request so the endpoint authorizes the same user as a browser navigation
 
-### Requirement: REQ-301 Document title is page plus brand
+### Requirement: Document title is page plus brand
 
 Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` is the translated `layout.title` and `{page}` the translated label of the destination (the heading or sidebar wording when one exists). The title SHALL be present on the first SSR paint, never the request hostname, and SHALL update on client navigation and locale change without a reload. It SHALL NOT include running-timer time or task names.
 
@@ -196,9 +196,9 @@ Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` 
 - **WHEN** the app renders a not-found or other page without a dedicated heading key
 - **THEN** the document title SHALL still include `layout.title` and SHALL NOT fall back to the request hostname
 
-### Requirement: REQ-404 Sidebar navigation skeleton with placeholder routes
+### Requirement: Sidebar navigation skeleton with placeholder routes
 
-The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, REQ-289) and Client report (`/reports/client`, REQ-384) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks, Dashboard or `/reports` entry (Profile is in REQ-405). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
+The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, `tracking-reports`) and Client report (`/reports/client`, `tracking-client-report`) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks, Dashboard or `/reports` entry (Profile is in "Account menu"). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
 
 #### Scenario: All skeleton destinations are listed
 
@@ -250,9 +250,9 @@ The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Repor
 - **WHEN** the user activates a destination that has no real feature page yet
 - **THEN** the application SHALL navigate to a placeholder page for that destination without a routing error
 
-### Requirement: REQ-405 Account menu
+### Requirement: Account menu
 
-The sidebar footer SHALL present one account control on every authenticated route, identified by the user's `displayName` (REQ-397) with the email as a secondary line; a name saved on `/profile` SHALL appear without a reload. Its menu SHALL contain, in order: **Profile** (to `/profile`), the **Theme** submenu (REQ-402), then **Log out** in a separate group, which clears the session and goes to `/login`. No locale control SHALL appear in the footer or top bar. Labels SHALL have `en`/`pl` parity.
+The sidebar footer SHALL present one account control on every authenticated route, identified by the user's `displayName` (`workspace-settings`) with the email as a secondary line; a name saved on `/profile` SHALL appear without a reload. Its menu SHALL contain, in order: **Profile** (to `/profile`), the **Theme** submenu (`ui-theming`), then **Log out** in a separate group, which clears the session and goes to `/login`. No locale control SHALL appear in the footer or top bar. Labels SHALL have `en`/`pl` parity.
 
 #### Scenario: Logout is in the account menu
 
@@ -279,7 +279,7 @@ The sidebar footer SHALL present one account control on every authenticated rout
 - **WHEN** the active theme preference is `system` and the account menu is opened
 - **THEN** the Theme item SHALL show the translated name of that choice beside its label without opening the submenu
 
-### Requirement: REQ-428 Account control trigger per sidebar state
+### Requirement: Account control trigger per sidebar state
 
 On the expanded desktop rail and in the mobile drawer, the account control trigger SHALL be an identity button: an avatar with the display name's initial, the display name, and the email as a secondary line. On the icon-only desktop rail it SHALL be an avatar (the initial) whose accessible name is the display name and which opens the same account menu; no separate logout row SHALL be shown outside the menu.
 

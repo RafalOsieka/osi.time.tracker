@@ -3,7 +3,7 @@ import type { ReportHoursFormat, ReportLocale } from '~~/shared/types/report-pre
 const INTL_LOCALES = { en: 'en-US', pl: 'pl-PL' } as const satisfies Record<ReportLocale, string>;
 const DECIMAL_SEPARATORS = { en: '.', pl: ',' } as const satisfies Record<ReportLocale, string>;
 
-/** Locale-bound formatters for every value the client report PDF prints (REQ-387, REQ-390). */
+/** Locale-bound formatters for every value the client report PDF prints. */
 export interface ClientReportFormatters {
   /** Display units from `toDisplayUnits` → `7:50` (`hm`) or `3,50` / `3.50` (`decimal`). */
   hours(units: number): string;
@@ -74,7 +74,7 @@ export function createClientReportFormatters(
   };
 }
 
-/** Client name lowercased with runs of non-alphanumeric characters replaced by `-` (REQ-390). */
+/** Client name lowercased with runs of non-alphanumeric characters replaced by `-`. */
 export function clientSlug(clientName: string): string {
   return clientName
     .toLowerCase()

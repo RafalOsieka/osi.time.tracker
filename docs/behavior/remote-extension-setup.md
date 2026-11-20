@@ -1,4 +1,4 @@
-# remote-extension-setup Specification
+# remote-extension-setup
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Defines the extension-owned setup experience: how a user goes from a fresh insta
 
 ## Requirements
 
-### Requirement: REQ-411 Setup guidance is an onboarding checklist
+### Requirement: Setup guidance is an onboarding checklist
 
 While setup is incomplete, the setup page and the popup SHALL show a checklist: approve the OSI website, then a tracker, each step reflecting saved approvals and the current one carrying its action. An instruction set apart from the steps SHALL tell the user to turn off the tracker's direct browser connection in OSI, which the extension cannot observe. Once a website and a tracker are approved, both pages SHALL hide the checklist and SHALL NOT show a permanent status sentence.
 
@@ -45,7 +45,7 @@ While setup is incomplete, the setup page and the popup SHALL show a checklist: 
 - **WHEN** reading approvals fails
 - **THEN** the page SHALL show a titled error alert with its retry action instead of the checklist
 
-### Requirement: REQ-412 Action outcomes are announced transiently
+### Requirement: Action outcomes are announced transiently
 
 The setup page SHALL announce the outcome of an approve, revoke, restore or dismiss action as a transient, accessible notification in the selected language, naming its website or tracker, never as a permanent status line. Failures needing the user SHALL stay in an alert with their recovery action until resolved.
 
@@ -69,7 +69,7 @@ The setup page SHALL announce the outcome of an approve, revoke, restore or dism
 - **WHEN** an approval change cannot be fully completed
 - **THEN** the page SHALL show the persistent error alert with its retry action, not a transient notification
 
-### Requirement: REQ-413 Revoking a website with trackers is confirmed
+### Requirement: Revoking a website with trackers is confirmed
 
 Revoking a website that still has approved tracker destinations SHALL first ask for confirmation, naming the website and the trackers whose approvals go with it. Cancelling SHALL leave every approval and browser permission unchanged. Revoking a website without trackers, or revoking a single tracker, SHALL NOT ask for confirmation.
 
@@ -88,7 +88,7 @@ Revoking a website that still has approved tracker destinations SHALL first ask 
 - **WHEN** the user revokes a website that has no approved trackers
 - **THEN** it SHALL be revoked without a confirmation step
 
-### Requirement: REQ-414 Approved origins open from the extension
+### Requirement: Approved origins open from the extension
 
 Each approved website and tracker row in the popup or setup page SHALL show its address as a link. Activating a website link SHALL focus an existing tab on that exact origin when one is open, and SHALL open a new tab otherwise. Activating a tracker link SHALL open its base URL in a new tab. Links SHALL be keyboard operable, with accessible names that identify the target.
 
@@ -117,9 +117,9 @@ Each approved website and tracker row in the popup or setup page SHALL show its 
 - **WHEN** a row shows an approved address
 - **THEN** it SHALL show the address without its scheme, and a plain-HTTP tracker SHALL be marked as unencrypted
 
-### Requirement: REQ-415 Popup offers to approve the current website
+### Requirement: Popup offers to approve the current website
 
-When the popup opens on a tab whose origin is a valid website origin (REQ-308) and is not approved yet, it SHALL offer to approve that origin. Accepting SHALL open the setup page with the origin pre-filled in the website form. The browser permission prompt SHALL run only after the user confirms on the setup page. The popup SHALL NOT request host permissions itself, and SHALL NOT read the tab's URL before the user opens the popup.
+When the popup opens on a tab whose origin is a valid website origin (`remote-browser-extension`) and is not approved yet, it SHALL offer to approve that origin. Accepting SHALL open the setup page with the origin pre-filled in the website form. The browser permission prompt SHALL run only after the user confirms on the setup page. The popup SHALL NOT request host permissions itself, and SHALL NOT read the tab's URL before the user opens the popup.
 
 #### Scenario: Unapproved OSI tab
 
@@ -151,9 +151,9 @@ When the popup opens on a tab whose origin is a valid website origin (REQ-308) a
 - **WHEN** the user denies the browser permission on the setup page
 - **THEN** no approval SHALL be saved, and the existing denied message SHALL be shown
 
-### Requirement: REQ-416 Tracker suggestions are queued for review
+### Requirement: Tracker suggestions are queued for review
 
-The extension SHALL keep suggestions from approved websites (remote-browser-extension REQ-421) as pending items until the user handles them, in a titled section. Each item SHALL show its provider, tracker URL and requesting website, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, with its permission prompt and HTTP warning. Dismissing SHALL remove the item without approving it.
+The extension SHALL keep suggestions from approved websites (`remote-browser-extension`) as pending items until the user handles them, in a titled section. Each item SHALL show its provider, tracker URL and requesting website, with Approve and Dismiss actions. Approving SHALL follow the regular destination approval, with its permission prompt and HTTP warning. Dismissing SHALL remove the item without approving it.
 
 #### Scenario: Review a suggestion
 
@@ -185,7 +185,7 @@ The extension SHALL keep suggestions from approved websites (remote-browser-exte
 - **WHEN** the suggesting website's approval is revoked
 - **THEN** its pending suggestions SHALL be removed
 
-### Requirement: REQ-417 Pending suggestions are bounded and deduplicated
+### Requirement: Pending suggestions are bounded and deduplicated
 
 Repeating a suggestion that is already pending SHALL NOT add a second item. A suggestion for a destination that is already approved for that website SHALL NOT be queued. The number of pending suggestions SHALL be bounded. When the bound is reached, the extension SHALL reject further suggestions until the user handles some, and SHALL NOT evict existing items.
 
@@ -204,7 +204,7 @@ Repeating a suggestion that is already pending SHALL NOT add a second item. A su
 - **WHEN** the pending list is full and another suggestion arrives
 - **THEN** the suggestion SHALL be rejected with the limit error and the existing items SHALL be unchanged
 
-### Requirement: REQ-418 Toolbar icon signals required attention
+### Requirement: Toolbar icon signals required attention
 
 The toolbar icon SHALL show a badge when setup needs the user. When suggestions are pending, the badge SHALL show their count. Otherwise, when a saved approval lacks browser site access, it SHALL show an attention mark. Otherwise it SHALL show no badge. The icon's tooltip title SHALL describe the same state in the selected language, so the state does not depend on color alone.
 
@@ -228,7 +228,7 @@ The toolbar icon SHALL show a badge when setup needs the user. When suggestions 
 - **WHEN** a suggestion is approved or dismissed, or access is restored, on any extension page
 - **THEN** the badge SHALL update without the user reopening the popup
 
-### Requirement: REQ-419 Last tracker activity is shown per destination
+### Requirement: Last tracker activity is shown per destination
 
 For each approved tracker destination, the extension SHALL record the most recent operation: its time, the operation name, and its outcome (success, or the safe error kind). The popup and the setup page SHALL show this record on the tracker's row as outcome, operation and relative time. The record SHALL be kept only for the browser session. It SHALL NOT contain request or response bodies, credentials, or URLs beyond the approved destination. It SHALL be removed when the destination is revoked.
 
@@ -262,7 +262,7 @@ For each approved tracker destination, the extension SHALL record the most recen
 - **WHEN** the browser is restarted
 - **THEN** every activity record SHALL be gone
 
-### Requirement: REQ-420 Destination form omits a single-choice website
+### Requirement: Destination form omits a single-choice website
 
 When exactly one website is approved, the destination form SHALL NOT show the website select; it SHALL assign the destination to that website and say so. With two or more websites, the select SHALL be shown with the first website chosen, and tracker rows SHALL name their website.
 
@@ -281,7 +281,7 @@ When exactly one website is approved, the destination form SHALL NOT show the we
 - **WHEN** no website is approved
 - **THEN** the tracker section SHALL show no approve form and SHALL explain that a website must be approved first
 
-### Requirement: REQ-523 Setup page lists approvals before their forms
+### Requirement: Setup page lists approvals before their forms
 
 On the setup page, a section with at least one approved website or tracker SHALL show its list first and its approve form only after the user activates the section's add action. A section with nothing approved SHALL keep its form open. While the approvals cannot be read, the page SHALL show neither lists nor forms, so unread settings never look empty.
 

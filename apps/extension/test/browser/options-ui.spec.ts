@@ -436,7 +436,7 @@ describeChromium('extension options UI', () => {
     await expect.poll(() => page.locator('[data-testid^="revoke-destination-"]').count()).toBe(0);
   });
 
-  it('focuses the alert restore when the popup hands over the only lost approval (REQ-408)', async () => {
+  it('focuses the alert restore when the popup hands over the only lost approval', async () => {
     const page = await harness!.context.newPage();
     await page.goto(optionsUrl(harness!));
     await chooseOption(page, 'language', optionNames.en);

@@ -11,7 +11,7 @@ import type { SetupStep } from './open-setup.js';
 
 /**
  * Onboarding steps shown by the popup and the setup page until a website and a tracker are
- * approved (REQ-411). The current step carries its own action: in the popup it opens the setup
+ * approved. The current step carries its own action: in the popup it opens the setup
  * page on that step (or, on an unapproved OSI tab, approves that tab's website); on the setup page
  * the step itself moves focus to its form. A done website step names the approved website. The
  * OSI-side setting is an instruction set apart below the steps: the extension cannot observe it.
@@ -28,7 +28,7 @@ const {
   mode: 'popup' | 'setup';
   /** The first approved website, named in the done website step. */
   website?: string | null;
-  /** The popup's unapproved OSI tab, offered as the website step's action (REQ-415). */
+  /** The popup's unapproved OSI tab, offered as the website step's action. */
   offer?: string | null;
 }>();
 

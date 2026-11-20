@@ -12,7 +12,7 @@ import {
 /**
  * Time-entry title autocomplete shared by the top-bar timer and the add-entry
  * dialog: task suggestions, the create-new-task row, `@project` mentions
- * (REQ-372–REQ-375) and the project chip (REQ-374). Callers own the commit
+ * and the project chip. Callers own the commit
  * (start / PATCH / POST) and call `resolveCommit()` to learn what to send.
  *
  * Extra attributes (`id`, `aria-label`, `data-testid`, `class`) go to the
@@ -106,13 +106,13 @@ function syncCaret() {
 watch([text, () => project.value?.id], ([query, projectId]) => {
   syncCaret();
   searchSuggestions(query, projectId);
-  // Editing the text after a pick unbinds the suggestion (REQ-180).
+  // Editing the text after a pick unbinds the suggestion.
   if (task.value && query !== task.value.name) {
     task.value = null;
   }
 });
 
-/** Mention token under the caret, when it matches at least one project (REQ-372). */
+/** Mention token under the caret, when it matches at least one project. */
 const mention = computed(() => {
   const token = findMentionAtCaret(text.value, Math.min(caret.value, text.value.length));
   if (!token) return null;
@@ -124,7 +124,7 @@ const mention = computed(() => {
   };
 });
 
-/** A fully typed `@Project name` that would resolve on commit (REQ-375). */
+/** A fully typed `@Project name` that would resolve on commit. */
 const typedResolution = computed(() => resolveTypedMention(text.value, mentionProjects.value));
 
 function onSelectProject(picked: TitleProject) {
@@ -185,7 +185,7 @@ const menuItems = computed(() =>
 /** The title the create-new-task option committed; it stays "new" until the text changes. */
 const createdTitle = ref<string | null>(null);
 /**
- * Whether the text is a title from the create-new-task option (REQ-467), for a "new Task" cue.
+ * Whether the text is a title from the create-new-task option, for a "new Task" cue.
  * It reflects the user's choice, not server state: a same-named Task may still be matched.
  */
 const isNewTask = computed(
@@ -243,11 +243,11 @@ export interface TitleCommit {
   projectId: string | undefined;
   /** Bound suggestion, sent instead of title + project. */
   taskId: string | null;
-  /** Project a typed mention resolved to, when it did (REQ-375). */
+  /** Project a typed mention resolved to, when it did. */
   resolved: TitleProject | null;
 }
 
-/** What to send when committing the current text (REQ-376). */
+/** What to send when committing the current text. */
 function resolveCommit(): TitleCommit {
   let title = text.value.trim();
   const bound = task.value && task.value.name === title ? task.value : null;

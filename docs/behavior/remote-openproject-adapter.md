@@ -1,4 +1,4 @@
-# remote-openproject-adapter Specification
+# remote-openproject-adapter
 
 ## Purpose
 
@@ -6,9 +6,9 @@ How OpenProject implements the neutral adapter contract (`remote-adapter-contrac
 
 ## Requirements
 
-### Requirement: REQ-210 OpenProject adapter implements the neutral remote-tracker contract
+### Requirement: OpenProject adapter implements the neutral remote-tracker contract
 
-For an active OpenProject tracker the adapter SHALL implement every contract operation (REQ-200) with neutral DTOs only, behaving the same directly and through the extension (REQ-201).
+For an active OpenProject tracker the adapter SHALL implement every contract operation (`remote-adapter-contract`) with neutral DTOs only, behaving the same directly and through the extension (`remote-adapter-contract`).
 
 #### Scenario: Title search returns matching OpenProject work packages
 
@@ -35,9 +35,9 @@ For an active OpenProject tracker the adapter SHALL implement every contract ope
 - **WHEN** the same OpenProject operation receives equivalent upstream responses under `client` and `extension`
 - **THEN** its result, quirks, and upstream error classification SHALL be identical
 
-### Requirement: REQ-323 OpenProject remote project catalog
+### Requirement: OpenProject remote project catalog
 
-The OpenProject adapter SHALL implement the catalog operation (REQ-318) by listing projects through the projects collection endpoint with page-size/offset pagination, following pages until the reported total is reached or the same fixed maximum page count used for time logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and the id extracted from its parent link when present. No hrefs SHALL cross the contract boundary.
+The OpenProject adapter SHALL implement the catalog operation (`remote-adapter-contract`) by listing projects through the projects collection endpoint with page-size/offset pagination, following pages until the reported total is reached or the same fixed maximum page count used for time logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and the id extracted from its parent link when present. No hrefs SHALL cross the contract boundary.
 
 #### Scenario: Projects are listed across pages
 
@@ -49,9 +49,9 @@ The OpenProject adapter SHALL implement the catalog operation (REQ-318) by listi
 - **WHEN** a project payload carries a parent link
 - **THEN** the neutral entry SHALL expose only the parent's id derived from that link
 
-### Requirement: REQ-324 OpenProject scoped search includes all subprojects
+### Requirement: OpenProject scoped search includes all subprojects
 
-When a scope is supplied, the OpenProject adapter SHALL query the project-scoped work-packages endpoint for the given project id (which includes descendant projects), combined with the existing subject filter and result bound. Exact-lookup scope membership (REQ-320) SHALL be decided by querying the same scoped endpoint filtered to the requested work-package id; an empty scoped answer followed by a successful direct work-package lookup SHALL yield `inScope: false`.
+When a scope is supplied, the OpenProject adapter SHALL query the project-scoped work-packages endpoint for the given project id (which includes descendant projects), combined with the existing subject filter and result bound. Exact-lookup scope membership (`remote-adapter-contract`) SHALL be decided by querying the same scoped endpoint filtered to the requested work-package id; an empty scoped answer followed by a successful direct work-package lookup SHALL yield `inScope: false`.
 
 #### Scenario: Descendants are included
 
@@ -73,9 +73,9 @@ When a scope is supplied, the OpenProject adapter SHALL query the project-scoped
 - **WHEN** OpenProject answers the scoped query with 404 or 403 for the project
 - **THEN** the adapter SHALL raise the shared translated search error
 
-### Requirement: REQ-297 OpenProject date-range time-log fetch
+### Requirement: OpenProject date-range time-log fetch
 
-The OpenProject adapter SHALL implement the contract's date-range time-log operation (REQ-296) by querying OpenProject time entries for the current account with `spent_on` between the inclusive `from` and `to` dates, without an entity/work-package id filter, following OpenProject pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
+The OpenProject adapter SHALL implement the contract's date-range time-log operation (`remote-adapter-contract`) by querying OpenProject time entries for the current account with `spent_on` between the inclusive `from` and `to` dates, without an entity/work-package id filter, following OpenProject pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
 
 #### Scenario: Month range is a single filtered query loop
 
@@ -92,9 +92,9 @@ The OpenProject adapter SHALL implement the contract's date-range time-log opera
 - **WHEN** OpenProject rejects or fails the range fetch
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with `error.remoteTimeLogsFetchFailed` (or the shared logs-fetch key) and SHALL NOT return a silent empty list
 
-### Requirement: REQ-342 OpenProject time logs map project and issue title from HAL links
+### Requirement: OpenProject time logs map project and issue title from HAL links
 
-For each time entry (REQ-341) the adapter SHALL take the project id from the last path segment of `_links.project.href` and its title from `_links.project.title` (each omitted when empty), and the issue title from `_links.entity.title`, else `_links.workPackage.title`. The entry SHALL be the only title source: with no usable link title the title SHALL be `null` and no work-package request made. Same-day and range fetches alike SHALL add no request beyond the time-entry pages.
+For each time entry (`remote-adapter-contract`) the adapter SHALL take the project id from the last path segment of `_links.project.href` and its title from `_links.project.title` (each omitted when empty), and the issue title from `_links.entity.title`, else `_links.workPackage.title`. The entry SHALL be the only title source: with no usable link title the title SHALL be `null` and no work-package request made. Same-day and range fetches alike SHALL add no request beyond the time-entry pages.
 
 #### Scenario: Full HAL links present
 
@@ -121,16 +121,16 @@ For each time entry (REQ-341) the adapter SHALL take the project id from the las
 - **WHEN** a time entry carries no `_links.project`
 - **THEN** the neutral log SHALL omit the remote project id and title and SHALL still be returned
 
-### Requirement: REQ-211 OpenProject authentication uses the Basic auth header
+### Requirement: OpenProject authentication uses the Basic auth header
 
-The OpenProject client SHALL authenticate every upstream request with the user's API key as an HTTP Basic `Authorization` header (username `apikey`, the key as password), built in exactly one place in the client (REQ-202). The credential rules of REQ-203 apply.
+The OpenProject client SHALL authenticate every upstream request with the user's API key as an HTTP Basic `Authorization` header (username `apikey`, the key as password), built in exactly one place in the client (`remote-adapter-contract`). The rules of "Credential hygiene across the contract" in `remote-adapter-contract` apply.
 
 #### Scenario: Requests carry the OpenProject Basic auth header
 
 - **WHEN** the adapter executes any OpenProject operation with a provided secret
 - **THEN** the upstream request SHALL include the `Authorization: Basic` header derived from the API key and no other provider's credential header
 
-### Requirement: REQ-212 Project-scoped activity options
+### Requirement: Project-scoped activity options
 
 The OpenProject adapter SHALL provide time-entry activity options for the work package's resolved project scope. The adapter's activity-options operation SHALL use the remote issue ID argument required by the neutral contract to resolve the applicable project-scoped activities, and rows resolving to the same scope SHALL be able to reuse a single fetch.
 
@@ -144,7 +144,7 @@ The OpenProject adapter SHALL provide time-entry activity options for the work p
 - **WHEN** multiple linked tasks resolve to the same OpenProject activity scope
 - **THEN** the adapter SHALL be able to fetch the activities once and reuse the result
 
-### Requirement: REQ-213 Durations use shared rounding without additional adapter rounding
+### Requirement: Durations use shared rounding without additional adapter rounding
 
 OpenProject time entries SHALL be created from the already-rounded duration produced by the shared rounding rules; the adapter SHALL NOT apply any additional rounding rule of its own. Fetched same-day logs SHALL convert their durations back to whole seconds so that an unchanged value round-trips stably and all `up_15m`/`up_30m`/`up_1h` rounded durations convert losslessly.
 
@@ -158,7 +158,7 @@ OpenProject time entries SHALL be created from the already-rounded duration prod
 - **WHEN** the adapter fetches same-day OpenProject time logs
 - **THEN** each log's duration SHALL be converted to whole seconds such that re-exporting an unchanged value produces the same value
 
-### Requirement: REQ-214 Same-day time-log fetch with bounded pagination
+### Requirement: Same-day time-log fetch with bounded pagination
 
 The OpenProject adapter SHALL resolve the current remote account and fetch that account's time logs for a given day, filtered to the linked work-package IDs and the resolved remote user, following OpenProject's pagination. The page loop SHALL be bounded by a fixed maximum page count so an inconsistent upstream total cannot cause unbounded requests. Fetched logs SHALL be returned as informational, adapter-neutral context only.
 

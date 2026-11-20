@@ -1,4 +1,4 @@
-# tracking-api Specification
+# tracking-api
 
 ## Purpose
 
@@ -6,9 +6,9 @@ Define the HTTP contract for time entries: starting a live timer or creating a m
 
 ## Requirements
 
-### Requirement: REQ-140 Start a live timer
+### Requirement: Start a live timer
 
-`POST /api/time-entries` SHALL start a live timer: an entry with `startedAt` at server time and `stoppedAt` `null`. It MAY carry a `title` (trimmed, length-bounded), `projectId` and `taskId`, each optional or `null`. A `taskId` SHALL be one of the user's tasks (foreign or unknown → HTTP 404) and binds the entry directly, ignoring `title` and `projectId`. Otherwise the title resolves to a task (REQ-142); an empty or missing title gives an untitled entry. The `TimeEntryDto` SHALL be returned.
+`POST /api/time-entries` SHALL start a live timer: an entry with `startedAt` at server time and `stoppedAt` `null`. It MAY carry a `title` (trimmed, length-bounded), `projectId` and `taskId`, each optional or `null`. A `taskId` SHALL be one of the user's tasks (foreign or unknown → HTTP 404) and binds the entry directly, ignoring `title` and `projectId`. Otherwise the title resolves to a task; an empty or missing title gives an untitled entry. The `TimeEntryDto` SHALL be returned.
 
 #### Scenario: Start with a title and project
 
@@ -35,7 +35,7 @@ Define the HTTP contract for time entries: starting a live timer or creating a m
 - **WHEN** the start request provides a non-null `projectId` that is not a valid uuid
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: REQ-446 Create a manual time entry
+### Requirement: Create a manual time entry
 
 The same endpoint SHALL create an already-stopped entry when the request carries an explicit `startedAt`/`stoppedAt` pair of ISO 8601 instants. Sending only one of them SHALL be rejected, as SHALL `stoppedAt` before `startedAt` or a `startedAt` in the future beyond a small clock-skew tolerance, each with `{ messageKey, params }`. Task binding SHALL work as for a live start. A manual entry SHALL NOT stop the running entry.
 
@@ -54,7 +54,7 @@ The same endpoint SHALL create an already-stopped entry when the request carries
 - **WHEN** the request provides only one of `startedAt`/`stoppedAt`, or `stoppedAt` earlier than `startedAt`, or a `startedAt` in the future
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: REQ-141 At most one running entry per user
+### Requirement: At most one running entry per user
 
 The system SHALL guarantee that an authenticated user has at most one running `TimeEntry` (`stoppedAt IS NULL`) at any time, enforced by the database. When a user starts a new timer while another entry is running, the system SHALL first stop the currently running entry (setting its `stoppedAt` to the new entry's `startedAt`) and then create the new running entry, within a single transaction (Toggl stop-on-new-start behavior).
 
@@ -68,9 +68,9 @@ The system SHALL guarantee that an authenticated user has at most one running `T
 - **WHEN** an authenticated user issues two start requests concurrently
 - **THEN** the database SHALL prevent two running entries and the system SHALL end with exactly one running entry
 
-### Requirement: REQ-142 Title binds an entry to a Task
+### Requirement: Title binds an entry to a Task
 
-An entry's title SHALL be its task's name; entries store no title. A title SHALL resolve to a task in one transaction on `(userId, name, projectId, remoteIssueId)`. A new entry's bare title SHALL bind silently to the most recently used `(userId, name, projectId)` match (REQ-137), creating an **unlinked** task only when none exists. An explicit remote issue (REQ-179) or a retitle of a tasked entry (REQ-449) SHALL find or create the exact key. An empty or missing title SHALL leave `taskId` `null`.
+An entry's title SHALL be its task's name; entries store no title. A title SHALL resolve to a task in one transaction on `(userId, name, projectId, remoteIssueId)`. A new entry's bare title SHALL bind silently to the most recently used `(userId, name, projectId)` match (`workspace-tasks`), creating an **unlinked** task only when none exists. An explicit remote issue or a retitle of a tasked entry SHALL find or create the exact key. An empty or missing title SHALL leave `taskId` `null`.
 
 #### Scenario: New title creates a task
 
@@ -102,9 +102,9 @@ An entry's title SHALL be its task's name; entries store no title. A title SHALL
 - **WHEN** an existing entry that has a task is patched with a new title and no `taskId`
 - **THEN** resolution SHALL find-or-create `(userId, name, projectId, remoteIssueId)` using the current task's remote issue and SHALL NOT apply the bare-title most-recently-used tie-break
 
-### Requirement: REQ-143 Stop or retitle a running entry
+### Requirement: Stop or retitle a running entry
 
-`PATCH /api/time-entries/[id]` SHALL stop the user's entry (set or request `stoppedAt`), move its `startedAt`, or retitle it (REQ-447). Validation SHALL use the post-patch state: a stopped entry needs `stoppedAt` ≥ `startedAt`, and a still-running entry SHALL NOT start in the future beyond a small clock-skew tolerance. Overlap with the user's other entries SHALL be allowed. A foreign or unknown id SHALL get HTTP 404 without confirming existence. The updated `TimeEntryDto` SHALL be returned.
+`PATCH /api/time-entries/[id]` SHALL stop the user's entry (set or request `stoppedAt`), move its `startedAt`, or retitle it. Validation SHALL use the post-patch state: a stopped entry needs `stoppedAt` ≥ `startedAt`, and a still-running entry SHALL NOT start in the future beyond a small clock-skew tolerance. Overlap with the user's other entries SHALL be allowed. A foreign or unknown id SHALL get HTTP 404 without confirming existence. The updated `TimeEntryDto` SHALL be returned.
 
 #### Scenario: Stop the running entry
 
@@ -146,9 +146,9 @@ An entry's title SHALL be its task's name; entries store no title. A title SHALL
 - **WHEN** an authenticated user patches an entry id owned by another user or that does not exist
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
 
-### Requirement: REQ-447 Patching binds an entry to a task
+### Requirement: Patching binds an entry to a task
 
-A PATCH MAY carry a `taskId`: it SHALL be one of the user's tasks (foreign or unknown → HTTP 404) and SHALL bind the entry directly, taking precedence over `title` and `projectId`. Without a `taskId`, a given `title` (with an optional `projectId`, REQ-448) SHALL be resolved again by REQ-142, moving only the patched entry; an untitled entry follows the bare-title path.
+A PATCH MAY carry a `taskId`: it SHALL be one of the user's tasks (foreign or unknown → HTTP 404) and SHALL bind the entry directly, taking precedence over `title` and `projectId`. Without a `taskId`, a given `title` (with an optional `projectId`, per "An omitted projectId keeps the project scope") SHALL be resolved again per "Title binds an entry to a Task", moving only the patched entry; an untitled entry follows the bare-title path.
 
 #### Scenario: Retitle re-resolves the task
 
@@ -168,19 +168,19 @@ A PATCH MAY carry a `taskId`: it SHALL be one of the user's tasks (foreign or un
 #### Scenario: Untitled entry titled without a remote issue stays on the bare-title path
 
 - **WHEN** an authenticated user patches an untitled entry (`taskId` null) with a title and no `taskId`
-- **THEN** the system SHALL resolve the title with no current remote issue to keep (REQ-142) and SHALL NOT invent a remote issue
+- **THEN** the system SHALL resolve the title with no current remote issue to keep and SHALL NOT invent a remote issue
 
 #### Scenario: Moving the last entry away collects its previous task
 
 - **WHEN** an authenticated user retitles or rebinds an entry that is the only entry of its task, so that it lands on a different task
-- **THEN** the previous task SHALL be hard-deleted in the same transaction (REQ-491)
+- **THEN** the previous task SHALL be hard-deleted in the same transaction (`workspace-tasks`)
 
 #### Scenario: Clearing the last entry's title collects its task
 
 - **WHEN** an authenticated user patches the only entry of a task with `title` `null`
-- **THEN** the entry SHALL become untitled and the previous task SHALL be hard-deleted in the same transaction (REQ-491)
+- **THEN** the entry SHALL become untitled and the previous task SHALL be hard-deleted in the same transaction (`workspace-tasks`)
 
-### Requirement: REQ-448 An omitted projectId keeps the project scope
+### Requirement: An omitted projectId keeps the project scope
 
 When a PATCH re-resolves the title, **omitting** `projectId` SHALL keep the entry's current project scope (its task's project, or none), and an explicit **`null`** SHALL move it to the project-less scope. An absent `projectId` SHALL NOT be read as `null`, so a title-only edit never moves the entry out of its project.
 
@@ -194,7 +194,7 @@ When a PATCH re-resolves the title, **omitting** `projectId` SHALL keep the entr
 - **WHEN** an authenticated user patches an entry's `title` with an explicit `projectId` of `null`
 - **THEN** the system SHALL resolve the title within the project-less scope and bind the entry to a project-less task
 
-### Requirement: REQ-449 A retitle keeps the task's remote issue
+### Requirement: A retitle keeps the task's remote issue
 
 When an entry that has a task is retitled without a `taskId`, the system SHALL find or create the task `(userId, new name, effective project, current remoteIssueId)`, keeping the remote issue, or keeping it unlinked when it was. It SHALL NOT use the most-recently-used tie-break, SHALL NOT bind to a twin with another remote issue, and SHALL NOT need a remote issue field in the body.
 
@@ -223,7 +223,7 @@ When an entry that has a task is retitled without a `taskId`, the system SHALL f
 - **WHEN** an authenticated user patches a linked entry's `title` with an explicit `projectId` of `null` and no `taskId`
 - **THEN** the target SHALL be the project-less task of that name carrying the source remote issue
 
-### Requirement: REQ-144 Read the running entry
+### Requirement: Read the running entry
 
 The system SHALL expose the authenticated user's current running entry via `GET /api/time-entries/running`, returning the single running `TimeEntryDto` (`stoppedAt` null) or `null` when none is running. The response SHALL be scoped strictly to the authenticated user.
 
@@ -237,7 +237,7 @@ The system SHALL expose the authenticated user's current running entry via `GET 
 - **WHEN** an authenticated user with no running entry requests the running endpoint
 - **THEN** the system SHALL return `null`
 
-### Requirement: REQ-145 Duration derived from timestamps
+### Requirement: Duration derived from timestamps
 
 The system SHALL always derive a time entry's duration from `stoppedAt − startedAt`; a running entry's elapsed time SHALL be computed against the current time. The system SHALL NOT store a separate duration column.
 
@@ -246,7 +246,7 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **WHEN** a stopped entry is displayed
 - **THEN** its duration SHALL be computed as `stoppedAt − startedAt` rather than read from a stored duration field
 
-### Requirement: REQ-148 List time entries by instant range
+### Requirement: List time entries by instant range
 
 `GET /api/time-entries` SHALL take required `from` and `to` ISO 8601 instants and return the user's entries whose `startedAt` lies in `[from, to)`, running ones included, newest first, as `TimeEntryDto`s with `taskId`, `taskName`, `projectId` and `projectName` (names present even when the parent is soft-deleted) and no client or tracker name. Missing or invalid bounds, or `from >= to`, SHALL be rejected with `{ messageKey, params }`. The server SHALL do no timezone logic; callers send instants.
 
@@ -270,9 +270,9 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **WHEN** another user has entries within the requested window
 - **THEN** those entries SHALL NOT appear in the response
 
-### Requirement: REQ-149 Bulk-assign untitled entries to a task
+### Requirement: Bulk-assign untitled entries to a task
 
-`POST /api/time-entries/bulk-assign` SHALL take `{ ids, title, projectId? }` — a non-empty list of entry ids and a trimmed, non-empty, length-bounded title — and, in one transaction, resolve the title once (REQ-142) and bind every listed entry to that task. Every entry MUST be the user's and currently untitled; otherwise the whole request SHALL fail (`{ messageKey, params }`, or HTTP 404 for foreign or unknown ids) and change nothing. The updated `TimeEntryDto`s SHALL be returned.
+`POST /api/time-entries/bulk-assign` SHALL take `{ ids, title, projectId? }` — a non-empty list of entry ids and a trimmed, non-empty, length-bounded title — and, in one transaction, resolve the title once and bind every listed entry to that task. Every entry MUST be the user's and currently untitled; otherwise the whole request SHALL fail (`{ messageKey, params }`, or HTTP 404 for foreign or unknown ids) and change nothing. The updated `TimeEntryDto`s SHALL be returned.
 
 #### Scenario: Successful bulk assign
 
@@ -289,7 +289,7 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **WHEN** the submitted title is empty or whitespace-only, or `ids` is empty
 - **THEN** the system SHALL reject the request with `{ messageKey, params }`
 
-### Requirement: REQ-151 Delete a time entry with task garbage collection
+### Requirement: Delete a time entry with task garbage collection
 
 `DELETE /api/time-entries/[id]` SHALL delete the user's own entry and, in the same transaction, hard-delete its task when no other entry references it any more (garbage collection). A foreign or unknown id SHALL resolve to HTTP 404 without confirming existence. Success SHALL return no entry data.
 
@@ -313,9 +313,9 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **WHEN** an authenticated user deletes an entry id owned by another user or that does not exist
 - **THEN** the system SHALL respond with HTTP 404 without revealing existence
 
-### Requirement: REQ-179 Day-scoped reassignment of time entries to a task
+### Requirement: Day-scoped reassignment of time entries to a task
 
-`POST /api/time-entries/reassign` SHALL take `{ ids, name?, projectId?, remoteIssueId? }` (non-empty `ids`; `name` trimmed, bounded) and, in one transaction, find or create the target task once (REQ-142, scope per REQ-450), bind every listed entry to it, and hard-delete the source task if left empty. An omitted `name` keeps the name; other days' entries stay. Only this changes an entry's remote issue. Any foreign or unknown id SHALL fail the whole request with HTTP 404, changing nothing.
+`POST /api/time-entries/reassign` SHALL take `{ ids, name?, projectId?, remoteIssueId? }` (non-empty `ids`; `name` trimmed, bounded) and, in one transaction, find or create the target task once (per "Title binds an entry to a Task", scope per "Reassignment target follows field presence"), bind every listed entry to it, and hard-delete the source task if left empty. An omitted `name` keeps the name; other days' entries stay. Only this changes an entry's remote issue. Any foreign or unknown id SHALL fail the whole request with HTTP 404, changing nothing.
 
 #### Scenario: Rename only the current day's entries
 
@@ -332,9 +332,9 @@ The system SHALL always derive a time entry's duration from `stoppedAt − start
 - **WHEN** any listed id is foreign or unknown
 - **THEN** the system SHALL reject the whole request with HTTP 404 and none of the listed entries SHALL be modified
 
-### Requirement: REQ-450 Reassignment target follows field presence
+### Requirement: Reassignment target follows field presence
 
-The target scope SHALL start from the listed entries' current task. **Omitting** `projectId` SHALL keep its project, an explicit **`null`** SHALL target no project, and an id SHALL target that owned, non-deleted project. **Omitting** `remoteIssueId` SHALL keep its remote issue, an explicit **`null`** SHALL target the unlinked task, and a value SHALL target the task carrying that issue (REQ-451). Unlinking SHALL make no remote request.
+The target scope SHALL start from the listed entries' current task. **Omitting** `projectId` SHALL keep its project, an explicit **`null`** SHALL target no project, and an id SHALL target that owned, non-deleted project. **Omitting** `remoteIssueId` SHALL keep its remote issue, an explicit **`null`** SHALL target the unlinked task, and a value SHALL target the task carrying that issue. Unlinking SHALL make no remote request.
 
 #### Scenario: Reassign keeps the source project and remote issue by default
 
@@ -356,7 +356,7 @@ The target scope SHALL start from the listed entries' current task. **Omitting**
 - **WHEN** one day's entries are reassigned to remote issue `4711` and another day's entries of the same name and project to `4899`
 - **THEN** both target tasks SHALL exist and each day's group SHALL show its own remote issue
 
-### Requirement: REQ-451 Reassignment derives tracker provenance on the server
+### Requirement: Reassignment derives tracker provenance on the server
 
 When a `remoteIssueId` value is supplied, the server SHALL take the tracker from the target project's active tracker and SHALL NOT trust any client-supplied tracker identity. A project-less target, a local project, a missing or inactive tracker, or an unsupported `systemType` SHALL be rejected with `{ messageKey, params }`, moving nothing. A cached issue title from the client search MAY be stored for display, never as provenance.
 
@@ -370,9 +370,9 @@ When a `remoteIssueId` value is supplied, the server SHALL take the tracker from
 - **WHEN** the user reassigns a day's entries with a `remoteIssueId` value while the same task has entries on other days
 - **THEN** only those entries SHALL move to the find-or-create task carrying that remote issue, with provenance and cached title derived server-side, and the other days' entries SHALL keep the previous remote issue
 
-### Requirement: REQ-395 Timer view feed API
+### Requirement: Timer view feed API
 
-`GET /api/time-entries/feed` SHALL return `{ entries, hasMore, nextBefore }`: REQ-148-shaped entries; `hasMore` true when an entry exists on a local day older than the oldest returned; `nextBefore` the next-page cursor or `null`. Day boundaries SHALL use the user's stored timezone (REQ-398). `before` and `from` SHALL be mutually exclusive; both together, or a malformed or offset-less value, SHALL be rejected with `422` `{ messageKey, params }`. The timer view SHALL load only through the feed.
+`GET /api/time-entries/feed` SHALL return `{ entries, hasMore, nextBefore }`: entries shaped as in "List time entries by instant range"; `hasMore` true when an entry exists on a local day older than the oldest returned; `nextBefore` the next-page cursor or `null`. Day boundaries SHALL use the user's stored timezone (`workspace-settings`). `before` and `from` SHALL be mutually exclusive; both together, or a malformed or offset-less value, SHALL be rejected with `422` `{ messageKey, params }`. The timer view SHALL load only through the feed.
 
 #### Scenario: Both cursors rejected
 
@@ -399,7 +399,7 @@ When a `remoteIssueId` value is supplied, the server SHALL take the tracker from
 - **WHEN** an unauthenticated client requests the feed
 - **THEN** the system SHALL reject the request per shared authentication conventions
 
-### Requirement: REQ-452 Feed pages by seven activity days
+### Requirement: Feed pages by seven activity days
 
 Without `before` or `from`, the feed SHALL return every entry on the user's newest **7** distinct local days that have entries, newest first, starting from the newest entry rather than today, so future-dated entries count and old history is still found. With `before`, it SHALL return the next 7 such days strictly older than the cursor. Empty days SHALL NOT use a slot. A user with no entries SHALL get `{ entries: [], hasMore: false, nextBefore: null }`.
 
@@ -433,7 +433,7 @@ Without `before` or `from`, the feed SHALL return every entry on the user's newe
 - **WHEN** the client requests the next page but no older activity days exist
 - **THEN** the system SHALL return empty `entries` (or an equivalent no-op page) with `hasMore` false
 
-### Requirement: REQ-453 Feed range refresh
+### Requirement: Feed range refresh
 
 With `from`, the feed SHALL return every entry of the user started at or after `from`, with no upper bound, newest first, so a client can reload its whole window in one request. `hasMore` and `nextBefore` SHALL describe history older than the oldest returned day, as for pages. With nothing at or after `from`, `hasMore` SHALL say whether older entries exist, and `nextBefore` SHALL then be `from`'s local day start.
 

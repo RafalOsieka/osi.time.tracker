@@ -1,4 +1,4 @@
-# ui-shared-components Specification
+# ui-shared-components
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Define the reusable UI building blocks shared across pages — list-page section
 
 ## Requirements
 
-### Requirement: REQ-127 Shared table template components
+### Requirement: Shared table template components
 
 List pages SHALL share reusable sections: a table header (page title plus "New" button), an empty state (message plus create call-to-action), and row actions (edit and delete icon buttons). The sections SHALL take their labels and `data-testid` values from the page, SHALL report create, edit and delete to the page instead of accessing data themselves, and SHALL NOT own the page's table.
 
@@ -30,9 +30,9 @@ List pages SHALL share reusable sections: a table header (page title plus "New" 
 - **WHEN** the row actions render for a row
 - **THEN** pointer hover or keyboard focus on the edit or delete button SHALL show a themed tooltip whose text matches that button's accessible name
 
-### Requirement: REQ-270 Shared truncated-text tooltip
+### Requirement: Shared truncated-text tooltip
 
-The application SHALL provide a reusable truncated-text hint for slots that ellipsize their displayed value. When the value overflows the slot, pointer hover and keyboard focus SHALL expose the complete string as a themed tooltip (REQ-269). When the value fits the slot, the tooltip SHALL be omitted. Call sites SHALL keep their existing accessible names and `data-testid` hooks.
+The application SHALL provide a reusable truncated-text hint for slots that ellipsize their displayed value. When the value overflows the slot, pointer hover and keyboard focus SHALL expose the complete string as a themed tooltip (`ui-accessibility`). When the value fits the slot, the tooltip SHALL be omitted. Call sites SHALL keep their existing accessible names and `data-testid` hooks.
 
 #### Scenario: Overflowing slot shows the full value
 
@@ -44,7 +44,7 @@ The application SHALL provide a reusable truncated-text hint for slots that elli
 - **WHEN** a slot using the shared truncated-text hint displays a value that fits entirely
 - **THEN** the slot SHALL NOT show a tooltip
 
-### Requirement: REQ-129 Single app-level confirm dialog
+### Requirement: Single app-level confirm dialog
 
 The application SHALL provide one shared confirmation dialog. Pages SHALL NOT mount their own confirm instances; they SHALL open the shared one with page-specific copy and receive the user's accept or reject decision.
 
@@ -53,7 +53,7 @@ The application SHALL provide one shared confirmation dialog. Pages SHALL NOT mo
 - **WHEN** a user activates a delete action on any list page
 - **THEN** the shared confirm dialog SHALL open with that page's header, message, and accept/reject labels, and deletion SHALL proceed only when the user confirms
 
-### Requirement: REQ-130 Locale-aware shared date formatting
+### Requirement: Locale-aware shared date formatting
 
 The application SHALL provide a single shared date-formatting utility for rendering ISO timestamp strings in tables, formatted according to the active i18n locale rather than only the browser default.
 
@@ -67,7 +67,7 @@ The application SHALL provide a single shared date-formatting utility for render
 - **WHEN** the utility receives an empty or unparsable string
 - **THEN** it SHALL return an empty string rather than rendering "Invalid Date"
 
-### Requirement: REQ-361 Segmented clock-time field is the single clock-time entry mechanism
+### Requirement: Segmented clock-time field is the single clock-time entry mechanism
 
 Every wall-clock time input SHALL use one shared segmented hour–minute field, and every start–end pair its range variant (two groups, one label). It SHALL always show a 24-hour clock with two-digit segments and no seconds. Typing fills a segment and advances; arrow keys step and Backspace clears it. Replacing a text input SHALL keep its height, label, `id`, `data-testid` (on the root) and `aria-*` wiring; in rows it SHALL take a fixed width. Labels SHALL have `en`/`pl` parity.
 
@@ -101,7 +101,7 @@ Every wall-clock time input SHALL use one shared segmented hour–minute field, 
 - **WHEN** a keyboard user tabs into a time field
 - **THEN** each segment SHALL be reachable, arrow keys SHALL step the focused segment, and Enter and Escape SHALL commit and cancel as specified
 
-### Requirement: REQ-429 Clock-time field value is structured and never guessed
+### Requirement: Clock-time field value is structured and never guessed
 
 The clock-time field's value SHALL be a structured date-time, not a string. Editing a segment of a value seeded from an instant SHALL change only that segment, keeping its calendar date, seconds and milliseconds. The field SHALL never hold an invalid time; a partially filled side SHALL report `null`, which the owner SHALL treat as incomplete and block its action.
 
@@ -120,7 +120,7 @@ The clock-time field's value SHALL be a structured date-time, not a string. Edit
 - **WHEN** the user clears the minute segment of a filled field
 - **THEN** the model for that side SHALL be `null` and any dependent action (save, submit, patch) SHALL be blocked by the owner's existing inline handling rather than acting on a partial time
 
-### Requirement: REQ-430 Clock-time field shows a timezone only on offset transitions
+### Requirement: Clock-time field shows a timezone only on offset transitions
 
 For a zoned value, the field SHALL hide the timezone abbreviation unless either bound's calendar date has an offset transition in that bound's timezone, including when a range spans two dates. Hiding it SHALL NOT drop the timezone or change conversion back to an instant. Plain times and unzoned date-times SHALL NOT get a timezone label.
 
@@ -144,7 +144,7 @@ For a zoned value, the field SHALL hide the timezone abbreviation unless either 
 - **WHEN** the field contains a plain time or date-time without a timezone
 - **THEN** it SHALL NOT display a timezone abbreviation or invent a timezone
 
-### Requirement: REQ-431 Clock-time field commit styles
+### Requirement: Clock-time field commit styles
 
 The field SHALL support a live binding that updates the owner on every segment change (forms with a submit action), and an inline contract that commits only when focus leaves the whole field or on Enter, and restores the last committed value on Escape. Moving between the field's own segments, including between range groups, SHALL NOT count as leaving it. An inline commit equal to the last committed value SHALL be reported as unchanged, and an incomplete range SHALL NOT trigger an update.
 
@@ -173,7 +173,7 @@ The field SHALL support a live binding that updates the owner on every segment c
 - **WHEN** the user presses Escape while editing
 - **THEN** the field SHALL restore the last committed value and SHALL NOT emit a commit
 
-### Requirement: REQ-432 Optional same-minute inversion clamp
+### Requirement: Optional same-minute inversion clamp
 
 A range field MAY enable clamping, off by default. When enabled and a commit would leave start and end in the same calendar minute with the start's seconds later than the end's, the field SHALL copy the seconds and milliseconds of the other bound onto the bound the user edited before committing, so the pair is ordered (zero length) and matches what the segments show.
 
@@ -187,9 +187,9 @@ A range field MAY enable clamping, off by default. When enabled and a commit wou
 - **WHEN** clamping is not enabled and the same edit is committed
 - **THEN** the field SHALL emit the inverted pair unchanged and leave validation to the owner
 
-### Requirement: REQ-362 Shared duration input component
+### Requirement: Shared duration input component
 
-Every typed duration SHALL use one shared input with a nullable `HH:MM:SS` model (wall-clock times use REQ-361). Input SHALL be normalized deterministically: one to three colon-separated numbers read as `H:MM:SS`, `H:MM` or bare minutes; parts zero-padded on output (`1:5` → `01:05:00`); minutes or seconds above `59` (including a bare number above `59`) invalid; hours unbounded, so a duration MAY exceed 24 hours; surrounding whitespace ignored; anything else invalid.
+Every typed duration SHALL use one shared input with a nullable `HH:MM:SS` model (wall-clock times use the segmented clock-time field). Input SHALL be normalized deterministically: one to three colon-separated numbers read as `H:MM:SS`, `H:MM` or bare minutes; parts zero-padded on output (`1:5` → `01:05:00`); minutes or seconds above `59` (including a bare number above `59`) invalid; hours unbounded, so a duration MAY exceed 24 hours; surrounding whitespace ignored; anything else invalid.
 
 #### Scenario: Bare minutes normalized on commit
 
@@ -201,7 +201,7 @@ Every typed duration SHALL use one shared input with a nullable `HH:MM:SS` model
 - **WHEN** the user types `26:15` and commits
 - **THEN** the model SHALL update to `26:15:00`
 
-### Requirement: REQ-433 Duration input commits, reverts and fits compact slots
+### Requirement: Duration input commits, reverts and fits compact slots
 
 The duration input SHALL take its accessible label and `data-testid` from its owner, commit the normalized value on blur or Enter, and cancel on Escape. Input that cannot be normalized SHALL silently revert to the previous value, with no model update and no request. In a compact inline context a committed value SHALL be fully visible: the control SHALL reserve room for eight `HH:MM:SS` characters plus its own padding and border.
 
@@ -220,7 +220,7 @@ The duration input SHALL take its accessible label and `data-testid` from its ow
 - **WHEN** the compact duration input displays a committed value such as `01:30:00`
 - **THEN** all eight characters SHALL be visible without clipping
 
-### Requirement: REQ-178 Inline-edit affordance uses a Nuxt UI input
+### Requirement: Inline-edit affordance uses a Nuxt UI input
 
 Timer group and entry titles and the Remote Sync title-to-send SHALL share one inline editor: plain text at rest on the Timer, a field at rest on Remote Sync. It SHALL commit the normalized value on blur or Enter and revert on Escape or invalid input without a model update or request. Its width SHALL come from the layout slot; overflow SHALL be truncated; activating it SHALL fill the same slot without shifting neighbors. It SHALL keep its accessible label and `data-testid`.
 
@@ -254,9 +254,9 @@ Timer group and entry titles and the Remote Sync title-to-send SHALL share one i
 - **WHEN** the user activates an inline-editable title or project field
 - **THEN** the editor SHALL occupy the same reserved width as the display state and neighboring controls SHALL NOT shift
 
-### Requirement: REQ-434 Inline pickers, compact duration slot and permanent time fields
+### Requirement: Inline pickers, compact duration slot and permanent time fields
 
-The timer group's project control and the Remote Sync activity control SHALL open a non-modal listbox popover on a single activation, committing on option activation. The Remote Sync to-send duration SHALL sit in a compact slot that reads as text and becomes the compact outlined duration input (REQ-433) on activation. Timer entry start/stop times SHALL be the segmented time field (REQ-361) shown permanently as plain text, with segments highlighted only on focus, not a display/editor swap.
+The timer group's project control and the Remote Sync activity control SHALL open a non-modal listbox popover on a single activation, committing on option activation. The Remote Sync to-send duration SHALL sit in a compact slot that reads as text and becomes the compact outlined duration input on activation. Timer entry start/stop times SHALL be the segmented time field shown permanently as plain text, with segments highlighted only on focus, not a display/editor swap.
 
 #### Scenario: Project listbox opens on one click
 
@@ -283,7 +283,7 @@ The timer group's project control and the Remote Sync activity control SHALL ope
 - **WHEN** an expanded entry row is displayed
 - **THEN** its start/stop control SHALL already be the segmented time field, reading as plain text until a segment is focused, and a single click on a segment SHALL make that segment editable
 
-### Requirement: REQ-359 Nuxt UI date components are the single date-entry mechanism
+### Requirement: Nuxt UI date components are the single date-entry mechanism
 
 Every date input SHALL use the shared segmented date field, never a native date input; its range variant for inclusive ranges (one control, one label), and the bare calendar grid for a "jump to a date" picker. Each field SHALL have a labelled calendar button; picking a day fills the field. Segment order follows the locale; the year has four digits. Replacing a native input SHALL keep its height, label, `id`, `data-testid` and `aria-*` wiring. Calendar labels SHALL have `en`/`pl` parity.
 
@@ -307,7 +307,7 @@ Every date input SHALL use the shared segmented date field, never a native date 
 - **WHEN** a keyboard user tabs into a date field
 - **THEN** each segment SHALL be reachable, arrow keys SHALL step the focused segment, and the calendar button and its grid SHALL be reachable and operable without a pointer
 
-### Requirement: REQ-435 Date field value and typing
+### Requirement: Date field value and typing
 
 A date field SHALL give its owner a local calendar day as `YYYY-MM-DD`, or `null` when incomplete, never a time of day or timezone. Typing digits fills a segment and advances; arrow keys step and Backspace clears it. The field SHALL never hold an invalid date, and a partially filled field SHALL report `null`. Optional minimum and maximum bounds SHALL prevent both typing and picking a day outside them.
 
@@ -331,7 +331,7 @@ A date field SHALL give its owner a local calendar day as `YYYY-MM-DD`, or `null
 - **WHEN** the user fills both the start and end segments of a date-range field
 - **THEN** the model SHALL expose `{ start, end }` as two `YYYY-MM-DD` values; an inverted pair (start after end) SHALL still be representable so the owning feature can show its own inline error
 
-### Requirement: REQ-403 Full-width form controls in dialogs and the profile page
+### Requirement: Full-width form controls in dialogs and the profile page
 
 Form controls in overlay dialogs that collect structured input (including the project and tracker create/edit dialogs) and on `/profile` SHALL span the full width of their form column, with a consistent vertical gap between fields. The project and tracker dialogs SHALL share one form-dialog maximum width. This does not apply to dense inline editors outside dialogs and the profile form.
 
@@ -355,7 +355,7 @@ Form controls in overlay dialogs that collect structured input (including the pr
 - **WHEN** a timer entry title or similar inline editor is shown outside a dialog or profile form
 - **THEN** this requirement SHALL NOT force that control to full page width
 
-### Requirement: REQ-496 Shared column-aligned expandable list
+### Requirement: Shared column-aligned expandable list
 
 The Timer view and the Remote Sync day page SHALL each render their rows as one column-aligned expandable list. The list SHALL define its columns once, and every row in it (headings, expandable rows, their detail rows and status rows) SHALL place each value in its column, so a column's start and end edges are the same in every row. The list SHALL expose table semantics: rows, cells and column headers. An expansion control SHALL expose its state and the region it controls.
 
@@ -384,7 +384,7 @@ The Timer view and the Remote Sync day page SHALL each render their rows as one 
 - **WHEN** assistive technology inspects the list
 - **THEN** it SHALL be exposed as a table whose rows contain cells and whose columns have headers
 
-### Requirement: REQ-497 Column widths follow only the list width
+### Requirement: Column widths follow only the list width
 
 Column widths SHALL depend only on the list's own width, never on row content. Columns for predictable content (icons, counts, issue numbers, times, durations, actions) SHALL keep a fixed width; text columns SHALL share the remaining width in fixed proportions, each above a minimum. Text longer than its column SHALL be truncated with an ellipsis, with the full text on hover and focus.
 
@@ -413,7 +413,7 @@ Column widths SHALL depend only on the list's own width, never on row content. C
 - **WHEN** a cell's text is longer than its column
 - **THEN** it SHALL end with an ellipsis and its full text SHALL be available on hover and focus
 
-### Requirement: REQ-498 Cell content starts on its column edge
+### Requirement: Cell content starts on its column edge
 
 In every cell the first character or icon of the content SHALL sit on the column's start edge, level with that column's header label, whether the cell holds plain text, an inline editor, a picker button or an icon control. A control's padding, hover fill and edit-mode frame MAY extend into the gap before the column. Activating or editing a control SHALL NOT move its text.
 
@@ -432,9 +432,9 @@ In every cell the first character or icon of the content SHALL sit on the column
 - **WHEN** the user activates an inline editor in a cell
 - **THEN** the text SHALL stay at the same position and neighboring cells SHALL NOT shift
 
-### Requirement: REQ-499 Column headers stay visible
+### Requirement: Column headers stay visible
 
-In the column layout, a header row SHALL label the list's columns and SHALL stay visible at the top of the scrolling area while the list scrolls. A column whose content is only an icon MAY have a header that only assistive technology reads. In the narrow layout (REQ-500) the headers SHALL be available to assistive technology only.
+In the column layout, a header row SHALL label the list's columns and SHALL stay visible at the top of the scrolling area while the list scrolls. A column whose content is only an icon MAY have a header that only assistive technology reads. In the narrow layout the headers SHALL be available to assistive technology only.
 
 #### Scenario: Headers label the columns
 
@@ -451,7 +451,7 @@ In the column layout, a header row SHALL label the list's columns and SHALL stay
 - **WHEN** the list uses the narrow layout
 - **THEN** no header row SHALL be visible and assistive technology SHALL still read the column headers
 
-### Requirement: REQ-500 Narrow list layout
+### Requirement: Narrow list layout
 
 When the list itself is narrower than 40rem (640 CSS pixels at the default font size), each row SHALL wrap onto several lines without horizontal overflow. Durations and actions SHALL keep a fixed right edge shared by all rows, and every line after the first SHALL start at the title's edge. The layout SHALL follow the list's own width, not the viewport's.
 

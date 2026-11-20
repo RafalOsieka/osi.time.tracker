@@ -27,7 +27,7 @@ A self-hosted, multi-user time tracker for IT consultants. Each user has a fully
 - **Remote calls are on demand only.** No background sync, polling or scheduled jobs against trackers.
 - **Users are isolated.** Every query is scoped to the authenticated user.
 - **Deployment details stay private.** This repository and its workflow logs are public. Never write the production address, access credentials or specifics of the hosting infrastructure into files, issues, PRs, commits or logs; use placeholders and masked secrets (`deploy/osieka-dev/README.md`).
-- **Behavior is described in `docs/behavior`**, one file per capability. Read the files a change touches and update them with the code, following [`docs/behavior/guideline.md`](./docs/behavior/guideline.md). Retired REQ codes are in `docs/retired-requirements.md`.
+- **Behavior is described in `docs/behavior`**, one file per capability. Read the files a change touches and update them with the code, following [`docs/behavior/guideline.md`](./docs/behavior/guideline.md).
 
 ## Commands
 

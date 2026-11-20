@@ -24,7 +24,7 @@ const {
 } = defineProps<{
   config: TrackerDto;
   currentRef?: RemoteIssueRefDto;
-  /** The owning project's remote project scope (REQ-328), if any. */
+  /** The owning project's remote project scope, if any. */
   scope?: (RemoteIssueScope & { remoteProjectTitle: string }) | null;
   linkTestid?: string;
   cachedTestid?: string;
@@ -34,7 +34,7 @@ const {
   /** What is being linked (the Task title), shown under the popover's heading. */
   contextLabel?: string;
   /**
-   * The day whose entries a link moves (REQ-461), e.g. "7 listopada 2026", named with the
+   * The day whose entries a link moves, e.g. "7 listopada 2026", named with the
    * Tracker in the popover's context line.
    */
   dayLabel?: string;
@@ -66,7 +66,7 @@ const { search, results, outOfScopeId, loading, errorKey } = useRemoteIssueSearc
 const headingId = useId();
 const open = shallowRef(false);
 const hasSearched = shallowRef(false);
-// On by default whenever a scope exists (REQ-328); reset on every popover open.
+// On by default whenever a scope exists; reset on every popover open.
 const applyScope = shallowRef(true);
 const rootEl = useTemplateRef<HTMLElement>('rootEl');
 const queryInput = useTemplateRef('queryInput');
@@ -153,7 +153,7 @@ function resultAccessibleName(result: RemoteIssueSearchResult): string {
     : base;
 }
 
-/** The Tracker the link goes to, after the day whose entries it moves when known (REQ-518). */
+/** The Tracker the link goes to, after the day whose entries it moves when known. */
 const destinationLabel = computed(() =>
   dayLabel
     ? t('remoteIssuePicker.dayContext', { day: dayLabel, tracker: config.name })
@@ -182,7 +182,7 @@ function visibleProjectTitle(result: RemoteIssueSearchResult): string | undefine
     : result.remoteProjectTitle;
 }
 
-/** The query keeps the initial focus (REQ-460), though the mode control comes first. */
+/** The query keeps the initial focus, though the mode control comes first. */
 function focusQueryInput(event?: Event) {
   event?.preventDefault();
   // The input by its id: the popover content is teleported, and the component ref's exposed
@@ -195,7 +195,7 @@ function focusQueryInput(event?: Event) {
 
 // Shared by every path that opens the popover (the unlinked icon, the Edit
 // menu item, and the popover's own controlled reopen) so state — including
-// the scope toggle (REQ-328) — resets the same way regardless of entry point.
+// the scope toggle — resets the same way regardless of entry point.
 async function resetForOpen() {
   state.mode = REMOTE_ISSUE_SEARCH_MODE_ORDER[0];
   applyScope.value = true;
@@ -273,7 +273,7 @@ function onClose() {
 /** What the shown results answer, so Enter on an unchanged query picks instead of re-searching. */
 const searchedKey = shallowRef('');
 const currentKey = computed(() => `${state.mode}\n${applyScope.value}\n${state.query}`);
-/** The result Enter picks (REQ-518): the first after every search, moved by the arrow keys. */
+/** The result Enter picks: the first after every search, moved by the arrow keys. */
 const activeIndex = shallowRef(0);
 const resultsList = useTemplateRef<HTMLElement>('resultsList');
 
@@ -488,7 +488,7 @@ onBeforeUnmount(() => {
             <!--
               The search mode first, as a compact segmented control (still a radio group), since
               it decides what the query means; the search status sits beside it. The query still
-              takes the popover's initial focus (REQ-460).
+              takes the popover's initial focus.
             -->
             <div class="flex min-w-0 items-center gap-3">
               <URadioGroup

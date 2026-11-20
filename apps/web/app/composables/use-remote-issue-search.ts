@@ -18,13 +18,13 @@ export interface RemoteIssueSearchInput {
 
 /**
  * State-only issue search over the `RemoteTrackerAdapter` selected for
- * `config.directBrowserAccess` (REQ-103): loading/results/error state and
+ * `config.directBrowserAccess`: loading/results/error state and
  * stale-response suppression live here; all I/O and provider quirks are
  * delegated to the adapter, which behaves identically regardless of
  * transport.
  *
  * `scope` is an optional getter for the owning project's remote project
- * scope (REQ-328/REQ-329). When `search` is called with `applyScope: true`
+ * scope. When `search` is called with `applyScope: true`
  * and a scope is present, it is forwarded to the adapter; ID-mode results
  * outside that scope are still returned (not filtered) and flagged via
  * `outOfScopeId` rather than treated as an error.
@@ -39,7 +39,7 @@ export function useRemoteIssueSearch(
   const loading = ref(false);
   const errorKey = ref<string | null>(null);
   // Set to the single ID-mode result's id when it exists but falls outside
-  // the applied scope (REQ-329); null otherwise, including for title search.
+  // the applied scope; null otherwise, including for title search.
   const outOfScopeId = ref<string | null>(null);
 
   // Monotonically increasing token used to suppress stale/superseded responses.

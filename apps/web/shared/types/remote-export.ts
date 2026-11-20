@@ -9,7 +9,7 @@ export const isoDateSchema = z
 
 /**
  * Request body for local finalization after the browser successfully created
- * a remote time log (REQ-119 / REQ-120).
+ * a remote time log.
  */
 export const finalizeRemoteExportSchema = z.object({
   taskId: z.uuid({
@@ -39,7 +39,7 @@ export const finalizeRemoteExportSchema = z.object({
   entryIds: z
     .array(z.uuid({ error: 'error.remoteExportEntryIdsInvalid' }))
     .min(1, { error: 'error.remoteExportEntryIdsInvalid' }),
-  /** Client-generated idempotency key for this logical export attempt (REQ-233). */
+  /** Client-generated idempotency key for this logical export attempt. */
   exportRequestKey: z
     .string({ error: 'error.remoteExportRequestKeyRequired' })
     .trim()
@@ -121,7 +121,7 @@ export interface FinalizeRemoteExportResultDto {
   replayed: boolean;
 }
 
-/** Per-task outcome of one browser-orchestrated export batch (REQ-120). */
+/** Per-task outcome of one browser-orchestrated export batch. */
 export const remoteExportOutcomeStatusSchema = z.enum([
   'success',
   'remote_failure',

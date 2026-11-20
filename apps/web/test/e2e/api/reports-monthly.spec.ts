@@ -127,7 +127,7 @@ describeReportsMonthly('monthly report API', async () => {
     expect(trackerNames).not.toContain(deleted.name);
   });
 
-  it('includes an imported log in export provenance, exactly like an app-exported one (REQ-344)', async () => {
+  it('includes an imported log in export provenance, exactly like an app-exported one', async () => {
     const { jar, token } = await seedAndLogin(dbUrl);
     await setTimezone(jar, token, 'UTC');
     const tracker = await createTracker(jar, token, 'Import Report Tracker ' + Date.now());

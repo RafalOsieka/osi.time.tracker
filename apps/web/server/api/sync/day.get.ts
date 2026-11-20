@@ -22,7 +22,7 @@ import { getRemoteIssueRefsForTasks } from '../../utils/remote-issue-refs';
 import { getZodQuery } from '../../utils/zod-input';
 
 /**
- * Returns the authenticated user's day-review aggregate (REQ-115):
+ * Returns the authenticated user's day-review aggregate:
  * one row per Task with entries that day, carrying completed entry details,
  * prior export provenance, the summed unrounded duration, the resolvable
  * Tracker configuration surface, and the remote issue reference when present,
@@ -207,7 +207,7 @@ export default defineEventHandler(async (event): Promise<RemoteSyncDayDto> => {
     }
     entry.totalSeconds += duration;
 
-    // Only completed entries are selectable for export (REQ-117).
+    // Only completed entries are selectable for export.
     if (row.stoppedAt) {
       entry.entries.push({
         id: row.entryId,

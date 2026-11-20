@@ -1,5 +1,5 @@
 /**
- * Placement rule for remote-log import (REQ-337): imported entries for one
+ * Placement rule for remote-log import: imported entries for one
  * local day are placed back to back, ordered by numeric remote log id
  * ascending, starting from whichever is later of a fixed 08:00 anchor or the
  * day's latest existing stopped entry — so two trackers imported in either

@@ -1,12 +1,12 @@
-# core-persistence Specification
+# core-persistence
 
 ## Purpose
 
-How data is stored and the schema evolves: one PostgreSQL database, committed migrations applied unattended before the app serves traffic (platform-docker REQ-048), and database-generated, time-ordered ids.
+How data is stored and the schema evolves: one PostgreSQL database, committed migrations applied unattended before the app serves traffic (`platform-docker`), and database-generated, time-ordered ids.
 
 ## Requirements
 
-### Requirement: REQ-038 Database connection
+### Requirement: Database connection
 
 The application SHALL connect to PostgreSQL using the `DATABASE_URL` environment variable through one shared client, and SHALL NOT fall back to a default connection.
 
@@ -15,7 +15,7 @@ The application SHALL connect to PostgreSQL using the `DATABASE_URL` environment
 - **WHEN** the application starts and `DATABASE_URL` is not set
 - **THEN** initialization SHALL fail fast with a clear error rather than connecting to a default or silently continuing
 
-### Requirement: REQ-039 Committed SQL migration workflow
+### Requirement: Committed SQL migration workflow
 
 Schema changes SHALL be expressed as SQL migration files committed to the repository and owned by the dedicated migrator; the web application SHALL NOT carry its own copy of the migrations or a migration runner. The migrator SHALL apply pending migrations in order and record them so they are never re-applied.
 
@@ -39,7 +39,7 @@ Schema changes SHALL be expressed as SQL migration files committed to the reposi
 - **WHEN** the migrator runs against a database whose migrations were applied before the migrations moved into the migrator application
 - **THEN** it SHALL recognize them as already applied and SHALL NOT re-run or fail on them
 
-### Requirement: REQ-042 PostgreSQL 18 and database-generated UUIDv7 ids
+### Requirement: PostgreSQL 18 and database-generated UUIDv7 ids
 
 The application SHALL require PostgreSQL 18 or newer. Every domain table SHALL use a `uuid` primary key defaulting to the database's native `uuidv7()`, so ids are time-ordered and generated for every insert, including raw SQL and seed scripts.
 

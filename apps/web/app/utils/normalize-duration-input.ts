@@ -1,7 +1,7 @@
 /**
  * Normalizes free-form duration input (`H:MM:SS`, `H:MM`, or a bare number
  * of minutes) into a total number of seconds. Returns `null` for anything
- * that cannot be normalized, so `DurationInput` (REQ-362) can revert the
+ * that cannot be normalized, so `DurationInput` can revert the
  * field for the Remote Sync page's editable rounded duration.
  */
 export function normalizeDurationInput(raw: string): number | null {

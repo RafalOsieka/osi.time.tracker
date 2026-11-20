@@ -113,7 +113,7 @@ describeProjectRemoteScopeUi('project remote scope UI flow', async () => {
     await page.click('[data-testid="project-remote-project-select"]');
     await page.getByRole('option', { name: 'Spike Root' }).click();
 
-    // Switching tracker clears the pending scope (REQ-327) — the select should
+    // Switching tracker clears the pending scope — the select should
     // no longer display "Spike Root" once tracker B's catalog loads.
     await openTrackerSelect(page, trackerB.name);
     await page.waitForFunction(
@@ -168,7 +168,7 @@ describeProjectRemoteScopeUi('project remote scope UI flow', async () => {
     // (including listProjects, fabricated client-side rather than via a real
     // tracker request, so no route mock is needed here), so the select should
     // become enabled. A browser-held secret is still required in extension
-    // mode (REQ-203/REQ-440): the extension only routes the request, it does
+    // mode: the extension only routes the request, it does
     // not supply the credential.
     const supportedPage = await loginWithExtension(installLostCreateExtension);
     await seedBrowserSecret(supportedPage, tracker.id);

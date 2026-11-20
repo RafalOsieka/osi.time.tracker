@@ -91,12 +91,12 @@ export default defineNuxtConfig({
   },
   security: {
     // Disabled: every API body is JSON, stored verbatim, and rendered through
-    // Vue template interpolation (escaped) under the CSP below (authentication
-    // REQ-011) -- not through v-html. The xss-package heuristic this validator
+    // Vue template interpolation (escaped) under the CSP below --
+    // not through v-html. The xss-package heuristic this validator
     // uses rewrites any '<'/'>' in a JSON body, which false-positives on
     // ordinary free text ("List<T>", imported comments like "a > b") and
-    // rejects it with a bare, undocumented HTTP 400 (see api-endpoint-conventions
-    // REQ-353). It adds no protection here, so it stays off entirely.
+    // rejects it with a bare, undocumented HTTP 400 (see
+    // docs/behavior/core-api-conventions.md). It adds no protection here, so it stays off entirely.
     xssValidator: false,
     // Disable the global rate limiter in development and E2E tests to prevent
     // ordinary application requests from exhausting the shared test bucket.
@@ -112,7 +112,7 @@ export default defineNuxtConfig({
       // Baseline Content-Security-Policy; tighten iteratively post-MVP.
       contentSecurityPolicy: {
         'img-src': ["'self'", 'data:'],
-        // Remote-issue-linking (REQ-103) performs a *browser-side* fetch
+        // Remote-issue-linking performs a *browser-side* fetch
         // straight to each user's own configured OpenProject/Redmine base
         // URL (never proxied through the OSI server), so the exact origin
         // is not known at build time and cannot be enumerated per-request

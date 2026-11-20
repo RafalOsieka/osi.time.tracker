@@ -112,7 +112,7 @@ const destinationRows = computed(() =>
     required: !tracker.directBrowserAccess,
     status: destinationStatus(tracker),
     destination: { provider: tracker.systemType, baseUrl: tracker.baseUrl },
-    // Approval stays in the extension; OSI can only ask for it once the bridge is up (REQ-316).
+    // Approval stays in the extension; OSI can only ask for it once the bridge is up.
     canRequest:
       !tracker.directBrowserAccess &&
       tracker.destinationApproved === false &&

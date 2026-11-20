@@ -1,4 +1,4 @@
-# core-logging Specification
+# core-logging
 
 ## Purpose
 
@@ -6,9 +6,9 @@ Define what the server writes to its standard output so that a self-hoster can i
 
 ## Requirements
 
-### Requirement: REQ-355 Every request error is logged
+### Requirement: Every request error is logged
 
-The server SHALL write one log line to standard output for every request that ends in an error response, whether raised by application code, middleware, or an unhandled exception, with the method, path (no query string), status and any `messageKey` (REQ-171). 4xx errors SHALL log at `warn`; 5xx errors and unhandled exceptions SHALL log at `error` with the message, stack trace and any `cause`. Successful requests SHALL NOT be logged.
+The server SHALL write one log line to standard output for every request that ends in an error response, whether raised by application code, middleware, or an unhandled exception, with the method, path (no query string), status and any `messageKey` (`core-api-conventions`). 4xx errors SHALL log at `warn`; 5xx errors and unhandled exceptions SHALL log at `error` with the message, stack trace and any `cause`. Successful requests SHALL NOT be logged.
 
 #### Scenario: Middleware rejection is visible
 
@@ -35,7 +35,7 @@ The server SHALL write one log line to standard output for every request that en
 - **WHEN** a request completes with a 2xx or 3xx status
 - **THEN** no request log line SHALL be written at the default level
 
-### Requirement: REQ-356 Secrets never reach the logs
+### Requirement: Secrets never reach the logs
 
 Request error log lines SHALL NOT include the request body, query string values, request headers, cookies, or the session contents. Application log calls SHALL NOT log credentials, session secrets, tracker API keys, or full `DATABASE_URL` values at any level, including `debug` and `trace`.
 
@@ -54,7 +54,7 @@ Request error log lines SHALL NOT include the request body, query string values,
 - **WHEN** the log level is `debug` and a database query is executed
 - **THEN** the logged statement and parameters SHALL NOT include the database password or connection string
 
-### Requirement: REQ-357 Runtime-configurable log level
+### Requirement: Runtime-configurable log level
 
 The server SHALL read its log level from `CONSOLA_LEVEL` at startup, defaulting to `info`. Levels are ordered `error` < `warn` < `info` < `debug` < `trace`; a line SHALL be written only at or below the configured level. At `debug` and above every executed database statement SHALL be logged with its parameters. Progress lines of long-running operations (e.g. an import summary) MAY use `info`, `debug` or `trace` under the same filtering. Changing the level SHALL NOT require rebuilding the image.
 

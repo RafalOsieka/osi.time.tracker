@@ -25,7 +25,7 @@ import TrackerMark from './TrackerMark.vue';
 /**
  * The setup page's approved trackers: the list first, each row leading with its address and
  * last activity, and the approve form behind "Add tracker" once something is listed. Without an
- * approved website there is no form, only what to do first (REQ-420).
+ * approved website there is no form, only what to do first.
  */
 const {
   websites,

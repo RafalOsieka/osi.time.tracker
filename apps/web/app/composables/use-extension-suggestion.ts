@@ -13,7 +13,7 @@ export function suggestionKey(destination: DestinationSelector): string {
 }
 
 /**
- * "Request approval in the extension" for unapproved trackers (REQ-316, REQ-317). An already
+ * "Request approval in the extension" for unapproved trackers. An already
  * approved destination needs nothing from the user, so it triggers `onAlreadyApproved` (a
  * readiness recheck) instead of a message.
  */

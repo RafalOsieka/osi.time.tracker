@@ -1,4 +1,4 @@
-# tracking-timer-view Specification
+# tracking-timer-view
 
 ## Purpose
 
@@ -6,9 +6,9 @@ Define the timer view, the home page at `/`: entries grouped by day and task fro
 
 ## Requirements
 
-### Requirement: REQ-152 Continue a task from the timer view
+### Requirement: Continue a task from the timer view
 
-Each task group SHALL offer continue: a new running entry bound to the group's **task identity**, not its name, so it keeps the task's project and remote issue (REQ-137), stopping any running entry (REQ-141). The "(no task)" group SHALL offer the same continue/stop control (starting an untitled entry), a title editor that reassigns that day's untitled entries (REQ-179), a project control disabled until a title exists, no remote-issue control, and no bulk-assign button.
+Each task group SHALL offer continue: a new running entry bound to the group's **task identity**, not its name, so it keeps the task's project and remote issue (`workspace-tasks`), stopping any running entry (`tracking-api`). The "(no task)" group SHALL offer the same continue/stop control (starting an untitled entry), a title editor that reassigns that day's untitled entries (`tracking-api`), a project control disabled until a title exists, no remote-issue control, and no bulk-assign button.
 
 #### Scenario: Continue starts a timer for the task
 
@@ -55,9 +55,9 @@ Each task group SHALL offer continue: a new running entry bound to the group's *
 - **WHEN** a group has no task name
 - **THEN** the project control SHALL be disabled and its accessible name SHALL explain that a title is required first
 
-### Requirement: REQ-153 Mini task editor on the timer view
+### Requirement: Mini task editor on the timer view
 
-Each task group SHALL let the user edit its task name, project and remote issue in the header. Every such edit SHALL be **day-scoped**: it sends that day's entry ids to the reassignment (REQ-179), moving them to the find-or-create target, and SHALL never rename, re-project or re-link the task itself, so other days keep it; a task's only day MAY leave it garbage-collected. On success the page SHALL update and regroup the affected groups and refresh the running state.
+Each task group SHALL let the user edit its task name, project and remote issue in the header. Every such edit SHALL be **day-scoped**: it sends that day's entry ids to the reassignment (`tracking-api`), moving them to the find-or-create target, and SHALL never rename, re-project or re-link the task itself, so other days keep it; a task's only day MAY leave it garbage-collected. On success the page SHALL update and regroup the affected groups and refresh the running state.
 
 #### Scenario: Inline rename is day-scoped
 
@@ -79,7 +79,7 @@ Each task group SHALL let the user edit its task name, project and remote issue 
 - **WHEN** any group-level edit (title, project, or remote issue) is committed
 - **THEN** the request SHALL be the day-scoped reassignment and the page SHALL make no call that mutates a task row directly
 
-### Requirement: REQ-462 Group title and project editors
+### Requirement: Group title and project editors
 
 The group title SHALL be activatable and swap to a text input that commits on blur or Enter and cancels on Escape; an empty or whitespace-only name SHALL silently revert without a request. The project context, or a localized "(no project)" placeholder, SHALL swap to a project select with a clear option, labelled by project name only and listing the current project even when soft-deleted. Choosing an option, including clearing, SHALL commit; dismissing SHALL change nothing.
 
@@ -108,7 +108,7 @@ The group title SHALL be activatable and swap to a text input that commits on bl
 - **WHEN** the task's current project has been soft-deleted
 - **THEN** the project select SHALL still list it as the current option
 
-### Requirement: REQ-463 One inline editor at a time
+### Requirement: One inline editor at a time
 
 At most one inline editor — group title, group project or remote issue picker, across all groups and days — SHALL be open. Opening one SHALL close any other without committing, returning it to its read-only display, and SHALL be ready after a single click: a text input focused, a project select with its list open.
 
@@ -122,7 +122,7 @@ At most one inline editor — group title, group project or remote issue picker,
 - **WHEN** an inline editor is active in one group and the user activates a title, project or remote issue editor elsewhere (in the same or a different group)
 - **THEN** the previously active editor SHALL close without committing, its control SHALL return to the read-only display, and the newly opened editor SHALL receive focus
 
-### Requirement: REQ-154 Accessible, localized, tokenized timer view
+### Requirement: Accessible, localized, tokenized timer view
 
 The timer view SHALL meet WCAG 2.1 AA: semantic headings or landmarks for days and groups; keyboard-operable expand controls exposing their state; labelled actions; named, keyboard-operable inline editors cancellable with Escape. A group header SHALL keep its expand control and edit triggers as siblings, never nested. Colors SHALL come from theme tokens, dates and durations follow the locale, strings have `en`/`pl` parity, and API failures show a translated Toast.
 
@@ -151,7 +151,7 @@ The timer view SHALL meet WCAG 2.1 AA: semantic headings or landmarks for days a
 - **WHEN** a timer-view action fails with an API error
 - **THEN** the client SHALL show a Toast translated from the returned `messageKey`
 
-### Requirement: REQ-265 Timer view group and entry row density
+### Requirement: Timer view group and entry row density
 
 Group and entry text SHALL sit in stable layout slots. A task name, project context (including "(no project)") or entry title too long for its slot SHALL be truncated with an ellipsis, the full text shown as a tooltip on hover and focus and kept as the accessible name; text that fits SHALL have no tooltip. Activating a truncated title SHALL edit the full value. Activating or typing in a title, project or time editor SHALL NOT resize its slot or shift neighbors.
 
@@ -190,7 +190,7 @@ Group and entry text SHALL sit in stable layout slots. A task name, project cont
 - **WHEN** the user types a longer or shorter value in an active title, project, or time editor
 - **THEN** the reserved slot and surrounding row SHALL NOT grow or shrink with the typed text
 
-### Requirement: REQ-458 Entry-count indicator
+### Requirement: Entry-count indicator
 
 Each group SHALL show its entry count as a compact, fixed-width numeric indicator immediately left of the title, even for one entry: the integer for 1–9 and `9+` above nine. Its accessible name SHALL be the localized count phrase with the actual count; that phrase need not be visible.
 
@@ -209,9 +209,9 @@ Each group SHALL show its entry count as a compact, fixed-width numeric indicato
 - **WHEN** a group contains more than nine entries
 - **THEN** the indicator's visible text SHALL be `9+` and its accessible name SHALL still use the actual count
 
-### Requirement: REQ-459 Durations and the entry time slot
+### Requirement: Durations and the entry time slot
 
-Group, entry and day durations SHALL use the shell timer's monospace, tabular-figure style and SHALL NOT be activating controls. An expanded entry's start and stop SHALL be one permanently shown segmented time-range field (REQ-361) in a fixed-width slot showing full `HH:mm` values; a running entry SHALL show its start plus a localized "now" in a slot of the same width, so durations align. It SHALL edit the wall-clock time on the entry's existing local day only.
+Group, entry and day durations SHALL use the shell timer's monospace, tabular-figure style and SHALL NOT be activating controls. An expanded entry's start and stop SHALL be one permanently shown segmented time-range field (`ui-shared-components`) in a fixed-width slot showing full `HH:mm` values; a running entry SHALL show its start plus a localized "now" in a slot of the same width, so durations align. It SHALL edit the wall-clock time on the entry's existing local day only.
 
 #### Scenario: Durations match the shell elapsed presentation
 
@@ -233,9 +233,9 @@ Group, entry and day durations SHALL use the shell timer's monospace, tabular-fi
 - **WHEN** the user commits a new start or stop time from the expanded row
 - **THEN** the entry SHALL keep its previous local calendar day and only the wall-clock time SHALL change
 
-### Requirement: REQ-107 Timer view remote issue picker
+### Requirement: Timer view remote issue picker
 
-A task whose project has an active tracker SHALL show a compact remote-issue control in a fixed-width slot. Linked: a `#<remoteIssueId>` link, a tooltip with the cached issue and project titles, and on hover or focus an Edit then Unlink menu; Unlink SHALL act at once (REQ-105), no confirmation or popover. Unlinked: an icon whose name and tooltip say so, opening the picker. Without a usable tracker: a disabled icon explaining why. Every supported `systemType`, Redmine included, SHALL work.
+A task whose project has an active tracker SHALL show a compact remote-issue control in a fixed-width slot. Linked: a `#<remoteIssueId>` link, a tooltip with the cached issue and project titles, and on hover or focus an Edit then Unlink menu; Unlink SHALL act at once (`remote-issue-linking`), no confirmation or popover. Unlinked: an icon whose name and tooltip say so, opening the picker. Without a usable tracker: a disabled icon explaining why. Every supported `systemType`, Redmine included, SHALL work.
 
 #### Scenario: Linked Task displays cached data
 
@@ -272,9 +272,9 @@ A task whose project has an active tracker SHALL show a compact remote-issue con
 - **WHEN** the user activates Unlink in the linked dropdown
 - **THEN** the system SHALL perform the day-scoped unlink immediately without a confirmation dialog and SHALL NOT open the picker
 
-### Requirement: REQ-460 Remote issue picker popover
+### Requirement: Remote issue picker popover
 
-Edit, or the unlinked icon, SHALL open a reusable search popover with issue-ID mode selected and listed first, focus in the query input, and Enter searching or picking (REQ-518). Empty and error states SHALL appear only after a submit. Each result SHALL show the issue title, then `#<id>` and the remote project title when present, all in its accessible name. It SHALL have no unlink action, SHALL translate all its states, and SHALL meet WCAG 2.1 AA.
+Edit, or the unlinked icon, SHALL open a reusable search popover with issue-ID mode selected and listed first, focus in the query input, and Enter searching or picking. Empty and error states SHALL appear only after a submit. Each result SHALL show the issue title, then `#<id>` and the remote project title when present, all in its accessible name. It SHALL have no unlink action, SHALL translate all its states, and SHALL meet WCAG 2.1 AA.
 
 #### Scenario: Link from a Timer Task row
 
@@ -293,7 +293,7 @@ Edit, or the unlinked icon, SHALL open a reusable search popover with issue-ID m
 
 #### Scenario: Scoped search names only other projects
 
-- **WHEN** a search ran inside the Project's remote scope (REQ-328) and a result belongs to the scoped remote project itself
+- **WHEN** a search ran inside the Project's remote scope (`remote-issue-linking`) and a result belongs to the scoped remote project itself
 - **THEN** that result SHALL NOT repeat the scoped project's title visibly, SHALL keep it in its accessible name, and results from its subprojects SHALL still show their project title
 
 #### Scenario: Result without a remote project title still selectable
@@ -311,9 +311,9 @@ Edit, or the unlinked icon, SHALL open a reusable search popover with issue-ID m
 - **WHEN** the picker opens and the user has not submitted a query
 - **THEN** the picker SHALL NOT announce an empty-results phrase
 
-### Requirement: REQ-461 Picker selections are day-scoped
+### Requirement: Picker selections are day-scoped
 
-Linking, replacing or unlinking SHALL send exactly that day's group entry ids to the reassignment (REQ-179) with the chosen issue or an explicit null, never changing the task's reference, so other days keep theirs. On success the page SHALL update and regroup the affected groups and refresh the running state. The same picker SHALL link an unlinked, usable Remote Sync row inline, reassigning that date's entries and updating the row without a reload; there it SHALL offer no unlink.
+Linking, replacing or unlinking SHALL send exactly that day's group entry ids to the reassignment (`tracking-api`) with the chosen issue or an explicit null, never changing the task's reference, so other days keep theirs. On success the page SHALL update and regroup the affected groups and refresh the running state. The same picker SHALL link an unlinked, usable Remote Sync row inline, reassigning that date's entries and updating the row without a reload; there it SHALL offer no unlink.
 
 #### Scenario: Linking is day-scoped
 
@@ -330,9 +330,9 @@ Linking, replacing or unlinking SHALL send exactly that day's group entry ids to
 - **WHEN** the user activates the inline link action on an unlinked Remote Sync row whose tracker is usable
 - **THEN** the same picker Popover SHALL open, and a successful selection SHALL reassign that date's entries for the row and flip it to the manageable state in place
 
-### Requirement: REQ-396 Timer view page
+### Requirement: Timer view page
 
-The timer view at `/` SHALL group entries by the local day of `startedAt` in the user's timezone (REQ-398), newest first, skipping empty days, then by task. A group shows the task name with its project only, total and count, expanding into entries. A day shows its date, total and a Remote Sync link (`/sync/{dayKey}`), no add control. The first feed page SHALL render in SSR; client navigation shows a skeleton until it arrives (REQ-391). A timezone change SHALL regroup without refetching.
+The timer view at `/` SHALL group entries by the local day of `startedAt` in the user's timezone (`workspace-settings`), newest first, skipping empty days, then by task. A group shows the task name with its project only, total and count, expanding into entries. A day shows its date, total and a Remote Sync link (`/sync/{dayKey}`), no add control. The first feed page SHALL render in SSR; client navigation shows a skeleton until it arrives (`ui-routing`). A timezone change SHALL regroup without refetching.
 
 #### Scenario: Entries grouped by effective-timezone day and task
 
@@ -372,11 +372,11 @@ The timer view at `/` SHALL group entries by the local day of `startedAt` in the
 #### Scenario: Day heading spells out the date
 
 - **WHEN** a day section is rendered
-- **THEN** its heading SHALL show the full weekday, day, month name and year in the active locale's casing (core-i18n REQ-516), the same form the Remote Sync date uses
+- **THEN** its heading SHALL show the full weekday, day, month name and year in the active locale's casing (`core-i18n`), the same form the Remote Sync date uses
 
-### Requirement: REQ-454 Initial content and load more
+### Requirement: Initial content and load more
 
-The first page SHALL show the newest seven activity days (REQ-452); a user with no entries SHALL see a never-tracked empty state whose action focuses the shell timer, without "load more". There SHALL be no "empty window" state, anchored-week banner or "back to this week" control. "Load more" SHALL show only while `hasMore` is true, fetch the next page with `nextBefore`, append up to seven older activity days, and stay a keyboard-reachable fallback to automatic loading (REQ-392).
+The first page SHALL show the newest seven activity days (`tracking-api`); a user with no entries SHALL see a never-tracked empty state whose action focuses the shell timer, without "load more". There SHALL be no "empty window" state, anchored-week banner or "back to this week" control. "Load more" SHALL show only while `hasMore` is true, fetch the next page with `nextBefore`, append up to seven older activity days, and stay a keyboard-reachable fallback to automatic loading.
 
 #### Scenario: Old history opens on its newest activity days
 
@@ -403,9 +403,9 @@ The first page SHALL show the newest seven activity days (REQ-452); a user with 
 - **WHEN** the user activates "load more" while `hasMore` is true
 - **THEN** the page SHALL append entries for up to seven older activity days; when a response reports `hasMore` false the control SHALL not be shown
 
-### Requirement: REQ-455 Page-level manual entry dialog
+### Requirement: Page-level manual entry dialog
 
-The page header's primary action SHALL open a manual-entry dialog: an optional title with task autocomplete, a date defaulting to today, and a start–end pair in one segmented time-range field (REQ-361). Times SHALL convert to instants in that timezone and be sent as a manual pair (REQ-446). An end before the start, or an incomplete time, SHALL block submission with an inline error. A new entry on a day not yet loaded SHALL appear without "load more", keeping `hasMore` consistent.
+The page header's primary action SHALL open a manual-entry dialog: an optional title with task autocomplete, a date defaulting to today, and a start–end pair in one segmented time-range field (`ui-shared-components`). Times SHALL convert to instants in that timezone and be sent as a manual pair (`tracking-api`). An end before the start, or an incomplete time, SHALL block submission with an inline error. A new entry on a day not yet loaded SHALL appear without "load more", keeping `hasMore` consistent.
 
 #### Scenario: Add a manual entry to a day
 
@@ -432,9 +432,9 @@ The page header's primary action SHALL open a manual-entry dialog: an optional t
 - **WHEN** the user clears a segment of the start or end group and submits
 - **THEN** an inline error SHALL be shown and no request SHALL be sent
 
-### Requirement: REQ-456 Inline entry edits
+### Requirement: Inline entry edits
 
-Each entry SHALL be editable in place (start, stop, title) and deletable after confirmation (REQ-143, REQ-151). A time edit SHALL change only the edited hour and minute, keeping stored seconds and milliseconds; an unchanged value SHALL send nothing; the same-minute clamp (REQ-432) SHALL be on, saving zero length instead of an error. Retitling one entry SHALL move only that entry. A start moved across midnight SHALL regroup it. The list SHALL refresh when the running entry stops or is replaced.
+Each entry SHALL be editable in place (start, stop, title) and deletable after confirmation (`tracking-api`). A time edit SHALL change only the edited hour and minute, keeping stored seconds and milliseconds; an unchanged value SHALL send nothing; the same-minute clamp (`ui-shared-components`) SHALL be on, saving zero length instead of an error. Retitling one entry SHALL move only that entry. A start moved across midnight SHALL regroup it. The list SHALL refresh when the running entry stops or is replaced.
 
 #### Scenario: Inline edit of an entry's times
 
@@ -481,7 +481,7 @@ Each entry SHALL be editable in place (start, stop, title) and deletable after c
 - **WHEN** the user activates an entry's delete action and confirms
 - **THEN** the entry SHALL be deleted, removed from the page, and a group left with no entries SHALL disappear
 
-### Requirement: REQ-392 Automatic load more on scroll
+### Requirement: Automatic load more on scroll
 
 While `hasMore` is true, the timer view SHALL request the next feed page automatically when the end of the loaded day list scrolls into (or near) view, without requiring the user to activate "load more". At most one load-more request SHALL be in flight at a time. While a page is loading, the list end SHALL show a loading indicator announced politely to assistive technologies. A failed automatic load SHALL leave the "load more" control usable for a manual retry and SHALL NOT retry in a loop.
 
@@ -505,9 +505,9 @@ While `hasMore` is true, the timer view SHALL request the next feed page automat
 - **WHEN** an automatic load-more request fails
 - **THEN** the page SHALL keep the already loaded days, SHALL show the "load more" control for a manual retry, and SHALL NOT repeatedly re-issue the failed request on its own
 
-### Requirement: REQ-393 Single-request refresh of the loaded window
+### Requirement: Single-request refresh of the loaded window
 
-When the timer view refreshes its list after a mutation (entry edit, delete, add within the loaded range, continue, or the running entry stopping or being replaced), it SHALL re-fetch the whole loaded window in **one** feed request using the range-refresh mode of REQ-395 (`from` = the local start of the oldest loaded day), replacing the held entries with the response. The refresh SHALL NOT shrink the loaded window, and `hasMore` / `nextBefore` SHALL be taken from the response.
+When the timer view refreshes its list after a mutation (entry edit, delete, add within the loaded range, continue, or the running entry stopping or being replaced), it SHALL re-fetch the whole loaded window in **one** feed request using the range-refresh mode of the feed (`tracking-api`) (`from` = the local start of the oldest loaded day), replacing the held entries with the response. The refresh SHALL NOT shrink the loaded window, and `hasMore` / `nextBefore` SHALL be taken from the response.
 
 #### Scenario: Edit deep in loaded history refreshes in one request
 
@@ -524,7 +524,7 @@ When the timer view refreshes its list after a mutation (entry edit, delete, add
 - **WHEN** the refresh request fails
 - **THEN** the page SHALL keep showing the previously held entries rather than clearing the list
 
-### Requirement: REQ-394 Live duration updates scoped to the running entry
+### Requirement: Live duration updates scoped to the running entry
 
 While a timer is running, the per-second live duration update SHALL change only the running entry's row duration, its task group's total, and its day's total. Stopped entries' groups and days SHALL NOT be recomputed or re-rendered by the tick. Displayed totals SHALL remain equal to the sum of their entries' durations, with the running entry measured up to the current second.
 
@@ -543,9 +543,9 @@ While a timer is running, the per-second live duration update SHALL change only 
 - **WHEN** the running entry is stopped
 - **THEN** its group and day totals SHALL show the stopped entry's final duration and SHALL stop advancing
 
-### Requirement: REQ-501 Group row layout and live group
+### Requirement: Group row layout and live group
 
-Each task group SHALL be a row of the shared column list (REQ-496) with the columns expansion, entry count, title, project, remote issue, duration and continue/stop. In the narrow layout (REQ-500) its first line SHALL hold expansion, count, title, duration and continue/stop, and its second line project and remote issue. A group holding the running entry SHALL show the shell widget's animated stop control, which stops it, and no separate live-status phrase.
+Each task group SHALL be a row of the shared column list (`ui-shared-components`) with the columns expansion, entry count, title, project, remote issue, duration and continue/stop. In the narrow layout (`ui-shared-components`) its first line SHALL hold expansion, count, title, duration and continue/stop, and its second line project and remote issue. A group holding the running entry SHALL show the shell widget's animated stop control, which stops it, and no separate live-status phrase.
 
 #### Scenario: Wide list keeps a single-row group
 
@@ -567,9 +567,9 @@ Each task group SHALL be a row of the shared column list (REQ-496) with the colu
 - **WHEN** the user activates the stop control on a live group
 - **THEN** the running entry SHALL stop through the shared timer stop operation
 
-### Requirement: REQ-502 Entry rows use the group's columns
+### Requirement: Entry rows use the group's columns
 
-An expanded entry SHALL be a row of the same list: its editable title in the title column, its time-range field ending where the remote-issue column ends, its duration in the duration column and its delete control in the action column. In the narrow layout (REQ-500) its first line SHALL hold the time range, duration and delete control, and its second line the editable title.
+An expanded entry SHALL be a row of the same list: its editable title in the title column, its time-range field ending where the remote-issue column ends, its duration in the duration column and its delete control in the action column. In the narrow layout (`ui-shared-components`) its first line SHALL hold the time range, duration and delete control, and its second line the editable title.
 
 #### Scenario: Entry duration lines up with the group
 
@@ -586,7 +586,7 @@ An expanded entry SHALL be a row of the same list: its editable title in the tit
 - **WHEN** a group is expanded in the narrow layout
 - **THEN** each entry SHALL show its time range, duration and delete control on its first line and its editable title on the second
 
-### Requirement: REQ-503 One list across days
+### Requirement: One list across days
 
 All loaded days SHALL share one list with one header row naming the Task, Project, Issue and Duration columns. Each day SHALL begin with a heading row holding its date and Remote Sync link, with the day total in the duration column. Rows added by load more or a refresh SHALL join the same columns.
 
@@ -605,9 +605,9 @@ All loaded days SHALL share one list with one header row naming the Task, Projec
 - **WHEN** load more appends older days
 - **THEN** their rows SHALL use the same columns and SHALL NOT change any column width
 
-### Requirement: REQ-517 Manual entry dialog explains what it will create
+### Requirement: Manual entry dialog explains what it will create
 
-The manual-entry dialog (REQ-455) SHALL tell the user what the entry will be before it is saved: how the title field works, the timezone its times are in, whether the title creates a Task, and the entry's length. These cues SHALL be translated and SHALL update as the fields change.
+The manual-entry dialog SHALL tell the user what the entry will be before it is saved: how the title field works, the timezone its times are in, whether the title creates a Task, and the entry's length. These cues SHALL be translated and SHALL update as the fields change.
 
 #### Scenario: Title help
 
@@ -621,7 +621,7 @@ The manual-entry dialog (REQ-455) SHALL tell the user what the entry will be bef
 
 #### Scenario: A new Task is marked
 
-- **WHEN** the user picks the create-new-task option (REQ-467) in the dialog's title field
+- **WHEN** the user picks the create-new-task option (`tracking-timer-widget`) in the dialog's title field
 - **THEN** the field SHALL show a "New task" cue with the entry's Project, or that it has none, until the title text is edited
 
 #### Scenario: Length preview in words
@@ -632,11 +632,11 @@ The manual-entry dialog (REQ-455) SHALL tell the user what the entry will be bef
 #### Scenario: No preview for an inverted pair
 
 - **WHEN** the end is earlier than the start
-- **THEN** the dialog SHALL show the inline error (REQ-455) and no length preview
+- **THEN** the dialog SHALL show the inline error and no length preview
 
-### Requirement: REQ-518 Issue picker context and keyboard picking
+### Requirement: Issue picker context and keyboard picking
 
-The issue picker (REQ-460), opened from a Timer group, SHALL name the Task, its day and its Tracker, since a link moves only that day's entries (REQ-461). Its mode control SHALL come before the query in reading and tab order. Once results are listed, the first SHALL be active and Enter SHALL link it until the query, mode or scope changes. The picker SHALL open below its row, scrolling the page first when that makes room.
+The issue picker, opened from a Timer group, SHALL name the Task, its day and its Tracker, since a link moves only that day's entries. Its mode control SHALL come before the query in reading and tab order. Once results are listed, the first SHALL be active and Enter SHALL link it until the query, mode or scope changes. The picker SHALL open below its row, scrolling the page first when that makes room.
 
 #### Scenario: Picker names its day and Tracker
 

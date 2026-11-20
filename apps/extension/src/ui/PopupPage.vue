@@ -115,7 +115,7 @@ const websiteOffer = computed(() =>
 );
 
 /**
- * While the website step is current, the tab's offer is that step's own action (REQ-415);
+ * While the website step is current, the tab's offer is that step's own action;
  * otherwise an unapproved OSI tab gets its own card above everything else.
  */
 const offerInChecklist = computed(() => onboarding.value && websites.value.length === 0);
@@ -174,7 +174,7 @@ function openOptions(): void {
 </script>
 
 <template>
-  <!-- At most the browser's 600px popup: header and footer stay, the content scrolls (REQ-522). -->
+  <!-- At most the browser's 600px popup: header and footer stay, the content scrolls. -->
   <main class="flex max-h-150 w-90 flex-col text-sm text-default">
     <header class="flex shrink-0 items-center gap-3 border-b border-default bg-default px-4 py-3">
       <BrandMark :size="28" />

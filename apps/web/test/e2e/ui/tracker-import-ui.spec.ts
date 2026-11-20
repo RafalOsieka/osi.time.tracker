@@ -36,7 +36,7 @@ interface FakeOpenProjectCatalogElement {
   _links?: { parent: { href: string } };
 }
 
-/** Registers the OpenProject remote-project catalog route (REQ-318). */
+/** Registers the OpenProject remote-project catalog route. */
 async function mockCatalog(
   page: Page,
   origin: string,
@@ -94,7 +94,7 @@ function timeEntriesPayload(entries: ImportLogFixture[]): JsonObject {
   };
 }
 
-/** Serves month-specific date-range logs by reading the `spent_on` filter, so a two-month import scan sees different fixtures per month (REQ-296/REQ-334). */
+/** Serves month-specific date-range logs by reading the `spent_on` filter, so a two-month import scan sees different fixtures per month. */
 async function mockRangeLogsByMonth(
   page: Page,
   origin: string,
@@ -158,7 +158,7 @@ async function pickRangeFromCalendarAndScan(page: Page, from: string, to: string
   await page.click('[data-testid="tracker-import-scan"]');
 }
 
-/** Leaves every remote project's mapping at its scope-based default and advances to preview (REQ-358). */
+/** Leaves every remote project's mapping at its scope-based default and advances to preview. */
 async function advanceMappingToPreview(page: Page): Promise<void> {
   await page.waitForSelector('[data-testid="tracker-import-mapping"]');
   await page.click('[data-testid="tracker-import-mapping-continue"]');
@@ -168,7 +168,7 @@ async function advanceMappingToPreview(page: Page): Promise<void> {
 /**
  * Serves a minimal Redmine for one scoped project: the catalog, the current
  * account, every time-entry query (range scan and Remote Sync's same-day
- * fetch) with the same logs, and the batched issue-subject lookup (REQ-378).
+ * fetch) with the same logs, and the batched issue-subject lookup.
  */
 async function mockRedmine(
   page: Page,
@@ -285,7 +285,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
 
     // The Sales remote project has no scoped Project, so its mapping row is
-    // visible but starts unassigned (REQ-478/REQ-358) — left untouched here.
+    // visible but starts unassigned — left untouched here.
     await page.waitForSelector('[data-testid="tracker-import-mapping"]');
     const mappingText = await page.textContent('[data-testid="tracker-import-mapping"]');
     expect(mappingText).toContain('Sales');
@@ -294,7 +294,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
 
     // Only the web + mobile logs are matched (2); the unassigned Sales log
     // is excluded from the preview and its own total, never counted toward
-    // the importable total (REQ-478/REQ-358).
+    // the importable total.
     const totalsText = await page.textContent('[data-testid="tracker-import-preview-totals"]');
     expect(totalsText).toContain('2');
     await page.waitForSelector('[data-testid="tracker-import-unmatched-hint"]');
@@ -315,7 +315,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.waitForFunction(pageIncludesText, 'Mobile task');
     await page.waitForFunction(pageIncludesText, commentWeb);
 
-    // The backfilled day shows as Sent on the Remote Sync review (REQ-344).
+    // The backfilled day shows as Sent on the Remote Sync review.
     await page.goto(new URL('/sync/2026-08-03', page.url()).href, { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="remote-sync-page"]');
     await page.waitForFunction(() =>
@@ -324,13 +324,13 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
       ),
     );
 
-    // Re-running the same import over the same range skips every log (REQ-338).
+    // Re-running the same import over the same range skips every log.
     await openImportDialog(page, tracker.id);
     await fillRangeAndScan(page, '2026-08-01', '2026-09-30');
     await advanceMappingToPreview(page);
     const rerunTotals = await page.textContent('[data-testid="tracker-import-preview-totals"]');
     expect(rerunTotals).toContain('0');
-    // Preview's back returns to mapping (REQ-358), mapping's back returns to range.
+    // Preview's back returns to mapping, mapping's back returns to range.
     await page.click('[data-testid="tracker-import-back"]');
     await page.waitForSelector('[data-testid="tracker-import-mapping"]');
     await page.click('[data-testid="tracker-import-mapping-back"]');
@@ -340,7 +340,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.close();
   });
 
-  it('caches the Redmine issue subject on an imported log so Remote Sync shows it (REQ-343/REQ-378)', async () => {
+  it('caches the Redmine issue subject on an imported log so Remote Sync shows it', async () => {
     const user = await seedUser(dbUrl, { displayName: 'importuiredmine' });
     const { jar, token } = await apiLogin(user.email, user.password);
     await setTimezone(jar, token);
@@ -372,7 +372,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('1');
     await page.click('[data-testid="tracker-import-close"]');
 
-    // Before REQ-378 a Redmine import cached the bare issue id as the title.
+    // Without the batched title lookup, a Redmine import cached the bare issue id as the title.
     await page.goto(new URL('/sync/2026-08-05', page.url()).href, { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid^="remote-sync-issue-"]');
     const issueText = await page.textContent('[data-testid^="remote-sync-issue-"]');
@@ -465,7 +465,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.close();
   });
 
-  it('overrides an unmatched remote project to a chosen Project in the mapping phase (REQ-358)', async () => {
+  it('overrides an unmatched remote project to a chosen Project in the mapping phase', async () => {
     const user = await seedUser(dbUrl, { displayName: 'importuimapping' });
     const { jar, token } = await apiLogin(user.email, user.password);
     await setTimezone(jar, token);
@@ -525,7 +525,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
     await page.click('[data-testid="tracker-import-close"]');
 
     // The imported log's Task landed in the overridden Project, not left
-    // unassigned (REQ-358).
+    // unassigned.
     const tasksRes = await fetch(
       url(`/api/tasks?projectId=${projectWeb.id}&search=${encodeURIComponent(commentSales)}`),
       { headers: { cookie: jar.header() } },

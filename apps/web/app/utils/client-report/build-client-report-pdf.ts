@@ -12,7 +12,7 @@ import type { ClientReport, ClientReportDay, ClientReportRow } from './build-cli
 import type { ClientReportFormatters } from './format';
 import appMark from '../../assets/icons/app-mark.svg?raw';
 
-/** Translates a catalog key in the report's locale (REQ-390), independent of the UI locale. */
+/** Translates a catalog key in the report's locale, independent of the UI locale. */
 export type ClientReportTranslate = (key: string, params?: MessageParams) => string;
 
 /** Font families registered by `loadPdfMake` (IBM Plex Sans, design D4). */
@@ -62,7 +62,7 @@ function glyphMarkup(svg: string, color: string): string {
 
 /**
  * Title-page logo: the 75% app tile of `public/icon.svg`, built from the canonical glyph at import
- * time so the PDF never drifts from the app mark (REQ-368, design D3).
+ * time so the PDF never drifts from the app mark.
  */
 const LOGO_SVG = `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><rect width="32" height="32" rx="8" fill="${ACCENT}"/><g transform="translate(4 4)" fill="${WHITE}">${glyphMarkup(appMark, WHITE)}</g></svg>`;
 
@@ -214,7 +214,7 @@ function titlePage(report: ClientReport, t: ClientReportTranslate, f: ClientRepo
               margin: [0, 4.5, 0, 0],
             },
             { text: report.contractor.email, fontSize: 10.5, color: SLATE_700 },
-            // Free text from the preset (REQ-513): pdfmake keeps its line breaks and left-aligns it.
+            // Free text from the preset: pdfmake keeps its line breaks and left-aligns it.
             ...(report.contractor.details === null
               ? []
               : [
@@ -431,9 +431,9 @@ function timesheet(report: ClientReport, t: ClientReportTranslate, f: ClientRepo
 }
 
 /**
- * Lays out the client report as a pdfmake document (design D2): a title page
- * (REQ-388), then the timesheet table with running header and footer on every
- * table page (REQ-389, REQ-474). All strings come from `t` in the report locale.
+ * Lays out the client report as a pdfmake document (design D2): a title page,
+ * then the timesheet table with running header and footer on every
+ * table page. All strings come from `t` in the report locale.
  */
 export function buildClientReportPdf(
   report: ClientReport,

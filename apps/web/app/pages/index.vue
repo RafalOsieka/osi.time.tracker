@@ -22,7 +22,7 @@ const { running, elapsedSeconds, start, stop, fetchRunning } = useTimer();
 const { effective } = useProfile();
 const requestFetch = useRequestFetch();
 
-// Lazy: client navigation renders at once with a skeleton (REQ-391); SSR still waits for the feed.
+// Lazy: client navigation renders at once with a skeleton; SSR still waits for the feed.
 const { data: feedData, status: feedStatus } = await useAsyncData(
   'timer-view-feed',
   () => requestFetch<TimerViewFeedDto>('/api/time-entries/feed'),
@@ -129,7 +129,7 @@ function trackerForGroup(group: { projectId: string | null }) {
 }
 
 /**
- * Remote project scope per project id (REQ-328). Built once per project list so each
+ * Remote project scope per project id. Built once per project list so each
  * group receives the same object on every render and does not re-render needlessly.
  */
 const scopeByProjectId = computed(() => {
@@ -144,7 +144,7 @@ const scopeByProjectId = computed(() => {
   return scopes;
 });
 
-/** The owning project's remote project scope (REQ-328), or null when unset. */
+/** The owning project's remote project scope, or null when unset. */
 function scopeForGroup(group: { projectId: string | null }) {
   return (group.projectId && scopeByProjectId.value.get(group.projectId)) || null;
 }
@@ -171,7 +171,7 @@ const displayEntries = computed<TimeEntryDto[]>(() => {
 });
 
 /**
- * Re-fetch the whole loaded window in one request (REQ-393): `from` is the start of the
+ * Re-fetch the whole loaded window in one request: `from` is the start of the
  * oldest loaded day, so the response covers everything shown and keeps pagination in sync.
  * A failed refresh keeps the held entries.
  */
@@ -212,7 +212,7 @@ const isNeverTracked = computed(
     !hasMore.value,
 );
 const hasEntries = computed(() => days.value.length > 0);
-/** Skeleton while the first feed is pending with nothing to show yet (REQ-391). */
+/** Skeleton while the first feed is pending with nothing to show yet. */
 const feedLoading = computed(() => !feedSettled.value && entries.value.length === 0);
 
 function isGroupLive(group: { entries: TimeEntryDto[] }): boolean {
@@ -249,7 +249,7 @@ async function loadMore() {
   }
 }
 
-// --- Automatic load more (REQ-392) ---
+// --- Automatic load more ---
 // A sentinel next to the "load more" button reports when the list end nears the viewport.
 // Loading repeats while it stays in range, so a short page does not stall the list.
 const AUTO_LOAD_ROOT_MARGIN = '600px 0px';

@@ -4,7 +4,7 @@ import type { Page } from 'playwright-core';
  * Types an `HH:mm` time into a segmented `TimeField` (Nuxt UI `UInputTime`)
  * addressed by `data-testid`, by focusing each segment via its `data-segment`
  * part and typing its digits. Matches the shared-ui-components segmented
- * clock-time field contract (REQ-361).
+ * clock-time field contract.
  *
  * For a range field (two sets of hour/minute segments under the same
  * `data-testid`), `index` selects which one: `0` for the start, `1` for the

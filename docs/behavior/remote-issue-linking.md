@@ -1,14 +1,14 @@
-# remote-issue-linking Specification
+# remote-issue-linking
 
 ## Purpose
 
-How a task gets linked to one remote issue: searching the tracker by title or exact issue id, directly or through the extension, within the project's remote scope; linking and unlinking as day-scoped moves of entries between tasks. The picker UI on the Timer view and Remote Sync is in `tracking-timer-view` (REQ-107).
+How a task gets linked to one remote issue: searching the tracker by title or exact issue id, directly or through the extension, within the project's remote scope; linking and unlinking as day-scoped moves of entries between tasks. The picker UI on the Timer view and Remote Sync is in `tracking-timer-view` (`tracking-timer-view`).
 
 ## Requirements
 
-### Requirement: REQ-104 Persist one remote issue reference per Task
+### Requirement: Persist one remote issue reference per Task
 
-A task SHALL hold at most one remote issue reference, stored on the task row (workspace-tasks REQ-237), with its issue URL derived from the active tracker (REQ-205). The issue id is part of task identity (REQ-136), so linking SHALL NOT edit a reference: it SHALL find or create the task with the issue and move the entries (REQ-179), so same-named tasks with different issues coexist. A new linked task SHALL cache the result's remote project title only when non-empty; tasks without one stay valid.
+A task SHALL hold at most one remote issue reference, stored on the task row (`workspace-tasks`), with its issue URL derived from the active tracker (`remote-adapter-contract`). The issue id is part of task identity (`workspace-tasks`), so linking SHALL NOT edit a reference: it SHALL find or create the task with the issue and move the entries (`tracking-api`), so same-named tasks with different issues coexist. A new linked task SHALL cache the result's remote project title only when non-empty; tasks without one stay valid.
 
 #### Scenario: Link an issue
 
@@ -45,9 +45,9 @@ A task SHALL hold at most one remote issue reference, stored on the task row (wo
 - **WHEN** the reference's configuration is not active or available
 - **THEN** the system SHALL return its cached ID, cached issue title, and cached remote project title when present, without a generated URL or remote-search capability
 
-### Requirement: REQ-105 Unlink a remote issue locally
+### Requirement: Unlink a remote issue locally
 
-Unlinking SHALL be a local, **day-scoped move**: the listed entries SHALL be reassigned (REQ-179, explicit null remote issue) to the find-or-create task with the same name and project and no issue, and an emptied source task garbage-collected. It SHALL NOT call, update or delete any remote issue, nor touch the task's entries on other days. No task-global `POST` or `DELETE /api/tasks/[id]/remote-issue-ref` endpoint SHALL exist.
+Unlinking SHALL be a local, **day-scoped move**: the listed entries SHALL be reassigned ("Day-scoped reassignment of time entries to a task" in `tracking-api`, explicit null remote issue) to the find-or-create task with the same name and project and no issue, and an emptied source task garbage-collected. It SHALL NOT call, update or delete any remote issue, nor touch the task's entries on other days. No task-global `POST` or `DELETE /api/tasks/[id]/remote-issue-ref` endpoint SHALL exist.
 
 #### Scenario: Unlink one day's entries
 
@@ -69,9 +69,9 @@ Unlinking SHALL be a local, **day-scoped move**: the listed entries SHALL be rea
 - **WHEN** a client calls `POST` or `DELETE` on `/api/tasks/[id]/remote-issue-ref`
 - **THEN** the system SHALL respond with HTTP 404 or 405 (route absent)
 
-### Requirement: REQ-106 Remote issue linking is user-scoped and validated
+### Requirement: Remote issue linking is user-scoped and validated
 
-Link and unlink follow `core-api-conventions` and run through the reassignment endpoint (REQ-179), which SHALL enforce these rules. Linking SHALL take the tracker from the owned task's project, never from the client, and SHALL reject project-less tasks, local projects, missing or soft-deleted trackers, and foreign or unknown task or entry ids. Any active tracker whose `systemType` has an adapter (OpenProject, Redmine) SHALL be eligible. A rejected request SHALL change no entry or task.
+Link and unlink follow `core-api-conventions` and run through the reassignment endpoint (`tracking-api`), which SHALL enforce these rules. Linking SHALL take the tracker from the owned task's project, never from the client, and SHALL reject project-less tasks, local projects, missing or soft-deleted trackers, and foreign or unknown task or entry ids. Any active tracker whose `systemType` has an adapter (OpenProject, Redmine) SHALL be eligible. A rejected request SHALL change no entry or task.
 
 #### Scenario: Link an eligible owned Task
 
@@ -93,9 +93,9 @@ Link and unlink follow `core-api-conventions` and run through the reassignment e
 - **WHEN** a local mutation lacks a valid session or CSRF token
 - **THEN** the system SHALL reject it and SHALL persist nothing
 
-### Requirement: REQ-328 Picker applies the project's remote scope by default
+### Requirement: Picker applies the project's remote scope by default
 
-When the task's project has a remote scope (REQ-325), the picker (also inline on Remote Sync) SHALL apply it to every search by default, with a labelled, keyboard-operable toggle naming the scoped project ("Only in <title>"), on each time the popover opens; off, later searches cover the whole tracker. Without a scope there is no toggle. The scope SHALL be sent to the adapter (REQ-319), directly or through the extension, never applied by filtering results in the client.
+When the task's project has a remote scope (`workspace-projects`), the picker (also inline on Remote Sync) SHALL apply it to every search by default, with a labelled, keyboard-operable toggle naming the scoped project ("Only in <title>"), on each time the popover opens; off, later searches cover the whole tracker. Without a scope there is no toggle. The scope SHALL be sent to the adapter (`remote-adapter-contract`), directly or through the extension, never applied by filtering results in the client.
 
 #### Scenario: Scoped title search
 
@@ -122,9 +122,9 @@ When the task's project has a remote scope (REQ-325), the picker (also inline on
 - **WHEN** a scoped search fails because the remote project is gone
 - **THEN** the picker SHALL show the translated search error and the toggle SHALL remain available to widen the search
 
-### Requirement: REQ-103 Search the configured tracker by execution mode
+### Requirement: Search the configured tracker by execution mode
 
-For an owned task whose project has an active tracker with an adapter, search SHALL run directly (`client`) or through the approved extension (`extension`) according to the tracker's direct-browser capability (REQ-311): directly it queries the tracker origin with the browser-held secret, and neither path sends the secret to an OSI API. Search SHALL validate input, bound title results, support exact-id lookup, ignore stale responses, return neutral results and show translated errors.
+For an owned task whose project has an active tracker with an adapter, search SHALL run directly (`client`) or through the approved extension (`extension`) according to the tracker's direct-browser capability (`remote-browser-extension`): directly it queries the tracker origin with the browser-held secret, and neither path sends the secret to an OSI API. Search SHALL validate input, bound title results, support exact-id lookup, ignore stale responses, return neutral results and show translated errors.
 
 #### Scenario: Client execution-mode title search returns matching issues
 
@@ -176,9 +176,9 @@ For an owned task whose project has an active tracker with an adapter, search SH
 - **WHEN** a supported mode encounters authentication, CORS, connection, or extension failure
 - **THEN** the picker SHALL expose a translated accessible error without changing the reference
 
-### Requirement: REQ-329 Issue-ID search marks results outside the scope
+### Requirement: Issue-ID search marks results outside the scope
 
-In issue-ID mode with the scope toggle on, the picker SHALL look up with the scope (REQ-320). A found issue with `inScope: false` SHALL still be listed and selectable, with a visible translated "outside this project's scope" hint that is part of its accessible name and announced with the result status; `inScope: true` shows no hint. Not-found keeps the not-found state. With the toggle off, or no scope, no hint SHALL show.
+In issue-ID mode with the scope toggle on, the picker SHALL look up with the scope (`remote-adapter-contract`). A found issue with `inScope: false` SHALL still be listed and selectable, with a visible translated "outside this project's scope" hint that is part of its accessible name and announced with the result status; `inScope: true` shows no hint. Not-found keeps the not-found state. With the toggle off, or no scope, no hint SHALL show.
 
 #### Scenario: ID inside the scope
 
@@ -193,7 +193,7 @@ In issue-ID mode with the scope toggle on, the picker SHALL look up with the sco
 #### Scenario: Linking an outside-scope issue
 
 - **WHEN** the user selects a result marked outside the scope
-- **THEN** the day-scoped link (REQ-179) SHALL proceed exactly as for any other result and SHALL NOT persist a remote project id
+- **THEN** the day-scoped link (`tracking-api`) SHALL proceed exactly as for any other result and SHALL NOT persist a remote project id
 
 #### Scenario: ID not found
 

@@ -133,7 +133,7 @@ describeClientReportUi('client report UI', async () => {
       'Download PDF',
     );
 
-    // Pasting past the limit keeps only the first 500 characters (REQ-512).
+    // Pasting past the limit keeps only the first 500 characters.
     await page.focus('textarea[data-testid="client-report-contractor-details"]');
     await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.insertText('x'.repeat(600));

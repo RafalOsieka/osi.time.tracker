@@ -9,7 +9,7 @@ import { isUniqueViolation } from './is-unique-violation';
 type Db = ReturnType<typeof getDb>;
 
 /**
- * Lists a user's report presets in REQ-381 shape: most recently used first,
+ * Lists a user's report presets in their listing shape: most recently used first,
  * never-used last (newest first), active trackers in stored order plus the
  * count of trackers soft-deleted since. `presetId` narrows to one preset.
  */
@@ -67,7 +67,7 @@ export async function listReportPresets(
 }
 
 /**
- * Creates (`presetId` null) or replaces a user's preset (REQ-382): checks
+ * Creates (`presetId` null) or replaces a user's preset: checks
  * every tracker is the user's and active, writes the preset and its ordered
  * tracker rows in one transaction, and marks it as used now.
  */

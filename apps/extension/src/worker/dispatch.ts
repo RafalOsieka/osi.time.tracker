@@ -178,7 +178,7 @@ async function approvedOrigins(approvals: ApprovalService): Promise<string[]> {
 }
 
 /**
- * Queues a tracker destination suggested by an approved website (REQ-421). The website is the
+ * Queues a tracker destination suggested by an approved website. The website is the
  * verified sender origin, never a message field, and nothing here contacts the tracker.
  */
 export async function handleSuggestion(options: {

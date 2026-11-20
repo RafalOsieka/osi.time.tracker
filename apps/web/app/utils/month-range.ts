@@ -1,7 +1,7 @@
 import { Temporal } from 'temporal-polyfill';
 import type { RouteLogsByScopeGroup } from './remote/route-logs-by-scope';
 
-/** Hard cap on remote logs accepted in one import request (mirrors REQ-339's server-side cap). */
+/** Hard cap on remote logs accepted in one import request (mirrors the import endpoint's server-side cap). */
 export const IMPORT_REQUEST_MAX_LOGS = 500;
 
 export interface DateRange {
@@ -34,7 +34,7 @@ export function splitIntoMonthChunks(from: string, to: string): DateRange[] {
 
 /**
  * Splits routed groups into request-sized batches of at most `maxLogs` total
- * logs (REQ-339), keeping each group's own logs together unless a single
+ * logs, keeping each group's own logs together unless a single
  * group itself exceeds the cap, in which case that group's logs are split
  * across consecutive batches under the same `projectId`.
  */

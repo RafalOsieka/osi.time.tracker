@@ -12,7 +12,7 @@ import { useTrackerSecret } from './use-tracker-secret';
  * Feature composable for browser-orchestrated remote sync: paginated
  * same-day logs and time-entry create, over the `RemoteTrackerAdapter`
  * selected for `config.directBrowserAccess`. Log fetches rely on the
- * provider's own current-user filter (REQ-333) rather than a preceding
+ * provider's own current-user filter rather than a preceding
  * account-resolution call. Keeps the logs caches and in-flight request
  * dedup; delegates all I/O and provider quirks to the adapter, which behaves
  * identically regardless of transport.
@@ -101,7 +101,7 @@ export function useRemoteSyncClient(config: TrackerDto) {
 
   /**
    * Explicit reconciliation uses fresh data, never the display cache or a new
-   * create. The fetch is already scoped to the current account (REQ-333), so
+   * create. The fetch is already scoped to the current account, so
    * matching stops re-deriving that identity itself.
    */
   async function validateExistingTimeLog(input: {

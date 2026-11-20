@@ -1,4 +1,4 @@
-# ui-routing Specification
+# ui-routing
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Which pages exist and who may see them: a public login page, private-by-default 
 
 ## Requirements
 
-### Requirement: REQ-059 File-based routing shell
+### Requirement: File-based routing shell
 
 The application SHALL use file-based routing, rendering each page inside its layout. Every completed route change SHALL be announced to assistive technologies, and a progress bar in the theme's primary color SHALL show at the top of the viewport while a client-side route change is in progress.
 
@@ -25,7 +25,7 @@ The application SHALL use file-based routing, rendering each page inside its lay
 - **WHEN** a client-side route change starts and has not yet finished
 - **THEN** a progress bar SHALL be visible at the top of the viewport and SHALL disappear when the change finishes
 
-### Requirement: REQ-060 Public login page on the auth layout
+### Requirement: Public login page on the auth layout
 
 The application SHALL expose a public `/login` page that renders the login form on the `auth` layout, with the `login-form`, `email`, `password`, `login-button` and `login-error` test hooks. The auth layout heading SHALL show the application brand mark with the full application title (`layout.title`); the mark is decorative and the title remains the heading text.
 
@@ -49,9 +49,9 @@ The application SHALL expose a public `/login` page that renders the login form 
 - **WHEN** the login page is rendered
 - **THEN** the auth layout heading SHALL show the application brand mark with the full application title, and assistive technology SHALL read only the title
 
-### Requirement: REQ-061 Authenticated home page on the default layout
+### Requirement: Authenticated home page on the default layout
 
-The application SHALL expose a `/` page that renders the timer view (the authenticated home) within the `default` layout. The page SHALL present a page-level header with a title and a primary action for adding a manual time entry. Initial timer-view data SHALL be available from SSR (tracking-timer-view REQ-396, tracking-api REQ-395). Logout is reachable from the shell's account menu (ui-shell REQ-064, REQ-405).
+The application SHALL expose a `/` page that renders the timer view (the authenticated home) within the `default` layout. The page SHALL present a page-level header with a title and a primary action for adding a manual time entry. Initial timer-view data SHALL be available from SSR (`tracking-timer-view`, `tracking-api`). Logout is reachable from the shell's account menu (`ui-shell`).
 
 #### Scenario: Authenticated user sees the timer view
 
@@ -63,7 +63,7 @@ The application SHALL expose a `/` page that renders the timer view (the authent
 - **WHEN** an authenticated user views `/`
 - **THEN** the page header SHALL expose a primary control to open the manual add-entry dialog
 
-### Requirement: REQ-062 Private-by-default navigation guard
+### Requirement: Private-by-default navigation guard
 
 A single global middleware SHALL protect every route. A page is private unless it declares `public: true`. The guard SHALL run during SSR using the session cookie and SHALL NOT use browser-only APIs.
 
@@ -87,7 +87,7 @@ A single global middleware SHALL protect every route. A page is private unless i
 - **WHEN** the `?redirect` value is absolute or protocol-relative (e.g. `//evil.com`) rather than a same-origin path starting with a single `/`
 - **THEN** the guard SHALL ignore it and use `/` instead
 
-### Requirement: REQ-063 No login flash and accessible routing
+### Requirement: No login flash and accessible routing
 
 Route protection SHALL resolve server-side so that protected markup is never painted for unauthenticated users (no login flash). The guard MUST NOT reference `window`, `localStorage`, or other browser-only globals, and route-change announcements SHALL be preserved.
 
@@ -101,7 +101,7 @@ Route protection SHALL resolve server-side so that protected markup is never pai
 - **WHEN** the guard executes on the server
 - **THEN** it SHALL complete without referencing browser-only APIs
 
-### Requirement: REQ-391 Client navigation does not wait for page data
+### Requirement: Client navigation does not wait for page data
 
 On client-side navigation, an authenticated page SHALL render immediately and show a loading state (never its "empty" state) for data still pending, without delay, then fill in when the data arrives. On a full page load, page data SHALL be resolved during SSR using the request's session cookie, so the first paint contains it, including an empty state. A failed load SHALL show the page's error state, not a stuck loading state.
 

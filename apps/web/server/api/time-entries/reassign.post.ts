@@ -118,7 +118,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       effectiveCachedRemoteProjectTitle = null;
     } else {
       // Value: target the task carrying that remote issue. Derive tracker
-      // provenance server-side from the target project's active tracker (REQ-451).
+      // provenance server-side from the target project's active tracker.
       // Cached title comes from the client search result; tracker id is never
       // client-trusted.
       if (effectiveProjectId === null) {
@@ -162,7 +162,7 @@ export default defineEventHandler(async (event): Promise<TimeEntryDto[]> => {
       .where(and(inArray(timeEntries.id, parsedBody.ids), eq(timeEntries.userId, user.id)))
       .returning();
 
-    // Garbage-collect any emptied source tasks (REQ-491), excluding the target.
+    // Garbage-collect any emptied source tasks, excluding the target.
     for (const sourceTaskId of sourceTaskIds) {
       if (sourceTaskId === targetTaskId) continue;
       await deleteTaskIfEmpty(tx, user.id, sourceTaskId);

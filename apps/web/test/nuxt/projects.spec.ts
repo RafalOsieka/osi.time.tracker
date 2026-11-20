@@ -108,7 +108,7 @@ interface StubColumn {
 }
 
 // Renders the real `tracker` column cell function so the composed
-// "tracker · remote project" text (REQ-325) is actually exercised.
+// "tracker · remote project" text is actually exercised.
 function trackerCell(row: Project, columns: StubColumn[] | undefined): VNodeChild {
   const column = columns?.find((c) => c.id === 'tracker');
   return column?.cell ? column.cell({ row: { original: row } }) : '';

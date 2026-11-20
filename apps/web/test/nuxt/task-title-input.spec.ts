@@ -196,7 +196,7 @@ describe('TaskTitleInput', () => {
     expect(events.removeProject).toHaveBeenCalled();
   });
 
-  it('shows the chip remove control without hover on a touch screen (REQ-374)', async () => {
+  it('shows the chip remove control without hover on a touch screen', async () => {
     const { wrapper, project, sync } = await mountInput();
     project.value = { id: 'p-helios', name: 'Helios' };
     await sync();

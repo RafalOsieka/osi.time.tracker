@@ -34,7 +34,7 @@ const {
   immediate: false,
 });
 
-/** A soft-deleted Tracker the edited Project still points at, seeded from the Project (REQ-086). */
+/** A soft-deleted Tracker the edited Project still points at, seeded from the Project. */
 const extraTrackerOptions = ref<
   { id: string; name: string; systemType: ProjectDto['trackerSystemType'] }[]
 >([]);
@@ -46,8 +46,8 @@ const trackerOptions = computed(() => {
   return [...active, ...missing];
 });
 
-// "None (local project)" is a real list item, so a bound project can be detached again
-// (REQ-086). Like `WHOLE_TRACKER_VALUE` below, the sentinel must be non-empty for Reka UI.
+// "None (local project)" is a real list item, so a bound project can be detached again.
+// Like `WHOLE_TRACKER_VALUE` below, the sentinel must be non-empty for Reka UI.
 const LOCAL_PROJECT_VALUE = '__local-project__';
 
 /** The Tracker select's items: the local choice first, each with the chip the list shows. */
@@ -83,7 +83,7 @@ const trackerServerError = ref('');
 const remoteProjectServerError = ref('');
 const saving = ref(false);
 
-// Remote project scope (REQ-325/REQ-327): a select over the selected tracker's
+// Remote project scope: a select over the selected tracker's
 // remote project catalog, loaded through the browser-held secret. Falls back
 // to a disabled, clearable display of the cached title when no secret is
 // available or (extension mode) the installed extension predates the catalog
@@ -109,7 +109,7 @@ const canBrowseCatalog = computed(
 
 // USelect (Nuxt UI v4) has no `clearable` prop - it is silently ignored, which
 // left this control with no way to unset a scope once picked. The "whole
-// tracker" choice REQ-327 requires is a real list item with this sentinel
+// tracker" choice the project form requires is a real list item with this sentinel
 // value, not a clear affordance layered on top. Reka UI's underlying
 // SelectItem forbids an empty-string value (reserved internally to mean
 // "cleared"), so the sentinel must be non-empty.
@@ -200,7 +200,7 @@ function clearRemoteProjectScope() {
 
 /**
  * Explicit handler (not a `state.trackerId` watcher) so a user-initiated
- * tracker change clears the pending scope and reloads the catalog (REQ-327)
+ * tracker change clears the pending scope and reloads the catalog
  * without also firing - and wrongly wiping the seeded scope - when
  * `seedForm` programmatically sets `trackerId` while opening the dialog.
  */

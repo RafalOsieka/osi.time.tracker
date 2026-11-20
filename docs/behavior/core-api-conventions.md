@@ -1,15 +1,15 @@
-# core-api-conventions Specification
+# core-api-conventions
 
 ## Purpose
 
 Define the single, shared boundary contract every OSI server API route honors —
 authentication, CSRF protection, the translated error contract, strict per-user
-isolation, and boundary validation with ISO serialization — so domain specs can
+isolation, and boundary validation with ISO serialization — so domain capabilities can
 reference these conventions instead of restating them per capability.
 
 ## Requirements
 
-### Requirement: REQ-169 Authenticated server routes
+### Requirement: Authenticated server routes
 
 Every server API route that reads or mutates user-scoped data SHALL resolve the
 authenticated user before performing any other work. A request without a valid
@@ -25,10 +25,10 @@ session SHALL be rejected with HTTP 401 and SHALL NOT read or mutate any data.
 - **WHEN** a request with a valid session targets a protected endpoint
 - **THEN** the server SHALL allow the action to proceed for that user
 
-### Requirement: REQ-170 CSRF-guarded mutating endpoints
+### Requirement: CSRF-guarded mutating endpoints
 
 Mutating endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) SHALL be CSRF-protected
-using the mechanism defined in `core-authentication` REQ-011, and the client SHALL
+using the mechanism defined in `core-authentication`, and the client SHALL
 send a valid CSRF token with every mutating request.
 
 #### Scenario: Missing CSRF token rejected
@@ -41,7 +41,7 @@ send a valid CSRF token with every mutating request.
 - **WHEN** the client issues a mutating request
 - **THEN** the request SHALL carry a valid CSRF token
 
-### Requirement: REQ-171 Translation-key error contract
+### Requirement: Translation-key error contract
 
 API errors SHALL use the `{ messageKey, params }` contract and SHALL NOT return
 rendered, human-readable text; clients translate `messageKey`. `params`, when
@@ -64,7 +64,7 @@ surface client-side as a Toast.
 - **WHEN** a 422 body includes `params`
 - **THEN** every `params` value SHALL be a `string`, `number`, or `boolean` (no nested objects, no `unknown`)
 
-### Requirement: REQ-158 ZodError maps to the locale-agnostic messageKey contract
+### Requirement: ZodError maps to the locale-agnostic messageKey contract
 
 A validation failure SHALL be translated into `{ messageKey, params }` from its first issue: a dot-notation message key authored in the schema, with `params` carrying `min`, `max`, `expected` and custom schema params when present. `received` SHALL NOT be emitted. An issue whose message is not a recognizable key SHALL fall back to `errors.unexpected`. Raw (English) validation messages SHALL NOT be returned to the client.
 
@@ -88,7 +88,7 @@ A validation failure SHALL be translated into `{ messageKey, params }` from its 
 - **WHEN** a validation issue carries a message that is not a dot-notation message key
 - **THEN** the translator returns `{ messageKey: 'errors.unexpected' }`
 
-### Requirement: REQ-156 Request bodies are validated and typed from one zod schema
+### Requirement: Request bodies are validated and typed from one zod schema
 
 Each route SHALL parse its request body through one schema shared with the client. Parsing SHALL normalize input (e.g. trim strings) and strip unknown keys. An invalid body SHALL be rejected before any database operation.
 
@@ -102,7 +102,7 @@ Each route SHALL parse its request body through one schema shared with the clien
 - **WHEN** a body fails schema validation (missing or over-length `name`)
 - **THEN** the handler does not perform the database operation and responds with a validation error
 
-### Requirement: REQ-172 Strict per-user isolation
+### Requirement: Strict per-user isolation
 
 Every read and write SHALL be scoped to the authenticated user's id. A **well-formed**
 resource id (project, task, tracker, entry or any other) belonging to another user, or
@@ -131,7 +131,7 @@ contract before any data access occurs.
 - **WHEN** a request body supplies an identifier produced by the database's `uuidv7()`
 - **THEN** the schema SHALL accept it
 
-### Requirement: REQ-173 Boundary validation and ISO serialization
+### Requirement: Boundary validation and ISO serialization
 
 Each route SHALL validate its request body and, when it reads them, its query
 parameters through one schema defined once and shared with the client, and SHALL
@@ -157,9 +157,9 @@ emit all timestamps as ISO 8601 strings.
 - **WHEN** a GET route reads query parameters
 - **THEN** it SHALL validate them with a shared zod schema rather than reading them untyped
 
-### Requirement: REQ-353 Free-text fields accept any characters
+### Requirement: Free-text fields accept any characters
 
-Free-text request fields (entry and task titles, remote-log comments, remote issue and project titles, project and tracker names) SHALL accept any Unicode text, including `<`, `>`, `&`, quotes and HTML-like sequences, and SHALL store and return it verbatim. No request-level filter SHALL reject or rewrite a body or query string because of its characters; XSS protection comes from output escaping and the Content-Security-Policy (REQ-011). Per-field length bounds and validation still apply.
+Free-text request fields (entry and task titles, remote-log comments, remote issue and project titles, project and tracker names) SHALL accept any Unicode text, including `<`, `>`, `&`, quotes and HTML-like sequences, and SHALL store and return it verbatim. No request-level filter SHALL reject or rewrite a body or query string because of its characters; XSS protection comes from output escaping and the Content-Security-Policy (`core-authentication`). Per-field length bounds and validation still apply.
 
 #### Scenario: Angle brackets in a title round-trip
 

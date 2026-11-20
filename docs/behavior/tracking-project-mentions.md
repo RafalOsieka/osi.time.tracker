@@ -1,4 +1,4 @@
-# tracking-project-mentions Specification
+# tracking-project-mentions
 
 ## Purpose
 
@@ -6,9 +6,9 @@ Lets the user target a project while typing a time-entry title, by writing `@` f
 
 ## Requirements
 
-### Requirement: REQ-372 Mention trigger switches the title overlay into project mode
+### Requirement: Mention trigger switches the title overlay into project mode
 
-In the top-bar and add-entry title, an `@` at the start or after whitespace plus text to the caret (spaces allowed) SHALL be a **mention**; an `@` inside a word (`jan@firma.pl`) SHALL NOT. While it matches a project (REQ-373), the title overlay itself (no second popup or caret tooltip) SHALL enter **project mode**: under "Projects", up to 5 projects with tracker names, the first highlighted, instead of tasks and the create option. Escape keeps the text; Enter picks and SHALL NOT start the timer.
+In the top-bar and add-entry title, an `@` at the start or after whitespace plus text to the caret (spaces allowed) SHALL be a **mention**; an `@` inside a word (`jan@firma.pl`) SHALL NOT. While it matches a project, the title overlay itself (no second popup or caret tooltip) SHALL enter **project mode**: under "Projects", up to 5 projects with tracker names, the first highlighted, instead of tasks and the create option. Escape keeps the text; Enter picks and SHALL NOT start the timer.
 
 #### Scenario: @ at the start opens project mode
 
@@ -50,9 +50,9 @@ In the top-bar and add-entry title, an `@` at the start or after whitespace plus
 - **WHEN** the project-mode overlay is open in the top-bar widget and the user presses Enter
 - **THEN** the highlighted project SHALL be picked and the timer SHALL NOT start
 
-### Requirement: REQ-470 Mention project list
+### Requirement: Mention project list
 
-Mentions SHALL offer only the user's own non-deleted projects (REQ-084), loaded when the top-bar title input gains focus or the add-entry dialog opens. A failed load SHALL turn project mode off without an error toast, so every `@` stays literal text.
+Mentions SHALL offer only the user's own non-deleted projects (`workspace-projects`), loaded when the top-bar title input gains focus or the add-entry dialog opens. A failed load SHALL turn project mode off without an error toast, so every `@` stays literal text.
 
 #### Scenario: Project load failure
 
@@ -64,12 +64,12 @@ Mentions SHALL offer only the user's own non-deleted projects (REQ-084), loaded 
 - **WHEN** the user has a soft-deleted project matching the query
 - **THEN** that project SHALL NOT be listed and SHALL NOT be resolved from typed text
 
-### Requirement: REQ-373 Mention matching and ranking
+### Requirement: Mention matching and ranking
 
 Matching SHALL compare **normalized** forms: lowercased, without diacritics (Polish `ł` becomes `l`), whitespace, `-` or `_`. A project SHALL match when its normalized name contains the normalized query; a bare `@` matches all. Matches SHALL be ordered by:
 
 1. Match tier: the name starts with the query, then a word of it does (words split on whitespace, `-`, `_`), then any other containment.
-2. Tracked seconds over the last 30 days (REQ-371), descending.
+2. Tracked seconds over the last 30 days (`workspace-projects`), descending.
 3. Name, ascending.
 
 #### Scenario: Case and diacritics are ignored
@@ -97,7 +97,7 @@ Matching SHALL compare **normalized** forms: lowercased, without diacritics (Pol
 - **WHEN** two projects share a match tier and have equal recent tracked time
 - **THEN** they SHALL be ordered by name ascending
 
-### Requirement: REQ-374 Picking a project sets the project chip
+### Requirement: Picking a project sets the project chip
 
 Picking a project SHALL remove the `@` and query from the text, collapse leftover whitespace, and set the input's **project chip**: one project, named inside the field beside the text, with a remove control; a new pick replaces it. A set chip SHALL limit suggestions to its project (`GET /api/tasks?projectId=`) and make the create option read "{title} (new task in {project})". Picking a task suggestion SHALL set the chip to its project, or clear it. Editing the text SHALL keep the chip.
 
@@ -141,7 +141,7 @@ Picking a project SHALL remove the `@` and query from the text, collapse leftove
 - **WHEN** a chip is set on a device whose pointer cannot hover, such as a touch screen
 - **THEN** its remove control SHALL be shown and tappable without a hover or a keyboard
 
-### Requirement: REQ-375 Typed mentions resolve only on an exact normalized name
+### Requirement: Typed mentions resolve only on an exact normalized name
 
 On start, retitle or save without a pick, the system SHALL try the **last** mention's word-prefixes, longest first (`@helios fix login`: `helios fix login`, `helios fix`, `helios`), taking the first whose normalized form **equals** exactly one project's. That prefix and `@` SHALL leave the title, its project used as if picked, replacing any chip. Otherwise, ambiguity included, the text SHALL be kept literally, chip unchanged; a partial name never resolves. The create option SHALL preview this.
 
@@ -170,9 +170,9 @@ On start, retitle or save without a pick, the system SHALL try the **last** ment
 - **WHEN** the user types `fix login @helios`
 - **THEN** the create-new-task option SHALL read "fix login (new task in Helios)"
 
-### Requirement: REQ-376 Committing sends the chip's project
+### Requirement: Committing sends the chip's project
 
-Starting the timer from a free-form title SHALL send `title` with the chip's `projectId`, or `null` when empty (REQ-140); with a picked suggestion still bound it SHALL send only `taskId`. The add-entry dialog SHALL do the same with its manual pair. A project belongs to a task, so starting or saving with an empty title SHALL create an untitled entry and clear the chip.
+Starting the timer from a free-form title SHALL send `title` with the chip's `projectId`, or `null` when empty (`tracking-api`); with a picked suggestion still bound it SHALL send only `taskId`. The add-entry dialog SHALL do the same with its manual pair. A project belongs to a task, so starting or saving with an empty title SHALL create an untitled entry and clear the chip.
 
 #### Scenario: Start in a picked project
 
@@ -182,7 +182,7 @@ Starting the timer from a free-form title SHALL send `title` with the chip's `pr
 #### Scenario: Start without a chip
 
 - **WHEN** the chip is empty and the user starts with a free-form title
-- **THEN** the request SHALL carry the title with `projectId` null or omitted, resolving project-less per REQ-142
+- **THEN** the request SHALL carry the title with `projectId` null or omitted, resolving project-less per "Title binds an entry to a Task" in `tracking-api`
 
 #### Scenario: Empty title drops the chip
 
@@ -194,7 +194,7 @@ Starting the timer from a free-form title SHALL send `title` with the chip's `pr
 - **WHEN** in the add-entry dialog the chip shows "Helios", the title is `review`, and the user saves
 - **THEN** the created entry SHALL carry title `review` in "Helios"
 
-### Requirement: REQ-471 The chip follows the running entry
+### Requirement: The chip follows the running entry
 
 While a timer runs, the chip SHALL show the running entry's project and follow it on every refresh. Picking or removing a project SHALL immediately PATCH the entry with the current title and the explicit `projectId` (or `null`) — a discrete selection, not a per-keystroke edit — and a retitle on blur or Enter SHALL send the chip's `projectId` explicitly. For an untitled running entry the chip SHALL stay local, sending nothing until a non-empty title is committed.
 
@@ -213,7 +213,7 @@ While a timer runs, the chip SHALL show the running entry's project and follow i
 - **WHEN** a running entry belongs to "Helios", including after a reload
 - **THEN** the chip SHALL show "Helios"
 
-### Requirement: REQ-377 Accessible, localized mentions
+### Requirement: Accessible, localized mentions
 
 The project chip's remove control SHALL be keyboard operable and SHALL have an accessible name that includes the project name (for example "Remove project Helios"). The project-mode group label, the "(new task in {project})" option label, and the title placeholders mentioning `@` (top bar and add-entry dialog) SHALL come from the i18n catalogs, with `en`/`pl` parity. The chip SHALL meet WCAG 2.1 AA contrast.
 

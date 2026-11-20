@@ -31,7 +31,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const nextTrackerId =
     parsedBody.trackerId === undefined ? existing.trackerId : (parsedBody.trackerId ?? null);
 
-  // A remote project id is meaningful only for the tracker it came from (REQ-326):
+  // A remote project id is meaningful only for the tracker it came from:
   // changing or clearing trackerId forces the scope to null regardless of the
   // request body, even when the client still echoed the old scope.
   const trackerChanged = nextTrackerId !== existing.trackerId;
@@ -39,8 +39,8 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const nextRemoteProjectTitle = trackerChanged ? null : (parsedBody.remoteProjectTitle ?? null);
 
   // A local project (no tracker, and not being reassigned to one this request)
-  // cannot carry a remote project scope (REQ-439). A tracker change/detach is
-  // handled above by force-nulling instead of rejecting (REQ-326).
+  // cannot carry a remote project scope. A tracker change/detach is
+  // handled above by force-nulling instead of rejecting.
   if (!trackerChanged && !nextTrackerId && parsedBody.remoteProjectId) {
     throw createError({
       status: 422,
@@ -112,7 +112,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
       });
     }
 
-    // The lookup includes soft-deleted trackers so the DTO keeps their name and system (REQ-084).
+    // The lookup includes soft-deleted trackers so the DTO keeps their name and system.
     const [tracker] = updated.trackerId
       ? await db
           .select({ name: trackers.name, systemType: trackers.systemType })

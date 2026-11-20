@@ -1,5 +1,5 @@
 /**
- * Typed outcome of deleting one remote time entry (REQ-307). Callers must not
+ * Typed outcome of deleting one remote time entry. Callers must not
  * treat `unknown` as confirmed deletion.
  */
 export type RemoteTimeEntryDeleteOutcome =
@@ -26,7 +26,7 @@ export interface RemoteTimeLogDto {
   remoteUserId: string | null;
   /**
    * Opaque remote project id, present only when the provider's time-log
-   * payload already names the project (REQ-341). Used by remote-log import
+   * payload already names the project. Used by remote-log import
    * to route a log to a local Project by scope; never fetched separately.
    */
   remoteProjectId?: string;
@@ -35,7 +35,7 @@ export interface RemoteTimeLogDto {
   /**
    * Remote issue display title for every provider: taken from the time-log
    * payload when present, otherwise resolved by the adapter through a
-   * batched issue lookup (REQ-341/REQ-378). `null` (REQ-476) only when the tracker
+   * batched issue lookup. `null` only when the tracker
    * does not disclose the issue to this account (deleted or not visible) —
    * never because of the provider type.
    */

@@ -825,7 +825,7 @@ describeTimerViewUI('timer view UI flow', async () => {
     await laterPatch;
 
     // The PATCH response landing is not the same as the page's own follow-up
-    // refresh (REQ-396's timer-view feed) finishing its re-render; poll.
+    // refresh (the timer-view feed) finishing its re-render; poll.
     const groupTotalLocator = page.locator(`[data-testid="timer-group-total-${seeded.taskId}"]`);
     await expect.poll(async () => (await groupTotalLocator.textContent())?.trim()).toBe('00:02:30');
     // The edit added exactly two minutes; the day total (shared with every
@@ -835,7 +835,7 @@ describeTimerViewUI('timer view UI flow', async () => {
       .toBe(originalDaySeconds + 120);
 
     // A running entry's single-field-plus-"now" slot must be the same width
-    // as a stopped entry's range field (REQ-459, REQ-361).
+    // as a stopped entry's range field.
     const runningTitle = 'Seconds Precision Running Task ' + Date.now();
     const running = await startEntry(jar, token, { title: runningTitle });
     try {
@@ -1005,9 +1005,9 @@ describeTimerViewUI('timer view UI flow', async () => {
     await page.locator('[role="option"]').first().waitFor({ state: 'visible', timeout: 10000 });
     const optionTexts = await page.locator('[role="option"]').allInnerTexts();
 
-    // First option is always the synthetic create-new-task row (REQ-467);
+    // First option is always the synthetic create-new-task row;
     // the real suggestions follow it, capped at 20 and ranked
-    // most-recently-used first (REQ-133).
+    // most-recently-used first.
     expect(optionTexts[0]).toMatch(/new task/i);
     const suggestionTexts = optionTexts.slice(1);
     expect(suggestionTexts.length).toBeLessThanOrEqual(20);

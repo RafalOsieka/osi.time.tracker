@@ -37,7 +37,7 @@ async function login(email: string, password: string): Promise<{ res: Response; 
   return { res, jar };
 }
 
-// core-authentication REQ-012: the migrator hashes the bootstrap password outside Nuxt,
+// The migrator hashes the bootstrap password outside Nuxt,
 // so this pins that the app's own login verification accepts what the migrator stores.
 describeBootstrap('bootstrap user login', async () => {
   const dbUrl = await provisionDatabase();

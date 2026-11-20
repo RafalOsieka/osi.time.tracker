@@ -28,7 +28,7 @@ import {
  * L2: implements the neutral `RemoteTrackerAdapter` use-case surface over
  * `RedmineClient` (L3), owning every provider quirk so `client` and
  * `extension` execution modes behave identically: the bounded time-log pagination loop,
- * issue-title resolution for time logs (REQ-343/REQ-378), 404-on-id → `null` issue,
+ * issue-title resolution for time logs, 404-on-id → `null` issue,
  * and upstream-status → `RemoteAdapterError` mapping.
  */
 export class RedmineAdapter implements RemoteTrackerAdapter {
@@ -181,7 +181,7 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
 
   /**
    * Resolves issue subjects (any status) for the given ids, one request per
-   * 100 ids (REQ-378). Ids the tracker does not return are absent from the
+   * 100 ids. Ids the tracker does not return are absent from the
    * map. Any non-success response or unusable payload throws, so the calling
    * fetch fails instead of reporting `null` titles. Provider-private: not
    * part of `RemoteTrackerAdapter` or the extension bridge.
@@ -199,9 +199,9 @@ export class RedmineAdapter implements RemoteTrackerAdapter {
   }
 
   /**
-   * Time-entry payloads never carry the issue subject (REQ-343), so every
+   * Time-entry payloads never carry the issue subject, so every
    * log's title comes from one lookup over the distinct issue ids; ids the
-   * tracker does not return become `null` (REQ-476/REQ-378).
+   * tracker does not return become `null`.
    */
   private async withIssueTitles(logs: RedmineTimeLogEntry[]): Promise<RemoteTimeLogDto[]> {
     const titles = await this.getIssuesByIds([...new Set(logs.map((log) => log.remoteIssueId))]);

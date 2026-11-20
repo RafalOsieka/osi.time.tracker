@@ -510,7 +510,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
     await openRemoteIssuePicker(group);
     await page.waitForSelector('[data-testid="remote-issue-picker-query"]');
 
-    // Toggle defaults on (REQ-328).
+    // Toggle defaults on.
     const toggle = page.locator('[data-testid="remote-issue-picker-scope-toggle"]');
     expect(await toggle.getAttribute('aria-checked')).toBe('true');
 

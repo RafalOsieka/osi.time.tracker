@@ -215,7 +215,7 @@ export async function readFakeExtensionState(page: Page): Promise<FakeExtensionS
   return page.evaluate((fallback) => window.__osiFakeExtension ?? fallback, DEFAULT_STATE);
 }
 
-/** Fixture shape for a fake `RemoteTimeLogDto`, including the REQ-341 fields. */
+/** Fixture shape for a fake `RemoteTimeLogDto`, including the optional remote project and issue title fields. */
 export interface FakeRemoteTimeLog {
   remoteLogId: string;
   remoteIssueId: string;
@@ -227,7 +227,7 @@ export interface FakeRemoteTimeLog {
   remoteUserId?: string | null;
   remoteProjectId?: string;
   remoteProjectTitle?: string;
-  /** Required by the bridge schema (REQ-379); `null` when the issue is not disclosed. */
+  /** Required by the bridge schema; `null` when the issue is not disclosed. */
   remoteIssueTitle: string | null;
 }
 
@@ -247,10 +247,10 @@ export interface InstallExtensionOptions {
 }
 
 /**
- * Full page-side protocol stub used to exercise REQ-331: unconditionally
+ * Full page-side protocol stub used to exercise the in-flight bound: unconditionally
  * approves the destination, serves every read operation and creates, and
  * enforces the same per-document in-flight cap the real extension worker
- * does (REQ-310 companion), rejecting the overflow with the `limit` wire
+ * does, rejecting the overflow with the `limit` wire
  * error rather than queueing it. Every served operation is counted by name,
  * and the highest concurrent count observed is tracked, so a caller can
  * assert both "nothing hit the limit" and "no more calls than expected".
@@ -378,7 +378,7 @@ export async function installExtension(
         if (payload.type !== 'operation' || !requestId || !operation) return;
 
         const state = window.__osiFakeExtension!;
-        // Mirror the worker's own check-then-admit ordering exactly (REQ-310/331).
+        // Mirror the worker's own check-then-admit ordering exactly.
         if (active >= limit) {
           state.limitErrors += 1;
           port.postMessage({
@@ -435,7 +435,7 @@ interface FakeHandshakeResult {
 
 /**
  * Page-side stub of an extension that has approved this website but no tracker destination yet,
- * and queues destination suggestions (REQ-421) instead of approving them.
+ * and queues destination suggestions instead of approving them.
  */
 export async function installSuggestingExtension(page: Page): Promise<void> {
   await page.addInitScript(

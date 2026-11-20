@@ -1,4 +1,4 @@
-/** SVG favicon href for idle vs running timer state (REQ-369). */
+/** SVG favicon href for idle vs running timer state. */
 export function faviconSvgHref(isRunning: boolean): string {
   return isRunning ? '/favicon-running.svg' : '/favicon.svg';
 }

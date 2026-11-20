@@ -16,7 +16,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto> => {
   const trackerId = parsedBody.trackerId ?? null;
   let tracker: Pick<typeof trackers.$inferSelect, 'name' | 'systemType'> | null = null;
 
-  // A local project (no tracker) cannot carry a remote project scope (REQ-439).
+  // A local project (no tracker) cannot carry a remote project scope.
   if (!trackerId && parsedBody.remoteProjectId) {
     throw createError({
       status: 422,

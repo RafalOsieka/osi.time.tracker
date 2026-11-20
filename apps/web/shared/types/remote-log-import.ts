@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { isoDateSchema } from './remote-export';
 
-/** Hard cap on remote logs accepted in one import request (REQ-339). */
+/** Hard cap on remote logs accepted in one import request. */
 export const IMPORT_REMOTE_LOGS_MAX_PER_REQUEST = 500;
 
-/** One remote log submitted for import, already routed to a Project by the client (REQ-334). */
+/** One remote log submitted for import, already routed to a Project by the client. */
 export const importRemoteLogSchema = z.object({
   remoteLogId: z
     .string({ error: 'error.remoteLogImportRemoteLogIdRequired' })
@@ -25,7 +25,7 @@ export const importRemoteLogSchema = z.object({
     .positive({ error: 'error.remoteLogImportDurationInvalid' }),
   activityId: z.string().trim().min(1).nullable(),
   comment: z.string().nullable(),
-  /** Present only when the fetched log carried it (REQ-341); never fetched separately. */
+  /** Present only when the fetched log carried it; never fetched separately. */
   remoteIssueTitle: z.string().trim().min(1).optional(),
   remoteProjectTitle: z.string().trim().min(1).optional(),
 });
@@ -49,7 +49,7 @@ function allRemoteLogIds(value: { groups: ImportRemoteLogGroupDto[] }): string[]
   return value.groups.flatMap((group) => group.logs.map((log) => log.remoteLogId));
 }
 
-/** Request body for `POST /api/trackers/[id]/import` (REQ-339). */
+/** Request body for `POST /api/trackers/[id]/import`. */
 export const importRemoteLogsSchema = z
   .object({
     dryRun: z.boolean({ error: 'error.remoteLogImportDryRunInvalid' }),
@@ -71,14 +71,14 @@ export const importRemoteLogsSchema = z
 
 export type ImportRemoteLogsDto = z.infer<typeof importRemoteLogsSchema>;
 
-/** Per-Project counts in an import response (REQ-480). */
+/** Per-Project counts in an import response. */
 export interface ImportRemoteLogsProjectResultDto {
   projectId: string;
   /** Logs persisted this request. Always 0 on a dry run. */
   imported: number;
   /** Logs that are new (not already-linked) — what a write run would import. */
   wouldImport: number;
-  /** Logs already covered by existing export provenance for this tracker (REQ-338). */
+  /** Logs already covered by existing export provenance for this tracker. */
   skippedExisting: number;
 }
 

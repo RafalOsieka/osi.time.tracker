@@ -10,7 +10,7 @@ import { setupServer } from '../harness/setup-server';
 const describeNavigationLoading = requireBrowser();
 
 /**
- * Client navigation never waits for page data (REQ-391): with the destination's
+ * Client navigation never waits for page data: with the destination's
  * request held back, the page is already on screen with its loading state.
  */
 describeNavigationLoading('client navigation with slow page data', async () => {

@@ -9,7 +9,7 @@ export default defineEventHandler(async (event): Promise<{ success: true }> => {
   const { user } = await requireAuth(event);
   const id = getRouterParam(event, 'id');
 
-  // Tracker rows cascade with the preset (REQ-383).
+  // Tracker rows cascade with the preset.
   const deleted = await db
     .delete(reportPresets)
     .where(and(eq(reportPresets.id, id!), eq(reportPresets.userId, user.id)))

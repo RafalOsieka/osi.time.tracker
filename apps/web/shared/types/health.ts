@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** What `GET /healthz` answers while the database responds (platform-docker REQ-529). */
+/** What `GET /healthz` answers while the database responds. */
 export const healthSchema = z.object({
   commit: z.string(),
 });

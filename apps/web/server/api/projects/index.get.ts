@@ -33,7 +33,7 @@ export default defineEventHandler(async (event): Promise<ProjectDto[]> => {
       createdAt: projects.createdAt,
     })
     .from(projects)
-    // Keep the tracker's name and system even when the tracker is soft-deleted (REQ-084).
+    // Keep the tracker's name and system even when the tracker is soft-deleted.
     .leftJoin(trackers, eq(trackers.id, projects.trackerId))
     .leftJoin(recent, eq(recent.projectId, projects.id))
     .where(and(...conditions))

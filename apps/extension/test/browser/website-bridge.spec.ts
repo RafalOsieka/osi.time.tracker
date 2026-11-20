@@ -218,7 +218,7 @@ describeChromium('website/content/worker bridge', () => {
       operation: 'fetchTimeLogsInRange',
       input: { from: '2026-03-01', to: '2026-03-31', userId: '7' },
     });
-    // OpenProject titles come from the time-entry link (REQ-342); Redmine below resolves them via /issues.json (REQ-378).
+    // OpenProject titles come from the time-entry link; Redmine below resolves them via /issues.json.
     expect(range).toMatchObject({ ok: true, result: [{ remoteIssueTitle: 'Ship it' }] });
 
     const create = await runOnPage(page, {

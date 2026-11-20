@@ -1,4 +1,4 @@
-# remote-sync-export Specification
+# remote-sync-export
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Define how a reviewed day is exported to the configured tracker from the Remote 
 
 ## Requirements
 
-### Requirement: REQ-115 Day-review data is aggregated server-side and user-scoped
+### Requirement: Day-review data is aggregated server-side and user-scoped
 
 An authenticated endpoint SHALL return a date's day review: per task with entries that day, its id and name, project and optional tracker name, unrounded total, the tracker settings its state needs (system type, rounding rule, direct-browser capability, base URL, id) and any remote issue reference, and the untitled total. It SHALL be user-scoped with ISO timestamps, and SHALL NOT include credentials, required-field defaults or a client. An invalid date SHALL get a `{ messageKey, params }` error.
 
@@ -35,7 +35,7 @@ An authenticated endpoint SHALL return a date's day review: per task with entrie
 - **WHEN** the day review is returned for projects with trackers
 - **THEN** the tracker configuration surface SHALL NOT include `requiredFieldDefaults`
 
-### Requirement: REQ-117 A task's whole day is exported without local locking
+### Requirement: A task's whole day is exported without local locking
 
 A Ready task's export SHALL include every completed local entry attributed to that task on the requested local date. The page SHALL NOT offer per-entry selection; the task/day is the selection. A successful export SHALL NOT prevent any of those entries from later being edited, deleted, or reassigned, and SHALL NOT lock its Task. Sent rows SHALL NOT be exported again from this page.
 
@@ -54,9 +54,9 @@ A Ready task's export SHALL include every completed local entry attributed to th
 - **WHEN** an export has been finalized successfully
 - **THEN** normal authorized entry and task mutations SHALL remain available
 
-### Requirement: REQ-118 Current-account remote logs provide same-day context
+### Requirement: Current-account remote logs provide same-day context
 
-The page SHALL fetch only the credential's own logs for the date and linked issues via the current-user filter (REQ-333) without an account request, one paginated fetch per tracker. Each log SHALL show by its task, Linked or Unlinked per tracker-scoped provenance, with eligible reconciliation actions, and SHALL NOT create provenance, change review values or block export. Refreshing follows REQ-485.
+The page SHALL fetch only the credential's own logs for the date and linked issues via the current-user filter (`remote-adapter-contract`) without an account request, one paginated fetch per tracker. Each log SHALL show by its task, Linked or Unlinked per tracker-scoped provenance, with eligible reconciliation actions, and SHALL NOT create provenance, change review values or block export. Refreshing follows "Refreshing the day's remote logs".
 
 #### Scenario: Same-day logs for the current account are displayed
 
@@ -89,7 +89,7 @@ The page SHALL fetch only the credential's own logs for the date and linked issu
 - **THEN** the row SHALL show an accessible retryable error without claiming no logs exist or blocking an
   otherwise valid export
 
-### Requirement: REQ-485 Refreshing the day's remote logs
+### Requirement: Refreshing the day's remote logs
 
 After a task's export finalizes, the page SHALL refetch that tracker's day logs without discarding unrelated cached remote state. An explicit retry of a failed log fetch SHALL discard that tracker's cached state and fetch afresh.
 
@@ -98,7 +98,7 @@ After a task's export finalizes, the page SHALL refetch that tracker's day logs 
 - **WHEN** a task's export finalizes successfully
 - **THEN** the page SHALL refetch that tracker's day logs and SHALL NOT issue any other remote request for the refresh
 
-### Requirement: REQ-119 Successful exports persist non-locking provenance
+### Requirement: Successful exports persist non-locking provenance
 
 For every remote log created, linked and finalized, the application SHALL persist a user- and tracker-scoped export record: task, local date, remote issue and log ids, exact remote duration, required-field values, covered completed entry ids, and timestamps. With provenance for the task/date, the row SHALL be Sent and SHALL NOT create another remote log from that page. Removing provenance after confirmed remote deletion SHALL make the task/day exportable again.
 
@@ -132,7 +132,7 @@ For every remote log created, linked and finalized, the application SHALL persis
 - **WHEN** finalization references data outside the authenticated user's matching task/day
 - **THEN** the endpoint SHALL reject it without persisting partial provenance
 
-### Requirement: REQ-120 Export reports per-task outcomes without claiming strict idempotency
+### Requirement: Export reports per-task outcomes without claiming strict idempotency
 
 The page SHALL create at most one remote log for each included Ready task. After all scheduled tasks reach
 a terminal outcome, the confirmation dialog SHALL close and the day review SHALL refresh. A success toast
@@ -166,7 +166,7 @@ A known finalized remote log ID SHALL never be recreated automatically.
 - **WHEN** finalization is retried with a known finalized remote log ID
 - **THEN** the stored result SHALL be returned without creating another remote log
 
-### Requirement: REQ-121 Browser orchestration supports direct and extension transport
+### Requirement: Browser orchestration supports direct and extension transport
 
 The browser SHALL orchestrate remote reads, at most one remote creation per included task, and local finalization under `client` or `extension`. Both modes SHALL provide equivalent provider behavior, retries, deduplication, and per-task isolation. `client` SHALL call the tracker directly; `extension` SHALL use the approved desktop extension. Neither mode SHALL send tracker credentials through OSI APIs, and execution SHALL NOT silently fall back between modes.
 
@@ -190,7 +190,7 @@ The browser SHALL orchestrate remote reads, at most one remote creation per incl
 - **WHEN** one supported transport operation fails
 - **THEN** its task SHALL expose the appropriate retryable state without blocking unaffected tasks
 
-### Requirement: REQ-229 Export runs through a review, running and report dialog
+### Requirement: Export runs through a review, running and report dialog
 
 Activating Export SHALL open a confirmation listing only the included tasks, each with its title, destination and to-send duration.
 Export SHALL include every Ready row with non-zero duration and a selected activity. No remote request SHALL occur before confirmation. Cancelling SHALL close the dialog without changing page state or tracker data. While export is running, duplicate confirmation SHALL be prevented.
@@ -230,7 +230,7 @@ Export SHALL include every Ready row with non-zero duration and a selected activ
 - **WHEN** no Ready row has non-zero duration and a selected activity
 - **THEN** Export SHALL be disabled
 
-### Requirement: REQ-233 Export request key makes a retry reconcilable
+### Requirement: Export request key makes a retry reconcilable
 
 Each task attempt SHALL carry a deterministic request key from the task, local date, entry ids and export duration, sent with finalization and stored with the export record, unique per user. Finalizing with a key that already has a record SHALL return that record instead of storing another. A retry after failed finalization SHALL reuse the key and known remote log id, with no second remote log. Export records without a key SHALL stay valid; key reconciliation applies only to keyed records.
 
@@ -259,7 +259,7 @@ Each task attempt SHALL carry a deterministic request key from the task, local d
 - **WHEN** export records without a request key are read
 - **THEN** they SHALL remain valid and reconciliation SHALL apply only to records carrying a key
 
-### Requirement: REQ-484 An export without a known remote log stays unverified
+### Requirement: An export without a known remote log stays unverified
 
 When the client never received the remote log id of an attempt, the task SHALL stay reported as needing verification, SHALL NOT be reconciled automatically, and the user SHALL be told to check the tracker before retrying.
 
@@ -268,9 +268,9 @@ When the client never received the remote log id of an attempt, the task SHALL s
 - **WHEN** a remote creation attempt failed before the client learned a remote log identifier
 - **THEN** the task SHALL be reported as needing verification in the tracker and SHALL NOT be reconciled automatically
 
-### Requirement: REQ-521 Unavailable Export states why
+### Requirement: Unavailable Export states why
 
-While Export is disabled because nothing can be exported, it SHALL stay in place and give a short translated reason: the trackers cannot be reached when rows' activities failed to load, an activity is still needed when Ready rows with time lack one, otherwise that no task is ready. The reason SHALL be available on hover and keyboard focus (REQ-269) and SHALL show under the page header on wide layouts.
+While Export is disabled because nothing can be exported, it SHALL stay in place and give a short translated reason: the trackers cannot be reached when rows' activities failed to load, an activity is still needed when Ready rows with time lack one, otherwise that no task is ready. The reason SHALL be available on hover and keyboard focus (`ui-accessibility`) and SHALL show under the page header on wide layouts.
 
 #### Scenario: Activity still needed
 

@@ -5,7 +5,7 @@ import type { Page } from 'playwright-core';
  * by `data-testid`, by focusing each segment via its `data-segment` part and
  * typing its digits. Locale-order independent since segments are targeted by
  * part, not by visual position, matching the shared-ui-components date-field
- * contract (REQ-359).
+ * contract.
  *
  * For a range field (two sets of day/month/year segments under the same
  * `data-testid`), `index` selects which one: `0` for the start, `1` for the

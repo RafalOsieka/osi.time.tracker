@@ -71,7 +71,7 @@ describe('useRemoteSyncClient', () => {
     createTimeEntry.mockResolvedValue({ remoteLogId: '99' });
   });
 
-  it('never resolves the current account to fetch logs (REQ-333)', async () => {
+  it('never resolves the current account to fetch logs', async () => {
     const client = useRemoteSyncClient(config);
     await client.fetchTimeLogs({ spentOn: '2026-03-15', workPackageIds: ['42'] });
     await client.fetchTimeLogsInRange({ from: '2026-08-01', to: '2026-08-31' });

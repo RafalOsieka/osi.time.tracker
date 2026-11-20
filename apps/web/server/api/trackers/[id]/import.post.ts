@@ -32,7 +32,7 @@ function reject(status: number, messageKey: string): never {
   });
 }
 
-/** Logs the outcome of an import request (server-logging REQ-357): counts only, never a title or comment. */
+/** Logs the outcome of an import request: counts only, never a title or comment. */
 function logImportSummary(result: ImportRemoteLogsResultDto): void {
   log.info(
     `dryRun=${result.dryRun} projects=${result.projects.length} imported=${result.totalImported} wouldImport=${result.totalWouldImport} skippedExisting=${result.totalSkippedExisting}`,
@@ -45,11 +45,11 @@ interface PendingLog extends PlaceableLog {
 }
 
 /**
- * Imports historical remote logs into local history (REQ-334/REQ-335): each
- * log becomes a linked Task, a stopped time entry placed per REQ-337, and
- * export provenance identical in shape to an app-exported entry (REQ-344).
- * Logs already covered by export provenance for this tracker are skipped
- * (REQ-338). Never writes to the tracker itself.
+ * Imports historical remote logs into local history: each
+ * log becomes a linked Task, a stopped time entry placed after the day's last entry, and
+ * export provenance identical in shape to an app-exported entry.
+ * Logs already covered by export provenance for this tracker are skipped.
+ * Never writes to the tracker itself.
  */
 export default defineEventHandler(async (event): Promise<ImportRemoteLogsResultDto> => {
   const db = getDb();
@@ -206,8 +206,8 @@ export default defineEventHandler(async (event): Promise<ImportRemoteLogsResultD
           projectResult.imported += 1;
         } catch (err) {
           if (err instanceof Error && isUniqueViolation(err)) {
-            // Race with a concurrent import/export of the same remote log
-            // (REQ-338): treat as already-linked rather than failing the batch.
+            // Race with a concurrent import/export of the same remote log:
+            // treat as already-linked rather than failing the batch.
             // `wouldImport` is recomputed from `imported` below, so no
             // adjustment is needed here.
             projectResult.skippedExisting += 1;

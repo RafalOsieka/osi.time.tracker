@@ -73,7 +73,7 @@ describe('SyncExportDialog', () => {
     wrapper.unmount();
   });
 
-  it('counts the tasks left out by reason without listing them (REQ-229)', async () => {
+  it('counts the tasks left out by reason without listing them', async () => {
     const wrapper = await mountSuspended(SyncExportDialog, {
       props: {
         open: true,

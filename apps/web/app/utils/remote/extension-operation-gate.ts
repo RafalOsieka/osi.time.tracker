@@ -3,7 +3,7 @@ import { EXTENSION_RESOURCE_LIMITS } from '@osi/time-tracker-extension-protocol'
 /**
  * Page-side FIFO admission gate bounding concurrent extension operations to
  * the protocol's in-flight limit. The extension worker rejects a burst past
- * that limit outright (REQ-331); every page call site that can generate a
+ * that limit outright; every page call site that can generate a
  * burst (a Remote Sync day, the monthly report, the issue picker, the
  * project catalog) shares one gate instance so the limit becomes a
  * throughput bound instead of a failure mode.

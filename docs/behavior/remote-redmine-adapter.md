@@ -1,4 +1,4 @@
-# remote-redmine-adapter Specification
+# remote-redmine-adapter
 
 ## Purpose
 
@@ -6,9 +6,9 @@ How Redmine implements the neutral adapter contract (`remote-adapter-contract`):
 
 ## Requirements
 
-### Requirement: REQ-093 Redmine adapter implements the neutral remote-tracker contract
+### Requirement: Redmine adapter implements the neutral remote-tracker contract
 
-For an active Redmine tracker the adapter SHALL implement every contract operation (REQ-200) with neutral DTOs only, behaving the same directly and through the extension (REQ-201).
+For an active Redmine tracker the adapter SHALL implement every contract operation (`remote-adapter-contract`) with neutral DTOs only, behaving the same directly and through the extension (`remote-adapter-contract`).
 
 #### Scenario: Title search returns matching Redmine issues
 
@@ -35,9 +35,9 @@ For an active Redmine tracker the adapter SHALL implement every contract operati
 - **WHEN** the same Redmine operation receives equivalent upstream responses under `client` and `extension`
 - **THEN** its result, quirks, and upstream error classification SHALL be identical
 
-### Requirement: REQ-321 Redmine remote project catalog
+### Requirement: Redmine remote project catalog
 
-The Redmine adapter SHALL implement the catalog operation (REQ-318) by listing projects through the projects endpoint with offset/limit pagination, following pages until the reported total is reached or the same fixed maximum page count used for time logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and its parent id when present.
+The Redmine adapter SHALL implement the catalog operation (`remote-adapter-contract`) by listing projects through the projects endpoint with offset/limit pagination, following pages until the reported total is reached or the same fixed maximum page count used for time logs. Each project SHALL map to the neutral entry using its numeric id as opaque text, its name as the title, and its parent id when present.
 
 #### Scenario: Projects are listed across pages
 
@@ -49,9 +49,9 @@ The Redmine adapter SHALL implement the catalog operation (REQ-318) by listing p
 - **WHEN** a Redmine project payload carries a parent reference
 - **THEN** the neutral entry SHALL expose that parent's id and nothing else from the payload
 
-### Requirement: REQ-322 Redmine scoped search always includes the subtree
+### Requirement: Redmine scoped search always includes the subtree
 
-When a scope is supplied, the Redmine adapter SHALL scope the issues query to the given project id and SHALL explicitly request all subprojects so that descendants are included regardless of the instance's "display subprojects issues" setting. Exact-lookup scope membership (REQ-320) SHALL be decided by querying the issues endpoint scoped the same way and filtered to the requested issue id; an empty scoped answer followed by a successful unscoped lookup SHALL yield `inScope: false`.
+When a scope is supplied, the Redmine adapter SHALL scope the issues query to the given project id and SHALL explicitly request all subprojects so that descendants are included regardless of the instance's "display subprojects issues" setting. Exact-lookup scope membership (`remote-adapter-contract`) SHALL be decided by querying the issues endpoint scoped the same way and filtered to the requested issue id; an empty scoped answer followed by a successful unscoped lookup SHALL yield `inScope: false`.
 
 #### Scenario: Descendants are included when the instance setting is off
 
@@ -73,9 +73,9 @@ When a scope is supplied, the Redmine adapter SHALL scope the issues query to th
 - **WHEN** Redmine answers the scoped issues query with 404 or 403 for the project
 - **THEN** the adapter SHALL raise the shared translated search error
 
-### Requirement: REQ-298 Redmine date-range time-log fetch
+### Requirement: Redmine date-range time-log fetch
 
-The Redmine adapter SHALL implement the contract's date-range time-log operation (REQ-296) by querying Redmine time entries for the current account with `from`/`to` (or equivalent) covering the inclusive date range, without an issue-id filter, following offset/limit pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
+The Redmine adapter SHALL implement the contract's date-range time-log operation (`remote-adapter-contract`) by querying Redmine time entries for the current account with `from`/`to` (or equivalent) covering the inclusive date range, without an issue-id filter, following offset/limit pagination bounded by the same maximum page count as the same-day fetch. Each log SHALL map to `RemoteTimeLogDto` (duration as whole seconds). Upstream failures SHALL map to the shared translated error contract.
 
 #### Scenario: Month range is a single filtered query loop
 
@@ -92,9 +92,9 @@ The Redmine adapter SHALL implement the contract's date-range time-log operation
 - **WHEN** Redmine rejects or fails the range fetch
 - **THEN** the adapter SHALL raise a `RemoteAdapterError` with the shared time-logs-fetch translation key and SHALL NOT return a silent empty list
 
-### Requirement: REQ-343 Redmine time logs map the project from the payload
+### Requirement: Redmine time logs map the project from the payload
 
-For each time entry (REQ-341) the adapter SHALL take the project id from `project.id` and its title from `project.name`, each omitted when missing. Time entries carry no issue subject, so the issue title SHALL come from the issues endpoint filtered by the distinct issue ids with every status included (REQ-378), using `subject`; an id it does not return yields `null`. This applies to same-day and range fetches. Time entries without an issue are dropped and SHALL NOT trigger a lookup.
+For each time entry (`remote-adapter-contract`) the adapter SHALL take the project id from `project.id` and its title from `project.name`, each omitted when missing. Time entries carry no issue subject, so the issue title SHALL come from the issues endpoint filtered by the distinct issue ids with every status included (`remote-adapter-contract`), using `subject`; an id it does not return yields `null`. This applies to same-day and range fetches. Time entries without an issue are dropped and SHALL NOT trigger a lookup.
 
 #### Scenario: Project present
 
@@ -121,16 +121,16 @@ For each time entry (REQ-341) the adapter SHALL take the project id from `projec
 - **WHEN** a time entry carries a project but no `issue`
 - **THEN** it SHALL NOT appear in the neutral result and its absence SHALL NOT cause a lookup
 
-### Requirement: REQ-094 Redmine authentication uses the API access key header
+### Requirement: Redmine authentication uses the API access key header
 
-The Redmine client SHALL authenticate every upstream request with the user's API access key in the `X-Redmine-API-Key` header, built in exactly one place in the client (REQ-202). The credential rules of REQ-203 apply.
+The Redmine client SHALL authenticate every upstream request with the user's API access key in the `X-Redmine-API-Key` header, built in exactly one place in the client (`remote-adapter-contract`). The rules of "Credential hygiene across the contract" in `remote-adapter-contract` apply.
 
 #### Scenario: Requests carry the Redmine API key header
 
 - **WHEN** the adapter executes any Redmine operation with a provided secret
 - **THEN** the upstream request SHALL include the `X-Redmine-API-Key` header and SHALL NOT include any other provider's credential header
 
-### Requirement: REQ-095 Global activity options independent of the issue
+### Requirement: Global activity options independent of the issue
 
 The Redmine adapter SHALL provide time-entry activity options from Redmine's global time-entry-activities enumeration. The adapter's activity-options operation SHALL accept the remote issue ID argument required by the neutral contract but MAY ignore it; per-project activity overrides are out of scope.
 
@@ -139,7 +139,7 @@ The Redmine adapter SHALL provide time-entry activity options from Redmine's glo
 - **WHEN** the Remote Sync page requests activity options for a Redmine-linked task
 - **THEN** the adapter SHALL return the global enumeration's active activities as adapter-neutral options regardless of the issue id supplied
 
-### Requirement: REQ-096 Durations are exported as decimal hours with shared rounding
+### Requirement: Durations are exported as decimal hours with shared rounding
 
 Redmine time entries SHALL be created with decimal `hours` derived from the already-rounded duration produced by the shared rounding rules; the adapter SHALL NOT apply any additional rounding rule of its own. Conversion SHALL use 0.01-hour precision on write and SHALL convert fetched decimal hours back to whole seconds on read, so that a value round-trips stably and all `up_15m`/`up_30m`/`up_1h` rounded durations convert losslessly.
 
@@ -153,7 +153,7 @@ Redmine time entries SHALL be created with decimal `hours` derived from the alre
 - **WHEN** the adapter fetches same-day Redmine time entries
 - **THEN** each entry's decimal hours SHALL be converted to whole seconds such that re-exporting an unchanged value produces the same `hours`
 
-### Requirement: REQ-097 Same-day time-log fetch with bounded pagination
+### Requirement: Same-day time-log fetch with bounded pagination
 
 The Redmine adapter SHALL fetch the current account's time entries for a given day, filtered to the linked issue IDs and the resolved remote user, following Redmine's offset/limit pagination. The page loop SHALL be bounded by a fixed maximum page count so an inconsistent upstream total cannot cause unbounded requests.
 

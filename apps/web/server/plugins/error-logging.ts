@@ -4,12 +4,12 @@ import { ensureFiniteLogLevel } from '../utils/log-level';
 import { describeRequestError } from '../utils/request-error-log';
 
 /**
- * Logs every request that ends in an error response (server-logging REQ-355):
+ * Logs every request that ends in an error response:
  * our own `createError`s, platform middleware rejections (e.g. rate limiting,
  * CSRF), and Nitro's own `[unhandled]`/`[fatal]` output stays the single
  * source for a raw thrown exception (never duplicated here). Only method,
  * path, status and `{ messageKey, params }` are logged -- never the request
- * body, headers, cookies or session (REQ-356).
+ * body, headers, cookies or session.
  */
 export default defineNitroPlugin((nitroApp) => {
   ensureFiniteLogLevel(consola);

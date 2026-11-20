@@ -35,7 +35,7 @@ function firstQueryString(
 
 const monthQuery = computed(() => firstQueryString(route.query.month));
 
-// Lazy: on the client the await resolves at once and the page fills in (REQ-391);
+// Lazy: on the client the await resolves at once and the page fills in;
 // on the server it still waits, so SSR and setup logic see the data.
 const {
   data: reportData,
@@ -94,7 +94,7 @@ async function loadRemoteHours(report: MonthlyReportDto, configs: TrackerDto[]):
       }
       try {
         const adapter = createRemoteAdapter(config, secret);
-        // REQ-333: the range fetch is already scoped to the current account
+        // The range fetch is already scoped to the current account
         // server-side; no preceding account-resolution call is needed.
         const logs = await adapter.fetchTimeLogsInRange({
           from: range.from,
@@ -187,7 +187,7 @@ const remoteSummaryText = computed(() => {
 
 /**
  * Duration cells share the report's numeric face. Plain values sit at 400 so a flagged value
- * (600, warning) differs by weight as well as colour (REQ-472); the totals row is 600.
+ * (600, warning) differs by weight as well as colour; the totals row is 600.
  */
 function durationTd(isTotal: boolean, extra = ''): string {
   const weight = isTotal ? 'font-semibold text-highlighted' : 'font-normal';
@@ -551,7 +551,7 @@ const columns = computed<TableColumn<TimesheetRow>[]>(() => {
       :data-testid="remotesReady ? 'reports-monthly-table-ready' : 'reports-monthly-table'"
       class="w-full"
     />
-    <!-- The legend (REQ-519): what an underlined value means in each column (a flag meaning, never
+    <!-- The legend: what an underlined value means in each column (a flag meaning, never
          a column definition), read at a glance, then how to see each value's own reason. Helper
          text, so 14px. -->
     <div

@@ -1,4 +1,4 @@
-# tracking-client-report Specification
+# tracking-client-report
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Gives the user a per-client monthly timesheet PDF built only from the time logs 
 
 ## Requirements
 
-### Requirement: REQ-384 Client report page and month selection
+### Requirement: Client report page and month selection
 
 The private `/reports/client` page SHALL use the shared page header with month controls. The month SHALL default to the current one in the user's timezone, live in the `month=YYYY-MM` query and change with previous/next. An invalid `month` SHALL show a translated error and disable export. A summary SHALL show the form's facts live, without a request. The global guard SHALL redirect unauthenticated visitors.
 
@@ -40,9 +40,9 @@ The private `/reports/client` page SHALL use the shared page header with month c
 - **WHEN** the client name is empty or no Tracker is checked
 - **THEN** the summary SHALL show that fact as not set
 
-### Requirement: REQ-385 Preset selection and inline preset form
+### Requirement: Preset selection and inline preset form
 
-The page SHALL load the user's presets (REQ-381), preselecting the most recently used, with a selector whose last option, "new preset", switches to an unsaved one. The inline form SHALL hold the client name, a checkbox list of active trackers, hours format (`H:MM` or decimal) and PDF language (`en` or `pl`); a new preset starts empty with `decimal` and the UI locale. A preset with inactive trackers SHALL warn how many were removed. The selected preset SHALL be deletable after confirmation.
+The page SHALL load the user's presets (`workspace-report-presets`), preselecting the most recently used, with a selector whose last option, "new preset", switches to an unsaved one. The inline form SHALL hold the client name, a checkbox list of active trackers, hours format (`H:MM` or decimal) and PDF language (`en` or `pl`); a new preset starts empty with `decimal` and the UI locale. A preset with inactive trackers SHALL warn how many were removed. The selected preset SHALL be deletable after confirmation.
 
 #### Scenario: Last used preset is preselected
 
@@ -69,9 +69,9 @@ The page SHALL load the user's presets (REQ-381), preselecting the most recently
 - **WHEN** the checkbox list of trackers or the summary's trackers are shown
 - **THEN** each tracker SHALL show its system type with its name, as on the Projects and Trackers pages
 
-### Requirement: REQ-473 Export label and form validation
+### Requirement: Export label and form validation
 
-As export saves the preset first (REQ-386), the export action SHALL read "save preset and download PDF" while the form holds a new or changed preset, and "download PDF" otherwise. The form SHALL validate as REQ-380 does, with translated field errors before any request.
+As export saves the preset first, the export action SHALL read "save preset and download PDF" while the form holds a new or changed preset, and "download PDF" otherwise. The form SHALL validate as "Report preset fields and validation" in `workspace-report-presets` does, with translated field errors before any request.
 
 #### Scenario: Export label follows unsaved changes
 
@@ -83,9 +83,9 @@ As export saves the preset first (REQ-386), the export action SHALL read "save p
 - **WHEN** the client name is empty or no tracker is checked
 - **THEN** the export action SHALL show translated field errors and SHALL NOT call any API or tracker
 
-### Requirement: REQ-512 Contractor details field in the preset form
+### Requirement: Contractor details field in the preset form
 
-The inline preset form (REQ-385) SHALL hold a multiline contractor details field directly below the client name, where Enter inserts a line break and the input stops at 500 characters. Next to its label a keyboard-operable help control SHALL show a translated tooltip saying the text appears on the PDF title page below the contractor's name and email. A new preset starts with empty details; editing them counts as an unsaved change (REQ-473).
+The inline preset form SHALL hold a multiline contractor details field directly below the client name, where Enter inserts a line break and the input stops at 500 characters. Next to its label a keyboard-operable help control SHALL show a translated tooltip saying the text appears on the PDF title page below the contractor's name and email. A new preset starts with empty details; editing them counts as an unsaved change.
 
 #### Scenario: Saved preset shows its details
 
@@ -117,9 +117,9 @@ The inline preset form (REQ-385) SHALL hold a multiline contractor details field
 - **WHEN** the preset form is shown
 - **THEN** the contractor details label SHALL carry a translated "optional" hint, unlike the required client name
 
-### Requirement: REQ-386 Export assembles the report only from remote time logs
+### Requirement: Export assembles the report only from remote time logs
 
-Export SHALL save the form (REQ-382), then fetch each preset tracker's own-account logs for the month with the browser secret, directly or via the extension. The report SHALL use only those logs, tracker name, type and URL, the preset, and the user's name and email — never OSI entries, tasks or provenance. While exporting, the action SHALL show a busy state and SHALL NOT start a second export.
+Export SHALL save the form (`workspace-report-presets`), then fetch each preset tracker's own-account logs for the month with the browser secret, directly or via the extension. The report SHALL use only those logs, tracker name, type and URL, the preset, and the user's name and email — never OSI entries, tasks or provenance. While exporting, the action SHALL show a busy state and SHALL NOT start a second export.
 
 #### Scenario: Two trackers are combined
 
@@ -131,7 +131,7 @@ Export SHALL save the form (REQ-382), then fetch each preset tracker's own-accou
 - **WHEN** a remote log was created in the tracker's own UI and never exported from OSI
 - **THEN** it SHALL appear in the PDF like any other log
 
-### Requirement: REQ-475 Export fails without a file
+### Requirement: Export fails without a file
 
 If saving fails, a tracker has no secret, the extension is unavailable or incompatible, or any fetch fails, the export SHALL stop with a translated error naming the affected tracker and SHALL NOT produce a file. If every fetch succeeds but returns no logs, the page SHALL show a translated "nothing logged" message and SHALL NOT produce a file.
 
@@ -150,7 +150,7 @@ If saving fails, a tracker has no secret, the extension is unavailable or incomp
 - **WHEN** every tracker returns no logs for the month
 - **THEN** the page SHALL show a translated "nothing logged" message and SHALL NOT produce a file
 
-### Requirement: REQ-387 Grouping, ordering, and totals
+### Requirement: Grouping, ordering, and totals
 
 The report SHALL list only days with logs, ascending by `spentOn`, one row per log, ordered within a day by tracker (preset order), remote issue id, then remote log id (numeric when both are numeric, else lexical). Durations SHALL follow the preset: `hm` as unpadded `H:MM`, seconds floored; `decimal` as hours rounded half-up to two places with the locale's separator (`3,50` pl, `3.50` en). Every day, tracker and month total SHALL equal the sum of the printed row values.
 
@@ -174,7 +174,7 @@ The report SHALL list only days with logs, ascending by `spentOn`, one row per l
 - **WHEN** a log lasts 7 hours, 50 minutes, and 59 seconds in `hm` format
 - **THEN** its row SHALL show `7:50`
 
-### Requirement: REQ-388 Title page content
+### Requirement: Title page content
 
 The first page SHALL be a title page without table, running header or page number, showing: the app name and mark; "Timesheet for" and the client name; the month and year and its date range; the contractor's display name (or email if empty) and email; the month total, days with logs and log count; each tracker's name and host as data sources, with its total when there are two or more. Its footer SHALL show the generation date and time with the user's timezone name.
 
@@ -193,9 +193,9 @@ The first page SHALL be a title page without table, running header or page numbe
 - **WHEN** the user has no display name
 - **THEN** the contractor SHALL be shown by email
 
-### Requirement: REQ-513 Contractor details on the title page
+### Requirement: Contractor details on the title page
 
-When the exported preset has contractor details, the title page (REQ-388) SHALL print them directly below the contractor's email, in the same column and left-aligned with it, keeping their line breaks and wrapping long lines within the column. Without details nothing SHALL be added. The details SHALL NOT appear on table pages, in their running header or footer (REQ-474), or anywhere else in the PDF.
+When the exported preset has contractor details, the title page SHALL print them directly below the contractor's email, in the same column and left-aligned with it, keeping their line breaks and wrapping long lines within the column. Without details nothing SHALL be added. The details SHALL NOT appear on table pages, in their running header or footer, or anywhere else in the PDF.
 
 #### Scenario: Details below the email
 
@@ -217,7 +217,7 @@ When the exported preset has contractor details, the title page (REQ-388) SHALL 
 - **WHEN** a preset with contractor details is exported and the report has table pages
 - **THEN** no table page, running header or footer SHALL contain the details
 
-### Requirement: REQ-389 Table pages content
+### Requirement: Table pages content
 
 After the title page comes a Date, Task and Hours table. The Date cell SHALL span the day's rows with weekday and date. The Task cell SHALL show three lines: the tracker name and the remote issue id linked to its URL (from base URL and system type); the issue title, or a translated "issue not available" when `null`; the activity in brackets (omitted when `null`) and the comment, or a translated "(no comment)". Each day SHALL end with a total row, and the table with a month-total row.
 
@@ -236,7 +236,7 @@ After the title page comes a Date, Task and Hours table. The Date cell SHALL spa
 - **WHEN** a log's comment is empty and its activity is `Development`
 - **THEN** the third line SHALL show `[Development]` followed by the translated "(no comment)"
 
-### Requirement: REQ-474 Table page layout
+### Requirement: Table page layout
 
 The table's header row SHALL repeat on every page. Every table page SHALL carry a running header (report title, month, client name) and a footer (contractor, generation date and time, "page X of Y"). A day's rows and its total row SHALL NOT be split across pages unless the day alone exceeds a page.
 
@@ -245,7 +245,7 @@ The table's header row SHALL repeat on every page. Every table page SHALL carry 
 - **WHEN** a day's rows would start near the bottom of a page and not fit
 - **THEN** the whole day, including its total row, SHALL move to the next page
 
-### Requirement: REQ-390 PDF language, typography, and file
+### Requirement: PDF language, typography, and file
 
 All PDF text SHALL come from the `en`/`pl` catalogs (in parity) in the preset's locale, whatever the UI locale, with month, weekday and date formats of that locale. The PDF SHALL embed IBM Plex Sans so Polish characters render, use tabular figures for durations, be A4 portrait, and download as `<localized prefix>-<client slug>-<YYYY-MM>.pdf`, the slug being the client name lowercased with runs of non-alphanumerics replaced by `-`.
 

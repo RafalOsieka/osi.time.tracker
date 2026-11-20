@@ -6,7 +6,7 @@ const { size = 'md' } = defineProps<{ size?: 'sm' | 'md' }>();
 <!--
   The stop control's glyph: a filled, slightly rounded square (Lucide's square is an outline,
   which reads as an unchecked checkbox). It sits on a solid red stop control, so it pulses from
-  white to a pale red tint (REQ-469: the icon's colour animates), unless motion is reduced.
+  white to a pale red tint (the icon's colour animates), unless motion is reduced.
 -->
 <template>
   <span

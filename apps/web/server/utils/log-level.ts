@@ -1,6 +1,6 @@
 import type { ConsolaInstance } from 'consola';
 
-/** Numeric fallback matching consola's own default level (`info`), per REQ-357. */
+/** Numeric fallback matching consola's own default level (`info`). */
 export const DEFAULT_LOG_LEVEL = 3;
 
 /**
@@ -10,7 +10,7 @@ export const DEFAULT_LOG_LEVEL = 3;
  * therefore leaves `consola.level` at `NaN`, and since every level comparison against
  * `NaN` is `false`, that silences every log line at every level, including errors.
  * Call once at startup to reset the level to the documented default when this happens
- * (server-logging REQ-357 "invalid level value falls back").
+ * (docs/behavior/core-logging.md, "invalid level value falls back").
  */
 export function ensureFiniteLogLevel(instance: Pick<ConsolaInstance, 'level'>): void {
   if (!Number.isFinite(instance.level)) {

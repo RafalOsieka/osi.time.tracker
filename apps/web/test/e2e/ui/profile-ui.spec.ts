@@ -65,7 +65,7 @@ describeProfileUI('profile UI flow', async () => {
     return page;
   }
 
-  /** Opens /profile through the sidebar account menu (REQ-405). */
+  /** Opens /profile through the sidebar account menu. */
   async function openProfileFromMenu(page: Awaited<ReturnType<typeof openAuthed>>) {
     await page.click('[data-testid="app-user-footer-trigger"]');
     await page.getByRole('menuitem', { name: 'Profile' }).click();

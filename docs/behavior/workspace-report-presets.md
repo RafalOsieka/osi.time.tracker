@@ -1,4 +1,4 @@
-# workspace-report-presets Specification
+# workspace-report-presets
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Lets a user save reusable client report setups (client name, trackers, hours for
 
 ## Requirements
 
-### Requirement: REQ-380 Report preset fields and validation
+### Requirement: Report preset fields and validation
 
 A report preset SHALL belong to exactly one user and hold: a client name (trimmed, 1–120 characters, unique per user ignoring case), an ordered list of 1–20 distinct tracker ids, each a non-deleted tracker of that user when saved, an hours format (`hm` or `decimal`), a PDF locale (`en` or `pl`), and a last-used timestamp. Invalid input SHALL be rejected with `422` and `{ messageKey, params }`, persisting nothing.
 
@@ -35,9 +35,9 @@ A report preset SHALL belong to exactly one user and hold: a client name (trimme
 - **WHEN** the user already has a preset named `helios energy` and submits `Helios Energy`
 - **THEN** the request SHALL be rejected with 409 and a translated `messageKey`
 
-### Requirement: REQ-511 Report preset contractor details
+### Requirement: Report preset contractor details
 
-A report preset SHALL hold optional contractor details: free text of at most 500 characters after trimming leading and trailing whitespace, keeping inner line breaks and indentation. Blank or omitted details SHALL be stored as none. Create and update (REQ-382) SHALL store them, update replacing them like every other field, and the preset list (REQ-381) SHALL return them, or `null` when there are none. Oversized details SHALL be rejected per REQ-380.
+A report preset SHALL hold optional contractor details: free text of at most 500 characters after trimming leading and trailing whitespace, keeping inner line breaks and indentation. Blank or omitted details SHALL be stored as none. Create and update SHALL store them, update replacing them like every other field, and the preset list SHALL return them, or `null` when there are none. Oversized details SHALL be rejected per "Report preset fields and validation".
 
 #### Scenario: Multiline details are stored
 
@@ -64,7 +64,7 @@ A report preset SHALL hold optional contractor details: free text of at most 500
 - **WHEN** the contractor details are longer than 500 characters after trimming
 - **THEN** the request SHALL be rejected with 422 and a translated `messageKey`, and nothing SHALL be stored
 
-### Requirement: REQ-381 Listing report presets
+### Requirement: Listing report presets
 
 The system SHALL expose `GET /api/report-presets` for the authenticated user. It SHALL return only that user's presets, ordered by last-used timestamp descending (never-used presets last, then by creation time descending). Each preset SHALL list its trackers in stored order as `{ id, name }` for trackers that are still active, and SHALL report how many stored trackers have since been soft-deleted. Timestamps SHALL be ISO strings.
 
@@ -83,9 +83,9 @@ The system SHALL expose `GET /api/report-presets` for the authenticated user. It
 - **WHEN** another user has presets
 - **THEN** the response SHALL NOT include them
 
-### Requirement: REQ-382 Creating and updating report presets
+### Requirement: Creating and updating report presets
 
-`POST /api/report-presets` SHALL create a preset and `PATCH /api/report-presets/[id]` SHALL replace its client name, trackers, hours format and locale. Both SHALL validate per REQ-380, set the last-used timestamp to now, and return the saved preset in the REQ-381 shape, following `core-api-conventions` (session, CSRF). Updating a foreign or unknown preset SHALL respond 404 without revealing existence.
+`POST /api/report-presets` SHALL create a preset and `PATCH /api/report-presets/[id]` SHALL replace its client name, trackers, hours format and locale. Both SHALL validate per "Report preset fields and validation", set the last-used timestamp to now, and return the saved preset in the shape of "Listing report presets", following `core-api-conventions` (session, CSRF). Updating a foreign or unknown preset SHALL respond 404 without revealing existence.
 
 #### Scenario: Create marks the preset as used
 
@@ -107,7 +107,7 @@ The system SHALL expose `GET /api/report-presets` for the authenticated user. It
 - **WHEN** a create or update request lacks a valid session or CSRF token
 - **THEN** it SHALL be rejected per shared conventions and persist nothing
 
-### Requirement: REQ-383 Deleting report presets
+### Requirement: Deleting report presets
 
 The system SHALL expose `DELETE /api/report-presets/[id]`, which permanently removes the user's preset and its tracker list. Deleting a tracker SHALL NOT delete presets that reference it. A foreign or unknown id SHALL respond 404.
 

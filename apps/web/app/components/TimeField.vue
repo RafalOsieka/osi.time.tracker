@@ -12,7 +12,7 @@ type TimeValue = Time | CalendarDateTime | ZonedDateTime;
 type TimeFieldRange = { start: TimeValue | undefined; end: TimeValue | undefined };
 
 /**
- * Shared segmented clock-time field (REQ-361, shared-ui-components): a thin
+ * Shared segmented clock-time field: a thin
  * wrapper around Nuxt UI's `UInputTime` that always presents a 24-hour clock
  * with hour/minute segments, adds an inline draft/commit/cancel contract for
  * click-to-edit call sites, and can clamp a same-minute inversion in range
@@ -195,7 +195,7 @@ function onUpdate(value: TimeValue | TimeFieldRange | null | undefined) {
   emit('update:modelValue', next);
 }
 
-/** Snaps a same-minute inverted range to a zero-length range, per REQ-432. */
+/** Snaps a same-minute inverted range to a zero-length range. */
 function clampInversion(value: TimeFieldRange): TimeFieldRange {
   const { start, end } = value;
   if (!start || !end) return value;

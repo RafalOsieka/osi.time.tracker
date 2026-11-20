@@ -1,4 +1,4 @@
-# remote-sync-review Specification
+# remote-sync-review
 
 ## Purpose
 
@@ -6,7 +6,7 @@ The per-day Remote Sync page as a review surface: every task of the day with its
 
 ## Requirements
 
-### Requirement: REQ-111 Per-day Remote Sync page lists all of the day's tasks
+### Requirement: Per-day Remote Sync page lists all of the day's tasks
 
 The application SHALL provide a private Remote Sync page for one day, reached from each Timer-view day header, listing **every** task with entries that day plus a "(no task)" bucket when untitled entries exist, so its total matches the Timer view's day total. The day boundary SHALL follow the user's timezone exactly as in the Timer view. Export actions SHALL appear only for eligible linked tasks.
 
@@ -32,7 +32,7 @@ The application SHALL provide a private Remote Sync page for one day, reached fr
 - **THEN** the global guard SHALL redirect to `/login` with the page as the redirect target before
   any protected markup is sent
 
-### Requirement: REQ-112 Explicit per-row state with stated reason
+### Requirement: Explicit per-row state with stated reason
 
 Each task row SHALL have exactly one state: **Sent** with a finalized export for the date; **read-only with a translated reason** when there is no project, no tracker, a missing or soft-deleted tracker, an unsupported system type, or no activity in a successful fetch; **read-only but linkable** with a usable tracker but no linked issue; **temporarily unavailable**, retryable, when required remote data failed to load; else **Ready**. The "(no task)" bucket SHALL always be read-only.
 
@@ -76,7 +76,7 @@ Each task row SHALL have exactly one state: **Sent** with a finalized export for
 - **WHEN** a listed Task has at least one finalized export for the requested local date
 - **THEN** its row SHALL be Sent, SHALL NOT expose export editors, and SHALL NOT be included in Export even if later local entries exist that day
 
-### Requirement: REQ-113 Original and editable rounded durations
+### Requirement: Original and editable rounded durations
 
 Each collapsed task row SHALL show **tracked** (the sum of the task's completed entries that day) and **to send** (the export duration) in their own columns at every list width, never only in the expanded region, with their signed **delta** in a tooltip and as accessible text, not as a third visible value. Sent and read-only rows SHALL show them as text, to send being the last finalized export duration when provenance exists, otherwise `0`.
 
@@ -90,7 +90,7 @@ Each collapsed task row SHALL show **tracked** (the sum of the task's completed 
 - **WHEN** the user reviews the day without expanding a row
 - **THEN** tracked and to-send SHALL be visible on that row and the signed delta SHALL be available from the to-send tooltip
 
-### Requirement: REQ-487 Editable to-send duration
+### Requirement: Editable to-send duration
 
 On a Ready row, to send SHALL be editable in place, pre-filled by applying the project's active tracker's rounding rule once to the tracked total, and recomputed when the day's entries change unless overridden. An override SHALL stay until explicitly reset (Escape while editing, or a reset the active field offers). Input that cannot be normalized SHALL revert. A to-send of `0` SHALL exclude the task from Export. Values SHALL stay page state until a successful export finalizes.
 
@@ -124,9 +124,9 @@ On a Ready row, to send SHALL be editable in place, pre-filled by applying the p
 - **WHEN** a Ready row's export duration is `0`
 - **THEN** the task SHALL be excluded from Export and SHALL NOT be sent
 
-### Requirement: REQ-114 Required remote fields with fetched options and pre-fill
+### Requirement: Required remote fields with fetched options and pre-fill
 
-For each otherwise manageable row the page SHALL fetch activities once per activity scope (REQ-332), shared by its rows, in a labelled select preselecting the task's last finalized activity when listed, else none, never a tracker default; selections stay page state. A successful empty answer SHALL make those rows read-only, saying no activity is available and nothing will be pushed. A failure SHALL give only those rows an accessible retryable error; retry refetches the scope once for all.
+For each otherwise manageable row the page SHALL fetch activities once per activity scope (`remote-adapter-contract`), shared by its rows, in a labelled select preselecting the task's last finalized activity when listed, else none, never a tracker default; selections stay page state. A successful empty answer SHALL make those rows read-only, saying no activity is available and nothing will be pushed. A failure SHALL give only those rows an accessible retryable error; retry refetches the scope once for all.
 
 #### Scenario: Activities are fetched and selectable
 
@@ -180,7 +180,7 @@ For each otherwise manageable row the page SHALL fetch activities once per activ
 - **WHEN** the user opens a row's activity select
 - **THEN** the chosen activity, else the first, SHALL be the visibly active option, Enter SHALL pick it and the arrow keys SHALL move it
 
-### Requirement: REQ-116 Remote Sync page accessibility and i18n
+### Requirement: Remote Sync page accessibility and i18n
 
 The page SHALL meet WCAG 2.1 AA: row states and reasons in text, never color alone, warnings pairing an icon with text; labelled duration and field controls; option loading and errors announced in live regions; everything keyboard operable, with expansion controls exposing their state; day summaries and duration clusters as labelled text. All strings SHALL come from the catalogs with `en`/`pl` parity.
 
@@ -199,7 +199,7 @@ The page SHALL meet WCAG 2.1 AA: row states and reasons in text, never color alo
 - **WHEN** assistive technology inspects a task row's expansion control
 - **THEN** the control SHALL expose whether the row is expanded or collapsed and which region it controls
 
-### Requirement: REQ-489 Remote Sync test hooks and absent controls
+### Requirement: Remote Sync test hooks and absent controls
 
 Stable `data-testid` hooks SHALL exist for rows, state indicators, durations, field controls, expansion controls, the actions cell, day summaries, day navigation, the Export action and detail rows. The page SHALL have no include checkbox, per-entry selection, rounding-suggestion action, day-level bulk action or separate Today and Pick date actions, nor hooks for them.
 
@@ -208,9 +208,9 @@ Stable `data-testid` hooks SHALL exist for rows, state indicators, durations, fi
 - **WHEN** the Remote Sync page is rendered
 - **THEN** include checkboxes, per-entry selection, rounding-suggestion actions, and their test hooks SHALL NOT be present
 
-### Requirement: REQ-223 Day review is a compact expandable list
+### Requirement: Day review is a compact expandable list
 
-The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the columns expansion, state, title-to-send (editable on Ready rows), issue reference or link control, activity (a select on Ready rows), tracked, to send and actions. Rows start collapsed and expand singly without changing values. Ready, Sent, blocked and untitled rows share one list, told apart by their state and active controls.
+The day's tasks SHALL be one column-aligned expandable list (`ui-shared-components`) with the columns expansion, state, title-to-send (editable on Ready rows), issue reference or link control, activity (a select on Ready rows), tracked, to send and actions. Rows start collapsed and expand singly without changing values. Ready, Sent, blocked and untitled rows share one list, told apart by their state and active controls.
 
 #### Scenario: Day opens with all rows collapsed
 
@@ -230,12 +230,12 @@ The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the c
 #### Scenario: Ready export values read as editable at rest
 
 - **WHEN** a Ready row is shown
-- **THEN** its title to send, activity select and to-send duration SHALL each read as an editable field without focus (ui-shared-components REQ-178), lined up down the list, with an unchosen activity shown as a placeholder
+- **THEN** its title to send, activity select and to-send duration SHALL each read as an editable field without focus (`ui-shared-components`), lined up down the list, with an unchosen activity shown as a placeholder
 
 #### Scenario: Expanding a row reveals its detail
 
 - **WHEN** the user activates the expansion control of a task row
-- **THEN** that row SHALL reveal REQ-507 details while other rows remain collapsed and the collapsed durations SHALL stay unchanged
+- **THEN** that row SHALL reveal its expanded detail rows while other rows remain collapsed and the collapsed durations SHALL stay unchanged
 
 #### Scenario: Collapsing a row preserves review state
 
@@ -257,15 +257,15 @@ The day's tasks SHALL be one column-aligned expandable list (REQ-496) with the c
 - **WHEN** a Sent or not-exportable row is collapsed
 - **THEN** title-to-send, activity, and to-send SHALL NOT be editable
 
-### Requirement: REQ-224 On-page day navigation
+### Requirement: On-page day navigation
 
-The header SHALL hold a stable translated title and a compact day switcher — previous and next day around the localized date, which opens the shared calendar grid (REQ-359) in a popover, showing the displayed day's month with that day selected — followed by Export. Picking a day SHALL navigate and close the popover; picking the displayed day SHALL only close it. Controls SHALL be labelled and keyboard operable, the grid navigable with arrows and confirmed with Enter or Space.
+The header SHALL hold a stable translated title and a compact day switcher — previous and next day around the localized date, which opens the shared calendar grid (`ui-shared-components`) in a popover, showing the displayed day's month with that day selected — followed by Export. Picking a day SHALL navigate and close the popover; picking the displayed day SHALL only close it. Controls SHALL be labelled and keyboard operable, the grid navigable with arrows and confirmed with Enter or Space.
 
 #### Scenario: Header presents the compact day switcher and primary action
 
 - **WHEN** the user opens the Remote Sync page
 - **THEN** the header SHALL show the stable page title, previous-day action, the date label in the
-  Timer view's day-heading form (full weekday, day, month name and year, core-i18n REQ-516),
+  Timer view's day-heading form (full weekday, day, month name and year, `core-i18n`),
   next-day action, and Export action, without a date in the title
 
 #### Scenario: Jump to an arbitrary date
@@ -293,7 +293,7 @@ The header SHALL hold a stable translated title and a compact day switcher — p
 - **THEN** the date label SHALL shorten to an abbreviated weekday and month, and it and the adjacent
   navigation and Export controls SHALL remain legible and operable
 
-### Requirement: REQ-490 Navigating to another day
+### Requirement: Navigating to another day
 
 Navigating SHALL change the page's date route, recompute the day boundary in the user's timezone and reload the day review for the new date. Unfinalized review state belongs to the day being left and SHALL NOT carry over. A date without entries SHALL show the translated empty state.
 
@@ -313,7 +313,7 @@ Navigating SHALL change the page's date route, recompute the day boundary in the
 - **THEN** the new day's rows SHALL be derived from their own data with default selections and no
   inherited override
 
-### Requirement: REQ-226 Remote log context includes the log comment
+### Requirement: Remote log context includes the log comment
 
 Each displayed remote log SHALL render its comment alongside its duration, activity and identifier. When a log has no comment, the row SHALL render a translated placeholder rather than an empty value. Long comments SHALL remain fully accessible, e.g. by truncating the visible text while exposing the full value to assistive technologies and on hover or focus. Remote logs SHALL remain informational only and SHALL NOT be editable from this page.
 
@@ -332,7 +332,7 @@ Each displayed remote log SHALL render its comment alongside its duration, activ
 - **WHEN** a log comment is too long to display in full
 - **THEN** the visible text SHALL be truncated while the complete comment remains available to assistive technologies and on hover or focus
 
-### Requirement: REQ-232 Editable per-task export comment
+### Requirement: Editable per-task export comment
 
 Each Ready task SHALL have an editable comment sent as the remote log's note: the labelled in-place title-to-send on its collapsed row, shown in the review before confirming. It SHALL default to the comment of the latest fetched remote log for its issue, else the task name; an empty value SHALL fall back to the task name. It SHALL be page state for the day, never stored locally and never renaming the task. Sent and non-exportable rows SHALL show the task name as text instead.
 
@@ -366,7 +366,7 @@ Each Ready task SHALL have an editable comment sent as the remote log's note: th
 - **WHEN** the user commits a different title-to-send on a Ready row
 - **THEN** the local task name SHALL remain unchanged
 
-### Requirement: REQ-504 Row state indicator
+### Requirement: Row state indicator
 
 Each collapsed row SHALL show its state as an icon in its own column, with a distinct icon per kind (Ready, Sent, Loading, needs attention, not exportable) and never color alone. Its accessible name and tooltip SHALL give the short state label and the full reason. While activities load, a linked never-exported row SHALL keep Ready's title, duration and activity chrome, inactive. Expanded read-only and Sent rows SHALL show name, tracked time and loaded remote logs.
 
@@ -390,9 +390,9 @@ Each collapsed row SHALL show its state as an icon in its own column, with a dis
 - **WHEN** the list shows its column headers
 - **THEN** the state column SHALL have a header that assistive technology reads and that is not visible
 
-### Requirement: REQ-505 Narrow Sync rows and the actions column
+### Requirement: Narrow Sync rows and the actions column
 
-In the narrow layout (REQ-500) a task row SHALL use three lines: expansion, state and title first; issue reference with tracked second; activity with to send third, to send marked as following tracked. The actions column SHALL be present and empty, sized for one icon button, so a later action does not reflow the row.
+In the narrow layout (`ui-shared-components`) a task row SHALL use three lines: expansion, state and title first; issue reference with tracked second; activity with to send third, to send marked as following tracked. The actions column SHALL be present and empty, sized for one icon button, so a later action does not reflow the row.
 
 #### Scenario: Narrow list uses three lines
 
@@ -404,9 +404,9 @@ In the narrow layout (REQ-500) a task row SHALL use three lines: expansion, stat
 - **WHEN** a Ready or Sent row is rendered
 - **THEN** its actions cell SHALL occupy space and SHALL contain no button or menu
 
-### Requirement: REQ-506 Activity load errors stay in their cell
+### Requirement: Activity load errors stay in their cell
 
-When a row's activities fail to load (REQ-114), its activity cell SHALL show an error icon, whose accessible name and tooltip carry the translated message, and the retry action, without widening the column. Guidance that needs more room, such as browser-extension setup or an approval request, SHALL appear in a full-width row directly under the task row, visible without expanding it.
+When a row's activities fail to load, its activity cell SHALL show an error icon, whose accessible name and tooltip carry the translated message, and the retry action, without widening the column. Guidance that needs more room, such as browser-extension setup or an approval request, SHALL appear in a full-width row directly under the task row, visible without expanding it.
 
 #### Scenario: Failure shows a compact error
 
@@ -423,9 +423,9 @@ When a row's activities fail to load (REQ-114), its activity cell SHALL show an 
 - **WHEN** a retry loads the activities
 - **THEN** the error icon and the guidance row SHALL disappear and the activity select SHALL be shown
 
-### Requirement: REQ-507 Expanded details are rows on the task columns
+### Requirement: Expanded details are rows on the task columns
 
-Expanding a row SHALL reveal information only, as rows of the same list: the task's completed local entries that day, each duration in the tracked column, then the same-day current-account remote logs for its issue (REQ-118, REQ-226), each with its link state in the state column, duration in the to-send column and reconciliation action in the actions column. It SHALL offer no duration editors, rounding alternatives, comment editors or entry selection.
+Expanding a row SHALL reveal information only, as rows of the same list: the task's completed local entries that day, each duration in the tracked column, then the same-day current-account remote logs for its issue (`remote-sync-export`), each with its link state in the state column, duration in the to-send column and reconciliation action in the actions column. It SHALL offer no duration editors, rounding alternatives, comment editors or entry selection.
 
 #### Scenario: Local entries line up under tracked
 
@@ -462,7 +462,7 @@ Expanding a row SHALL reveal information only, as rows of the same list: the tas
 - **WHEN** a ready task row is expanded
 - **THEN** the detail SHALL NOT offer duration, comment, rounding, or entry-selection controls
 
-### Requirement: REQ-508 Day total summary
+### Requirement: Day total summary
 
 Once above the list, the page SHALL show the labelled **day total**: every completed entry of the day, untitled, Sent and blocked time included, equal to the Timer view's total for that day. It SHALL update at once when the day's entries change.
 
@@ -476,9 +476,9 @@ Once above the list, the page SHALL show the labelled **day total**: every compl
 - **WHEN** a day contains Ready, Sent, blocked and untitled time
 - **THEN** the day total SHALL include all of it
 
-### Requirement: REQ-509 In-tracker-after-export summary
+### Requirement: In-tracker-after-export summary
 
-Next to the day total the page SHALL show **in trackers after export**: the current account's same-day logs on the issues linked to the day's tasks (REQ-118), plus the shown to-send durations of the rows not sent yet, whether or not their activity is chosen, with both parts labelled and the to-send part set apart from the logs part. It SHALL update at once when a to-send duration changes and after Export or a log refresh.
+Next to the day total the page SHALL show **in trackers after export**: the current account's same-day logs on the issues linked to the day's tasks (`remote-sync-export`), plus the shown to-send durations of the rows not sent yet, whether or not their activity is chosen, with both parts labelled and the to-send part set apart from the logs part. It SHALL update at once when a to-send duration changes and after Export or a log refresh.
 
 #### Scenario: Logs and to send add up
 
@@ -510,7 +510,7 @@ Next to the day total the page SHALL show **in trackers after export**: the curr
 - **WHEN** Export finalizes and the logs are refreshed
 - **THEN** the exported durations SHALL count in the logs part and SHALL NOT count again as to send
 
-### Requirement: REQ-510 In-tracker summary without complete logs
+### Requirement: In-tracker summary without complete logs
 
 While any tracker's logs for the day are loading, the in-tracker summary SHALL show no number and say that logs are loading. When a tracker's logs fail or cannot be fetched, it SHALL show no number, and one alert under the summaries SHALL name each affected tracker with its reason and offer one retry where one exists. It SHALL never show a partial sum.
 
@@ -539,7 +539,7 @@ While any tracker's logs for the day are loading, the in-tracker summary SHALL s
 - **WHEN** a tracker's logs fail to load for a reason other than the browser extension and its rows' activities failed too
 - **THEN** the alert SHALL say that both could not be loaded, and its one retry SHALL reload both
 
-### Requirement: REQ-520 Needs-attention state for fixable rows
+### Requirement: Needs-attention state for fixable rows
 
 A row that cannot be exported because of something the user can act on SHALL use a **needs attention** state kind in the warning color: no Project, a missing Tracker, no linked issue, activities that failed to load, or a Ready row with time to send and no activity chosen yet. A row excluded by design (a local Project, an unsupported system, no activity offered by the tracker) SHALL use the neutral **not exportable** kind.
 
@@ -558,9 +558,9 @@ A row that cannot be exported because of something the user can act on SHALL use
 - **WHEN** assistive technology reads the state of a needs-attention row, including an unlinked one
 - **THEN** the accessible name and the tooltip SHALL start with the translated needs-attention label, followed by the full reason
 
-### Requirement: REQ-527 The day total counts the running entry
+### Requirement: The day total counts the running entry
 
-While a Time entry that started on the displayed day, in the user's timezone, is running, the day total (REQ-508) SHALL include its elapsed time, live, as the Timer view's total does. The total's caption SHALL say what it counts and show the running part apart from the completed part. When the entry stops, the total SHALL NOT drop while the day reloads.
+While a Time entry that started on the displayed day, in the user's timezone, is running, the day total SHALL include its elapsed time, live, as the Timer view's total does. The total's caption SHALL say what it counts and show the running part apart from the completed part. When the entry stops, the total SHALL NOT drop while the day reloads.
 
 #### Scenario: A running entry is shown apart
 

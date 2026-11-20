@@ -1,4 +1,4 @@
-# core-authentication Specification
+# core-authentication
 
 ## Purpose
 
@@ -6,7 +6,7 @@ How users sign in and how private resources are protected: email and password lo
 
 ## Requirements
 
-### Requirement: REQ-006 Session-cookie authentication
+### Requirement: Session-cookie authentication
 
 The application SHALL authenticate users with a server-side session represented by a sealed cookie. The session cookie MUST be `HttpOnly`, MUST be `Secure` in production, and MUST use `SameSite=Lax`. The cookie SHALL be sealed with a key derived from the application secret, provided via the `NUXT_APP_SECRET` environment variable (32+ characters), and startup SHALL fail fast if it is missing in production.
 
@@ -25,7 +25,7 @@ The application SHALL authenticate users with a server-side session represented 
 - **WHEN** a request presents a session cookie that fails seal verification
 - **THEN** the server SHALL treat the request as unauthenticated
 
-### Requirement: REQ-007 Login and logout endpoints
+### Requirement: Login and logout endpoints
 
 The application SHALL expose a login endpoint that establishes a session and a logout endpoint that clears it. Logout SHALL invalidate the session immediately so subsequent requests are unauthenticated. Login SHALL accept an **email** and **password**; the email SHALL be trimmed and lowercased before the user is looked up, and the password SHALL be verified against the stored password hash. Invalid credentials SHALL return an error and SHALL NOT establish a session.
 
@@ -44,7 +44,7 @@ The application SHALL expose a login endpoint that establishes a session and a l
 - **WHEN** an authenticated client calls the logout endpoint
 - **THEN** the server SHALL clear the session cookie and subsequent requests SHALL be unauthenticated
 
-### Requirement: REQ-423 Failed logins are timing-safe and non-enumerating
+### Requirement: Failed logins are timing-safe and non-enumerating
 
 A failed login SHALL NOT reveal whether the email exists. When the email is unknown, the server SHALL verify the password against a dummy hash, so "unknown email" and "wrong password" return the same generic invalid-credentials error with comparable timing.
 
@@ -58,16 +58,16 @@ A failed login SHALL NOT reveal whether the email exists. When the email is unkn
 - **WHEN** a client posts an email that matches no stored user
 - **THEN** the server SHALL verify against a dummy hash and SHALL return the same generic error and comparable timing as a wrong-password failure, without establishing a session
 
-### Requirement: REQ-424 Session payload carries identity and settings
+### Requirement: Session payload carries identity and settings
 
-A session SHALL carry `{ id, email, displayName }` plus the user's settings (workspace-settings REQ-398), where `id` is the durable per-user scope key and `displayName` is the user's non-empty display name (workspace-settings REQ-397). Only a session under the current cookie name whose payload carries both the display name and the timezone SHALL authenticate; a cookie under the former `nuxt-session` name SHALL NOT.
+A session SHALL carry `{ id, email, displayName }` plus the user's settings (`workspace-settings`), where `id` is the durable per-user scope key and `displayName` is the user's non-empty display name (`workspace-settings`). Only a session under the current cookie name whose payload carries both the display name and the timezone SHALL authenticate; a cookie under the former `nuxt-session` name SHALL NOT.
 
 #### Scenario: Session from an older cookie is not accepted
 
 - **WHEN** a request carries only a session cookie under the former cookie name, or one whose payload lacks the display name or timezone
 - **THEN** the request SHALL be treated as unauthenticated, so protected pages redirect to `/login` and protected API routes respond with HTTP 401
 
-### Requirement: REQ-009 Client login-state detection
+### Requirement: Client login-state detection
 
 The client SHALL be able to determine whether a user is logged in and read the session user, so the UI can render authenticated vs. unauthenticated states.
 
@@ -81,7 +81,7 @@ The client SHALL be able to determine whether a user is logged in and read the s
 - **WHEN** no valid session exists
 - **THEN** the client SHALL report the user as logged out
 
-### Requirement: REQ-010 Fixed session lifetime
+### Requirement: Fixed session lifetime
 
 Sessions SHALL use a fixed, configured maximum age. Sessions SHALL NOT be renewed on activity (no sliding expiry).
 
@@ -90,7 +90,7 @@ Sessions SHALL use a fixed, configured maximum age. Sessions SHALL NOT be renewe
 - **WHEN** the configured maximum age has elapsed since the session cookie was issued
 - **THEN** the cookie SHALL be considered expired and the request SHALL be unauthenticated
 
-### Requirement: REQ-011 CSRF protection, security headers, and login rate limiting
+### Requirement: CSRF protection, security headers, and login rate limiting
 
 The application SHALL protect state-changing requests against CSRF and SHALL apply baseline security response headers. CSRF validation SHALL apply to mutating HTTP methods (POST/PUT/PATCH/DELETE), and requests failing it SHALL be rejected without performing the action. `POST /api/auth/login` SHALL enforce a stricter rate limit than the global default to mitigate brute-force attacks (OWASP / NFR 8.3).
 
@@ -119,7 +119,7 @@ The application SHALL protect state-changing requests against CSRF and SHALL app
 - **WHEN** a client makes login attempts within the configured limit
 - **THEN** requests SHALL be processed normally without rate-limit rejection
 
-### Requirement: REQ-012 Env-var bootstrap user
+### Requirement: Env-var bootstrap user
 
 The migrate step SHALL seed an initial user from environment variables. `BOOTSTRAP_USER_EMAIL` and `BOOTSTRAP_USER_PASSWORD` SHALL be required for seeding. `BOOTSTRAP_USER_DISPLAY_NAME` SHALL be optional, trimmed, and default to the email local part when unset or empty. `BOOTSTRAP_USER_TIMEZONE` SHALL be optional and default to `UTC`. The email SHALL be stored trimmed and lowercased. The password SHALL be stored only as a hash that login verification accepts, and SHALL NOT be logged.
 
@@ -143,9 +143,9 @@ The migrate step SHALL seed an initial user from environment variables. `BOOTSTR
 - **WHEN** the migrate step seeds the bootstrap user at any log verbosity
 - **THEN** neither the plaintext password nor its hash SHALL appear in the migrator's output
 
-### Requirement: REQ-425 Bootstrap seeding is validated and idempotent
+### Requirement: Bootstrap seeding is validated and idempotent
 
-When seeding is enabled and `BOOTSTRAP_USER_TIMEZONE` is neither `UTC` nor a supported IANA timezone, or the display name exceeds the workspace-settings REQ-397 limit, the migrate step SHALL exit non-zero before applying migrations or seeding, naming the offending variable. Seeding SHALL skip silently when the email or password variable is unset or empty, SHALL skip when a user with that email exists, and SHALL NOT overwrite an existing user's password, display name, or timezone.
+When seeding is enabled and `BOOTSTRAP_USER_TIMEZONE` is neither `UTC` nor a supported IANA timezone, or the display name exceeds the `workspace-settings` limit, the migrate step SHALL exit non-zero before applying migrations or seeding, naming the offending variable. Seeding SHALL skip silently when the email or password variable is unset or empty, SHALL skip when a user with that email exists, and SHALL NOT overwrite an existing user's password, display name, or timezone.
 
 #### Scenario: Invalid timezone fails the migrate step
 
@@ -167,7 +167,7 @@ When seeding is enabled and `BOOTSTRAP_USER_TIMEZONE` is neither `UTC` nor a sup
 - **WHEN** the migrate step runs and `BOOTSTRAP_USER_EMAIL` or `BOOTSTRAP_USER_PASSWORD` is unset
 - **THEN** the system SHALL skip seeding without error, even if `BOOTSTRAP_USER_TIMEZONE` is invalid
 
-### Requirement: REQ-013 Client-side validation of the login form
+### Requirement: Client-side validation of the login form
 
 The login form SHALL validate credentials client-side with the same schema the server uses before submitting, so an empty email or password is caught without a request, showing the `errors.auth.credentialsRequired` key the server returns. The server SHALL stay authoritative. A failed server login SHALL render a translated form-level error announced to assistive technology, with both inputs marked `aria-invalid` and associated via `aria-describedby`.
 
@@ -181,7 +181,7 @@ The login form SHALL validate credentials client-side with the same schema the s
 - **WHEN** submitted credentials pass client-side validation but the server rejects them
 - **THEN** the translated server error SHALL render as an announced form-level error and no session SHALL be established
 
-### Requirement: REQ-515 The login password can be revealed
+### Requirement: The login password can be revealed
 
 The login form's password field SHALL carry a toggle button that shows the typed password as plain text and masks it again. The toggle SHALL have a translated accessible name, expose its state through `aria-pressed`, and SHALL NOT submit the form or change the field's value.
 
@@ -195,7 +195,7 @@ The login form's password field SHALL carry a toggle button that shows the typed
 - **WHEN** the user activates the toggle with empty or filled credentials
 - **THEN** no login request SHALL be sent and the field's value SHALL stay as typed
 
-### Requirement: REQ-533 Returning to a tab re-enters an expired access layer
+### Requirement: Returning to a tab re-enters an expired access layer
 
 When the user returns to an open tab, the client SHALL request the session endpoint without following redirects, at most once a minute. A redirect means an access layer in front of the app has expired, and the client SHALL reload the page so re-authentication starts at once. Any other outcome SHALL leave the page as it is.
 

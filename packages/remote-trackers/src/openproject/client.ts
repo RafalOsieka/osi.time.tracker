@@ -42,13 +42,13 @@ export interface OpenProjectTimeLogEntry {
   activityName: string | null;
   comment: string | null;
   remoteUserId: string | null;
-  /** Present only when the payload's `_links.project` supplies it (REQ-342). */
+  /** Present only when the payload's `_links.project` supplies it. */
   remoteProjectId?: string;
   remoteProjectTitle?: string;
   /**
    * From the entity/work-package link title, which OpenProject sets even for
    * work packages the account can no longer see; `null` when the link has
-   * none (REQ-342). Never looked up separately: the work-package `id` filter
+   * none. Never looked up separately: the work-package `id` filter
    * rejects the whole request when any listed id is missing or hidden, so it
    * cannot serve as a batched title lookup.
    */
@@ -268,7 +268,7 @@ export class OpenProjectClient {
   }
 
   /**
-   * One page of the remote project catalog (REQ-323), `pageSize`/`offset`
+   * One page of the remote project catalog, `pageSize`/`offset`
    * paginated. OpenProject's `offset` here is a 1-based page number, not an
    * item offset.
    */

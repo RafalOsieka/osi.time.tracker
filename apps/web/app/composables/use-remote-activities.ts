@@ -35,7 +35,7 @@ function scopeKeyFor(config: ActivityScopeConfig, remoteIssueId: string): string
 
 /**
  * Scope-keyed remote activity options loader. The cache key is
- * `configId:<provider-defined scope>` (REQ-332): a tracker whose activities
+ * `configId:<provider-defined scope>`: a tracker whose activities
  * are a global enumeration (Redmine) shares one entry across every issue, and
  * one whose activities depend on the work package (OpenProject) keeps a
  * distinct entry per issue. Owns cache, in-flight dedupe, ensureLoaded/retry,

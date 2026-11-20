@@ -14,9 +14,9 @@ const { effective } = useProfile();
 
 const title = ref('');
 const editedTitle = ref('');
-/** Suggestion bound to the title text, if any (REQ-180). */
+/** Suggestion bound to the title text, if any. */
 const boundTask = ref<TitleTask | null>(null);
-/** Project chip (REQ-374). */
+/** Project chip. */
 const chipProject = ref<TitleProject | null>(null);
 const titleInput = useTemplateRef('titleInput');
 const starting = ref(false);
@@ -54,7 +54,7 @@ watch(
   { immediate: true },
 );
 
-// The chip follows the running entry's project and resets when the timer stops (REQ-471).
+// The chip follows the running entry's project and resets when the timer stops.
 watch(
   () => running.value,
   (entry) => {
@@ -74,7 +74,7 @@ watch(isRunning, (running) => {
 });
 
 function onPickProject(project: TitleProject, strippedText: string) {
-  // Untitled entries cannot carry a project: keep the chip locally (REQ-471).
+  // Untitled entries cannot carry a project: keep the chip locally.
   if (isRunning.value && strippedText.trim()) {
     void updateTitle(strippedText, null, project.id);
   }
@@ -123,7 +123,7 @@ async function onToggle() {
   }
 }
 
-/** Commits the running entry's title with the chip's project, sent explicitly (REQ-471). */
+/** Commits the running entry's title with the chip's project, sent explicitly. */
 async function commitRunningTitle() {
   const commit = titleInput.value?.resolveCommit();
   if (!commit) return;

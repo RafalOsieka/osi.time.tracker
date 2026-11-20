@@ -19,13 +19,13 @@ import { trackers } from './trackers';
 /**
  * One record per successfully finalized or linked remote time log.
  * There is intentionally no task/day or entry uniqueness constraint: later
- * exports after deletion remain valid (REQ-119). Remote-entry identity is the
- * workspace pair `(trackerId, remoteLogId)` (REQ-304).
+ * exports after deletion remain valid. Remote-entry identity is the
+ * workspace pair `(trackerId, remoteLogId)`.
  * `exportRequestKey` is unique per user when present so retries reconcile
- * to the same logical export (REQ-233).
+ * to the same logical export.
  *
  * `taskId` is nullable with ON DELETE SET NULL so export provenance survives
- * task garbage collection (REQ-443) instead of cascading away or blocking GC.
+ * task garbage collection instead of cascading away or blocking GC.
  */
 export const remoteExports = pgTable(
   'remote_exports',

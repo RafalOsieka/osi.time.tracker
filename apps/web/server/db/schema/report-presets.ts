@@ -14,10 +14,10 @@ import { trackers } from './trackers';
 import type { ReportHoursFormat, ReportLocale } from '../../../shared/types/report-preset';
 
 /**
- * A saved client report setup (REQ-380). Client names are unique per user
- * ignoring case. `lastUsedAt` orders the preset list (REQ-381) and is bumped
- * on every save, which the client report export performs first (REQ-386).
- * `contractorDetails` is trimmed, non-empty text or `NULL` for none (REQ-511).
+ * A saved client report setup. Client names are unique per user
+ * ignoring case. `lastUsedAt` orders the preset list and is bumped
+ * on every save, which the client report export performs first.
+ * `contractorDetails` is trimmed, non-empty text or `NULL` for none.
  */
 export const reportPresets = pgTable(
   'report_presets',

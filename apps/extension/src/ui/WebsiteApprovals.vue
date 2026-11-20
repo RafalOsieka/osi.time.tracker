@@ -19,7 +19,7 @@ import TrackerMark from './TrackerMark.vue';
 /**
  * The setup page's approved OSI websites: the list first, the approve form behind "Add website"
  * once something is listed (always open, and the section titled as the task, while the list is
- * empty). Removing a website that still has trackers asks first and lists them (REQ-413).
+ * empty). Removing a website that still has trackers asks first and lists them.
  */
 const {
   websites,
@@ -37,7 +37,7 @@ const {
   origin: string;
   /** The approve form is expanded although websites are listed. */
   open: boolean;
-  /** The popup handed the current address over from the active tab (REQ-415). */
+  /** The popup handed the current address over from the active tab. */
   handedOff: boolean;
   disabled: boolean;
   errorKey: string | null;

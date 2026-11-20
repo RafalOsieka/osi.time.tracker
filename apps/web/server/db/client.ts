@@ -26,10 +26,10 @@ export type DatabaseClientPair = {
 };
 
 /**
- * Drizzle query logger routed through `consola.debug` (server-logging REQ-357):
+ * Drizzle query logger routed through `consola.debug`:
  * every executed statement and its bound parameters become visible only when
  * `CONSOLA_LEVEL` is raised to `debug` or above, and only the statement and
- * parameters are logged -- never the connection string (REQ-356).
+ * parameters are logged -- never the connection string.
  */
 export function createQueryLogger(): Logger {
   return {

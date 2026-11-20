@@ -1,4 +1,4 @@
-# tracking-reports Specification
+# tracking-reports
 
 ## Purpose
 
@@ -6,7 +6,7 @@ Give the authenticated user a monthly timesheet that reconciles local logged hou
 
 ## Requirements
 
-### Requirement: REQ-300 No reports hub at `/reports`
+### Requirement: No reports hub at `/reports`
 
 The application SHALL NOT expose a reports hub page at `/reports`. There SHALL be no redirect from `/reports` to `/reports/monthly`. An authenticated request for `/reports` SHALL be a not-found response (HTTP 404), not a hub, placeholder, or monthly timesheet. Unauthenticated requests remain subject to the private-by-default guard.
 
@@ -20,9 +20,9 @@ The application SHALL NOT expose a reports hub page at `/reports`. There SHALL b
 - **WHEN** an unauthenticated visitor requests `/reports`
 - **THEN** the global guard SHALL redirect to `/login` with that path as the redirect target before any protected markup is sent
 
-### Requirement: REQ-289 Monthly timesheet month selection
+### Requirement: Monthly timesheet month selection
 
-The application SHALL expose a private `/reports/monthly` page for one calendar month. The selected month SHALL default to the current month in the user's timezone (workspace-settings REQ-398). The page SHALL offer previous-month and next-month controls and SHALL keep the selection in the `month=YYYY-MM` query string. Changing the month SHALL reload the timesheet for that month.
+The application SHALL expose a private `/reports/monthly` page for one calendar month. The selected month SHALL default to the current month in the user's timezone (`workspace-settings`). The page SHALL offer previous-month and next-month controls and SHALL keep the selection in the `month=YYYY-MM` query string. Changing the month SHALL reload the timesheet for that month.
 
 #### Scenario: Default is the current month
 
@@ -49,7 +49,7 @@ The application SHALL expose a private `/reports/monthly` page for one calendar 
 - **WHEN** an unauthenticated visitor requests `/reports/monthly`
 - **THEN** the global guard SHALL redirect to `/login` with that path as the redirect target before any protected markup is sent
 
-### Requirement: REQ-290 Monthly table columns, days, and totals
+### Requirement: Monthly table columns, days, and totals
 
 The monthly timesheet SHALL be a table with a Local column (OSI hours) and, for **every active** tracker the user owns, a group of App, Direct and Total columns, shown with `0:00` even when empty; soft-deleted trackers SHALL NOT appear. It SHALL list only days of the month with Local, App or Direct hours above zero, plus a totals row summing the visible days per column. Day rows SHALL NOT link to the Timer View or Remote Sync.
 
@@ -73,9 +73,9 @@ The monthly timesheet SHALL be a table with a Local column (OSI hours) and, for 
 - **WHEN** the user has a soft-deleted tracker with historical exports
 - **THEN** that tracker SHALL NOT appear as a column group
 
-### Requirement: REQ-299 Combined remote-hours summary
+### Requirement: Combined remote-hours summary
 
-The timesheet SHALL show a month-level Remote summary, the sum of all fetched remote log durations across active trackers without an App/Direct split, in `H:MM` (REQ-294), beside a Local summary. A failed fetch SHALL NOT count as `0:00`: if every tracker fails, the summary SHALL show the failure state; if some succeed, it SHALL show their sum marked incomplete by color plus tooltip, not color alone.
+The timesheet SHALL show a month-level Remote summary, the sum of all fetched remote log durations across active trackers without an App/Direct split, in `H:MM`, beside a Local summary. A failed fetch SHALL NOT count as `0:00`: if every tracker fails, the summary SHALL show the failure state; if some succeed, it SHALL show their sum marked incomplete by color plus tooltip, not color alone.
 
 #### Scenario: Remote summary is all tracker hours combined
 
@@ -87,7 +87,7 @@ The timesheet SHALL show a month-level Remote summary, the sum of all fetched re
 - **WHEN** one tracker range fetch fails and another returns 2:00
 - **THEN** the Remote summary SHALL display `2:00` with an incomplete-total cue and SHALL NOT display `0:00` as if the failed tracker had no hours
 
-### Requirement: REQ-291 Server aggregation of local hours and export provenance
+### Requirement: Server aggregation of local hours and export provenance
 
 `GET /api/reports/monthly?month=YYYY-MM` SHALL return, for the user: the resolved month; the timezone used for days; per-day Local totals (`stoppedAt − startedAt`) of stopped entries, each counted wholly on the local day of its `startedAt` as in the Timer View, running entries excluded; the active trackers (id, name); and the month's finalized exports (at least `localDate`, `remoteLogId`, `exportDurationSeconds`). It follows `core-api-conventions`.
 
@@ -111,7 +111,7 @@ The timesheet SHALL show a month-level Remote summary, the sum of all fetched re
 - **WHEN** `GET /api/reports/monthly` is called without `month`
 - **THEN** the server SHALL use the current month in the user's timezone and return that month in the payload
 
-### Requirement: REQ-292 Live remote hours split into App and Direct
+### Requirement: Live remote hours split into App and Direct
 
 After the monthly data loads, the client SHALL fetch date-range logs once per active tracker. App hours SHALL be fetched logs whose tracker-scoped identity matches finalized provenance; Direct hours, those without. Linking an entry SHALL move it from Direct to App on refresh; deleting provenance after a confirmed remote deletion SHALL drop the log from the totals and the App set. A failed fetch SHALL show as unavailable, never as zero.
 
@@ -145,7 +145,7 @@ After the monthly data loads, the client SHALL fetch date-range logs once per ac
 - **WHEN** a tracker range fetch fails or lacks a secret
 - **THEN** its report group SHALL show an unavailable state rather than zero hours
 
-### Requirement: REQ-293 Attention indicators
+### Requirement: Attention indicators
 
 After successful fetches the table SHALL flag the duration itself, not via a status column or icon, when: a tracker has Direct hours > 0 (that Direct duration); Local > 0 while every fetched tracker has App + Direct = 0, or there are no trackers (the Local duration); Local = 0 while a tracker has App but no Direct hours (that App duration). A failed fetch SHALL mark that tracker's cells unknown, not unexported. A Local vs App difference caused only by export rounding SHALL NOT flag a cell.
 
@@ -169,9 +169,9 @@ After successful fetches the table SHALL flag the duration itself, not via a sta
 - **WHEN** Local is 7:50 and App is 8:00 with Direct 0:00 and no fetch failures
 - **THEN** the day SHALL NOT be marked as needing attention; a tooltip MAY mention the two durations as information
 
-### Requirement: REQ-472 Flagged and zero duration styling
+### Requirement: Flagged and zero duration styling
 
-A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with an underline, a cue besides color (REQ-004), with a themed hover and focus tooltip giving the reason (REQ-269). An unflagged `0:00` SHALL use dimmed text. The table SHALL NOT have an attention column.
+A flagged duration SHALL use warning-colored **semibold** text with an underline, a cue besides color (`ui-accessibility`), with a themed hover and focus tooltip giving the reason (`ui-accessibility`). An unflagged `0:00` SHALL use dimmed text. The table SHALL NOT have an attention column.
 
 #### Scenario: Zero durations recede
 
@@ -183,7 +183,7 @@ A flagged duration (REQ-293) SHALL use warning-colored **semibold** text with an
 - **WHEN** a cell is flagged
 - **THEN** its duration SHALL be underlined as well as warning-colored and semibold, and its reason SHALL be available from its tooltip on hover and keyboard focus
 
-### Requirement: REQ-294 Report durations use unpadded `H:MM`
+### Requirement: Report durations use unpadded `H:MM`
 
 All durations on the monthly timesheet SHALL be displayed as unpadded `H:MM` (examples: `0:00`, `8:00`, `10:05`), with seconds floored to minutes. This format applies to reports only; the Timer View and Remote Sync keep their own.
 
@@ -197,7 +197,7 @@ All durations on the monthly timesheet SHALL be displayed as unpadded `H:MM` (ex
 - **WHEN** a total is 7 hours, 50 minutes, and 59 seconds
 - **THEN** the cell SHALL display `7:50`
 
-### Requirement: REQ-295 Reports i18n and page chrome
+### Requirement: Reports i18n and page chrome
 
 All user-visible reports copy SHALL come from the `en` and `pl` catalogs in parity. The monthly page SHALL use the shared authenticated page header pattern (title plus month controls). Flagged durations (so their tooltips open) and month controls SHALL be keyboard operable with visible focus and accessible names.
 
@@ -211,9 +211,9 @@ All user-visible reports copy SHALL come from the `en` and `pl` catalogs in pari
 - **WHEN** a keyboard user tabs to previous/next month
 - **THEN** both controls SHALL be reachable, show visible focus, and change the month on activation
 
-### Requirement: REQ-519 Timesheet legend explains flagged values
+### Requirement: Timesheet legend explains flagged values
 
-Under the monthly timesheet a legend SHALL explain the flags (REQ-293) at a glance: for the Local and Direct columns, what a flagged value there usually means, each keyed by a sample duration in the flag's look, and how to reveal each value's own reason with the pointer or the keyboard. The legend SHALL NOT redefine the columns and SHALL be translated.
+Under the monthly timesheet a legend SHALL explain the flags at a glance: for the Local and Direct columns, what a flagged value there usually means, each keyed by a sample duration in the flag's look, and how to reveal each value's own reason with the pointer or the keyboard. The legend SHALL NOT redefine the columns and SHALL be translated.
 
 #### Scenario: Legend under the timesheet
 

@@ -3,7 +3,7 @@ import type { ExtensionSuggestionState } from '~/composables/use-extension-sugge
 
 /**
  * "Request approval in extension" for one unapproved tracker, with the outcome in place: the
- * extension queues the tracker and the user finishes the approval there (REQ-316, REQ-317).
+ * extension queues the tracker and the user finishes the approval there.
  */
 const { state, testId } = defineProps<{
   state: ExtensionSuggestionState | undefined;

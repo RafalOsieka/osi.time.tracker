@@ -11,7 +11,7 @@ import type {
   RemoteTrackerAdapter,
 } from '@osi/time-tracker-remote-trackers/contracts';
 
-/** A time log carrying none of the REQ-341 optional fields and an undisclosed issue title (REQ-476). */
+/** A time log carrying none of the optional project fields and an undisclosed issue title. */
 const BARE_LOG: RemoteTimeLogDto = {
   remoteLogId: '1',
   remoteIssueId: '1',
@@ -24,7 +24,7 @@ const BARE_LOG: RemoteTimeLogDto = {
   remoteIssueTitle: null,
 };
 
-/** A time log carrying every REQ-341 field. */
+/** A time log carrying every optional field. */
 const ENRICHED_LOG: RemoteTimeLogDto = {
   ...BARE_LOG,
   remoteProjectId: '12',

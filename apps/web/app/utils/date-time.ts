@@ -25,7 +25,7 @@ export function localDayKeyFromInstant(iso: string, timeZone: string): string {
 
 /**
  * Converts an ISO instant to an `@internationalized/date` `ZonedDateTime` in
- * `timeZone`, for the segmented time field (REQ-361 shared-ui-components).
+ * `timeZone`, for the segmented time field.
  * Unlike `wallClockToInstant`, editing only the hour/minute of the result via
  * `.set({ hour, minute })` preserves the seconds and milliseconds of `iso`.
  */
@@ -33,7 +33,7 @@ export function instantToZonedDateTime(iso: string, timeZone: string): ZonedDate
   return fromAbsolute(Date.parse(iso), timeZone);
 }
 
-/** Converts a `ZonedDateTime` (REQ-361) back to an ISO instant string. */
+/** Converts a `ZonedDateTime` back to an ISO instant string. */
 export function zonedDateTimeToInstant(value: ZonedDateTime): string {
   return value.toDate().toISOString();
 }

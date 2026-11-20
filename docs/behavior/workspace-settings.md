@@ -1,4 +1,4 @@
-# workspace-settings Specification
+# workspace-settings
 
 ## Purpose
 
@@ -6,9 +6,9 @@ The user's account profile — display name and timezone — stored on the accou
 
 ## Requirements
 
-### Requirement: REQ-168 Timezone-aware date-time foundation
+### Requirement: Timezone-aware date-time foundation
 
-Day keys, day boundaries and turning a wall-clock date and time into an instant SHALL use the user's timezone, never the browser's, and every displayed time SHALL be formatted in it. Skipped or repeated DST times SHALL resolve deterministically ("compatible" disambiguation). Payloads SHALL carry UTC ISO 8601 instants only, so a timezone change re-renders loaded entries. Only the feed (REQ-395) computes day boundaries on the server; other lists (REQ-148) SHALL do no timezone logic.
+Day keys, day boundaries and turning a wall-clock date and time into an instant SHALL use the user's timezone, never the browser's, and every displayed time SHALL be formatted in it. Skipped or repeated DST times SHALL resolve deterministically ("compatible" disambiguation). Payloads SHALL carry UTC ISO 8601 instants only, so a timezone change re-renders loaded entries. Only the feed (`tracking-api`) computes day boundaries on the server; other lists (`tracking-api`) SHALL do no timezone logic.
 
 #### Scenario: Day bucketing follows the configured timezone
 
@@ -25,9 +25,9 @@ Day keys, day boundaries and turning a wall-clock date and time into an instant 
 - **WHEN** any entry is created or edited under a non-browser timezone
 - **THEN** the client SHALL still send UTC ISO 8601 instants for mutation payloads
 
-### Requirement: REQ-398 Required account timezone
+### Requirement: Required account timezone
 
-Every user SHALL have a required IANA `timezone`, set at creation by any path, kept across devices. It SHALL be the only display timezone — no browser or server default, no change after mount — and SHALL ride in the session so server and first client paint format alike. Server code needing day boundaries (e.g. the feed, REQ-395) SHALL use it. A database upgraded from a version without it SHALL hold `UTC` for users who had none. No week-start preference SHALL be stored anywhere.
+Every user SHALL have a required IANA `timezone`, set at creation by any path, kept across devices. It SHALL be the only display timezone — no browser or server default, no change after mount — and SHALL ride in the session so server and first client paint format alike. Server code needing day boundaries (e.g. the feed, `tracking-api`) SHALL use it. A database upgraded from a version without it SHALL hold `UTC` for users who had none. No week-start preference SHALL be stored anywhere.
 
 #### Scenario: Stored timezone drives display
 
@@ -54,9 +54,9 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 - **WHEN** settings are read from the database, session, or profile API
 - **THEN** the payload SHALL NOT include a `weekStart` field
 
-### Requirement: REQ-493 User profile API
+### Requirement: User profile API
 
-`GET /api/user/profile` SHALL return `{ displayName, timezone }`; `PATCH /api/user/profile` SHALL accept a partial `{ displayName?, timezone? }`. `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`); `displayName` MUST satisfy REQ-397. Neither SHALL accept or return `weekStart`. A successful PATCH SHALL refresh the session with the new values and return the updated profile.
+`GET /api/user/profile` SHALL return `{ displayName, timezone }`; `PATCH /api/user/profile` SHALL accept a partial `{ displayName?, timezone? }`. `timezone` MUST be `UTC` or a member of `Intl.supportedValuesOf('timeZone')` (which omits `UTC`); `displayName` MUST satisfy "Required display name". Neither SHALL accept or return `weekStart`. A successful PATCH SHALL refresh the session with the new values and return the updated profile.
 
 #### Scenario: Read profile
 
@@ -85,7 +85,7 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 
 #### Scenario: Invalid display name rejected
 
-- **WHEN** a PATCH contains a display name that is empty after trimming or longer than the REQ-397 limit
+- **WHEN** a PATCH contains a display name that is empty after trimming or longer than the display-name limit
 - **THEN** the system SHALL reject the request with HTTP 422 and `{ messageKey, params }` (including `max` for the length case), and persist nothing
 
 #### Scenario: Null fields rejected
@@ -103,9 +103,9 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 - **WHEN** the profile endpoints are called without a valid session, or the PATCH lacks a valid CSRF token
 - **THEN** the system SHALL respond with HTTP 401 (or reject the request for a missing CSRF token) without touching the stored profile
 
-### Requirement: REQ-494 Profile page
+### Requirement: Profile page
 
-`/profile`, opened from the account menu (REQ-405), SHALL show an **Account** section (a labelled display-name field and the email read-only) and a **Preferences** section (a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')`, and the browser's language control, REQ-401). It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (REQ-403), with `en`/`pl` parity.
+`/profile`, opened from the account menu (`ui-shell`), SHALL show an **Account** section (a labelled display-name field and the email read-only) and a **Preferences** section (a filterable timezone select of `UTC` then `Intl.supportedValuesOf('timeZone')`, and the browser's language control). It SHALL have no theme, week-start or Save control. Controls SHALL be keyboard operable and full-width (`ui-shared-components`), with `en`/`pl` parity.
 
 #### Scenario: Profile shows stored values
 
@@ -127,7 +127,7 @@ Every user SHALL have a required IANA `timezone`, set at creation by any path, k
 - **WHEN** an authenticated user views `/profile`
 - **THEN** the timezone select SHALL be in the Preferences section, beside the language control, and not in the Account section
 
-### Requirement: REQ-445 Profile fields save on their own
+### Requirement: Profile fields save on their own
 
 The display name SHALL save on blur or Enter as a partial PATCH of the trimmed value, only when it differs from the stored one; Escape, or an empty value, SHALL restore the stored value without a request. A timezone change SHALL save immediately. Saves SHALL be silent; a failure SHALL show only a translated toast and restore the stored value. Concurrent saves SHALL be last-write-wins. Saved values SHALL apply without a reload.
 
@@ -176,7 +176,7 @@ The display name SHALL save on blur or Enter as a partial PATCH of the trimmed v
 - **WHEN** the user changes a profile field twice in quick succession before the first PATCH completes
 - **THEN** the system SHALL treat the latest requested value as authoritative once outstanding requests settle
 
-### Requirement: REQ-397 Required display name
+### Requirement: Required display name
 
 Every user SHALL have a required `displayName` of 1 to 100 characters after trimming, stored trimmed, set at creation by any path and carried in the session. A database upgraded from a version without it SHALL hold the email's local part (the text before `@`) for users who had none or a blank one.
 

@@ -14,7 +14,7 @@ export const REDMINE_TITLE_SEARCH_MAX_RESULTS = 25;
 /** Fixed upper bound on time-log pages fetched per multi-page fetch. */
 export const REDMINE_TIME_LOGS_MAX_PAGES = 50;
 
-/** Maximum issue ids per batched issue-title lookup (REQ-378); equals Redmine's default `limit` cap. */
+/** Maximum issue ids per batched issue-title lookup; equals Redmine's default `limit` cap. */
 export const REDMINE_ISSUE_TITLE_BATCH_SIZE = 100;
 
 /** Default page size for offset/limit time-entry pagination. */
@@ -29,7 +29,7 @@ export interface RedmineTimeLogEntry {
   activityName: string | null;
   comment: string | null;
   remoteUserId: string | null;
-  /** Present only when the payload's `project` field supplies it (REQ-343). */
+  /** Present only when the payload's `project` field supplies it. */
   remoteProjectId?: string;
   remoteProjectTitle?: string;
 }
@@ -145,7 +145,7 @@ export class RedmineClient {
   }
 
   /**
-   * Resolves issue subjects for up to 100 ids in one request (REQ-343/REQ-378),
+   * Resolves issue subjects for up to 100 ids in one request,
    * every status included. Ids the tracker does not return are absent from
    * the map; `titles` is `null` when the payload has no `issues` collection.
    */
@@ -170,7 +170,7 @@ export class RedmineClient {
   }
 
   /**
-   * One page of the remote project catalog (REQ-321), offset/limit paginated
+   * One page of the remote project catalog, offset/limit paginated
    * like `fetchTimeLogsPage`.
    */
   async listProjectsPage(

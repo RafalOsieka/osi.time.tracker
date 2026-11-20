@@ -13,7 +13,7 @@ export const createProjectSchema = z
       .min(1, { error: 'error.projectNameRequired' })
       .max(PROJECT_NAME_MAX_LENGTH, { error: 'error.projectNameTooLong' }),
     trackerId: z.uuid({ error: 'error.projectTrackerInvalid' }).nullish(),
-    // Optional remote-project scope (REQ-325): a single remote project id +
+    // Optional remote-project scope: a single remote project id +
     // cached title, restricting remote-issue search to that project and its
     // descendants. Both fields SHALL be present together, and only when
     // `trackerId` is set.
@@ -36,10 +36,10 @@ export const createProjectSchema = z
     error: 'error.projectRemoteScopeIncomplete',
     path: ['remoteProjectId'],
   });
-// "Scope requires a tracker" (REQ-439) is enforced per-route rather than here:
+// "Scope requires a tracker" is enforced per-route rather than here:
 // on create there is no existing tracker to fall back on, so `trackerId: null`
 // with a scope is always invalid. On update, a request that also changes or
-// clears trackerId force-nulls the scope instead of rejecting it (REQ-326) —
+// clears trackerId force-nulls the scope instead of rejecting it —
 // the shared schema cannot tell those two update shapes apart from the body
 // alone, since it never sees the project's current trackerId.
 
@@ -60,11 +60,11 @@ export interface ProjectDto {
   name: string;
   trackerId: string | null;
   trackerName: string | null;
-  // The Tracker's system (REQ-084), so lists can show its type mark; null for local projects.
+  // The Tracker's system, so lists can show its type mark; null for local projects.
   trackerSystemType: TrackerSystemType | null;
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
-  // Seconds tracked in the last 30 days (REQ-371): ranks @project mentions and shows on the Projects list.
+  // Seconds tracked in the last 30 days: ranks @project mentions and shows on the Projects list.
   recentTrackedSeconds: number;
   createdAt: string;
 }

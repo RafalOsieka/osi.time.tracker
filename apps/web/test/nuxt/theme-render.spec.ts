@@ -167,7 +167,7 @@ describe('theme UI and SSR head wiring', () => {
     expect(svgHref()).toBe('/favicon.svg');
   });
 
-  // REQ-369: the in-app mark is stateless. Asserting the idle and running renders are
+  // The in-app mark is stateless. Asserting the idle and running renders are
   // byte-identical catches any state leak, rather than banning particular shapes such as a
   // status dot, which would also constrain future redraws of the glyph.
   it('renders AppBrandMark identically whether or not a timer is running', async () => {

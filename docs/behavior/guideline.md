@@ -33,7 +33,7 @@ The rest lives in:
 
 - One surface or one contract per file. A file that outgrows that splits along its family prefix.
 - Cross-cutting rules (authentication, CSRF, the error contract, per-user isolation, validation) live in `core-api-conventions`. Domain files reference it instead of restating them.
-- Refer to another capability by its id in backticks (`core-api-conventions`), and to a requirement by its title.
+- Refer to another capability by its id in backticks (`core-api-conventions`), and to a requirement by its title in quotes, adding the capability when it lives elsewhere: "List own tasks" in `workspace-tasks`.
 
 ## Format
 

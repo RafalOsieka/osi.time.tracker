@@ -41,7 +41,7 @@ const FormStub = {
 const FormFieldStub = { template: '<div><slot /></div>' };
 const CardStub = { template: '<div><slot /></div>' };
 
-describe('REQ-013: login client-side validation', () => {
+describe('login client-side validation', () => {
   it('blocks submission and does not call login when credentials are empty', async () => {
     const wrapper = await mountSuspended(LoginPage, {
       global: {
@@ -90,7 +90,7 @@ async function mountLogin() {
   });
 }
 
-describe('REQ-013: login submission', () => {
+describe('login submission', () => {
   beforeEach(() => {
     loginMock.mockReset();
     navigateToMock.mockReset();
@@ -165,7 +165,7 @@ describe('REQ-013: login submission', () => {
   });
 });
 
-describe('REQ-013: password visibility', () => {
+describe('password visibility', () => {
   it('shows the password as text while the toggle is pressed', async () => {
     const wrapper = await mountSuspended(LoginPage, {
       global: {

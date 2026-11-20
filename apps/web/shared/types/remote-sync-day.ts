@@ -43,7 +43,7 @@ export interface RemoteSyncIssueRefDto {
   cachedTitle: string;
 }
 
-/** One completed local time entry under a day-review task row (REQ-117). */
+/** One completed local time entry under a day-review task row. */
 export interface RemoteSyncDayEntryDto {
   id: string;
   startedAt: string;
@@ -55,7 +55,7 @@ export interface RemoteSyncDayEntryDto {
 
 /**
  * Provenance for one successfully finalized or linked remote log on this
- * task/day (REQ-119). Identity is tracker-scoped (REQ-304).
+ * task/day. Identity is tracker-scoped.
  */
 export interface RemoteSyncExportProvenanceDto {
   exportId: string;
@@ -76,7 +76,7 @@ export interface RemoteSyncDayRowDto {
   totalSeconds: number;
   config: RemoteSyncConfigSurfaceDto | null;
   issueRef: RemoteSyncIssueRefDto | null;
-  /** The owning project's remote project scope (REQ-328), or null when unset. */
+  /** The owning project's remote project scope, or null when unset. */
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
   /** Completed entries attributed to this task on the requested local day. */

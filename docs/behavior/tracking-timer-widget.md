@@ -1,4 +1,4 @@
-# tracking-timer-widget Specification
+# tracking-timer-widget
 
 ## Purpose
 
@@ -6,9 +6,9 @@ Define the live timer widget in the authenticated shell's top bar: its layout an
 
 ## Requirements
 
-### Requirement: REQ-070 Reserved timer region hosts the live timer widget
+### Requirement: Reserved timer region hosts the live timer widget
 
-The shell's timer region (ui-shell REQ-068) SHALL host one live timer widget: a title field with task autocomplete that grows to fill the free width, an elapsed-time display, and a start/stop control (REQ-469) on the right. While a timer runs, the widget SHALL show the running entry's title and live elapsed time. Its colors SHALL come from theme tokens, it SHALL meet WCAG 2.1 AA (labelled, keyboard-operable controls), and its strings SHALL have `en`/`pl` parity.
+The shell's timer region (`ui-shell`) SHALL host one live timer widget: a title field with task autocomplete that grows to fill the free width, an elapsed-time display, and a start/stop control on the right. While a timer runs, the widget SHALL show the running entry's title and live elapsed time. Its colors SHALL come from theme tokens, it SHALL meet WCAG 2.1 AA (labelled, keyboard-operable controls), and its strings SHALL have `en`/`pl` parity.
 
 #### Scenario: Running indicator shown while a timer runs
 
@@ -27,12 +27,12 @@ The shell's timer region (ui-shell REQ-068) SHALL host one live timer widget: a 
 
 #### Scenario: Free space after the title focuses it
 
-- **WHEN** the user activates the empty part of the title field after the text and its Project chip (tracking-project-mentions REQ-374)
+- **WHEN** the user activates the empty part of the title field after the text and its Project chip (`tracking-project-mentions`)
 - **THEN** the title input SHALL receive focus
 
-### Requirement: REQ-469 Start/stop control
+### Requirement: Start/stop control
 
-The start/stop control SHALL be icon-only, with a play icon to start and a square stop icon while running, a translated accessible name and a pressed state while running. While running, the stop icon's color SHALL animate (not the whole button's opacity, not a halo), except for users who prefer reduced motion. The elapsed display SHALL be the same kind of button in both states, disabled while idle and, while running, opening the start-time editor (REQ-466).
+The start/stop control SHALL be icon-only, with a play icon to start and a square stop icon while running, a translated accessible name and a pressed state while running. While running, the stop icon's color SHALL animate (not the whole button's opacity, not a halo), except for users who prefer reduced motion. The elapsed display SHALL be the same kind of button in both states, disabled while idle and, while running, opening the start-time editor.
 
 #### Scenario: Start and stop are icon-only with accessible names
 
@@ -48,9 +48,9 @@ The start/stop control SHALL be icon-only, with a play icon to start and a squar
 - **WHEN** a timer is running and the user prefers reduced motion
 - **THEN** the stop control SHALL remain visually distinct without requiring continuous animation
 
-### Requirement: REQ-146 Persistent running-timer indicator
+### Requirement: Persistent running-timer indicator
 
-The shell SHALL show the running entry's title and live elapsed time while one exists, from `GET /api/time-entries/running` so it survives reloads and devices, resolved during SSR on a full load (REQ-258). The title input SHALL show the running entry's title, blank for an untitled entry (no placeholder, no "(no task)"). After a task edit that affects the running entry (rename, project change, merge, bulk assignment) the client SHALL refetch the running state.
+The shell SHALL show the running entry's title and live elapsed time while one exists, from `GET /api/time-entries/running` so it survives reloads and devices, resolved during SSR on a full load (`ui-shell`). The title input SHALL show the running entry's title, blank for an untitled entry (no placeholder, no "(no task)"). After a task edit that affects the running entry (rename, project change, merge, bulk assignment) the client SHALL refetch the running state.
 
 #### Scenario: Indicator visible while running
 
@@ -82,7 +82,7 @@ The shell SHALL show the running entry's title and live elapsed time while one e
 - **WHEN** new user-facing timer strings are added
 - **THEN** they SHALL exist in both `en.json` and `pl.json` with matching keys
 
-### Requirement: REQ-464 Loading gate and client-side elapsed time
+### Requirement: Loading gate and client-side elapsed time
 
 While the running state is not yet known, the widget SHALL be in a loading state with the title input and start/stop control disabled, so nothing can start against an unresolved idle state; once SSR has seeded the state, it SHALL NOT wait for a redundant client fetch. Elapsed time SHALL be computed in the browser: zero until the client ticker starts after hydration, then from `startedAt` against the client clock at least once per second.
 
@@ -96,9 +96,9 @@ While the running state is not yet known, the widget SHALL be in a loading state
 - **WHEN** a full document load completes for a user with a running entry
 - **THEN** the elapsed display SHALL show zero until the client-side ticker starts, after which it SHALL show live elapsed computed on the client from `startedAt`
 
-### Requirement: REQ-465 Retitling the running entry and Enter
+### Requirement: Retitling the running entry and Enter
 
-The running title SHALL be editable in place, committed with `PATCH /api/time-entries/[id]` (REQ-143) on blur or Enter, never per keystroke. Committing a blank title SHALL send `title = null`, detaching the task. Enter in the title input SHALL start the timer when the suggestion overlay is closed; while it is open, Enter SHALL keep the autocomplete's select/close behavior and SHALL NOT start the timer.
+The running title SHALL be editable in place, committed with `PATCH /api/time-entries/[id]` (`tracking-api`) on blur or Enter, never per keystroke. Committing a blank title SHALL send `title = null`, detaching the task. Enter in the title input SHALL start the timer when the suggestion overlay is closed; while it is open, Enter SHALL keep the autocomplete's select/close behavior and SHALL NOT start the timer.
 
 #### Scenario: Inline retitle committed on blur or Enter
 
@@ -120,9 +120,9 @@ The running title SHALL be editable in place, committed with `PATCH /api/time-en
 - **WHEN** the user presses Enter while the suggestion overlay is open
 - **THEN** the autocomplete SHALL handle the Enter (select/close) and the timer SHALL NOT start
 
-### Requirement: REQ-466 Running start-time editor
+### Requirement: Running start-time editor
 
-While running, the elapsed control SHALL open a popover anchored to it with the shared date (REQ-359) and hour–minute (REQ-361) fields, seeded with the start in the user's timezone; Save SHALL be disabled while either is incomplete, and a calendar pick closes only the calendar. Saving SHALL convert to a UTC instant and PATCH `startedAt` (REQ-143); a future instant SHALL be blocked inline, a past one allowed even beyond 24 hours, and the ticker SHALL rebase. Dismissing SHALL change nothing.
+While running, the elapsed control SHALL open a popover anchored to it with the shared date (`ui-shared-components`) and hour–minute (`ui-shared-components`) fields, seeded with the start in the user's timezone; Save SHALL be disabled while either is incomplete, and a calendar pick closes only the calendar. Saving SHALL convert to a UTC instant and PATCH `startedAt` (`tracking-api`); a future instant SHALL be blocked inline, a past one allowed even beyond 24 hours, and the ticker SHALL rebase. Dismissing SHALL change nothing.
 
 #### Scenario: Elapsed time opens the start edit popover
 
@@ -184,9 +184,9 @@ While running, the elapsed control SHALL open a popover anchored to it with the 
 - **WHEN** the start editor is open
 - **THEN** it SHALL show the effective timezone with its UTC offset at the chosen date and time (for example "Europe/Warsaw (UTC+01:00)"), updating as the date or time changes
 
-### Requirement: REQ-180 Top-bar suggestion binding, labels, and popover anchoring
+### Requirement: Top-bar suggestion binding, labels, and popover anchoring
 
-Title suggestions SHALL come from `GET /api/tasks?search=` as object items with one selection handler and nothing clickable nested inside, so a pick fires once and never sets `[object Object]`. A label SHALL show the task name, its project and its remote issue id when present. A pick SHALL send that task's identity so the entry binds to it; free-form text SHALL take the title path (REQ-142) in the chip's project or none (REQ-376). A set chip SHALL limit suggestions to its project.
+Title suggestions SHALL come from `GET /api/tasks?search=` as object items with one selection handler and nothing clickable nested inside, so a pick fires once and never sets `[object Object]`. A label SHALL show the task name, its project and its remote issue id when present. A pick SHALL send that task's identity so the entry binds to it; free-form text SHALL take the title path (`tracking-api`) in the chip's project or none (`tracking-project-mentions`). A set chip SHALL limit suggestions to its project.
 
 #### Scenario: Single selection, no duplicate requests
 
@@ -203,9 +203,9 @@ Title suggestions SHALL come from `GET /api/tasks?search=` as object items with 
 - **WHEN** the user picks an existing suggestion and starts the timer
 - **THEN** the entry SHALL bind to that task's identity (its project and remote reference), not a newly created project-less task
 
-### Requirement: REQ-467 Create-new-task option
+### Requirement: Create-new-task option
 
-For non-empty text the overlay SHALL offer a separate **create-new-task** option, first and initially highlighted even beside an exact match, labelled with the title and "(new task)", or "(new task in {project})" when a chip or resolved mention (REQ-375) gives one. Activating it SHALL drop any captured task, commit the text free-form with the chip's `projectId` (or null), and close the overlay so the next Enter starts. It SHALL be keyboard reachable and named; project mode (REQ-372) hides it.
+For non-empty text the overlay SHALL offer a separate **create-new-task** option, first and initially highlighted even beside an exact match, labelled with the title and "(new task)", or "(new task in {project})" when a chip or resolved mention (`tracking-project-mentions`) gives one. Activating it SHALL drop any captured task, commit the text free-form with the chip's `projectId` (or null), and close the overlay so the next Enter starts. It SHALL be keyboard reachable and named; project mode (`tracking-project-mentions`) hides it.
 
 #### Scenario: Create option is offered alongside exact matches
 
@@ -230,12 +230,12 @@ For non-empty text the overlay SHALL offer a separate **create-new-task** option
 #### Scenario: Create option sends the title without a task binding
 
 - **WHEN** the project chip is empty and the user activates the create-new-task option and starts the timer
-- **THEN** the request SHALL carry the typed `title` with no `taskId` and the entry SHALL resolve in the project-less scope per REQ-142
+- **THEN** the request SHALL carry the typed `title` with no `taskId` and the entry SHALL resolve in the project-less scope per "Title binds an entry to a Task" in `tracking-api`
 
 #### Scenario: Create option sends the chip's project
 
 - **WHEN** the project chip shows "Helios" and the user activates the create-new-task option and starts the timer
-- **THEN** the request SHALL carry the typed `title` and Helios's `projectId` with no `taskId`, and the entry SHALL resolve in "Helios" per REQ-142
+- **THEN** the request SHALL carry the typed `title` and Helios's `projectId` with no `taskId`, and the entry SHALL resolve in "Helios" per "Title binds an entry to a Task" in `tracking-api`
 
 #### Scenario: Create option clears a previously captured suggestion
 
@@ -252,7 +252,7 @@ For non-empty text the overlay SHALL offer a separate **create-new-task** option
 - **WHEN** the title input is empty or whitespace-only
 - **THEN** the overlay SHALL NOT offer a create-new-task option
 
-### Requirement: REQ-468 The add-entry dialog shares the title autocomplete
+### Requirement: The add-entry dialog shares the title autocomplete
 
 The add-entry dialog's title autocomplete SHALL behave as the top bar's: the same suggestion binding, labels, create-new-task option and order, free-form commit and project chip. A suggestion picked there SHALL bind the created entry by `taskId` until the title text is edited, after which the edited title and the chip's `projectId` SHALL be sent instead.
 
@@ -271,9 +271,9 @@ The add-entry dialog's title autocomplete SHALL behave as the top bar's: the sam
 - **WHEN** the user picks a suggestion in the add-entry dialog, then edits the title text, and saves
 - **THEN** the request SHALL carry the edited `title` with the chip's `projectId` and no `taskId`
 
-### Requirement: REQ-360 Bounded and debounced title suggestion requests
+### Requirement: Bounded and debounced title suggestion requests
 
-The top-bar and add-entry autocompletes SHALL fetch suggestions from `GET /api/tasks` through one shared mechanism. It SHALL debounce typing, sending one request for the latest text once typing pauses. A response for older text arriving after a newer request SHALL be discarded. A failed request SHALL keep the previous suggestions and show no error toast. It SHALL rely on the server's cap and ranking (REQ-133) and SHALL NOT ask for more than the overlay shows.
+The top-bar and add-entry autocompletes SHALL fetch suggestions from `GET /api/tasks` through one shared mechanism. It SHALL debounce typing, sending one request for the latest text once typing pauses. A response for older text arriving after a newer request SHALL be discarded. A failed request SHALL keep the previous suggestions and show no error toast. It SHALL rely on the server's cap and ranking (`workspace-tasks`) and SHALL NOT ask for more than the overlay shows.
 
 #### Scenario: Rapid typing issues one request
 

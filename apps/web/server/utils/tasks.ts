@@ -16,8 +16,8 @@ type DrizzleExecutor = DrizzleTx | PostgresJsDatabase<typeof schema>;
  * `tasks` is already in the query and join with
  * `.leftJoinLateral(taskLastUsedAt(executor), sql\`true\`)`, so each task
  * resolves via one backwards scan of `time_entries (taskId, startedAt)`
- * instead of an aggregate over every entry. Shared by the REQ-137
- * most-recently-used tie-break and the REQ-133 suggestion ranking so both
+ * instead of an aggregate over every entry. Shared by the title-matching
+ * most-recently-used tie-break and the task suggestion ranking so both
  * agree on what "most recently used" means.
  */
 export function taskLastUsedAt(executor: DrizzleExecutor) {
@@ -35,7 +35,7 @@ export interface ResolveTaskRemoteIssueOptions {
    * When the property is present, resolution uses the full four-part key
    * `(userId, name, projectId, remoteIssueId)` (null = unlinked). When the
    * property is omitted, free-form titles apply the most-recently-used
-   * tie-break over `(userId, name, projectId)` (REQ-137).
+   * tie-break over `(userId, name, projectId)`.
    */
   remoteIssueId?: string | null;
   /** Required when creating a newly linked task (`remoteIssueId` is a value). */
@@ -157,7 +157,7 @@ export async function resolveTaskId(
 }
 
 /**
- * Task garbage collection (REQ-491): hard-deletes the user's task when no
+ * Task garbage collection: hard-deletes the user's task when no
  * entry references it any more. Call it inside the transaction that moved or
  * deleted entries, after they moved. A `null` task id is a no-op.
  */

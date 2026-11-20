@@ -1,8 +1,8 @@
 /**
- * Exact protocol version required by both ends of the bridge. v2 (REQ-379):
+ * Exact protocol version required by both ends of the bridge. v2:
  * time logs carry a required, nullable `remoteIssueTitle`, so an extension
  * built for v1 fails the handshake instead of a time-log result validation.
- * v3 (REQ-422): the bridge carries destination suggestions, so a v2 extension
+ * v3: the bridge carries destination suggestions, so a v2 extension
  * fails the handshake instead of rejecting the first suggestion.
  */
 export const EXTENSION_PROTOCOL_VERSION = 3 as const;

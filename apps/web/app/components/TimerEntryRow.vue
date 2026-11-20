@@ -109,7 +109,7 @@ async function commitTitle() {
 /**
  * Sends only the bound(s) that actually changed from the entry's stored
  * instants; `TimeField` already reports an unchanged commit by not firing at
- * all, so reaching here means at least one side moved (REQ-431, REQ-456).
+ * all, so reaching here means at least one side moved.
  */
 type TimeEntryTimesPatch = Partial<Pick<TimeEntryDto, 'startedAt' | 'stoppedAt'>>;
 
@@ -186,8 +186,7 @@ async function onDelete() {
     <!--
       One fixed-width slot for either a stopped entry's start–stop range field
       or a running entry's single start field plus the "now" label, so the
-      slot (and the duration column after it) never shifts between rows
-      (REQ-459, REQ-361).
+      slot (and the duration column after it) never shifts between rows.
     -->
     <ColumnCell
       :columns="columns"
@@ -198,7 +197,7 @@ async function onDelete() {
     >
       <!--
         Both kinds of entry put their times in the same fixed-width slot, right-aligned against
-        the duration (REQ-459): a stopped entry's range field, or a running entry's start field
+        the duration: a stopped entry's range field, or a running entry's start field
         with a separator and "now" in a box sized by an invisible `00:00`, so starts, dashes
         and ends line up. Both frames therefore have the same width.
       -->
