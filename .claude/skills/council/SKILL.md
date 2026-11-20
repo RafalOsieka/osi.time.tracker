@@ -18,11 +18,11 @@ The council does one of three jobs:
 
 - **Code review** (the usual): two axes, Standards and Spec, each scored out of 10.
 - **Design review**: screenshots of the app, one axis, Design, scored out of 10 against the user's **target** (e.g. "at least 9/10 from both").
-- **Anything else** (a plan, an idea, an OpenSpec change): the same steps with the request and its context pointers as the brief, and no scores.
+- **Anything else** (a plan, an idea, a spec issue): the same steps with the request and its context pointers as the brief, and no scores.
 
 Each run lives in one **run folder** (`mktemp -d`, outside the repo): `template.md`, then one `r<N>/` per round holding that round's `changes.md`, `brief.md`, `shots/`, and each delegate's `.json`, `.log` and `.md`.
 
-The **spec** is OpenSpec: the change the work implements (`openspec/changes/<name>/`: `proposal.md`, `design.md`, `tasks.md` and its delta specs) and the main specs it touches in `openspec/specs/`. Specs hold observable behaviour only; tooling, build and test details live in `docs/`.
+The **spec** is what the work implements: the spec issue and its tickets on the issue tracker (`docs/agents/issue-tracker.md`), and the capability files in `docs/behavior/` for the area it touches, which describe the current observable behaviour (`docs/behavior/guideline.md`).
 
 ## 1. Settle the work
 
@@ -35,13 +35,13 @@ Every round's brief comes from `<run>/template.md`, filled in by `scripts/brief.
 ### Code review
 
 1. **Pin the fixed point.** Whatever the user names (a commit, branch, tag, `main`, `HEAD~5`); ask if they named none. Check it resolves (`git rev-parse <fixed-point>`) and that `git diff <fixed-point>...HEAD` (three dots: against the merge-base) is not empty. Note the commits: `git log <fixed-point>..HEAD --oneline`.
-2. **Find the spec**, in this order: an OpenSpec change named by the user or the branch; an active change under `openspec/changes/` that the commits implement; the main specs under `openspec/specs/` for the area the diff touches. If none fits, ask the user; with no spec, the Spec axis is skipped and reported as "no spec available".
-3. **Gather the standards:** `AGENTS.md`, `docs/coding-standards.md`, and `docs/e2e-guideline.md` when the diff touches tests. On top of them goes the **smell baseline** below.
+2. **Find the spec**, in this order: an issue the user names; issue references in the commit messages or the branch name (`#123`, `Closes #45`), read as `docs/agents/issue-tracker.md` describes, following a ticket to its parent spec issue; the capability files in `docs/behavior/` for the area the diff touches. Use the issue and the capability files together when both exist. If none fits, ask the user; with no spec, the Spec axis is skipped and reported as "no spec available".
+3. **Gather the standards:** `AGENTS.md`, `docs/coding-standards.md`, `GLOSSARY.md` for domain names, the ADRs in `docs/adr/` that touch the area (contradicting one is a finding), and `docs/e2e-guideline.md` when the diff touches tests. On top of them goes the **smell baseline** below.
 
 The template carries the diff command and commit list, the spec paths, the standards paths, the smell baseline pasted in full, and both axis briefs:
 
 - **Standards:** "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces (Oxlint, ESLint, Oxfmt, the type-check). End with `Score: N/10`."
-- **Spec:** "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line (and its REQ code) for each finding. End with `Score: N/10`."
+- **Spec:** "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding, naming the issue or the capability file and requirement it comes from. End with `Score: N/10`."
 
 The axes stay apart: code can follow every standard and implement the wrong thing, or do exactly what the spec asks and break the conventions. Reporting them separately stops one from masking the other.
 
@@ -85,8 +85,8 @@ The template carries:
 
 - what the product is and who uses it: a self-hosted time tracker for IT consultants, who track time locally and export it to OpenProject or Redmine;
 - the bar to judge against, and the slice: its size, themes, set and language;
-- the docs, as paths: the main specs behind the screens in the set (`openspec/specs/`), and the UI rules in `docs/coding-standards.md` (Nuxt UI components, accessibility to WCAG 2.1 AA);
-- the copy rule: on-screen text names domain concepts with the words of the Domain table in `AGENTS.md` (Tracker, Project, Task, Time entry, Remote sync), in the slice's language; a different word for one of them on screen is a finding;
+- the docs, as paths: the capability files behind the screens in the set (`docs/behavior/`), and the UI rules in `docs/coding-standards.md` (Nuxt UI components, accessibility to WCAG 2.1 AA);
+- the copy rule: on-screen text names domain concepts with `GLOSSARY.md`'s terms (its `_Polish_` words in a `pl` slice); a word from a term's `_Avoid_` or `_Polish avoid_` list on screen is a finding;
 - the design log, pasted in full;
 - `{{folder}}`, and one line per screen saying what it shows, from the capture's `screens-<viewport>-<set>-<locale>.json`;
 - "Judge the screenshots against these docs: read no source code."
@@ -129,6 +129,8 @@ A round takes minutes. Wait for both JSON files, then run `scripts/result.mjs <j
 
 Later rounds pass a delegate's `sessionId` as `--session-id=<id>`, so it remembers what it raised. A resumed session that comes back empty once goes fresh for the rest of the run.
 
+Don't wait idle: when one delegate's result arrives, check its findings against the code at once and decide what to fix while the other still runs. Edit nothing while a delegate still reviews the same checkout. A delegate the user marks non-blocking isn't waited for; its late result is feedback, and its score isn't recorded.
+
 ## 4. Report the round
 
 Keep the axes apart: per axis, summarise the findings both delegates raise, the ones only one raises, where they disagree, and the recommended next steps. Give each delegate's score per axis. Don't merge or rerank findings across axes. Each full pass by both delegates is one **round**.
@@ -139,7 +141,7 @@ Hand the **report page** to a subagent after every round, so the next round does
 
 Apply the recommendations you agree with, one commit per round, and name the ones you reject, with the reason. Rejected ones join the template's **kept on purpose** list (in a design review, the design log, along with any rule the round agreed on). Write the round's `changes.md`, then convene a new round (step 3 with each `--session-id`), until both delegates are satisfied, or every delegate meets the target.
 
-Hold the scope to the spec. Before applying a recommendation, check it against the spec, `docs/coding-standards.md` and the Domain table in `AGENTS.md`. One that changes observable behaviour a spec describes, renames a domain concept, or adds behaviour the spec didn't ask for is a **spec delta**: log it in `<run>/spec-delta.md` (the spec and REQ code it touches, before → now) and put it to the user before it lands. An accepted delta goes into the OpenSpec change's delta specs in the same branch, so spec and code stay aligned. A delta the user declines becomes a follow-up, not a change on this branch. When a round raises only findings you've already rejected, stop and put the disagreement to the user.
+Hold the scope to the spec. Before applying a recommendation, check it against the spec, `docs/coding-standards.md` and `GLOSSARY.md`. One that changes observable behaviour a capability file describes, renames a domain concept, or adds behaviour the spec didn't ask for is a **spec delta**: put it to the user before it lands. A council run never edits `docs/behavior/` or `GLOSSARY.md`, even when the user approves every recommendation, and every fix subagent is told so up front. Log each accepted delta in `<run>/spec-delta.md` (the capability file and requirement, or the glossary term, before → now, and the drafted wording) and keep a copy in `~/.council/<repo folder name>/`; the docs are updated later, in a separate session. If such an edit slips in, restore the files from the base branch in a new commit; never revert a round's commit. A delta the user declines becomes a follow-up, not a change on this branch. When a round raises only findings you've already rejected, stop and put the disagreement to the user.
 
 A subagent stopped by a usage limit keeps its work: once the limit resets, send it a message to continue rather than starting a new one.
 
@@ -160,4 +162,4 @@ Rounds: 2
 | gpt-6.1-sol     | Spec      | 8/10    | 9/10    |
 ```
 
-A design review has one row per delegate, on the Design axis. A delegate that gives no score gets `no score`, with a line under the table saying why. Below the table, list the rejected recommendations with their reasons, and the minor findings left as follow-ups. Every accepted spec delta goes in the description as `## Spec changes`, one line each (the spec and REQ code it touches, before → now). Without a PR, the same results go in the final reply only.
+A design review has one row per delegate, on the Design axis. A delegate that gives no score gets `no score`, with a line under the table saying why. Below the table, list the rejected recommendations with their reasons, and the minor findings left as follow-ups. Every accepted spec delta goes in the description as `## Spec changes not applied here`, one line each (the capability file and requirement, or the glossary term, before → now). Without a PR, the same results go in the final reply only.
