@@ -1,4 +1,5 @@
 import { DASHBOARD_TOP_TASKS, type DashboardTaskDto } from '../../shared/types/dashboard';
+import { namedIdentity, type NamedRow } from './dashboard-rows';
 import { completedSeconds, type StoppedEntryInstants } from './monthly-report';
 import { activeIssueUrl, type IssueTrackerRef } from './remote-issue-refs';
 
@@ -9,7 +10,7 @@ interface TaskDetails {
     remoteIssueId: string | null;
     remoteIssueCachedTitle: string | null;
   };
-  project: { id: string; name: string; deletedAt: Date | null } | null;
+  project: NamedRow | null;
   issueTracker: IssueTrackerRef | null;
 }
 
@@ -42,9 +43,7 @@ export function topTasks(entries: readonly TaskEntry[]): DashboardTaskDto[] {
       .map(({ task, project, issueTracker, totalSeconds }) => ({
         id: task.id,
         name: task.name,
-        project: project
-          ? { id: project.id, name: project.name, deleted: project.deletedAt !== null }
-          : null,
+        project: project ? namedIdentity(project) : null,
         remoteIssue: task.remoteIssueId
           ? {
               id: task.remoteIssueId,

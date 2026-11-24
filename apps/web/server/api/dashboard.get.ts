@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, isNotNull, lt } from 'drizzle-orm';
+import { asc, eq } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
 import { defineEventHandler } from 'nuxt/server';
 import { dashboardQuerySchema, type DashboardDto } from '../../shared/types/dashboard';
@@ -7,14 +7,10 @@ import { projects, tasks, timeEntries, trackers } from '../db/schema';
 import { loadExportBacklog } from '../utils/dashboard-export-backlog';
 import { aggregateProjectDays, groupProjectDays } from '../utils/dashboard-groups';
 import { loadPastYear } from '../utils/dashboard-past-year';
+import { completedEntriesStartedOn, withIsoInstants } from '../utils/dashboard-rows';
 import { topTasks } from '../utils/dashboard-tasks';
 import { loadWeekdayHours } from '../utils/dashboard-weekday-hours';
-import {
-  firstDayOfWeekOf,
-  periodBuckets,
-  periodInstants,
-  resolveDashboardPeriod,
-} from '../utils/dashboard-period';
+import { firstDayOfWeekOf, periodBuckets, resolveDashboardPeriod } from '../utils/dashboard-period';
 import { getZodQuery } from '../utils/zod-input';
 
 /** The Tracker a Task's Remote issue lives in, beside the one of the Task's Project. */
@@ -25,7 +21,6 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
   const { user } = await requireAuth(event);
   const query = await getZodQuery(event, dashboardQuerySchema);
   const { today, period } = resolveDashboardPeriod(query, new Date(), user.timezone);
-  const bounds = periodInstants(period, user.timezone);
   const buckets = periodBuckets(period);
 
   const [entryRows, anyEntryRows, projectRows, trackerRows, exportBacklog, pastYear, weekdayHours] =
@@ -53,14 +48,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
         .leftJoin(projects, eq(projects.id, tasks.projectId))
         .leftJoin(trackers, eq(trackers.id, projects.trackerId))
         .leftJoin(issueTrackers, eq(issueTrackers.id, tasks.trackerId))
-        .where(
-          and(
-            eq(timeEntries.userId, user.id),
-            isNotNull(timeEntries.stoppedAt),
-            gte(timeEntries.startedAt, bounds.from),
-            lt(timeEntries.startedAt, bounds.to),
-          ),
-        ),
+        .where(completedEntriesStartedOn(user.id, period, user.timezone)),
       db
         .select({ id: timeEntries.id })
         .from(timeEntries)
@@ -83,11 +71,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
       loadWeekdayHours(db, user.id, user.timezone, today),
     ]);
 
-  const entries = entryRows.map((row) => ({
-    ...row,
-    startedAt: row.startedAt.toISOString(),
-    stoppedAt: row.stoppedAt ? row.stoppedAt.toISOString() : null,
-  }));
+  const entries = entryRows.map(withIsoInstants);
   const projectDays = aggregateProjectDays(entries, user.timezone);
   const days = projectDays.flatMap((project) => project.days);
   const totalSeconds = days.reduce((sum, day) => sum + day.localSeconds, 0);

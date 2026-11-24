@@ -1,12 +1,10 @@
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { createError } from 'nuxt/server';
-import type { getDb } from '../db/index';
+import type { Db } from '../db/index';
 import { reportPresets, reportPresetTrackers, trackers } from '../db/schema';
 import type { ReportPresetDto, ReportPresetInput } from '../../shared/types/report-preset';
 import type { ApiMessage } from '../types/api-message';
 import { isUniqueViolation } from './is-unique-violation';
-
-type Db = ReturnType<typeof getDb>;
 
 /**
  * Lists a user's report presets in their listing shape: most recently used first,

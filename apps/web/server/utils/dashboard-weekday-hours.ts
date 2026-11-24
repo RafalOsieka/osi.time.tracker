@@ -4,11 +4,9 @@ import {
   DASHBOARD_WEEKDAY_HOURS_WEEKS,
   type DashboardWeekdayHoursDto,
 } from '../../shared/types/dashboard';
-import type { getDb } from '../db/index';
+import type { Db } from '../db/index';
 import { timeEntries } from '../db/schema';
 import { periodInstants, weekdayHoursWindow } from './dashboard-period';
-
-type Db = ReturnType<typeof getDb>;
 
 const DAYS_PER_WEEK = 7;
 const HOURS_PER_DAY = 24;

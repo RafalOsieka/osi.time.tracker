@@ -4,6 +4,8 @@ import type * as schema from './schema';
 
 let client: DatabaseClientPair | undefined;
 
+export type Db = PostgresJsDatabase<typeof schema>;
+
 /**
  * Returns the lazily-initialized, shared Drizzle client for the Nitro server
  * context. Initialization fails fast when `DATABASE_URL` is missing.
@@ -23,7 +25,7 @@ function getClient(): DatabaseClientPair {
  * later calls return the same client — they do not open extra connections.
  * Bind once per handler (`const db = getDb()`) and reuse that local.
  */
-export function getDb(): PostgresJsDatabase<typeof schema> {
+export function getDb(): Db {
   return getClient().db;
 }
 
