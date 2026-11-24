@@ -32,8 +32,9 @@ const november: DashboardDto = {
         deleted: true,
         totalSeconds: 13_500,
         bucketSeconds: [],
+        colorSlot: 0,
       },
-      { kind: 'noProject', totalSeconds: 9000, bucketSeconds: [] },
+      { kind: 'noProject', totalSeconds: 9000, bucketSeconds: [], colorSlot: null },
       {
         kind: 'project',
         id: 'p2',
@@ -41,6 +42,7 @@ const november: DashboardDto = {
         deleted: false,
         totalSeconds: 4500,
         bucketSeconds: [],
+        colorSlot: 1,
       },
     ],
     tracker: [
@@ -51,9 +53,10 @@ const november: DashboardDto = {
         deleted: false,
         totalSeconds: 13_500,
         bucketSeconds: [],
+        colorSlot: 0,
       },
-      { kind: 'noProject', totalSeconds: 9000, bucketSeconds: [] },
-      { kind: 'local', totalSeconds: 4500, bucketSeconds: [] },
+      { kind: 'noProject', totalSeconds: 9000, bucketSeconds: [], colorSlot: null },
+      { kind: 'local', totalSeconds: 4500, bucketSeconds: [], colorSlot: 1 },
     ],
   },
 };
@@ -67,14 +70,70 @@ const emptyNovember: DashboardDto = {
   groups: { project: [], tracker: [] },
 };
 
-// The stepper's tooltips need the `UApp` provider, so they only pass their trigger through.
-const stubs = { UTooltip: { template: '<span><slot /></span>' } };
+const WEEK_BUCKETS = [
+  '2026-11-16',
+  '2026-11-17',
+  '2026-11-18',
+  '2026-11-19',
+  '2026-11-20',
+  '2026-11-21',
+  '2026-11-22',
+];
+/** Seconds on the first days of the week, zero on the rest. */
+function weekSeconds(...seconds: number[]): number[] {
+  return WEEK_BUCKETS.map((_, index) => seconds[index] ?? 0);
+}
+const week: DashboardDto = {
+  ...november,
+  period: { kind: 'week', firstDay: '2026-11-16', lastDay: '2026-11-22' },
+  summary: { totalSeconds: 18_000, daysWithEntries: 3, averageSeconds: 6000 },
+  buckets: WEEK_BUCKETS,
+  groups: {
+    project: [
+      {
+        kind: 'project',
+        id: 'p1',
+        name: 'Site',
+        deleted: false,
+        totalSeconds: 12_600,
+        bucketSeconds: weekSeconds(7200, 5400),
+        colorSlot: 3,
+      },
+      {
+        kind: 'noProject',
+        totalSeconds: 3600,
+        bucketSeconds: weekSeconds(1800, 0, 1800),
+        colorSlot: null,
+      },
+      {
+        kind: 'project',
+        id: 'p2',
+        name: 'Shop',
+        deleted: false,
+        totalSeconds: 1800,
+        bucketSeconds: weekSeconds(1800),
+        colorSlot: 0,
+      },
+    ],
+    tracker: [],
+  },
+};
+
+// Tooltips need the `UApp` provider, so they pass their trigger through and show their content
+// only while open.
+const stubs = {
+  UTooltip: {
+    props: ['open'],
+    template: '<span><slot /><span v-if="open"><slot name="content" /></span></span>',
+  },
+};
 
 let push: MockInstance<Router['push']>;
 let wrapper: VueWrapper;
 
 async function mountPage(): Promise<VueWrapper> {
-  wrapper = await mountSuspended(DashboardPage, { global: { stubs } });
+  // Attached, so that focus moves between the chart's columns.
+  wrapper = await mountSuspended(DashboardPage, { global: { stubs }, attachTo: document.body });
   await flushPromises();
   return wrapper;
 }
@@ -267,6 +326,7 @@ describe('Dashboard time per group', () => {
       deleted: false,
       totalSeconds: 2250,
       bucketSeconds: [],
+      colorSlot: index < 6 ? index : null,
     }));
     harness.fetch.mockResolvedValue({ ...november, groups: { project, tracker: [] } });
     await mountPage();
@@ -321,6 +381,226 @@ describe('Dashboard time per group', () => {
     route.query = {};
     await flushPromises();
     expect(tableText()[0]).toEqual(['Tracker', 'Time', 'Share']);
+  });
+});
+
+describe('Dashboard chart', () => {
+  function columns() {
+    return wrapper.findAll('[data-testid="dashboard-chart-column"]');
+  }
+
+  function segmentColors(column: number) {
+    return columns()
+      [column]!.findAll('[data-testid="dashboard-chart-segment"]')
+      .map((segment) => segment.classes().find((name) => name.startsWith('bg-chart-')));
+  }
+
+  function tooltip() {
+    return byTestId('dashboard-chart-tooltip');
+  }
+
+  /** The tooltip's lines, the heading first, its parts split by a space. */
+  function tooltipLines() {
+    return tooltip()
+      .findAll('p, li')
+      .map((line) =>
+        line
+          .findAll('span')
+          .map((part) => part.text())
+          .filter(Boolean)
+          .join(' '),
+      );
+  }
+
+  it('stacks each day by group and names its breakdown', async () => {
+    harness.fetch.mockResolvedValue(week);
+    await mountPage();
+    expect(columns().map((column) => column.text())).toEqual([
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ]);
+    expect(columns()[0]!.attributes('aria-label')).toBe(
+      'Mon, Nov 16: 3:00, of which Site 2:00, Shop 0:30, No project 0:30',
+    );
+    expect(columns()[3]!.attributes('aria-label')).toBe('Thu, Nov 19: 0:00');
+    expect(segmentColors(0)).toEqual(['bg-chart-4', 'bg-chart-1', 'bg-chart-no-project']);
+    expect(segmentColors(3)).toEqual([]);
+    expect(
+      wrapper.findAll('[data-testid="dashboard-chart-tick"]').map((tick) => tick.text()),
+    ).toEqual(['0 h', '1 h', '2 h', '3 h']);
+    expect(byTestId('dashboard-chart').find('[role="grid"]').attributes('aria-label')).toBe(
+      'Time by Project per day',
+    );
+  });
+
+  it('colors the six largest groups and folds the rest into Other, before No project', async () => {
+    const project = Array.from({ length: 8 }, (_, index) => ({
+      kind: 'project' as const,
+      id: `p${index}`,
+      name: `Project ${index}`,
+      deleted: false,
+      totalSeconds: (8 - index) * 600,
+      bucketSeconds: weekSeconds((8 - index) * 600),
+      colorSlot: index < 6 ? (index + 2) % 6 : null,
+    }));
+    const noProject = {
+      kind: 'noProject' as const,
+      totalSeconds: 60,
+      bucketSeconds: weekSeconds(60),
+      colorSlot: null,
+    };
+    harness.fetch.mockResolvedValue({
+      ...week,
+      groups: { project: [...project, noProject], tracker: [] },
+    });
+    await mountPage();
+
+    const colored = ['bg-chart-3', 'bg-chart-4', 'bg-chart-5', 'bg-chart-6', 'bg-chart-1'];
+    expect(segmentColors(0)).toEqual([
+      ...colored,
+      'bg-chart-2',
+      'bg-chart-other',
+      'bg-chart-no-project',
+    ]);
+    const swatches = wrapper.findAll('[data-testid="dashboard-group-swatch"]');
+    expect(
+      swatches.map((swatch) => swatch.classes().find((name) => name.startsWith('bg-'))),
+    ).toEqual([
+      ...colored,
+      'bg-chart-2',
+      'bg-chart-other',
+      'bg-chart-other',
+      'bg-chart-no-project',
+    ]);
+
+    await columns()[0]!.trigger('mouseover');
+    expect(tooltipLines().slice(1, 4)).toEqual(['No project 0:01', 'Other 0:30', 'Project 5 0:30']);
+  });
+
+  it('labels the months of a year and the chart by month', async () => {
+    const buckets = Array.from({ length: 12 }, (_, index) => {
+      return `2026-${String(index + 1).padStart(2, '0')}-01`;
+    });
+    harness.fetch.mockResolvedValue({
+      ...week,
+      period: { kind: 'year', firstDay: '2026-01-01', lastDay: '2026-12-31' },
+      buckets,
+      groups: {
+        project: [
+          {
+            kind: 'project',
+            id: 'p1',
+            name: 'Site',
+            deleted: false,
+            totalSeconds: 540_000,
+            bucketSeconds: buckets.map((_, index) => (index === 7 ? 540_000 : 0)),
+            colorSlot: 0,
+          },
+        ],
+        tracker: [],
+      },
+    });
+    await mountPage();
+    expect(columns().map((column) => column.text())).toEqual([
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ]);
+    expect(columns()[7]!.attributes('aria-label')).toBe(
+      'August 2026: 150:00, of which Site 150:00',
+    );
+    expect(
+      wrapper.findAll('[data-testid="dashboard-chart-tick"]').map((tick) => tick.text()),
+    ).toEqual(['0 h', '50 h', '100 h', '150 h']);
+    expect(byTestId('dashboard-chart').find('[role="grid"]').attributes('aria-label')).toBe(
+      'Time by Project per month',
+    );
+  });
+
+  it('is one tab stop that arrow keys, Home and End move through', async () => {
+    harness.fetch.mockResolvedValue(week);
+    await mountPage();
+    const tabStops = () => columns().map((column) => column.attributes('tabindex'));
+    expect(tabStops()).toEqual(['0', '-1', '-1', '-1', '-1', '-1', '-1']);
+
+    const first = columns()[0]!.element;
+    if (!(first instanceof HTMLElement)) throw new Error('A column is an element');
+    first.focus();
+    await columns()[0]!.trigger('keydown', { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(columns()[1]!.element);
+    expect(tabStops()).toEqual(['-1', '0', '-1', '-1', '-1', '-1', '-1']);
+
+    await columns()[1]!.trigger('keydown', { key: 'End' });
+    expect(document.activeElement).toBe(columns()[6]!.element);
+    await columns()[6]!.trigger('keydown', { key: 'ArrowRight' });
+    expect(document.activeElement).toBe(columns()[6]!.element);
+    await columns()[6]!.trigger('keydown', { key: 'Home' });
+    expect(document.activeElement).toBe(columns()[0]!.element);
+    await columns()[0]!.trigger('keydown', { key: 'ArrowLeft' });
+    expect(document.activeElement).toBe(columns()[0]!.element);
+  });
+
+  it('shows the breakdown of a column on hover and on focus', async () => {
+    harness.fetch.mockResolvedValue(week);
+    await mountPage();
+    expect(tooltip().exists()).toBe(false);
+
+    await columns()[1]!.trigger('mouseover');
+    expect(tooltipLines()).toEqual(['Tue, Nov 17 1:30', 'Site 1:30']);
+    await tooltip().trigger('pointerover');
+    expect(tooltip().exists()).toBe(true);
+    await byTestId('dashboard-total').trigger('pointerover');
+    expect(tooltip().exists()).toBe(false);
+
+    await columns()[0]!.trigger('focusin');
+    expect(tooltipLines()).toEqual([
+      'Mon, Nov 16 3:00',
+      'No project 0:30',
+      'Shop 0:30',
+      'Site 2:00',
+    ]);
+    await columns()[0]!.trigger('keydown', { key: 'Escape' });
+    expect(tooltip().exists()).toBe(false);
+    await columns()[2]!.trigger('mouseover');
+    await byTestId('dashboard-grouping-tracker').trigger('keydown', { key: 'Escape' });
+    expect(tooltip().exists()).toBe(false);
+    await byTestId('dashboard-total').trigger('pointerover');
+    await columns()[0]!.trigger('focusout');
+    await columns()[0]!.trigger('focusin');
+    expect(tooltip().exists()).toBe(true);
+    await columns()[0]!.trigger('focusout');
+    expect(tooltip().exists()).toBe(false);
+  });
+
+  it('reads naturally in Polish', async () => {
+    const { $i18n } = useNuxtApp();
+    await $i18n.setLocale('pl');
+    try {
+      harness.fetch.mockResolvedValue(week);
+      await mountPage();
+      expect(columns()[0]!.attributes('aria-label')).toBe(
+        'pon., 16 lis: 3:00, w tym Site 2:00, Shop 0:30 i Bez projektu 0:30',
+      );
+      expect(byTestId('dashboard-chart').find('[role="grid"]').attributes('aria-label')).toBe(
+        'Czas według projektów w podziale na dni',
+      );
+    } finally {
+      await $i18n.setLocale('en');
+    }
   });
 });
 

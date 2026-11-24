@@ -22,9 +22,20 @@ async function getDashboard(jar: CookieJar, query = ''): Promise<DashboardDto> {
   return res.json();
 }
 
-/** A group with its total, without the split over buckets. */
-function withoutBuckets({ bucketSeconds: _bucketSeconds, ...group }: DashboardGroupDto) {
+/** A group with its total, without the split over buckets and its color. */
+function withoutBuckets({
+  bucketSeconds: _bucketSeconds,
+  colorSlot: _colorSlot,
+  ...group
+}: DashboardGroupDto) {
   return group;
+}
+
+/** Each group's color slot, by id or kind. */
+function colorSlots(groups: readonly DashboardGroupDto[]) {
+  return Object.fromEntries(
+    groups.map((group) => ['id' in group ? group.id : group.kind, group.colorSlot]),
+  );
 }
 
 /** The buckets of a group that hold time. */
@@ -348,6 +359,57 @@ describeDashboard('dashboard API', async () => {
     await logTime(user, '2026-08-03T08:00:00.000Z', '2026-08-03T08:00:00.500Z', task);
     const { groups } = await getDashboard(user.jar, '?date=2026-08-01');
     expect(groups).toEqual({ project: [], tracker: [] });
+  });
+
+  it('colors the six largest Projects by creation order, deleted ones included', async () => {
+    const user = await userIn('UTC');
+    const ghost = await createProject(user.jar, user.token, 'Ghost');
+    await remove(user, `/api/projects/${ghost.id}`);
+    // Hours per Project in creation order; P1 is deleted after its time.
+    const hours = { P0: 1, P1: 8, P2: 2, P3: 7, P4: 3, P5: 6, P6: 5, P7: 4 };
+    const ids: string[] = [];
+    for (const [index, [name, hour]] of Object.entries(hours).entries()) {
+      const project = await createProject(user.jar, user.token, name);
+      ids.push(project.id);
+      const day = `2026-08-${String(index + 3).padStart(2, '0')}`;
+      await logTime(user, `${day}T00:00:00Z`, `${day}T0${hour}:00:00Z`, {
+        title: 'Work',
+        projectId: project.id,
+      });
+      if (name === 'P1') await remove(user, `/api/projects/${project.id}`);
+    }
+    await logTime(user, '2026-08-20T00:00:00Z', '2026-08-20T10:00:00Z', { title: 'Work' });
+
+    const { groups } = await getDashboard(user.jar, '?date=2026-08-01');
+    // Places 1 to 8 after the deleted Ghost. P0 and P2 are the smallest; P7 wants the slot of P1
+    // and takes the next free one.
+    const slots = [null, 2, null, 4, 5, 0, 1, 3];
+    expect(colorSlots(groups.project)).toEqual({
+      noProject: null,
+      ...Object.fromEntries(ids.map((id, index) => [id, slots[index]])),
+    });
+  });
+
+  it('colors Local after every Tracker, deleted ones included', async () => {
+    const user = await userIn('UTC');
+    const { jar, token } = user;
+    await createTracker(jar, token, 'First');
+    const second = await createTracker(jar, token, 'Second');
+    const gone = await createTracker(jar, token, 'Gone');
+    await remove(user, `/api/trackers/${gone.id}`);
+    const site = await createProject(jar, token, 'Site', second.id);
+    const books = await createProject(jar, token, 'Books');
+    await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T10:00:00Z', {
+      title: 'Work',
+      projectId: site.id,
+    });
+    await logTime(user, '2026-08-03T10:00:00Z', '2026-08-03T11:00:00Z', {
+      title: 'Work',
+      projectId: books.id,
+    });
+
+    const { groups } = await getDashboard(jar, '?date=2026-08-01');
+    expect(colorSlots(groups.tracker)).toEqual({ [second.id]: 1, local: 3 });
   });
 
   it("never shows another user's entries", async () => {

@@ -219,8 +219,7 @@ function selectKind(kind: DashboardPeriodKind): void {
       <DashboardGroups
         v-if="!emptyPeriod"
         v-model:grouping="grouping"
-        :groups="data?.groups"
-        :total-seconds="data?.summary.totalSeconds ?? 0"
+        :dashboard="data ?? undefined"
         :loading="loading"
       />
     </template>

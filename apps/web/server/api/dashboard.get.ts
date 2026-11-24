@@ -1,4 +1,4 @@
-import { and, eq, gte, isNotNull, lt } from 'drizzle-orm';
+import { and, asc, eq, gte, isNotNull, lt } from 'drizzle-orm';
 import { defineEventHandler } from 'nuxt/server';
 import { dashboardQuerySchema, type DashboardDto } from '../../shared/types/dashboard';
 import { getDb } from '../db/index';
@@ -20,7 +20,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
   const bounds = periodInstants(period, user.timezone);
   const buckets = periodBuckets(period);
 
-  const [entryRows, anyEntryRows] = await Promise.all([
+  const [entryRows, anyEntryRows, projectRows, trackerRows] = await Promise.all([
     db
       .select({
         startedAt: timeEntries.startedAt,
@@ -45,6 +45,18 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
       .from(timeEntries)
       .where(eq(timeEntries.userId, user.id))
       .limit(1),
+    // Every Project and Tracker, deleted ones included: their creation order picks the colors.
+    // Ids are time-ordered.
+    db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.userId, user.id))
+      .orderBy(asc(projects.id)),
+    db
+      .select({ id: trackers.id })
+      .from(trackers)
+      .where(eq(trackers.userId, user.id))
+      .orderBy(asc(trackers.id)),
   ]);
 
   const projectDays = aggregateProjectDays(
@@ -72,8 +84,20 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
     },
     buckets,
     groups: {
-      project: groupProjectDays(projectDays, 'project', period, buckets),
-      tracker: groupProjectDays(projectDays, 'tracker', period, buckets),
+      project: groupProjectDays(
+        projectDays,
+        'project',
+        period,
+        buckets,
+        projectRows.map((row) => row.id),
+      ),
+      tracker: groupProjectDays(
+        projectDays,
+        'tracker',
+        period,
+        buckets,
+        trackerRows.map((row) => row.id),
+      ),
     },
   };
 });

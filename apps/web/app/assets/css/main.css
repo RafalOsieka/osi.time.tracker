@@ -114,6 +114,45 @@
   --app-surface-sidebar: oklch(19.2% 0.017 262);
 }
 
+/*
+ * Chart palette of the Dashboard: six slots for groups, then two neutrals that end a stack,
+ * "Other" and "No project". A slot keeps its hue in both modes. Every slot reaches 3:1 on the
+ * card. Simulated with protan and deutan vision (Machado, severity 1), every pair of the eight,
+ * neutrals included, stays at least 0.10 apart in OKLab in both modes.
+ */
+@theme inline {
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-chart-6: var(--chart-6);
+  --color-chart-other: var(--chart-other);
+  --color-chart-no-project: var(--chart-no-project);
+}
+
+:root {
+  --chart-1: var(--color-blue-800);
+  --chart-2: var(--color-orange-700);
+  --chart-3: var(--color-sky-600);
+  --chart-4: var(--color-red-800);
+  --chart-5: var(--color-amber-600);
+  --chart-6: var(--color-indigo-600);
+  --chart-other: var(--ui-color-neutral-500);
+  --chart-no-project: var(--ui-color-neutral-300);
+}
+
+.dark {
+  --chart-1: var(--color-blue-400);
+  --chart-2: var(--color-orange-400);
+  --chart-3: var(--color-sky-300);
+  --chart-4: var(--color-red-500);
+  --chart-5: var(--color-amber-300);
+  --chart-6: var(--color-indigo-500);
+  --chart-other: var(--ui-color-neutral-400);
+  --chart-no-project: var(--ui-color-neutral-600);
+}
+
 html,
 body,
 #__nuxt {

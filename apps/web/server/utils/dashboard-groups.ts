@@ -1,8 +1,10 @@
-import type {
-  DashboardGroupDto,
-  DashboardGrouping,
-  DashboardGroupIdentityDto,
-  DashboardPeriodDto,
+import {
+  DASHBOARD_COLOR_SLOTS,
+  dashboardGroupKey,
+  type DashboardGroupDto,
+  type DashboardGrouping,
+  type DashboardGroupIdentityDto,
+  type DashboardPeriodDto,
 } from '../../shared/types/dashboard';
 import type { MonthlyReportDayDto } from '../../shared/types/report';
 import { bucketOf } from './dashboard-period';
@@ -48,12 +50,47 @@ function identify(
   return { kind: grouping, id: row.id, name: row.name, deleted: row.deletedAt !== null };
 }
 
-/** Groups with time, largest first, equal ones in creation order with the unnamed ones last. */
+/**
+ * Palette slots for groups at the given places in creation order, at most
+ * `DASHBOARD_COLOR_SLOTS` of them. Each group wants the slot of its place; of two that want one
+ * slot the earlier keeps it, and the later takes the next slot nobody wants or holds.
+ */
+export function assignColorSlots(places: readonly number[]): number[] {
+  if (places.length > DASHBOARD_COLOR_SLOTS) throw new RangeError('More groups than slots');
+  const byPlace = places
+    .map((place, index) => ({ index, wanted: place % DASHBOARD_COLOR_SLOTS, place }))
+    .sort((left, right) => left.place - right.place);
+  const slots: number[] = [];
+  const taken = new Set<number>();
+  const moved: typeof byPlace = [];
+  for (const group of byPlace) {
+    if (taken.has(group.wanted)) {
+      moved.push(group);
+      continue;
+    }
+    taken.add(group.wanted);
+    slots[group.index] = group.wanted;
+  }
+  for (const group of moved) {
+    let slot = group.wanted;
+    while (taken.has(slot)) slot = (slot + 1) % DASHBOARD_COLOR_SLOTS;
+    taken.add(slot);
+    slots[group.index] = slot;
+  }
+  return slots;
+}
+
+/**
+ * Groups with time, largest first, equal ones in creation order with the unnamed ones last. The
+ * largest named groups get a color slot. `creationOrder` holds the ids of every Project or every
+ * Tracker of the user, deleted ones included, oldest first; "Local" comes after them.
+ */
 export function groupProjectDays(
   projectDays: readonly ProjectDays[],
   grouping: DashboardGrouping,
   period: DashboardPeriodDto,
   buckets: readonly string[],
+  creationOrder: readonly string[],
 ): DashboardGroupDto[] {
   const secondsByGroup = new Map<
     string,
@@ -62,7 +99,7 @@ export function groupProjectDays(
   for (const project of projectDays) {
     const identity = identify(project, grouping);
     // Ids are time-ordered and sort before the words, which gives equal groups their order.
-    const key = 'id' in identity ? identity.id : identity.kind;
+    const key = dashboardGroupKey(identity);
     const group = secondsByGroup.get(key) ?? { identity, byBucket: new Map<string, number>() };
     secondsByGroup.set(key, group);
     for (const { date, localSeconds } of project.days) {
@@ -71,7 +108,7 @@ export function groupProjectDays(
     }
   }
 
-  return [...secondsByGroup.entries()]
+  const groups = [...secondsByGroup.entries()]
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([, { identity, byBucket }]) => ({
       ...identity,
@@ -80,4 +117,21 @@ export function groupProjectDays(
     }))
     .filter((group) => group.totalSeconds > 0)
     .sort((left, right) => right.totalSeconds - left.totalSeconds);
+
+  const places = new Map(creationOrder.map((id, place) => [id, place]));
+  const colored = groups
+    .filter((group) => group.kind !== 'noProject')
+    .slice(0, DASHBOARD_COLOR_SLOTS);
+  const slots = assignColorSlots(
+    colored.map((group) =>
+      'id' in group ? (places.get(group.id) ?? creationOrder.length) : creationOrder.length,
+    ),
+  );
+  const slotByKey = new Map(
+    colored.map((group, index) => [dashboardGroupKey(group), slots[index]]),
+  );
+  return groups.map((group) => ({
+    ...group,
+    colorSlot: slotByKey.get(dashboardGroupKey(group)) ?? null,
+  }));
 }

@@ -79,11 +79,24 @@
       "project": "Time by Project",
       "tracker": "Time by Tracker"
     },
+    "chartCaption": {
+      "project": "Time by Project per {bucket}",
+      "tracker": "Time by Tracker per {bucket}"
+    },
+    "chartBucket": {
+      "day": "day",
+      "month": "month"
+    },
+    "chartHours": "{hours} h",
+    "chartColumn": "{bucket}: {total}",
+    "chartColumnSplit": "{bucket}: {total}, of which {split}",
+    "chartSegment": "{name} {time}",
     "columnTime": "Time",
     "columnShare": "Share",
     "group": {
       "local": "Local",
-      "noProject": "No project"
+      "noProject": "No project",
+      "other": "Other"
     },
     "deleted": "deleted",
     "emptyAccountTitle": "No time entries yet",
