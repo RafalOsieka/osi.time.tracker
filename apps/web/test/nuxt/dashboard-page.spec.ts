@@ -2,8 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } fr
 import type { Router } from 'vue-router';
 import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
+import { Temporal } from 'temporal-polyfill';
 import DashboardPage from '../../app/pages/index.vue';
-import type { DashboardDto } from '../../shared/types/dashboard';
+import type { DashboardDto, DashboardPastYearDto } from '../../shared/types/dashboard';
 
 /** The Dashboard page for given API answers; the numbers are the API suite's. */
 interface DashboardHarness {
@@ -14,6 +15,19 @@ const route = reactive<DashboardHarness>({ query: {} });
 
 mockNuxtImport('useRoute', () => () => route);
 mockNuxtImport('useRequestFetch', () => () => harness.fetch);
+
+/** The year up to 2026-11-24, a Tuesday, with time on the given days. */
+function pastYear(seconds: Record<string, number> = {}): DashboardPastYearDto {
+  const firstDay = Temporal.PlainDate.from('2025-11-25');
+  return {
+    firstDay: firstDay.toString(),
+    lastDay: '2026-11-24',
+    daySeconds: Array.from(
+      { length: 365 },
+      (_, index) => seconds[firstDay.add({ days: index }).toString()] ?? 0,
+    ),
+  };
+}
 
 const november: DashboardDto = {
   period: { kind: 'month', firstDay: '2026-11-01', lastDay: '2026-11-30' },
@@ -83,6 +97,7 @@ const november: DashboardDto = {
     },
   ],
   exportBacklog: ['2026-10-30', '2026-11-12'],
+  pastYear: pastYear({ '2026-11-02': 3600 }),
 };
 const march: DashboardDto = {
   ...november,
@@ -767,6 +782,227 @@ describe('Dashboard chart', () => {
       expect(byTestId('dashboard-chart').find('[role="grid"]').attributes('aria-label')).toBe(
         'Czas według projektów w podziale na dni',
       );
+    } finally {
+      await $i18n.setLocale('en');
+    }
+  });
+});
+
+describe('Dashboard past year', () => {
+  function days() {
+    return wrapper.findAll('[data-testid="dashboard-past-year-day"]');
+  }
+
+  /** The day cell whose name starts with the date. */
+  function day(date: string) {
+    const found = days().find((cell) => cell.attributes('aria-label')?.startsWith(`${date}:`));
+    if (!found) throw new Error(`No day ${date}`);
+    return found;
+  }
+
+  function texts(id: string) {
+    return wrapper.findAll(`[data-testid="${id}"]`).map((element) => element.text());
+  }
+
+  function focused() {
+    return document.activeElement?.getAttribute('aria-label');
+  }
+
+  async function press(key: string) {
+    const cell = days().find((candidate) => candidate.element === document.activeElement);
+    await cell?.trigger('keydown', { key });
+  }
+
+  it('shows every day of the year up to today in weekday rows, with a legend', async () => {
+    harness.fetch.mockResolvedValue({
+      ...november,
+      pastYear: pastYear({
+        '2026-11-24': 7201,
+        '2026-11-23': 7200,
+        '2026-11-20': 14_400,
+        '2026-11-19': 28_800,
+        '2026-11-18': 28_801,
+      }),
+    });
+    await mountPage();
+    expect(days()).toHaveLength(365);
+    expect(texts('dashboard-past-year-weekday')).toEqual([
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ]);
+    // Row by row: Monday's first day is in the second week, Tuesday's in the first.
+    expect(days()[0]!.attributes('aria-label')).toBe('Mon, Dec 1, 2025: 0:00');
+    expect(days()[52]!.attributes('aria-label')).toBe('Tue, Nov 25, 2025: 0:00');
+    const months = byTestId('dashboard-past-year-months').findAll('span');
+    expect(months.map((month) => month.text()).filter(Boolean)).toEqual([
+      'Dec',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+    ]);
+
+    const level = (date: string) =>
+      day(date)
+        .classes()
+        .find((name) => name.startsWith('bg-heat-'));
+    expect(
+      [
+        'Tue, Nov 17',
+        'Mon, Nov 23',
+        'Tue, Nov 24',
+        'Fri, Nov 20',
+        'Thu, Nov 19',
+        'Wed, Nov 18',
+      ].map((date) => level(`${date}, 2026`)),
+    ).toEqual(['bg-heat-0', 'bg-heat-1', 'bg-heat-2', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4']);
+    expect(day('Wed, Nov 18, 2026').attributes('aria-label')).toBe('Wed, Nov 18, 2026: 8:00');
+    expect(
+      byTestId('dashboard-past-year-legend')
+        .findAll('li')
+        .map((item) => item.text()),
+    ).toEqual(['No time', 'Up to 2 h', 'Up to 4 h', 'Up to 8 h', 'Over 8 h']);
+    expect(byTestId('dashboard-past-year').find('[role="grid"]').attributes('aria-label')).toBe(
+      'Time per day over the last 12 months',
+    );
+  });
+
+  it('starts its rows on the first day of the week', async () => {
+    harness.fetch.mockResolvedValue({ ...november, firstDayOfWeek: 7 });
+    await mountPage();
+    expect(texts('dashboard-past-year-weekday')).toEqual([
+      'Sun',
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+    ]);
+    expect(days()[0]!.attributes('aria-label')).toBe('Sun, Nov 30, 2025: 0:00');
+  });
+
+  it('is one tab stop, on today, that arrow keys, Home and End move by day and week', async () => {
+    await mountPage();
+    const tabStops = days().filter((cell) => cell.attributes('tabindex') === '0');
+    expect(tabStops.map((cell) => cell.attributes('aria-label'))).toEqual([
+      'Tue, Nov 24, 2026: 0:00',
+    ]);
+
+    const today = tabStops[0]!.element;
+    if (!(today instanceof HTMLElement)) throw new Error('A day is an element');
+    today.focus();
+    await press('ArrowUp');
+    expect(focused()).toBe('Mon, Nov 23, 2026: 0:00');
+    await press('ArrowLeft');
+    expect(focused()).toBe('Mon, Nov 16, 2026: 0:00');
+    await press('ArrowRight');
+    await press('ArrowDown');
+    expect(focused()).toBe('Tue, Nov 24, 2026: 0:00');
+    await press('ArrowDown');
+    await press('ArrowRight');
+    expect(focused()).toBe('Tue, Nov 24, 2026: 0:00');
+    await press('Home');
+    expect(focused()).toBe('Tue, Nov 25, 2025: 0:00');
+    await press('ArrowUp');
+    await press('ArrowLeft');
+    expect(focused()).toBe('Tue, Nov 25, 2025: 0:00');
+    await press('End');
+    expect(focused()).toBe('Tue, Nov 24, 2026: 0:00');
+  });
+
+  it('shows the date and time of a day on hover and on focus', async () => {
+    await mountPage();
+    const tooltip = () => byTestId('dashboard-past-year-tooltip');
+    expect(tooltip().exists()).toBe(false);
+
+    await day('Mon, Nov 2, 2026').trigger('mouseover');
+    const parts = tooltip().findAll('span');
+    expect(parts.map((part) => part.text())).toEqual(['Mon, Nov 2, 2026', '1:00']);
+    await byTestId('dashboard-total').trigger('pointerover');
+    expect(tooltip().exists()).toBe(false);
+
+    await day('Tue, Nov 3, 2026').trigger('focusin');
+    expect(tooltip().text()).toContain('Tue, Nov 3, 2026');
+    await day('Tue, Nov 3, 2026').trigger('keydown', { key: 'Escape' });
+    expect(tooltip().exists()).toBe(false);
+  });
+
+  it.each([
+    ['a click', (cell: ReturnType<typeof day>) => cell.trigger('click')],
+    ['Enter', (cell: ReturnType<typeof day>) => cell.trigger('keydown', { key: 'Enter' })],
+    ['Space', (cell: ReturnType<typeof day>) => cell.trigger('keydown', { key: ' ' })],
+  ])('opens the week of a day on %s and goes back to the top', async (_label, activate) => {
+    await mountPage();
+    // The router takes the page to the week.
+    push.mockImplementation(async () => {
+      route.query = { period: 'week', date: '2026-11-19' };
+    });
+    const scroller = wrapper.element.parentElement;
+    if (!scroller) throw new Error('The page is attached');
+    scroller.scrollTop = 500;
+
+    const cell = day('Thu, Nov 19, 2026');
+    if (!(cell.element instanceof HTMLElement)) throw new Error('A day is an element');
+    cell.element.focus();
+    await activate(cell);
+    expect(push).toHaveBeenLastCalledWith({
+      path: '/',
+      query: { period: 'week', date: '2026-11-19' },
+    });
+    expect(scroller.scrollTop).toBe(0);
+    await flushPromises();
+    expect(document.activeElement?.getAttribute('data-testid')).toBe('dashboard-kind-week');
+  });
+
+  it('stays in a period without entries and while another period loads', async () => {
+    harness.fetch.mockResolvedValue(emptyNovember);
+    await mountPage();
+    expect(days()).toHaveLength(365);
+
+    holdAnswer();
+    route.query = { period: 'week', date: '2026-11-02' };
+    await flushPromises();
+    expect(visibleStates()).toEqual(['loading']);
+    expect(day('Mon, Nov 2, 2026').attributes('aria-label')).toBe('Mon, Nov 2, 2026: 1:00');
+  });
+
+  it('is absent when the load fails and for an account without entries', async () => {
+    harness.fetch.mockRejectedValue(new Error('boom'));
+    await mountPage();
+    expect(byTestId('dashboard-past-year').exists()).toBe(false);
+    wrapper.unmount();
+    clearNuxtData();
+
+    harness.fetch.mockResolvedValue({ ...emptyNovember, hasEntries: false });
+    await mountPage();
+    expect(byTestId('dashboard-past-year').exists()).toBe(false);
+  });
+
+  it('reads naturally in Polish', async () => {
+    const { $i18n } = useNuxtApp();
+    await $i18n.setLocale('pl');
+    try {
+      await mountPage();
+      expect(texts('dashboard-past-year-weekday')[0]).toBe('pon.');
+      expect(day('wt., 24 lis 2026').attributes('tabindex')).toBe('0');
+      expect(
+        byTestId('dashboard-past-year-legend')
+          .findAll('li')
+          .map((item) => item.text()),
+      ).toEqual(['Brak czasu', 'Do 2 h', 'Do 4 h', 'Do 8 h', 'Ponad 8 h']);
     } finally {
       await $i18n.setLocale('en');
     }

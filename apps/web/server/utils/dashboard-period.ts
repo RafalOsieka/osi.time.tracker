@@ -100,6 +100,12 @@ export function exportBacklogWindow(
   };
 }
 
+/** The days the 12-month heatmap covers: the year up to and including today. */
+export function pastYearWindow(today: string): Pick<DashboardPeriodDto, 'firstDay' | 'lastDay'> {
+  const day = Temporal.PlainDate.from(today);
+  return { firstDay: day.subtract({ years: 1 }).add({ days: 1 }).toString(), lastDay: today };
+}
+
 /** The bucket a day of the period falls in, named by its first day. */
 export function bucketOf(day: string, { kind }: DashboardPeriodDto): string {
   return kind === 'year' ? `${day.slice(0, 7)}-01` : day;

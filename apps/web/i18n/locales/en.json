@@ -107,6 +107,16 @@
       "columnIssue": "Remote issue",
       "empty": "No tasks in this period."
     },
+    "pastYear": {
+      "heading": "Last 12 months",
+      "hint": "Select a day to open its week.",
+      "caption": "Time per day over the last 12 months",
+      "day": "{day}: {time}",
+      "legend": "Legend",
+      "levelNone": "No time",
+      "levelUpTo": "Up to {hours} h",
+      "levelOver": "Over {hours} h"
+    },
     "emptyAccountTitle": "No time entries yet",
     "emptyAccountMessage": "Track your first time entry in the Timer, and this page will sum up where your time goes.",
     "emptyAccountCta": "Go to the Timer"

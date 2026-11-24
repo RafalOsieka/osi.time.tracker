@@ -107,6 +107,16 @@
       "columnIssue": "Zgłoszenie",
       "empty": "Brak zadań w tym okresie."
     },
+    "pastYear": {
+      "heading": "Ostatnie 12 miesięcy",
+      "hint": "Wybierz dzień, aby otworzyć jego tydzień.",
+      "caption": "Czas dzienny w ostatnich 12 miesiącach",
+      "day": "{day}: {time}",
+      "legend": "Legenda",
+      "levelNone": "Brak czasu",
+      "levelUpTo": "Do {hours} h",
+      "levelOver": "Ponad {hours} h"
+    },
     "emptyAccountTitle": "Brak wpisów czasu",
     "emptyAccountMessage": "Dodaj pierwszy wpis czasu w Stoperze, a zobaczysz tu, na co idzie Twój czas.",
     "emptyAccountCta": "Przejdź do Stopera"

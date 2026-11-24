@@ -89,6 +89,15 @@ export interface DashboardTaskDto {
   totalSeconds: number;
 }
 
+/** Time per local day over the year up to and including today, counted like the summary. */
+export interface DashboardPastYearDto {
+  firstDay: string;
+  /** Today. */
+  lastDay: string;
+  /** One value per day from the first to the last. */
+  daySeconds: number[];
+}
+
 export interface DashboardDto {
   period: DashboardPeriodDto;
   today: string;
@@ -109,4 +118,6 @@ export interface DashboardDto {
    * first, whatever the period.
    */
   exportBacklog: string[];
+  /** The same whatever the period. */
+  pastYear: DashboardPastYearDto;
 }
