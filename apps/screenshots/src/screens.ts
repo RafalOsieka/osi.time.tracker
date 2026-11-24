@@ -157,6 +157,14 @@ const PAGES: Screen[] = [
     path: '/profile',
     ready: '[data-testid="page-profile"]',
   },
+  {
+    id: 'p09-dashboard',
+    title: 'Dashboard',
+    shows: "This month's Dashboard: the period controls and the summary.",
+    as: 'busy',
+    path: '/',
+    ready: '[data-testid="dashboard-summary"]',
+  },
 ];
 
 const FEATURES: Screen[] = [

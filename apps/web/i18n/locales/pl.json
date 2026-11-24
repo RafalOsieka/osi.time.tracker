@@ -39,6 +39,7 @@
   },
   "nav": {
     "main": "Nawigacja główna",
+    "dashboard": "Pulpit",
     "timer": "Stoper",
     "trackers": "Trackery",
     "projects": "Projekty",
@@ -50,6 +51,27 @@
   },
   "page": {
     "comingSoon": "Wkrótce."
+  },
+  "dashboard": {
+    "pageTitle": "Pulpit",
+    "loading": "Wczytywanie pulpitu",
+    "loadError": "Nie udało się wczytać pulpitu.",
+    "periodKind": "Długość okresu",
+    "kind": {
+      "week": "Tydzień",
+      "month": "Miesiąc",
+      "year": "Rok"
+    },
+    "previousPeriod": "Poprzedni okres",
+    "nextPeriod": "Następny okres",
+    "summary": "Podsumowanie",
+    "total": "Łączny czas",
+    "daysWithEntries": "Dni z wpisami",
+    "average": "Średnio na dzień z wpisami",
+    "emptyPeriod": "Brak zakończonych wpisów czasu w tym okresie.",
+    "emptyAccountTitle": "Brak wpisów czasu",
+    "emptyAccountMessage": "Dodaj pierwszy wpis czasu w Stoperze, a zobaczysz tu, na co idzie Twój czas.",
+    "emptyAccountCta": "Przejdź do Stopera"
   },
   "reports": {
     "monthly": {
@@ -757,7 +779,9 @@
     "extensionLimitExceeded": "Żądanie do rozszerzenia przekroczyło limity bezpieczeństwa.",
     "extensionDestinationUnapproved": "Ten URL trackera nie jest zatwierdzony w rozszerzeniu OSI.",
     "extensionOriginUnapproved": "Ta Time Tracker App nie jest zatwierdzona w rozszerzeniu OSI.",
-    "reportMonthInvalid": "Wprowadź prawidłowy miesiąc."
+    "reportMonthInvalid": "Wprowadź prawidłowy miesiąc.",
+    "dashboardPeriodInvalid": "Wybierz tydzień, miesiąc lub rok.",
+    "dashboardDateInvalid": "Wprowadź prawidłową datę."
   },
   "errors": {
     "auth": {

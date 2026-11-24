@@ -1,9 +1,8 @@
 <script setup lang="ts">
 /**
- * One summary figure: a label, the value (default slot, a duration in the mono face, at the
- * same weight as a table's total row, since it is the same kind of figure) and an
- * optional one-line caption. Remote sync and the monthly timesheet share it, laid out in an
- * equal-width grid.
+ * One summary figure: a label, the value (default slot, in the mono face at the same weight as a
+ * table's total row, since it is the same kind of figure) and an optional one-line caption.
+ * Pages lay it out in an equal-width grid.
  */
 defineProps<{
   label: string;

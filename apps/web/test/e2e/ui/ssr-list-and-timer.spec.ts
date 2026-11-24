@@ -26,16 +26,48 @@ describeSsrShell('SSR shell and list pages', async () => {
     return page;
   }
 
-  it.each(['/', '/login'])('redirects an authenticated request for %s to /timer', async (path) => {
+  it('redirects an authenticated request for /login to the Dashboard', async () => {
     const { jar } = await apiSession();
 
-    const res = await fetch(url(path), {
+    const res = await fetch(url('/login'), {
       headers: { cookie: jar.header() },
       redirect: 'manual',
     });
 
     expect(res.status).toBe(302);
-    expect(res.headers.get('location')).toBe('/timer');
+    expect(res.headers.get('location')).toBe('/');
+  });
+
+  it('renders the Dashboard at / on the server with its data', async () => {
+    const { email, password } = await seedUser(dbUrl);
+    const { jar, token } = await apiLogin(email, password);
+    const created = await startEntry(jar, token, {
+      title: 'Server rendered dashboard entry',
+      startedAt: '2026-08-03T10:00:00.000Z',
+      stoppedAt: '2026-08-03T11:15:00.000Z',
+    });
+    expect(created.status).toBe(200);
+
+    const res = await fetch(url('/?period=month&date=2026-08-03'), {
+      headers: { cookie: jar.header() },
+      redirect: 'manual',
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('<span data-testid="dashboard-total">1:15</span>');
+    expect(html).toContain('August 2026');
+    expect(html).not.toContain('data-testid="dashboard-loading"');
+  });
+
+  it('renders the empty account on the server', async () => {
+    const { email, password } = await seedUser(dbUrl);
+    const { jar } = await apiLogin(email, password);
+
+    const res = await fetch(url('/'), { headers: { cookie: jar.header() }, redirect: 'manual' });
+
+    expect(res.status).toBe(200);
+    expect(await res.text()).toContain('data-testid="dashboard-empty-account"');
   });
 
   it.each(['/', '/timer'])(

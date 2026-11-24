@@ -36,13 +36,16 @@ describe('layout selection per page', () => {
     expect(login?.meta.public).toBe(true);
   });
 
-  it('leaves /timer on the default layout (no explicit layout meta, not public)', async () => {
-    const routes = await routeMeta();
-    const timer = routes.find((r) => r.path === '/timer');
-    expect(timer).toBeTruthy();
-    expect(timer?.meta.layout).toBeUndefined();
-    expect(timer?.meta.public).toBeUndefined();
-  });
+  it.each(['/', '/timer'])(
+    'leaves %s on the default layout (no explicit layout meta, not public)',
+    async (path) => {
+      const routes = await routeMeta();
+      const route = routes.find((r) => r.path === path);
+      expect(route).toBeTruthy();
+      expect(route?.meta.layout).toBeUndefined();
+      expect(route?.meta.public).toBeUndefined();
+    },
+  );
 });
 
 describe('preserved test hooks', () => {

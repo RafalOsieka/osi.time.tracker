@@ -39,6 +39,7 @@
   },
   "nav": {
     "main": "Main navigation",
+    "dashboard": "Dashboard",
     "timer": "Timer",
     "trackers": "Trackers",
     "projects": "Projects",
@@ -50,6 +51,27 @@
   },
   "page": {
     "comingSoon": "Coming soon."
+  },
+  "dashboard": {
+    "pageTitle": "Dashboard",
+    "loading": "Loading the Dashboard",
+    "loadError": "The Dashboard could not be loaded.",
+    "periodKind": "Period length",
+    "kind": {
+      "week": "Week",
+      "month": "Month",
+      "year": "Year"
+    },
+    "previousPeriod": "Previous period",
+    "nextPeriod": "Next period",
+    "summary": "Summary",
+    "total": "Total time",
+    "daysWithEntries": "Days with entries",
+    "average": "Average per day with entries",
+    "emptyPeriod": "No completed time entries in this period.",
+    "emptyAccountTitle": "No time entries yet",
+    "emptyAccountMessage": "Track your first time entry in the Timer, and this page will sum up where your time goes.",
+    "emptyAccountCta": "Go to the Timer"
   },
   "reports": {
     "monthly": {
@@ -752,7 +774,9 @@
     "extensionLimitExceeded": "The extension request exceeded its safety limits.",
     "extensionDestinationUnapproved": "This Tracker URL is not approved in the OSI extension.",
     "extensionOriginUnapproved": "This Time Tracker App is not approved in the OSI extension.",
-    "reportMonthInvalid": "Enter a valid month."
+    "reportMonthInvalid": "Enter a valid month.",
+    "dashboardPeriodInvalid": "Choose a week, a month or a year.",
+    "dashboardDateInvalid": "Enter a valid date."
   },
   "errors": {
     "auth": {
