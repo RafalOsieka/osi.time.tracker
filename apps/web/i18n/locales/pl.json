@@ -100,6 +100,7 @@
       "other": "Inne"
     },
     "deleted": "usunięty",
+    "deletedGroup": "{name} (usunięty)",
     "tasks": {
       "heading": "Zadania z największym czasem",
       "caption": "Zadania z największym czasem w okresie, z projektem, zgłoszeniem i czasem",

@@ -638,6 +638,30 @@ describe('Dashboard chart', () => {
     );
   });
 
+  it('marks a deleted group in the breakdown, beside one of the same name', async () => {
+    const [site, noProject, shop] = week.groups.project;
+    if (site?.kind !== 'project' || shop?.kind !== 'project' || !noProject) {
+      throw new Error('The week has Site, No project and Shop');
+    }
+    harness.fetch.mockResolvedValue({
+      ...week,
+      groups: {
+        project: [{ ...site, deleted: true }, noProject, { ...shop, name: 'Site' }],
+        tracker: [],
+      },
+    });
+    await mountPage();
+    expect(columns()[0]!.attributes('aria-label')).toBe(
+      'Mon, Nov 16: 3:00, of which Site (deleted) 2:00, Site 0:30, No project 0:30',
+    );
+    await columns()[0]!.trigger('mouseover');
+    expect(tooltipLines().slice(1)).toEqual([
+      'No project 0:30',
+      'Site 0:30',
+      'Site (deleted) 2:00',
+    ]);
+  });
+
   it('colors the six largest groups and folds the rest into Other, before No project', async () => {
     const project = Array.from({ length: 8 }, (_, index) => ({
       kind: 'project' as const,

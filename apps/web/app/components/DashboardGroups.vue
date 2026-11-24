@@ -50,10 +50,14 @@ function groupColor(group: DashboardGroupDto): ChartColor {
 
 const groups = computed(() => dashboard?.groups[grouping.value] ?? []);
 
+/** The chart has no badge, so its name says that a group is deleted. */
 function toSeries(group: DashboardGroupDto) {
   return {
     key: dashboardGroupKey(group),
-    name: groupName(group),
+    name:
+      'deleted' in group && group.deleted
+        ? t('dashboard.deletedGroup', { name: group.name })
+        : groupName(group),
     color: groupColor(group),
     bucketSeconds: group.bucketSeconds,
   };
