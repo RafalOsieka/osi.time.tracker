@@ -249,6 +249,37 @@ describe('useTimer', () => {
     });
   });
 
+  it('stays stopped when a title commit sent before stop() resolves after it', async () => {
+    // Clicking Stop from the focused title field blurs it: the blur commits the title and the
+    // click stops the timer, so both PATCHes are in flight together.
+    const entry = {
+      id: 'entry-race',
+      taskId: 'task-1',
+      taskName: 'Race entry',
+      projectId: null,
+      projectName: null,
+      startedAt: new Date().toISOString(),
+      stoppedAt: null,
+    };
+    const { running, elapsedSeconds, seedRunning, updateTitle, stop } = await setupTimer();
+    seedRunning(entry);
+    let resolveCommit!: (value: TimeEntryDto) => void;
+    csrfFetchMock.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveCommit = resolve;
+      }),
+    );
+    csrfFetchMock.mockResolvedValueOnce({ ...entry, stoppedAt: new Date().toISOString() });
+
+    const commit = updateTitle('Race entry', 'task-1');
+    await stop();
+    resolveCommit(entry);
+    await commit;
+
+    expect(running.value).toBeNull();
+    expect(elapsedSeconds.value).toBe(0);
+  });
+
   it('stop() clears the running entry and resets elapsed time', async () => {
     const startedAt = new Date().toISOString();
     csrfFetchMock.mockResolvedValueOnce({

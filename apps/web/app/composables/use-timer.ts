@@ -104,6 +104,17 @@ export function useTimer() {
   }
 
   /**
+   * Applies a PATCH response to the running entry. A response that resolves after the timer
+   * stopped (clicking Stop blurs the title field, so its commit races the stop) or that already
+   * carries a stop is dropped, so it cannot bring the stopped entry back as running.
+   */
+  function applyRunningUpdate(entry: TimeEntryDto): boolean {
+    if (running.value?.id !== entry.id || entry.stoppedAt !== null) return false;
+    running.value = entry;
+    return true;
+  }
+
+  /**
    * Retitle / re-project the running entry. A `taskId` binds to that task
    * (its project comes with it). Otherwise `projectId` is sent explicitly:
    * `null` makes the entry project-less, `undefined` keeps the current
@@ -126,7 +137,7 @@ export function useTimer() {
       method: 'PATCH',
       body,
     });
-    running.value = entry;
+    applyRunningUpdate(entry);
   }
 
   async function updateStartedAt(startedAt: string): Promise<void> {
@@ -135,8 +146,7 @@ export function useTimer() {
       method: 'PATCH',
       body: { startedAt },
     });
-    running.value = entry;
-    startTicker();
+    if (applyRunningUpdate(entry)) startTicker();
   }
 
   onScopeDispose(() => {

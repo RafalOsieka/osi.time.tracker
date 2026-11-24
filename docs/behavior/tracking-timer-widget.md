@@ -110,6 +110,11 @@ The running title SHALL be editable in place, committed with `PATCH /api/time-en
 - **WHEN** the user clears the running time entry's title to blank and commits (blur or Enter)
 - **THEN** the widget SHALL send `title = null` and the entry SHALL become untitled (`taskId = null`)
 
+#### Scenario: Stopping from the title field stays stopped
+
+- **WHEN** the title input has focus while a timer runs and the user activates the stop control, so the title commit and the stop are in flight together
+- **THEN** the widget SHALL show no running time entry once both finish, whichever response arrives last
+
 #### Scenario: Enter starts the timer when no overlay is open
 
 - **WHEN** the user presses Enter in the title input while no timer is running and the suggestion overlay is closed
