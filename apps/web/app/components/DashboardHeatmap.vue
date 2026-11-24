@@ -1,10 +1,12 @@
 <script setup lang="ts">
+import type { CellSteps } from '~/composables/use-chart-cells';
 import { formatReportDuration } from '~/utils/format-report-duration';
 
 /**
  * A Dashboard heatmap: a card with a heading, a hint and a legend of five fixed levels, over a
- * grid of cells in labelled rows and columns. The grid is one tab stop. The arrow keys, Home and
- * End move by what `move` says, and Enter, Space or a click activate a cell when `activatable`.
+ * grid of cells in labelled rows and columns. The grid is one tab stop. The arrow keys move by
+ * `steps`, Home and End to the first and the last cell, and Enter, Space or a click activate a
+ * cell when `activatable`.
  * Hovering or focusing a cell shows its label and time.
  */
 const {
@@ -18,7 +20,7 @@ const {
   rows,
   columnLabels,
   initialTabStop,
-  move,
+  steps,
   activatable = false,
   startAtEnd = false,
 } = defineProps<{
@@ -40,8 +42,7 @@ const {
   /** One per column, empty where a column has none. */
   columnLabels: string[];
   initialTabStop: number;
-  /** The cell a key moves to from a cell; none for a key that does not move. */
-  move: (key: string, from: number) => number | undefined;
+  steps: CellSteps;
   activatable?: boolean;
   /** A grid wider than its box starts scrolled to its last columns. */
   startAtEnd?: boolean;
@@ -95,10 +96,12 @@ const {
   onMouseover,
   onFocusin,
   onFocusout,
-  focusCell,
+  moveFocus,
 } = useChartCells({
   grid: useTemplateRef('grid'),
   tooltip: useTemplateRef('tooltip'),
+  count: () => shownCells.value.length,
+  steps: () => steps,
   initialTabStop,
 });
 const shown = computed(() =>
@@ -110,17 +113,13 @@ function activate(index: number | null): void {
 }
 
 function onKeydown(event: KeyboardEvent): void {
-  const from = tabStop.value;
-  if (event.key === 'Enter' || event.key === ' ') {
-    if (!activatable) return;
-    event.preventDefault();
-    activate(from);
+  if (event.key !== 'Enter' && event.key !== ' ') {
+    moveFocus(event);
     return;
   }
-  const target = move(event.key, from);
-  if (target === undefined) return;
+  if (!activatable) return;
   event.preventDefault();
-  if (target >= 0 && target < shownCells.value.length) focusCell(target);
+  activate(tabStop.value);
 }
 </script>
 

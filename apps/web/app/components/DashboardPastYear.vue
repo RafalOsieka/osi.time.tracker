@@ -86,17 +86,6 @@ const monthLabels = computed(() =>
   }),
 );
 
-function move(key: string, from: number): number | undefined {
-  return new Map([
-    ['ArrowUp', from - 1],
-    ['ArrowDown', from + 1],
-    ['ArrowLeft', from - DAYS_PER_WEEK],
-    ['ArrowRight', from + DAYS_PER_WEEK],
-    ['Home', 0],
-    ['End', dayCount.value - 1],
-  ]).get(key);
-}
-
 function open(index: number): void {
   const day = days.value?.[index];
   if (day) emit('open', day.date);
@@ -115,7 +104,7 @@ function open(index: number): void {
     :rows="rows"
     :column-labels="monthLabels"
     :initial-tab-stop="(pastYear?.daySeconds.length ?? 1) - 1"
-    :move="move"
+    :steps="{ right: DAYS_PER_WEEK, down: 1 }"
     activatable
     start-at-end
     @activate="open"

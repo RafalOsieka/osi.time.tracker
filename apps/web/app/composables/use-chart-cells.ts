@@ -1,22 +1,33 @@
-import type { ComponentPublicInstance, Ref } from 'vue';
+import type { ComponentPublicInstance, MaybeRefOrGetter, Ref } from 'vue';
+
+/** How far the arrow keys move between cells; no `down` leaves the up and down arrows alone. */
+export interface CellSteps {
+  right: number;
+  down?: number;
+}
 
 /**
  * Roving focus and one shared tooltip for a chart drawn as a `role="grid"` of cells, each cell
- * known by its index. The chart is one tab stop: the cell at `tabStop` holds it, and the chart's
- * own key handler moves it with `focusCell`. Hovering or focusing a cell shows it; the pointer may
- * move from the cell onto the tooltip, and Escape hides the tooltip until the pointer or the
- * focus moves.
+ * known by its index. The chart is one tab stop: the cell at `tabStop` holds it, and `moveFocus`
+ * moves it by the arrow keys as `steps` says, and to the first and the last cell by Home and End.
+ * Hovering or focusing a cell shows it; the pointer may move from the cell onto the tooltip, and
+ * Escape hides the tooltip until the pointer or the focus moves.
  *
- * Bind `keepCell` to each cell's `ref`, and `onMouseover`, `onFocusin` and `onFocusout` to the
- * grid. `cellOf` finds the cell of any other event the grid listens for.
+ * Bind `keepCell` to each cell's `ref`, and `moveFocus` (or a key handler that calls it),
+ * `onMouseover`, `onFocusin` and `onFocusout` to the grid. `cellOf` finds the cell of any other
+ * event the grid listens for.
  */
 export function useChartCells({
   grid,
   tooltip,
+  count,
+  steps,
   initialTabStop = 0,
 }: {
   grid: Readonly<Ref<HTMLElement | null>>;
   tooltip: Readonly<Ref<HTMLElement | null>>;
+  count: MaybeRefOrGetter<number>;
+  steps: MaybeRefOrGetter<CellSteps>;
   initialTabStop?: number;
 }) {
   const tabStop = ref(initialTabStop);
@@ -87,8 +98,25 @@ export function useChartCells({
     focused.value = null;
   }
 
-  function focusCell(index: number): void {
-    cellElements[index]?.focus();
+  /** A move past the first or the last cell keeps the focus where it is. */
+  function moveFocus(event: KeyboardEvent): void {
+    const from = tabStop.value;
+    const { right, down } = toValue(steps);
+    const last = toValue(count) - 1;
+    const targets = new Map([
+      ['ArrowLeft', from - right],
+      ['ArrowRight', from + right],
+      ['Home', 0],
+      ['End', last],
+    ]);
+    if (down !== undefined) {
+      targets.set('ArrowUp', from - down);
+      targets.set('ArrowDown', from + down);
+    }
+    const target = targets.get(event.key);
+    if (target === undefined) return;
+    event.preventDefault();
+    if (target >= 0 && target <= last) cellElements[target]?.focus();
   }
 
   return {
@@ -100,6 +128,6 @@ export function useChartCells({
     onMouseover,
     onFocusin,
     onFocusout,
-    focusCell,
+    moveFocus,
   };
 }

@@ -110,26 +110,16 @@ const {
   onMouseover,
   onFocusin,
   onFocusout,
-  focusCell,
-} = useChartCells({ grid: useTemplateRef('grid'), tooltip: useTemplateRef('tooltip') });
+  moveFocus,
+} = useChartCells({
+  grid: useTemplateRef('grid'),
+  tooltip: useTemplateRef('tooltip'),
+  count: () => buckets.length,
+  steps: { right: 1 },
+});
 const shown = computed(() =>
   shownIndex.value === null ? undefined : columns.value[shownIndex.value],
 );
-
-function onKeydown(event: KeyboardEvent): void {
-  const from = tabStop.value;
-  const last = buckets.length - 1;
-  const targets = new Map([
-    ['ArrowLeft', Math.max(0, from - 1)],
-    ['ArrowRight', Math.min(last, from + 1)],
-    ['Home', 0],
-    ['End', last],
-  ]);
-  const target = targets.get(event.key);
-  if (target === undefined) return;
-  event.preventDefault();
-  focusCell(target);
-}
 </script>
 
 <template>
@@ -164,7 +154,7 @@ function onKeydown(event: KeyboardEvent): void {
           :aria-label="chartName"
           tabindex="-1"
           class="relative outline-none"
-          @keydown="onKeydown"
+          @keydown="moveFocus"
           @mouseover="onMouseover"
           @focusin="onFocusin"
           @focusout="onFocusout"

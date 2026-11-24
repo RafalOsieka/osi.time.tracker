@@ -19,7 +19,6 @@ const { weekdayHours, firstDayOfWeek } = defineProps<{
 
 const { t, locale } = useI18n();
 
-const DAYS_PER_WEEK = 7;
 const HOURS_PER_DAY = 24;
 /** Every this many hours a column is labelled. */
 const LABEL_EVERY_HOURS = 3;
@@ -73,17 +72,6 @@ const hourLabels = computed(() =>
     hour % LABEL_EVERY_HOURS === 0 ? formats.value.hour.hour(hour) : '',
   ),
 );
-
-function move(key: string, from: number): number | undefined {
-  return new Map([
-    ['ArrowUp', from - HOURS_PER_DAY],
-    ['ArrowDown', from + HOURS_PER_DAY],
-    ['ArrowLeft', from - 1],
-    ['ArrowRight', from + 1],
-    ['Home', 0],
-    ['End', DAYS_PER_WEEK * HOURS_PER_DAY - 1],
-  ]).get(key);
-}
 </script>
 
 <template>
@@ -98,6 +86,6 @@ function move(key: string, from: number): number | undefined {
     :rows="rows"
     :column-labels="hourLabels"
     :initial-tab-stop="0"
-    :move="move"
+    :steps="{ right: 1, down: HOURS_PER_DAY }"
   />
 </template>
