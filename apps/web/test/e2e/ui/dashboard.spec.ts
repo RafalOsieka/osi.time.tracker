@@ -297,7 +297,9 @@ describeDashboardUi('Dashboard journey', async () => {
     );
     const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
     // A twelfth of each hour: 60, 60 and 30 minutes.
-    await page.focus(`[aria-label="${weekday}, 1:00 AM–2:00 AM: 0:05"]`);
+    await page.focus(
+      `[data-testid="dashboard-weekday-hours-cell"][aria-label="${weekday}, 1:00 AM–2:00 AM: 0:05"]`,
+    );
     await page.keyboard.press('ArrowRight');
     expect(await focused()).toBe(`${weekday}, 2:00 AM–3:00 AM: 0:05`);
     await page.keyboard.press('ArrowRight');

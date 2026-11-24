@@ -81,6 +81,16 @@ describe('cutting entries at local hour boundaries', () => {
     expect(minutesByHour(totals)).toEqual({ 'Sun 1': 30, 'Sun 2': 120, 'Sun 3': 30 });
   });
 
+  it('cuts where the clocks go back two hours, before the hour ends', () => {
+    // 02:30 to 03:00 on the clock, back to 01:00, then on to 02:30.
+    const totals = localHourTotals(
+      [span('2026-10-25T00:30:00Z', '2026-10-25T02:30:00Z')],
+      'Antarctica/Troll',
+      ALL,
+    );
+    expect(minutesByHour(totals)).toEqual({ 'Sun 1': 60, 'Sun 2': 60 });
+  });
+
   it('clips entries to the window', () => {
     const window = {
       from: new Date('2026-11-23T00:00:00+01:00'),

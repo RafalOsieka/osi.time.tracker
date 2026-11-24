@@ -21,8 +21,9 @@ export interface TimeSpan {
 
 /**
  * The time of the spans per ISO weekday (rows from Monday) and local hour, in milliseconds, each
- * span clipped to `from`-`to` and cut where the local hour changes. An hour the clocks repeat
- * holds both of its runs; an hour they skip holds nothing.
+ * span clipped to `from`-`to` and cut where the local hour changes: at each full hour and where
+ * the clocks change. An hour the clocks repeat holds both of its runs; an hour they skip holds
+ * nothing.
  */
 export function localHourTotals(
   spans: readonly TimeSpan[],
@@ -35,19 +36,13 @@ export function localHourTotals(
     let start = Math.max(span.startedAt.getTime(), from.getTime());
     while (start < end) {
       const local = Temporal.Instant.fromEpochMilliseconds(start).toZonedDateTimeISO(timeZone);
-      const nextHour = local
-        .toPlainDateTime()
-        .round({ smallestUnit: 'hour', roundingMode: 'floor' })
-        .add({ hours: 1 });
-      // A skipped hour starts where the clocks land and a repeated one at its first run, unless
-      // `start` is already past that run.
-      let boundary = nextHour.toZonedDateTime(timeZone).epochMilliseconds;
-      if (boundary <= start) {
-        boundary = nextHour.toZonedDateTime(timeZone, {
-          disambiguation: 'later',
-        }).epochMilliseconds;
-      }
-      const cut = Math.min(end, boundary);
+      const wall = local.toPlainDateTime();
+      // Until the offset changes, the next hour on the clock is this far away.
+      const toNextHour = wall
+        .until(wall.round({ smallestUnit: 'hour', roundingMode: 'floor' }).add({ hours: 1 }))
+        .total('milliseconds');
+      const offsetChange = local.getTimeZoneTransition('next')?.epochMilliseconds ?? Infinity;
+      const cut = Math.min(end, start + toNextHour, offsetChange);
       const hours = totals[local.dayOfWeek - 1];
       if (hours) hours[local.hour] = (hours[local.hour] ?? 0) + cut - start;
       start = cut;
