@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { firstDayOfWeekOf, resolveDashboardPeriod } from '../../server/utils/dashboard-period';
+import {
+  exportBacklogWindow,
+  firstDayOfWeekOf,
+  periodInstants,
+  resolveDashboardPeriod,
+} from '../../server/utils/dashboard-period';
 
 const MONDAY = 1;
 const SATURDAY = 6;
@@ -75,6 +80,18 @@ describe('resolved Dashboard period', () => {
       kind,
       firstDay,
       lastDay,
+    });
+  });
+});
+
+describe('Export backlog window', () => {
+  it('covers the 30 days before today, across a clock change', () => {
+    const window = exportBacklogWindow('2026-11-01');
+    expect(window).toEqual({ firstDay: '2026-10-02', lastDay: '2026-10-31' });
+    // Summer time in Warsaw ends on October 25.
+    expect(periodInstants(window, 'Europe/Warsaw')).toEqual({
+      from: new Date('2026-10-01T22:00:00.000Z'),
+      to: new Date('2026-10-31T23:00:00.000Z'),
     });
   });
 });

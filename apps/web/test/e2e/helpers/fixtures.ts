@@ -1,3 +1,5 @@
+import { Temporal } from 'temporal-polyfill';
+
 /**
  * Deterministic "valid but unknown" UUIDv7 used by e2e negative cases that
  * expect HTTP 404 (well-formed id that does not exist). RFC version nibble
@@ -23,9 +25,5 @@ export function zoneAwayFromMidnight() {
     hour >= 3 && hour < 21
       ? { timezone: 'UTC', offset: 'Z' }
       : { timezone: 'Asia/Tokyo', offset: '+09:00' };
-  const today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: zone.timezone,
-    dateStyle: 'short',
-  }).format(new Date());
-  return { ...zone, today };
+  return { ...zone, today: Temporal.Now.plainDateISO(zone.timezone).toString() };
 }

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year. It reads only local data and never contacts a Tracker.
+Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year, and points out recent days not yet Sent. It reads only local data and never contacts a Tracker.
 
 ## Requirements
 

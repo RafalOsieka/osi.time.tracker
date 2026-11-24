@@ -506,14 +506,15 @@ describe('Dashboard Export backlog', () => {
       .map((link) => [link.text(), link.attributes('href')]);
   }
 
+  /** The list's accessible name, from the visible label. */
+  function backlogLabel() {
+    const id = byTestId('dashboard-export-backlog').find('ul').attributes('aria-labelledby');
+    return document.getElementById(id ?? '')?.textContent?.trim();
+  }
+
   it('lists each day of the Export backlog with a link to its Remote Sync page', async () => {
     await mountPage();
-    expect(byTestId('dashboard-export-backlog').find('span:not([aria-hidden])').text()).toBe(
-      'Export backlog:',
-    );
-    expect(byTestId('dashboard-export-backlog').find('ul').attributes('aria-label')).toBe(
-      'Export backlog',
-    );
+    expect(backlogLabel()).toBe('Export backlog:');
     expect(backlogLinks()).toEqual([
       ['Oct 30', '/sync/2026-10-30'],
       ['Nov 12', '/sync/2026-11-12'],
@@ -544,9 +545,7 @@ describe('Dashboard Export backlog', () => {
     await $i18n.setLocale('pl');
     try {
       await mountPage();
-      expect(byTestId('dashboard-export-backlog').find('ul').attributes('aria-label')).toBe(
-        'Zaległy eksport',
-      );
+      expect(backlogLabel()).toBe('Zaległy eksport:');
       expect(backlogLinks().map(([text]) => text)).toEqual(['30 paź', '12 lis']);
     } finally {
       await $i18n.setLocale('en');

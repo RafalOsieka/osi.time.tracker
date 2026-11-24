@@ -17,8 +17,8 @@ export async function loadExportBacklog(
   timeZone: string,
   today: string,
 ): Promise<string[]> {
-  const window = exportBacklogWindow(today);
-  const bounds = periodInstants(window, timeZone);
+  const backlogDays = exportBacklogWindow(today);
+  const bounds = periodInstants(backlogDays, timeZone);
   const [entryRows, sent] = await Promise.all([
     db
       .select({
@@ -44,8 +44,8 @@ export async function loadExportBacklog(
       .where(
         and(
           eq(remoteExports.userId, userId),
-          gte(remoteExports.localDate, window.firstDay),
-          lte(remoteExports.localDate, window.lastDay),
+          gte(remoteExports.localDate, backlogDays.firstDay),
+          lte(remoteExports.localDate, backlogDays.lastDay),
         ),
       ),
   ]);
