@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year, and points out recent days not yet Sent. It reads only local data and never contacts a Tracker.
+Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year, shows their days over the past year, and points out recent days not yet Sent. It reads only local data and never contacts a Tracker.
 
 ## Requirements
 
 ### Requirement: Dashboard endpoint
 
-`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups, its top Tasks and the days of the Export backlog. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
+`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups, its top Tasks, the days of the Export backlog and the time per day of the past year. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
 
 #### Scenario: Empty account and empty period
 
@@ -216,6 +216,30 @@ The response SHALL list the days of the Export backlog among the 30 local days b
 - **WHEN** a Project is deleted while its Tracker is active
 - **THEN** its unsent time SHALL list its days
 
+### Requirement: Past year
+
+The response SHALL hold the time of each local day of the past year, whatever the period: the days from the day after today's date a year earlier up to and including today, as the first day, the last day and one value per day in order, counted like the summary.
+
+#### Scenario: Window
+
+- **WHEN** today is 2026-11-24
+- **THEN** the past year SHALL cover 2025-11-25 to 2026-11-24 with 365 values
+
+#### Scenario: Today is a leap day
+
+- **WHEN** today is 2028-02-29
+- **THEN** the past year SHALL start on 2027-03-01
+
+#### Scenario: Entries counted
+
+- **WHEN** a day has two completed entries of 1:00 and 0:30, another an entry from 23:00 to 01:00, and today a running entry
+- **THEN** the first day SHALL have 1:30, the day the second entry started 2:00, and the running entry SHALL NOT count
+
+#### Scenario: Any period
+
+- **WHEN** the query asks for a week in another year
+- **THEN** the past year SHALL be the same as without a query
+
 ### Requirement: Export backlog line
 
 When the Export backlog has days, the page SHALL show one line labelled with the term Export backlog (_Zaległy eksport_), listing each day as a short date in the user's language that links to its Remote Sync page (`remote-sync-review`). The line SHALL show no categories, hours or dismiss action, and SHALL stay the same across periods. All text SHALL have `en`/`pl` parity.
@@ -253,6 +277,81 @@ The page SHALL list the top Tasks in a captioned table, in the order of the resp
 
 - **WHEN** the period has entries but no Task
 - **THEN** the page SHALL show a short message instead of the list
+
+### Requirement: 12-month heatmap
+
+Below the period sections the page SHALL show the past year as a grid with a column per week and a row per weekday, the rows from the first day of the week, labelled with short weekday names and the months whose first day falls in a column. The heatmap SHALL stay the same across periods. All text SHALL have `en`/`pl` parity.
+
+#### Scenario: Sunday first
+
+- **WHEN** the first day of the week is Sunday
+- **THEN** the first row SHALL be Sunday
+
+#### Scenario: Period without entries
+
+- **WHEN** the period has no entries but the past year has
+- **THEN** the heatmap SHALL show the past year
+
+#### Scenario: Loading another period
+
+- **WHEN** another period loads
+- **THEN** the heatmap SHALL stay as it is
+
+#### Scenario: Failed load or empty account
+
+- **WHEN** the request fails or the account has no Time entry
+- **THEN** the heatmap SHALL be absent
+
+#### Scenario: Phone
+
+- **WHEN** the page is shown on a phone
+- **THEN** the weeks SHALL scroll inside the heatmap, starting at the latest one with the weekday labels in view, and the page SHALL NOT scroll sideways
+
+### Requirement: Heatmap levels
+
+Each day of the heatmap SHALL have one of five fixed levels: none, up to 2 h, up to 4 h, up to 8 h and over 8 h, drawn as a sequential scale with separate values for light and dark mode. A legend SHALL name each level in text.
+
+#### Scenario: Levels
+
+- **WHEN** days have 0:00, 2:00, 2:01, 8:00 and 8:01
+- **THEN** they SHALL have the levels none, up to 2 h, up to 4 h, up to 8 h and over 8 h
+
+### Requirement: Moving through the heatmap
+
+The heatmap SHALL be one tab stop, held by today until the user moves it. Up and down arrows SHALL move to the previous and the next day, left and right arrows by a week, Home and End to the first day and today, never past either.
+
+#### Scenario: Keyboard
+
+- **WHEN** the user tabs into the heatmap on 2026-11-24 and presses the left arrow, then the up arrow
+- **THEN** 2026-11-16 SHALL have the focus
+
+#### Scenario: Edge
+
+- **WHEN** today has the focus and the user presses the right arrow
+- **THEN** today SHALL keep the focus
+
+### Requirement: Reading a heatmap day
+
+Hovering or focusing a day SHALL show its date and its time as unpadded `H:MM`, and each day's accessible name SHALL hold the same. Escape SHALL hide it until the pointer or the focus moves.
+
+#### Scenario: Accessible name
+
+- **WHEN** a screen reader reaches November 18, 2026, with 8:00
+- **THEN** it SHALL announce "Wed, Nov 18, 2026: 8:00"
+
+#### Scenario: Hover
+
+- **WHEN** the pointer rests on November 2, 2026, with 1:00
+- **THEN** the page SHALL show `Mon, Nov 2, 2026` and `1:00` beside the day
+
+### Requirement: Opening a week from the heatmap
+
+Activating a day by click, Enter or Space SHALL open the week that contains it, putting `period=week` and the day as `date` in the URL as a new history entry. The page SHALL scroll to the top and move the focus to the selected kind of period.
+
+#### Scenario: Opening a week
+
+- **WHEN** the user activates 2026-11-19 far down the page
+- **THEN** the URL SHALL be `/?period=week&date=2026-11-19`, the page SHALL show that week, scrolled to the top, and the week control SHALL have the focus
 
 ### Requirement: Dashboard period in the URL
 

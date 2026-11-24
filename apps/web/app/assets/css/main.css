@@ -153,6 +153,36 @@
   --chart-no-project: var(--ui-color-neutral-600);
 }
 
+/*
+ * Sequential scale of the Dashboard's heatmaps: none, then four steps of one hue that grow
+ * darker in light mode and lighter in dark mode, about evenly apart in lightness. The palest
+ * steps miss 3:1 on the card, so every cell's time is also in text and the legend names each
+ * level.
+ */
+@theme inline {
+  --color-heat-0: var(--heat-0);
+  --color-heat-1: var(--heat-1);
+  --color-heat-2: var(--heat-2);
+  --color-heat-3: var(--heat-3);
+  --color-heat-4: var(--heat-4);
+}
+
+:root {
+  --heat-0: var(--ui-color-neutral-200);
+  --heat-1: var(--color-cyan-300);
+  --heat-2: var(--color-cyan-500);
+  --heat-3: var(--color-cyan-700);
+  --heat-4: var(--color-cyan-900);
+}
+
+.dark {
+  --heat-0: color-mix(in oklab, var(--ui-bg-elevated) 50%, var(--ui-bg-accented));
+  --heat-1: var(--color-cyan-900);
+  --heat-2: var(--color-cyan-700);
+  --heat-3: var(--color-cyan-500);
+  --heat-4: var(--color-cyan-300);
+}
+
 html,
 body,
 #__nuxt {

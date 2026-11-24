@@ -112,6 +112,25 @@ async function openPeriod(target: DashboardQuery): Promise<void> {
   if (isNavigationFailure(failure, NavigationFailureType.duplicated)) await refresh();
 }
 
+const pageElement = useTemplateRef('page');
+const kindGroup = useTemplateRef('kindGroup');
+
+/**
+ * Opens the week of a day picked lower down, and shows it from the top, with the focus on the
+ * selected kind so that the keyboard continues there.
+ */
+async function openWeek(day: string): Promise<void> {
+  // The layout scrolls an element, not the window, so every scrolling ancestor goes back up.
+  for (let element: Element | null = pageElement.value; element; element = element.parentElement) {
+    element.scrollTop = 0;
+  }
+  await openPeriod({ period: 'week', date: day });
+  await nextTick();
+  const group: unknown = kindGroup.value?.$el;
+  const selected = group instanceof Element ? group.querySelector('[aria-pressed="true"]') : null;
+  if (selected instanceof HTMLElement) selected.focus();
+}
+
 function openTimer(): void {
   void router.push('/timer');
 }
@@ -142,9 +161,9 @@ function selectKind(kind: DashboardPeriodKind): void {
 </script>
 
 <template>
-  <div class="space-y-6" data-testid="dashboard-page">
+  <div ref="page" class="space-y-6" data-testid="dashboard-page">
     <PageHeader :title="t('dashboard.pageTitle')">
-      <UFieldGroup role="group" :aria-label="t('dashboard.periodKind')">
+      <UFieldGroup ref="kindGroup" role="group" :aria-label="t('dashboard.periodKind')">
         <UButton
           v-for="kind in kinds"
           :key="kind.value"
@@ -229,6 +248,14 @@ function selectKind(kind: DashboardPeriodKind): void {
         />
         <DashboardTasks :tasks="data?.topTasks" :loading="loading" />
       </template>
+      <!-- The same whatever the period, so it stays while another period loads. A new year
+           window starts it afresh. -->
+      <DashboardPastYear
+        :key="data?.pastYear.firstDay"
+        :past-year="data?.pastYear"
+        :first-day-of-week="data?.firstDayOfWeek ?? 1"
+        @open="(day) => void openWeek(day)"
+      />
     </template>
   </div>
 </template>

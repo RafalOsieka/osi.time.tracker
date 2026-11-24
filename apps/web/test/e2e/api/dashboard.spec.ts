@@ -667,6 +667,38 @@ describeDashboard('dashboard API', async () => {
     expect((await getDashboard(jar)).exportBacklog).toEqual([daysAgo(1)]);
   });
 
+  it('sums each day of the year up to and including today, whatever the period', async () => {
+    const { timezone, offset, today } = zoneAwayFromMidnight();
+    const user = await userIn(timezone);
+    const day = (days: number) => Temporal.PlainDate.from(today).subtract({ days }).toString();
+    const firstDay = Temporal.PlainDate.from(today).subtract({ years: 1 }).add({ days: 1 });
+    const before = firstDay.subtract({ days: 1 }).toString();
+    const at = (date: string, time: string) => `${date}T${time}${offset}`;
+    await logTime(user, at(before, '10:00:00'), at(before, '11:00:00'));
+    await logTime(user, at(firstDay.toString(), '10:00:00'), at(firstDay.toString(), '11:00:00'));
+    await logTime(user, at(firstDay.toString(), '12:00:00'), at(firstDay.toString(), '12:30:00'));
+    // Across midnight: wholly on the day it started.
+    await logTime(user, at(day(3), '23:00:00'), at(day(2), '01:00:00'));
+    await logTime(user, at(today, '00:30:00'), at(today, '01:00:00'));
+    expect((await startEntry(user.jar, user.token, { title: 'Running' })).status).toBe(200);
+
+    for (const query of ['', '?period=week&date=2020-06-01']) {
+      const { pastYear } = await getDashboard(user.jar, query);
+      expect(pastYear.firstDay).toBe(firstDay.toString());
+      expect(pastYear.lastDay).toBe(today);
+      expect(pastYear.daySeconds).toHaveLength(firstDay.until(today).days + 1);
+      const days = pastYear.daySeconds.map((seconds, index) => [
+        firstDay.add({ days: index }).toString(),
+        seconds,
+      ]);
+      expect(Object.fromEntries(days.filter(([, seconds]) => seconds !== 0))).toEqual({
+        [firstDay.toString()]: 5400,
+        [day(3)]: 7200,
+        [today]: 1800,
+      });
+    }
+  });
+
   it("never shows another user's entries", async () => {
     const other = await backlogUser();
     await logTime(other.user, '2026-08-03T08:00:00.000Z', '2026-08-03T09:00:00.000Z');
@@ -677,6 +709,7 @@ describeDashboard('dashboard API', async () => {
     expect(body.groups).toEqual({ project: [], tracker: [] });
     expect(body.topTasks).toEqual([]);
     expect(body.exportBacklog).toEqual([]);
+    expect(body.pastYear.daySeconds.filter((seconds) => seconds !== 0)).toEqual([]);
     expect(body.hasEntries).toBe(false);
   });
 });

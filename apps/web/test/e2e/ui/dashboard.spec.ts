@@ -212,6 +212,65 @@ describeDashboardUi('Dashboard journey', async () => {
     await page.close();
   });
 
+  it('opens the week of a day picked in the 12-month heatmap, from the top', async () => {
+    const user = await seedUser(dbUrl);
+    const { jar, token } = await apiLogin(user.email, user.password);
+    const { timezone, offset, today } = zoneAwayFromMidnight();
+    await patchTimezone(jar, token, timezone);
+    const day = Temporal.PlainDate.from(today).subtract({ days: 10 }).toString();
+    const created = await startEntry(jar, token, {
+      title: 'Work',
+      startedAt: `${day}T01:00:00${offset}`,
+      stoppedAt: `${day}T03:30:00${offset}`,
+    });
+    expect(created.status).toBe(200);
+
+    const page = await createPage('/login');
+    await loginAs(page, user.email, user.password);
+    await page.waitForSelector('[data-testid="dashboard-summary"]');
+    const response = await page.goto(url('/'), { waitUntil: 'hydration' });
+    const firstDay = Temporal.PlainDate.from(today).subtract({ years: 1 }).add({ days: 1 });
+    expect(
+      ((await response?.text()) ?? '').match(/data-testid="dashboard-past-year-day"/g),
+    ).toHaveLength(firstDay.until(today).days + 1);
+
+    const dayName = new Intl.DateTimeFormat('en', {
+      weekday: 'short',
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      timeZone: 'UTC',
+    }).format(new Date(`${day}T00:00:00Z`));
+    const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+    // From today a week back and three days up.
+    await page.focus('[data-testid="dashboard-past-year-day"][tabindex="0"]');
+    for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp'])
+      await page.keyboard.press(key);
+    expect(await focused()).toBe(`${dayName}: 2:30`);
+    await page
+      .locator('[data-testid="dashboard-past-year-tooltip"]', { hasText: dayName })
+      .waitFor();
+    const scrolled = () =>
+      page.locator('[data-testid="dashboard-page"]').evaluate((page) => {
+        let top = 0;
+        for (let element: Element | null = page; element; element = element.parentElement) {
+          top = Math.max(top, element.scrollTop);
+        }
+        return top;
+      });
+    expect(await scrolled()).toBeGreaterThan(0);
+
+    await page.keyboard.press('Enter');
+    await page.waitForURL(`**/?period=week&date=${day}`);
+    await page.waitForSelector('[data-testid="dashboard-kind-week"][aria-pressed="true"]');
+    await page.locator('[data-testid="dashboard-total"]', { hasText: '2:30' }).waitFor();
+    expect(await scrolled()).toBe(0);
+    expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe(
+      'dashboard-kind-week',
+    );
+    await page.close();
+  });
+
   it('leads from a day in the Export backlog to its Remote Sync page', async () => {
     const user = await seedUser(dbUrl);
     const { jar, token } = await apiLogin(user.email, user.password);
@@ -271,6 +330,10 @@ describeDashboardUi('Dashboard journey', async () => {
     expect(await groupRows(page)).toEqual([[project.name, '3:30', '100%']]);
     const scroll = page.locator('[data-testid="dashboard-chart-scroll"]');
     expect(await scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+      true,
+    );
+    const heatmap = page.locator('[data-testid="dashboard-past-year-scroll"]');
+    expect(await heatmap.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
       true,
     );
     const share = page.locator('[data-testid="dashboard-groups-table"] td').last();

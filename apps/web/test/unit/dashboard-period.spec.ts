@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   exportBacklogWindow,
   firstDayOfWeekOf,
+  pastYearWindow,
   periodInstants,
   resolveDashboardPeriod,
 } from '../../server/utils/dashboard-period';
@@ -93,5 +94,16 @@ describe('Export backlog window', () => {
       from: new Date('2026-10-01T22:00:00.000Z'),
       to: new Date('2026-10-31T23:00:00.000Z'),
     });
+  });
+});
+
+describe('past year window', () => {
+  it.each([
+    ['2026-11-24', '2025-11-25'],
+    ['2028-02-29', '2027-03-01'],
+    ['2025-02-28', '2024-02-29'],
+    ['2026-01-01', '2025-01-02'],
+  ])('ends on %s and starts on %s', (today, firstDay) => {
+    expect(pastYearWindow(today)).toEqual({ firstDay, lastDay: today });
   });
 });
