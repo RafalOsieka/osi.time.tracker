@@ -81,3 +81,20 @@ export function periodInstants({ firstDay, lastDay }: DashboardPeriodDto, timeZo
     to: new Date(localDayStartInstant(dayAfter, timeZone)),
   };
 }
+
+/** The bucket a day of the period falls in, named by its first day. */
+export function bucketOf(day: string, { kind }: DashboardPeriodDto): string {
+  return kind === 'year' ? `${day.slice(0, 7)}-01` : day;
+}
+
+/** Every bucket of the period, with time or without. */
+export function periodBuckets(period: DashboardPeriodDto): string[] {
+  const step = period.kind === 'year' ? { months: 1 } : { days: 1 };
+  const buckets: string[] = [];
+  let bucket = Temporal.PlainDate.from(period.firstDay);
+  while (bucket.toString() <= period.lastDay) {
+    buckets.push(bucket.toString());
+    bucket = bucket.add(step);
+  }
+  return buckets;
+}

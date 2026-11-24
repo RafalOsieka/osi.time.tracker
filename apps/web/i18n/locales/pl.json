@@ -69,6 +69,23 @@
     "daysWithEntries": "Dni z wpisami",
     "average": "Średnio na dzień z wpisami",
     "emptyPeriod": "Brak zakończonych wpisów czasu w tym okresie.",
+    "timeInPeriod": "Czas w okresie",
+    "groupBy": "Grupowanie",
+    "grouping": {
+      "project": "Projekt",
+      "tracker": "Tracker"
+    },
+    "groupsCaption": {
+      "project": "Czas według projektów",
+      "tracker": "Czas według trackerów"
+    },
+    "columnTime": "Czas",
+    "columnShare": "Udział",
+    "group": {
+      "local": "Lokalne",
+      "noProject": "Bez projektu"
+    },
+    "deleted": "usunięty",
     "emptyAccountTitle": "Brak wpisów czasu",
     "emptyAccountMessage": "Dodaj pierwszy wpis czasu w Stoperze, a zobaczysz tu, na co idzie Twój czas.",
     "emptyAccountCta": "Przejdź do Stopera"

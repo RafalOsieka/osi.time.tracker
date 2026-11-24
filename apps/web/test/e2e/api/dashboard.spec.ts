@@ -1,7 +1,7 @@
 import { expect, it } from 'vitest';
-import type { DashboardDto } from '../../../shared/types/dashboard';
+import type { DashboardDto, DashboardGroupDto } from '../../../shared/types/dashboard';
 import { type CookieJar, patchTimezone } from '../helpers/auth';
-import { startEntry } from '../helpers/http';
+import { createProject, createTracker, startEntry } from '../helpers/http';
 import { type SeededSession, seedAndLogin } from '../helpers/session';
 import { url } from '../helpers/url';
 import { requireDocker } from '../harness/guards';
@@ -22,6 +22,17 @@ async function getDashboard(jar: CookieJar, query = ''): Promise<DashboardDto> {
   return res.json();
 }
 
+/** A group with its total, without the split over buckets. */
+function withoutBuckets({ bucketSeconds: _bucketSeconds, ...group }: DashboardGroupDto) {
+  return group;
+}
+
+/** The buckets of a group that hold time. */
+function timeByBucket({ buckets }: DashboardDto, group: DashboardGroupDto | undefined) {
+  const seconds = buckets.map((bucket, index) => [bucket, group?.bucketSeconds[index]] as const);
+  return Object.fromEntries(seconds.filter(([, value]) => value !== 0));
+}
+
 /** Today in `timeZone`, from a source independent of the server's date math. */
 function todayIn(timeZone: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone, dateStyle: 'short' }).format(new Date());
@@ -37,8 +48,21 @@ describeDashboard('dashboard API', async () => {
     return user;
   }
 
-  async function logTime(user: SeededSession, startedAt: string, stoppedAt: string) {
-    const res = await startEntry(user.jar, user.token, { title: 'Work', startedAt, stoppedAt });
+  async function logTime(
+    user: SeededSession,
+    startedAt: string,
+    stoppedAt: string,
+    task: { title?: string; projectId?: string } = { title: 'Work' },
+  ) {
+    const res = await startEntry(user.jar, user.token, { ...task, startedAt, stoppedAt });
+    expect(res.status).toBe(200);
+  }
+
+  async function remove(user: SeededSession, path: string) {
+    const res = await fetch(url(path), {
+      method: 'DELETE',
+      headers: { 'csrf-token': user.token, cookie: user.jar.header() },
+    });
     expect(res.status).toBe(200);
   }
 
@@ -157,6 +181,7 @@ describeDashboard('dashboard API', async () => {
     expect((await startEntry(user.jar, user.token, { title: 'Running' })).status).toBe(200);
     const body = await getDashboard(user.jar, '?period=year');
     expect(body.summary).toEqual(NO_TIME);
+    expect(body.groups).toEqual({ project: [], tracker: [] });
     expect(body.hasEntries).toBe(true);
   });
 
@@ -172,12 +197,166 @@ describeDashboard('dashboard API', async () => {
     expect(emptyPeriod.summary).toEqual(NO_TIME);
   });
 
+  it('groups the time by Project and by Tracker, largest first', async () => {
+    const user = await userIn('UTC');
+    const { jar, token } = user;
+    const tracker = await createTracker(jar, token, 'Redmine');
+    const site = await createProject(jar, token, 'Site', tracker.id);
+    const shop = await createProject(jar, token, 'Shop', tracker.id);
+    const books = await createProject(jar, token, 'Books');
+    const house = await createProject(jar, token, 'House');
+    const title = 'Work';
+    await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T09:00:00Z', {
+      title,
+      projectId: shop.id,
+    });
+    await logTime(user, '2026-08-03T09:00:00Z', '2026-08-03T11:00:00Z', {
+      title,
+      projectId: site.id,
+    });
+    await logTime(user, '2026-08-04T08:00:00Z', '2026-08-04T09:00:00Z', {
+      title: 'Other work',
+      projectId: site.id,
+    });
+    await logTime(user, '2026-08-05T08:00:00Z', '2026-08-05T09:30:00Z', {
+      title,
+      projectId: books.id,
+    });
+    await logTime(user, '2026-08-05T10:00:00Z', '2026-08-05T12:00:00Z', {
+      title,
+      projectId: house.id,
+    });
+    // A Task without a Project and an entry without a Task.
+    await logTime(user, '2026-08-06T08:00:00Z', '2026-08-06T10:00:00Z', { title });
+    await logTime(user, '2026-08-06T10:00:00Z', '2026-08-06T10:15:00Z', {});
+
+    const { groups, summary } = await getDashboard(jar, '?date=2026-08-01');
+    expect(groups.project.map(withoutBuckets)).toEqual([
+      { kind: 'project', id: site.id, name: 'Site', deleted: false, totalSeconds: 10_800 },
+      { kind: 'noProject', totalSeconds: 8100 },
+      { kind: 'project', id: house.id, name: 'House', deleted: false, totalSeconds: 7200 },
+      { kind: 'project', id: books.id, name: 'Books', deleted: false, totalSeconds: 5400 },
+      { kind: 'project', id: shop.id, name: 'Shop', deleted: false, totalSeconds: 3600 },
+    ]);
+    expect(groups.tracker.map(withoutBuckets)).toEqual([
+      { kind: 'tracker', id: tracker.id, name: 'Redmine', deleted: false, totalSeconds: 14_400 },
+      { kind: 'local', totalSeconds: 12_600 },
+      { kind: 'noProject', totalSeconds: 8100 },
+    ]);
+    expect(summary.totalSeconds).toBe(35_100);
+  });
+
+  it('keeps deleted Projects and Trackers under their name', async () => {
+    const user = await userIn('UTC');
+    const { jar, token } = user;
+    const kept = await createTracker(jar, token, 'Kept');
+    const gone = await createTracker(jar, token, 'Gone');
+    const oldSite = await createProject(jar, token, 'Site', kept.id);
+    const orphan = await createProject(jar, token, 'Orphan', gone.id);
+    const title = 'Work';
+    await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T11:00:00Z', {
+      title,
+      projectId: oldSite.id,
+    });
+    await logTime(user, '2026-08-03T12:00:00Z', '2026-08-03T14:00:00Z', {
+      title,
+      projectId: orphan.id,
+    });
+    await remove(user, `/api/projects/${oldSite.id}`);
+    await remove(user, `/api/trackers/${gone.id}`);
+    const newSite = await createProject(jar, token, 'Site', kept.id);
+    await logTime(user, '2026-08-03T15:00:00Z', '2026-08-03T16:00:00Z', {
+      title,
+      projectId: newSite.id,
+    });
+
+    const { groups } = await getDashboard(jar, '?date=2026-08-01');
+    expect(groups.project.map(withoutBuckets)).toEqual([
+      { kind: 'project', id: oldSite.id, name: 'Site', deleted: true, totalSeconds: 10_800 },
+      { kind: 'project', id: orphan.id, name: 'Orphan', deleted: false, totalSeconds: 7200 },
+      { kind: 'project', id: newSite.id, name: 'Site', deleted: false, totalSeconds: 3600 },
+    ]);
+    expect(groups.tracker.map(withoutBuckets)).toEqual([
+      { kind: 'tracker', id: kept.id, name: 'Kept', deleted: false, totalSeconds: 14_400 },
+      { kind: 'tracker', id: gone.id, name: 'Gone', deleted: true, totalSeconds: 7200 },
+    ]);
+  });
+
+  it('splits each group per day of a week or month and per month of a year', async () => {
+    const user = await userIn('Europe/Warsaw');
+    const project = await createProject(user.jar, user.token, 'Books');
+    const task = { title: 'Work', projectId: project.id };
+    await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T09:00:00Z', task);
+    await logTime(user, '2026-08-03T10:00:00Z', '2026-08-03T10:30:00Z', task);
+    // Crosses local midnight, so it stays in August.
+    await logTime(user, '2026-08-31T21:30:00Z', '2026-08-31T23:30:00Z', task);
+    // 00:30 on September 1 in Warsaw.
+    await logTime(user, '2026-08-31T22:30:00Z', '2026-08-31T22:45:00Z', task);
+
+    const week = await getDashboard(user.jar, '?period=week&date=2026-08-31');
+    expect(week.buckets).toEqual([
+      '2026-08-31',
+      '2026-09-01',
+      '2026-09-02',
+      '2026-09-03',
+      '2026-09-04',
+      '2026-09-05',
+      '2026-09-06',
+    ]);
+    const month = await getDashboard(user.jar, '?date=2026-08-31');
+    expect(month.buckets).toHaveLength(31);
+    const year = await getDashboard(user.jar, '?period=year&date=2026-08-31');
+    expect(year.buckets).toHaveLength(12);
+    expect(year.buckets.slice(0, 2)).toEqual(['2026-01-01', '2026-02-01']);
+    for (const grouping of ['project', 'tracker'] as const) {
+      expect(timeByBucket(week, week.groups[grouping][0])).toEqual({
+        '2026-08-31': 7200,
+        '2026-09-01': 900,
+      });
+      expect(timeByBucket(month, month.groups[grouping][0])).toEqual({
+        '2026-08-03': 5400,
+        '2026-08-31': 7200,
+      });
+      expect(timeByBucket(year, year.groups[grouping][0])).toEqual({
+        '2026-08-01': 12_600,
+        '2026-09-01': 900,
+      });
+    }
+  });
+
+  it('lists equal groups in creation order, time without a Project last', async () => {
+    const user = await userIn('UTC');
+    const title = 'Work';
+    await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T09:00:00Z', { title });
+    const first = await createProject(user.jar, user.token, 'Second by name');
+    const second = await createProject(user.jar, user.token, 'First by name');
+    for (const projectId of [second.id, first.id]) {
+      await logTime(user, '2026-08-04T08:00:00Z', '2026-08-04T09:00:00Z', { title, projectId });
+    }
+    const { groups } = await getDashboard(user.jar, '?date=2026-08-01');
+    expect(groups.project.map((group) => ('id' in group ? group.id : group.kind))).toEqual([
+      first.id,
+      second.id,
+      'noProject',
+    ]);
+  });
+
+  it('has no group for a Project whose only entry is shorter than a second', async () => {
+    const user = await userIn('UTC');
+    const project = await createProject(user.jar, user.token, 'Books');
+    const task = { title: 'Work', projectId: project.id };
+    await logTime(user, '2026-08-03T08:00:00.000Z', '2026-08-03T08:00:00.500Z', task);
+    const { groups } = await getDashboard(user.jar, '?date=2026-08-01');
+    expect(groups).toEqual({ project: [], tracker: [] });
+  });
+
   it("never shows another user's entries", async () => {
     const other = await userIn('UTC');
     await logTime(other, '2026-08-03T08:00:00.000Z', '2026-08-03T09:00:00.000Z');
     const user = await userIn('UTC');
     const body = await getDashboard(user.jar, '?date=2026-08-03');
     expect(body.summary).toEqual(NO_TIME);
+    expect(body.groups).toEqual({ project: [], tracker: [] });
     expect(body.hasEntries).toBe(false);
   });
 });

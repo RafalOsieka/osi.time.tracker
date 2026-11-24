@@ -8,7 +8,7 @@ Show the user where their time went: the Dashboard at `/` sums up their complete
 
 ### Requirement: Dashboard endpoint
 
-`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, and the summary. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
+`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period and its groups. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
 
 #### Scenario: Empty account and empty period
 
@@ -82,6 +82,58 @@ The summary SHALL hold the total time, the number of days with entries and the a
 - **WHEN** the only Time entry is running
 - **THEN** the summary SHALL be zero
 
+### Requirement: Buckets
+
+The response SHALL list every bucket of the period in order, with time or without: each day of a week or month, and the first day of each month of a year. Each group SHALL carry its time per bucket, counted like the summary.
+
+#### Scenario: Days of a month
+
+- **WHEN** August 2026 is requested
+- **THEN** there SHALL be 31 buckets, 2026-08-01 to 2026-08-31
+
+#### Scenario: Months of a year
+
+- **WHEN** a Project has 1:30 on August 3 and 2:00 on August 31, and that year is requested
+- **THEN** there SHALL be 12 buckets and the Project's group SHALL have 3:30 in 2026-08-01
+
+### Requirement: Groups
+
+The response SHALL group the period's time both by Project and by Tracker, each group with its total, largest first; equal groups in creation order, the ones without a name last. Only groups with time SHALL be listed, and the times of either grouping SHALL add up to the total.
+
+#### Scenario: By Project
+
+- **WHEN** the period has time in two Projects, on a Task without a Project and in an entry without a Task
+- **THEN** there SHALL be one group per Project and one "No project" group with the other two
+
+#### Scenario: By Tracker
+
+- **WHEN** the period has time in two Projects of one Tracker, in two Local projects and without a Project
+- **THEN** there SHALL be one group for the Tracker, one "Local" group and one "No project" group
+
+#### Scenario: Equal groups
+
+- **WHEN** two Projects and the time without a Project are equally large
+- **THEN** the older Project SHALL come first and "No project" last
+
+#### Scenario: Entry shorter than a second
+
+- **WHEN** a Project's only entry is shorter than one second
+- **THEN** the Project SHALL have no group
+
+### Requirement: Deleted Projects and Trackers
+
+Soft-deleted Projects and Trackers SHALL keep their groups and names, marked as deleted.
+
+#### Scenario: Deleted and created again
+
+- **WHEN** a Project with time is deleted and another one with the same name has time too
+- **THEN** there SHALL be two groups with that name, the first marked as deleted
+
+#### Scenario: Deleted Tracker
+
+- **WHEN** a Tracker with time is deleted and its Project is not
+- **THEN** the Tracker's group SHALL be marked as deleted and the Project's SHALL NOT
+
 ### Requirement: Dashboard period in the URL
 
 The page SHALL offer week, month and year, and SHALL show the period in the user's language. Choosing a period SHALL put `period` and `date` in the URL as a new history entry; `/` without them SHALL be the current month.
@@ -133,6 +185,39 @@ The page SHALL show the total and the average as unpadded `H:MM` and the days wi
 - **WHEN** a month has 2:00 on one day and 3:30 on another
 - **THEN** the page SHALL show `5:30`, `2` and `2:45`
 
+### Requirement: Groups table
+
+The page SHALL list every group in a captioned table with its name, its time as unpadded `H:MM` and its share of the total as a whole percentage in the user's language, in the order of the response. A deleted group SHALL say so in text.
+
+#### Scenario: Shares
+
+- **WHEN** a Project has 3:45 of a total of 7:30
+- **THEN** its row SHALL show `3:45` and `50%`
+
+#### Scenario: Deleted group
+
+- **WHEN** a group is marked as deleted
+- **THEN** its row SHALL show its name and the word "deleted" in the user's language
+
+#### Scenario: Reading a column
+
+- **WHEN** a screen reader moves down the times or shares
+- **THEN** each SHALL be announced with its group's name
+
+### Requirement: Switching the grouping
+
+The page SHALL offer grouping by Project, the default, and by Tracker, operable by keyboard and announcing which one is selected. Switching SHALL make no request and SHALL NOT change the URL. The choice SHALL last while the user stays on the page, also across periods.
+
+#### Scenario: Switch to Trackers
+
+- **WHEN** the user picks Tracker
+- **THEN** the table SHALL list the Tracker groups of the same period
+
+#### Scenario: Another period
+
+- **WHEN** the user picks Tracker and steps to another period
+- **THEN** the table SHALL list the Tracker groups of that period
+
 ### Requirement: Dashboard states
 
 Loading, a failed load, a period without entries and an account without entries SHALL be distinct states. A full page load SHALL have its data in the first paint (`ui-routing`). The figures SHALL stay as loaded until the user changes the period, reloads or comes back to the page.
@@ -145,12 +230,12 @@ Loading, a failed load, a period without entries and an account without entries 
 #### Scenario: Failed load
 
 - **WHEN** the request fails
-- **THEN** the page SHALL show a translated error instead of the summary, and choosing the selected kind again SHALL retry
+- **THEN** the page SHALL show a translated error instead of the summary and the groups, and choosing the selected kind again SHALL retry
 
 #### Scenario: Period without entries
 
 - **WHEN** the period has no days with entries but the account has Time entries
-- **THEN** the page SHALL show zeros and a short message
+- **THEN** the page SHALL show zeros and a short message, and no groups
 
 #### Scenario: Account without entries
 

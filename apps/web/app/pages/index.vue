@@ -5,6 +5,7 @@ import {
   dashboardDateSchema,
   dashboardPeriodKindSchema,
   type DashboardDto,
+  type DashboardGrouping,
   type DashboardPeriodDto,
   type DashboardPeriodKind,
   type DashboardQuery,
@@ -41,6 +42,8 @@ const emptyAccount = computed(() => !loading.value && data.value?.hasEntries ===
 const emptyPeriod = computed(
   () => !loading.value && !emptyAccount.value && data.value?.summary.daysWithEntries === 0,
 );
+
+const grouping = ref<DashboardGrouping>('project');
 
 const figures = computed(() => {
   const summary = data.value?.summary;
@@ -186,31 +189,40 @@ function selectKind(kind: DashboardPeriodKind): void {
       @create="openTimer"
     />
 
-    <div
-      v-else
-      class="grid gap-4 sm:grid-cols-3"
-      role="group"
-      :aria-label="loading ? t('dashboard.loading') : t('dashboard.summary')"
-      aria-live="polite"
-      :aria-busy="loading"
-      :data-testid="loading ? 'dashboard-loading' : 'dashboard-summary'"
-    >
-      <StatCard
-        v-for="figure in figures"
-        :key="figure.id"
-        :label="figure.label"
-        :icon="figure.icon"
+    <template v-else>
+      <div
+        class="grid gap-4 sm:grid-cols-3"
+        role="group"
+        :aria-label="loading ? t('dashboard.loading') : t('dashboard.summary')"
+        aria-live="polite"
+        :aria-busy="loading"
+        :data-testid="loading ? 'dashboard-loading' : 'dashboard-summary'"
       >
-        <USkeleton v-if="loading" class="h-6 w-20" />
-        <span v-else :data-testid="`dashboard-${figure.id}`">{{ figure.value }}</span>
-      </StatCard>
-      <p
-        v-if="emptyPeriod"
-        class="col-span-full mt-2 text-muted"
-        data-testid="dashboard-empty-period"
-      >
-        {{ t('dashboard.emptyPeriod') }}
-      </p>
-    </div>
+        <StatCard
+          v-for="figure in figures"
+          :key="figure.id"
+          :label="figure.label"
+          :icon="figure.icon"
+        >
+          <USkeleton v-if="loading" class="h-6 w-20" />
+          <span v-else :data-testid="`dashboard-${figure.id}`">{{ figure.value }}</span>
+        </StatCard>
+        <p
+          v-if="emptyPeriod"
+          class="col-span-full mt-2 text-muted"
+          data-testid="dashboard-empty-period"
+        >
+          {{ t('dashboard.emptyPeriod') }}
+        </p>
+      </div>
+
+      <DashboardGroups
+        v-if="!emptyPeriod"
+        v-model:grouping="grouping"
+        :groups="data?.groups"
+        :total-seconds="data?.summary.totalSeconds ?? 0"
+        :loading="loading"
+      />
+    </template>
   </div>
 </template>
