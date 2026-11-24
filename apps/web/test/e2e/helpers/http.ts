@@ -3,6 +3,25 @@ import type { CookieJar } from './auth';
 import type { CreateTrackerDto } from '../../../shared/types/tracker';
 import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
 
+/** A mutating request with the session cookie and the CSRF token it needs. */
+export function send(
+  jar: CookieJar,
+  token: string,
+  method: 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: JsonObject,
+): Promise<Response> {
+  return fetch(url(path), {
+    method,
+    headers: {
+      ...(body && { 'content-type': 'application/json' }),
+      'csrf-token': token,
+      cookie: jar.header(),
+    },
+    body: body && JSON.stringify(body),
+  });
+}
+
 function trackerSlug(name: string): string {
   return (
     name
@@ -18,17 +37,13 @@ export async function createTracker(
   name: string,
   overrides: Partial<CreateTrackerDto> = {},
 ): Promise<{ id: string; name: string }> {
-  const res = await fetch(url('/api/trackers'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({
-      name,
-      systemType: 'openproject',
-      baseUrl: `https://${trackerSlug(name)}.example.com`,
-      directBrowserAccess: true,
-      roundingRule: 'none',
-      ...overrides,
-    }),
+  const res = await send(jar, token, 'POST', '/api/trackers', {
+    name,
+    systemType: 'openproject',
+    baseUrl: `https://${trackerSlug(name)}.example.com`,
+    directBrowserAccess: true,
+    roundingRule: 'none',
+    ...overrides,
   });
   return res.json();
 }
@@ -46,13 +61,9 @@ export async function createProject(
   remoteProjectId: string | null;
   remoteProjectTitle: string | null;
 }> {
-  const res = await fetch(url('/api/projects'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify({
-      ...(trackerId === undefined ? { name } : { name, trackerId }),
-      ...overrides,
-    }),
+  const res = await send(jar, token, 'POST', '/api/projects', {
+    ...(trackerId === undefined ? { name } : { name, trackerId }),
+    ...overrides,
   });
   return res.json();
 }
@@ -62,11 +73,7 @@ export async function startEntry(
   token: string,
   body: JsonObject = {},
 ): Promise<Response> {
-  return fetch(url('/api/time-entries'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify(body),
-  });
+  return send(jar, token, 'POST', '/api/time-entries', body);
 }
 
 export async function patchEntry(
@@ -75,11 +82,7 @@ export async function patchEntry(
   id: string,
   body: JsonObject,
 ): Promise<Response> {
-  return fetch(url(`/api/time-entries/${id}`), {
-    method: 'PATCH',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify(body),
-  });
+  return send(jar, token, 'PATCH', `/api/time-entries/${id}`, body);
 }
 
 /** Moves Time entries to another Task: renamed, in another Project, or linked to a Remote issue. */
@@ -88,9 +91,5 @@ export async function reassignEntries(
   token: string,
   body: JsonObject,
 ): Promise<Response> {
-  return fetch(url('/api/time-entries/reassign'), {
-    method: 'POST',
-    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
-    body: JSON.stringify(body),
-  });
+  return send(jar, token, 'POST', '/api/time-entries/reassign', body);
 }

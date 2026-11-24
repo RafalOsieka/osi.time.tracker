@@ -4,7 +4,7 @@ import { expect, it } from 'vitest';
 import type { DashboardDto, DashboardGroupDto } from '../../../shared/types/dashboard';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { type CookieJar, patchTimezone } from '../helpers/auth';
-import { createProject, createTracker, reassignEntries, startEntry } from '../helpers/http';
+import { createProject, createTracker, reassignEntries, send, startEntry } from '../helpers/http';
 import { zoneAwayFromMidnight } from '../helpers/fixtures';
 import { type SeededSession, seedAndLogin } from '../helpers/session';
 import { url } from '../helpers/url';
@@ -95,24 +95,11 @@ describeDashboard('dashboard API', async () => {
   }
 
   async function post(user: SeededSession, path: string, body: JsonObject) {
-    const res = await fetch(url(path), {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'csrf-token': user.token,
-        cookie: user.jar.header(),
-      },
-      body: JSON.stringify(body),
-    });
-    expect(res.status).toBe(200);
+    expect((await send(user.jar, user.token, 'POST', path, body)).status).toBe(200);
   }
 
   async function remove(user: SeededSession, path: string) {
-    const res = await fetch(url(path), {
-      method: 'DELETE',
-      headers: { 'csrf-token': user.token, cookie: user.jar.header() },
-    });
-    expect(res.status).toBe(200);
+    expect((await send(user.jar, user.token, 'DELETE', path)).status).toBe(200);
   }
 
   it('returns 401 when unauthenticated', async () => {
