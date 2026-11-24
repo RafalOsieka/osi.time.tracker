@@ -1,12 +1,14 @@
 import { expect, it } from 'vitest';
 import { createPage } from '@nuxt/test-utils/e2e';
 import type { Page } from 'playwright-core';
+import { Temporal } from 'temporal-polyfill';
 import { z } from 'zod';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, patchTimezone } from '../helpers/auth';
-import { createProject, startEntry } from '../helpers/http';
+import { zoneAwayFromMidnight } from '../helpers/fixtures';
+import { createProject, createTracker, startEntry } from '../helpers/http';
 import { seedUser } from '../helpers/seed';
 import { loginAs, reloadHydrated } from '../helpers/ui';
 import { url } from '../helpers/url';
@@ -207,6 +209,33 @@ describeDashboardUi('Dashboard journey', async () => {
     await tooltip.waitFor();
     await page.mouse.move(0, 0);
     await tooltip.waitFor({ state: 'detached' });
+    await page.close();
+  });
+
+  it('leads from a day in the Export backlog to its Remote Sync page', async () => {
+    const user = await seedUser(dbUrl);
+    const { jar, token } = await apiLogin(user.email, user.password);
+    const { timezone, offset, today } = zoneAwayFromMidnight();
+    await patchTimezone(jar, token, timezone);
+    const tracker = await createTracker(jar, token, 'Redmine');
+    const project = await createProject(jar, token, 'Site', tracker.id);
+    const yesterday = Temporal.PlainDate.from(today).subtract({ days: 1 }).toString();
+    const created = await startEntry(jar, token, {
+      title: 'Work',
+      projectId: project.id,
+      startedAt: `${yesterday}T01:00:00${offset}`,
+      stoppedAt: `${yesterday}T02:00:00${offset}`,
+    });
+    expect(created.status).toBe(200);
+
+    const page = await createPage('/login');
+    await loginAs(page, user.email, user.password);
+    await page.waitForSelector('[data-testid="dashboard-summary"]');
+    const response = await page.goto(url('/'), { waitUntil: 'hydration' });
+    expect((await response?.text()) ?? '').toContain('data-testid="dashboard-export-backlog"');
+    await page.click(`[data-testid="dashboard-export-backlog"] a[href="/sync/${yesterday}"]`);
+    await page.waitForSelector('[data-testid="remote-sync-page"]');
+    expect(new URL(page.url()).pathname).toBe(`/sync/${yesterday}`);
     await page.close();
   });
 

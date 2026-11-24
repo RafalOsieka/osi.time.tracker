@@ -1,8 +1,11 @@
+import type { JsonObject } from '@osi/time-tracker-remote-trackers/contracts';
+import { Temporal } from 'temporal-polyfill';
 import { expect, it } from 'vitest';
 import type { DashboardDto, DashboardGroupDto } from '../../../shared/types/dashboard';
 import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { type CookieJar, patchTimezone } from '../helpers/auth';
 import { createProject, createTracker, reassignEntries, startEntry } from '../helpers/http';
+import { zoneAwayFromMidnight } from '../helpers/fixtures';
 import { type SeededSession, seedAndLogin } from '../helpers/session';
 import { url } from '../helpers/url';
 import { requireDocker } from '../harness/guards';
@@ -71,12 +74,35 @@ describeDashboard('dashboard API', async () => {
     return res.json();
   }
 
-  /** Links the entry's day to a Remote issue, which moves the entry to the Task carrying it. */
-  async function linkIssue(user: SeededSession, entry: TimeEntryDto, remoteIssueId: string) {
+  /**
+   * Links the entry's day to a Remote issue, which moves the entry to the Task carrying it, and
+   * returns that Task.
+   */
+  async function linkIssue(
+    user: SeededSession,
+    entry: TimeEntryDto,
+    remoteIssueId: string,
+  ): Promise<string> {
     const res = await reassignEntries(user.jar, user.token, {
       ids: [entry.id],
       remoteIssueId,
       cachedTitle: `Issue ${remoteIssueId}`,
+    });
+    expect(res.status).toBe(200);
+    const [moved]: TimeEntryDto[] = await res.json();
+    if (!moved?.taskId) throw new Error('Linking left the entry without a Task');
+    return moved.taskId;
+  }
+
+  async function post(user: SeededSession, path: string, body: JsonObject) {
+    const res = await fetch(url(path), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'csrf-token': user.token,
+        cookie: user.jar.header(),
+      },
+      body: JSON.stringify(body),
     });
     expect(res.status).toBe(200);
   }
@@ -523,14 +549,134 @@ describeDashboard('dashboard API', async () => {
     ]);
   });
 
+  /** A user for whom today holds during the test, with a Project of an active Tracker. */
+  async function backlogUser() {
+    const { timezone, offset, today } = zoneAwayFromMidnight();
+    const user = await userIn(timezone);
+    const tracker = await createTracker(user.jar, user.token, 'Redmine');
+    const project = await createProject(user.jar, user.token, 'Site', tracker.id);
+    const daysAgo = (days: number) => Temporal.PlainDate.from(today).subtract({ days }).toString();
+    /** Logs an hour from 01:00 on the local day `days` before today. */
+    const logDay = (
+      days: number,
+      task: { title?: string; projectId?: string } = { title: 'Work', projectId: project.id },
+    ) => {
+      const day = daysAgo(days);
+      return logTime(user, `${day}T01:00:00${offset}`, `${day}T02:00:00${offset}`, task);
+    };
+    return { user, tracker, project, daysAgo, logDay };
+  }
+
+  it('lists the 30 days before today in the Export backlog, oldest first', async () => {
+    const { user, daysAgo, logDay } = await backlogUser();
+    for (const days of [1, 12, 30, 31, 0]) await logDay(days);
+    const expected = [daysAgo(30), daysAgo(12), daysAgo(1)];
+    expect((await getDashboard(user.jar)).exportBacklog).toEqual(expected);
+    // The period does not change it.
+    const past = await getDashboard(user.jar, '?period=week&date=2020-06-01');
+    expect(past.exportBacklog).toEqual(expected);
+  });
+
+  it('keeps a day in the Export backlog until each of its Tasks is Sent', async () => {
+    const { user, tracker, project, daysAgo, logDay } = await backlogUser();
+    const day = daysAgo(5);
+    const reviewEntry = await logDay(5, { title: 'Review', projectId: project.id });
+    const review = await linkIssue(user, reviewEntry, '42');
+    await linkIssue(user, await logDay(4, { title: 'Review', projectId: project.id }), '42');
+    const deploy = await linkIssue(
+      user,
+      await logDay(5, { title: 'Deploy', projectId: project.id }),
+      '43',
+    );
+    expect((await getDashboard(user.jar)).exportBacklog).toEqual([day, daysAgo(4)]);
+
+    // Exported by the app: Review is Sent on that day only.
+    await post(user, '/api/sync/export', {
+      taskId: review,
+      localDate: day,
+      remoteIssueId: '42',
+      remoteLogId: 'log-1',
+      exportDurationSeconds: 3600,
+      entryIds: [reviewEntry.id],
+      exportRequestKey: `export-${review}`,
+    });
+    expect((await getDashboard(user.jar)).exportBacklog).toEqual([day, daysAgo(4)]);
+
+    // Matched to a Remote log: Deploy is Sent too, which clears the day.
+    await post(user, '/api/sync/link', {
+      taskId: deploy,
+      trackerId: tracker.id,
+      localDate: day,
+      remoteIssueId: '43',
+      remoteLogId: 'log-2',
+      exportDurationSeconds: 3600,
+      spentOn: day,
+    });
+    expect((await getDashboard(user.jar)).exportBacklog).toEqual([daysAgo(4)]);
+
+    // Imported: its Task's day arrives Sent.
+    await post(user, `/api/trackers/${tracker.id}/import`, {
+      dryRun: false,
+      groups: [
+        {
+          projectId: project.id,
+          logs: [
+            {
+              remoteLogId: 'log-3',
+              remoteIssueId: '44',
+              spentOn: daysAgo(3),
+              durationSeconds: 5400,
+              activityId: '1',
+              comment: 'Imported work',
+            },
+          ],
+        },
+      ],
+    });
+    expect((await getDashboard(user.jar)).exportBacklog).toEqual([daysAgo(4)]);
+  });
+
+  it('leaves time it cannot export out of the Export backlog', async () => {
+    const { user, project, daysAgo, logDay } = await backlogUser();
+    const { jar, token } = user;
+    const local = await createProject(jar, token, 'Books');
+    await logDay(6, { title: 'Reading', projectId: local.id });
+    await logDay(5, { title: 'Admin' });
+    await logDay(4, {});
+    const gone = await createTracker(jar, token, 'Gone');
+    const orphan = await createProject(jar, token, 'Orphan', gone.id);
+    await logDay(3, { title: 'Work', projectId: orphan.id });
+    await remove(user, `/api/trackers/${gone.id}`);
+    // Shorter than a second.
+    const day = daysAgo(2);
+    await logTime(user, `${day}T12:00:00.000Z`, `${day}T12:00:00.500Z`, {
+      title: 'Work',
+      projectId: project.id,
+    });
+    expect((await getDashboard(jar)).exportBacklog).toEqual([]);
+
+    // A deleted Project's time can still be exported while its Tracker is active.
+    const old = await createProject(
+      jar,
+      token,
+      'Old',
+      (await createTracker(jar, token, 'Kept')).id,
+    );
+    await logDay(1, { title: 'Work', projectId: old.id });
+    await remove(user, `/api/projects/${old.id}`);
+    expect((await getDashboard(jar)).exportBacklog).toEqual([daysAgo(1)]);
+  });
+
   it("never shows another user's entries", async () => {
-    const other = await userIn('UTC');
-    await logTime(other, '2026-08-03T08:00:00.000Z', '2026-08-03T09:00:00.000Z');
+    const other = await backlogUser();
+    await logTime(other.user, '2026-08-03T08:00:00.000Z', '2026-08-03T09:00:00.000Z');
+    await other.logDay(1);
     const user = await userIn('UTC');
     const body = await getDashboard(user.jar, '?date=2026-08-03');
     expect(body.summary).toEqual(NO_TIME);
     expect(body.groups).toEqual({ project: [], tracker: [] });
     expect(body.topTasks).toEqual([]);
+    expect(body.exportBacklog).toEqual([]);
     expect(body.hasEntries).toBe(false);
   });
 });

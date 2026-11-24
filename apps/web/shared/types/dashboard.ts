@@ -69,6 +69,9 @@ export type DashboardGroupDto = DashboardGroupIdentityDto & {
   colorSlot: number | null;
 };
 
+/** How many local days before today the Export backlog looks back. */
+export const DASHBOARD_EXPORT_BACKLOG_DAYS = 30;
+
 /** How many Tasks the Dashboard lists. */
 export const DASHBOARD_TOP_TASKS = 10;
 
@@ -101,4 +104,9 @@ export interface DashboardDto {
   groups: Record<DashboardGrouping, DashboardGroupDto[]>;
   /** The Tasks with the most time, most first, equal ones in creation order. */
   topTasks: DashboardTaskDto[];
+  /**
+   * The days of the Export backlog among the `DASHBOARD_EXPORT_BACKLOG_DAYS` before today, oldest
+   * first, whatever the period.
+   */
+  exportBacklog: string[];
 }

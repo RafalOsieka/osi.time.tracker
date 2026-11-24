@@ -1,5 +1,9 @@
 import { Temporal } from 'temporal-polyfill';
-import type { DashboardPeriodDto, DashboardQuery } from '../../shared/types/dashboard';
+import {
+  DASHBOARD_EXPORT_BACKLOG_DAYS,
+  type DashboardPeriodDto,
+  type DashboardQuery,
+} from '../../shared/types/dashboard';
 import { localDayKey, localDayStartInstant } from './timer-view-feed';
 
 const MONDAY = 1;
@@ -74,11 +78,25 @@ export function resolveDashboardPeriod(
  * Inclusive start and exclusive end of the period. The end is the start of the following day, not
  * a day after the last day's start, which is off by an hour when clocks skip midnight.
  */
-export function periodInstants({ firstDay, lastDay }: DashboardPeriodDto, timeZone: string) {
+export function periodInstants(
+  { firstDay, lastDay }: Pick<DashboardPeriodDto, 'firstDay' | 'lastDay'>,
+  timeZone: string,
+) {
   const dayAfter = Temporal.PlainDate.from(lastDay).add({ days: 1 }).toString();
   return {
     from: new Date(localDayStartInstant(firstDay, timeZone)),
     to: new Date(localDayStartInstant(dayAfter, timeZone)),
+  };
+}
+
+/** The days the Export backlog covers: the ones before today, today left out. */
+export function exportBacklogWindow(
+  today: string,
+): Pick<DashboardPeriodDto, 'firstDay' | 'lastDay'> {
+  const day = Temporal.PlainDate.from(today);
+  return {
+    firstDay: day.subtract({ days: DASHBOARD_EXPORT_BACKLOG_DAYS }).toString(),
+    lastDay: day.subtract({ days: 1 }).toString(),
   };
 }
 

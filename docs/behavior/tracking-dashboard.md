@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year. It reads only local data and never contacts a Tracker.
+Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year, and points out recent days not yet Sent. It reads only local data and never contacts a Tracker.
 
 ## Requirements
 
 ### Requirement: Dashboard endpoint
 
-`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups and its top Tasks. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
+`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups, its top Tasks and the days of the Export backlog. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
 
 #### Scenario: Empty account and empty period
 
@@ -186,6 +186,54 @@ The response SHALL list the ten Tasks with the most time in the period, most fir
 
 - **WHEN** a Task's Remote issue belongs to a deleted Tracker
 - **THEN** the issue SHALL be listed without an address
+
+### Requirement: Export backlog
+
+The response SHALL list the days of the Export backlog among the 30 local days before today, oldest first, whatever the period. A day SHALL be listed when a Task has Tracked time above zero on it, in a Project whose Tracker is active, and no Export record (`remote-sync-export`) for that day. Exported, matched and imported days SHALL count as Sent. Time in Local projects, without a Project or a Task, or on a soft-deleted Tracker SHALL NOT list a day.
+
+#### Scenario: Window
+
+- **WHEN** a Task has unsent time today, 1, 30 and 31 days ago
+- **THEN** the list SHALL be the days 30 and 1 days ago
+
+#### Scenario: Every Task of the day
+
+- **WHEN** a day has two Tasks and only one of them has an Export record
+- **THEN** the day SHALL be listed until the other has one too
+
+#### Scenario: Another day of the Task
+
+- **WHEN** a Task has an Export record for one day and unsent time on another
+- **THEN** the other day SHALL be listed
+
+#### Scenario: Time that cannot be exported
+
+- **WHEN** a day's only time is in a Local project, without a Project, untitled, on a deleted Tracker or shorter than a second
+- **THEN** the day SHALL NOT be listed
+
+#### Scenario: Deleted Project
+
+- **WHEN** a Project is deleted while its Tracker is active
+- **THEN** its unsent time SHALL list its days
+
+### Requirement: Export backlog line
+
+When the Export backlog has days, the page SHALL show one line labelled with the term Export backlog (_Zaległy eksport_), listing each day as a short date in the user's language that links to its Remote Sync page (`remote-sync-review`). The line SHALL show no categories, hours or dismiss action, and SHALL stay the same across periods. All text SHALL have `en`/`pl` parity.
+
+#### Scenario: Days waiting
+
+- **WHEN** October 30 and November 12 are in the Export backlog
+- **THEN** the line SHALL link `Oct 30` to `/sync/2026-10-30` and `Nov 12` to `/sync/2026-11-12`
+
+#### Scenario: Nothing waiting
+
+- **WHEN** the Export backlog has no days
+- **THEN** the line SHALL be absent
+
+#### Scenario: Failed load
+
+- **WHEN** the request fails
+- **THEN** the line SHALL be absent
 
 ### Requirement: Top Tasks list
 

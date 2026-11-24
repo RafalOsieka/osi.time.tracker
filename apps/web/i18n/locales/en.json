@@ -69,6 +69,7 @@
     "daysWithEntries": "Days with entries",
     "average": "Average per day with entries",
     "emptyPeriod": "No completed time entries in this period.",
+    "exportBacklog": "Export backlog",
     "timeInPeriod": "Time in the period",
     "groupBy": "Group by",
     "grouping": {
