@@ -174,6 +174,11 @@ function selectKind(kind: DashboardPeriodKind): void {
       </PeriodStepper>
     </PageHeader>
 
+    <DashboardExportBacklog
+      v-if="!errorKey && data?.exportBacklog.length"
+      :days="data.exportBacklog"
+    />
+
     <p v-if="errorKey" class="text-error" role="alert" data-testid="dashboard-error">
       {{ t(errorKey) }}
     </p>

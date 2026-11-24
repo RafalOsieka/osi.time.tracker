@@ -4,6 +4,7 @@ import { defineEventHandler } from 'nuxt/server';
 import { dashboardQuerySchema, type DashboardDto } from '../../shared/types/dashboard';
 import { getDb } from '../db/index';
 import { projects, tasks, timeEntries, trackers } from '../db/schema';
+import { loadExportBacklog } from '../utils/dashboard-export-backlog';
 import { aggregateProjectDays, groupProjectDays } from '../utils/dashboard-groups';
 import { topTasks } from '../utils/dashboard-tasks';
 import {
@@ -25,7 +26,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
   const bounds = periodInstants(period, user.timezone);
   const buckets = periodBuckets(period);
 
-  const [entryRows, anyEntryRows, projectRows, trackerRows] = await Promise.all([
+  const [entryRows, anyEntryRows, projectRows, trackerRows, exportBacklog] = await Promise.all([
     db
       .select({
         startedAt: timeEntries.startedAt,
@@ -74,6 +75,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
       .from(trackers)
       .where(eq(trackers.userId, user.id))
       .orderBy(asc(trackers.id)),
+    loadExportBacklog(db, user.id, user.timezone, today),
   ]);
 
   const entries = entryRows.map((row) => ({
@@ -115,5 +117,6 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
       ),
     },
     topTasks: topTasks(entries),
+    exportBacklog,
   };
 });

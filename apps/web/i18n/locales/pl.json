@@ -69,6 +69,7 @@
     "daysWithEntries": "Dni z wpisami",
     "average": "Średnio na dzień z wpisami",
     "emptyPeriod": "Brak zakończonych wpisów czasu w tym okresie.",
+    "exportBacklog": "Zaległy eksport",
     "timeInPeriod": "Czas w okresie",
     "groupBy": "Grupowanie",
     "grouping": {

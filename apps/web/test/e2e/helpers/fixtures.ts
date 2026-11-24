@@ -12,3 +12,20 @@ export const UNKNOWN_ID = '01900000-0000-7000-8000-000000000001';
  * (invalid version nibble) instead of the nil UUID.
  */
 export const MALFORMED_ID = '00000000-0000-0000-0000-000000000001';
+
+/**
+ * A timezone that is far from midnight now, with its UTC offset and today's date there, so that
+ * tests seeding days relative to today keep the same today while they run.
+ */
+export function zoneAwayFromMidnight() {
+  const hour = new Date().getUTCHours();
+  const zone =
+    hour >= 3 && hour < 21
+      ? { timezone: 'UTC', offset: 'Z' }
+      : { timezone: 'Asia/Tokyo', offset: '+09:00' };
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: zone.timezone,
+    dateStyle: 'short',
+  }).format(new Date());
+  return { ...zone, today };
+}

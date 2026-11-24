@@ -82,6 +82,7 @@ const november: DashboardDto = {
       totalSeconds: 1800,
     },
   ],
+  exportBacklog: ['2026-10-30', '2026-11-12'],
 };
 const march: DashboardDto = {
   ...november,
@@ -492,6 +493,61 @@ describe('Dashboard top Tasks', () => {
         ['Checkout Site', '', '1:30'],
         ['Admin Bez projektu', '#7: Bookkeeping', '0:30'],
       ]);
+    } finally {
+      await $i18n.setLocale('en');
+    }
+  });
+});
+
+describe('Dashboard Export backlog', () => {
+  function backlogLinks() {
+    return byTestId('dashboard-export-backlog')
+      .findAll('a')
+      .map((link) => [link.text(), link.attributes('href')]);
+  }
+
+  it('lists each day of the Export backlog with a link to its Remote Sync page', async () => {
+    await mountPage();
+    expect(byTestId('dashboard-export-backlog').find('span:not([aria-hidden])').text()).toBe(
+      'Export backlog:',
+    );
+    expect(byTestId('dashboard-export-backlog').find('ul').attributes('aria-label')).toBe(
+      'Export backlog',
+    );
+    expect(backlogLinks()).toEqual([
+      ['Oct 30', '/sync/2026-10-30'],
+      ['Nov 12', '/sync/2026-11-12'],
+    ]);
+  });
+
+  it('is absent when no day is waiting', async () => {
+    harness.fetch.mockResolvedValue({ ...november, exportBacklog: [] });
+    await mountPage();
+    expect(visibleStates()).toEqual(['summary']);
+    expect(byTestId('dashboard-export-backlog').exists()).toBe(false);
+  });
+
+  it('stays in a period without entries, since it does not depend on the period', async () => {
+    harness.fetch.mockResolvedValue(emptyNovember);
+    await mountPage();
+    expect(backlogLinks()).toHaveLength(2);
+  });
+
+  it('is absent when the load fails', async () => {
+    harness.fetch.mockRejectedValue(new Error('boom'));
+    await mountPage();
+    expect(byTestId('dashboard-export-backlog').exists()).toBe(false);
+  });
+
+  it('reads naturally in Polish', async () => {
+    const { $i18n } = useNuxtApp();
+    await $i18n.setLocale('pl');
+    try {
+      await mountPage();
+      expect(byTestId('dashboard-export-backlog').find('ul').attributes('aria-label')).toBe(
+        'Zaległy eksport',
+      );
+      expect(backlogLinks().map(([text]) => text)).toEqual(['30 paź', '12 lis']);
     } finally {
       await $i18n.setLocale('en');
     }
