@@ -25,7 +25,7 @@ describeTopbarStartEdit('5.5 topbar running-entry start edit', async () => {
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
   async function openAuthed() {
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await fillLogin(page, user.email, user.password, { height: 900 });
     return page;
   }

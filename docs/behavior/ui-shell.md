@@ -116,7 +116,7 @@ The shell navigation SHALL meet WCAG 2.1 AA and be fully keyboard operable. The 
 #### Scenario: Links are rendered natively and addressable by href
 
 - **WHEN** the sidebar navigation is rendered
-- **THEN** each destination SHALL render as a single link (icon + label) and SHALL be selectable by its `href` (e.g. `[data-testid="app-sidebar"] a[href="/"]` for Timer, `a[href="/trackers"]` for Trackers, and `a[href="/reports/monthly"]` for Monthly timesheet)
+- **THEN** each destination SHALL render as a single link (icon + label) and SHALL be selectable by its `href` (e.g. `[data-testid="app-sidebar"] a[href="/timer"]` for Timer, `a[href="/trackers"]` for Trackers, and `a[href="/reports/monthly"]` for Monthly timesheet)
 
 #### Scenario: Collapsed rail shows nav tooltips
 
@@ -161,9 +161,9 @@ During SSR of any authenticated route, the `default` layout SHALL fetch the user
 
 Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` is the translated `layout.title` and `{page}` the translated label of the destination (the heading or sidebar wording when one exists). The title SHALL be present on the first SSR paint, never the request hostname, and SHALL update on client navigation and locale change without a reload. It SHALL NOT include running-timer time or task names.
 
-#### Scenario: Timer home tab is not the hostname
+#### Scenario: Timer tab is not the hostname
 
-- **WHEN** an authenticated user opens `/` in English
+- **WHEN** an authenticated user opens `/timer` in English
 - **THEN** the document title SHALL be `Timer | OSI Time Tracker` and SHALL NOT be `localhost` or the request host
 
 #### Scenario: Named management pages
@@ -188,7 +188,7 @@ Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` 
 
 #### Scenario: Client navigation updates the tab
 
-- **WHEN** the user navigates from `/` to `/projects` without a full page load
+- **WHEN** the user navigates from `/timer` to `/projects` without a full page load
 - **THEN** the document title SHALL change from the Timer form to the Projects form
 
 #### Scenario: Unknown route still has a brand title
@@ -198,7 +198,7 @@ Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` 
 
 ### Requirement: Sidebar navigation skeleton with placeholder routes
 
-The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, `tracking-reports`) and Client report (`/reports/client`, `tracking-client-report`) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks, Dashboard or `/reports` entry (Profile is in "Account menu"). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
+The sidebar SHALL list Timer (`/timer`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, `tracking-reports`) and Client report (`/reports/client`, `tracking-client-report`) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks, Dashboard or `/reports` entry (Profile is in "Account menu"). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
 
 #### Scenario: All skeleton destinations are listed
 
@@ -208,7 +208,7 @@ The sidebar SHALL list Timer (`/`), Trackers (`/trackers`), Projects and a Repor
 #### Scenario: Timer link opens the timer view
 
 - **WHEN** the user activates the Timer link
-- **THEN** the application SHALL navigate to `/` and render the timer view page
+- **THEN** the application SHALL navigate to `/timer` and render the timer view page
 
 #### Scenario: Trackers link opens the trackers page
 

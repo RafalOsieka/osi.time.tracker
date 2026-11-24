@@ -83,7 +83,7 @@ describeRemoteIssuePickerUI('remote issue picker UI flow', async () => {
   }
 
   async function loginAsInBrowser(email: string): Promise<Page> {
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await fillLogin(page, email, 'secret', { height: 900 });
     return page;
   }

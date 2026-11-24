@@ -38,7 +38,7 @@ describeShell('authenticated shell navigation', async () => {
   it('sidebar lists all skeleton destinations', async () => {
     const page = await openAuthed();
     const nav = page.locator('[data-testid="app-sidebar"]');
-    expect(await nav.locator('a[href="/"]').isVisible()).toBe(true);
+    expect(await nav.locator('a[href="/timer"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/trackers"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/projects"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/tasks"]').count()).toBe(0);
@@ -58,6 +58,24 @@ describeShell('authenticated shell navigation', async () => {
     const monthlyLink = page.locator('[data-testid="app-sidebar"] a[href="/reports/monthly"]');
     expect(await monthlyLink.getAttribute('aria-current')).toBe('page');
     expect(await page.locator('[data-testid="app-sidebar"] [aria-current="page"]').count()).toBe(1);
+  });
+
+  it('Timer opens the timer view and is the current page there', async () => {
+    const page = await openAuthed();
+    await page.goto(new URL('/projects', page.url()).href, { waitUntil: 'hydration' });
+    await page.click('[data-testid="app-sidebar"] a[href="/timer"]');
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    expect(new URL(page.url()).pathname).toBe('/timer');
+    const current = page.locator('[data-testid="app-sidebar"] [aria-current="page"]');
+    expect(await current.count()).toBe(1);
+    expect(await current.getAttribute('href')).toBe('/timer');
+  });
+
+  it('no sidebar link is the current page on Remote Sync', async () => {
+    const page = await openAuthed();
+    await page.goto(new URL('/sync/2026-08-03', page.url()).href, { waitUntil: 'hydration' });
+    await page.waitForSelector('[data-testid="remote-sync-page"]');
+    expect(await page.locator('[data-testid="app-sidebar"] [aria-current="page"]').count()).toBe(0);
   });
 
   it('authenticated /reports is not found', async () => {

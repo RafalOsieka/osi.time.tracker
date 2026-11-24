@@ -51,7 +51,7 @@ describeTimerViewUI('timer view UI flow', async () => {
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
   async function loginAs(email: string) {
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await fillLogin(page, email, 'secret', { height: 900 });
     return page;
   }

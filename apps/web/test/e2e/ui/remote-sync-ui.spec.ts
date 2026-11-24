@@ -73,7 +73,7 @@ describeRemoteSyncUI('remote sync page UI flow', async () => {
   }
 
   async function loginPage(email: string) {
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await fillLogin(page, email, 'secret', { height: 900 });
     return page;
   }

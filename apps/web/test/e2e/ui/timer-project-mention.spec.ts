@@ -21,7 +21,7 @@ describeProjectMention('top-bar @project mention journey', async () => {
     await createProject(jar, token, 'Helios');
     await createProject(jar, token, 'Nordwind');
 
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await fillLogin(page, user.email, user.password, { height: 900 });
 
     const titleInput = page
@@ -94,7 +94,7 @@ describeProjectMention('top-bar @project mention journey', async () => {
     const { jar, token } = await apiLogin(user.email, user.password);
     await createProject(jar, token, 'Touchstone');
 
-    const page = await createPage('/', { hasTouch: true, isMobile: true });
+    const page = await createPage('/timer', { hasTouch: true, isMobile: true });
     await fillLogin(page, user.email, user.password, { width: 1024, height: 900 });
     expect(await page.evaluate(() => matchMedia('(pointer: coarse)').matches)).toBe(true);
 

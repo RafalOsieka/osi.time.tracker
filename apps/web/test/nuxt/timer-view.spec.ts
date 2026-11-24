@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import { flushPromises } from '@vue/test-utils';
 import { mountSuspended, mockNuxtImport } from '@nuxt/test-utils/runtime';
 import { ref } from 'vue';
-import IndexPage from '../../app/pages/index.vue';
+import TimerPage from '../../app/pages/timer.vue';
 import type { MessageParams } from '../../shared/types/message-params';
 import type { ProjectDto } from '../../shared/types/project';
 import type { TimeEntryDto } from '../../shared/types/time-entry';
@@ -248,14 +248,14 @@ describe('timer view page', () => {
   });
 
   it('renders the never-tracked empty state when the feed is empty', async () => {
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(false);
   });
 
   it('leaves the never-tracked state when the first timer starts', async () => {
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(true);
 
@@ -290,7 +290,7 @@ describe('timer view page', () => {
       hasMore: true,
       nextBefore: '2024-01-10T00:00:00.000Z',
     };
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-group-task-old"]').exists()).toBe(true);
     expect(wrapper.find('[data-testid="timer-view-load-more"]').exists()).toBe(true);
@@ -321,7 +321,7 @@ describe('timer view page', () => {
       nextBefore: null,
     };
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
@@ -351,7 +351,7 @@ describe('timer view page', () => {
       nextBefore: null,
     };
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find(`[data-testid="timer-day-${expectedLosAngelesDay}"]`).exists()).toBe(true);
     const fetchesBefore = entryFetches.count;
@@ -385,7 +385,7 @@ describe('timer view page', () => {
       nextBefore: null,
     };
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     expect(wrapper.find('[data-testid="timer-group-task-1"]').exists()).toBe(true);
@@ -416,7 +416,7 @@ describe('timer view page', () => {
       nextBefore: null,
     };
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     const toggle = wrapper.find('[data-testid="timer-group-toggle-task-1"]');
@@ -449,7 +449,7 @@ describe('timer view page', () => {
       nextBefore: null,
     };
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     await wrapper.find('[data-testid="timer-group-continue-task-1"]').trigger('click');
@@ -473,7 +473,7 @@ describe('timer view page', () => {
       nextBefore: null,
     };
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     await wrapper.find('[data-testid="timer-group-continue-task-1"]').trigger('click');
@@ -482,13 +482,13 @@ describe('timer view page', () => {
   });
 
   it('exposes a page-level add entry control', async () => {
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     expect(wrapper.find('[data-testid="timer-view-add-entry"]').exists()).toBe(true);
   });
 
   it('shows the add entry control pressed while its dialog is open', async () => {
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     const button = wrapper.find('[data-testid="timer-view-add-entry"]');
     expect(button.attributes('data-pressed')).toBe('false');
@@ -523,7 +523,7 @@ describe('timer view page', () => {
     });
     pendingAddedEntry.value = outsideEntry;
 
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     expect(wrapper.find('[data-testid="timer-group-task-loaded"]').exists()).toBe(true);
@@ -567,7 +567,7 @@ describe('timer view page', () => {
 
   it('shows the loading skeleton, not the never-tracked state, while the feed is pending', async () => {
     mockState.feedStatus = 'pending';
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
 
     expect(wrapper.find('[data-testid="timer-view-loading"]').attributes('aria-busy')).toBe('true');
     expect(wrapper.find('[data-testid="timer-view-never-tracked"]').exists()).toBe(false);
@@ -592,7 +592,7 @@ describe('timer view page', () => {
       hasMore: false,
       nextBefore: null,
     };
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     const table = wrapper.get('[role="table"]');
@@ -628,7 +628,7 @@ describe('timer view page', () => {
         nextBefore: '2024-06-10T07:00:00.000Z',
       },
     ];
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
     await wrapper.find('[data-testid="timer-view-load-more"]').trigger('click');
     await flushPromises();
@@ -650,7 +650,7 @@ describe('timer view page', () => {
 
   it('keeps the held entries when the refresh fails', async () => {
     mockState.feed = loadedDayFeed();
-    const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+    const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
     await flushPromises();
 
     mockState.feedResponses = [new Error('offline')];
@@ -687,7 +687,7 @@ describe('timer view page', () => {
         hasMore: false,
         nextBefore: null,
       };
-      const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+      const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
       await flushPromises();
       const dayTotal = () => wrapper.get('[data-testid="timer-day-total-2024-06-15"]').text();
       const totalBefore = dayTotal();
@@ -768,7 +768,7 @@ describe('timer view page', () => {
 
     const mounted: Array<Awaited<ReturnType<typeof mountSuspended>>> = [];
     async function mountPage() {
-      const wrapper = await mountSuspended(IndexPage, { global: { stubs: commonStubs } });
+      const wrapper = await mountSuspended(TimerPage, { global: { stubs: commonStubs } });
       mounted.push(wrapper);
       return wrapper;
     }

@@ -44,7 +44,7 @@ export class CookieJar {
 }
 
 /**
- * Fetch the home page to obtain a usable CSRF token (rendered into a
+ * Fetch `/` (following its redirect) to obtain a usable CSRF token (rendered into a
  * `<meta name="csrf-token">` tag) and its matching secret cookie.
  */
 export async function primeCsrf(jar: CookieJar): Promise<string> {
