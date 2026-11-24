@@ -100,6 +100,7 @@
       "other": "Other"
     },
     "deleted": "deleted",
+    "deletedGroup": "{name} (deleted)",
     "tasks": {
       "heading": "Tasks with the most time",
       "caption": "Tasks with the most time in the period, with their project, remote issue and time",

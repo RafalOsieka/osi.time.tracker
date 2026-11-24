@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { DashboardGrouping, DashboardPeriodKind } from '~~/shared/types/dashboard';
-import { formatCalendarDate } from '~/utils/format-calendar-date';
+import { calendarFormat } from '~/utils/calendar-format';
 import { formatReportDuration } from '~/utils/format-report-duration';
 
 /**
@@ -34,10 +34,8 @@ const chartName = computed(() =>
 const HOUR_STEPS = [1, 2, 4, 5, 10, 20, 25, 50, 100, 200, 250, 500] as const;
 const MAX_TICKS = 4;
 
-/** Buckets are calendar dates, so they format in UTC to stay on the same day. */
 const formats = computed(() => {
-  const format = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat(locale.value, { ...options, timeZone: 'UTC' });
+  const format = (options: Intl.DateTimeFormatOptions) => calendarFormat(locale.value, options);
   return kind === 'year'
     ? { short: format({ month: 'short' }), long: format({ month: 'long', year: 'numeric' }) }
     : {
@@ -52,7 +50,7 @@ const segmentList = computed(
 
 /** Under a month's columns only the first day and every fifth fit. */
 function shortLabel(bucket: string): string {
-  if (kind !== 'month') return formatCalendarDate(formats.value.short, bucket);
+  if (kind !== 'month') return formats.value.short.date(bucket);
   const day = Number(bucket.slice(8));
   return day === 1 || day % 5 === 0 ? String(day) : '';
 }
@@ -68,7 +66,7 @@ const columns = computed(() =>
       }))
       .filter((segment) => segment.seconds > 0);
     const totalSeconds = segments.reduce((sum, segment) => sum + segment.seconds, 0);
-    const long = formatCalendarDate(formats.value.long, bucket);
+    const long = formats.value.long.date(bucket);
     const total = formatReportDuration(totalSeconds);
     const split = segmentList.value.format(
       segments.map(({ name, seconds }) =>
@@ -112,26 +110,16 @@ const {
   onMouseover,
   onFocusin,
   onFocusout,
-  focusCell,
-} = useChartCells({ grid: useTemplateRef('grid'), tooltip: useTemplateRef('tooltip') });
+  moveFocus,
+} = useChartCells({
+  grid: useTemplateRef('grid'),
+  tooltip: useTemplateRef('tooltip'),
+  count: () => buckets.length,
+  steps: { right: 1 },
+});
 const shown = computed(() =>
   shownIndex.value === null ? undefined : columns.value[shownIndex.value],
 );
-
-function onKeydown(event: KeyboardEvent): void {
-  const from = tabStop.value;
-  const last = buckets.length - 1;
-  const targets = new Map([
-    ['ArrowLeft', Math.max(0, from - 1)],
-    ['ArrowRight', Math.min(last, from + 1)],
-    ['Home', 0],
-    ['End', last],
-  ]);
-  const target = targets.get(event.key);
-  if (target === undefined) return;
-  event.preventDefault();
-  focusCell(target);
-}
 </script>
 
 <template>
@@ -166,7 +154,7 @@ function onKeydown(event: KeyboardEvent): void {
           :aria-label="chartName"
           tabindex="-1"
           class="relative outline-none"
-          @keydown="onKeydown"
+          @keydown="moveFocus"
           @mouseover="onMouseover"
           @focusin="onFocusin"
           @focusout="onFocusout"

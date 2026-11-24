@@ -38,6 +38,21 @@ function groupRows(page: Page): Promise<string[][]> {
     );
 }
 
+/** Whether today's day and the weekday labels of the 12-month heatmap are inside its box. */
+async function pastYearInView(page: Page): Promise<{ today: boolean; weekdays: boolean }> {
+  const heatmap = page.locator('[data-testid="dashboard-past-year-scroll"]');
+  const [box, today, weekday] = await Promise.all([
+    heatmap.boundingBox(),
+    // The tab stop starts on today.
+    heatmap.locator('[data-testid="dashboard-past-year-cell"][tabindex="0"]').boundingBox(),
+    heatmap.locator('[data-testid="dashboard-past-year-row"]').first().boundingBox(),
+  ]);
+  if (!box || !today || !weekday) throw new Error('The 12-month heatmap is drawn');
+  const inside = (part: { x: number; width: number }) =>
+    part.x >= box.x - 1 && part.x + part.width <= box.x + box.width + 1;
+  return { today: inside(today), weekdays: inside(weekday) };
+}
+
 describeDashboardUi('Dashboard journey', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl, browser: true });
@@ -379,6 +394,17 @@ describeDashboardUi('Dashboard journey', async () => {
         true,
       );
     }
+    // The 12-month heatmap shows its latest weeks already in the server's HTML, so nothing jumps
+    // when scripts run.
+    const serverOnly = await createPage('/?period=month&date=2026-04-15', {
+      javaScriptEnabled: false,
+      viewport: { width: 360, height: 800 },
+      storageState: await page.context().storageState(),
+    });
+    for (const shown of [serverOnly, page]) {
+      expect(await pastYearInView(shown)).toEqual({ today: true, weekdays: true });
+    }
+    await serverOnly.close();
     const share = page.locator('[data-testid="dashboard-groups-table"] td').last();
     const shareBox = await share.boundingBox();
     expect((shareBox?.x ?? Infinity) + (shareBox?.width ?? Infinity)).toBeLessThanOrEqual(360);

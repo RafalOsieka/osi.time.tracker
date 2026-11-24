@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Temporal } from 'temporal-polyfill';
 import type { DashboardPastYearDto } from '~~/shared/types/dashboard';
-import { formatCalendarDate } from '~/utils/format-calendar-date';
+import { calendarFormat, weekdaysFrom } from '~/utils/calendar-format';
 
 /**
  * The time of each day over the past year as a calendar heatmap: a column per week, a row per
@@ -30,10 +30,8 @@ const legend = computed(() => [
   t('dashboard.pastYear.levelOver', { hours: LEVEL_HOURS.at(-1) }),
 ]);
 
-/** Days are calendar dates, so they format in UTC to stay on the same day. */
 const formats = computed(() => {
-  const format = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat(locale.value, { ...options, timeZone: 'UTC' });
+  const format = (options: Intl.DateTimeFormatOptions) => calendarFormat(locale.value, options);
   return {
     weekday: format({ weekday: 'short' }),
     month: format({ month: 'short' }),
@@ -49,7 +47,7 @@ const days = computed(() => {
     return {
       date: date.toString(),
       dayOfMonth: date.day,
-      label: formatCalendarDate(formats.value.long, date.toString()),
+      label: formats.value.long.date(date.toString()),
       seconds,
     };
   });
@@ -72,14 +70,10 @@ function dayAt(week: number, row: number): number | null {
 }
 
 const rows = computed(() =>
-  Array.from({ length: DAYS_PER_WEEK }, (_, row) => {
-    // A Monday of 2024-01-01 onwards gives the weekday of the row.
-    const weekday = Temporal.PlainDate.from('2024-01-01').add({ days: firstDayOfWeek - 1 + row });
-    return {
-      label: formatCalendarDate(formats.value.weekday, weekday.toString()),
-      cells: Array.from({ length: weekCount.value }, (_, week) => dayAt(week, row)),
-    };
-  }),
+  weekdaysFrom(firstDayOfWeek).map((weekday, row) => ({
+    label: formats.value.weekday.weekday(weekday),
+    cells: Array.from({ length: weekCount.value }, (_, week) => dayAt(week, row)),
+  })),
 );
 
 /** The month whose first day falls in a week names its column. */
@@ -88,20 +82,9 @@ const monthLabels = computed(() =>
     const first = Array.from({ length: DAYS_PER_WEEK }, (_, row) => dayAt(week, row))
       .map((index) => (index === null ? undefined : days.value?.[index]))
       .find((day) => day?.dayOfMonth === 1);
-    return first ? formatCalendarDate(formats.value.month, first.date) : '';
+    return first ? formats.value.month.date(first.date) : '';
   }),
 );
-
-function move(key: string, from: number): number | undefined {
-  return new Map([
-    ['ArrowUp', from - 1],
-    ['ArrowDown', from + 1],
-    ['ArrowLeft', from - DAYS_PER_WEEK],
-    ['ArrowRight', from + DAYS_PER_WEEK],
-    ['Home', 0],
-    ['End', dayCount.value - 1],
-  ]).get(key);
-}
 
 function open(index: number): void {
   const day = days.value?.[index];
@@ -121,7 +104,7 @@ function open(index: number): void {
     :rows="rows"
     :column-labels="monthLabels"
     :initial-tab-stop="(pastYear?.daySeconds.length ?? 1) - 1"
-    :move="move"
+    :steps="{ right: DAYS_PER_WEEK, down: 1 }"
     activatable
     start-at-end
     @activate="open"

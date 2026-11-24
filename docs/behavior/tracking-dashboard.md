@@ -552,7 +552,12 @@ The chart SHALL be one tab stop. Left and right arrows SHALL move between column
 
 ### Requirement: Column breakdown
 
-Hovering or focusing a column SHALL show its day or month, its total and the time of each segment, as unpadded `H:MM`. The pointer SHALL be able to move onto the breakdown without hiding it, and Escape SHALL hide it wherever the focus is. Each column's accessible name SHALL hold the same numbers. All text SHALL have `en`/`pl` parity.
+Hovering or focusing a column SHALL show its day or month, its total and the time of each segment, as unpadded `H:MM`. The pointer SHALL be able to move onto the breakdown without hiding it, and Escape SHALL hide it wherever the focus is. Each column's accessible name SHALL hold the same numbers. A deleted group SHALL say so in text in both. All text SHALL have `en`/`pl` parity.
+
+#### Scenario: Deleted group
+
+- **WHEN** a day has time in a deleted Project and in another one of the same name
+- **THEN** its breakdown and its accessible name SHALL mark the deleted one as deleted in the user's language
 
 #### Scenario: Focus
 

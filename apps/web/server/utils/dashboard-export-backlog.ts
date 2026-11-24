@@ -1,11 +1,10 @@
-import { and, eq, gte, isNotNull, isNull, lt, lte } from 'drizzle-orm';
-import type { getDb } from '../db/index';
+import { and, eq, gte, isNull, lte } from 'drizzle-orm';
+import type { Db } from '../db/index';
 import { projects, remoteExports, tasks, timeEntries, trackers } from '../db/schema';
-import { exportBacklogWindow, periodInstants } from './dashboard-period';
-import { completedSeconds, type StoppedEntryInstants } from './monthly-report';
+import { exportBacklogWindow } from './dashboard-period';
+import { completedEntriesStartedOn, withIsoInstants } from './dashboard-rows';
+import { completedSeconds } from './monthly-report';
 import { localDayKey } from './timer-view-feed';
-
-type Db = ReturnType<typeof getDb>;
 
 /**
  * The days of the user's Export backlog before `today`, oldest first: the local days on which a
@@ -18,7 +17,6 @@ export async function loadExportBacklog(
   today: string,
 ): Promise<string[]> {
   const backlogDays = exportBacklogWindow(today);
-  const bounds = periodInstants(backlogDays, timeZone);
   const [entryRows, sent] = await Promise.all([
     db
       .select({
@@ -30,14 +28,7 @@ export async function loadExportBacklog(
       .innerJoin(tasks, eq(tasks.id, timeEntries.taskId))
       .innerJoin(projects, eq(projects.id, tasks.projectId))
       .innerJoin(trackers, and(eq(trackers.id, projects.trackerId), isNull(trackers.deletedAt)))
-      .where(
-        and(
-          eq(timeEntries.userId, userId),
-          isNotNull(timeEntries.stoppedAt),
-          gte(timeEntries.startedAt, bounds.from),
-          lt(timeEntries.startedAt, bounds.to),
-        ),
-      ),
+      .where(completedEntriesStartedOn(userId, backlogDays, timeZone)),
     db
       .select({ taskId: remoteExports.taskId, localDate: remoteExports.localDate })
       .from(remoteExports)
@@ -54,11 +45,7 @@ export async function loadExportBacklog(
   const sentKeys = new Set(sent.map(({ taskId, localDate }) => taskDayKey(taskId, localDate)));
 
   const tracked = new Map<string, { day: string; seconds: number }>();
-  for (const { taskId, startedAt, stoppedAt } of entryRows) {
-    const instants: StoppedEntryInstants = {
-      startedAt: startedAt.toISOString(),
-      stoppedAt: stoppedAt?.toISOString() ?? null,
-    };
+  for (const { taskId, ...instants } of entryRows.map(withIsoInstants)) {
     const day = localDayKey(instants.startedAt, timeZone);
     const key = taskDayKey(taskId, day);
     const taskDay = tracked.get(key) ?? { day, seconds: 0 };

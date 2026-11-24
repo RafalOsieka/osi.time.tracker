@@ -8,13 +8,8 @@ import {
 } from '../../shared/types/dashboard';
 import type { MonthlyReportDayDto } from '../../shared/types/report';
 import { bucketOf } from './dashboard-period';
+import { namedIdentity, type NamedRow } from './dashboard-rows';
 import { aggregateLocalDaySeconds, type StoppedEntryInstants } from './monthly-report';
-
-interface NamedRow {
-  id: string;
-  name: string;
-  deletedAt: Date | null;
-}
 
 interface ProjectAndTracker {
   project: NamedRow | null;
@@ -47,7 +42,7 @@ function identify(
   if (!project) return { kind: 'noProject' };
   const row = grouping === 'project' ? project : tracker;
   if (!row) return { kind: 'local' };
-  return { kind: grouping, id: row.id, name: row.name, deleted: row.deletedAt !== null };
+  return { kind: grouping, ...namedIdentity(row) };
 }
 
 /**

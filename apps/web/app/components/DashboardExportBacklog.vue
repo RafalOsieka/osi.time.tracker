@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { calendarFormat } from '~/utils/calendar-format';
+
 /** The days of the Export backlog, each a link to its Remote Sync page. */
 const { days } = defineProps<{
   /** Calendar days, oldest first. */
@@ -8,10 +10,7 @@ const { days } = defineProps<{
 const { t, locale } = useI18n();
 const labelId = useId();
 
-/** Days are calendar dates, so they format in UTC to stay on the same day. */
-const dayFormat = computed(
-  () => new Intl.DateTimeFormat(locale.value, { day: 'numeric', month: 'short', timeZone: 'UTC' }),
-);
+const dayFormat = computed(() => calendarFormat(locale.value, { day: 'numeric', month: 'short' }));
 </script>
 
 <template>
@@ -29,7 +28,7 @@ const dayFormat = computed(
           :to="`/sync/${day}`"
           class="rounded-sm font-medium text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-primary"
         >
-          {{ dayFormat.format(new Date(`${day}T00:00:00Z`)) }}
+          {{ dayFormat.date(day) }}
         </ULink>
       </li>
     </ul>
