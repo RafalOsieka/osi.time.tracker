@@ -90,7 +90,7 @@ const PAGES: Screen[] = [
     shows:
       'The running timer in the top bar and four days of Time entries grouped by Task, one group expanded to its entries, the rest collapsed.',
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: TIMER_SETTLED,
     prepare: expandFirstTimerGroup,
   },
@@ -165,7 +165,7 @@ const FEATURES: Screen[] = [
     title: 'Timer start editor',
     shows: "The popover that moves the running timer's start: date and time.",
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
@@ -178,7 +178,7 @@ const FEATURES: Screen[] = [
     title: 'Add time entry',
     shows: 'The dialog for a manual Time entry, with a new Task typed in as its title.',
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
@@ -199,7 +199,7 @@ const FEATURES: Screen[] = [
     title: 'Remote issue picker',
     shows: 'Linking a Task to a remote issue from the Timer view: the search and its results.',
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: '[data-testid^="timer-group-remote-issue-unlinked-"]',
     overlay: true,
     prepare: async (page) => {
@@ -219,7 +219,7 @@ const FEATURES: Screen[] = [
     title: 'Timer view, first visit',
     shows: 'The Timer view of a user who has never tracked time.',
     as: 'new',
-    path: '/',
+    path: '/timer',
     ready: '[data-testid="timer-view-never-tracked"]',
   },
   {
@@ -360,7 +360,7 @@ const FEATURES: Screen[] = [
     shows:
       'The navigation in its other form: the collapsed rail on desktop, the open drawer on narrower screens.',
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: TIMER_SETTLED,
     prepare: async (page) => {
       const collapse = page.locator('[data-testid="sidebar-collapse"]');
@@ -373,7 +373,7 @@ const FEATURES: Screen[] = [
     title: 'User menu',
     shows: "The user menu open from the sidebar's footer.",
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {
@@ -387,7 +387,7 @@ const FEATURES: Screen[] = [
     title: 'Extension status',
     shows: "The browser extension's status details, open from the sidebar's footer.",
     as: 'busy',
-    path: '/',
+    path: '/timer',
     ready: TIMER_SETTLED,
     overlay: true,
     prepare: async (page) => {

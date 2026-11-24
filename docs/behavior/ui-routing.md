@@ -49,19 +49,38 @@ The application SHALL expose a public `/login` page that renders the login form 
 - **WHEN** the login page is rendered
 - **THEN** the auth layout heading SHALL show the application brand mark with the full application title, and assistive technology SHALL read only the title
 
-### Requirement: Authenticated home page on the default layout
+### Requirement: Timer view page on the default layout
 
-The application SHALL expose a `/` page that renders the timer view (the authenticated home) within the `default` layout. The page SHALL present a page-level header with a title and a primary action for adding a manual time entry. Initial timer-view data SHALL be available from SSR (`tracking-timer-view`, `tracking-api`). Logout is reachable from the shell's account menu (`ui-shell`).
+The application SHALL expose a `/timer` page that renders the timer view within the `default` layout. The page SHALL present a page-level header with a title and a primary action for adding a manual time entry. Initial timer-view data SHALL be available from SSR (`tracking-timer-view`, `tracking-api`). Logout is reachable from the shell's account menu (`ui-shell`).
 
 #### Scenario: Authenticated user sees the timer view
 
-- **WHEN** an authenticated user navigates to `/`
-- **THEN** the home page SHALL render the timer view (authenticated home) inside the `default` layout
+- **WHEN** an authenticated user navigates to `/timer`
+- **THEN** the application SHALL render the timer view inside the `default` layout
 
 #### Scenario: Page header offers add entry
 
-- **WHEN** an authenticated user views `/`
+- **WHEN** an authenticated user views `/timer`
 - **THEN** the page header SHALL expose a primary control to open the manual add-entry dialog
+
+### Requirement: Root address leads to the timer view
+
+`/` SHALL redirect an authenticated user to `/timer`. The redirect SHALL be temporary, resolve server-side on a full page load, and apply after the navigation guard, so an unauthenticated visitor to `/` goes to login first.
+
+#### Scenario: Full page load of the root address
+
+- **WHEN** an authenticated user requests `/`, or is redirected there from `/login`
+- **THEN** the server SHALL answer with a temporary redirect to `/timer`
+
+#### Scenario: Client navigation to the root address
+
+- **WHEN** an authenticated user is sent to `/` without a full page load, as after login without a requested address
+- **THEN** the application SHALL show the timer view with the address `/timer`
+
+#### Scenario: Unauthenticated visitor to the root address
+
+- **WHEN** an unauthenticated visitor requests `/`
+- **THEN** the guard SHALL redirect to `/login?redirect=/`, and a successful login SHALL end on `/timer`
 
 ### Requirement: Private-by-default navigation guard
 

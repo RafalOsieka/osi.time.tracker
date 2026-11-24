@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Define the timer view, the home page at `/`: entries grouped by day and task from the timer-view feed, loading more history, adding and editing entries, continuing a task, editing a day's task in place (name, project, remote issue), and the row layout and accessibility rules. The endpoints it calls are in `tracking-api`; the remote-issue picker's server-side rules are in `remote-issue-linking`.
+Define the timer view, the page at `/timer`: entries grouped by day and task from the timer-view feed, loading more history, adding and editing entries, continuing a task, editing a day's task in place (name, project, remote issue), and the row layout and accessibility rules. The endpoints it calls are in `tracking-api`; the remote-issue picker's server-side rules are in `remote-issue-linking`.
 
 ## Requirements
 
@@ -332,11 +332,11 @@ Linking, replacing or unlinking SHALL send exactly that day's group entry ids to
 
 ### Requirement: Timer view page
 
-The timer view at `/` SHALL group entries by the local day of `startedAt` in the user's timezone (`workspace-settings`), newest first, skipping empty days, then by task. A group shows the task name with its project only, total and count, expanding into entries. A day shows its date, total and a Remote Sync link (`/sync/{dayKey}`), no add control. The first feed page SHALL render in SSR; client navigation shows a skeleton until it arrives (`ui-routing`). A timezone change SHALL regroup without refetching.
+The timer view at `/timer` SHALL group entries by the local day of `startedAt` in the user's timezone (`workspace-settings`), newest first, skipping empty days, then by task. A group shows the task name with its project only, total and count, expanding into entries. A day shows its date, total and a Remote Sync link (`/sync/{dayKey}`), no add control. The first feed page SHALL render in SSR; client navigation shows a skeleton until it arrives (`ui-routing`). A timezone change SHALL regroup without refetching.
 
 #### Scenario: Entries grouped by effective-timezone day and task
 
-- **WHEN** the authenticated user opens `/` with entries on multiple days in the feed
+- **WHEN** the authenticated user opens `/timer` with entries on multiple days in the feed
 - **THEN** the page SHALL show one section per day in the effective timezone, newest first, each with a day total and per-task groups showing name, project context only (when present), entry count, and group total
 
 #### Scenario: Group label omits tracker and client
@@ -351,7 +351,7 @@ The timer view at `/` SHALL group entries by the local day of `startedAt` in the
 
 #### Scenario: Client navigation shows a skeleton, not the empty state
 
-- **WHEN** the user navigates client-side to `/` and the feed response has not arrived yet
+- **WHEN** the user navigates client-side to `/timer` and the feed response has not arrived yet
 - **THEN** the page SHALL already be shown with a day-list loading skeleton and SHALL NOT show the never-tracked empty state, and SHALL replace the skeleton with the day list once the feed arrives
 
 #### Scenario: Expanding a task group lists its entries
@@ -380,7 +380,7 @@ The first page SHALL show the newest seven activity days (`tracking-api`); a use
 
 #### Scenario: Old history opens on its newest activity days
 
-- **WHEN** the user opens `/` and their newest entries are months old with nothing tracked since
+- **WHEN** the user opens `/timer` and their newest entries are months old with nothing tracked since
 - **THEN** the initial list SHALL show the newest seven local activity days of that history and SHALL NOT show a dedicated empty-window message whose only action is load more
 
 #### Scenario: No anchored-week banner or reset control

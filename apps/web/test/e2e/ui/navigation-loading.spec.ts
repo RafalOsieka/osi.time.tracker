@@ -45,7 +45,7 @@ describeNavigationLoading('client navigation with slow page data', async () => {
     const page = await openProjects();
     const release = await holdRequests(page, '**/api/time-entries/feed**');
 
-    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.click('[data-testid="app-sidebar"] a[href="/timer"]');
     await page.waitForSelector('[data-testid="timer-view-loading"]');
     expect(await page.locator('[data-testid="timer-view-never-tracked"]').count()).toBe(0);
 

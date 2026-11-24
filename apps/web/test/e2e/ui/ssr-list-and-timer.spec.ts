@@ -7,6 +7,7 @@ import { seedUser } from '../helpers/seed';
 import { loginAs as fillLogin } from '../helpers/ui';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin } from '../helpers/auth';
+import { startEntry } from '../helpers/http';
 
 const describeSsrShell = requireBrowser();
 
@@ -24,6 +25,50 @@ describeSsrShell('SSR shell and list pages', async () => {
     await fillLogin(page, user.email, user.password);
     return page;
   }
+
+  it.each(['/', '/login'])('redirects an authenticated request for %s to /timer', async (path) => {
+    const { jar } = await apiSession();
+
+    const res = await fetch(url(path), {
+      headers: { cookie: jar.header() },
+      redirect: 'manual',
+    });
+
+    expect(res.status).toBe(302);
+    expect(res.headers.get('location')).toBe('/timer');
+  });
+
+  it.each(['/', '/timer'])(
+    'redirects an unauthenticated request for %s to login, keeping the address',
+    async (path) => {
+      const res = await fetch(url(path), { redirect: 'manual' });
+
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toBe(`/login?redirect=${path}`);
+    },
+  );
+
+  it('renders the first page of the day list at /timer on the server', async () => {
+    const { email, password } = await seedUser(dbUrl);
+    const { jar, token } = await apiLogin(email, password);
+    const title = 'Server rendered timer entry';
+    const created = await startEntry(jar, token, {
+      title,
+      startedAt: '2026-08-03T10:00:00.000Z',
+      stoppedAt: '2026-08-03T11:00:00.000Z',
+    });
+    expect(created.status).toBe(200);
+
+    const res = await fetch(url('/timer'), {
+      headers: { cookie: jar.header() },
+      redirect: 'manual',
+    });
+
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain('data-testid="timer-day-2026-08-03"');
+    expect(html).toContain(title);
+  });
 
   it('hard navigation to /trackers shows list or empty state', async () => {
     const page = await openAuthed();

@@ -25,10 +25,9 @@ const NAV_UI = { list: 'flex flex-col gap-1', childList: 'flex flex-col gap-1' }
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
     label: t('nav.timer'),
-    to: '/',
+    to: '/timer',
     icon: 'i-lucide-timer',
-    active: route.path === '/',
-    exact: true,
+    active: route.path.startsWith('/timer'),
     class: onRemoteSync.value ? PARENT_ACTIVE_CLASS : undefined,
     ui: onRemoteSync.value ? { linkLeadingIcon: 'text-primary' } : undefined,
   },

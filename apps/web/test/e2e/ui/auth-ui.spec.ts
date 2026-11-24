@@ -31,11 +31,31 @@ describeAuthUI('authentication UI flow', async () => {
 
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForSelector('[data-testid="app-user-footer"]');
+    expect(new URL(page.url()).pathname).toBe('/timer');
     expect(await page.title()).toBe('Timer | OSI Time Tracker');
     const primary = await page.textContent('[data-testid="app-user-footer-primary"]');
     expect(primary?.trim()).toBe('alice');
     const email = await page.textContent('[data-testid="app-user-footer-email"]');
     expect(email?.trim()).toBe('alice@example.com');
+  });
+
+  it('returns a visitor of /timer there after login', async () => {
+    const page = await createPage('/timer');
+    expect(new URL(page.url()).pathname).toBe('/login');
+    await fillLogin(page, 'alice@example.com');
+
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    expect(new URL(page.url()).pathname).toBe('/timer');
+    await page.close();
+  });
+
+  it('ends on the Timer view after a login without a requested address', async () => {
+    const page = await createPage('/login');
+    await fillLogin(page, 'alice@example.com');
+
+    await page.waitForSelector('[data-testid="timer-view-page"]');
+    expect(new URL(page.url()).pathname).toBe('/timer');
+    await page.close();
   });
 
   it('5.2 logout flow logs the user out and the UI reflects it', async () => {

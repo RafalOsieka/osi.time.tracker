@@ -60,7 +60,7 @@ describeExtensionModeUi('extension execution mode UI', async () => {
   }
 
   async function loginPage(email: string, install: (page: Page) => Promise<void>) {
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await install(page);
     await fillLogin(page, email, 'secret', { height: 900 });
     return page;

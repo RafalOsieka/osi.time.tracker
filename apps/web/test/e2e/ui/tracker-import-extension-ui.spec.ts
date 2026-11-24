@@ -108,7 +108,7 @@ describeTrackerImportExtensionUi('tracker remote-log import UI flow (extension m
     expect(await page.textContent('[data-testid="tracker-import-done-imported"]')).toBe('1');
     await page.click('[data-testid="tracker-import-close"]');
 
-    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.click('[data-testid="app-sidebar"] a[href="/timer"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, comment);
 

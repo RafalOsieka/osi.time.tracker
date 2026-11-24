@@ -60,7 +60,7 @@ describeProfileUI('profile UI flow', async () => {
   await setupServer({ databaseUrl: dbUrl, browser: true });
 
   async function openAuthed(user: { email: string; password: string }) {
-    const page = await createPage('/');
+    const page = await createPage('/timer');
     await fillLogin(page, user.email, user.password, { height: 900 });
     return page;
   }
@@ -168,7 +168,7 @@ describeProfileUI('profile UI flow', async () => {
       .toContain(SHIFTED_TIME_ZONE);
 
     // --- The timer view regroups the same data under the new timezone ---
-    await page.goto(url('/'), { waitUntil: 'hydration' });
+    await page.goto(url('/timer'), { waitUntil: 'hydration' });
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Profile UI Task');
 

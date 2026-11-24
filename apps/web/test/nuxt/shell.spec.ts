@@ -7,7 +7,7 @@ import type { TimeEntryDto } from '../../shared/types/time-entry';
 const fetchMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
 const seedRunningMock = vi.hoisted(() => vi.fn());
 const resumeTickerMock = vi.hoisted(() => vi.fn());
-const routePath = vi.hoisted(() => ({ current: '/' }));
+const routePath = vi.hoisted(() => ({ current: '/timer' }));
 
 mockNuxtImport('useRequestFetch', () => () => fetchMock);
 type AsyncDataValue = TimeEntryDto | null;
@@ -45,7 +45,7 @@ mockNuxtImport('useTimer', () => () => ({
 beforeEach(() => {
   vi.clearAllMocks();
   fetchMock.mockResolvedValue(null);
-  routePath.current = '/';
+  routePath.current = '/timer';
 });
 
 const topBarStub = {
@@ -62,7 +62,7 @@ const sidebarStub = {
   props: ['collapsed', 'iconOnly'],
   template:
     '<nav aria-label="Main navigation" data-testid="app-sidebar-nav">' +
-    '<a data-testid="nav-link-timer" aria-current="page" href="/">Timer</a>' +
+    '<a data-testid="nav-link-timer" aria-current="page" href="/timer">Timer</a>' +
     '<a data-testid="nav-link-trackers" href="/trackers">Trackers</a>' +
     '<a data-testid="nav-link-projects" href="/projects">Projects</a>' +
     '<a data-testid="nav-link-reports" href="/reports">Reports</a>' +
@@ -196,7 +196,7 @@ describe('sidebar nav skeleton', () => {
     });
     const links = wrapper.findAll('a');
     const hrefs = links.map((l) => l.attributes('href'));
-    expect(hrefs).toContain('/');
+    expect(hrefs).toContain('/timer');
     expect(hrefs).toContain('/trackers');
     expect(hrefs).toContain('/projects');
     expect(hrefs).not.toContain('/tasks');
@@ -230,6 +230,51 @@ describe('sidebar nav skeleton', () => {
     });
     expect(wrapper.find('[data-reports-active]').attributes('data-reports-active')).toBe('false');
     expect(wrapper.find('[data-monthly-active]').attributes('data-monthly-active')).toBe('true');
+  });
+});
+
+describe('Timer item selection', () => {
+  async function timerItem(path: string) {
+    routePath.current = path;
+    const wrapper = await mountSuspended(AppSidebar, {
+      global: {
+        stubs: {
+          UNavigationMenu: {
+            props: ['items'],
+            template: `
+              <div>
+                <a
+                  v-for="item in items.filter((item) => item.to)"
+                  :key="item.to"
+                  :href="item.to"
+                  :class="item.class"
+                  :data-active="String(item.active)"
+                />
+              </div>
+            `,
+          },
+          UIcon: true,
+        },
+      },
+    });
+    return wrapper.get('a[href="/timer"]');
+  }
+
+  it('is the current item on /timer', async () => {
+    const item = await timerItem('/timer');
+    expect(item.attributes('data-active')).toBe('true');
+  });
+
+  it('keeps the selected look on Remote Sync without being the current item', async () => {
+    const item = await timerItem('/sync/2026-08-03');
+    expect(item.attributes('data-active')).toBe('false');
+    expect(item.classes()).toContain('text-primary');
+  });
+
+  it('is not selected on another page', async () => {
+    const item = await timerItem('/trackers');
+    expect(item.attributes('data-active')).toBe('false');
+    expect(item.classes()).not.toContain('text-primary');
   });
 });
 

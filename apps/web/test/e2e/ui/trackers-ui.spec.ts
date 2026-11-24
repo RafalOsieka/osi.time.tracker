@@ -254,7 +254,7 @@ describeTrackersUI('trackers UI flow', async () => {
     expect(await page.locator('[data-testid="tracker-extension-status"]').count()).toBe(0);
     await page.click('[data-testid="cancel-button"]');
 
-    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.click('[data-testid="app-sidebar"] a[href="/timer"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
     const titleInput = page
       .locator('[data-testid="timer-title-input"] input, [data-testid="timer-title-input"]')

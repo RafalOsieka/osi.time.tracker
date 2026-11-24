@@ -310,7 +310,7 @@ describeTrackerImportUi('tracker remote-log import UI flow', async () => {
 
     // Imported entries show up in the timer view under the comment-derived task
     // name; both backfilled days are among the user's newest seven activity days.
-    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.click('[data-testid="app-sidebar"] a[href="/timer"]');
     await page.waitForSelector('[data-testid="timer-view-page"]');
     await page.waitForFunction(pageIncludesText, 'Mobile task');
     await page.waitForFunction(pageIncludesText, commentWeb);

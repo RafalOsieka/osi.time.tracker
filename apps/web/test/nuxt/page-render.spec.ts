@@ -2,7 +2,7 @@ import { defineComponent, h } from 'vue';
 import { describe, expect, it } from 'vitest';
 import { mountSuspended } from '@nuxt/test-utils/runtime';
 import LoginPage from '../../app/pages/login.vue';
-import IndexPage from '../../app/pages/index.vue';
+import TimerPage from '../../app/pages/timer.vue';
 import DefaultLayout from '../../app/layouts/default.vue';
 import AuthLayout from '../../app/layouts/auth.vue';
 type PageMeta = { layout?: string; public?: boolean };
@@ -36,12 +36,12 @@ describe('layout selection per page', () => {
     expect(login?.meta.public).toBe(true);
   });
 
-  it('leaves / on the default layout (no explicit layout meta, not public)', async () => {
+  it('leaves /timer on the default layout (no explicit layout meta, not public)', async () => {
     const routes = await routeMeta();
-    const index = routes.find((r) => r.path === '/');
-    expect(index).toBeTruthy();
-    expect(index?.meta.layout).toBeUndefined();
-    expect(index?.meta.public).toBeUndefined();
+    const timer = routes.find((r) => r.path === '/timer');
+    expect(timer).toBeTruthy();
+    expect(timer?.meta.layout).toBeUndefined();
+    expect(timer?.meta.public).toBeUndefined();
   });
 });
 
@@ -74,8 +74,8 @@ describe('preserved test hooks', () => {
     expect(wrapper.find('[data-testid="login-button"]').exists()).toBe(true);
   });
 
-  it('home page renders the timer view', async () => {
-    const wrapper = await mountSuspended(IndexPage, {
+  it('timer page renders the timer view', async () => {
+    const wrapper = await mountSuspended(TimerPage, {
       global: {
         stubs: {
           EmptyState: { template: '<div data-testid="timer-view-empty-state" />' },
