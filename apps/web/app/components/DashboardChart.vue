@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import type { ComponentPublicInstance } from 'vue';
 import type { DashboardGrouping, DashboardPeriodKind } from '~~/shared/types/dashboard';
+import { formatCalendarDate } from '~/utils/format-calendar-date';
 import { formatReportDuration } from '~/utils/format-report-duration';
 
 /**
@@ -50,14 +50,9 @@ const segmentList = computed(
   () => new Intl.ListFormat(locale.value, { type: 'unit', style: 'short' }),
 );
 
-/** ICU versions disagree on the kind of space they put in dates; the server's must match. */
-function formatBucket(format: Intl.DateTimeFormat, bucket: string): string {
-  return format.format(new Date(`${bucket}T00:00:00Z`)).replace(/\p{Space_Separator}/gu, ' ');
-}
-
 /** Under a month's columns only the first day and every fifth fit. */
 function shortLabel(bucket: string): string {
-  if (kind !== 'month') return formatBucket(formats.value.short, bucket);
+  if (kind !== 'month') return formatCalendarDate(formats.value.short, bucket);
   const day = Number(bucket.slice(8));
   return day === 1 || day % 5 === 0 ? String(day) : '';
 }
@@ -73,7 +68,7 @@ const columns = computed(() =>
       }))
       .filter((segment) => segment.seconds > 0);
     const totalSeconds = segments.reduce((sum, segment) => sum + segment.seconds, 0);
-    const long = formatBucket(formats.value.long, bucket);
+    const long = formatCalendarDate(formats.value.long, bucket);
     const total = formatReportDuration(totalSeconds);
     const split = segmentList.value.format(
       segments.map(({ name, seconds }) =>
@@ -109,74 +104,22 @@ const scale = computed(() => {
   };
 });
 
-/** The column that holds the tab stop. */
-const tabStop = ref(0);
-const hovered = ref<number | null>(null);
-const focused = ref<number | null>(null);
-/** Escape hides the tooltip until the pointer or the focus moves. */
-const dismissed = ref(false);
-const columnElements: (HTMLElement | undefined)[] = [];
-const gridElement = useTemplateRef('grid');
-const tooltipElement = useTemplateRef('tooltip');
-
-const shownIndex = computed(() => (dismissed.value ? null : (hovered.value ?? focused.value)));
+const {
+  tabStop,
+  shownIndex,
+  shownElement,
+  keepCell,
+  onMouseover,
+  onFocusin,
+  onFocusout,
+  focusCell,
+} = useChartCells({ grid: useTemplateRef('grid'), tooltip: useTemplateRef('tooltip') });
 const shown = computed(() =>
   shownIndex.value === null ? undefined : columns.value[shownIndex.value],
 );
-const shownElement = computed(() =>
-  shownIndex.value === null ? undefined : columnElements[shownIndex.value],
-);
-
-function keepColumn(element: Element | ComponentPublicInstance | null, index: number): void {
-  if (element instanceof HTMLElement) columnElements[index] = element;
-}
-
-function columnOf(event: Event): number | null {
-  const cell = event.target instanceof Element ? event.target.closest('[role="gridcell"]') : null;
-  const index = columnElements.findIndex((element) => element !== undefined && element === cell);
-  return index === -1 ? null : index;
-}
-
-function hover(index: number | null): void {
-  if (index === hovered.value) return;
-  hovered.value = index;
-  dismissed.value = false;
-}
-
-/** The pointer may move from a column onto its tooltip, so that it can be read there. */
-function leave(event: Event): void {
-  if (hovered.value === null) return;
-  const target = event.target;
-  const inside = [gridElement.value, tooltipElement.value].some(
-    (element) => target instanceof Node && element?.contains(target),
-  );
-  if (!inside) hover(null);
-}
-
-// Escape hides the breakdown wherever the focus is, also one shown by the pointer.
-function dismiss(event: KeyboardEvent): void {
-  if (event.key === 'Escape' && shownIndex.value !== null) dismissed.value = true;
-}
-
-onMounted(() => {
-  window.addEventListener('pointerover', leave);
-  window.addEventListener('keydown', dismiss);
-});
-onBeforeUnmount(() => {
-  window.removeEventListener('pointerover', leave);
-  window.removeEventListener('keydown', dismiss);
-});
-
-function onFocusin(event: FocusEvent): void {
-  const index = columnOf(event);
-  if (index === null) return;
-  tabStop.value = index;
-  focused.value = index;
-  dismissed.value = false;
-}
 
 function onKeydown(event: KeyboardEvent): void {
-  const from = focused.value ?? tabStop.value;
+  const from = tabStop.value;
   const last = buckets.length - 1;
   const targets = new Map([
     ['ArrowLeft', Math.max(0, from - 1)],
@@ -187,7 +130,7 @@ function onKeydown(event: KeyboardEvent): void {
   const target = targets.get(event.key);
   if (target === undefined) return;
   event.preventDefault();
-  columnElements[target]?.focus();
+  focusCell(target);
 }
 </script>
 
@@ -224,15 +167,15 @@ function onKeydown(event: KeyboardEvent): void {
           tabindex="-1"
           class="relative outline-none"
           @keydown="onKeydown"
-          @mouseover="hover(columnOf($event))"
+          @mouseover="onMouseover"
           @focusin="onFocusin"
-          @focusout="focused = null"
+          @focusout="onFocusout"
         >
           <div role="row" class="flex">
             <div
               v-for="(column, index) in columns"
               :key="column.bucket"
-              :ref="(element) => keepColumn(element, index)"
+              :ref="(element) => keepCell(element, index)"
               role="gridcell"
               :aria-label="column.description"
               :tabindex="index === tabStop ? 0 : -1"
