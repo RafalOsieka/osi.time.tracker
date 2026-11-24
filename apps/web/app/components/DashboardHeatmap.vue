@@ -54,9 +54,11 @@ const { t } = useI18n();
 // Full class names, so Tailwind finds them.
 const LEVEL_COLORS = ['bg-heat-0', 'bg-heat-1', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4'] as const;
 
+/** The level of the time as shown, in whole minutes, so that a shade never contradicts it. */
 function levelOf(seconds: number): number {
-  if (seconds === 0) return 0;
-  const level = levels.findIndex((bound) => seconds <= bound);
+  const shown = Math.floor(seconds / 60) * 60;
+  if (shown <= 0) return 0;
+  const level = levels.findIndex((bound) => shown <= bound);
   return level === -1 ? levels.length + 1 : level + 1;
 }
 

@@ -343,7 +343,7 @@ Below the period sections the page SHALL show the past year as a grid with a col
 
 ### Requirement: Heatmap levels
 
-Each day of the 12-month heatmap SHALL have one of five fixed levels: none, up to 2 h, up to 4 h, up to 8 h and over 8 h, drawn as a sequential scale with separate values for light and dark mode. A legend SHALL name each level in text.
+Each day of the 12-month heatmap SHALL have one of five fixed levels: none, up to 2 h, up to 4 h, up to 8 h and over 8 h, drawn as a sequential scale with separate values for light and dark mode, and taken from the time in whole minutes as shown. A legend SHALL name each level in text.
 
 #### Scenario: Levels
 
@@ -399,11 +399,11 @@ Beside the top Tasks, or in their place when the period has none, the page SHALL
 
 ### Requirement: Weekday-by-hour levels
 
-Each hour SHALL have one of five fixed levels on the scale of the 12-month heatmap: none, up to 15, 30, 45 and 60 minutes, the top level holding anything over 45 minutes. A legend SHALL name each level in text.
+Each hour SHALL have one of five fixed levels on the scale of the 12-month heatmap: none, up to 15, 30, 45 and 60 minutes, taken from the average in whole minutes as shown, the top level holding anything over 45 minutes. A legend SHALL name each level in text.
 
 #### Scenario: Levels
 
-- **WHEN** hours have 0:00, 0:15, 0:16, 0:45, 0:46 and 1:00
+- **WHEN** hours have averages of 59 seconds, 15:59 minutes, 0:16, 0:45, 0:46 and 1:00
 - **THEN** they SHALL have the levels none, up to 15, up to 30, up to 45, up to 60 and up to 60 minutes
 
 ### Requirement: Moving through the weekday-by-hour heatmap

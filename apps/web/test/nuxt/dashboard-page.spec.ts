@@ -833,11 +833,11 @@ describe('Dashboard past year', () => {
     harness.fetch.mockResolvedValue({
       ...november,
       pastYear: pastYear({
-        '2026-11-24': 7201,
+        '2026-11-24': 7260,
         '2026-11-23': 7200,
         '2026-11-20': 14_400,
         '2026-11-19': 28_800,
-        '2026-11-18': 28_801,
+        '2026-11-18': 28_860,
       }),
     });
     await mountPage();
@@ -884,7 +884,7 @@ describe('Dashboard past year', () => {
         'Wed, Nov 18',
       ].map((date) => level(`${date}, 2026`)),
     ).toEqual(['bg-heat-0', 'bg-heat-1', 'bg-heat-2', 'bg-heat-2', 'bg-heat-3', 'bg-heat-4']);
-    expect(day('Wed, Nov 18, 2026').attributes('aria-label')).toBe('Wed, Nov 18, 2026: 8:00');
+    expect(day('Thu, Nov 19, 2026').attributes('aria-label')).toBe('Thu, Nov 19, 2026: 8:00');
     expect(
       byTestId('dashboard-past-year-legend')
         .findAll('li')
@@ -1057,10 +1057,12 @@ describe('Dashboard weekday-by-hour heatmap', () => {
       ...november,
       weekdayHours: weekdayHours({
         '1/9': 900,
-        '1/10': 901,
+        '1/10': 960,
         '1/11': 1800,
         '1/12': 2700,
-        '1/13': 2701,
+        '1/13': 2760,
+        '1/14': 959,
+        '1/15': 59,
         '5/23': 3600,
       }),
     });
@@ -1105,6 +1107,9 @@ describe('Dashboard weekday-by-hour heatmap', () => {
         'Mon, 12:00 PM–1:00 PM',
         'Mon, 1:00 PM–2:00 PM',
         'Fri, 11:00 PM–12:00 AM',
+        // Shown as 0:15 and 0:00: the level follows the time shown.
+        'Mon, 2:00 PM–3:00 PM',
+        'Mon, 3:00 PM–4:00 PM',
       ].map(level),
     ).toEqual([
       'bg-heat-0',
@@ -1114,6 +1119,8 @@ describe('Dashboard weekday-by-hour heatmap', () => {
       'bg-heat-3',
       'bg-heat-4',
       'bg-heat-4',
+      'bg-heat-1',
+      'bg-heat-0',
     ]);
     expect(
       byTestId('dashboard-weekday-hours-legend')
