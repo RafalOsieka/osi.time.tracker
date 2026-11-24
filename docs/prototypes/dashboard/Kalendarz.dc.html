@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<title>Pulpit B - Kalendarz</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0}
+a{color:#007595}a:hover{color:#005f78}
+.pl{--canvas:#f3f6fa;--side:#eaeff6;--card:#fff;--line:#e2e8f0;--ctl:#7f8ea3;--ink:#020618;--text:#1d293d;--muted:#45556c;--acc:#007595;--wash:#cefafe;--warn:#b45309;--s1:#2a78d6;--s2:#eb6834;--s3:#1baf7a;--s4:#eda100;--s5:#e87ba4;--s6:#008300;--s0:#90a1b9;--h0:#e8edf3;--h1:#a2f4fd;--h2:#4cc3dc;--h3:#0092b8;--h4:#005f78}
+.pl.dk{--canvas:#191d25;--side:#12161d;--card:#1f232b;--line:#313742;--ctl:#62748e;--ink:#e2e8f0;--text:#d6dee8;--muted:#90a1b9;--acc:#00d3f2;--wash:#0d3a48;--warn:#ffb900;--s1:#3987e5;--s2:#d95926;--s3:#199e70;--s4:#c98500;--s5:#d55181;--s6:#0ca30c;--s0:#62748e;--h0:#2b313c;--h1:#104e64;--h2:#007595;--h3:#00b8db;--h4:#a2f4fd}
+.pl a{color:var(--acc)}
+.pl button{font:inherit;color:inherit;cursor:pointer}
+.pl :focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.mono{font-family:'Geist Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.seg{border:0;background:transparent;border-radius:5px;padding:0 14px;min-height:36px;color:var(--muted)}
+.seg.on{background:var(--card);color:var(--ink);font-weight:500;box-shadow:0 0 0 1px var(--line)}
+.nav{display:block;padding:9px 12px;border-radius:6px;text-decoration:none;font-size:14px}
+</style>
+</helmet>
+<div class="{{theme}}" style="background: var(--canvas); color: var(--text); font-family: Geist, system-ui, sans-serif; font-size: 14px; display: flex; flex-wrap: wrap; min-height: 100vh">
+<aside style="flex: 1 0 232px; max-width: 100%; background: var(--side); box-sizing: border-box; padding: 18px 14px; display: flex; flex-direction: column; gap: 2px">
+<div style="font-weight: 600; color: var(--ink); padding: 2px 12px 16px">OSI Time Tracker</div>
+<a class="nav" href="#stoper" style="color: var(--text)">Stoper</a>
+<a class="nav" href="#pulpit" aria-current="page" style="color: var(--acc); background: var(--wash); font-weight: 500">Pulpit</a>
+<a class="nav" href="#trackery" style="color: var(--text)">Trackery</a>
+<a class="nav" href="#projekty" style="color: var(--text)">Projekty</a>
+<div style="padding: 9px 12px; color: var(--muted)">Raporty</div>
+<a class="nav" href="#zestawienie" style="color: var(--text); padding-left: 28px">Zestawienie miesięczne</a>
+<a class="nav" href="#raport" style="color: var(--text); padding-left: 28px">Raport dla klienta</a>
+</aside>
+<main style="flex: 999 1 560px; min-width: 0; box-sizing: border-box; padding: 32px 24px 40px; display: flex; flex-direction: column; gap: 24px">
+<header style="display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 12px">
+<h1 style="margin: 0; font-size: 24px; font-weight: 600; color: var(--ink)">Pulpit</h1>
+<sc-if value="{{showBacklog}}" hint-placeholder-val="{{ true }}"><p style="margin: 0; display: flex; gap: 8px"><span style="color: var(--warn); font-weight: 500">Niewysłany czas:</span><a href="#sync-12">12 lis</a><a href="#sync-18">18 lis</a></p></sc-if>
+</header>
+<section aria-label="Ostatnie 12 miesięcy" style="background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+<div style="overflow-x: auto; padding: 2px"><div style="display: flex; gap: 3px; min-width: 900px">
+<sc-for list="{{weeks}}" as="w" hint-placeholder-count="53"><div style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="height: 18px; font-size: 11px; color: var(--muted); white-space: nowrap; width: 0">{{w.m}}</span><sc-for list="{{w.days}}" as="d" hint-placeholder-count="7"><button type="button" aria-label="{{d.t}}" title="{{d.t}}" onClick="{{d.pick}}" tabindex="{{d.tab}}" style="border: 0; padding: 0; height: 16px; border-radius: 3px; background: {{d.c}}; visibility: {{d.vis}}; box-shadow: {{d.ring}}"></button></sc-for></div></sc-for>
+</div></div>
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--muted)"><span>Kliknij dzień, aby przejść do jego tygodnia. Wybrany okres ma obwódkę.</span><span style="display: flex; align-items: center; gap: 6px"><span>0 h</span><sc-for list="{{legend}}" as="l" hint-placeholder-count="5"><span title="{{l.t}}" style="width: 12px; height: 12px; border-radius: 3px; background: {{l.c}}"></span></sc-for><span>ponad 8 h</span></span></div>
+</section>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; align-items: center; gap: 4px">
+<button type="button" aria-label="Poprzedni okres" onClick="{{prev}}" style="width: 44px; height: 44px; border: 0; background: transparent"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"></path></svg></button>
+<h2 style="margin: 0; min-width: 190px; text-align: center; font-size: 18px; font-weight: 600; color: var(--ink)">{{periodLabel}}</h2>
+<button type="button" aria-label="Następny okres" onClick="{{next}}" disabled="{{atNow}}" style="width: 44px; height: 44px; border: 0; background: transparent; opacity: {{nextOpacity}}"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"></path></svg></button>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 10px">
+<div role="group" aria-label="Okres" style="display: flex; background: var(--side); border-radius: 7px; padding: 3px"><sc-for list="{{modes}}" as="m" hint-placeholder-count="3"><button type="button" class="{{m.cls}}" aria-pressed="{{m.on}}" onClick="{{m.pick}}">{{m.label}}</button></sc-for></div>
+<div role="group" aria-label="Grupowanie" style="display: flex; background: var(--side); border-radius: 7px; padding: 3px"><sc-for list="{{groupings}}" as="g" hint-placeholder-count="2"><button type="button" class="{{g.cls}}" aria-pressed="{{g.on}}" onClick="{{g.pick}}">{{g.label}}</button></sc-for></div>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 32px; align-items: flex-start">
+<section aria-label="Czas w okresie" style="flex: 3 1 460px; min-width: 0; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 10px 18px 16px">
+<sc-for list="{{lines}}" as="l" hint-placeholder-count="24"><div style="display: flex; align-items: center; gap: 12px; min-height: 30px; border-top: 1px solid {{l.edge}}" title="{{l.aria}}"><span style="width: 96px; flex: none; color: var(--muted); font-size: 13px">{{l.long}}</span><span role="img" aria-label="{{l.aria}}" style="flex: 1; min-width: 0; display: flex; gap: 2px; height: 14px"><sc-for list="{{l.segs}}" as="s" hint-placeholder-count="3"><span style="width: {{s.w}}%; background: {{s.c}}; border-radius: {{s.r}}; flex: none"></span></sc-for></span><span class="mono" style="width: 56px; flex: none; text-align: right; font-size: 13px">{{l.t}}</span></div></sc-for>
+</section>
+<div style="flex: 2 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 28px">
+<section aria-label="Podsumowanie okresu">
+<div style="font-size: 48px; font-weight: 600; line-height: 1.1; color: var(--ink)">{{total}}</div>
+<p style="margin: 6px 0 16px; color: var(--muted)">{{dayCount}} dni z wpisami, średnio {{average}} na dzień</p>
+<table style="width: 100%; border-collapse: collapse"><tbody>
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="6"><tr style="border-top: 1px solid var(--line)"><td style="padding: 10px 8px 10px 0"><span aria-hidden="true" style="display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: {{r.c}}; margin-right: 10px"></span>{{r.n}} <span style="color: var(--muted); font-size: 12px">{{r.note}}</span></td><td class="mono" style="text-align: right">{{r.t}}</td><td class="mono" style="text-align: right; color: var(--muted); width: 52px">{{r.p}}</td></tr></sc-for>
+</tbody></table>
+</section>
+<section>
+<h2 style="margin: 0 0 8px; font-size: 16px; font-weight: 600; color: var(--ink)">Najwięcej czasu</h2>
+<table style="width: 100%; border-collapse: collapse"><tbody>
+<sc-for list="{{tasks}}" as="k" hint-placeholder-count="10"><tr style="border-top: 1px solid var(--line)"><td style="padding: 8px 8px 8px 0">{{k.n}} <a href="#zgloszenie">{{k.i}}</a></td><td class="mono" style="text-align: right">{{k.t}}</td></tr></sc-for>
+</tbody></table>
+</section>
+<section>
+<h2 style="margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--ink)">Rytm dnia <span style="font-weight: 400; font-size: 13px; color: var(--muted)">ostatnie 12 tygodni</span></h2>
+<div style="overflow-x: auto"><div role="img" aria-label="Rytm dnia: najwięcej pracy od poniedziałku do piątku między 9 a 16" style="min-width: 320px; display: flex; flex-direction: column; gap: 2px">
+<sc-for list="{{rhythm}}" as="w" hint-placeholder-count="7"><div style="display: flex; gap: 2px; align-items: center"><span style="width: 36px; flex: none; font-size: 11px; color: var(--muted)">{{w.n}}</span><sc-for list="{{w.cells}}" as="h" hint-placeholder-count="24"><span title="{{h.t}}" style="flex: 1; height: 16px; border-radius: 2px; background: {{h.c}}"></span></sc-for></div></sc-for>
+<div class="mono" style="display: flex; justify-content: space-between; padding-left: 38px; font-size: 11px; color: var(--muted)"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div>
+</div></div>
+</section>
+</div>
+</div>
+</main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"backlog":{"editor":"boolean","default":true},"$preview":{"width":1360,"height":1420}}'>
+const DAY = 86400000, TODAY = Date.UTC(2026, 10, 24);
+const MF = ['styczeń', 'luty', 'marzec', 'kwiecień', 'maj', 'czerwiec', 'lipiec', 'sierpień', 'wrzesień', 'październik', 'listopad', 'grudzień'];
+const MS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
+const WD = ['pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.', 'niedz.'];
+const PROJ = [['Portal klienta', 0, ''], ['API rozliczeń', 0, ''], ['Sklep internetowy', 1, ''], ['Aplikacja mobilna', 1, ''], ['Sprawy firmowe', 2, 'lokalny'], ['Migracja danych', 0, 'usunięty'], ['Bez projektu', 3, '']];
+const TRACK = ['OpenProject Północ', 'Redmine Atelier', 'Lokalne', 'Bez projektu'];
+const TASKS = [['Formularz zamówień', 'Portal klienta', '#4821', .14], ['Przegląd kodu', 'API rozliczeń', '#4790', .1], ['Koszyk i płatności', 'Sklep internetowy', '#312', .09], ['Logowanie biometryczne', 'Aplikacja mobilna', '#298', .07], ['Spotkanie zespołu', 'Portal klienta', '#4700', .06], ['Import faktur', 'API rozliczeń', '#4833', .05], ['Wyszukiwarka', 'Sklep internetowy', '#320', .04], ['Błędy po wdrożeniu', 'Portal klienta', '#4850', .04], ['Księgowość', 'Sprawy firmowe', '', .03], ['Powiadomienia push', 'Aplikacja mobilna', '#301', .03]];
+const rnd = (n) => { const x = Math.sin(n * 12.9898) * 43758.5453; return x - Math.floor(x); };
+const wdOf = (ts) => (new Date(ts).getUTCDay() + 6) % 7;
+// Invented minutes per project for one day, stable between renders.
+const vals = (ts) => {
+  if (ts > TODAY) return [0, 0, 0, 0, 0, 0, 0];
+  const d = new Date(ts), k = ts / DAY, wd = wdOf(ts), m = d.getUTCMonth(), dom = d.getUTCDate(), end = wd > 4;
+  if (end ? rnd(k) > .14 : rnd(k) > .97 || (m === 7 && dom > 9 && dom < 24)) return [0, 0, 0, 0, 0, 0, 0];
+  const total = end ? 40 + rnd(k + 1) * 130 : 330 + rnd(k + 1) * 210;
+  const old = ts < Date.UTC(2026, 6, 1);
+  const w = [.34, .22, old ? .06 : .2, .12, .06, old ? .24 : 0, .03].map((x, i) => x * (rnd(k * 7 + i) > .25 ? .4 + rnd(k * 3 + i) : 0));
+  const sum = w.reduce((a, b) => a + b, 0) || 1;
+  return w.map((x) => Math.round(total * x / sum / 5) * 5);
+};
+const add = (a, b) => a.map((x, i) => x + b[i]);
+const sumOf = (a) => a.reduce((x, y) => x + y, 0);
+const hm = (m) => Math.floor(m / 60) + ':' + String(Math.round(m % 60)).padStart(2, '0');
+const range = (from, to) => { const r = []; for (let t = from; t <= to; t += DAY) r.push(t); return r; };
+const period = (mode, off) => {
+  if (mode === 'week') {
+    const mon = TODAY - wdOf(TODAY) * DAY + off * 7 * DAY, a = new Date(mon), b = new Date(mon + 6 * DAY);
+    return { label: a.getUTCDate() + ' ' + MS[a.getUTCMonth()] + ' - ' + b.getUTCDate() + ' ' + MS[b.getUTCMonth()] + ' ' + b.getUTCFullYear(), items: range(mon, mon + 6 * DAY).map((t) => ({ long: WD[wdOf(t)] + ' ' + new Date(t).getUTCDate() + ' ' + MS[new Date(t).getUTCMonth()], mon: wdOf(t) === 0, days: [t] })) };
+  }
+  if (mode === 'month') {
+    const s = new Date(Date.UTC(2026, 10 + off, 1)), y = s.getUTCFullYear(), m = s.getUTCMonth();
+    return { label: MF[m] + ' ' + y, items: range(s.getTime(), Date.UTC(y, m + 1, 0)).map((t) => ({ long: WD[wdOf(t)] + ' ' + new Date(t).getUTCDate() + ' ' + MS[m], mon: wdOf(t) === 0, days: [t] })) };
+  }
+  const y = 2026 + off;
+  return { label: String(y), items: MF.map((n, m) => ({ long: n, mon: false, days: range(Date.UTC(y, m, 1), Date.UTC(y, m + 1, 0)) })) };
+};
+const level = (m) => m === 0 ? 0 : m <= 120 ? 1 : m <= 240 ? 2 : m <= 480 ? 3 : 4;
+const year = (pick, isSel) => {
+  const start = TODAY - 364 * DAY, first = start - wdOf(start) * DAY, weeks = [];
+  let last = -1;
+  for (let w = first; w <= TODAY; w += 7 * DAY) {
+    const m = new Date(w).getUTCMonth(), show = m !== last; last = m;
+    weeks.push({ m: show ? MS[m] : '', days: range(w, w + 6 * DAY).map((t) => {
+      const d = new Date(t), s = sumOf(vals(t)), off = t < start || t > TODAY;
+      return { t: WD[wdOf(t)] + ' ' + d.getUTCDate() + ' ' + MS[d.getUTCMonth()] + ': ' + hm(s), c: 'var(--h' + level(s) + ')', vis: off ? 'hidden' : 'visible', tab: off ? -1 : 0, ring: isSel(t) ? '0 0 0 1.5px var(--ink)' : 'none', pick: () => pick(Math.round((t - wdOf(t) * DAY - (TODAY - wdOf(TODAY) * DAY)) / (7 * DAY))) };
+    }) });
+  }
+  return weeks;
+};
+const rhythmRows = () => WD.map((n, wd) => ({ n, cells: Array.from({ length: 24 }, (_, h) => {
+  const bump = (c, s) => Math.exp(-((h - c) * (h - c)) / s);
+  const base = wd > 4 ? 10 * bump(11, 5) : 56 * Math.max(bump(10, 4), bump(14, 5)) + 14 * bump(20, 2);
+  const m = Math.round(Math.max(0, base * (.8 + rnd(wd * 31 + h) * .3) - 2));
+  return { t: n + ' ' + h + ':00, średnio ' + m + ' min', c: 'var(--h' + (m <= 1 ? 0 : m <= 15 ? 1 : m <= 30 ? 2 : m <= 45 ? 3 : 4) + ')' };
+}) }));
+class Component extends DCLogic {
+  state = { mode: 'month', off: 0, group: 'project' };
+  renderVals() {
+    const s = this.state, p = period(s.mode, s.off), byProj = s.group === 'project';
+    const heads = byProj ? PROJ.map((x, i) => ({ n: x[0], note: x[2], c: 'var(--s' + (i === 6 ? 0 : i + 1) + ')' })) : TRACK.map((n, i) => ({ n, note: '', c: 'var(--s' + (i === 3 ? 0 : i + 1) + ')' }));
+    const fold = (v) => byProj ? v : TRACK.map((_, t) => v.reduce((a, x, i) => a + (PROJ[i][1] === t ? x : 0), 0));
+    const items = p.items.filter((b) => b.days[0] <= TODAY).map((b) => ({ ...b, v: fold(b.days.reduce((a, t) => add(a, vals(t)), [0, 0, 0, 0, 0, 0, 0])) }));
+    const totals = items.reduce((a, b) => add(a, b.v), heads.map(() => 0)), total = sumOf(totals);
+    const active = p.items.flatMap((b) => b.days).filter((t) => sumOf(vals(t)) > 0).length;
+    const peak = Math.max(60, ...items.map((b) => sumOf(b.v)));
+    const line = (b) => b.long + ': ' + hm(sumOf(b.v)) + (sumOf(b.v) ? ' (' + heads.map((h, i) => b.v[i] ? h.n + ' ' + hm(b.v[i]) : '').filter(Boolean).join(', ') + ')' : '');
+    const sel = new Set(p.items.flatMap((b) => b.days));
+    const tab = (list, key, extra) => list.map(([id, label]) => ({ label, on: s[key] === id, cls: s[key] === id ? 'seg on' : 'seg', pick: () => this.setState({ [key]: id, ...extra }) }));
+    return {
+      theme: (this.props.dark ?? false) ? 'pl dk' : 'pl', showBacklog: this.props.backlog ?? true,
+      modes: tab([['week', 'Tydzień'], ['month', 'Miesiąc'], ['year', 'Rok']], 'mode', { off: 0 }),
+      groupings: tab([['project', 'Projekt'], ['tracker', 'Tracker']], 'group', {}),
+      periodLabel: p.label, atNow: s.off >= 0, nextOpacity: s.off >= 0 ? .35 : 1,
+      prev: () => this.setState({ off: s.off - 1 }), next: () => s.off < 0 && this.setState({ off: s.off + 1 }),
+      total: hm(total), dayCount: String(active), average: active ? hm(total / active) : '0:00',
+      lines: items.map((b, i) => { const segs = b.v.map((m, j) => ({ m, c: heads[j].c })).filter((x) => x.m > 0); return { long: b.long, aria: line(b), t: hm(sumOf(b.v)), edge: b.mon && i ? 'var(--line)' : 'transparent', segs: segs.map((x, j) => ({ c: x.c, w: x.m / peak * 94, r: j === segs.length - 1 ? '0 4px 4px 0' : '0' })) }; }),
+      rows: heads.map((h, i) => ({ ...h, m: totals[i] })).filter((r) => r.m > 0).sort((a, b) => b.m - a.m).map((r) => ({ ...r, t: hm(r.m), p: Math.round(r.m / total * 100) + '%' })),
+      tasks: TASKS.map((t) => ({ n: t[0], i: t[2], t: hm(Math.round(total * t[3] / 5) * 5) })),
+      rhythm: rhythmRows(), legend: ['0 h', 'do 2 h', 'do 4 h', 'do 8 h', 'ponad 8 h'].map((t, i) => ({ t, c: 'var(--h' + i + ')' })),
+      weeks: year((off) => this.setState({ mode: 'week', off }), (t) => s.mode !== 'year' && sel.has(t)),
+    };
+  }
+}
+</script>
+</body>
+</html>
