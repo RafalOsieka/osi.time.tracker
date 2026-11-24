@@ -105,13 +105,6 @@ const shown = computed(() =>
   shownIndex.value === null ? undefined : shownCells.value[shownIndex.value],
 );
 
-const scrollElement = useTemplateRef('scroll');
-onMounted(() => {
-  if (startAtEnd && scrollElement.value) {
-    scrollElement.value.scrollLeft = scrollElement.value.scrollWidth;
-  }
-});
-
 function activate(index: number | null): void {
   if (activatable && index !== null) emit('activate', index);
 }
@@ -157,9 +150,15 @@ function onKeydown(event: KeyboardEvent): void {
     </div>
 
     <USkeleton v-if="!cells" class="h-36 rounded-lg" aria-hidden="true" />
-    <!-- A narrow screen scrolls the columns here, never the page, under fixed row labels. -->
-    <div v-else ref="scroll" class="overflow-x-auto pb-1" :data-testid="`${id}-scroll`">
-      <div class="grid gap-0.75" :style="{ minWidth }">
+    <!-- A narrow screen scrolls the columns here, never the page, under fixed row labels. A
+         reversed row starts scrolled to its end, already in the server's HTML. -->
+    <div
+      v-else
+      class="overflow-x-auto pb-1"
+      :class="{ 'flex flex-row-reverse': startAtEnd }"
+      :data-testid="`${id}-scroll`"
+    >
+      <div class="grid grow gap-0.75" :style="{ minWidth }">
         <div
           class="grid h-4 gap-0.75 text-xs text-muted"
           :style="columns"
