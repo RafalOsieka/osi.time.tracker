@@ -120,6 +120,30 @@ The response SHALL group the period's time both by Project and by Tracker, each 
 - **WHEN** a Project's only entry is shorter than one second
 - **THEN** the Project SHALL have no group
 
+### Requirement: Group colors
+
+Each group SHALL carry a palette slot from 0 to 5, or none. Only the six largest groups other than "No project" SHALL have one. A group SHALL want the slot of its place in creation order among all the user's Projects, or Trackers with "Local" last, deleted ones included, counted modulo six. Of two groups that want one slot, the older SHALL keep it and the other SHALL take the next slot no group wants or holds. The ranking SHALL NOT change a slot.
+
+#### Scenario: Slot by creation order
+
+- **WHEN** the user's third Project has time in a period
+- **THEN** its group SHALL have slot 2, whatever its rank among the six largest
+
+#### Scenario: Two groups want one slot
+
+- **WHEN** the first and the seventh Project, both among the six largest, want slot 0 and slot 1 is held by the second Project
+- **THEN** the first SHALL have slot 0 and the seventh slot 2
+
+#### Scenario: More than six groups
+
+- **WHEN** a period has time in eight Projects and without a Project
+- **THEN** the six largest Projects SHALL have a slot, and the two smallest and "No project" SHALL have none
+
+#### Scenario: Local after the Trackers
+
+- **WHEN** the user has created three Trackers, one of them deleted since, and the period has time in Local projects
+- **THEN** the "Local" group SHALL want slot 3
+
 ### Requirement: Deleted Projects and Trackers
 
 Soft-deleted Projects and Trackers SHALL keep their groups and names, marked as deleted.
@@ -204,6 +228,77 @@ The page SHALL list every group in a captioned table with its name, its time as 
 - **WHEN** a screen reader moves down the times or shares
 - **THEN** each SHALL be announced with its group's name
 
+### Requirement: Time chart
+
+Beside the groups table the page SHALL show stacked columns, one per day of a week or month and one per month of a year, with an axis in whole hours. A column SHALL stack, from the bottom, the groups with a slot largest first, then "Other" with the time of every other named group, then "No project", with a gap between segments. Below a narrow screen's width the chart SHALL scroll in its own box, never the page.
+
+#### Scenario: A week
+
+- **WHEN** a week has 2:00 in a Project and 1:00 without a Project on Monday, and nothing on the other days
+- **THEN** the chart SHALL have seven columns, Monday's with the Project below "No project"
+
+#### Scenario: Smaller groups fold into Other
+
+- **WHEN** a day has time in eight Projects and without a Project
+- **THEN** its column SHALL have the six largest Projects in color, one "Other" segment with the two smallest and "No project" on top
+
+#### Scenario: Phone
+
+- **WHEN** a month is shown on a phone
+- **THEN** its columns SHALL scroll inside the chart, and the page SHALL NOT scroll sideways
+
+### Requirement: Chart colors
+
+Each slot SHALL have its own color, and "Other" and "No project" two neutral shades, each with separate values for light and dark mode that stay apart under the common color vision deficiencies. The groups table SHALL mark each group with the color it is drawn in, a group without a slot with the color of "Other". No group SHALL be told apart by color alone: names and times are in the table, the tooltip and each column's name.
+
+#### Scenario: Same group in another period
+
+- **WHEN** a Project with a slot has a slot in another period too and no older group wants it there
+- **THEN** it SHALL have the same color in both periods
+
+### Requirement: Moving through the chart
+
+The chart SHALL be one tab stop. Left and right arrows SHALL move between columns, Home and End to the first and the last, and tabbing back into the chart SHALL return to the column left last.
+
+#### Scenario: Keyboard
+
+- **WHEN** the user tabs into the chart of April 2026 and presses the right arrow
+- **THEN** the column of April 2 SHALL have the focus
+
+#### Scenario: Coming back
+
+- **WHEN** the user leaves the chart on April 2 and tabs back into it
+- **THEN** the column of April 2 SHALL have the focus
+
+### Requirement: Column breakdown
+
+Hovering or focusing a column SHALL show its day or month, its total and the time of each segment, as unpadded `H:MM`. The pointer SHALL be able to move onto the breakdown without hiding it, and Escape SHALL hide it wherever the focus is. Each column's accessible name SHALL hold the same numbers. All text SHALL have `en`/`pl` parity.
+
+#### Scenario: Focus
+
+- **WHEN** the column of April 2 receives the focus
+- **THEN** its breakdown SHALL show until the focus leaves the chart
+
+#### Scenario: Escape
+
+- **WHEN** the user hovers a column while the focus is elsewhere and presses Escape
+- **THEN** the breakdown SHALL hide until the pointer moves to another column
+
+#### Scenario: Accessible name
+
+- **WHEN** a screen reader reaches the column of Wednesday, April 1, with 2:00 in "Books" and 1:00 without a Project
+- **THEN** it SHALL announce "Wed, Apr 1: 3:00, of which Books 2:00, No project 1:00"
+
+#### Scenario: Empty column
+
+- **WHEN** a day has no time
+- **THEN** its column SHALL be empty and its name SHALL give the day and `0:00`
+
+#### Scenario: Server render
+
+- **WHEN** the page is loaded in full
+- **THEN** the chart SHALL arrive complete from the server and SHALL NOT move or change when the page becomes interactive
+
 ### Requirement: Switching the grouping
 
 The page SHALL offer grouping by Project, the default, and by Tracker, operable by keyboard and announcing which one is selected. Switching SHALL make no request and SHALL NOT change the URL. The choice SHALL last while the user stays on the page, also across periods.
@@ -211,7 +306,7 @@ The page SHALL offer grouping by Project, the default, and by Tracker, operable 
 #### Scenario: Switch to Trackers
 
 - **WHEN** the user picks Tracker
-- **THEN** the table SHALL list the Tracker groups of the same period
+- **THEN** the chart and the table SHALL show the Tracker groups of the same period
 
 #### Scenario: Another period
 
@@ -230,12 +325,12 @@ Loading, a failed load, a period without entries and an account without entries 
 #### Scenario: Failed load
 
 - **WHEN** the request fails
-- **THEN** the page SHALL show a translated error instead of the summary and the groups, and choosing the selected kind again SHALL retry
+- **THEN** the page SHALL show a translated error instead of the summary, the chart and the groups, and choosing the selected kind again SHALL retry
 
 #### Scenario: Period without entries
 
 - **WHEN** the period has no days with entries but the account has Time entries
-- **THEN** the page SHALL show zeros and a short message, and no groups
+- **THEN** the page SHALL show zeros and a short message, and neither the chart nor the groups
 
 #### Scenario: Account without entries
 

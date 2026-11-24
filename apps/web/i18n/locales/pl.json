@@ -79,11 +79,24 @@
       "project": "Czas według projektów",
       "tracker": "Czas według trackerów"
     },
+    "chartCaption": {
+      "project": "Czas według projektów w podziale na {bucket}",
+      "tracker": "Czas według trackerów w podziale na {bucket}"
+    },
+    "chartBucket": {
+      "day": "dni",
+      "month": "miesiące"
+    },
+    "chartHours": "{hours} h",
+    "chartColumn": "{bucket}: {total}",
+    "chartColumnSplit": "{bucket}: {total}, w tym {split}",
+    "chartSegment": "{name} {time}",
     "columnTime": "Czas",
     "columnShare": "Udział",
     "group": {
       "local": "Lokalne",
-      "noProject": "Bez projektu"
+      "noProject": "Bez projektu",
+      "other": "Inne"
     },
     "deleted": "usunięty",
     "emptyAccountTitle": "Brak wpisów czasu",

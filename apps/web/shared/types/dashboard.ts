@@ -49,10 +49,24 @@ export type DashboardGroupIdentityDto =
   | { kind: 'local' }
   | { kind: 'noProject' };
 
+/** Tells groups apart, in either grouping. */
+export function dashboardGroupKey(group: DashboardGroupIdentityDto): string {
+  return 'id' in group ? group.id : group.kind;
+}
+
+/** The chart colors this many groups of a period and folds the rest into "Other". */
+export const DASHBOARD_COLOR_SLOTS = 6;
+
 export type DashboardGroupDto = DashboardGroupIdentityDto & {
   totalSeconds: number;
   /** One value per bucket of the period, in the same order. */
   bucketSeconds: number[];
+  /**
+   * Palette slot, from 0, of one of the largest named groups; none for the rest and for "No
+   * project". It follows creation order, not the ranking, so a group keeps its color between
+   * periods unless another group of the period wants the same slot.
+   */
+  colorSlot: number | null;
 };
 
 export interface DashboardDto {

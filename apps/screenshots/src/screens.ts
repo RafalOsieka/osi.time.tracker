@@ -160,7 +160,8 @@ const PAGES: Screen[] = [
   {
     id: 'p09-dashboard',
     title: 'Dashboard',
-    shows: "This month's Dashboard: the period controls, the summary and the time per Project.",
+    shows:
+      "This month's Dashboard: the period controls, the summary, and the time per Project as a chart and a table.",
     as: 'busy',
     path: '/',
     ready: '[data-testid="dashboard-summary"]',

@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 import { createPage } from '@nuxt/test-utils/e2e';
 import type { Page } from 'playwright-core';
+import { z } from 'zod';
 import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
@@ -122,6 +123,93 @@ describeDashboardUi('Dashboard journey', async () => {
     await page.close();
   });
 
+  it('draws the chart on the server and reads it by keyboard and pointer', async () => {
+    const user = await seedUser(dbUrl);
+    const { jar, token } = await apiLogin(user.email, user.password);
+    await patchTimezone(jar, token, 'UTC');
+    const books = await createProject(jar, token, 'Books');
+    for (const [startedAt, stoppedAt, projectId] of [
+      ['2026-04-01T08:00:00.000Z', '2026-04-01T10:00:00.000Z', books.id],
+      ['2026-04-01T10:00:00.000Z', '2026-04-01T11:00:00.000Z', null],
+      ['2026-04-02T08:00:00.000Z', '2026-04-02T09:30:00.000Z', books.id],
+    ] as const) {
+      const created = await startEntry(jar, token, {
+        title: 'Work',
+        startedAt,
+        stoppedAt,
+        projectId,
+      });
+      expect(created.status).toBe(200);
+    }
+
+    const page = await createPage('/login');
+    const warnings: string[] = [];
+    page.on('console', (message) => {
+      if (/hydration/i.test(message.text())) warnings.push(message.text());
+    });
+    await loginAs(page, user.email, user.password);
+    await page.waitForSelector('[data-testid="dashboard-page"]');
+    const response = await page.goto(url('/?period=month&date=2026-04-15'), {
+      waitUntil: 'hydration',
+    });
+    const html = (await response?.text()) ?? '';
+    expect(html.match(/data-testid="dashboard-chart-column"/g)).toHaveLength(30);
+    expect(html.match(/data-testid="dashboard-chart-segment"/g)).toHaveLength(3);
+
+    const layoutShifts = await page.evaluate(
+      () =>
+        new Promise<unknown[]>((resolve) => {
+          const shifts: unknown[] = [];
+          new PerformanceObserver((list) => {
+            shifts.push(...list.getEntries().map((entry) => entry.toJSON()));
+          }).observe({ type: 'layout-shift', buffered: true });
+          setTimeout(() => resolve(shifts), 500);
+        }),
+    );
+    expect(z.array(z.object({ value: z.number() })).parse(layoutShifts)).toEqual([]);
+    expect(warnings).toEqual([]);
+
+    const cell = (day: number) =>
+      page.locator('[data-testid="dashboard-chart-column"]').nth(day - 1);
+    const tooltip = page.locator('[data-testid="dashboard-chart-tooltip"]');
+    await page.focus('[data-testid="dashboard-grouping-tracker"]');
+    await page.keyboard.press('Tab');
+    expect(await cell(1).evaluate((element) => element === document.activeElement)).toBe(true);
+    expect(await cell(1).getAttribute('aria-label')).toBe(
+      'Wed, Apr 1: 3:00, of which Books 2:00, No project 1:00',
+    );
+    await tooltip.waitFor();
+    await page.keyboard.press('ArrowRight');
+    expect(await cell(2).evaluate((element) => element === document.activeElement)).toBe(true);
+    await tooltip.filter({ hasText: 'Thu, Apr 2' }).waitFor();
+    await page.keyboard.press('Escape');
+    await tooltip.waitFor({ state: 'detached' });
+
+    // Leaving the chart and coming back lands on the column left last.
+    await page.keyboard.press('Shift+Tab');
+    await page.keyboard.press('Tab');
+    expect(await cell(2).evaluate((element) => element === document.activeElement)).toBe(true);
+    await page.keyboard.press('Shift+Tab');
+    await tooltip.waitFor({ state: 'detached' });
+
+    await cell(1).hover();
+    await tooltip.filter({ hasText: 'Wed, Apr 1' }).waitFor();
+    // Up the column onto the tooltip, which stays to be read.
+    const box = await cell(1).boundingBox();
+    const above = await tooltip.boundingBox();
+    if (!box || !above) throw new Error('The column and its tooltip are visible');
+    await page.mouse.move(box.x + box.width / 2, box.y + 2);
+    await page.mouse.move(box.x + box.width / 2, above.y + above.height / 2, { steps: 5 });
+    await tooltip.filter({ hasText: 'Wed, Apr 1' }).waitFor();
+    await page.keyboard.press('Escape');
+    await tooltip.waitFor({ state: 'detached' });
+    await cell(1).hover();
+    await tooltip.waitFor();
+    await page.mouse.move(0, 0);
+    await tooltip.waitFor({ state: 'detached' });
+    await page.close();
+  });
+
   it('fits a phone without scrolling the page sideways', async () => {
     const user = await seedUser(dbUrl);
     const page = await createPage('/login');
@@ -152,6 +240,10 @@ describeDashboardUi('Dashboard journey', async () => {
     expect(created.status).toBe(200);
     await page.goto(url('/?period=month&date=2026-04-15'), { waitUntil: 'hydration' });
     expect(await groupRows(page)).toEqual([[project.name, '3:30', '100%']]);
+    const scroll = page.locator('[data-testid="dashboard-chart-scroll"]');
+    expect(await scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+      true,
+    );
     const share = page.locator('[data-testid="dashboard-groups-table"] td').last();
     const shareBox = await share.boundingBox();
     expect((shareBox?.x ?? Infinity) + (shareBox?.width ?? Infinity)).toBeLessThanOrEqual(360);
