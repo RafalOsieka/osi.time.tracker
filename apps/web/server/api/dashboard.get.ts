@@ -8,6 +8,7 @@ import { loadExportBacklog } from '../utils/dashboard-export-backlog';
 import { aggregateProjectDays, groupProjectDays } from '../utils/dashboard-groups';
 import { loadPastYear } from '../utils/dashboard-past-year';
 import { topTasks } from '../utils/dashboard-tasks';
+import { loadWeekdayHours } from '../utils/dashboard-weekday-hours';
 import {
   firstDayOfWeekOf,
   periodBuckets,
@@ -27,7 +28,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
   const bounds = periodInstants(period, user.timezone);
   const buckets = periodBuckets(period);
 
-  const [entryRows, anyEntryRows, projectRows, trackerRows, exportBacklog, pastYear] =
+  const [entryRows, anyEntryRows, projectRows, trackerRows, exportBacklog, pastYear, weekdayHours] =
     await Promise.all([
       db
         .select({
@@ -79,6 +80,7 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
         .orderBy(asc(trackers.id)),
       loadExportBacklog(db, user.id, user.timezone, today),
       loadPastYear(db, user.id, user.timezone, today),
+      loadWeekdayHours(db, user.id, user.timezone, today),
     ]);
 
   const entries = entryRows.map((row) => ({
@@ -122,5 +124,6 @@ export default defineEventHandler(async (event): Promise<DashboardDto> => {
     topTasks: topTasks(entries),
     exportBacklog,
     pastYear,
+    weekdayHours,
   };
 });

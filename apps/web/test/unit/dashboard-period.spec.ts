@@ -5,6 +5,7 @@ import {
   pastYearWindow,
   periodInstants,
   resolveDashboardPeriod,
+  weekdayHoursWindow,
 } from '../../server/utils/dashboard-period';
 
 const MONDAY = 1;
@@ -105,5 +106,14 @@ describe('past year window', () => {
     ['2026-01-01', '2025-01-02'],
   ])('ends on %s and starts on %s', (today, firstDay) => {
     expect(pastYearWindow(today)).toEqual({ firstDay, lastDay: today });
+  });
+});
+
+describe('weekday-by-hour window', () => {
+  it.each([
+    ['2026-11-24', '2026-09-01', '2026-11-23'],
+    ['2026-03-01', '2025-12-07', '2026-02-28'],
+  ])('before %s runs from %s to %s', (today, firstDay, lastDay) => {
+    expect(weekdayHoursWindow(today)).toEqual({ firstDay, lastDay });
   });
 });

@@ -107,15 +107,24 @@
       "columnIssue": "Zgłoszenie",
       "empty": "Brak zadań w tym okresie."
     },
+    "heatmap": {
+      "cell": "{label}: {time}",
+      "legend": "Legenda",
+      "levelNone": "Brak czasu"
+    },
     "pastYear": {
       "heading": "Ostatnie 12 miesięcy",
       "hint": "Wybierz dzień, aby otworzyć jego tydzień.",
       "caption": "Czas dzienny w ostatnich 12 miesiącach",
-      "day": "{day}: {time}",
-      "legend": "Legenda",
-      "levelNone": "Brak czasu",
       "levelUpTo": "Do {hours} h",
       "levelOver": "Ponad {hours} h"
+    },
+    "weekdayHours": {
+      "heading": "Rytm dnia",
+      "hint": "Średni czas w każdej godzinie w ostatnich {weeks} tygodniach, bez dzisiaj.",
+      "caption": "Średni czas według dnia tygodnia i godziny",
+      "cell": "{weekday}, {from}–{to}",
+      "levelUpTo": "Do {minutes} min"
     },
     "emptyAccountTitle": "Brak wpisów czasu",
     "emptyAccountMessage": "Dodaj pierwszy wpis czasu w Stoperze, a zobaczysz tu, na co idzie Twój czas.",

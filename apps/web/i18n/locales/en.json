@@ -107,15 +107,24 @@
       "columnIssue": "Remote issue",
       "empty": "No tasks in this period."
     },
+    "heatmap": {
+      "cell": "{label}: {time}",
+      "legend": "Legend",
+      "levelNone": "No time"
+    },
     "pastYear": {
       "heading": "Last 12 months",
       "hint": "Select a day to open its week.",
       "caption": "Time per day over the last 12 months",
-      "day": "{day}: {time}",
-      "legend": "Legend",
-      "levelNone": "No time",
       "levelUpTo": "Up to {hours} h",
       "levelOver": "Over {hours} h"
+    },
+    "weekdayHours": {
+      "heading": "Daily rhythm",
+      "hint": "Average time per hour over the last {weeks} weeks, today left out.",
+      "caption": "Average time per weekday and hour",
+      "cell": "{weekday}, {from}–{to}",
+      "levelUpTo": "Up to {minutes} min"
     },
     "emptyAccountTitle": "No time entries yet",
     "emptyAccountMessage": "Track your first time entry in the Timer, and this page will sum up where your time goes.",

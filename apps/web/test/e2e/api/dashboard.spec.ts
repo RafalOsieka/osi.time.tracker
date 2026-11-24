@@ -699,6 +699,73 @@ describeDashboard('dashboard API', async () => {
     }
   });
 
+  it('averages each weekday and local hour over the 12 weeks before today', async () => {
+    const { timezone, offset, today } = zoneAwayFromMidnight();
+    const user = await userIn(timezone);
+    const day = (days: number) => Temporal.PlainDate.from(today).subtract({ days }).toString();
+    const at = (date: string, time: string) => `${date}T${time}${offset}`;
+    await logTime(user, at(day(1), '09:15:00'), at(day(1), '11:45:00'));
+    await logTime(user, at(day(8), '09:00:00'), at(day(8), '10:00:00'));
+    // Across midnight: cut at it, and only yesterday's side counts.
+    await logTime(user, at(day(1), '23:30:00'), at(today, '00:30:00'));
+    // Across the start of the window: only its side counts.
+    await logTime(user, at(day(85), '23:00:00'), at(day(84), '01:00:00'));
+    await logTime(user, at(day(90), '10:00:00'), at(day(90), '11:00:00'));
+    expect((await startEntry(user.jar, user.token, { title: 'Running' })).status).toBe(200);
+
+    /** Row and hour of a day's local hour, from Monday. */
+    const cell = (date: string, hour: number) =>
+      `${Temporal.PlainDate.from(date).dayOfWeek - 1}/${hour}`;
+    for (const query of ['', '?period=week&date=2020-06-01']) {
+      const { weekdayHours } = await getDashboard(user.jar, query);
+      expect(weekdayHours.firstDay).toBe(day(84));
+      expect(weekdayHours.lastDay).toBe(day(1));
+      expect(weekdayHours.hourSeconds).toHaveLength(7);
+      expect(weekdayHours.hourSeconds.every((hours) => hours.length === 24)).toBe(true);
+      const cells = weekdayHours.hourSeconds.flatMap((hours, row) =>
+        hours.flatMap((seconds, hour) => (seconds === 0 ? [] : [[`${row}/${hour}`, seconds]])),
+      );
+      // A twelfth of each hour's time: 45 + 60 minutes at 9, 60 at 10, 45 at 11 and 30 at 23.
+      expect(Object.fromEntries(cells)).toEqual({
+        [cell(day(1), 9)]: 525,
+        [cell(day(1), 10)]: 300,
+        [cell(day(1), 11)]: 225,
+        [cell(day(1), 23)]: 150,
+        [cell(day(84), 0)]: 300,
+      });
+    }
+  });
+
+  it('counts imported time like any other, from where the import placed it', async () => {
+    const { timezone, today } = zoneAwayFromMidnight();
+    const user = await userIn(timezone);
+    const tracker = await createTracker(user.jar, user.token, 'Redmine');
+    const project = await createProject(user.jar, user.token, 'Site', tracker.id);
+    const day = Temporal.PlainDate.from(today).subtract({ days: 2 });
+    await post(user, `/api/trackers/${tracker.id}/import`, {
+      dryRun: false,
+      groups: [
+        {
+          projectId: project.id,
+          logs: [
+            {
+              remoteLogId: 'log-1',
+              remoteIssueId: '42',
+              spentOn: day.toString(),
+              durationSeconds: 5400,
+              activityId: '1',
+              comment: 'Imported work',
+            },
+          ],
+        },
+      ],
+    });
+
+    const { weekdayHours } = await getDashboard(user.jar);
+    // Placed from 08:00: a twelfth of 60 minutes at 8 and of 30 at 9.
+    expect(weekdayHours.hourSeconds[day.dayOfWeek - 1]?.slice(8, 10)).toEqual([300, 150]);
+  });
+
   it("never shows another user's entries", async () => {
     const other = await backlogUser();
     await logTime(other.user, '2026-08-03T08:00:00.000Z', '2026-08-03T09:00:00.000Z');
@@ -710,6 +777,7 @@ describeDashboard('dashboard API', async () => {
     expect(body.topTasks).toEqual([]);
     expect(body.exportBacklog).toEqual([]);
     expect(body.pastYear.daySeconds.filter((seconds) => seconds !== 0)).toEqual([]);
+    expect(body.weekdayHours.hourSeconds.flat().filter((seconds) => seconds !== 0)).toEqual([]);
     expect(body.hasEntries).toBe(false);
   });
 });

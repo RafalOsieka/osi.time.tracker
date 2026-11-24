@@ -2,13 +2,13 @@
 
 ## Purpose
 
-Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year, shows their days over the past year, and points out recent days not yet Sent. It reads only local data and never contacts a Tracker.
+Show the user where their time went: the Dashboard at `/` sums up their completed Time entries over a chosen week, month or year, shows their days over the past year and the hours they usually work, and points out recent days not yet Sent. It reads only local data and never contacts a Tracker.
 
 ## Requirements
 
 ### Requirement: Dashboard endpoint
 
-`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups, its top Tasks, the days of the Export backlog and the time per day of the past year. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
+`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups, its top Tasks, the days of the Export backlog, the time per day of the past year and the average time per weekday and hour. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
 
 #### Scenario: Empty account and empty period
 
@@ -240,6 +240,40 @@ The response SHALL hold the time of each local day of the past year, whatever th
 - **WHEN** the query asks for a week in another year
 - **THEN** the past year SHALL be the same as without a query
 
+### Requirement: Weekday by hour
+
+The response SHALL hold, whatever the period, the average time per weekday and local hour over the 84 local days before today, today left out, so that each weekday occurs twelve times: the first and the last day and, for each weekday from Monday, 24 hours from midnight, each the time in that hour divided by twelve. Completed Time entries SHALL be cut where the local hour changes and clipped to the window; imported entries SHALL count like any other.
+
+#### Scenario: Window
+
+- **WHEN** today is 2026-11-24
+- **THEN** the window SHALL cover 2026-09-01 to 2026-11-23
+
+#### Scenario: Entry over several hours
+
+- **WHEN** an entry runs from 09:15 to 11:45 on a Monday and another from 09:00 to 10:00 a week earlier
+- **THEN** Monday's hours at 9, 10 and 11 SHALL have 525, 300 and 225 seconds, a twelfth of 105, 60 and 45 minutes
+
+#### Scenario: Across midnight and the window's edges
+
+- **WHEN** an entry runs from 23:30 yesterday into today, another from 23:00 the day before the window into its first day, and an entry is running
+- **THEN** only the half hour before midnight and the hour after the window's start SHALL count
+
+#### Scenario: Clocks go forward
+
+- **WHEN** an entry runs from 01:30 to 03:30 on the clock on the night the clocks skip 02:00 to 03:00
+- **THEN** it SHALL add 30 minutes at 1 and 30 minutes at 3, and nothing at 2
+
+#### Scenario: Clocks go back
+
+- **WHEN** an entry runs from 01:30 to 03:30 on the clock on the night the clocks go back from 03:00 to 02:00
+- **THEN** it SHALL add 30 minutes at 1, 120 minutes at 2 and 30 minutes at 3
+
+#### Scenario: Imported time
+
+- **WHEN** a Remote log of 1:30 is imported for a day in the window, and placed from 08:00
+- **THEN** it SHALL count 60 minutes at 8 and 30 minutes at 9 like an entry of the Timer
+
 ### Requirement: Export backlog line
 
 When the Export backlog has days, the page SHALL show one line labelled with the term Export backlog (_Zaległy eksport_), listing each day as a short date in the user's language that links to its Remote Sync page (`remote-sync-review`). The line SHALL show no categories, hours or dismiss action, and SHALL stay the same across periods. All text SHALL have `en`/`pl` parity.
@@ -309,7 +343,7 @@ Below the period sections the page SHALL show the past year as a grid with a col
 
 ### Requirement: Heatmap levels
 
-Each day of the heatmap SHALL have one of five fixed levels: none, up to 2 h, up to 4 h, up to 8 h and over 8 h, drawn as a sequential scale with separate values for light and dark mode. A legend SHALL name each level in text.
+Each day of the 12-month heatmap SHALL have one of five fixed levels: none, up to 2 h, up to 4 h, up to 8 h and over 8 h, drawn as a sequential scale with separate values for light and dark mode, and taken from the time in whole minutes as shown. A legend SHALL name each level in text.
 
 #### Scenario: Levels
 
@@ -343,6 +377,57 @@ Hovering or focusing a day SHALL show its date and its time as unpadded `H:MM`, 
 
 - **WHEN** the pointer rests on November 2, 2026, with 1:00
 - **THEN** the page SHALL show `Mon, Nov 2, 2026` and `1:00` beside the day
+
+### Requirement: Weekday-by-hour heatmap
+
+Beside the top Tasks, or in their place when the period has none, the page SHALL show the average time per weekday and hour as a grid, a row per weekday from the first day of the week and a column per hour from midnight, labelled with short weekday names and every third hour, and SHALL say that it averages the last 12 weeks. It SHALL stay the same across periods, like the 12-month heatmap while another period loads, and be absent with it. All text SHALL have `en`/`pl` parity.
+
+#### Scenario: Sunday first
+
+- **WHEN** the first day of the week is Sunday
+- **THEN** the first row SHALL be Sunday
+
+#### Scenario: Period without entries
+
+- **WHEN** the period has no entries
+- **THEN** the heatmap SHALL show the last 12 weeks without the Tasks beside it
+
+#### Scenario: Phone
+
+- **WHEN** the page is shown on a phone
+- **THEN** the hours SHALL scroll inside the heatmap, starting at midnight with the weekday labels in view, and the page SHALL NOT scroll sideways
+
+### Requirement: Weekday-by-hour levels
+
+Each hour SHALL have one of five fixed levels on the scale of the 12-month heatmap: none, up to 15, 30, 45 and 60 minutes, taken from the average in whole minutes as shown, the top level holding anything over 45 minutes. A legend SHALL name each level in text.
+
+#### Scenario: Levels
+
+- **WHEN** hours have averages of 59 seconds, 15:59 minutes, 0:16, 0:45, 0:46 and 1:00
+- **THEN** they SHALL have the levels none, up to 15, up to 30, up to 45, up to 60 and up to 60 minutes
+
+### Requirement: Moving through the weekday-by-hour heatmap
+
+The heatmap SHALL be one tab stop, held by the first weekday's first hour until the user moves it. Left and right arrows SHALL move to the previous and the next hour, across midnight to the next row, up and down arrows by a weekday, Home and End to the first and the last hour, never past either. Activating an hour SHALL do nothing.
+
+#### Scenario: Keyboard
+
+- **WHEN** Monday is the first row, the user tabs into the heatmap and presses the right arrow, then the down arrow
+- **THEN** Tuesday's 1:00 to 2:00 SHALL have the focus
+
+#### Scenario: Across midnight
+
+- **WHEN** Tuesday's first hour has the focus and the user presses the left arrow
+- **THEN** Monday's last hour SHALL have the focus
+
+### Requirement: Reading a weekday hour
+
+Hovering or focusing an hour SHALL show its weekday, its hours and its average as unpadded `H:MM`, and each hour's accessible name SHALL hold the same. Escape SHALL hide it until the pointer or the focus moves.
+
+#### Scenario: Accessible name
+
+- **WHEN** a screen reader reaches Monday's 9:00 to 10:00 with an average of 42 minutes
+- **THEN** it SHALL announce "Mon, 9:00 AM–10:00 AM: 0:42", and "pon., 9:00–10:00: 0:42" in Polish
 
 ### Requirement: Opening a week from the heatmap
 

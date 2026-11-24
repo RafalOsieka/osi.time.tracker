@@ -231,7 +231,7 @@ describeDashboardUi('Dashboard journey', async () => {
     const response = await page.goto(url('/'), { waitUntil: 'hydration' });
     const firstDay = Temporal.PlainDate.from(today).subtract({ years: 1 }).add({ days: 1 });
     expect(
-      ((await response?.text()) ?? '').match(/data-testid="dashboard-past-year-day"/g),
+      ((await response?.text()) ?? '').match(/data-testid="dashboard-past-year-cell"/g),
     ).toHaveLength(firstDay.until(today).days + 1);
 
     const dayName = new Intl.DateTimeFormat('en', {
@@ -243,7 +243,7 @@ describeDashboardUi('Dashboard journey', async () => {
     }).format(new Date(`${day}T00:00:00Z`));
     const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
     // From today a week back and three days up.
-    await page.focus('[data-testid="dashboard-past-year-day"][tabindex="0"]');
+    await page.focus('[data-testid="dashboard-past-year-cell"][tabindex="0"]');
     for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp'])
       await page.keyboard.press(key);
     expect(await focused()).toBe(`${dayName}: 2:30`);
@@ -268,6 +268,47 @@ describeDashboardUi('Dashboard journey', async () => {
     expect(await page.evaluate(() => document.activeElement?.getAttribute('data-testid'))).toBe(
       'dashboard-kind-week',
     );
+    await page.close();
+  });
+
+  it('shows when the user works by weekday and hour, from the server', async () => {
+    const user = await seedUser(dbUrl);
+    const { jar, token } = await apiLogin(user.email, user.password);
+    const { timezone, offset, today } = zoneAwayFromMidnight();
+    await patchTimezone(jar, token, timezone);
+    const yesterday = Temporal.PlainDate.from(today).subtract({ days: 1 }).toString();
+    const created = await startEntry(jar, token, {
+      title: 'Work',
+      startedAt: `${yesterday}T01:00:00${offset}`,
+      stoppedAt: `${yesterday}T03:30:00${offset}`,
+    });
+    expect(created.status).toBe(200);
+
+    const page = await createPage('/login');
+    await loginAs(page, user.email, user.password);
+    await page.waitForSelector('[data-testid="dashboard-summary"]');
+    const response = await page.goto(url('/'), { waitUntil: 'hydration' });
+    expect(
+      ((await response?.text()) ?? '').match(/data-testid="dashboard-weekday-hours-cell"/g),
+    ).toHaveLength(7 * 24);
+
+    const weekday = new Intl.DateTimeFormat('en', { weekday: 'short', timeZone: 'UTC' }).format(
+      new Date(`${yesterday}T00:00:00Z`),
+    );
+    const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
+    // A twelfth of each hour: 60, 60 and 30 minutes.
+    await page.focus(
+      `[data-testid="dashboard-weekday-hours-cell"][aria-label="${weekday}, 1:00 AM–2:00 AM: 0:05"]`,
+    );
+    await page.keyboard.press('ArrowRight');
+    expect(await focused()).toBe(`${weekday}, 2:00 AM–3:00 AM: 0:05`);
+    await page.keyboard.press('ArrowRight');
+    expect(await focused()).toBe(`${weekday}, 3:00 AM–4:00 AM: 0:02`);
+    await page
+      .locator('[data-testid="dashboard-weekday-hours-tooltip"]', {
+        hasText: `${weekday}, 3:00 AM–4:00 AM`,
+      })
+      .waitFor();
     await page.close();
   });
 
@@ -332,10 +373,12 @@ describeDashboardUi('Dashboard journey', async () => {
     expect(await scroll.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
       true,
     );
-    const heatmap = page.locator('[data-testid="dashboard-past-year-scroll"]');
-    expect(await heatmap.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
-      true,
-    );
+    for (const id of ['dashboard-past-year-scroll', 'dashboard-weekday-hours-scroll']) {
+      const heatmap = page.locator(`[data-testid="${id}"]`);
+      expect(await heatmap.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(
+        true,
+      );
+    }
     const share = page.locator('[data-testid="dashboard-groups-table"] td').last();
     const shareBox = await share.boundingBox();
     expect((shareBox?.x ?? Infinity) + (shareBox?.width ?? Infinity)).toBeLessThanOrEqual(360);
