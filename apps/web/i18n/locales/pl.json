@@ -107,13 +107,15 @@
       "columnIssue": "Zgłoszenie",
       "empty": "Brak zadań w tym okresie."
     },
+    "heatmap": {
+      "cell": "{label}: {time}",
+      "legend": "Legenda",
+      "levelNone": "Brak czasu"
+    },
     "pastYear": {
       "heading": "Ostatnie 12 miesięcy",
       "hint": "Wybierz dzień, aby otworzyć jego tydzień.",
       "caption": "Czas dzienny w ostatnich 12 miesiącach",
-      "day": "{day}: {time}",
-      "legend": "Legenda",
-      "levelNone": "Brak czasu",
       "levelUpTo": "Do {hours} h",
       "levelOver": "Ponad {hours} h"
     },

@@ -790,7 +790,7 @@ describe('Dashboard chart', () => {
 
 describe('Dashboard past year', () => {
   function days() {
-    return wrapper.findAll('[data-testid="dashboard-past-year-day"]');
+    return wrapper.findAll('[data-testid="dashboard-past-year-cell"]');
   }
 
   /** The day cell whose name starts with the date. */
@@ -826,7 +826,7 @@ describe('Dashboard past year', () => {
     });
     await mountPage();
     expect(days()).toHaveLength(365);
-    expect(texts('dashboard-past-year-weekday')).toEqual([
+    expect(texts('dashboard-past-year-row')).toEqual([
       'Mon',
       'Tue',
       'Wed',
@@ -838,7 +838,7 @@ describe('Dashboard past year', () => {
     // Row by row: Monday's first day is in the second week, Tuesday's in the first.
     expect(days()[0]!.attributes('aria-label')).toBe('Mon, Dec 1, 2025: 0:00');
     expect(days()[52]!.attributes('aria-label')).toBe('Tue, Nov 25, 2025: 0:00');
-    const months = byTestId('dashboard-past-year-months').findAll('span');
+    const months = byTestId('dashboard-past-year-columns').findAll('span');
     expect(months.map((month) => month.text()).filter(Boolean)).toEqual([
       'Dec',
       'Jan',
@@ -882,7 +882,7 @@ describe('Dashboard past year', () => {
   it('starts its rows on the first day of the week', async () => {
     harness.fetch.mockResolvedValue({ ...november, firstDayOfWeek: 7 });
     await mountPage();
-    expect(texts('dashboard-past-year-weekday')).toEqual([
+    expect(texts('dashboard-past-year-row')).toEqual([
       'Sun',
       'Mon',
       'Tue',
@@ -996,7 +996,7 @@ describe('Dashboard past year', () => {
     await $i18n.setLocale('pl');
     try {
       await mountPage();
-      expect(texts('dashboard-past-year-weekday')[0]).toBe('pon.');
+      expect(texts('dashboard-past-year-row')[0]).toBe('pon.');
       expect(day('wt., 24 lis 2026').attributes('tabindex')).toBe('0');
       expect(
         byTestId('dashboard-past-year-legend')

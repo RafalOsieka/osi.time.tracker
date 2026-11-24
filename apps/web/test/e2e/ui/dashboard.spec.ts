@@ -231,7 +231,7 @@ describeDashboardUi('Dashboard journey', async () => {
     const response = await page.goto(url('/'), { waitUntil: 'hydration' });
     const firstDay = Temporal.PlainDate.from(today).subtract({ years: 1 }).add({ days: 1 });
     expect(
-      ((await response?.text()) ?? '').match(/data-testid="dashboard-past-year-day"/g),
+      ((await response?.text()) ?? '').match(/data-testid="dashboard-past-year-cell"/g),
     ).toHaveLength(firstDay.until(today).days + 1);
 
     const dayName = new Intl.DateTimeFormat('en', {
@@ -243,7 +243,7 @@ describeDashboardUi('Dashboard journey', async () => {
     }).format(new Date(`${day}T00:00:00Z`));
     const focused = () => page.evaluate(() => document.activeElement?.getAttribute('aria-label'));
     // From today a week back and three days up.
-    await page.focus('[data-testid="dashboard-past-year-day"][tabindex="0"]');
+    await page.focus('[data-testid="dashboard-past-year-cell"][tabindex="0"]');
     for (const key of ['ArrowLeft', 'ArrowUp', 'ArrowUp', 'ArrowUp'])
       await page.keyboard.press(key);
     expect(await focused()).toBe(`${dayName}: 2:30`);
