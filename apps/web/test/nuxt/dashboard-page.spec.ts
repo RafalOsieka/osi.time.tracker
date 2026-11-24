@@ -22,12 +22,50 @@ const november: DashboardDto = {
   firstDayOfWeek: 1,
   hasEntries: true,
   summary: { totalSeconds: 27_000, daysWithEntries: 4, averageSeconds: 6750 },
+  buckets: [],
+  groups: {
+    project: [
+      {
+        kind: 'project',
+        id: 'p1',
+        name: 'Site',
+        deleted: true,
+        totalSeconds: 13_500,
+        bucketSeconds: [],
+      },
+      { kind: 'noProject', totalSeconds: 9000, bucketSeconds: [] },
+      {
+        kind: 'project',
+        id: 'p2',
+        name: 'Site',
+        deleted: false,
+        totalSeconds: 4500,
+        bucketSeconds: [],
+      },
+    ],
+    tracker: [
+      {
+        kind: 'tracker',
+        id: 't1',
+        name: 'Redmine',
+        deleted: false,
+        totalSeconds: 13_500,
+        bucketSeconds: [],
+      },
+      { kind: 'noProject', totalSeconds: 9000, bucketSeconds: [] },
+      { kind: 'local', totalSeconds: 4500, bucketSeconds: [] },
+    ],
+  },
 };
 const march: DashboardDto = {
   ...november,
   period: { kind: 'month', firstDay: '2026-03-01', lastDay: '2026-03-31' },
 };
-const NO_TIME = { totalSeconds: 0, daysWithEntries: 0, averageSeconds: 0 };
+const emptyNovember: DashboardDto = {
+  ...november,
+  summary: { totalSeconds: 0, daysWithEntries: 0, averageSeconds: 0 },
+  groups: { project: [], tracker: [] },
+};
 
 // The stepper's tooltips need the `UApp` provider, so they only pass their trigger through.
 const stubs = { UTooltip: { template: '<span><slot /></span>' } };
@@ -54,6 +92,14 @@ function holdAnswer() {
     }),
   );
   return answer;
+}
+
+/** The table's text, one list of cells per row, the headings first. */
+function tableText() {
+  return byTestId('dashboard-groups-table')
+    .findAll('tr')
+    .filter((row) => row.find('th, td').exists())
+    .map((row) => row.findAll('th, td').map((cell) => cell.text()));
 }
 
 const STATES = ['loading', 'error', 'summary', 'empty-period', 'empty-account'] as const;
@@ -94,7 +140,7 @@ describe('Dashboard states', () => {
   });
 
   it('shows zeros and a message for a period without entries', async () => {
-    harness.fetch.mockResolvedValue({ ...november, summary: NO_TIME });
+    harness.fetch.mockResolvedValue(emptyNovember);
     await mountPage();
     expect(visibleStates()).toEqual(['summary', 'empty-period']);
     expect(byTestId('dashboard-total').text()).toBe('0:00');
@@ -103,7 +149,7 @@ describe('Dashboard states', () => {
   });
 
   it('points an account without entries to the Timer', async () => {
-    harness.fetch.mockResolvedValue({ ...november, hasEntries: false, summary: NO_TIME });
+    harness.fetch.mockResolvedValue({ ...emptyNovember, hasEntries: false });
     await mountPage();
     expect(visibleStates()).toEqual(['empty-account']);
 
@@ -128,6 +174,7 @@ describe('Dashboard states', () => {
     await mountPage();
     expect(visibleStates()).toEqual(['error']);
     expect(byTestId('dashboard-error').text()).toBe('The Dashboard could not be loaded.');
+    expect(byTestId('dashboard-groups').exists()).toBe(false);
   });
 });
 
@@ -170,6 +217,110 @@ describe('Dashboard while another period loads', () => {
 
     await byTestId('dashboard-prev').trigger('click');
     expect(push).not.toHaveBeenCalled();
+  });
+});
+
+describe('Dashboard time per group', () => {
+  it('lists every Project with its time and share', async () => {
+    await mountPage();
+    expect(tableText()).toEqual([
+      ['Project', 'Time', 'Share'],
+      ['Site deleted', '3:45', '50%'],
+      ['No project', '2:30', '33%'],
+      ['Site', '1:15', '17%'],
+    ]);
+    const table = byTestId('dashboard-groups-table');
+    expect(table.find('caption').text()).toBe('Time by Project');
+    expect(table.findAll('[scope="row"]').map((header) => header.text())).toEqual([
+      'Site deleted',
+      'No project',
+      'Site',
+    ]);
+  });
+
+  it('switches to the Trackers without a request or a new address', async () => {
+    await mountPage();
+    const project = byTestId('dashboard-grouping-project');
+    const tracker = byTestId('dashboard-grouping-tracker');
+    expect(project.attributes('aria-pressed')).toBe('true');
+    expect(tracker.attributes('aria-pressed')).toBe('false');
+
+    await tracker.trigger('click');
+    expect(tableText()).toEqual([
+      ['Tracker', 'Time', 'Share'],
+      ['Redmine', '3:45', '50%'],
+      ['No project', '2:30', '33%'],
+      ['Local', '1:15', '17%'],
+    ]);
+    expect(byTestId('dashboard-groups-table').find('caption').text()).toBe('Time by Tracker');
+    expect(byTestId('dashboard-grouping-project').attributes('aria-pressed')).toBe('false');
+    expect(byTestId('dashboard-grouping-tracker').attributes('aria-pressed')).toBe('true');
+    expect(harness.fetch).toHaveBeenCalledOnce();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('lists every group of a long period', async () => {
+    const project = Array.from({ length: 12 }, (_, index) => ({
+      kind: 'project' as const,
+      id: `p${index}`,
+      name: `Project ${index}`,
+      deleted: false,
+      totalSeconds: 2250,
+      bucketSeconds: [],
+    }));
+    harness.fetch.mockResolvedValue({ ...november, groups: { project, tracker: [] } });
+    await mountPage();
+    expect(tableText()).toHaveLength(13);
+  });
+
+  it('reads naturally in Polish', async () => {
+    const { $i18n } = useNuxtApp();
+    await $i18n.setLocale('pl');
+    try {
+      await mountPage();
+      await byTestId('dashboard-grouping-tracker').trigger('click');
+      expect(tableText()).toEqual([
+        ['Tracker', 'Czas', 'Udział'],
+        ['Redmine', '3:45', '50%'],
+        ['Bez projektu', '2:30', '33%'],
+        ['Lokalne', '1:15', '17%'],
+      ]);
+      await byTestId('dashboard-grouping-project').trigger('click');
+      expect(tableText()[1]).toEqual(['Site usunięty', '3:45', '50%']);
+    } finally {
+      await $i18n.setLocale('en');
+    }
+  });
+
+  it('shows placeholders while another period loads and keeps the grouping', async () => {
+    await mountPage();
+    await byTestId('dashboard-grouping-tracker').trigger('click');
+
+    const answer = holdAnswer();
+    route.query = { period: 'month', date: '2026-03-31' };
+    await flushPromises();
+    expect(byTestId('dashboard-groups-table').exists()).toBe(false);
+    expect(byTestId('dashboard-groups').attributes('aria-busy')).toBe('true');
+
+    answer(march);
+    await flushPromises();
+    expect(tableText()[0]).toEqual(['Tracker', 'Time', 'Share']);
+    expect(byTestId('dashboard-groups').attributes('aria-busy')).toBe('false');
+  });
+
+  it('keeps the grouping across an empty period', async () => {
+    await mountPage();
+    await byTestId('dashboard-grouping-tracker').trigger('click');
+
+    harness.fetch.mockResolvedValue(emptyNovember);
+    route.query = { period: 'week' };
+    await flushPromises();
+    expect(byTestId('dashboard-groups').exists()).toBe(false);
+
+    harness.fetch.mockResolvedValue(november);
+    route.query = {};
+    await flushPromises();
+    expect(tableText()[0]).toEqual(['Tracker', 'Time', 'Share']);
   });
 });
 

@@ -5,7 +5,7 @@ import { requireBrowser } from '../harness/guards';
 import { provisionDatabase } from '../harness/database';
 import { setupServer } from '../harness/setup-server';
 import { apiLogin, patchTimezone } from '../helpers/auth';
-import { startEntry } from '../helpers/http';
+import { createProject, startEntry } from '../helpers/http';
 import { seedUser } from '../helpers/seed';
 import { loginAs, reloadHydrated } from '../helpers/ui';
 import { url } from '../helpers/url';
@@ -25,6 +25,16 @@ function total(page: Page): Promise<string | null> {
   return page.textContent('[data-testid="dashboard-total"]');
 }
 
+function groupRows(page: Page): Promise<string[][]> {
+  return page
+    .locator('[data-testid="dashboard-groups-table"] tbody tr')
+    .evaluateAll((rows) =>
+      rows.map((row) =>
+        [...row.querySelectorAll<HTMLElement>('th, td')].map((cell) => cell.innerText.trim()),
+      ),
+    );
+}
+
 describeDashboardUi('Dashboard journey', async () => {
   const dbUrl = await provisionDatabase();
   await setupServer({ databaseUrl: dbUrl, browser: true });
@@ -33,11 +43,20 @@ describeDashboardUi('Dashboard journey', async () => {
     const user = await seedUser(dbUrl);
     const { jar, token } = await apiLogin(user.email, user.password);
     await patchTimezone(jar, token, 'UTC');
-    for (const span of [
-      { startedAt: '2026-03-31T10:00:00.000Z', stoppedAt: '2026-03-31T12:00:00.000Z' },
-      { startedAt: '2026-04-01T10:00:00.000Z', stoppedAt: '2026-04-01T13:30:00.000Z' },
+    const project = await createProject(jar, token, 'Books');
+    for (const entry of [
+      {
+        startedAt: '2026-03-31T10:00:00.000Z',
+        stoppedAt: '2026-03-31T12:00:00.000Z',
+        projectId: null,
+      },
+      {
+        startedAt: '2026-04-01T10:00:00.000Z',
+        stoppedAt: '2026-04-01T13:30:00.000Z',
+        projectId: project.id,
+      },
     ]) {
-      const created = await startEntry(jar, token, { title: 'Work', ...span });
+      const created = await startEntry(jar, token, { title: 'Work', ...entry });
       expect(created.status).toBe(200);
     }
 
@@ -51,6 +70,14 @@ describeDashboardUi('Dashboard journey', async () => {
     await page.goto(url('/?period=month&date=2026-04-15'), { waitUntil: 'hydration' });
     await waitForLabel(page, 'April 2026');
     expect(await total(page)).toBe('3:30');
+    expect(await groupRows(page)).toEqual([['Books', '3:30', '100%']]);
+
+    await page.focus('[data-testid="dashboard-grouping-project"]');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('[data-testid="dashboard-grouping-tracker"][aria-pressed="true"]');
+    expect(await groupRows(page)).toEqual([['Local', '3:30', '100%']]);
+    expect(new URL(page.url()).search).toBe('?period=month&date=2026-04-15');
 
     await page.click('[data-testid="dashboard-prev"]');
     await waitForLabel(page, 'March 2026');
@@ -62,6 +89,10 @@ describeDashboardUi('Dashboard journey', async () => {
     await page.locator('[data-testid="dashboard-total"]', { hasText: '5:30' }).waitFor();
     expect(await page.textContent('[data-testid="dashboard-days"]')).toBe('2');
     expect(await page.textContent('[data-testid="dashboard-average"]')).toBe('2:45');
+    expect(await groupRows(page)).toEqual([
+      ['Local', '3:30', '64%'],
+      ['No project', '2:00', '36%'],
+    ]);
 
     await reloadHydrated(page);
     expect(await total(page)).toBe('5:30');
@@ -107,6 +138,23 @@ describeDashboardUi('Dashboard journey', async () => {
     expect((await startEntry(jar, token, { title: 'Work' })).status).toBe(200);
     await reloadHydrated(page);
     await page.waitForSelector('[data-testid="dashboard-summary"]');
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      360,
+    );
+
+    const project = await createProject(jar, token, 'Long'.repeat(20));
+    const created = await startEntry(jar, token, {
+      title: 'Work',
+      projectId: project.id,
+      startedAt: '2026-04-01T10:00:00.000Z',
+      stoppedAt: '2026-04-01T13:30:00.000Z',
+    });
+    expect(created.status).toBe(200);
+    await page.goto(url('/?period=month&date=2026-04-15'), { waitUntil: 'hydration' });
+    expect(await groupRows(page)).toEqual([[project.name, '3:30', '100%']]);
+    const share = page.locator('[data-testid="dashboard-groups-table"] td').last();
+    const shareBox = await share.boundingBox();
+    expect((shareBox?.x ?? Infinity) + (shareBox?.width ?? Infinity)).toBeLessThanOrEqual(360);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       360,
     );

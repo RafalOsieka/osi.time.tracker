@@ -69,6 +69,23 @@
     "daysWithEntries": "Days with entries",
     "average": "Average per day with entries",
     "emptyPeriod": "No completed time entries in this period.",
+    "timeInPeriod": "Time in the period",
+    "groupBy": "Group by",
+    "grouping": {
+      "project": "Project",
+      "tracker": "Tracker"
+    },
+    "groupsCaption": {
+      "project": "Time by Project",
+      "tracker": "Time by Tracker"
+    },
+    "columnTime": "Time",
+    "columnShare": "Share",
+    "group": {
+      "local": "Local",
+      "noProject": "No project"
+    },
+    "deleted": "deleted",
     "emptyAccountTitle": "No time entries yet",
     "emptyAccountMessage": "Track your first time entry in the Timer, and this page will sum up where your time goes.",
     "emptyAccountCta": "Go to the Timer"

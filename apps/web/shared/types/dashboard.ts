@@ -39,6 +39,22 @@ export interface DashboardSummaryDto {
   averageSeconds: number;
 }
 
+export const DASHBOARD_GROUPINGS = ['project', 'tracker'] as const;
+
+export type DashboardGrouping = (typeof DASHBOARD_GROUPINGS)[number];
+
+/** What a group stands for: `local` is the Local projects, `noProject` the time in no Project. */
+export type DashboardGroupIdentityDto =
+  | { kind: 'project' | 'tracker'; id: string; name: string; deleted: boolean }
+  | { kind: 'local' }
+  | { kind: 'noProject' };
+
+export type DashboardGroupDto = DashboardGroupIdentityDto & {
+  totalSeconds: number;
+  /** One value per bucket of the period, in the same order. */
+  bucketSeconds: number[];
+};
+
 export interface DashboardDto {
   period: DashboardPeriodDto;
   today: string;
@@ -48,4 +64,8 @@ export interface DashboardDto {
   /** Whether the account has any Time entry at all, in this period or not. */
   hasEntries: boolean;
   summary: DashboardSummaryDto;
+  /** Every day of a week or month, the first day of every month of a year. */
+  buckets: string[];
+  /** Groups with time in the period, largest first; either list adds up to the summary's total. */
+  groups: Record<DashboardGrouping, DashboardGroupDto[]>;
 }
