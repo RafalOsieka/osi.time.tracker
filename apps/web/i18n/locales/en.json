@@ -119,6 +119,13 @@
       "levelUpTo": "Up to {hours} h",
       "levelOver": "Over {hours} h"
     },
+    "weekdayHours": {
+      "heading": "Daily rhythm",
+      "hint": "Average time per hour over the last {weeks} weeks, today left out.",
+      "caption": "Average time per weekday and hour",
+      "cell": "{weekday}, {from}–{to}",
+      "levelUpTo": "Up to {minutes} min"
+    },
     "emptyAccountTitle": "No time entries yet",
     "emptyAccountMessage": "Track your first time entry in the Timer, and this page will sum up where your time goes.",
     "emptyAccountCta": "Go to the Timer"

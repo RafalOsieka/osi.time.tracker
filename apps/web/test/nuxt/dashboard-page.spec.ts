@@ -4,7 +4,11 @@ import { flushPromises, type VueWrapper } from '@vue/test-utils';
 import { mockNuxtImport, mountSuspended } from '@nuxt/test-utils/runtime';
 import { Temporal } from 'temporal-polyfill';
 import DashboardPage from '../../app/pages/index.vue';
-import type { DashboardDto, DashboardPastYearDto } from '../../shared/types/dashboard';
+import type {
+  DashboardDto,
+  DashboardPastYearDto,
+  DashboardWeekdayHoursDto,
+} from '../../shared/types/dashboard';
 
 /** The Dashboard page for given API answers; the numbers are the API suite's. */
 interface DashboardHarness {
@@ -25,6 +29,17 @@ function pastYear(seconds: Record<string, number> = {}): DashboardPastYearDto {
     daySeconds: Array.from(
       { length: 365 },
       (_, index) => seconds[firstDay.add({ days: index }).toString()] ?? 0,
+    ),
+  };
+}
+
+/** The 12 weeks before 2026-11-24 with time in the given `ISO weekday/hour` cells. */
+function weekdayHours(seconds: Record<string, number> = {}): DashboardWeekdayHoursDto {
+  return {
+    firstDay: '2026-09-01',
+    lastDay: '2026-11-23',
+    hourSeconds: Array.from({ length: 7 }, (_, row) =>
+      Array.from({ length: 24 }, (_, hour) => seconds[`${row + 1}/${hour}`] ?? 0),
     ),
   };
 }
@@ -98,6 +113,7 @@ const november: DashboardDto = {
   ],
   exportBacklog: ['2026-10-30', '2026-11-12'],
   pastYear: pastYear({ '2026-11-02': 3600 }),
+  weekdayHours: weekdayHours({ '1/9': 2520 }),
 };
 const march: DashboardDto = {
   ...november,
@@ -1003,6 +1019,217 @@ describe('Dashboard past year', () => {
           .findAll('li')
           .map((item) => item.text()),
       ).toEqual(['Brak czasu', 'Do 2 h', 'Do 4 h', 'Do 8 h', 'Ponad 8 h']);
+    } finally {
+      await $i18n.setLocale('en');
+    }
+  });
+});
+
+describe('Dashboard weekday-by-hour heatmap', () => {
+  function cells() {
+    return wrapper.findAll('[data-testid="dashboard-weekday-hours-cell"]');
+  }
+
+  /** The cell whose name starts with the weekday and hours. */
+  function cell(hours: string) {
+    const found = cells().find((element) =>
+      element.attributes('aria-label')?.startsWith(`${hours}:`),
+    );
+    if (!found) throw new Error(`No hour ${hours}`);
+    return found;
+  }
+
+  function texts(id: string) {
+    return wrapper.findAll(`[data-testid="${id}"]`).map((element) => element.text());
+  }
+
+  function focused() {
+    return document.activeElement?.getAttribute('aria-label');
+  }
+
+  async function press(key: string) {
+    const current = cells().find((candidate) => candidate.element === document.activeElement);
+    await current?.trigger('keydown', { key });
+  }
+
+  it('shows every hour of each weekday in rows, with a legend', async () => {
+    harness.fetch.mockResolvedValue({
+      ...november,
+      weekdayHours: weekdayHours({
+        '1/9': 900,
+        '1/10': 901,
+        '1/11': 1800,
+        '1/12': 2700,
+        '1/13': 2701,
+        '5/23': 3600,
+      }),
+    });
+    await mountPage();
+    expect(cells()).toHaveLength(7 * 24);
+    expect(texts('dashboard-weekday-hours-row')).toEqual([
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+      'Sun',
+    ]);
+    const hours = byTestId('dashboard-weekday-hours-columns').findAll('span');
+    expect(hours.map((hour) => hour.text()).filter(Boolean)).toEqual([
+      '12 AM',
+      '3 AM',
+      '6 AM',
+      '9 AM',
+      '12 PM',
+      '3 PM',
+      '6 PM',
+      '9 PM',
+    ]);
+    expect(cells()[0]!.attributes('aria-label')).toBe('Mon, 12:00 AM–1:00 AM: 0:00');
+    expect(cells()[24]!.attributes('aria-label')).toBe('Tue, 12:00 AM–1:00 AM: 0:00');
+    expect(cell('Fri, 11:00 PM–12:00 AM').attributes('aria-label')).toBe(
+      'Fri, 11:00 PM–12:00 AM: 1:00',
+    );
+
+    const level = (hours: string) =>
+      cell(hours)
+        .classes()
+        .find((name) => name.startsWith('bg-heat-'));
+    expect(
+      [
+        'Mon, 8:00 AM–9:00 AM',
+        'Mon, 9:00 AM–10:00 AM',
+        'Mon, 10:00 AM–11:00 AM',
+        'Mon, 11:00 AM–12:00 PM',
+        'Mon, 12:00 PM–1:00 PM',
+        'Mon, 1:00 PM–2:00 PM',
+        'Fri, 11:00 PM–12:00 AM',
+      ].map(level),
+    ).toEqual([
+      'bg-heat-0',
+      'bg-heat-1',
+      'bg-heat-2',
+      'bg-heat-2',
+      'bg-heat-3',
+      'bg-heat-4',
+      'bg-heat-4',
+    ]);
+    expect(
+      byTestId('dashboard-weekday-hours-legend')
+        .findAll('li')
+        .map((item) => item.text()),
+    ).toEqual(['No time', 'Up to 15 min', 'Up to 30 min', 'Up to 45 min', 'Up to 60 min']);
+    const grid = byTestId('dashboard-weekday-hours').find('[role="grid"]');
+    expect(grid.attributes('aria-label')).toBe('Average time per weekday and hour');
+    expect(byTestId('dashboard-weekday-hours').text()).toContain(
+      'Average time per hour over the last 12 weeks, today left out.',
+    );
+  });
+
+  it('starts its rows on the first day of the week', async () => {
+    harness.fetch.mockResolvedValue({ ...november, firstDayOfWeek: 7 });
+    await mountPage();
+    expect(texts('dashboard-weekday-hours-row')).toEqual([
+      'Sun',
+      'Mon',
+      'Tue',
+      'Wed',
+      'Thu',
+      'Fri',
+      'Sat',
+    ]);
+    expect(cells()[0]!.attributes('aria-label')).toBe('Sun, 12:00 AM–1:00 AM: 0:00');
+    expect(cells()[24 + 9]!.attributes('aria-label')).toBe('Mon, 9:00 AM–10:00 AM: 0:42');
+  });
+
+  it('is one tab stop that arrow keys, Home and End move by hour and weekday', async () => {
+    await mountPage();
+    const tabStops = cells().filter((element) => element.attributes('tabindex') === '0');
+    expect(tabStops.map((element) => element.attributes('aria-label'))).toEqual([
+      'Mon, 12:00 AM–1:00 AM: 0:00',
+    ]);
+
+    const first = tabStops[0]!.element;
+    if (!(first instanceof HTMLElement)) throw new Error('An hour is an element');
+    first.focus();
+    await press('ArrowUp');
+    await press('ArrowLeft');
+    expect(focused()).toBe('Mon, 12:00 AM–1:00 AM: 0:00');
+    await press('ArrowRight');
+    expect(focused()).toBe('Mon, 1:00 AM–2:00 AM: 0:00');
+    await press('ArrowDown');
+    expect(focused()).toBe('Tue, 1:00 AM–2:00 AM: 0:00');
+    await press('ArrowLeft');
+    await press('ArrowLeft');
+    expect(focused()).toBe('Mon, 11:00 PM–12:00 AM: 0:00');
+    await press('End');
+    expect(focused()).toBe('Sun, 11:00 PM–12:00 AM: 0:00');
+    await press('ArrowRight');
+    await press('ArrowDown');
+    expect(focused()).toBe('Sun, 11:00 PM–12:00 AM: 0:00');
+    await press('Home');
+    expect(focused()).toBe('Mon, 12:00 AM–1:00 AM: 0:00');
+
+    await press('Enter');
+    await cell('Mon, 12:00 AM–1:00 AM').trigger('click');
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('shows the hours and time of a cell on hover and on focus', async () => {
+    await mountPage();
+    const tooltip = () => byTestId('dashboard-weekday-hours-tooltip');
+    expect(tooltip().exists()).toBe(false);
+
+    await cell('Mon, 9:00 AM–10:00 AM').trigger('mouseover');
+    const parts = tooltip().findAll('span');
+    expect(parts.map((part) => part.text())).toEqual(['Mon, 9:00 AM–10:00 AM', '0:42']);
+    await byTestId('dashboard-total').trigger('pointerover');
+    expect(tooltip().exists()).toBe(false);
+
+    await cell('Tue, 3:00 PM–4:00 PM').trigger('focusin');
+    expect(tooltip().text()).toContain('Tue, 3:00 PM–4:00 PM');
+    await cell('Tue, 3:00 PM–4:00 PM').trigger('keydown', { key: 'Escape' });
+    expect(tooltip().exists()).toBe(false);
+  });
+
+  it('stays in a period without entries and while another period loads', async () => {
+    harness.fetch.mockResolvedValue(emptyNovember);
+    await mountPage();
+    expect(byTestId('dashboard-tasks').exists()).toBe(false);
+    expect(cells()).toHaveLength(7 * 24);
+
+    holdAnswer();
+    route.query = { period: 'week', date: '2026-11-02' };
+    await flushPromises();
+    expect(visibleStates()).toEqual(['loading']);
+    expect(cells()[9]!.attributes('aria-label')).toBe('Mon, 9:00 AM–10:00 AM: 0:42');
+  });
+
+  it('is absent when the load fails and for an account without entries', async () => {
+    harness.fetch.mockRejectedValue(new Error('boom'));
+    await mountPage();
+    expect(byTestId('dashboard-weekday-hours').exists()).toBe(false);
+    wrapper.unmount();
+    clearNuxtData();
+
+    harness.fetch.mockResolvedValue({ ...emptyNovember, hasEntries: false });
+    await mountPage();
+    expect(byTestId('dashboard-weekday-hours').exists()).toBe(false);
+  });
+
+  it('reads naturally in Polish', async () => {
+    const { $i18n } = useNuxtApp();
+    await $i18n.setLocale('pl');
+    try {
+      await mountPage();
+      expect(texts('dashboard-weekday-hours-row')[0]).toBe('pon.');
+      expect(cells()[9]!.attributes('aria-label')).toBe('pon., 9:00–10:00: 0:42');
+      expect(
+        byTestId('dashboard-weekday-hours-legend')
+          .findAll('li')
+          .map((item) => item.text()),
+      ).toEqual(['Brak czasu', 'Do 15 min', 'Do 30 min', 'Do 45 min', 'Do 60 min']);
     } finally {
       await $i18n.setLocale('en');
     }

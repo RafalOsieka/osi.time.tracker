@@ -161,7 +161,7 @@ const PAGES: Screen[] = [
     id: 'p09-dashboard',
     title: 'Dashboard',
     shows:
-      "This month's Dashboard: the period controls, the summary, the time per Project as a chart and a table, the top Tasks and the 12-month heatmap.",
+      "This month's Dashboard: the period controls, the summary, the time per Project as a chart and a table, the top Tasks beside the daily rhythm, and the 12-month heatmap.",
     as: 'busy',
     path: '/',
     ready: '[data-testid="dashboard-summary"]',

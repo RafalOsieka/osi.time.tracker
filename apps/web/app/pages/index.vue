@@ -240,16 +240,28 @@ function selectKind(kind: DashboardPeriodKind): void {
         </p>
       </div>
 
-      <template v-if="!emptyPeriod">
-        <DashboardGroups
-          v-model:grouping="grouping"
-          :dashboard="data ?? undefined"
+      <DashboardGroups
+        v-if="!emptyPeriod"
+        v-model:grouping="grouping"
+        :dashboard="data ?? undefined"
+        :loading="loading"
+      />
+      <!-- The heatmaps are the same whatever the period, so they stay while another period loads.
+           A new window starts one afresh. Without the Tasks, the rhythm takes the whole row. -->
+      <div class="flex flex-wrap gap-6">
+        <DashboardTasks
+          v-if="!emptyPeriod"
+          class="min-w-0 flex-[3_1_28rem]"
+          :tasks="data?.topTasks"
           :loading="loading"
         />
-        <DashboardTasks :tasks="data?.topTasks" :loading="loading" />
-      </template>
-      <!-- The same whatever the period, so it stays while another period loads. A new year
-           window starts it afresh. -->
+        <DashboardWeekdayHours
+          :key="data?.weekdayHours.firstDay"
+          class="min-w-0 flex-[2_1_20rem]"
+          :weekday-hours="data?.weekdayHours"
+          :first-day-of-week="data?.firstDayOfWeek ?? 1"
+        />
+      </div>
       <DashboardPastYear
         :key="data?.pastYear.firstDay"
         :past-year="data?.pastYear"

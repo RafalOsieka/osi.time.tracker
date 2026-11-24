@@ -98,6 +98,25 @@ export interface DashboardPastYearDto {
   daySeconds: number[];
 }
 
+/** How many weeks before today the weekday-by-hour heatmap averages over. */
+export const DASHBOARD_WEEKDAY_HOURS_WEEKS = 12;
+
+/**
+ * Average time per weekday and local hour over the `DASHBOARD_WEEKDAY_HOURS_WEEKS` weeks before
+ * today, so that each weekday occurs that many times. Unlike everywhere else, entries are cut at
+ * local hour boundaries and clipped to the window.
+ */
+export interface DashboardWeekdayHoursDto {
+  firstDay: string;
+  /** Yesterday. */
+  lastDay: string;
+  /**
+   * Seven rows from Monday, each with 24 hours from midnight: the time in that hour over the
+   * window divided by the number of weeks.
+   */
+  hourSeconds: number[][];
+}
+
 export interface DashboardDto {
   period: DashboardPeriodDto;
   today: string;
@@ -120,4 +139,6 @@ export interface DashboardDto {
   exportBacklog: string[];
   /** The same whatever the period. */
   pastYear: DashboardPastYearDto;
+  /** The same whatever the period. */
+  weekdayHours: DashboardWeekdayHoursDto;
 }

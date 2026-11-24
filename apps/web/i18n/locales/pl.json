@@ -119,6 +119,13 @@
       "levelUpTo": "Do {hours} h",
       "levelOver": "Ponad {hours} h"
     },
+    "weekdayHours": {
+      "heading": "Rytm dnia",
+      "hint": "Średni czas w każdej godzinie w ostatnich {weeks} tygodniach, bez dzisiaj.",
+      "caption": "Średni czas według dnia tygodnia i godziny",
+      "cell": "{weekday}, {from}–{to}",
+      "levelUpTo": "Do {minutes} min"
+    },
     "emptyAccountTitle": "Brak wpisów czasu",
     "emptyAccountMessage": "Dodaj pierwszy wpis czasu w Stoperze, a zobaczysz tu, na co idzie Twój czas.",
     "emptyAccountCta": "Przejdź do Stopera"

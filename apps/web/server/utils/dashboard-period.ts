@@ -1,6 +1,7 @@
 import { Temporal } from 'temporal-polyfill';
 import {
   DASHBOARD_EXPORT_BACKLOG_DAYS,
+  DASHBOARD_WEEKDAY_HOURS_WEEKS,
   type DashboardPeriodDto,
   type DashboardQuery,
 } from '../../shared/types/dashboard';
@@ -104,6 +105,17 @@ export function exportBacklogWindow(
 export function pastYearWindow(today: string): Pick<DashboardPeriodDto, 'firstDay' | 'lastDay'> {
   const day = Temporal.PlainDate.from(today);
   return { firstDay: day.subtract({ years: 1 }).add({ days: 1 }).toString(), lastDay: today };
+}
+
+/** The days the weekday-by-hour heatmap covers: whole weeks before today, today left out. */
+export function weekdayHoursWindow(
+  today: string,
+): Pick<DashboardPeriodDto, 'firstDay' | 'lastDay'> {
+  const day = Temporal.PlainDate.from(today);
+  return {
+    firstDay: day.subtract({ weeks: DASHBOARD_WEEKDAY_HOURS_WEEKS }).toString(),
+    lastDay: day.subtract({ days: 1 }).toString(),
+  };
 }
 
 /** The bucket a day of the period falls in, named by its first day. */
