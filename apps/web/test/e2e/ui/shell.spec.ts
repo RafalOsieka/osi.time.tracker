@@ -38,6 +38,11 @@ describeShell('authenticated shell navigation', async () => {
   it('sidebar lists all skeleton destinations', async () => {
     const page = await openAuthed();
     const nav = page.locator('[data-testid="app-sidebar"]');
+    const hrefs = await nav
+      .locator('nav a')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href')));
+    expect(hrefs.slice(0, 2)).toEqual(['/', '/timer']);
+    expect(await nav.locator('a[href="/"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/timer"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/trackers"]').isVisible()).toBe(true);
     expect(await nav.locator('a[href="/projects"]').isVisible()).toBe(true);
@@ -58,6 +63,19 @@ describeShell('authenticated shell navigation', async () => {
     const monthlyLink = page.locator('[data-testid="app-sidebar"] a[href="/reports/monthly"]');
     expect(await monthlyLink.getAttribute('aria-current')).toBe('page');
     expect(await page.locator('[data-testid="app-sidebar"] [aria-current="page"]').count()).toBe(1);
+  });
+
+  it('Dashboard opens / and is the current page only there', async () => {
+    const page = await openAuthed();
+    await page.goto(new URL('/projects', page.url()).href, { waitUntil: 'hydration' });
+    const current = page.locator('[data-testid="app-sidebar"] [aria-current="page"]');
+    expect(await current.getAttribute('href')).toBe('/projects');
+
+    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.waitForSelector('[data-testid="dashboard-page"]');
+    expect(new URL(page.url()).pathname).toBe('/');
+    expect(await current.count()).toBe(1);
+    expect(await current.getAttribute('href')).toBe('/');
   });
 
   it('Timer opens the timer view and is the current page there', async () => {

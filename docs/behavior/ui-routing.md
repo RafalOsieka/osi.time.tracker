@@ -63,24 +63,24 @@ The application SHALL expose a `/timer` page that renders the timer view within 
 - **WHEN** an authenticated user views `/timer`
 - **THEN** the page header SHALL expose a primary control to open the manual add-entry dialog
 
-### Requirement: Root address leads to the timer view
+### Requirement: Dashboard page on the default layout
 
-`/` SHALL redirect an authenticated user to `/timer`. The redirect SHALL be temporary, resolve server-side on a full page load, and apply after the navigation guard, so an unauthenticated visitor to `/` goes to login first.
+The application SHALL expose the Dashboard (`tracking-dashboard`) at `/` within the `default` layout. It SHALL be where a user lands after login, or after opening `/login` while authenticated, when no other address was requested.
 
-#### Scenario: Full page load of the root address
+#### Scenario: Authenticated user sees the Dashboard
 
-- **WHEN** an authenticated user requests `/`, or is redirected there from `/login`
-- **THEN** the server SHALL answer with a temporary redirect to `/timer`
+- **WHEN** an authenticated user navigates to `/`
+- **THEN** the application SHALL render the Dashboard inside the `default` layout
 
-#### Scenario: Client navigation to the root address
+#### Scenario: Login without a requested address
 
-- **WHEN** an authenticated user is sent to `/` without a full page load, as after login without a requested address
-- **THEN** the application SHALL show the timer view with the address `/timer`
+- **WHEN** a user logs in on `/login` without a `?redirect` query
+- **THEN** the application SHALL show the Dashboard with the address `/`
 
 #### Scenario: Unauthenticated visitor to the root address
 
 - **WHEN** an unauthenticated visitor requests `/`
-- **THEN** the guard SHALL redirect to `/login?redirect=/`, and a successful login SHALL end on `/timer`
+- **THEN** the guard SHALL redirect to `/login?redirect=/`, and a successful login SHALL end on the Dashboard
 
 ### Requirement: Private-by-default navigation guard
 

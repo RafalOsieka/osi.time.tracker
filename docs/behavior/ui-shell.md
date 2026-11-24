@@ -168,8 +168,8 @@ Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` 
 
 #### Scenario: Named management pages
 
-- **WHEN** the user is on `/trackers`, `/projects`, `/reports/monthly`, or `/profile` in English
-- **THEN** the document title SHALL be `Trackers | OSI Time Tracker`, `Projects | OSI Time Tracker`, `Monthly timesheet | OSI Time Tracker`, or `Profile | OSI Time Tracker` respectively
+- **WHEN** the user is on `/`, `/trackers`, `/projects`, `/reports/monthly`, or `/profile` in English
+- **THEN** the document title SHALL be `Dashboard | OSI Time Tracker`, `Trackers | OSI Time Tracker`, `Projects | OSI Time Tracker`, `Monthly timesheet | OSI Time Tracker`, or `Profile | OSI Time Tracker` respectively
 
 #### Scenario: Login uses the auth layout
 
@@ -198,12 +198,22 @@ Every route SHALL set the document title to `{page} | {brand}`, where `{brand}` 
 
 ### Requirement: Sidebar navigation skeleton with placeholder routes
 
-The sidebar SHALL list Timer (`/timer`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, `tracking-reports`) and Client report (`/reports/client`, `tracking-client-report`) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks, Dashboard or `/reports` entry (Profile is in "Account menu"). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
+The sidebar SHALL list Dashboard (`/`), Timer (`/timer`), Trackers (`/trackers`), Projects and a Reports group. Reports SHALL have no `href` and not navigate; its children Monthly timesheet (`/reports/monthly`, `tracking-reports`) and Client report (`/reports/client`, `tracking-client-report`) stay visible while labels show. There SHALL be no Settings, Profile, Clients, Tasks or `/reports` entry (Profile is in "Account menu"). An unbuilt destination SHALL route to a placeholder. Labels SHALL have `en`/`pl` parity.
 
 #### Scenario: All skeleton destinations are listed
 
 - **WHEN** the sidebar is rendered
-- **THEN** it SHALL list links for Timer, Trackers, Projects, Monthly timesheet, and Client report — and SHALL NOT list Settings, Profile, Clients, Tasks, Dashboard, or a Reports destination link to `/reports`
+- **THEN** it SHALL list links for Dashboard, Timer, Trackers, Projects, Monthly timesheet, and Client report, in that order, and SHALL NOT list Settings, Profile, Clients, Tasks, or a Reports destination link to `/reports`
+
+#### Scenario: Dashboard link opens the Dashboard
+
+- **WHEN** the user activates the Dashboard link
+- **THEN** the application SHALL navigate to `/` and render the Dashboard (`tracking-dashboard`)
+
+#### Scenario: Dashboard is selected only on its own page
+
+- **WHEN** the user is on any page other than the Dashboard
+- **THEN** the Dashboard link SHALL NOT show the selected style or expose `aria-current="page"`
 
 #### Scenario: Timer link opens the timer view
 

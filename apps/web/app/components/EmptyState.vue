@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * The one empty-state pattern: a card with a cyan icon chip, a title, one line of help and a
- * single primary action. Used when a page has nothing to list yet (never-tracked Timer view,
- * no Projects, no Trackers), in place of an empty table.
+ * single primary action. Used when a page has nothing to list yet (never-tracked Timer view
+ * or Dashboard, no Projects, no Trackers), in place of the page's content.
  */
 const {
   icon,

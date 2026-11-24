@@ -24,6 +24,12 @@ const NAV_UI = { list: 'flex flex-col gap-1', childList: 'flex flex-col gap-1' }
 
 const navItems = computed<NavigationMenuItem[]>(() => [
   {
+    label: t('nav.dashboard'),
+    to: '/',
+    icon: 'i-lucide-layout-dashboard',
+    active: route.path === '/',
+  },
+  {
     label: t('nav.timer'),
     to: '/timer',
     icon: 'i-lucide-timer',

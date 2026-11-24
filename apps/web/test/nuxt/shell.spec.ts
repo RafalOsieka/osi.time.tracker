@@ -196,7 +196,7 @@ describe('sidebar nav skeleton', () => {
     });
     const links = wrapper.findAll('a');
     const hrefs = links.map((l) => l.attributes('href'));
-    expect(hrefs).toContain('/timer');
+    expect(hrefs.slice(0, 2)).toEqual(['/', '/timer']);
     expect(hrefs).toContain('/trackers');
     expect(hrefs).toContain('/projects');
     expect(hrefs).not.toContain('/tasks');
@@ -233,8 +233,8 @@ describe('sidebar nav skeleton', () => {
   });
 });
 
-describe('Timer item selection', () => {
-  async function timerItem(path: string) {
+describe('Dashboard and Timer item selection', () => {
+  async function sidebarItem(href: string, path: string) {
     routePath.current = path;
     const wrapper = await mountSuspended(AppSidebar, {
       global: {
@@ -257,22 +257,31 @@ describe('Timer item selection', () => {
         },
       },
     });
-    return wrapper.get('a[href="/timer"]');
+    return wrapper.get(`a[href="${href}"]`);
   }
 
+  it.each([
+    ['/', 'true'],
+    ['/timer', 'false'],
+    ['/sync/2026-08-03', 'false'],
+  ])('on %s the Dashboard is the current item: %s', async (path, active) => {
+    const item = await sidebarItem('/', path);
+    expect(item.attributes('data-active')).toBe(active);
+  });
+
   it('is the current item on /timer', async () => {
-    const item = await timerItem('/timer');
+    const item = await sidebarItem('/timer', '/timer');
     expect(item.attributes('data-active')).toBe('true');
   });
 
   it('keeps the selected look on Remote Sync without being the current item', async () => {
-    const item = await timerItem('/sync/2026-08-03');
+    const item = await sidebarItem('/timer', '/sync/2026-08-03');
     expect(item.attributes('data-active')).toBe('false');
     expect(item.classes()).toContain('text-primary');
   });
 
   it('is not selected on another page', async () => {
-    const item = await timerItem('/trackers');
+    const item = await sidebarItem('/timer', '/trackers');
     expect(item.attributes('data-active')).toBe('false');
     expect(item.classes()).not.toContain('text-primary');
   });

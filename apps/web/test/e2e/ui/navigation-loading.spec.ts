@@ -55,6 +55,20 @@ describeNavigationLoading('client navigation with slow page data', async () => {
     await page.close();
   });
 
+  it('shows the Dashboard loading state before its data answers', async () => {
+    const page = await openProjects();
+    const release = await holdRequests(page, '**/api/dashboard**');
+
+    await page.click('[data-testid="app-sidebar"] a[href="/"]');
+    await page.waitForSelector('[data-testid="dashboard-loading"]');
+    expect(await page.locator('[data-testid="dashboard-empty-account"]').count()).toBe(0);
+
+    release();
+    await page.waitForSelector('[data-testid="dashboard-empty-account"]');
+    expect(await page.locator('[data-testid="dashboard-loading"]').count()).toBe(0);
+    await page.close();
+  });
+
   it('shows the monthly report page before the report answers', async () => {
     const page = await openProjects();
     const release = await holdRequests(page, '**/api/reports/monthly**');
