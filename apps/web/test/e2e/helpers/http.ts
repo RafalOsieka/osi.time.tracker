@@ -81,3 +81,16 @@ export async function patchEntry(
     body: JSON.stringify(body),
   });
 }
+
+/** Moves Time entries to another Task: renamed, in another Project, or linked to a Remote issue. */
+export async function reassignEntries(
+  jar: CookieJar,
+  token: string,
+  body: JsonObject,
+): Promise<Response> {
+  return fetch(url('/api/time-entries/reassign'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'csrf-token': token, cookie: jar.header() },
+    body: JSON.stringify(body),
+  });
+}

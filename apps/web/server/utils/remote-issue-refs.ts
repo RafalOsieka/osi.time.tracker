@@ -78,6 +78,26 @@ export async function resolveActiveTrackerForProject(
   return tracker ?? null;
 }
 
+/** The Tracker a Remote issue lives in, as far as its address needs it. */
+export interface IssueTrackerRef {
+  baseUrl: string | null;
+  systemType: string | null;
+  deletedAt: Date | null;
+}
+
+/** The issue's address in its Tracker; none while that Tracker is deleted or unknown. */
+export function activeIssueUrl(
+  tracker: IssueTrackerRef | null | undefined,
+  remoteIssueId: string,
+): string | undefined {
+  return tracker &&
+    tracker.deletedAt === null &&
+    tracker.baseUrl != null &&
+    isImplementedTrackerSystemType(tracker.systemType)
+    ? deriveIssueUrl(tracker.systemType, tracker.baseUrl, remoteIssueId)
+    : undefined;
+}
+
 /**
  * Builds a `RemoteIssueRefDto` from an inline task-row reference, or `null`
  * when the task is unlinked. `url` is included only when the reference's
@@ -85,11 +105,7 @@ export async function resolveActiveTrackerForProject(
  */
 export function taskRowToRemoteIssueRefDto(
   row: TaskRefRow,
-  tracker?: {
-    baseUrl: string | null;
-    systemType: string | null;
-    deletedAt: Date | null;
-  } | null,
+  tracker?: IssueTrackerRef | null,
 ): RemoteIssueRefDto | null {
   if (
     !row.remoteIssueId ||
@@ -101,13 +117,7 @@ export function taskRowToRemoteIssueRefDto(
     return null;
   }
 
-  const url =
-    tracker &&
-    tracker.deletedAt === null &&
-    tracker.baseUrl != null &&
-    isImplementedTrackerSystemType(tracker.systemType)
-      ? deriveIssueUrl(tracker.systemType, tracker.baseUrl, row.remoteIssueId)
-      : undefined;
+  const url = activeIssueUrl(tracker, row.remoteIssueId);
 
   return {
     id: row.id,

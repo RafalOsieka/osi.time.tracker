@@ -99,6 +99,13 @@
       "other": "Other"
     },
     "deleted": "deleted",
+    "tasks": {
+      "heading": "Tasks with the most time",
+      "caption": "Tasks with the most time in the period, with their project, remote issue and time",
+      "columnTask": "Task",
+      "columnIssue": "Remote issue",
+      "empty": "No tasks in this period."
+    },
     "emptyAccountTitle": "No time entries yet",
     "emptyAccountMessage": "Track your first time entry in the Timer, and this page will sum up where your time goes.",
     "emptyAccountCta": "Go to the Timer"

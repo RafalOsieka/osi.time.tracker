@@ -1,7 +1,8 @@
 import { expect, it } from 'vitest';
 import type { DashboardDto, DashboardGroupDto } from '../../../shared/types/dashboard';
+import type { TimeEntryDto } from '../../../shared/types/time-entry';
 import { type CookieJar, patchTimezone } from '../helpers/auth';
-import { createProject, createTracker, startEntry } from '../helpers/http';
+import { createProject, createTracker, reassignEntries, startEntry } from '../helpers/http';
 import { type SeededSession, seedAndLogin } from '../helpers/session';
 import { url } from '../helpers/url';
 import { requireDocker } from '../harness/guards';
@@ -64,8 +65,19 @@ describeDashboard('dashboard API', async () => {
     startedAt: string,
     stoppedAt: string,
     task: { title?: string; projectId?: string } = { title: 'Work' },
-  ) {
+  ): Promise<TimeEntryDto> {
     const res = await startEntry(user.jar, user.token, { ...task, startedAt, stoppedAt });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  /** Links the entry's day to a Remote issue, which moves the entry to the Task carrying it. */
+  async function linkIssue(user: SeededSession, entry: TimeEntryDto, remoteIssueId: string) {
+    const res = await reassignEntries(user.jar, user.token, {
+      ids: [entry.id],
+      remoteIssueId,
+      cachedTitle: `Issue ${remoteIssueId}`,
+    });
     expect(res.status).toBe(200);
   }
 
@@ -193,6 +205,7 @@ describeDashboard('dashboard API', async () => {
     const body = await getDashboard(user.jar, '?period=year');
     expect(body.summary).toEqual(NO_TIME);
     expect(body.groups).toEqual({ project: [], tracker: [] });
+    expect(body.topTasks).toEqual([]);
     expect(body.hasEntries).toBe(true);
   });
 
@@ -412,6 +425,104 @@ describeDashboard('dashboard API', async () => {
     expect(colorSlots(groups.tracker)).toEqual({ [second.id]: 1, local: 3 });
   });
 
+  it('lists one row per Task identity, merging its days and leaving untitled time out', async () => {
+    const user = await userIn('UTC');
+    const { jar, token } = user;
+    const tracker = await createTracker(jar, token, 'Redmine');
+    const site = await createProject(jar, token, 'Site', tracker.id);
+    const shop = await createProject(jar, token, 'Shop', tracker.id);
+    const review = { title: 'Review', projectId: site.id };
+    await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T09:00:00Z', review);
+    await logTime(user, '2026-08-04T08:00:00Z', '2026-08-04T10:00:00Z', review);
+    const linked = await logTime(user, '2026-08-05T08:00:00Z', '2026-08-05T08:30:00Z', review);
+    await linkIssue(user, linked, '42');
+    await logTime(user, '2026-08-05T09:00:00Z', '2026-08-05T09:45:00Z', {
+      title: 'Review',
+      projectId: shop.id,
+    });
+    await logTime(user, '2026-08-06T08:00:00Z', '2026-08-06T10:30:00Z', { title: 'Admin' });
+    // Untitled: no Task, so not listed, though it is the most time.
+    await logTime(user, '2026-08-07T08:00:00Z', '2026-08-07T13:00:00Z', {});
+    // Running, and outside the period.
+    await logTime(user, '2026-07-31T08:00:00Z', '2026-07-31T18:00:00Z', review);
+    expect((await startEntry(jar, token, { title: 'Running' })).status).toBe(200);
+
+    const { topTasks } = await getDashboard(jar, '?date=2026-08-01');
+    expect(topTasks.map(({ id: _id, ...task }) => task)).toEqual([
+      {
+        name: 'Review',
+        project: { id: site.id, name: 'Site', deleted: false },
+        remoteIssue: null,
+        totalSeconds: 10_800,
+      },
+      { name: 'Admin', project: null, remoteIssue: null, totalSeconds: 9000 },
+      {
+        name: 'Review',
+        project: { id: shop.id, name: 'Shop', deleted: false },
+        remoteIssue: null,
+        totalSeconds: 2700,
+      },
+      {
+        name: 'Review',
+        project: { id: site.id, name: 'Site', deleted: false },
+        remoteIssue: {
+          id: '42',
+          title: 'Issue 42',
+          url: 'https://redmine.example.com/work_packages/42',
+        },
+        totalSeconds: 1800,
+      },
+    ]);
+    expect(new Set(topTasks.map((task) => task.id)).size).toBe(4);
+  });
+
+  it('lists the ten Tasks with the most time, equal ones in creation order', async () => {
+    const user = await userIn('UTC');
+    const minutes = [5, 30, 10, 45, 20, 50, 15, 40, 25, 35, 30, 55];
+    for (const [index, minute] of minutes.entries()) {
+      const day = `2026-08-${String(index + 3).padStart(2, '0')}`;
+      await logTime(user, `${day}T08:00:00Z`, `${day}T08:${String(minute).padStart(2, '0')}:00Z`, {
+        title: `Task ${index}`,
+      });
+    }
+    const { topTasks } = await getDashboard(user.jar, '?date=2026-08-01');
+    expect(topTasks.map((task) => [task.name, task.totalSeconds / 60])).toEqual([
+      ['Task 11', 55],
+      ['Task 5', 50],
+      ['Task 3', 45],
+      ['Task 7', 40],
+      ['Task 9', 35],
+      ['Task 1', 30],
+      ['Task 10', 30],
+      ['Task 8', 25],
+      ['Task 4', 20],
+      ['Task 6', 15],
+    ]);
+  });
+
+  it('links a Remote issue only while its Tracker is active', async () => {
+    const user = await userIn('UTC');
+    const { jar, token } = user;
+    const tracker = await createTracker(jar, token, 'Gone');
+    const project = await createProject(jar, token, 'Site', tracker.id);
+    const entry = await logTime(user, '2026-08-03T08:00:00Z', '2026-08-03T09:00:00Z', {
+      title: 'Review',
+      projectId: project.id,
+    });
+    await linkIssue(user, entry, '7');
+    await remove(user, `/api/projects/${project.id}`);
+    await remove(user, `/api/trackers/${tracker.id}`);
+
+    const { topTasks } = await getDashboard(jar, '?date=2026-08-01');
+    expect(topTasks).toMatchObject([
+      {
+        name: 'Review',
+        project: { id: project.id, name: 'Site', deleted: true },
+        remoteIssue: { id: '7', title: 'Issue 7', url: null },
+      },
+    ]);
+  });
+
   it("never shows another user's entries", async () => {
     const other = await userIn('UTC');
     await logTime(other, '2026-08-03T08:00:00.000Z', '2026-08-03T09:00:00.000Z');
@@ -419,6 +530,7 @@ describeDashboard('dashboard API', async () => {
     const body = await getDashboard(user.jar, '?date=2026-08-03');
     expect(body.summary).toEqual(NO_TIME);
     expect(body.groups).toEqual({ project: [], tracker: [] });
+    expect(body.topTasks).toEqual([]);
     expect(body.hasEntries).toBe(false);
   });
 });
