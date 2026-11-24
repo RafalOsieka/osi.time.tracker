@@ -25,7 +25,7 @@ services:
 
   # Runs to completion before `app` starts; a failed migration keeps the app down.
   migrate:
-    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:3b2ae45e6657bef127a744d49529ebf22f71358c17094f6430643aa6a76b5eee
+    image: ghcr.io/rafalosieka/osi-time-tracker-migrator@sha256:01298bf498f40b41b7bed8acf6a5a8d5c989d5788fdc749cd9db0619f1f021f5
     restart: 'no'
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/osi_time_tracker
@@ -39,7 +39,7 @@ services:
         condition: service_healthy
 
   app:
-    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:0002ce80945c85d5d7d4145fa25f5ebd56e178999ccde9be699fc378a7c50344
+    image: ghcr.io/rafalosieka/osi-time-tracker@sha256:717570a0aea022cb43bcfccf8f6a0fa16e017ebbc37dc57ec68dd6c7b3749a73
     restart: unless-stopped
     environment:
       DATABASE_URL: postgres://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/osi_time_tracker
