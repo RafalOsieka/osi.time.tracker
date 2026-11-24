@@ -156,7 +156,19 @@ The note sent with a Task's Remote log. It defaults to the comment of the issue'
 _Polish_: Komentarz eksportu
 _Avoid_: Title to send
 
+**Export backlog**:
+The past days on which a Task has Tracked time in a Project with an active Tracker and no Export record: time not yet Sent.
+_Polish_: Zaległy eksport
+_Avoid_: Pending sync, unsynced time, export queue
+_Polish avoid_: Kolejka eksportu
+
 ### Reports
+
+**Dashboard**:
+The page that sums up the user's local Time entries and Export records over a period. It never contacts a Tracker.
+_Polish_: Pulpit
+_Avoid_: Home, overview, statistics
+_Polish avoid_: Dashboard, kokpit
 
 **Monthly timesheet**:
 A month's local Time entries side by side with the Remote logs on the user's Trackers, per day. Remote hours split into Exported (Matched remote logs) and Direct (Unmatched remote logs).
