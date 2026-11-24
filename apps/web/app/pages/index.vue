@@ -10,6 +10,7 @@ import {
   type DashboardPeriodKind,
   type DashboardQuery,
 } from '~~/shared/types/dashboard';
+import { calendarFormat } from '~/utils/calendar-format';
 import { extractCaughtMessageKey } from '~/utils/extract-message-key';
 import { formatReportDuration } from '~/utils/format-report-duration';
 
@@ -88,16 +89,9 @@ const DATE_FORMATS = {
   year: { year: 'numeric' },
 } satisfies Record<DashboardPeriodKind, Intl.DateTimeFormatOptions>;
 
-/** Period days are calendar dates, so they format in UTC to stay on the same day. */
 function formatPeriod({ kind, firstDay, lastDay }: DashboardPeriodDto): string {
-  const format = new Intl.DateTimeFormat(locale.value, { ...DATE_FORMATS[kind], timeZone: 'UTC' });
-  const first = new Date(`${firstDay}T00:00:00Z`);
-  if (kind !== 'week') return format.format(first);
-  // ICU versions disagree on the width of the spaces around the dash, which would make the server
-  // and the browser render different text.
-  return format
-    .formatRange(first, new Date(`${lastDay}T00:00:00Z`))
-    .replace(/\p{Space_Separator}/gu, ' ');
+  const format = calendarFormat(locale.value, DATE_FORMATS[kind]);
+  return kind === 'week' ? format.range(firstDay, lastDay) : format.date(firstDay);
 }
 
 const periodLabel = computed(() => (data.value ? formatPeriod(data.value.period) : ''));

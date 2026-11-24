@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { Temporal } from 'temporal-polyfill';
 import {
   DASHBOARD_WEEKDAY_HOURS_WEEKS,
   type DashboardWeekdayHoursDto,
 } from '~~/shared/types/dashboard';
-import { formatCalendarDate } from '~/utils/format-calendar-date';
+import { calendarFormat, weekdaysFrom } from '~/utils/calendar-format';
 
 /**
  * When the user works: the average time per weekday and hour as a heatmap, a row per weekday from
@@ -36,12 +35,8 @@ const legend = computed(() => [
   ),
 ]);
 
-/** A Monday, whose date gives the weekday names and whose hours in UTC the hour names. */
-const MONDAY = '2024-01-01';
-
 const formats = computed(() => {
-  const format = (options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat(locale.value, { ...options, timeZone: 'UTC' });
+  const format = (options: Intl.DateTimeFormatOptions) => calendarFormat(locale.value, options);
   return {
     weekday: format({ weekday: 'short' }),
     hour: format({ hour: 'numeric' }),
@@ -49,23 +44,7 @@ const formats = computed(() => {
   };
 });
 
-/** ICU versions disagree on the kind of space before a day period, as in `formatCalendarDate`. */
-function formatHour(format: Intl.DateTimeFormat, hour: number): string {
-  return format.format(Date.UTC(2024, 0, 1, hour)).replace(/\p{Space_Separator}/gu, ' ');
-}
-
-/** The weekdays from the first day of the week, as ISO weekdays. */
-const weekdays = computed(() =>
-  Array.from(
-    { length: DAYS_PER_WEEK },
-    (_, row) => ((firstDayOfWeek - 1 + row) % DAYS_PER_WEEK) + 1,
-  ),
-);
-
-function weekdayName(weekday: number): string {
-  const day = Temporal.PlainDate.from(MONDAY).add({ days: weekday - 1 });
-  return formatCalendarDate(formats.value.weekday, day.toString());
-}
+const weekdays = computed(() => weekdaysFrom(firstDayOfWeek));
 
 /** Row after row, each from midnight. */
 const cells = computed(() => {
@@ -73,9 +52,9 @@ const cells = computed(() => {
   return weekdays.value.flatMap((weekday) =>
     Array.from({ length: HOURS_PER_DAY }, (_, hour) => ({
       label: t('dashboard.weekdayHours.cell', {
-        weekday: weekdayName(weekday),
-        from: formatHour(formats.value.time, hour),
-        to: formatHour(formats.value.time, hour + 1),
+        weekday: formats.value.weekday.weekday(weekday),
+        from: formats.value.time.hour(hour),
+        to: formats.value.time.hour(hour + 1),
       }),
       seconds: weekdayHours.hourSeconds[weekday - 1]?.[hour] ?? 0,
     })),
@@ -84,14 +63,14 @@ const cells = computed(() => {
 
 const rows = computed(() =>
   weekdays.value.map((weekday, row) => ({
-    label: weekdayName(weekday),
+    label: formats.value.weekday.weekday(weekday),
     cells: Array.from({ length: HOURS_PER_DAY }, (_, hour) => row * HOURS_PER_DAY + hour),
   })),
 );
 
 const hourLabels = computed(() =>
   Array.from({ length: HOURS_PER_DAY }, (_, hour) =>
-    hour % LABEL_EVERY_HOURS === 0 ? formatHour(formats.value.hour, hour) : '',
+    hour % LABEL_EVERY_HOURS === 0 ? formats.value.hour.hour(hour) : '',
   ),
 );
 
