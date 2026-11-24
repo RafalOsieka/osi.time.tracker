@@ -8,7 +8,7 @@ Show the user where their time went: the Dashboard at `/` sums up their complete
 
 ### Requirement: Dashboard endpoint
 
-`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period and its groups. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
+`GET /api/dashboard` SHALL return, for the authenticated user: the resolved period (kind, first and last day), today, the timezone, the first day of the week (1 Monday to 7 Sunday), whether the account has any Time entry, the summary, the buckets of the period, its groups and its top Tasks. Durations SHALL be whole seconds and days calendar dates. It follows `core-api-conventions`.
 
 #### Scenario: Empty account and empty period
 
@@ -157,6 +157,54 @@ Soft-deleted Projects and Trackers SHALL keep their groups and names, marked as 
 
 - **WHEN** a Tracker with time is deleted and its Project is not
 - **THEN** the Tracker's group SHALL be marked as deleted and the Project's SHALL NOT
+
+### Requirement: Top Tasks
+
+The response SHALL list the ten Tasks with the most time in the period, most first, equal ones in creation order, counted like the summary. Each SHALL be one Task identity (`workspace-tasks`) with its name, its Project or none, marked as deleted when it is, its Remote issue or none, and its time. An issue SHALL carry its id, its cached title and its address in its Tracker, the address only while that Tracker is active. Untitled entries belong to no Task and SHALL NOT be listed.
+
+#### Scenario: Days merged
+
+- **WHEN** a Task has 1:00 on one day and 2:00 on another
+- **THEN** it SHALL be one row with 3:00
+
+#### Scenario: Same name, different Remote issues
+
+- **WHEN** two Tasks of one Project share a name and only one is linked to a Remote issue
+- **THEN** they SHALL be two rows, only one with the issue
+
+#### Scenario: More than ten Tasks
+
+- **WHEN** a period has time in twelve Tasks
+- **THEN** the ten with the most time SHALL be listed
+
+#### Scenario: Untitled time
+
+- **WHEN** the largest time of the period is in untitled entries
+- **THEN** it SHALL NOT be listed
+
+#### Scenario: Deleted Tracker
+
+- **WHEN** a Task's Remote issue belongs to a deleted Tracker
+- **THEN** the issue SHALL be listed without an address
+
+### Requirement: Top Tasks list
+
+The page SHALL list the top Tasks in a captioned table, in the order of the response, each with its name, its Project or "No project", the word "deleted" for a deleted Project, its Remote issue as `#` and its id, and its time as unpadded `H:MM`. An issue with an address SHALL link to it in a new tab. Hovering or focusing an issue SHALL show its title, which SHALL also be part of its accessible name. All text SHALL have `en`/`pl` parity.
+
+#### Scenario: Linked Task
+
+- **WHEN** a Task is linked to issue 42 of an active Tracker
+- **THEN** its row SHALL link `#42` to the issue
+
+#### Scenario: Task without a Remote issue
+
+- **WHEN** a Task has no Remote issue
+- **THEN** its row SHALL show its name, Project and time without a link
+
+#### Scenario: Only untitled time
+
+- **WHEN** the period has entries but no Task
+- **THEN** the page SHALL show a short message instead of the list
 
 ### Requirement: Dashboard period in the URL
 
@@ -325,12 +373,12 @@ Loading, a failed load, a period without entries and an account without entries 
 #### Scenario: Failed load
 
 - **WHEN** the request fails
-- **THEN** the page SHALL show a translated error instead of the summary, the chart and the groups, and choosing the selected kind again SHALL retry
+- **THEN** the page SHALL show a translated error instead of the summary, the chart, the groups and the Tasks, and choosing the selected kind again SHALL retry
 
 #### Scenario: Period without entries
 
 - **WHEN** the period has no days with entries but the account has Time entries
-- **THEN** the page SHALL show zeros and a short message, and neither the chart nor the groups
+- **THEN** the page SHALL show zeros and a short message, and neither the chart, the groups nor the Tasks
 
 #### Scenario: Account without entries
 

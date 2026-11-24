@@ -59,6 +59,29 @@ const november: DashboardDto = {
       { kind: 'local', totalSeconds: 4500, bucketSeconds: [], colorSlot: 1 },
     ],
   },
+  topTasks: [
+    {
+      id: 'k1',
+      name: 'Checkout',
+      project: { id: 'p1', name: 'Site', deleted: true },
+      remoteIssue: { id: '42', title: 'Fix the checkout', url: 'https://op.example.com/wp/42' },
+      totalSeconds: 9000,
+    },
+    {
+      id: 'k2',
+      name: 'Checkout',
+      project: { id: 'p2', name: 'Site', deleted: false },
+      remoteIssue: null,
+      totalSeconds: 5400,
+    },
+    {
+      id: 'k3',
+      name: 'Admin',
+      project: null,
+      remoteIssue: { id: '7', title: 'Bookkeeping', url: null },
+      totalSeconds: 1800,
+    },
+  ],
 };
 const march: DashboardDto = {
   ...november,
@@ -68,6 +91,7 @@ const emptyNovember: DashboardDto = {
   ...november,
   summary: { totalSeconds: 0, daysWithEntries: 0, averageSeconds: 0 },
   groups: { project: [], tracker: [] },
+  topTasks: [],
 };
 
 const WEEK_BUCKETS = [
@@ -205,6 +229,7 @@ describe('Dashboard states', () => {
     expect(byTestId('dashboard-total').text()).toBe('0:00');
     expect(byTestId('dashboard-days').text()).toBe('0');
     expect(byTestId('dashboard-average').text()).toBe('0:00');
+    expect(byTestId('dashboard-tasks').exists()).toBe(false);
   });
 
   it('points an account without entries to the Timer', async () => {
@@ -234,6 +259,7 @@ describe('Dashboard states', () => {
     expect(visibleStates()).toEqual(['error']);
     expect(byTestId('dashboard-error').text()).toBe('The Dashboard could not be loaded.');
     expect(byTestId('dashboard-groups').exists()).toBe(false);
+    expect(byTestId('dashboard-tasks').exists()).toBe(false);
   });
 });
 
@@ -381,6 +407,94 @@ describe('Dashboard time per group', () => {
     route.query = {};
     await flushPromises();
     expect(tableText()[0]).toEqual(['Tracker', 'Time', 'Share']);
+  });
+});
+
+describe('Dashboard top Tasks', () => {
+  /** The text a screen reader gets, its blocks apart, without what is hidden from it. */
+  function spokenText(element: Element): string {
+    const texts: string[] = [];
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      if (!node.parentElement?.closest('[aria-hidden="true"]')) texts.push(node.textContent ?? '');
+    }
+    return texts.join(' ').replace(/\s+/g, ' ').trim();
+  }
+
+  /** Each Task row as its cells' spoken text, the headings first. */
+  function tasksText() {
+    return byTestId('dashboard-tasks-table')
+      .findAll('tr')
+      .map((row) => row.findAll('th, td').map((cell) => spokenText(cell.element)));
+  }
+
+  it('lists each Task with its Project, Remote issue and time', async () => {
+    await mountPage();
+    expect(tasksText()).toEqual([
+      ['Task', 'Remote issue', 'Time'],
+      ['Checkout Site deleted', '#42: Fix the checkout', '2:30'],
+      ['Checkout Site', '', '1:30'],
+      ['Admin No project', '#7: Bookkeeping', '0:30'],
+    ]);
+    const table = byTestId('dashboard-tasks-table');
+    expect(table.find('caption').text()).toBe(
+      'Tasks with the most time in the period, with their project, remote issue and time',
+    );
+    expect(table.findAll('[scope="row"]').map((header) => spokenText(header.element))).toEqual([
+      'Checkout Site deleted',
+      'Checkout Site',
+      'Admin No project',
+    ]);
+  });
+
+  it('links a Task to its Remote issue only when the issue has an address', async () => {
+    await mountPage();
+    const issues = wrapper.findAll('[data-testid="dashboard-task-issue"]');
+    expect(issues.map((issue) => issue.find('[aria-hidden="true"]').text())).toEqual(['#42', '#7']);
+    const links = byTestId('dashboard-tasks-table').findAll('a');
+    expect(links).toHaveLength(1);
+    expect(links[0]?.attributes('href')).toBe('https://op.example.com/wp/42');
+    expect(links[0]?.attributes('target')).toBe('_blank');
+    expect(issues[1]?.attributes('tabindex')).toBe('0');
+  });
+
+  it('says so instead of an empty list when the period has no Task', async () => {
+    harness.fetch.mockResolvedValue({ ...november, topTasks: [] });
+    await mountPage();
+    expect(byTestId('dashboard-tasks-table').exists()).toBe(false);
+    expect(byTestId('dashboard-tasks-empty').text()).toBe('No tasks in this period.');
+  });
+
+  it('shows placeholders while another period loads', async () => {
+    await mountPage();
+    const answer = holdAnswer();
+    route.query = { period: 'month', date: '2026-03-31' };
+    await flushPromises();
+    expect(byTestId('dashboard-tasks-table').exists()).toBe(false);
+    expect(byTestId('dashboard-tasks-empty').exists()).toBe(false);
+    expect(byTestId('dashboard-tasks').attributes('aria-busy')).toBe('true');
+
+    answer(march);
+    await flushPromises();
+    expect(tasksText()).toHaveLength(4);
+    expect(byTestId('dashboard-tasks').attributes('aria-busy')).toBe('false');
+  });
+
+  it('reads naturally in Polish', async () => {
+    const { $i18n } = useNuxtApp();
+    await $i18n.setLocale('pl');
+    try {
+      await mountPage();
+      expect(byTestId('dashboard-tasks').find('h2').text()).toBe('Zadania z największym czasem');
+      expect(tasksText()).toEqual([
+        ['Zadanie', 'Zgłoszenie', 'Czas'],
+        ['Checkout Site usunięty', '#42: Fix the checkout', '2:30'],
+        ['Checkout Site', '', '1:30'],
+        ['Admin Bez projektu', '#7: Bookkeeping', '0:30'],
+      ]);
+    } finally {
+      await $i18n.setLocale('en');
+    }
   });
 });
 

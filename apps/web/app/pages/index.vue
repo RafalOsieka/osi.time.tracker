@@ -216,12 +216,14 @@ function selectKind(kind: DashboardPeriodKind): void {
         </p>
       </div>
 
-      <DashboardGroups
-        v-if="!emptyPeriod"
-        v-model:grouping="grouping"
-        :dashboard="data ?? undefined"
-        :loading="loading"
-      />
+      <template v-if="!emptyPeriod">
+        <DashboardGroups
+          v-model:grouping="grouping"
+          :dashboard="data ?? undefined"
+          :loading="loading"
+        />
+        <DashboardTasks :tasks="data?.topTasks" :loading="loading" />
+      </template>
     </template>
   </div>
 </template>

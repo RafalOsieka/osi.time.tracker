@@ -20,17 +20,22 @@ export interface StoppedEntryInstants {
   stoppedAt: string | null;
 }
 
+/** Whole seconds of a completed entry; 0 for a running or malformed one. */
+export function completedSeconds({ startedAt, stoppedAt }: StoppedEntryInstants): number {
+  if (stoppedAt == null) return 0;
+  const startMs = new Date(startedAt).getTime();
+  const stopMs = new Date(stoppedAt).getTime();
+  if (Number.isNaN(startMs) || Number.isNaN(stopMs)) return 0;
+  return Math.max(0, Math.floor((stopMs - startMs) / 1000));
+}
+
 export function aggregateLocalDaySeconds(
   entries: readonly StoppedEntryInstants[],
   timeZone: string,
 ): MonthlyReportDayDto[] {
   const byDay = new Map<string, number>();
   for (const entry of entries) {
-    if (entry.stoppedAt == null) continue;
-    const startMs = new Date(entry.startedAt).getTime();
-    const stopMs = new Date(entry.stoppedAt).getTime();
-    if (Number.isNaN(startMs) || Number.isNaN(stopMs)) continue;
-    const seconds = Math.max(0, Math.floor((stopMs - startMs) / 1000));
+    const seconds = completedSeconds(entry);
     if (seconds === 0) continue;
     const date = localDayKey(entry.startedAt, timeZone);
     byDay.set(date, (byDay.get(date) ?? 0) + seconds);

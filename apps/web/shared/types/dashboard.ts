@@ -69,6 +69,23 @@ export type DashboardGroupDto = DashboardGroupIdentityDto & {
   colorSlot: number | null;
 };
 
+/** How many Tasks the Dashboard lists. */
+export const DASHBOARD_TOP_TASKS = 10;
+
+/** One Task identity (ADR-0004) with its time in the period, counted like the summary. */
+export interface DashboardTaskDto {
+  id: string;
+  name: string;
+  project: { id: string; name: string; deleted: boolean } | null;
+  remoteIssue: {
+    id: string;
+    title: string;
+    /** None while the issue's Tracker is deleted or of a kind the app cannot link to. */
+    url: string | null;
+  } | null;
+  totalSeconds: number;
+}
+
 export interface DashboardDto {
   period: DashboardPeriodDto;
   today: string;
@@ -82,4 +99,6 @@ export interface DashboardDto {
   buckets: string[];
   /** Groups with time in the period, largest first; either list adds up to the summary's total. */
   groups: Record<DashboardGrouping, DashboardGroupDto[]>;
+  /** The Tasks with the most time, most first, equal ones in creation order. */
+  topTasks: DashboardTaskDto[];
 }
